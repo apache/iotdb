@@ -91,7 +91,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   private void dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
-    for (TDataNodeLocation dataNodeLocation : instance.getDataRegionId().getDataNodeLocations()) {
+    for (TDataNodeLocation dataNodeLocation : instance.getRegionReplicaSet().getDataNodeLocations()) {
       TEndPoint endPoint = dataNodeLocation.getInternalEndPoint();
       if (isDispatchedToLocal(endPoint)) {
         dispatchLocally(instance);
@@ -110,14 +110,19 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
       TLoadTsFileReq loadTsFileReq =
-          new TLoadTsFileReq(instance.getFragment().getRoot().serializeToByteBuffer(), uuid);
+          new TLoadTsFileReq(
+              instance.getFragment().getRoot().serializeToByteBuffer(),
+              uuid,
+              instance.getRegionReplicaSet().getRegionId());
       TLoadResp loadResp = client.sendLoadNode(loadTsFileReq);
-      if (!LoadTsFileScheduler.LoadResult.SUCCESS.equals(
-          LoadTsFileScheduler.LoadResult.values()[loadResp.loadRespStatus])) {
-        logger.error(loadResp.info);
+      if (!loadResp.isAccepted()) {
+        logger.error(loadResp.message);
         TSStatus status = new TSStatus();
-        status.setCode(TSStatusCode.LOAD_TSFILE_ERROR.getStatusCode());
-        status.setMessage(loadResp.info);
+        status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+        status.setMessage(loadResp.message);
+        if (loadResp.status != null) {
+          status.addToSubStatus(loadResp.status);
+        }
         throw new FragmentInstanceDispatchException(status);
       }
     } catch (IOException | TException e) {
@@ -191,9 +196,9 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       } catch (Throwable t) {
         logger.error("cannot dispatch LoadCommand for load operation", t);
         return immediateFuture(
-                new FragInstanceDispatchResult(
-                        RpcUtils.getStatus(
-                                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+            new FragInstanceDispatchResult(
+                RpcUtils.getStatus(
+                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));
@@ -204,12 +209,14 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
       TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
-      if (!LoadTsFileScheduler.LoadResult.SUCCESS.equals(
-          LoadTsFileScheduler.LoadResult.values()[loadResp.loadRespStatus])) {
-        logger.error(loadResp.info);
+      if (!loadResp.isAccepted()) {
+        logger.error(loadResp.message);
         TSStatus status = new TSStatus();
-        status.setCode(TSStatusCode.LOAD_TSFILE_ERROR.getStatusCode());
-        status.setMessage(loadResp.info);
+        status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+        status.setMessage(loadResp.message);
+        if (loadResp.status != null) {
+          status.addToSubStatus(loadResp.status);
+        }
         throw new FragmentInstanceDispatchException(status);
       }
     } catch (IOException | TException e) {
@@ -221,7 +228,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     }
   }
 
-  private void dispatchLocally(TLoadCommandReq loadCommandReq) throws FragmentInstanceDispatchException {
+  private void dispatchLocally(TLoadCommandReq loadCommandReq)
+      throws FragmentInstanceDispatchException {
     // TODO: use local interface
   }
 

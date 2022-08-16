@@ -242,6 +242,8 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
+  private String loadTsFileDir = systemDir + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+
   /** Sync directory, including the log and hardlink tsfiles */
   private String syncDir =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
@@ -1061,6 +1063,7 @@ public class IoTDBConfig {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
+    loadTsFileDir = addHomeDir(loadTsFileDir);
     syncDir = addHomeDir(syncDir);
     tracingDir = addHomeDir(tracingDir);
     consensusDir = addHomeDir(consensusDir);
@@ -1210,6 +1213,14 @@ public class IoTDBConfig {
 
   void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
+  }
+
+  public String getLoadTsFileDir() {
+    return loadTsFileDir;
+  }
+
+  public void setLoadTsFileDir(String loadTsFileDir) {
+    this.loadTsFileDir = loadTsFileDir;
   }
 
   public String getSchemaDir() {

@@ -118,6 +118,7 @@ struct TSendPlanNodeResp {
   1: required bool accepted
   2: optional string message
   3: optional common.TSStatus status
+
 }
 
 struct TFetchFragmentInstanceStateReq {
@@ -206,6 +207,7 @@ struct TUpdateTemplateReq{
 struct TLoadTsFileReq{
     1: required binary body
     2: required string uuid
+    3: required common.TConsensusGroupId consensusGroupId
 }
 
 struct TLoadCommandReq{
@@ -214,8 +216,9 @@ struct TLoadCommandReq{
 }
 
 struct TLoadResp{
-    1: required i32 loadRespStatus
-    2: required string info
+  1: required bool accepted
+  2: optional string message
+  3: optional common.TSStatus status
 }
 
 service IDataNodeRPCService {

@@ -65,7 +65,9 @@ import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.metrics.MetricsService;
@@ -302,12 +304,35 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendLoadNode(TLoadTsFileReq req) throws TException {
-    return null;
+    LOGGER.info(String.format("Receive load node from uuid %s.", req.uuid));
+
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
+    LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
+    TSStatus resultStatus =
+        StorageEngineV2.getInstance()
+            .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
+
+    return createTLoadResp(resultStatus);
   }
 
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) throws TException {
-    return null;
+
+    TSStatus resultStatus = StorageEngineV2.getInstance()
+        .executeLoadCommand(
+            LoadTsFileScheduler.LoadCommand.values()[req.commandType], req.uuid);
+    return createTLoadResp(resultStatus);
+  }
+
+  private TLoadResp createTLoadResp(TSStatus resultStatus) {
+    boolean isAccepted = RpcUtils.SUCCESS_STATUS.equals(resultStatus);
+    TLoadResp loadResp = new TLoadResp(isAccepted);
+    if (!isAccepted) {
+      loadResp.setMessage(resultStatus.getMessage());
+      loadResp.setStatus(resultStatus);
+    }
+    return loadResp;
   }
 
   @Override

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.scheduler.load;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.scheduler.IScheduler;
 
 import io.airlift.units.Duration;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,9 +119,18 @@ public class LoadTsFileScheduler implements IScheduler {
             logger.error(
                 String.format(
                     "Dispatch one piece  to ReplicaSet %s error, result status code %s.",
-                    entry.getKey(), result.getFailureStatus().getCode()));
+                    entry.getKey(),
+                    TSStatusCode.representOf(result.getFailureStatus().getCode()).name()));
             logger.error(
-                String.format("Result message %s.", result.getFailureStatus().getMessage()));
+                String.format("Result status message %s.", result.getFailureStatus().getMessage()));
+            if (result.getFailureStatus().getSubStatus().size() > 0) {
+              for (TSStatus status : result.getFailureStatus().getSubStatus()) {
+                logger.error(
+                    String.format(
+                        "Sub status code %s.", TSStatusCode.representOf(status.getCode()).name()));
+                logger.error(String.format("Sub status message %s.", status.getMessage()));
+              }
+            }
             logger.error(String.format("Dispatch piece node:%n%s", pieceNode));
             return false;
           }
@@ -185,10 +196,5 @@ public class LoadTsFileScheduler implements IScheduler {
   public enum LoadCommand {
     EXECUTE,
     ROLLBACK
-  }
-
-  public enum LoadResult {
-    SUCCESS,
-    FAILED
   }
 }

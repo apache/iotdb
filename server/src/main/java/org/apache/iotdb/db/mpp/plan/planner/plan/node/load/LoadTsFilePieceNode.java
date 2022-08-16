@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.load.ChunkData;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -85,6 +86,14 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     dataSize += chunkData.getDataSize();
   }
 
+  public List<ChunkData> getAllChunkData() {
+    return chunkDataList;
+  }
+
+  public File getTsFile() {
+    return tsFile;
+  }
+
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
     return null;
@@ -143,31 +152,6 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     throw new NotImplementedException("split load piece TsFile is not implemented");
   }
 
-  public interface ChunkData {
-    String getDevice();
-
-    TTimePartitionSlot getTimePartitionSlot();
-
-    long getDataSize();
-
-    void addDataSize(long pageSize);
-
-    void setHeadPageNeedDecode(boolean headPageNeedDecode);
-
-    void setTailPageNeedDecode(boolean tailPageNeedDecode);
-
-    void setTimePartitionSlot(TTimePartitionSlot timePartitionSlot);
-
-    IChunkWriter getChunkWriter(File tsFile) throws IOException, PageException;
-
-    static ChunkData createChunkData(
-        boolean isAligned, long offset, String device, ChunkHeader chunkHeader) {
-      return isAligned
-          ? new AlignedChunkData(offset, device, chunkHeader)
-          : new NonAlignedChunkData(offset, device, chunkHeader);
-    }
-  }
-
   @Override
   public String toString() {
     return "LoadTsFilePieceNode{" +
@@ -175,264 +159,5 @@ public class LoadTsFilePieceNode extends WritePlanNode {
             ", dataSize=" + dataSize +
             ", chunkDataList=" + chunkDataList +
             '}';
-  }
-
-  public static class NonAlignedChunkData implements ChunkData {
-    private long offset;
-    private long dataSize;
-    private boolean isHeadPageNeedDecode;
-    private boolean isTailPageNeedDecode;
-
-    private TTimePartitionSlot timePartitionSlot;
-    private String device;
-    private ChunkHeader chunkHeader;
-
-    public NonAlignedChunkData(long offset, String device, ChunkHeader chunkHeader) {
-      this.offset = offset;
-      this.dataSize = 0;
-      this.isHeadPageNeedDecode = false;
-      this.isTailPageNeedDecode = false;
-      this.device = device;
-      this.chunkHeader = chunkHeader;
-    }
-
-    @Override
-    public String getDevice() {
-      return device;
-    }
-
-    @Override
-    public TTimePartitionSlot getTimePartitionSlot() {
-      return timePartitionSlot;
-    }
-
-    @Override
-    public long getDataSize() {
-      return dataSize;
-    }
-
-    @Override
-    public void addDataSize(long pageSize) {
-      dataSize += pageSize;
-    }
-
-    @Override
-    public void setHeadPageNeedDecode(boolean headPageNeedDecode) {
-      isHeadPageNeedDecode = headPageNeedDecode;
-    }
-
-    @Override
-    public void setTailPageNeedDecode(boolean tailPageNeedDecode) {
-      isTailPageNeedDecode = tailPageNeedDecode;
-    }
-
-    @Override
-    public void setTimePartitionSlot(TTimePartitionSlot timePartitionSlot) {
-      this.timePartitionSlot = timePartitionSlot;
-    }
-
-    @Override
-    public IChunkWriter getChunkWriter(File tsFile) throws IOException, PageException {
-      ChunkWriterImpl chunkWriter =
-          new ChunkWriterImpl(
-              new MeasurementSchema(
-                  chunkHeader.getMeasurementID(),
-                  chunkHeader.getDataType(),
-                  chunkHeader.getEncodingType(),
-                  chunkHeader.getCompressionType()));
-      try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-        Decoder defaultTimeDecoder =
-            Decoder.getDecoderByType(
-                TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-                TSDataType.INT64);
-        Decoder valueDecoder =
-            Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
-
-        reader.position(offset);
-        long dataSize = this.dataSize;
-        while (dataSize > 0) {
-          PageHeader pageHeader =
-              reader.readPageHeader(
-                  chunkHeader.getDataType(),
-                  (chunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
-          long pageDataSize = pageHeader.getSerializedPageSize();
-          if ((dataSize == this.dataSize && isHeadPageNeedDecode) // decode head page
-              || (dataSize == pageDataSize && isTailPageNeedDecode)) { // decode tail page
-            decodePage(reader, pageHeader, defaultTimeDecoder, valueDecoder, chunkWriter);
-          } else { // entire page
-            ByteBuffer pageData = reader.readCompressedPage(pageHeader);
-            chunkWriter.writePageHeaderAndDataIntoBuff(pageData, pageHeader);
-          }
-          dataSize -= pageDataSize;
-        }
-        return chunkWriter;
-      }
-    }
-
-    private void decodePage(
-        TsFileSequenceReader reader,
-        PageHeader pageHeader,
-        Decoder timeDecoder,
-        Decoder valueDecoder,
-        ChunkWriterImpl chunkWriter)
-        throws IOException {
-      valueDecoder.reset();
-      ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
-      PageReader pageReader =
-          new PageReader(pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, null);
-      BatchData batchData = pageReader.getAllSatisfiedPageData();
-      while (batchData.hasCurrent()) {
-        long time = batchData.currentTime();
-        if (time < timePartitionSlot.getStartTime()) {
-          continue;
-        } else if (time > timePartitionSlot.getStartTime()) {
-          break;
-        }
-
-        Object value = batchData.currentValue();
-        switch (chunkHeader.getDataType()) {
-          case INT32:
-            chunkWriter.write(time, (int) value);
-            break;
-          case INT64:
-            chunkWriter.write(time, (long) value);
-            break;
-          case FLOAT:
-            chunkWriter.write(time, (float) value);
-            break;
-          case DOUBLE:
-            chunkWriter.write(time, (double) value);
-            break;
-          case BOOLEAN:
-            chunkWriter.write(time, (boolean) value);
-            break;
-          case TEXT:
-            chunkWriter.write(time, (Binary) value);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", chunkHeader.getDataType()));
-        }
-        batchData.next();
-      }
-      chunkWriter.sealCurrentPage();
-    }
-
-    @Override
-    public String toString() {
-      return "NonAlignedChunkData{"
-          + "offset="
-          + offset
-          + ", dataSize="
-          + dataSize
-          + ", isHeadPageNeedDecode="
-          + isHeadPageNeedDecode
-          + ", isTailPageNeedDecode="
-          + isTailPageNeedDecode
-          + ", timePartitionSlot="
-          + timePartitionSlot
-          + ", device='"
-          + device
-          + '\''
-          + ", chunkHeader="
-          + chunkHeader
-          + '}';
-    }
-  }
-
-  public static class AlignedChunkData implements ChunkData {
-    private List<Long> offset;
-    private List<Long> dataSize;
-    private boolean isHeadPageNeedDecode;
-    private boolean isTailPageNeedDecode;
-
-    private TTimePartitionSlot timePartitionSlot;
-    private String device;
-    private List<ChunkHeader> chunkHeaderList;
-
-    public AlignedChunkData(long timeOffset, String device, ChunkHeader chunkHeader) {
-      this.offset = new ArrayList<>();
-      this.dataSize = new ArrayList<>();
-      this.isHeadPageNeedDecode = false;
-      this.isTailPageNeedDecode = false;
-      this.device = device;
-      this.chunkHeaderList = new ArrayList<>();
-
-      offset.add(timeOffset);
-      dataSize.add(0L);
-      chunkHeaderList.add(chunkHeader);
-    }
-
-    @Override
-    public String getDevice() {
-      return device;
-    }
-
-    @Override
-    public TTimePartitionSlot getTimePartitionSlot() {
-      return timePartitionSlot;
-    }
-
-    @Override
-    public long getDataSize() {
-      return dataSize.stream().mapToLong(o -> o).sum();
-    }
-
-    @Override
-    public void addDataSize(long pageSize) {
-      dataSize.set(0, dataSize.get(0) + pageSize);
-    }
-
-    @Override
-    public void setHeadPageNeedDecode(boolean headPageNeedDecode) {
-      isHeadPageNeedDecode = headPageNeedDecode;
-    }
-
-    @Override
-    public void setTailPageNeedDecode(boolean tailPageNeedDecode) {
-      isTailPageNeedDecode = tailPageNeedDecode;
-    }
-
-    @Override
-    public void setTimePartitionSlot(TTimePartitionSlot timePartitionSlot) {
-      this.timePartitionSlot = timePartitionSlot;
-    }
-
-    public void addValueChunk(long offset, ChunkHeader chunkHeader) {
-      this.offset.add(offset);
-      this.dataSize.add(0L);
-      this.chunkHeaderList.add(chunkHeader);
-    }
-
-    public void addValueChunkDataSize(long dataSize) {
-      int lastIndex = this.dataSize.size() - 1;
-      this.dataSize.set(lastIndex, this.dataSize.get(lastIndex) + dataSize);
-    }
-
-    @Override
-    public IChunkWriter getChunkWriter(File tsFile) throws IOException, PageException {
-      return null;
-    }
-
-    @Override
-    public String toString() {
-      return "AlignedChunkData{"
-          + "offset="
-          + offset
-          + ", dataSize="
-          + dataSize
-          + ", isHeadPageNeedDecode="
-          + isHeadPageNeedDecode
-          + ", isTailPageNeedDecode="
-          + isTailPageNeedDecode
-          + ", timePartitionSlot="
-          + timePartitionSlot
-          + ", device='"
-          + device
-          + '\''
-          + ", chunkHeaderList="
-          + chunkHeaderList
-          + '}';
-    }
   }
 }
