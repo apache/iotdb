@@ -142,7 +142,7 @@ Time,root.test.t1.str,root.test.t2.str,root.test.t2.int
 1970-01-01T08:00:00.002+08:00,"123",,
 ```
 
-通过时间对齐，并且header中包含数据类型的数据。
+通过时间对齐，并且header中包含数据类型的数据。（Text类型数据支持加双引号和不加双引号）
 
 ```sql
 Time,root.test.t1.str(TEXT),root.test.t2.str(TEXT),root.test.t2.int(INT32)
@@ -161,7 +161,7 @@ Time,Device,str,int
 1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
 ```
 
-通过设备对齐，并且header中包含数据类型的数据。
+通过设备对齐，并且header中包含数据类型的数据。（Text类型数据支持加双引号和不加双引号）
 
 ```sql
 Time,Device,str(TEXT),int(INT32)
