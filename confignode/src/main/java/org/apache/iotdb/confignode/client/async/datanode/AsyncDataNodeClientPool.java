@@ -50,10 +50,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
@@ -226,7 +225,7 @@ public class AsyncDataNodeClientPool {
    * @param ttlMap Map<StorageGroupName, TTL>
    * @return Those RegionGroups that failed to create
    */
-  public Set<TConsensusGroupId> createRegionGroups(
+  public Map<TConsensusGroupId, TRegionReplicaSet> createRegionGroups(
       CreateRegionGroupsPlan createRegionGroupsPlan, Map<String, Long> ttlMap) {
     // Because different requests will be sent to the same node when createRegions,
     // so for CreateRegions use Map<index, TDataNodeLocation>
@@ -242,7 +241,7 @@ public class AsyncDataNodeClientPool {
       }
     }
     if (dataNodeLocationMap.isEmpty()) {
-      return new HashSet<>();
+      return new HashMap<>();
     }
     for (int retry = 0; retry < retryNum; retry++) {
       index = 0;
@@ -310,13 +309,15 @@ public class AsyncDataNodeClientPool {
 
     // Filter RegionGroups that weren't created successfully
     index = 0;
-    Set<TConsensusGroupId> failedRegions = new HashSet<>();
+    Map<TConsensusGroupId, TRegionReplicaSet> failedRegions = new HashMap<>();
     for (List<TRegionReplicaSet> regionReplicaSets :
         createRegionGroupsPlan.getRegionGroupMap().values()) {
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-        for (int i = 0; i < regionReplicaSet.getDataNodeLocationsSize(); i++) {
+        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           if (dataNodeLocationMap.containsKey(index)) {
-            failedRegions.add(regionReplicaSet.getRegionId());
+            failedRegions
+                .computeIfAbsent(regionReplicaSet.getRegionId(), empty -> new TRegionReplicaSet())
+                .addToDataNodeLocations(dataNodeLocation);
           }
           index += 1;
         }
@@ -341,8 +342,6 @@ public class AsyncDataNodeClientPool {
     req.setTtl(TTL);
     return req;
   }
-
-  public void deleteRegionGroup() {}
 
   /**
    * notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced

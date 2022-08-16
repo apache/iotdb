@@ -19,17 +19,18 @@
 package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
 
-import java.util.Set;
+import java.util.Map;
 
 public class CreateRegionGroupsProcedure extends AbstractNodeProcedure<CreateRegionGroupsState> {
 
   private final CreateRegionGroupsPlan createRegionGroupsPlan;
-  private Set<TConsensusGroupId> failedRegionGroups;
+  private Map<TConsensusGroupId, TRegionReplicaSet> failedRegions;
 
   public CreateRegionGroupsProcedure(CreateRegionGroupsPlan createRegionGroupsPlan) {
     this.createRegionGroupsPlan = createRegionGroupsPlan;
@@ -42,7 +43,7 @@ public class CreateRegionGroupsProcedure extends AbstractNodeProcedure<CreateReg
         setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS);
         break;
       case CREATE_REGION_GROUPS:
-        failedRegionGroups = env.doRegionCreation(createRegionGroupsPlan);
+        failedRegions = env.doRegionCreation(createRegionGroupsPlan);
         setNextState(CreateRegionGroupsState.PERSIST_AND_BROADCAST);
         break;
       case PERSIST_AND_BROADCAST:
@@ -54,23 +55,29 @@ public class CreateRegionGroupsProcedure extends AbstractNodeProcedure<CreateReg
                 (storageGroup, regionReplicaSets) ->
                     regionReplicaSets.forEach(
                         regionReplicaSet -> {
-                          if (!failedRegionGroups.contains(regionReplicaSet.getRegionId())) {
+                          if (!failedRegions.containsKey(regionReplicaSet.getRegionId())) {
                             persistPlan.addRegionGroup(storageGroup, regionReplicaSet);
                           }
                         }));
         env.persistAndBroadcastRegionGroup(persistPlan);
-        setNextState(CreateRegionGroupsState.DELETE_FAILED_REGION_GROUPS);
+        setNextState(
+            failedRegions.size() > 0
+                ? CreateRegionGroupsState.DELETE_FAILED_REGION_GROUPS
+                : CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
       case DELETE_FAILED_REGION_GROUPS:
         DeleteRegionGroupsPlan deletePlan = new DeleteRegionGroupsPlan();
+        // We don't need to wipe the PartitionTable
+        // since the failed RegionGroups are not recorded
+        deletePlan.setNeedsDeleteInPartitionTable(false);
         createRegionGroupsPlan
             .getRegionGroupMap()
             .forEach(
                 (storageGroup, regionReplicaSets) ->
                     regionReplicaSets.forEach(
                         regionReplicaSet -> {
-                          if (!failedRegionGroups.contains(regionReplicaSet.getRegionId())) {
-                            deletePlan.addDeleteRegion(storageGroup, regionReplicaSet);
+                          if (failedRegions.containsKey(regionReplicaSet.getRegionId())) {
+                            deletePlan.addRegionGroup(storageGroup, regionReplicaSet);
                           }
                         }));
         break;
@@ -84,7 +91,9 @@ public class CreateRegionGroupsProcedure extends AbstractNodeProcedure<CreateReg
   @Override
   protected void rollbackState(
       ConfigNodeProcedureEnv configNodeProcedureEnv,
-      CreateRegionGroupsState createRegionGroupsState) {}
+      CreateRegionGroupsState createRegionGroupsState) {
+    // Do nothing
+  }
 
   @Override
   protected CreateRegionGroupsState getState(int stateId) {

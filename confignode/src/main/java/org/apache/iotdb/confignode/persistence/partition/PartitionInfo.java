@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
@@ -104,9 +105,6 @@ public class PartitionInfo implements SnapshotProcessor {
   public PartitionInfo() {
     this.storageGroupPartitionTables = new ConcurrentHashMap<>();
     this.nextRegionGroupId = new AtomicInteger(-1);
-
-    // Ensure that the PartitionTables of the StorageGroups who've been logically deleted
-    // are unreadable and un-writable
     // For RegionCleaner
     this.deletedRegionSet = Collections.synchronizedSet(new HashSet<>());
   }
@@ -197,6 +195,42 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
+   * Synchronously delete RegionGroups in PartitionTable and asynchronously delete RegionReplica on
+   * remote DataNodes
+   *
+   * @return SUCCESS_STATUS
+   */
+  public TSStatus deleteRegionGroups(DeleteRegionGroupsPlan deleteRegionGroupsPlan) {
+    // Delete RegionGroups' in PartitionTable if necessary
+    if (deleteRegionGroupsPlan.isNeedsDeleteInPartitionTable()) {
+      deleteRegionGroupsPlan
+          .getRegionGroupMap()
+          .forEach(
+              (storageGroup, deleteRegionGroups) -> {
+                if (isStorageGroupExisted(storageGroup)) {
+                  storageGroupPartitionTables
+                      .get(storageGroup)
+                      .deleteRegionGroups(deleteRegionGroups);
+                }
+              });
+    }
+
+    // Delete RegionReplicaSets on remote DataNodes asynchronously
+    synchronized (deletedRegionSet) {
+      deleteRegionGroupsPlan.getRegionGroupMap().values().forEach(deletedRegionSet::addAll);
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  /** @return The Regions that should be deleted among the DataNodes */
+  public Set<TRegionReplicaSet> getDeletedRegionSet() {
+    synchronized (deletedRegionSet) {
+      return deletedRegionSet;
+    }
+  }
+
+  /**
    * Thread-safely pre-delete the specific StorageGroup
    *
    * @param preDeleteStorageGroupPlan PreDeleteStorageGroupPlan
@@ -242,13 +276,6 @@ public class PartitionInfo implements SnapshotProcessor {
       deletedRegionSet.addAll(storageGroupPartitionTable.getAllReplicaSets());
       // Clean the cache
       storageGroupPartitionTables.remove(plan.getName());
-    }
-  }
-
-  /** @return The Regions that should be deleted among the DataNodes */
-  public Set<TRegionReplicaSet> getDeletedRegionSet() {
-    synchronized (deletedRegionSet) {
-      return deletedRegionSet;
     }
   }
 

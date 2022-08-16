@@ -235,9 +235,20 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void DeleteRegionsPlanTest() throws IOException {
+    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    dataNodeLocation.setDataNodeId(0);
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+
     DeleteRegionGroupsPlan req0 = new DeleteRegionGroupsPlan();
-    req0.addDeleteRegion("sg", new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
-    req0.addDeleteRegion("sg", new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
+    req0.setNeedsDeleteInPartitionTable(false);
+    TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
+    dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
+    dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
+    req0.addRegionGroup("root.sg0", dataRegionSet);
 
     DeleteRegionGroupsPlan req1 =
         (DeleteRegionGroupsPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
@@ -691,16 +702,20 @@ public class ConfigPhysicalPlanSerDeTest {
   private CreateSchemaTemplateStatement newCreateSchemaTemplateStatement(String name) {
     List<List<String>> measurements =
         Arrays.asList(
-            Arrays.asList(name + "_" + "temperature"), Arrays.asList(name + "_" + "status"));
+            Collections.singletonList(name + "_" + "temperature"),
+            Collections.singletonList(name + "_" + "status"));
     List<List<TSDataType>> dataTypes =
-        Arrays.asList(Arrays.asList(TSDataType.FLOAT), Arrays.asList(TSDataType.BOOLEAN));
+        Arrays.asList(
+            Collections.singletonList(TSDataType.FLOAT),
+            Collections.singletonList(TSDataType.BOOLEAN));
     List<List<TSEncoding>> encodings =
-        Arrays.asList(Arrays.asList(TSEncoding.RLE), Arrays.asList(TSEncoding.PLAIN));
+        Arrays.asList(
+            Collections.singletonList(TSEncoding.RLE), Collections.singletonList(TSEncoding.PLAIN));
     List<List<CompressionType>> compressors =
-        Arrays.asList(Arrays.asList(CompressionType.SNAPPY), Arrays.asList(CompressionType.SNAPPY));
-    CreateSchemaTemplateStatement createSchemaTemplateStatement =
-        new CreateSchemaTemplateStatement(name, measurements, dataTypes, encodings, compressors);
-    return createSchemaTemplateStatement;
+        Arrays.asList(
+            Collections.singletonList(CompressionType.SNAPPY),
+            Collections.singletonList(CompressionType.SNAPPY));
+    return new CreateSchemaTemplateStatement(name, measurements, dataTypes, encodings, compressors);
   }
 
   @Test

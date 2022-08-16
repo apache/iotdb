@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.env;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -56,7 +57,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ConfigNodeProcedureEnv {
@@ -301,7 +301,8 @@ public class ConfigNodeProcedureEnv {
    *
    * @return Those RegionGroups that failed to create
    */
-  public Set<TConsensusGroupId> doRegionCreation(CreateRegionGroupsPlan createRegionGroupsPlan) {
+  public Map<TConsensusGroupId, TRegionReplicaSet> doRegionCreation(
+      CreateRegionGroupsPlan createRegionGroupsPlan) {
     Map<String, Long> ttlMap = new HashMap<>();
     for (String storageGroup : createRegionGroupsPlan.getRegionGroupMap().keySet()) {
       try {

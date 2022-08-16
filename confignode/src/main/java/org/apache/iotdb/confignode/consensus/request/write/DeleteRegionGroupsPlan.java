@@ -18,63 +18,60 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class DeleteRegionGroupsPlan extends ConfigPhysicalPlan {
+public class DeleteRegionGroupsPlan extends CreateRegionGroupsPlan {
 
-  // Map<StorageGroupName, List<TRegionReplicaSet>>
-  private final Map<String, List<TConsensusGroupId>> regionGroupMap;
+  boolean needsDeleteInPartitionTable = true;
 
   public DeleteRegionGroupsPlan() {
     super(ConfigPhysicalPlanType.DeleteRegionGroups);
-    this.regionGroupMap = new HashMap<>();
   }
 
-  public void addDeleteRegion(String name, TConsensusGroupId consensusGroupId) {
-    regionGroupMap.computeIfAbsent(name, empty -> new ArrayList<>()).add(consensusGroupId);
+  public boolean isNeedsDeleteInPartitionTable() {
+    return needsDeleteInPartitionTable;
   }
 
-  public Map<String, List<TConsensusGroupId>> getRegionGroupMap() {
-    return regionGroupMap;
+  public void setNeedsDeleteInPartitionTable(boolean needsDeleteInPartitionTable) {
+    this.needsDeleteInPartitionTable = needsDeleteInPartitionTable;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigPhysicalPlanType.DeleteRegionGroups.ordinal());
 
+    stream.writeByte(needsDeleteInPartitionTable ? 1 : 0);
     stream.writeInt(regionGroupMap.size());
-    for (Map.Entry<String, List<TConsensusGroupId>> consensusGroupIdsEntry :
-        regionGroupMap.entrySet()) {
-      BasicStructureSerDeUtil.write(consensusGroupIdsEntry.getKey(), stream);
-      stream.writeInt(consensusGroupIdsEntry.getValue().size());
-      for (TConsensusGroupId consensusGroupId : consensusGroupIdsEntry.getValue()) {
-        ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, stream);
+    for (Map.Entry<String, List<TRegionReplicaSet>> entry : regionGroupMap.entrySet()) {
+      BasicStructureSerDeUtil.write(entry.getKey(), stream);
+      stream.writeInt(entry.getValue().size());
+      for (TRegionReplicaSet regionReplicaSet : entry.getValue()) {
+        ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, stream);
       }
     }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    needsDeleteInPartitionTable = buffer.get() > 0;
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
       String name = BasicStructureSerDeUtil.readString(buffer);
       regionGroupMap.put(name, new ArrayList<>());
       int regionNum = buffer.getInt();
       for (int j = 0; j < regionNum; j++) {
-        regionGroupMap.get(name).add(ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer));
+        regionGroupMap.get(name).add(ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer));
       }
     }
   }
