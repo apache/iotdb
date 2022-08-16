@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.multileader;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -43,6 +44,7 @@ import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClie
 import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCService;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCServiceProcessor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -137,7 +139,15 @@ public class MultiLeaderConsensus implements IConsensus {
           .setException(new ConsensusGroupNotExistException(groupId))
           .build();
     }
-    return ConsensusWriteResponse.newBuilder().setStatus(impl.write(request)).build();
+
+    TSStatus status;
+    if (impl.isReadOnly()) {
+      status = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
+      status.setMessage("Fail to do non-query operations because system is read-only.");
+    } else {
+      status = impl.write(request);
+    }
+    return ConsensusWriteResponse.newBuilder().setStatus(status).build();
   }
 
   @Override
