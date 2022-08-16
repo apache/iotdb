@@ -26,7 +26,7 @@ import java.lang.reflect.InvocationTargetException;
 /** All SeriesPartitionExecutors must be subclasses of SeriesPartitionExecutor */
 public abstract class SeriesPartitionExecutor {
 
-  // The param, executorName and seriesPartitionSlotNum, is global unique during system running.
+  // The params, executorName and seriesPartitionSlotNum, are global unique during system running.
   // Therefore, one executor instance is enough for usage.
   protected static SeriesPartitionExecutor EXECUTOR;
 
