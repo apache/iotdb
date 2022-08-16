@@ -21,16 +21,20 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class LevelTimeSeriesCountOperator implements SourceOperator {
   private final PlanNodeId sourceId;
@@ -43,6 +47,8 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
   private final boolean isContains;
 
   private boolean isFinished;
+
+  private final List<TSDataType> outputDataTypes;
 
   public LevelTimeSeriesCountOperator(
       PlanNodeId sourceId,
@@ -61,6 +67,10 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
     this.key = key;
     this.value = value;
     this.isContains = isContains;
+    this.outputDataTypes =
+        ColumnHeaderConstant.countLevelTimeSeriesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -76,8 +86,7 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.countLevelTimeSeriesHeader.getRespDataTypes());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     Map<PartialPath, Integer> countMap;
     try {
       if (key != null && value != null) {
