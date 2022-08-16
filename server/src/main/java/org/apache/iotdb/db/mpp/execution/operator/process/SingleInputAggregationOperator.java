@@ -103,7 +103,6 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     long start = System.nanoTime();
 
     // reset operator state
-    resultTsBlockBuilder.reset();
     canCallNext = true;
 
     while (System.nanoTime() - start < maxRuntime
@@ -126,7 +125,9 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     }
 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
-      return resultTsBlockBuilder.build();
+      TsBlock resultTsBlock = resultTsBlockBuilder.build();
+      resultTsBlockBuilder.reset();
+      return resultTsBlock;
     } else {
       return null;
     }

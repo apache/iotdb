@@ -142,9 +142,6 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
 
-    // reset operator state
-    resultTsBlockBuilder.reset();
-
     while (System.nanoTime() - start < maxRuntime
         && timeRangeIterator.hasNextTimeRange()
         && !resultTsBlockBuilder.isFull()) {
@@ -161,7 +158,9 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     }
 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
-      return resultTsBlockBuilder.build();
+      TsBlock resultTsBlock = resultTsBlockBuilder.build();
+      resultTsBlockBuilder.reset();
+      return resultTsBlock;
     } else {
       return null;
     }
