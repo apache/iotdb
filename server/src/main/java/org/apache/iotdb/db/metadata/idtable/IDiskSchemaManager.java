@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.idtable;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 
@@ -58,6 +59,14 @@ public interface IDiskSchemaManager {
    * @return DiskSchemaEntries
    */
   List<DiskSchemaEntry> getDiskSchemaEntriesByOffset(List<Long> offsets);
+
+  /**
+   * delete DiskSchemaEntries on disk
+   *
+   * @param offset the offset of a record on the disk file
+   * @throws MetadataException
+   */
+  void deleteDiskSchemaEntriesByOffset(long offset) throws MetadataException;
 
   /** close file and free resource */
   void close() throws IOException;

@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.junit.After;
@@ -54,10 +55,14 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -605,9 +610,8 @@ public class IDTableTest {
   @Test
   public void testGetDiskSchemaEntries() {
     try {
-      IDTable idTable =
-          IDTableManager.getInstance().getIDTable(new PartialPath("root.diskSchemaTest"));
-      String sgPath = "root.diskSchemaTest";
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
+      String sgPath = "root.laptop";
       for (int i = 0; i < 10; i++) {
         String devicePath = sgPath + ".d" + i;
         IDeviceID iDeviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
@@ -632,6 +636,48 @@ public class IDTableTest {
         assertNotNull(diskSchemaEntries);
         assertEquals(diskSchemaEntries.size(), 1);
         assertEquals(diskSchemaEntries.get(0).seriesKey, devicePath + "." + measurement);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail("throw exception");
+    }
+  }
+
+  @Test
+  public void testDeleteTimeseries() {
+    try {
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
+      String sgPath = "root.laptop";
+      for (int i = 0; i < 10; i++) {
+        String devicePath = sgPath + ".d" + i;
+        IDeviceID iDeviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
+        String measurement = "s" + i;
+        SchemaEntry schemaEntry =
+            new SchemaEntry(
+                TSDataType.BOOLEAN,
+                TSEncoding.BITMAP,
+                CompressionType.UNCOMPRESSED,
+                iDeviceID,
+                new PartialPath(devicePath + "." + measurement),
+                false,
+                idTable.getIDiskSchemaManager());
+        idTable.putSchemaEntry(devicePath, measurement, schemaEntry, false);
+      }
+      List<PartialPath> partialPaths = new ArrayList<>();
+      partialPaths.add(new PartialPath("root.laptop.d0.s0"));
+      partialPaths.add(new PartialPath("root.laptop.d8.s8"));
+      partialPaths.add(new PartialPath("root.laptop.d2.s3"));
+      Pair<Integer, Set<String>> pairs = idTable.deleteTimeseries(partialPaths);
+      assertNotNull(pairs);
+      assertEquals((int) pairs.left, 2);
+      assertTrue(pairs.right.contains("root.laptop.d2.s3"));
+      assertFalse(pairs.right.contains("root.laptop.d0.s0"));
+      assertFalse(pairs.right.contains("root.laptop.d8.s8"));
+      Collection<DiskSchemaEntry> diskSchemaEntries =
+          idTable.getIDiskSchemaManager().getAllSchemaEntry();
+      for (DiskSchemaEntry diskSchemaEntry : diskSchemaEntries) {
+        assertNotEquals("root.laptop.d0.s0", diskSchemaEntry.seriesKey);
+        assertNotEquals("root.laptop.d8.s8", diskSchemaEntry.seriesKey);
       }
     } catch (Exception e) {
       e.printStackTrace();

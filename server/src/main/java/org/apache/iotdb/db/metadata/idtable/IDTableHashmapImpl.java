@@ -39,6 +39,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -48,9 +49,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** id table belongs to a storage group and mapping timeseries path to it's schema */
 public class IDTableHashmapImpl implements IDTable {
@@ -128,6 +132,42 @@ public class IDTableHashmapImpl implements IDTable {
             false,
             IDiskSchemaManager);
     deviceEntry.putSchemaEntry(plan.getPath().getMeasurement(), schemaEntry);
+  }
+
+  /**
+   * Delete all timeseries matching the given paths
+   *
+   * @param fullPaths paths to be deleted
+   * @return deletion failed Timeseries
+   * @throws MetadataException
+   */
+  @Override
+  public Pair<Integer, Set<String>> deleteTimeseries(List<PartialPath> fullPaths)
+      throws MetadataException {
+    int deletedNum = 0;
+    Set<String> failedNames = new HashSet<>();
+    List<Pair<PartialPath, Long>> deletedPairs = new ArrayList<>(fullPaths.size());
+    for (PartialPath fullPath : fullPaths) {
+      try {
+        Map<String, SchemaEntry> map = getDeviceEntry(fullPath.getDevice()).getMeasurementMap();
+        Long offset = map.get(fullPath.getMeasurement()).getDiskPointer();
+        deletedPairs.add(new Pair<>(fullPath, offset));
+      } catch (NullPointerException e) {
+        failedNames.add(fullPath.getFullPath());
+      }
+    }
+    deletedPairs.sort(Comparator.comparingLong(o -> o.right));
+    for (Pair<PartialPath, Long> pair : deletedPairs) {
+      try {
+        getIDiskSchemaManager().deleteDiskSchemaEntriesByOffset(pair.right);
+        Map<String, SchemaEntry> map = getDeviceEntry(pair.left.getDevice()).getMeasurementMap();
+        map.keySet().remove(pair.left.getMeasurement());
+        deletedNum++;
+      } catch (MetadataException e) {
+        failedNames.add(pair.left.getFullPath());
+      }
+    }
+    return new Pair<>(deletedNum, failedNames);
   }
 
   /**

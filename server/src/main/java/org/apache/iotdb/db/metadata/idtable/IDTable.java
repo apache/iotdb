@@ -37,6 +37,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
@@ -45,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface IDTable {
   /** logger */
@@ -68,6 +70,15 @@ public interface IDTable {
    * @throws MetadataException if the device is aligned, throw it
    */
   void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException;
+
+  /**
+   * Delete all timeseries matching the given paths
+   *
+   * @param fullPaths paths to be deleted
+   * @return deletion failed Timeseries
+   * @throws MetadataException
+   */
+  Pair<Integer, Set<String>> deleteTimeseries(List<PartialPath> fullPaths) throws MetadataException;
 
   /**
    * check inserting timeseries existence and fill their measurement mnode
