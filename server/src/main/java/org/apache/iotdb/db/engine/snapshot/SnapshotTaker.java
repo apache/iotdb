@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.snapshot;
 
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -76,8 +77,8 @@ public class SnapshotTaker {
 
       readLockTheFile();
       try {
-        success = createSnapshot(true, seqFiles, snapshotDir.getName()) || success;
-        success = createSnapshot(false, unseqFiles, snapshotDir.getName()) || success;
+        success = createSnapshot(seqFiles, snapshotDir.getName()) || success;
+        success = createSnapshot(unseqFiles, snapshotDir.getName()) || success;
       } finally {
         readUnlockTheFile();
       }
@@ -131,23 +132,7 @@ public class SnapshotTaker {
     }
   }
 
-  private void cleanUpWhenFail(File snapshotDir) {
-    File[] files = snapshotDir.listFiles();
-    if (files != null) {
-      for (File file : files) {
-        if (!file.delete()) {
-          LOGGER.error("Failed to delete link file {} after failing to create snapshot", file);
-        }
-      }
-    }
-    try {
-      snapshotLogger.cleanUpWhenFailed();
-    } catch (IOException e) {
-      LOGGER.error("Failed to clean up log file", e);
-    }
-  }
-
-  private boolean createSnapshot(boolean seq, List<TsFileResource> resources, String snapshotId)
+  private boolean createSnapshot(List<TsFileResource> resources, String snapshotId)
       throws IOException {
     for (TsFileResource resource : resources) {
       File tsFile = resource.getTsFile();

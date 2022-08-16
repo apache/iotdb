@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.snapshot;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -36,7 +37,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -104,14 +104,8 @@ public class IoTDBSnapshotTest {
       try {
         new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
         File[] files =
-            snapshotDir.listFiles(
-                new FilenameFilter() {
-                  @Override
-                  public boolean accept(File dir, String name) {
-                    return name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME);
-                  }
-                });
-        Assert.assertEquals(files.length, 1);
+            snapshotDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
+        Assert.assertEquals(1, files.length);
         SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
         int cnt = 0;
         while (analyzer.hasNext()) {

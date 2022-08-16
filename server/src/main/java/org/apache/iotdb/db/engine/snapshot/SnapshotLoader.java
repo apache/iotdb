@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.snapshot;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.DataFileConstant;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -31,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.file.FileSystemException;
 import java.nio.file.Files;
@@ -75,16 +76,9 @@ public class SnapshotLoader {
   private File getSnapshotLogFile() {
     File sourceDataDir = new File(snapshotPath);
 
-    File snapshotLogFile = null;
     if (sourceDataDir.exists()) {
       File[] files =
-          sourceDataDir.listFiles(
-              new FilenameFilter() {
-                @Override
-                public boolean accept(File dir, String name) {
-                  return name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME);
-                }
-              });
+          sourceDataDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
       if (files == null || files.length == 0) {
         LOGGER.warn("Failed to find snapshot log file, cannot recover it");
       } else if (files.length > 1) {
@@ -109,7 +103,6 @@ public class SnapshotLoader {
         storageGroupName,
         dataRegionId,
         snapshotPath);
-    File sourceDataDir = new File(snapshotPath);
 
     File snapshotLogFile = getSnapshotLogFile();
 
@@ -308,7 +301,11 @@ public class SnapshotLoader {
                   throw new IOException(
                       String.format("Failed to create dir %s", targetFile.getParent()));
                 }
-                Files.createLink(targetFile.toPath(), file.toPath());
+                try {
+                  Files.createLink(targetFile.toPath(), file.toPath());
+                } catch (FileSystemException e) {
+                  Files.copy(file.toPath(), targetFile.toPath());
+                }
               }
             }
           }
@@ -368,6 +365,7 @@ public class SnapshotLoader {
     return new LinkedList<>(
         Arrays.asList(
             Objects.requireNonNull(
-                new File(snapshotPath).listFiles(StorageEngineV2::filterDataFiles))));
+                new File(snapshotPath)
+                    .listFiles((dir, name) -> DataFileConstant.isDataFile(new File(dir, name))))));
   }
 }

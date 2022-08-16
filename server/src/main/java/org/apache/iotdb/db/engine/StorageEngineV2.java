@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -37,15 +36,12 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -60,7 +56,6 @@ import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -726,17 +721,6 @@ public class StorageEngineV2 implements IService {
       }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-  }
-
-  public static boolean filterDataFiles(File dir, String name) {
-    return name.endsWith(TsFileConstant.TSFILE_SUFFIX)
-        || name.endsWith(TsFileResource.RESOURCE_SUFFIX)
-        || name.endsWith(ModificationFile.FILE_SUFFIX)
-        || name.endsWith(ModificationFile.COMPACTION_FILE_SUFFIX)
-        || name.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX)
-        || name.endsWith(CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX)
-        || name.endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)
-        || name.endsWith(IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX);
   }
 
   public TsFileFlushPolicy getFileFlushPolicy() {
