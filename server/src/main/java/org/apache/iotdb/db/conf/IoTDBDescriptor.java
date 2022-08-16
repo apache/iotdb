@@ -1332,11 +1332,12 @@ public class IoTDBDescriptor {
         conf.reloadDataDirs(dataDirs.split(","));
       }
 
-      // update dir strategy
+      // update dir strategy, must update after data dirs
       String multiDirStrategyClassName = properties.getProperty("multi_dir_strategy", null);
       if (multiDirStrategyClassName != null
           && !multiDirStrategyClassName.equals(conf.getMultiDirStrategyClassName())) {
         conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
+        conf.confirmMultiDirStrategy();
         DirectoryManager.getInstance().updateDirectoryStrategy();
       }
 

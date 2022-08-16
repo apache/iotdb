@@ -47,7 +47,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -1081,6 +1083,7 @@ public class IoTDBConfig {
   }
 
   void reloadDataDirs(String[] dataDirs) throws LoadConfigurationException {
+    // format data directories
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
       for (int i = 0; i < dataDirs.length; i++) {
@@ -1089,6 +1092,16 @@ public class IoTDBConfig {
     } else {
       for (int i = 0; i < dataDirs.length; i++) {
         dataDirs[i] = addHomeDir(dataDirs[i]);
+      }
+    }
+    // make sure old data directories not removed
+    HashSet<String> newDirs = new HashSet<>(Arrays.asList(dataDirs));
+    for (String oldDir : this.dataDirs) {
+      if (!newDirs.contains(oldDir)) {
+        String msg =
+            String.format("%s is removed from data_dirs parameter, please add it back.", oldDir);
+        logger.error(msg);
+        throw new LoadConfigurationException(msg);
       }
     }
     this.dataDirs = dataDirs;
@@ -1107,7 +1120,7 @@ public class IoTDBConfig {
     return dir;
   }
 
-  private void confirmMultiDirStrategy() {
+  void confirmMultiDirStrategy() {
     if (getMultiDirStrategyClassName() == null) {
       multiDirStrategyClassName = DEFAULT_MULTI_DIR_STRATEGY;
     }

@@ -79,10 +79,19 @@ public class DirectoryManager {
     try {
       List<String> sequenceFileFolders =
           new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+      for (int i = 0; i < sequenceFileFolders.size(); i++) {
+        sequenceFileFolders.set(
+            i, sequenceFileFolders.get(i) + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME);
+      }
       mkDataDirs(sequenceFileFolders);
 
       List<String> unsequenceFileFolders =
           new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+      for (int i = 0; i < unsequenceFileFolders.size(); i++) {
+        unsequenceFileFolders.set(
+            i,
+            unsequenceFileFolders.get(i) + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME);
+      }
       mkDataDirs(unsequenceFileFolders);
       sequenceStrategy.setFolders(sequenceFileFolders);
       unsequenceStrategy.setFolders(unsequenceFileFolders);

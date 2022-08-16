@@ -399,6 +399,20 @@ public class NodeManager {
     return dataNodeResponseStatus;
   }
 
+  public List<TSStatus> loadConfiguration() {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            null,
+            dataNodeLocationMap,
+            DataNodeRequestType.LOAD_CONFIGURATION,
+            dataNodeResponseStatus);
+    return dataNodeResponseStatus;
+  }
+
   /** Start the heartbeat service */
   public void startHeartbeatService() {
     synchronized (scheduleMonitor) {

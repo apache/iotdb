@@ -338,6 +338,29 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> loadConfiguration(boolean isCluster) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TSStatus tsStatus = new TSStatus();
+    if (isCluster) {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        // Send request to some API server
+        tsStatus = client.loadConfiguration();
+      } catch (IOException | TException e) {
+        future.setException(e);
+      }
+    } else {
+      tsStatus = LocalConfigNode.getInstance().executeLoadConfigurationOperation();
+    }
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> showCluster() {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowClusterResp showClusterResp = new TShowClusterResp();

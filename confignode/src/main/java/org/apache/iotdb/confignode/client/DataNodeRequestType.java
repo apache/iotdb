@@ -42,5 +42,6 @@ public enum DataNodeRequestType {
   UPDATE_TEMPLATE,
   CLEAR_CACHE,
   MERGE,
-  FULL_MERGE
+  FULL_MERGE,
+  LOAD_CONFIGURATION,
 }

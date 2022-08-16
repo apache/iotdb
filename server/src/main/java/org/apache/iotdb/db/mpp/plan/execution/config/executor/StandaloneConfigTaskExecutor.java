@@ -259,6 +259,18 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> loadConfiguration(boolean isCluster) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TSStatus tsStatus = LocalConfigNode.getInstance().executeLoadConfigurationOperation();
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> showCluster() {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     future.setException(
