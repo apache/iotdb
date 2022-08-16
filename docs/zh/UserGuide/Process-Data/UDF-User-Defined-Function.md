@@ -141,11 +141,13 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 下面是您可以设定的访问原始数据的策略：
 
-| 接口定义                          | 描述                                                         | 调用的`transform`方法                                        |
-| :-------------------------------- | :----------------------------------------------------------- | ------------------------------------------------------------ |
+| 接口定义                          | 描述                                                                                                                                                         | 调用的`transform`方法                                        |
+| :-------------------------------- |:-----------------------------------------------------------------------------------------------------------------------------------------------------------| ------------------------------------------------------------ |
 | `RowByRowAccessStrategy`          | 逐行地处理原始数据。框架会为每一行原始数据输入调用一次`transform`方法。当 UDF 只有一个输入序列时，一行输入就是该输入序列中的一个数据点。当 UDF 有多个输入序列时，一行输入序列对应的是这些输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(Row row, PointCollector collector) throws Exception` |
-| `SlidingTimeWindowAccessStrategy` | 以滑动时间窗口的方式处理原始数据。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
-| `SlidingSizeWindowAccessStrategy`    | 以固定行数的方式处理原始数据，即每个数据处理窗口都会包含固定行数的数据（最后一个窗口除外）。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
+| `SlidingTimeWindowAccessStrategy` | 以滑动时间窗口的方式处理原始数据。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。                                | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
+| `SlidingSizeWindowAccessStrategy`    | 以固定行数的方式处理原始数据，即每个数据处理窗口都会包含固定行数的数据（最后一个窗口除外）。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。   | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
+| `SessionTimeWindowAccessStrategy`    | 以会话窗口的方式处理原始数据，框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。                                  | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
+| `StateWindowAccessStrategy`    | 以状态窗口的方式处理原始数据，框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。                                  | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
 
 `RowByRowAccessStrategy`的构造不需要任何参数。
 
@@ -171,6 +173,10 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 2. 滑动步长，即下一窗口第一个数据行与当前窗口第一个数据行间的数据行数（不要求大于等于窗口大小，但是必须为正数）
 
 滑动步长参数不是必须的。当您不提供滑动步长参数时，滑动步长会被设定为窗口大小。
+
+`SessionTimeWindowAccessStrategy`有多种构造方法，您可以向构造方法提供 2 类参数：
+1. 时间轴显示时间窗开始和结束时间。
+2. 会话窗口之间的最小时间间隔。
 
 策略的构造方法详见 Javadoc。
 
