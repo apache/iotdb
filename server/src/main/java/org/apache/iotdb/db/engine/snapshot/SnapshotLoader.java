@@ -133,16 +133,12 @@ public class SnapshotLoader {
   }
 
   private DataRegion loadSnapshotWithLog(File logFile) {
-    SnapshotLogger.SnapshotType type = null;
     try {
       logAnalyzer = new SnapshotLogAnalyzer(logFile);
-      type = logAnalyzer.getType();
     } catch (Exception e) {
       LOGGER.error("Exception occurs when reading snapshot file", e);
       return null;
     }
-
-    LOGGER.info("Loading snapshot with {} type", type);
 
     try {
       try {
@@ -355,7 +351,6 @@ public class SnapshotLoader {
   private List<File> getSnapshotFileWithLog(File logFile) throws IOException {
     SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(logFile);
     try {
-      SnapshotLogger.SnapshotType type = analyzer.getType();
 
       List<File> fileList = new LinkedList<>();
 

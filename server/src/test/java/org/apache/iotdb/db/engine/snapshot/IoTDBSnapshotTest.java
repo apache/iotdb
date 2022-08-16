@@ -38,6 +38,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -59,7 +60,8 @@ public class IoTDBSnapshotTest {
     EnvironmentUtils.recursiveDeleteFolder("target" + File.separator + "tmp");
   }
 
-  private void writeTsFiles() throws IOException, WriteProcessException {
+  private List<TsFileResource> writeTsFiles() throws IOException, WriteProcessException {
+    List<TsFileResource> resources = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
       String filePath =
           testDataDirs[i % 3]
@@ -75,6 +77,7 @@ public class IoTDBSnapshotTest {
               + String.format("%d-%d-0-0.tsfile", i + 1, i + 1);
       TsFileGeneratorUtils.generateMixTsFile(filePath, 5, 5, 10, i * 100, (i + 1) * 100, 10, 10);
       TsFileResource resource = new TsFileResource(new File(filePath));
+      resources.add(resource);
       for (int idx = 0; idx < 5; idx++) {
         resource.updateStartTime(testSgName + PATH_SEPARATOR + "d" + i, i * 100);
         resource.updateEndTime(testSgName + PATH_SEPARATOR + "d" + i, (i + 1) * 100);
@@ -83,6 +86,7 @@ public class IoTDBSnapshotTest {
       resource.setStatus(TsFileResourceStatus.CLOSED);
       resource.serialize();
     }
+    return resources;
   }
 
   @Test
@@ -92,8 +96,9 @@ public class IoTDBSnapshotTest {
     IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
     DirectoryManager.getInstance().resetFolders();
     try {
-      writeTsFiles();
+      List<TsFileResource> resources = writeTsFiles();
       DataRegion region = new DataRegion(testSgName, "0");
+      region.getTsFileManager().addAll(resources, true);
       File snapshotDir = new File("target" + File.separator + "snapshot");
       Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
       try {
@@ -108,7 +113,6 @@ public class IoTDBSnapshotTest {
                 });
         Assert.assertEquals(files.length, 1);
         SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
-        Assert.assertEquals(analyzer.getType(), SnapshotLogger.SnapshotType.LOCAL_FS);
         int cnt = 0;
         while (analyzer.hasNext()) {
           analyzer.getNextPairs();
@@ -116,6 +120,9 @@ public class IoTDBSnapshotTest {
         }
         analyzer.close();
         Assert.assertEquals(200, cnt);
+        for (TsFileResource resource : resources) {
+          Assert.assertTrue(resource.tryWriteLock());
+        }
       } finally {
         EnvironmentUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
       }
@@ -132,8 +139,9 @@ public class IoTDBSnapshotTest {
     IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
     DirectoryManager.getInstance().resetFolders();
     try {
-      writeTsFiles();
+      List<TsFileResource> resources = writeTsFiles();
       DataRegion region = new DataRegion(testSgName, "0");
+      region.getTsFileManager().addAll(resources, true);
       File snapshotDir = new File("target" + File.separator + "snapshot");
       Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
       try {

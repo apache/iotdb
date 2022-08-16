@@ -51,19 +51,8 @@ public class SnapshotLogger implements AutoCloseable {
     os.flush();
   }
 
-  public void logSnapshotType(SnapshotType type) throws IOException {
-    os.write(String.valueOf(type).getBytes(StandardCharsets.UTF_8));
-    os.write("\n".getBytes(StandardCharsets.UTF_8));
-    os.flush();
-  }
-
   public void cleanUpWhenFailed() throws IOException {
     os.close();
     Files.delete(logFile.toPath());
-  }
-
-  public static enum SnapshotType {
-    LOCAL_FS,
-    REMOTE_FS
   }
 }

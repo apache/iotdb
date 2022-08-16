@@ -39,10 +39,6 @@ public class SnapshotLogAnalyzer {
     this.reader = new BufferedReader(new FileReader(snapshotLogFile));
   }
 
-  public SnapshotLogger.SnapshotType getType() throws IOException {
-    return SnapshotLogger.SnapshotType.valueOf(reader.readLine());
-  }
-
   public void close() {
     try {
       reader.close();
