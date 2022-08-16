@@ -58,4 +58,4 @@ jobs:
 
       - name: TestContainer
         run: |
-          mvn -B -T 4 integration-test -pl testcontainer
+          ./mvnw -B -T 4 integration-test -pl testcontainer
