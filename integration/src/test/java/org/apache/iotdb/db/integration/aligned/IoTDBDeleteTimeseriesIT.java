@@ -170,6 +170,70 @@ public class IoTDBDeleteTimeseriesIT {
   }
 
   @Test
+  public void deleteTimeseriesAndChangeDeviceAlignmentTest() throws Exception {
+    String[] retArray = new String[] {"1,1.0,2.0,"};
+    int cnt = 0;
+
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
+      statement.execute("SHOW DEVICES");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          Assert.assertEquals("true", resultSet.getString("isAligned"));
+        }
+      }
+      cnt = 0;
+      statement.execute("DELETE timeseries root.sg3.d1.s1");
+      statement.execute("DELETE timeseries root.sg3.d1.s2");
+      statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) VALUES(1,1,2)");
+      statement.execute("SHOW DEVICES");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          Assert.assertEquals("false", resultSet.getString("isAligned"));
+        }
+      }
+      boolean hasResult = statement.execute("SELECT * FROM root.sg3.d1");
+      Assert.assertTrue(hasResult);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+      }
+      cnt = 0;
+      statement.execute("DELETE timeseries root.sg3.d1.s1");
+      statement.execute("DELETE timeseries root.sg3.d1.s2");
+      statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
+      statement.execute("SHOW DEVICES");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          Assert.assertEquals("true", resultSet.getString("isAligned"));
+        }
+      }
+      hasResult = statement.execute("SELECT * FROM root.sg3.d1");
+      Assert.assertTrue(hasResult);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+      }
+    }
+  }
+
+  @Test
   public void deleteTimeSeriesMultiIntervalTest() {
     String[] retArray1 = new String[] {"0,0"};
 
