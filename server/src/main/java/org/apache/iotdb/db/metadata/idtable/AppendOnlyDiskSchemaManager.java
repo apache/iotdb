@@ -34,10 +34,13 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /** store id table schema in append only file */
@@ -188,6 +191,48 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     }
 
     return res;
+  }
+
+  /**
+   * get DiskSchemaEntries from disk file
+   *
+   * @param offsets the offset of each record on the disk file
+   * @return DiskSchemaEntries
+   */
+  @Override
+  public List<DiskSchemaEntry> getDiskSchemaEntriesByOffset(List<Long> offsets) {
+    List<DiskSchemaEntry> diskSchemaEntries = new ArrayList<>(offsets.size());
+    Collections.sort(offsets);
+    try (RandomAccessFile randomAccessFile = new RandomAccessFile(dataFile, "r")) {
+      for (long offset : offsets) {
+        diskSchemaEntries.add(getDiskSchemaEntryByOffset(randomAccessFile, offset));
+      }
+    } catch (FileNotFoundException e) {
+      logger.info(e.getMessage());
+    } catch (IOException e) {
+      logger.error(e.getMessage());
+    }
+    return diskSchemaEntries;
+  }
+
+  private DiskSchemaEntry getDiskSchemaEntryByOffset(RandomAccessFile randomAccessFile, long offset)
+      throws IOException {
+    randomAccessFile.seek(offset + FILE_VERSION.length() + 4);
+    return new DiskSchemaEntry(
+        readString(randomAccessFile),
+        readString(randomAccessFile),
+        readString(randomAccessFile),
+            Byte.parseByte("0"),
+            Byte.parseByte("0"),
+            Byte.parseByte("0"),
+        false);
+  }
+
+  private String readString(RandomAccessFile randomAccessFile) throws IOException {
+    int strLength = randomAccessFile.readInt();
+    byte[] bytes = new byte[strLength];
+    int readLen = randomAccessFile.read(bytes, 0, strLength);
+    return new String(bytes, 0, strLength);
   }
 
   @Override

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.InsertMeasurementMNode;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
@@ -324,6 +325,21 @@ public class IDTableHashmapImpl implements IDTable {
       throws MetadataException {
     DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(devicePath, isAligned);
     deviceEntry.putSchemaEntry(measurement, schemaEntry);
+  }
+
+  /**
+   * get DiskSchemaEntries from disk file
+   *
+   * @param schemaEntries get the disk pointers from schemaEntries
+   * @return DiskSchemaEntries
+   */
+  @Override
+  public List<DiskSchemaEntry> getDiskSchemaEntries(List<SchemaEntry> schemaEntries) {
+    List<Long> offsets = new ArrayList<>(schemaEntries.size());
+    for (SchemaEntry schemaEntry : schemaEntries) {
+      offsets.add(schemaEntry.getDiskPointer());
+    }
+    return getIDiskSchemaManager().getDiskSchemaEntriesByOffset(offsets);
   }
 
   /**
