@@ -458,7 +458,4 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void setLastPoint(boolean isLastPoint) {
     this.isLastPoint = isLastPoint;
   }
-
-  @Override
-  public void serializeToDataOutputStream(DataOutputStream stream) throws IOException {}
 }

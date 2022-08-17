@@ -22,11 +22,13 @@ package org.apache.iotdb.db.engine.load;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 
 public interface ChunkData {
   String getDevice();
@@ -43,9 +45,18 @@ public interface ChunkData {
 
   void setTimePartitionSlot(TTimePartitionSlot timePartitionSlot);
 
-  IChunkWriter getChunkWriter(File tsFile) throws IOException, PageException;
+  boolean isAligned();
+
+  IChunkWriter getChunkWriter();
 
   void serialize(DataOutputStream stream, File tsFile) throws IOException;
+
+  static ChunkData deserialize(InputStream stream) throws PageException, IOException {
+    boolean isAligned = ReadWriteIOUtils.readBool(stream);
+    return isAligned
+        ? AlignedChunkData.deserialize(stream)
+        : NonAlignedChunkData.deserialize(stream);
+  }
 
   static ChunkData createChunkData(
       boolean isAligned, long offset, String device, ChunkHeader chunkHeader) {

@@ -300,7 +300,4 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   public TSDataType getCurrentValueChunkType() {
     return valueChunkWriterList.get(valueIndex).getDataType();
   }
-
-  @Override
-  public void serializeToDataOutputStream(DataOutputStream stream) throws IOException {}
 }

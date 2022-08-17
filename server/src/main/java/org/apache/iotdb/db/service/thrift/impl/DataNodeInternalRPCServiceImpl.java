@@ -309,6 +309,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
     LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
+    if (pieceNode == null) {
+      return createTLoadResp(new TSStatus(TSStatusCode.NODE_DESERIALIZE_ERROR.getStatusCode()));
+    }
+
     TSStatus resultStatus =
         StorageEngineV2.getInstance()
             .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
@@ -319,9 +323,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) throws TException {
 
-    TSStatus resultStatus = StorageEngineV2.getInstance()
-        .executeLoadCommand(
-            LoadTsFileScheduler.LoadCommand.values()[req.commandType], req.uuid);
+    TSStatus resultStatus =
+        StorageEngineV2.getInstance()
+            .executeLoadCommand(
+                LoadTsFileScheduler.LoadCommand.values()[req.commandType], req.uuid);
     return createTLoadResp(resultStatus);
   }
 

@@ -20,39 +20,26 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.load.ChunkData;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.exception.write.PageException;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.page.PageReader;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -136,10 +123,12 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.LOAD_TSFILE.serialize(stream);
+    ReadWriteIOUtils.write(tsFile.getPath(), stream); // TODO: can save this space
     for (ChunkData chunkData : chunkDataList) {
       try {
-        chunkData.getChunkWriter(tsFile).serializeToDataOutputStream(stream);
-      } catch (PageException e) {
+        chunkData.serialize(stream, tsFile);
+      } catch (IOException e) {
         logger.error(
             String.format(
                 "Parse page of TsFile %s error, skip chunk %s", tsFile.getPath(), chunkData));
@@ -152,12 +141,32 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     throw new NotImplementedException("split load piece TsFile is not implemented");
   }
 
+  public static PlanNode deserialize(ByteBuffer buffer) {
+    InputStream stream = new ByteArrayInputStream(buffer.array());
+    try {
+      File tsFile = new File(ReadWriteIOUtils.readString(stream));
+      LoadTsFilePieceNode pieceNode = new LoadTsFilePieceNode(new PlanNodeId(""), tsFile);
+      while (stream.available() > 0) {
+        ChunkData chunkData = ChunkData.deserialize(stream);
+        pieceNode.addChunkData(chunkData);
+      }
+      pieceNode.setPlanNodeId(PlanNodeId.deserialize(stream));
+      return pieceNode;
+    } catch (IOException | PageException e) {
+      logger.error(String.format("Deserialize %s error.", LoadTsFilePieceNode.class.getName()), e);
+      return null;
+    }
+  }
+
   @Override
   public String toString() {
-    return "LoadTsFilePieceNode{" +
-            "tsFile=" + tsFile +
-            ", dataSize=" + dataSize +
-            ", chunkDataList=" + chunkDataList +
-            '}';
+    return "LoadTsFilePieceNode{"
+        + "tsFile="
+        + tsFile
+        + ", dataSize="
+        + dataSize
+        + ", chunkDataList="
+        + chunkDataList
+        + '}';
   }
 }

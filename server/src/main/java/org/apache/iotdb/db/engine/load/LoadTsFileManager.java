@@ -157,7 +157,7 @@ public class LoadTsFileManager {
         }
         writer.startChunkGroup(chunkData.getDevice());
       }
-      chunkData.getChunkWriter(null).writeToFileWriter(writer); // TODO: get writer
+      chunkData.getChunkWriter().writeToFileWriter(writer); // TODO: get writer
     }
 
     private void loadAll() throws IOException {

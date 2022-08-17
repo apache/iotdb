@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
@@ -41,6 +42,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 public class NonAlignedChunkData implements ChunkData {
@@ -52,6 +54,8 @@ public class NonAlignedChunkData implements ChunkData {
   private TTimePartitionSlot timePartitionSlot;
   private String device;
   private ChunkHeader chunkHeader;
+
+  private ChunkWriterImpl chunkWriter;
 
   public NonAlignedChunkData(long offset, String device, ChunkHeader chunkHeader) {
     this.offset = offset;
@@ -98,14 +102,30 @@ public class NonAlignedChunkData implements ChunkData {
   }
 
   @Override
-  public IChunkWriter getChunkWriter(File tsFile) throws IOException, PageException {
-    ChunkWriterImpl chunkWriter =
-        new ChunkWriterImpl(
-            new MeasurementSchema(
-                chunkHeader.getMeasurementID(),
-                chunkHeader.getDataType(),
-                chunkHeader.getEncodingType(),
-                chunkHeader.getCompressionType()));
+  public boolean isAligned() {
+    return false;
+  }
+
+  @Override
+  public IChunkWriter getChunkWriter() {
+    return chunkWriter;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream, File tsFile) throws IOException {
+    ReadWriteIOUtils.write(isAligned(), stream);
+    serializeAttr(stream);
+    serializeTsFileData(stream, tsFile);
+  }
+
+  private void serializeAttr(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(timePartitionSlot.getStartTime(), stream);
+    ReadWriteIOUtils.write(device, stream);
+    ReadWriteIOUtils.write(chunkHeader.getChunkType(), stream);
+    chunkHeader.serializeTo(stream);
+  }
+
+  private void serializeTsFileData(DataOutputStream stream, File tsFile) throws IOException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       Decoder defaultTimeDecoder =
           Decoder.getDecoderByType(
@@ -117,63 +137,26 @@ public class NonAlignedChunkData implements ChunkData {
       reader.position(offset);
       long dataSize = this.dataSize;
       while (dataSize > 0) {
-        PageHeader pageHeader =
-            reader.readPageHeader(
-                chunkHeader.getDataType(),
-                (chunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+        boolean hasStatistic = (chunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER;
+        PageHeader pageHeader = reader.readPageHeader(chunkHeader.getDataType(), hasStatistic);
         long pageDataSize = pageHeader.getSerializedPageSize();
         if ((dataSize == this.dataSize && isHeadPageNeedDecode) // decode head page
             || (dataSize == pageDataSize && isTailPageNeedDecode)) { // decode tail page
-          decodePage(reader, pageHeader, defaultTimeDecoder, valueDecoder, chunkWriter);
+          ReadWriteIOUtils.write(true, stream); // decode
+          decodePage(reader, pageHeader, defaultTimeDecoder, valueDecoder, stream);
         } else { // entire page
+          ReadWriteIOUtils.write(false, stream); // don't decode
+          ReadWriteIOUtils.write(hasStatistic, stream);
+          pageHeader.serializeTo(stream); // TODO: can save this time by recording ByteBuffer
           ByteBuffer pageData = reader.readCompressedPage(pageHeader);
-          chunkWriter.writePageHeaderAndDataIntoBuff(pageData, pageHeader);
+          ReadWriteIOUtils.write(pageData, stream);
         }
         dataSize -= pageDataSize;
       }
-      return chunkWriter;
     }
-  }
 
-  @Override
-  public void serialize(DataOutputStream stream, File tsFile) throws IOException {
-    serializeAttr(stream);
-  }
-
-  private void serializeAttr(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(timePartitionSlot.getStartTime(), stream);
-    ReadWriteIOUtils.write(device, stream);
-    chunkHeader.serializeTo(stream);
-  }
-
-  private void serializeTsFileData(DataOutputStream stream, File tsFile) throws IOException {
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      Decoder defaultTimeDecoder =
-              Decoder.getDecoderByType(
-                      TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-                      TSDataType.INT64);
-      Decoder valueDecoder =
-              Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
-
-      reader.position(offset);
-      long dataSize = this.dataSize;
-      while (dataSize > 0) {
-        PageHeader pageHeader =
-                reader.readPageHeader(
-                        chunkHeader.getDataType(),
-                        (chunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
-        long pageDataSize = pageHeader.getSerializedPageSize();
-        if ((dataSize == this.dataSize && isHeadPageNeedDecode) // decode head page
-                || (dataSize == pageDataSize && isTailPageNeedDecode)) { // decode tail page
-          decodePage(reader, pageHeader, defaultTimeDecoder, valueDecoder, chunkWriter);
-        } else { // entire page
-          ByteBuffer pageData = reader.readCompressedPage(pageHeader);
-          chunkWriter.writePageHeaderAndDataIntoBuff(pageData, pageHeader);
-        }
-        dataSize -= pageDataSize;
-      }
-      return chunkWriter;
-    }
+    ReadWriteIOUtils.write(true, stream); // means ending
+    ReadWriteIOUtils.write(-1, stream);
   }
 
   private void decodePage(
@@ -181,40 +164,43 @@ public class NonAlignedChunkData implements ChunkData {
       PageHeader pageHeader,
       Decoder timeDecoder,
       Decoder valueDecoder,
-      ChunkWriterImpl chunkWriter)
+      DataOutputStream stream)
       throws IOException {
     valueDecoder.reset();
     ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
     PageReader pageReader =
         new PageReader(pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, null);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
+
+    ReadWriteIOUtils.write(batchData.length(), stream); // TODO: check if correct
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
       if (time < timePartitionSlot.getStartTime()) {
         continue;
-      } else if (time > timePartitionSlot.getStartTime()) {
+      } else if (!timePartitionSlot.equals(StorageEngineV2.getTimePartitionSlot(time))) {
         break;
       }
 
+      ReadWriteIOUtils.write(time, stream);
       Object value = batchData.currentValue();
       switch (chunkHeader.getDataType()) {
         case INT32:
-          chunkWriter.write(time, (int) value);
+          ReadWriteIOUtils.write((int) value, stream);
           break;
         case INT64:
-          chunkWriter.write(time, (long) value);
+          ReadWriteIOUtils.write((long) value, stream);
           break;
         case FLOAT:
-          chunkWriter.write(time, (float) value);
+          ReadWriteIOUtils.write((float) value, stream);
           break;
         case DOUBLE:
-          chunkWriter.write(time, (double) value);
+          ReadWriteIOUtils.write((double) value, stream);
           break;
         case BOOLEAN:
-          chunkWriter.write(time, (boolean) value);
+          ReadWriteIOUtils.write((boolean) value, stream);
           break;
         case TEXT:
-          chunkWriter.write(time, (Binary) value);
+          ReadWriteIOUtils.write((Binary) value, stream);
           break;
         default:
           throw new UnSupportedDataTypeException(
@@ -222,7 +208,73 @@ public class NonAlignedChunkData implements ChunkData {
       }
       batchData.next();
     }
-    chunkWriter.sealCurrentPage();
+  }
+
+  private void buildChunkWriter(InputStream stream) throws IOException, PageException {
+    chunkWriter =
+        new ChunkWriterImpl(
+            new MeasurementSchema(
+                chunkHeader.getMeasurementID(),
+                chunkHeader.getDataType(),
+                chunkHeader.getEncodingType(),
+                chunkHeader.getCompressionType()));
+    boolean needDecode;
+    while (true) {
+      needDecode = ReadWriteIOUtils.readBool(stream);
+      if (needDecode) {
+        int length = ReadWriteIOUtils.readInt(stream);
+        if (length == -1) {
+          break;
+        }
+
+        for (int i = 0; i < length; i++) {
+          long time = ReadWriteIOUtils.readLong(stream);
+          switch (chunkHeader.getDataType()) {
+            case INT32:
+              chunkWriter.write(time, ReadWriteIOUtils.readInt(stream));
+              break;
+            case INT64:
+              chunkWriter.write(time, ReadWriteIOUtils.readLong(stream));
+              break;
+            case FLOAT:
+              chunkWriter.write(time, ReadWriteIOUtils.readFloat(stream));
+              break;
+            case DOUBLE:
+              chunkWriter.write(time, ReadWriteIOUtils.readDouble(stream));
+              break;
+            case BOOLEAN:
+              chunkWriter.write(time, ReadWriteIOUtils.readBool(stream));
+              break;
+            case TEXT:
+              chunkWriter.write(time, ReadWriteIOUtils.readBinary(stream));
+              break;
+            default:
+              throw new UnSupportedDataTypeException(
+                  String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+          }
+        }
+
+        chunkWriter.sealCurrentPage();
+      } else {
+        boolean hasStatistic = ReadWriteIOUtils.readBool(stream);
+        PageHeader pageHeader =
+            PageHeader.deserializeFrom(stream, chunkHeader.getDataType(), hasStatistic);
+        chunkWriter.writePageHeaderAndDataIntoBuff(
+            ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(stream)),
+            pageHeader);
+      }
+    }
+  }
+
+  public static NonAlignedChunkData deserialize(InputStream stream) throws IOException, PageException {
+    long timePartition = ReadWriteIOUtils.readLong(stream);
+    String device = ReadWriteIOUtils.readString(stream);
+    byte chunkType = ReadWriteIOUtils.readByte(stream);
+    ChunkHeader chunkHeader = ChunkHeader.deserializeFrom(stream, chunkType);
+    NonAlignedChunkData chunkData = new NonAlignedChunkData(-1, device, chunkHeader);
+    chunkData.setTimePartitionSlot(StorageEngineV2.getTimePartitionSlot(timePartition));
+    chunkData.buildChunkWriter(stream);
+    return chunkData;
   }
 
   @Override

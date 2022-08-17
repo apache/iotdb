@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.engine.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -88,6 +88,11 @@ public class AlignedChunkData implements ChunkData {
     this.timePartitionSlot = timePartitionSlot;
   }
 
+  @Override
+  public boolean isAligned() {
+    return true;
+  }
+
   public void addValueChunk(long offset, ChunkHeader chunkHeader) {
     this.offset.add(offset);
     this.dataSize.add(0L);
@@ -100,13 +105,17 @@ public class AlignedChunkData implements ChunkData {
   }
 
   @Override
-  public IChunkWriter getChunkWriter(File tsFile) throws IOException, PageException {
+  public IChunkWriter getChunkWriter() {
     return null;
   }
 
   @Override
   public void serialize(DataOutputStream stream, File tsFile) throws IOException {
 
+  }
+
+  public static AlignedChunkData deserialize(InputStream stream) {
+    return null;
   }
 
   @Override

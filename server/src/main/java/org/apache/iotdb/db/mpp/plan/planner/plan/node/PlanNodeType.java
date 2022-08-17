@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
@@ -132,7 +133,8 @@ public enum PlanNodeType {
   NODE_PATHS_COUNT((short) 51),
   INTERNAL_CREATE_TIMESERIES((short) 52),
   ACTIVATE_TEMPLATE((short) 53),
-  PATHS_USING_TEMPLATE_SCAN((short) 54);
+  PATHS_USING_TEMPLATE_SCAN((short) 54),
+  LOAD_TSFILE((short) 55);
 
   public static final int BYTES = Short.BYTES;
 
@@ -287,6 +289,8 @@ public enum PlanNodeType {
         return ActivateTemplateNode.deserialize(buffer);
       case 54:
         return PathsUsingTemplateScanNode.deserialize(buffer);
+      case 55:
+        return LoadTsFilePieceNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

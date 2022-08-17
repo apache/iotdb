@@ -29,8 +29,6 @@ public interface IChunkWriter {
   /** flush data to TsFileIOWriter. */
   void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
 
-  void serializeToDataOutputStream(DataOutputStream stream) throws IOException;
-
   /** estimate memory usage of this series. */
   long estimateMaxSeriesMemSize();
 
