@@ -18,7 +18,7 @@
     under the License.
 
 -->
-
+# 参考
 ## 配置参数
 
 为方便 IoTDB Server 的配置与管理，IoTDB Server 为用户提供三种配置项，使得用户可以在启动服务或服务运行时对其进行配置。

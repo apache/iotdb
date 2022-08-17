@@ -19,7 +19,7 @@
 
 -->
 
-
+# 数据写入和删除
 ## 写入数据
 
 IoTDB 为用户提供多种插入实时数据的方式，例如在 [Cli/Shell 工具](../QuickStart/Command-Line-Interface.md) 中直接输入插入数据的 INSERT 语句，或使用 Java API（标准 [Java JDBC](../API/Programming-JDBC.md) 接口）单条或批量执行插入数据的 INSERT 语句。

@@ -18,7 +18,7 @@
     under the License.
 
 -->
-
+# 快速上手
 ## 快速上手
 
 本文将介绍关于 IoTDB 使用的基本流程，如果需要更多信息，请浏览我们官网的 [指引](../IoTDB-Introduction/What-is-IoTDB.md).

@@ -20,7 +20,7 @@ under the License.
 ```
 
 -->
-## 集群示例
+## 集群搭建示例
 ### 前提条件
 
 如果您在使用 Windows 系统，请安装 MinGW，WSL 或者 git bash。
