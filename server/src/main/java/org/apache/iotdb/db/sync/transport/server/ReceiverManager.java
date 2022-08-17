@@ -62,6 +62,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
 
+/**
+ * This class is responsible for implementing the RPC processing on the receiver-side. It should
+ * only be accessed by the {@linkplain org.apache.iotdb.db.sync.SyncService}
+ */
 public class ReceiverManager {
   private static Logger logger = LoggerFactory.getLogger(ReceiverManager.class);
 
