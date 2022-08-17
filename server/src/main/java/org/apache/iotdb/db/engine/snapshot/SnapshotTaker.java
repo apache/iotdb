@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.snapshot;
 
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.snapshot.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -73,21 +75,29 @@ public class SnapshotTaker {
     File snapshotLog = new File(snapshotDir, SnapshotLogger.SNAPSHOT_LOG_NAME);
     try {
       snapshotLogger = new SnapshotLogger(snapshotLog);
-      boolean success = false;
+      boolean success = true;
 
       readLockTheFile();
       try {
-        success = createSnapshot(seqFiles, snapshotDir.getName()) || success;
-        success = createSnapshot(unseqFiles, snapshotDir.getName()) || success;
+        success = createSnapshot(seqFiles, snapshotDir.getName());
+        success = createSnapshot(unseqFiles, snapshotDir.getName()) && success;
       } finally {
         readUnlockTheFile();
       }
 
-      LOGGER.info(
-          "Successfully take snapshot for {}-{}, snapshot directory is {}",
-          dataRegion.getStorageGroupName(),
-          dataRegion.getDataRegionId(),
-          snapshotDirPath);
+      if (!success) {
+        LOGGER.warn(
+            "Failed to take snapshot for {}-{}, clean up",
+            dataRegion.getStorageGroupName(),
+            dataRegion.getDataRegionId());
+        cleanUpWhenFail(snapshotDir.getName());
+      } else {
+        LOGGER.info(
+            "Successfully take snapshot for {}-{}, snapshot directory is {}",
+            dataRegion.getStorageGroupName(),
+            dataRegion.getDataRegionId(),
+            snapshotDirPath);
+      }
 
       return success;
     } catch (Exception e) {
@@ -132,23 +142,27 @@ public class SnapshotTaker {
     }
   }
 
-  private boolean createSnapshot(List<TsFileResource> resources, String snapshotId)
-      throws IOException {
-    for (TsFileResource resource : resources) {
-      File tsFile = resource.getTsFile();
-      File snapshotTsFile = getSnapshotFilePathForResource(tsFile, snapshotId);
-      // create hard link for tsfile, resource, mods, compaction mods
-      createHardLink(snapshotTsFile, tsFile);
-      createHardLink(
-          new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
-          new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
-      if (resource.getModFile().exists()) {
+  private boolean createSnapshot(List<TsFileResource> resources, String snapshotId) {
+    try {
+      for (TsFileResource resource : resources) {
+        File tsFile = resource.getTsFile();
+        File snapshotTsFile = getSnapshotFilePathForTsFile(tsFile, snapshotId);
+        // create hard link for tsfile, resource, mods
+        createHardLink(snapshotTsFile, tsFile);
         createHardLink(
-            new File(snapshotTsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX),
-            new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
+            new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+            new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+        if (resource.getModFile().exists()) {
+          createHardLink(
+              new File(snapshotTsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX),
+              new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
+        }
       }
+      return true;
+    } catch (IOException e) {
+      LOGGER.error("Catch IOException when creating snapshot", e);
+      return false;
     }
-    return true;
   }
 
   private void createHardLink(File target, File source) throws IOException {
@@ -166,7 +180,7 @@ public class SnapshotTaker {
    * @return the File object of the snapshot file, and its parent directory will be created
    * @throws IOException
    */
-  public File getSnapshotFilePathForResource(File tsFile, String snapshotId) throws IOException {
+  public File getSnapshotFilePathForTsFile(File tsFile, String snapshotId) throws IOException {
     // ... data (un)sequence sgName dataRegionId timePartition tsFileName
     String[] splittedPath =
         tsFile.getAbsolutePath().split(File.separator.equals("\\") ? "\\\\" : File.separator);
@@ -196,5 +210,21 @@ public class SnapshotTaker {
       throw new IOException("Cannot create directory " + dir.getAbsolutePath());
     }
     return new File(dir, tsFile.getName());
+  }
+
+  private void cleanUpWhenFail(String snapshotId) {
+    for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
+      File dataDirForThisSnapshot =
+          new File(dataDir + File.separator + "snapshot" + File.separator + snapshotId);
+      if (dataDirForThisSnapshot.exists()) {
+        try {
+          FileUtils.recursiveDeleteFolder(dataDirForThisSnapshot.getAbsolutePath());
+        } catch (IOException e) {
+          LOGGER.error(
+              "Failed to delete folder {} when cleaning up",
+              dataDirForThisSnapshot.getAbsolutePath());
+        }
+      }
+    }
   }
 }

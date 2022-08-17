@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.snapshot;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.snapshot.exception.DirectoryNotLegalException;
@@ -55,9 +56,9 @@ public class IoTDBSnapshotTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    EnvironmentUtils.recursiveDeleteFolder("target" + File.separator + "data");
+    FileUtils.recursiveDeleteFolder("target" + File.separator + "data");
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.recursiveDeleteFolder("target" + File.separator + "tmp");
+    FileUtils.recursiveDeleteFolder("target" + File.separator + "tmp");
   }
 
   private List<TsFileResource> writeTsFiles() throws IOException, WriteProcessException {
@@ -118,7 +119,7 @@ public class IoTDBSnapshotTest {
           Assert.assertTrue(resource.tryWriteLock());
         }
       } finally {
-        EnvironmentUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
+        FileUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
       }
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
@@ -148,11 +149,51 @@ public class IoTDBSnapshotTest {
         List<TsFileResource> resource = dataRegion.getTsFileManager().getTsFileList(true);
         Assert.assertEquals(100, resource.size());
       } finally {
-        EnvironmentUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
+        FileUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
       }
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
       DirectoryManager.getInstance().resetFolders();
     }
+  }
+
+  @Test
+  public void testGetSnapshotFile() throws IOException {
+    File tsFile =
+        new File(
+            IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]
+                + File.separator
+                + "sequence"
+                + File.separator
+                + "root.test"
+                + File.separator
+                + "0"
+                + File.separator
+                + "0"
+                + File.separator
+                + "1-1-0-0.tsfile");
+    File snapshotFile =
+        new SnapshotTaker(null).getSnapshotFilePathForTsFile(tsFile, "test-snapshotId");
+    Assert.assertEquals(
+        new File(
+                IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]
+                    + File.separator
+                    + "snapshot"
+                    + File.separator
+                    + "test-snapshotId"
+                    + File.separator
+                    + "sequence"
+                    + File.separator
+                    + "root.test"
+                    + File.separator
+                    + "0"
+                    + File.separator
+                    + "0"
+                    + File.separator
+                    + "1-1-0-0.tsfile")
+            .getAbsolutePath(),
+        snapshotFile.getAbsolutePath());
+
+    Assert.assertTrue(snapshotFile.getParentFile().exists());
   }
 }
