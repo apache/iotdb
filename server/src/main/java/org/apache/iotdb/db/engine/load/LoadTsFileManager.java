@@ -73,8 +73,6 @@ public class LoadTsFileManager {
 
   public void writeToDataRegion(DataRegion dataRegion, LoadTsFilePieceNode pieceNode, String uuid)
       throws PageException, IOException {
-    dataRegion.getLogicalStorageGroupName();
-    dataRegion.getDataRegionId();
     TsFileWriterManager writerManager =
         uuid2WriterManager.computeIfAbsent(
             uuid, o -> new TsFileWriterManager(SystemFileFactory.INSTANCE.getFile(loadDir, uuid)));

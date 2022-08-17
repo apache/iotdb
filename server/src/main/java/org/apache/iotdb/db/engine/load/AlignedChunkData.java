@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -101,6 +102,11 @@ public class AlignedChunkData implements ChunkData {
   @Override
   public IChunkWriter getChunkWriter(File tsFile) throws IOException, PageException {
     return null;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream, File tsFile) throws IOException {
+
   }
 
   @Override

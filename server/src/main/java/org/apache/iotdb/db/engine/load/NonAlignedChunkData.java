@@ -33,10 +33,12 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -122,6 +124,47 @@ public class NonAlignedChunkData implements ChunkData {
         long pageDataSize = pageHeader.getSerializedPageSize();
         if ((dataSize == this.dataSize && isHeadPageNeedDecode) // decode head page
             || (dataSize == pageDataSize && isTailPageNeedDecode)) { // decode tail page
+          decodePage(reader, pageHeader, defaultTimeDecoder, valueDecoder, chunkWriter);
+        } else { // entire page
+          ByteBuffer pageData = reader.readCompressedPage(pageHeader);
+          chunkWriter.writePageHeaderAndDataIntoBuff(pageData, pageHeader);
+        }
+        dataSize -= pageDataSize;
+      }
+      return chunkWriter;
+    }
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream, File tsFile) throws IOException {
+    serializeAttr(stream);
+  }
+
+  private void serializeAttr(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(timePartitionSlot.getStartTime(), stream);
+    ReadWriteIOUtils.write(device, stream);
+    chunkHeader.serializeTo(stream);
+  }
+
+  private void serializeTsFileData(DataOutputStream stream, File tsFile) throws IOException {
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      Decoder defaultTimeDecoder =
+              Decoder.getDecoderByType(
+                      TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                      TSDataType.INT64);
+      Decoder valueDecoder =
+              Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+
+      reader.position(offset);
+      long dataSize = this.dataSize;
+      while (dataSize > 0) {
+        PageHeader pageHeader =
+                reader.readPageHeader(
+                        chunkHeader.getDataType(),
+                        (chunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+        long pageDataSize = pageHeader.getSerializedPageSize();
+        if ((dataSize == this.dataSize && isHeadPageNeedDecode) // decode head page
+                || (dataSize == pageDataSize && isTailPageNeedDecode)) { // decode tail page
           decodePage(reader, pageHeader, defaultTimeDecoder, valueDecoder, chunkWriter);
         } else { // entire page
           ByteBuffer pageData = reader.readCompressedPage(pageHeader);

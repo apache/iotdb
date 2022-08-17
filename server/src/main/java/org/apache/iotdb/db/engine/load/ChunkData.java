@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 
@@ -43,6 +44,8 @@ public interface ChunkData {
   void setTimePartitionSlot(TTimePartitionSlot timePartitionSlot);
 
   IChunkWriter getChunkWriter(File tsFile) throws IOException, PageException;
+
+  void serialize(DataOutputStream stream, File tsFile) throws IOException;
 
   static ChunkData createChunkData(
       boolean isAligned, long offset, String device, ChunkHeader chunkHeader) {
