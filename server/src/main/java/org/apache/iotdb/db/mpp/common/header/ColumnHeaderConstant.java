@@ -21,8 +21,8 @@ package org.apache.iotdb.db.mpp.common.header;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.Arrays;
-import java.util.Collections;
+import com.google.common.collect.ImmutableList;
+
 import java.util.List;
 
 public class ColumnHeaderConstant {
@@ -89,13 +89,13 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_TEMPLATE_NAME = "template name";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
           new ColumnHeader(COLUMN_VALUE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTimeSeriesColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TIMESERIES_ALIAS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
@@ -106,23 +106,23 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_ATTRIBUTES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_DEVICES, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
           new ColumnHeader(COLUMN_IS_ALIGNED, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_DEVICES, TSDataType.TEXT),
           new ColumnHeader(COLUMN_IS_ALIGNED, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTTLColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.INT64));
 
   public static final List<ColumnHeader> showStorageGroupColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
           new ColumnHeader(COLUMN_SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
@@ -130,48 +130,48 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TIME_PARTITION_INTERVAL, TSDataType.INT64));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_NODETYPES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showNodesInSchemaTemplateHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TIMESERIES_ENCODING, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showChildNodesColumnHeaders =
-      Collections.singletonList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT));
+      ImmutableList.of(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showVersionColumnHeaders =
-      Collections.singletonList(new ColumnHeader(COLUMN_VERSION, TSDataType.TEXT));
+      ImmutableList.of(new ColumnHeader(COLUMN_VERSION, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showPathsUsingTemplateHeaders =
-      Collections.singletonList(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT));
+      ImmutableList.of(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showPathSetTemplateHeaders =
-      Collections.singletonList(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT));
+      ImmutableList.of(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> countDevicesColumnHeaders =
-      Collections.singletonList(new ColumnHeader(COLUMN_COUNT_DEVICES, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COLUMN_COUNT_DEVICES, TSDataType.INT32));
 
   public static final List<ColumnHeader> countNodesColumnHeaders =
-      Collections.singletonList(new ColumnHeader(COLUMN_COUNT_NODES, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COLUMN_COUNT_NODES, TSDataType.INT32));
 
   public static final List<ColumnHeader> countLevelTimeSeriesColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_COLUMN, TSDataType.TEXT),
           new ColumnHeader(COLUMN_COUNT_TIMESERIES, TSDataType.INT32));
 
   public static final List<ColumnHeader> countTimeSeriesColumnHeaders =
-      Collections.singletonList(new ColumnHeader(COLUMN_COUNT_TIMESERIES, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COLUMN_COUNT_TIMESERIES, TSDataType.INT32));
 
   public static final List<ColumnHeader> countStorageGroupColumnHeaders =
-      Collections.singletonList(new ColumnHeader(COLUMN_COUNT_STORAGE_GROUP, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(COLUMN_COUNT_STORAGE_GROUP, TSDataType.INT32));
 
   public static final List<ColumnHeader> showRegionColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_REGION_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
@@ -184,7 +184,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_ROLE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDataNodesColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
@@ -193,14 +193,14 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_SCHEMA_REGION_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> showConfigNodesColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PORT, TSDataType.INT32));
 
   public static final List<ColumnHeader> showClusterColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
@@ -208,11 +208,11 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_PORT, TSDataType.INT32));
 
   public static final List<ColumnHeader> showFunctionsColumnHeaders =
-      Arrays.asList(
+      ImmutableList.of(
           new ColumnHeader(COLUMN_FUNCTION_NAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_FUNCTION_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_FUNCTION_CLASS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSchemaTemplateHeaders =
-      Collections.singletonList(new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT));
+      ImmutableList.of(new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT));
 }
