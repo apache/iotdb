@@ -129,6 +129,8 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // enums
     boolean selectRandomDataNode = "weak".equals(readConsistencyLevel);
 
+    // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
+    // black list won't be considered because it may have connection issue now.
     List<TDataNodeLocation> availableDataNodes =
         filterAvailableTDataNode(regionReplicaSet.getDataNodeLocations());
     if (availableDataNodes.size() == 0) {
@@ -139,7 +141,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       throw new IllegalArgumentException(errorMsg);
     }
     if (regionReplicaSet.getDataNodeLocationsSize() != availableDataNodes.size()) {
-      logger.info("Available replicas: " + availableDataNodes);
+      logger.info("available replicas: " + availableDataNodes);
     }
     int targetIndex;
     if (!selectRandomDataNode || queryContext.getSession() == null) {

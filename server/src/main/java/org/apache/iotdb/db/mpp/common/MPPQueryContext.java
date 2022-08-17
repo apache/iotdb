@@ -40,6 +40,9 @@ public class MPPQueryContext {
   private TEndPoint localInternalEndpoint;
   private ResultNodeContext resultNodeContext;
 
+  // When some DataNode cannot be connected, its endPoint will be put
+  // in this list. And the following retry will avoid planning fragment
+  // onto this node.
   private final List<TEndPoint> endPointBlackList;
 
   public MPPQueryContext(QueryId queryId) {
