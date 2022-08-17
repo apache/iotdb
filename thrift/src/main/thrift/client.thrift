@@ -420,6 +420,7 @@ struct TSyncIdentityInfo{
   4:required string version
 }
 
+// TODO:delete it
 enum TSyncTransportType {
   TSFILE,
   DELETION,
@@ -428,12 +429,10 @@ enum TSyncTransportType {
 }
 
 struct TSyncTransportMetaInfo{
-  // The type of the pipeData in sending.
-  1:required TSyncTransportType type
   // The name of the file in sending.
-  2:required string fileName
+  1:required string fileName
   // The start index of the file slice in sending.
-  3:required i64 startIndex
+  2:required i64 startIndex
 }
 
 service IClientRPCService {
@@ -529,7 +528,9 @@ service IClientRPCService {
 
   common.TSStatus handshake(TSyncIdentityInfo info);
 
-  common.TSStatus transportData(1:TSyncTransportMetaInfo metaInfo, 2:binary buff, 3:binary digest);
+  common.TSStatus transportPipeData(1:binary buff);
+
+  common.TSStatus transportFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff, 3:binary digest);
 
   common.TSStatus checkFileDigest(1:TSyncTransportMetaInfo metaInfo, 2:binary digest);
 }

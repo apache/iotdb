@@ -32,7 +32,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
-import org.apache.iotdb.service.rpc.thrift.TSyncTransportType;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -194,8 +193,67 @@ public class TransportProcessor {
     return ipAddressBinary.equals(ipSegmentBinary);
   }
 
-  public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
+  /**
+   * Transport and load {@linkplain PipeData}.
+   *
+   * @param buff
+   * @return
+   * @throws TException
+   */
+  public TSStatus transportPipeData(ByteBuffer buff) throws TException {
+    // step1. check connection
+    TSyncIdentityInfo identityInfo = connectionManager.getCurrentTSyncIdentityInfo();
+    if (identityInfo == null) {
+      throw new TException("Thrift connection is not alive.");
+    }
+    logger.debug("Invoke transportPipeData method from client ip = {}", identityInfo.address);
+    String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
+
+    // step2. deserialize PipeData
+    PipeData pipeData;
+    try {
+      int length = buff.capacity();
+      byte[] byteArray = new byte[length];
+      buff.get(byteArray);
+      pipeData = PipeData.createPipeData(byteArray);
+      if (pipeData instanceof TsFilePipeData) {
+        handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
+      }
+    } catch (IOException | IllegalPathException e) {
+      logger.error("Pipe data transport error, {}", e.getMessage());
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPESERVER_ERROR, "\"Pipe data transport error, " + e.getMessage());
+    }
+
+    // step3. load PipeData
+    logger.info(
+        "Start load pipeData with serialize number {} and type {},value={}",
+        pipeData.getSerialNumber(),
+        pipeData.getType(),
+        pipeData);
+    try {
+      pipeData.createLoader().load();
+      logger.info(
+          "Load pipeData with serialize number {} successfully.", pipeData.getSerialNumber());
+    } catch (PipeDataLoadException e) {
+      logger.error("Fail to load pipeData because {}.", e.getMessage());
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPESERVER_ERROR, "Fail to load pipeData because " + e.getMessage());
+    }
+
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
+  }
+
+  /**
+   * @param metaInfo
+   * @param buff
+   * @param digest
+   * @return
+   * @throws TException
+   */
+  public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
       throws TException {
+    // step1. check connection
     TSyncIdentityInfo identityInfo = connectionManager.getCurrentTSyncIdentityInfo();
     if (identityInfo == null) {
       throw new TException("Thrift connection is not alive.");
@@ -203,92 +261,61 @@ public class TransportProcessor {
     logger.debug("Invoke transportData method from client ip = {}", identityInfo.address);
 
     String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
-    TSyncTransportType type = metaInfo.type;
+    //    TSyncTransportType type = metaInfo.type;
     String fileName = metaInfo.fileName;
     long startIndex = metaInfo.startIndex;
+    File file = new File(fileDir, fileName + PATCH_SUFFIX);
 
-    // Check file start index valid
-    if (type == TSyncTransportType.FILE) {
-      try {
-        CheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
-        if (!result.isResult()) {
-          return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REBASE, result.getIndex());
-        }
-      } catch (IOException e) {
-        logger.error(e.getMessage());
-        return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
-      }
-    }
-
-    // Check buff digest
-    int pos = buff.position();
-    MessageDigest messageDigest = null;
+    // step2. check startIndex
     try {
-      messageDigest = MessageDigest.getInstance("SHA-256");
-    } catch (NoSuchAlgorithmException e) {
+      CheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
+      if (!result.isResult()) {
+        return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REBASE, result.getIndex());
+      }
+    } catch (IOException e) {
       logger.error(e.getMessage());
       return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
     }
-    messageDigest.update(buff);
-    byte[] digestBytes = new byte[digest.capacity()];
-    digest.get(digestBytes);
-    if (!Arrays.equals(messageDigest.digest(), digestBytes)) {
-      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_RETRY, "Data digest check error");
-    }
 
-    if (type != TSyncTransportType.FILE) {
-      buff.position(pos);
+    // step3. append file
+    try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw")) {
       int length = buff.capacity();
+      randomAccessFile.seek(startIndex);
       byte[] byteArray = new byte[length];
       buff.get(byteArray);
-      try {
-        PipeData pipeData = PipeData.createPipeData(byteArray);
-        if (type == TSyncTransportType.TSFILE) {
-          // Do with file
-          handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
-        }
-        logger.info(
-            "Start load pipeData with serialize number {} and type {},value={}",
-            pipeData.getSerialNumber(),
-            pipeData.getType(),
-            pipeData);
-        pipeData.createLoader().load();
-        logger.info(
-            "Load pipeData with serialize number {} successfully.", pipeData.getSerialNumber());
-      } catch (IOException | IllegalPathException e) {
-        logger.error("Pipe data transport error, {}", e.getMessage());
-        return RpcUtils.getStatus(
-            TSStatusCode.SYNC_FILE_RETRY, "Data digest transport error " + e.getMessage());
-      } catch (PipeDataLoadException e) {
-        logger.error("Fail to load pipeData because {}.", e.getMessage());
-        return RpcUtils.getStatus(
-            TSStatusCode.SYNC_FILE_ERROR, "Fail to load pipeData because " + e.getMessage());
-      }
-    } else {
-      // Write buff to {file}.patch
-      buff.position(pos);
-      File file = new File(fileDir, fileName + PATCH_SUFFIX);
-      try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw")) {
-        randomAccessFile.seek(startIndex);
-        int length = buff.capacity();
-        byte[] byteArray = new byte[length];
-        buff.get(byteArray);
-        randomAccessFile.write(byteArray);
-        writeRecordFile(new File(fileDir, fileName + RECORD_SUFFIX), startIndex + length);
-        logger.debug(
-            "Sync "
-                + fileName
-                + " start at "
-                + startIndex
-                + " to "
-                + (startIndex + length)
-                + " is done.");
-      } catch (IOException e) {
-        logger.error(e.getMessage());
-        return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
-      }
+      randomAccessFile.write(byteArray);
+      writeRecordFile(new File(fileDir, fileName + RECORD_SUFFIX), startIndex + length);
+      logger.debug(
+          "Sync "
+              + fileName
+              + " start at "
+              + startIndex
+              + " to "
+              + (startIndex + length)
+              + " is done.");
+    } catch (IOException e) {
+      logger.error(e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
     }
+
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
+    //
+    //    // Check buff digest
+    //    int pos = buff.position();
+    //        MessageDigest messageDigest = null;
+    //    try {
+    //      messageDigest = MessageDigest.getInstance("SHA-256");
+    //    } catch (NoSuchAlgorithmException e) {
+    //      logger.error(e.getMessage());
+    //      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
+    //    }
+    //    messageDigest.update(buff);
+    //    byte[] digestBytes = new byte[digest.capacity()];
+    //    digest.get(digestBytes);
+    //        if (!Arrays.equals(messageDigest.digest(), digestBytes)) {
+    //      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_RETRY, "Data digest check error");
+    //    }
+    //
   }
 
   public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)

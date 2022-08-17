@@ -32,7 +32,6 @@ import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
-import org.apache.iotdb.service.rpc.thrift.TSyncTransportType;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -61,7 +60,6 @@ public class IoTDBSInkTransportClient implements ITransportClient {
   private static final int TRANSFER_BUFFER_SIZE_IN_BYTES = 1 * 1024 * 1024;
 
   private final ClientWrapper serviceClient;
-  private final ClientWrapper heartbeatClient;
 
   /* remote IP address*/
   private final String ipAddress;
@@ -85,7 +83,6 @@ public class IoTDBSInkTransportClient implements ITransportClient {
     this.port = port;
     this.localIP = localIP;
     serviceClient = new ClientWrapper(pipe, ipAddress, port, localIP);
-    heartbeatClient = new ClientWrapper(pipe, ipAddress, port, localIP);
   }
 
   /**
@@ -256,8 +253,7 @@ public class IoTDBSInkTransportClient implements ITransportClient {
           messageDigest.reset();
           messageDigest.update(buffer, 0, dataLength);
           ByteBuffer buffToSend = ByteBuffer.wrap(buffer, 0, dataLength);
-          TSyncTransportMetaInfo metaInfo =
-              new TSyncTransportMetaInfo(TSyncTransportType.FILE, file.getName(), position);
+          TSyncTransportMetaInfo metaInfo = new TSyncTransportMetaInfo(file.getName(), position);
 
           TSStatus status = null;
           int retryCount = 0;
@@ -273,7 +269,7 @@ public class IoTDBSInkTransportClient implements ITransportClient {
               status =
                   serviceClient
                       .getClient()
-                      .transportData(metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
+                      .transportFile(metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
             } catch (TException e) {
               // retry
               logger.error("TException happened! ", e);
@@ -338,8 +334,7 @@ public class IoTDBSInkTransportClient implements ITransportClient {
       }
     }
 
-    TSyncTransportMetaInfo metaInfo =
-        new TSyncTransportMetaInfo(TSyncTransportType.FILE, file.getName(), 0);
+    TSyncTransportMetaInfo metaInfo = new TSyncTransportMetaInfo(file.getName(), 0);
 
     TSStatus status;
     int retryCount = 0;
@@ -393,13 +388,11 @@ public class IoTDBSInkTransportClient implements ITransportClient {
         messageDigest.update(buffer);
         ByteBuffer buffToSend = ByteBuffer.wrap(buffer);
 
-        TSyncTransportMetaInfo metaInfo =
-            new TSyncTransportMetaInfo(
-                TSyncTransportType.findByValue(pipeData.getType().ordinal()), "fileName", 0);
+        TSyncTransportMetaInfo metaInfo = new TSyncTransportMetaInfo("fileName", 0);
         TSStatus status =
             serviceClient
                 .getClient()
-                .transportData(metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
+                .transportFile(metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
 
         if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           break;
@@ -463,6 +456,5 @@ public class IoTDBSInkTransportClient implements ITransportClient {
 
   public void close() {
     serviceClient.close();
-    heartbeatClient.close();
   }
 }

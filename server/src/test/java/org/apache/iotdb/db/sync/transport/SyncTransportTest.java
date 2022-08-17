@@ -19,8 +19,11 @@
  */
 package org.apache.iotdb.db.sync.transport;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -33,6 +36,12 @@ import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.transport.client.IoTDBSInkTransportClient;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.TConfigurationConst;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
+import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
+import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.util.Version;
@@ -42,17 +51,27 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class SyncTransportTest {
+
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   /** create tsfile and move to tmpDir for sync test */
   File tmpDir = new File("target/synctest");
 
@@ -60,6 +79,10 @@ public class SyncTransportTest {
   String remoteIp1;
   long createdTime1 = System.currentTimeMillis();
   File fileDir;
+
+  File tsfile;
+  File resourceFile;
+  File modsFile;
 
   @Before
   public void setUp() throws Exception {
@@ -83,6 +106,19 @@ public class SyncTransportTest {
       FileUtils.deleteDirectory(tmpDir);
     }
     FileUtils.moveDirectory(srcDir, tmpDir);
+    tsfile = null;
+    resourceFile = null;
+    modsFile = null;
+    File[] fileList = tmpDir.listFiles();
+    for (File f : fileList) {
+      if (f.getName().endsWith(".tsfile")) {
+        tsfile = f;
+      } else if (f.getName().endsWith(".mods")) {
+        modsFile = f;
+      } else if (f.getName().endsWith(".resource")) {
+        resourceFile = f;
+      }
+    }
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.envSetUp();
   }
@@ -94,21 +130,90 @@ public class SyncTransportTest {
   }
 
   @Test
+  public void testTransportPipeData() throws Exception {
+    try (TTransport transport =
+        RpcTransportFactory.INSTANCE.getTransport(
+            new TSocket(
+                TConfigurationConst.defaultTConfiguration,
+                "127.0.0.1",
+                6667,
+                SyncConstant.SOCKET_TIMEOUT_MILLISECONDS,
+                SyncConstant.CONNECT_TIMEOUT_MILLISECONDS))) {
+      TProtocol protocol;
+      if (config.isRpcThriftCompressionEnable()) {
+        protocol = new TCompactProtocol(transport);
+      } else {
+        protocol = new TBinaryProtocol(transport);
+      }
+      IClientRPCService.Client serviceClient = new IClientRPCService.Client(protocol);
+      // Underlay socket open.
+      if (!transport.isOpen()) {
+        transport.open();
+      }
+      byte[] buffer = new byte[10];
+      //      try {
+      //        TSStatus tsStatus = serviceClient.transportPipeData(buffToSend);
+      //        Assert.fail();
+      //      } catch (TException e) {
+      //        // do nothing
+      //      }
+      serviceClient.handshake(
+          new TSyncIdentityInfo("127.0.0.1", pipeName1, createdTime1, config.getIoTDBVersion()));
+      // response REBASE:0
+      try (RandomAccessFile randomAccessFile = new RandomAccessFile(tsfile, "rw")) {
+        randomAccessFile.read(buffer, 0, 10);
+        System.out.println(randomAccessFile.length());
+      }
+      TSStatus tsStatus1 =
+          serviceClient.transportFile(
+              new TSyncTransportMetaInfo(tsfile.getName(), 1),
+              ByteBuffer.wrap(buffer),
+              ByteBuffer.wrap(buffer));
+      Assert.assertEquals(tsStatus1.getCode(), TSStatusCode.SYNC_FILE_REBASE.getStatusCode());
+    }
+  }
+
+  @Test
+  public void testTransportFile() throws Exception {
+    try (TTransport transport =
+        RpcTransportFactory.INSTANCE.getTransport(
+            new TSocket(
+                TConfigurationConst.defaultTConfiguration,
+                "127.0.0.1",
+                6667,
+                SyncConstant.SOCKET_TIMEOUT_MILLISECONDS,
+                SyncConstant.CONNECT_TIMEOUT_MILLISECONDS))) {
+      TProtocol protocol;
+      if (config.isRpcThriftCompressionEnable()) {
+        protocol = new TCompactProtocol(transport);
+      } else {
+        protocol = new TBinaryProtocol(transport);
+      }
+      IClientRPCService.Client serviceClient = new IClientRPCService.Client(protocol);
+      // Underlay socket open.
+      if (!transport.isOpen()) {
+        transport.open();
+      }
+      PipeData pipeData =
+          new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("root.sg1")), 0);
+      byte[] buffer = pipeData.serialize();
+      ByteBuffer buffToSend = ByteBuffer.wrap(buffer);
+      try {
+        TSStatus tsStatus = serviceClient.transportPipeData(buffToSend);
+        Assert.fail();
+      } catch (TException e) {
+        // do nothing
+      }
+      serviceClient.handshake(
+          new TSyncIdentityInfo("127.0.0.1", pipeName1, createdTime1, config.getIoTDBVersion()));
+      TSStatus tsStatus = serviceClient.transportPipeData(buffToSend);
+      Assert.assertEquals(tsStatus.getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+  }
+
+  @Test
   public void test() throws Exception {
     // 1. prepare fake file
-    File[] fileList = tmpDir.listFiles();
-    File tsfile = null;
-    File resourceFile = null;
-    File modsFile = null;
-    for (File f : fileList) {
-      if (f.getName().endsWith(".tsfile")) {
-        tsfile = f;
-      } else if (f.getName().endsWith(".mods")) {
-        modsFile = f;
-      } else if (f.getName().endsWith(".resource")) {
-        resourceFile = f;
-      }
-    }
     Assert.assertNotNull(tsfile);
     Assert.assertNotNull(modsFile);
     Assert.assertNotNull(resourceFile);
