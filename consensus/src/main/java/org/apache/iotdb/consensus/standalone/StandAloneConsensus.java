@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.standalone;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.IConsensus;
@@ -35,6 +36,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,7 +113,15 @@ class StandAloneConsensus implements IConsensus {
           .setException(new ConsensusGroupNotExistException(groupId))
           .build();
     }
-    return ConsensusWriteResponse.newBuilder().setStatus(impl.write(request)).build();
+
+    TSStatus status;
+    if (impl.isReadOnly()) {
+      status = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
+      status.setMessage("Fail to do non-query operations because system is read-only.");
+    } else {
+      status = impl.write(request);
+    }
+    return ConsensusWriteResponse.newBuilder().setStatus(status).build();
   }
 
   @Override

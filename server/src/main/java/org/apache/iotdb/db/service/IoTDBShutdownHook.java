@@ -51,7 +51,7 @@ public class IoTDBShutdownHook extends Thread {
     }
     WALManager.getInstance().deleteOutdatedWALFiles();
 
-    if (IoTDB.isClusterMode()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       // This setting ensures that compaction work is not discarded
       // even if there are frequent restarts
       DataRegionConsensusImpl.getInstance()
