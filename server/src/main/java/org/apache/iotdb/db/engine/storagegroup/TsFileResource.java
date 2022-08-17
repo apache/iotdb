@@ -1005,8 +1005,4 @@ public class TsFileResource {
   public boolean isFileInList() {
     return prev != null || next != null;
   }
-
-  public boolean createHardLink(String path) {
-    return false;
-  }
 }

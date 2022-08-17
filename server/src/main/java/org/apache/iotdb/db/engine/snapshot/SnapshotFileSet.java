@@ -16,10 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+package org.apache.iotdb.db.engine.snapshot;
+
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -29,17 +28,10 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-public class DataFileConstant {
+public class SnapshotFileSet {
   public static final String[] DATA_FILE_SUFFIX =
       new String[] {
-        TsFileConstant.TSFILE_SUFFIX,
-        TsFileResource.RESOURCE_SUFFIX,
-        ModificationFile.FILE_SUFFIX,
-        ModificationFile.COMPACTION_FILE_SUFFIX,
-        CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX,
-        CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX,
-        IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
-        IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX
+        TsFileConstant.TSFILE_SUFFIX, TsFileResource.RESOURCE_SUFFIX, ModificationFile.FILE_SUFFIX,
       };
 
   private static final Set<String> DATA_FILE_SUFFIX_SET =

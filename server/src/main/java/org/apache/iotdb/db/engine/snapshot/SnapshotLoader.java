@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.snapshot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.DataFileConstant;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -366,6 +365,6 @@ public class SnapshotLoader {
         Arrays.asList(
             Objects.requireNonNull(
                 new File(snapshotPath)
-                    .listFiles((dir, name) -> DataFileConstant.isDataFile(new File(dir, name))))));
+                    .listFiles((dir, name) -> SnapshotFileSet.isDataFile(new File(dir, name))))));
   }
 }

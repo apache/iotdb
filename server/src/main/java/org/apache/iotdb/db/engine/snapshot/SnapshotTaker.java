@@ -147,11 +147,6 @@ public class SnapshotTaker {
             new File(dir, tsFile.getName() + ModificationFile.FILE_SUFFIX),
             new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
       }
-      if (resource.getCompactionModFile().exists()) {
-        createHardLink(
-            new File(dir, tsFile.getName() + ModificationFile.COMPACTION_FILE_SUFFIX),
-            new File(tsFile.getAbsolutePath() + ModificationFile.COMPACTION_FILE_SUFFIX));
-      }
     }
     return true;
   }
