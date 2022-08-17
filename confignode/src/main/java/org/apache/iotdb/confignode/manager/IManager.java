@@ -285,6 +285,9 @@ public interface IManager {
   /** Clear cache on all DataNodes */
   TSStatus clearCache();
 
+  /** Load configuration on all DataNodes */
+  TSStatus loadConfiguration();
+
   /**
    * Get the latest RegionRouteMap
    *
