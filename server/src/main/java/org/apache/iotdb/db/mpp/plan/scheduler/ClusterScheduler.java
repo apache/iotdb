@@ -87,10 +87,7 @@ public class ClusterScheduler implements IScheduler {
               stateMachine, scheduledExecutor, instances, internalServiceClientManager);
       this.queryTerminator =
           new SimpleQueryTerminator(
-              scheduledExecutor,
-              queryContext.getQueryId(),
-              instances,
-              internalServiceClientManager);
+              scheduledExecutor, queryContext, instances, internalServiceClientManager);
     }
   }
 
