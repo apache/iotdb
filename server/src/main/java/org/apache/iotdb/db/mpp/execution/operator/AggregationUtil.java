@@ -25,7 +25,6 @@ import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.SingleTimeWindowIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.statistics.StatisticsManager;
@@ -48,7 +47,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
 
@@ -187,12 +185,9 @@ public class AggregationUtil {
               .map(typeProvider::getType)
               .collect(Collectors.toList());
       for (TSDataType tsDataType : outPutDataTypes) {
-        checkArgument(
-            descriptor.getInputExpressions().get(0) instanceof TimeSeriesOperand,
-            "The input of aggregate function must be the original time series.");
-        PartialPath inputSeriesPath =
-            ((TimeSeriesOperand) descriptor.getInputExpressions().get(0)).getPath();
-        timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType, inputSeriesPath);
+        // TODO modify after statistics finish
+        PartialPath mockSeriesPath = new PartialPath();
+        timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType, mockSeriesPath);
       }
     }
 
