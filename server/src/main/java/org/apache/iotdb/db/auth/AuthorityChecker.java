@@ -315,6 +315,7 @@ public class AuthorityChecker {
       case FILL:
       case GROUP_BY_FILL:
       case SELECT_INTO:
+      case COUNT:
         return PrivilegeType.READ_TIMESERIES.ordinal();
       case INSERT:
       case LOAD_DATA:
