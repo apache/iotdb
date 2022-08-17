@@ -2514,7 +2514,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
       Expression left = ((BinaryExpression) predicate).getLeftExpression();
       Expression right = ((BinaryExpression) predicate).getRightExpression();
-      if (!(left instanceof TimeSeriesOperand)) {
+      if (!(left instanceof TimestampOperand)) {
         throw new SQLParserException("Not support for this sql in pipe.");
       }
       if (!SQLConstant.isReservedPath(((TimeSeriesOperand) left).getPath())) {
