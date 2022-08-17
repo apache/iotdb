@@ -175,6 +175,11 @@ Remove on Linux:
 ./confignode/sbin/remove-confignode.sh -r <internal_address>:<internal_port>
 ```
 
+Remove on Windows:
+```
+confignode\sbin\remove-confignode.bat -r <internal_address>:<internal_port>
+```
+
 ### Remove DataNode
 
 Execute the remove-datanode shell on an active DataNode.

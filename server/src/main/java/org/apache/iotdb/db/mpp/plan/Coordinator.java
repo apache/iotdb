@@ -120,7 +120,7 @@ public class Coordinator {
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (sql != null && sql.length() > 0) {
-        LOGGER.info("start executing sql: {}", sql);
+        LOGGER.debug("start executing sql: {}", sql);
       }
       MPPQueryContext queryContext =
           new MPPQueryContext(

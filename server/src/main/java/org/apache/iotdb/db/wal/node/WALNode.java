@@ -270,8 +270,8 @@ public class WALNode implements IWALNode {
           if (safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
             return;
           }
-          run();
           recursionTime++;
+          run();
         }
       }
     }

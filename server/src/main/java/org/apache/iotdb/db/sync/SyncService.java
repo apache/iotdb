@@ -47,20 +47,23 @@ import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.sender.service.TransportHandler;
-import org.apache.iotdb.db.sync.transport.server.SyncConnectionManager;
+import org.apache.iotdb.db.sync.transport.server.ReceiverManager;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
+import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -76,7 +79,12 @@ public class SyncService implements IService {
 
   private ISyncInfoFetcher syncInfoFetcher = LocalSyncInfoFetcher.getInstance();
 
-  private SyncService() {}
+  /* handle rpc in receiver-side*/
+  private ReceiverManager receiverManager;
+
+  private SyncService() {
+    receiverManager = new ReceiverManager();
+  }
 
   private static class SyncServiceHolder {
     private static final SyncService INSTANCE = new SyncService();
@@ -87,6 +95,34 @@ public class SyncService implements IService {
   public static SyncService getInstance() {
     return SyncServiceHolder.INSTANCE;
   }
+
+  // region Interfaces and Implementation of Transport Layer
+
+  public TSStatus handshake(TSyncIdentityInfo identityInfo) {
+    return receiverManager.handshake(identityInfo);
+  }
+
+  public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
+      throws TException {
+    return receiverManager.transportFile(metaInfo, buff);
+  }
+
+  public TSStatus transportPipeData(ByteBuffer buff) throws TException {
+    return receiverManager.transportPipeData(buff);
+  }
+
+  // TODO: this will be deleted later
+  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
+      throws TException {
+    return receiverManager.checkFileDigest(metaInfo, digest);
+  }
+
+  public void handleClientExit() {
+    // Handle client exit here.
+    receiverManager.handleClientExit();
+  }
+
+  // endregion
 
   // region Interfaces and Implementation of PipeSink
 
@@ -317,8 +353,7 @@ public class SyncService implements IService {
       }
     }
     // show pipe in receiver
-    List<TSyncIdentityInfo> identityInfoList =
-        SyncConnectionManager.getInstance().getAllTSyncIdentityInfos();
+    List<TSyncIdentityInfo> identityInfoList = receiverManager.getAllTSyncIdentityInfos();
     for (TSyncIdentityInfo identityInfo : identityInfoList) {
       // TODO(sync): Removing duplicate rows
       RowRecord record = new RowRecord(0);
