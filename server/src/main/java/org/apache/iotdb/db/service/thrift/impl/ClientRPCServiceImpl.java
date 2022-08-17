@@ -59,7 +59,7 @@ import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Operation;
-import org.apache.iotdb.db.sync.transport.server.TransportProcessor;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -146,8 +146,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private final ISchemaFetcher SCHEMA_FETCHER;
 
-  private final TransportProcessor transportService;
-
   public ClientRPCServiceImpl() {
     if (config.isClusterMode()) {
       PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
@@ -156,7 +154,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
       SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
     }
-    transportService = new TransportProcessor();
   }
 
   @Override
@@ -1472,19 +1469,19 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus handshake(TSyncIdentityInfo info) throws TException {
     // TODO(sync): Check permissions here
-    return transportService.handshake(info);
+    return SyncService.getInstance().handshake(info);
   }
 
   @Override
   public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
       throws TException {
-    return transportService.transportData(metaInfo, buff, digest);
+    return SyncService.getInstance().transportData(metaInfo, buff, digest);
   }
 
   @Override
   public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
       throws TException {
-    return transportService.checkFileDigest(metaInfo, digest);
+    return SyncService.getInstance().checkFileDigest(metaInfo, digest);
   }
 
   @Override
@@ -1575,7 +1572,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
       closeSession(req);
     }
-    transportService.handleClientExit();
+    SyncService.getInstance().handleClientExit();
   }
 
   private void cleanupQueryExecution(Long queryId) {

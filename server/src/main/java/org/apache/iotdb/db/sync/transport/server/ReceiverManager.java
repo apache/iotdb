@@ -53,21 +53,37 @@ import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
 
-public class TransportProcessor {
-  private static Logger logger = LoggerFactory.getLogger(TransportProcessor.class);
+public class ReceiverManager {
+  private static Logger logger = LoggerFactory.getLogger(ReceiverManager.class);
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String RECORD_SUFFIX = ".record";
   private static final String PATCH_SUFFIX = ".patch";
-  private final SyncConnectionManager connectionManager;
 
-  public TransportProcessor() {
-    connectionManager = SyncConnectionManager.getInstance();
+  // When the client abnormally exits, we can still know who to disconnect
+  private final ThreadLocal<Long> currentConnectionId;
+  // Record the remote message for every rpc connection
+  private final Map<Long, TSyncIdentityInfo> connectionIdToIdentityInfoMap;
+
+  // The sync connectionId is unique in one IoTDB instance.
+  private final AtomicLong connectionIdGenerator;
+
+  public ReceiverManager() {
+    currentConnectionId = new ThreadLocal<>();
+    connectionIdToIdentityInfoMap = new ConcurrentHashMap<>();
+    connectionIdGenerator = new AtomicLong();
   }
+
+  // region Interfaces and Implementation of Index Checker
 
   private class CheckResult {
     boolean result;
@@ -130,6 +146,10 @@ public class TransportProcessor {
     return new CheckResult(true, "0");
   }
 
+  // endregion
+
+  // region Interfaces and Implementation of RPC Handler
+
   public TSStatus handshake(TSyncIdentityInfo identityInfo) {
     logger.debug("Invoke handshake method from client ip = {}", identityInfo.address);
     // check ip address
@@ -150,7 +170,7 @@ public class TransportProcessor {
     if (!new File(SyncPathUtil.getFileDataDirPath(identityInfo)).exists()) {
       new File(SyncPathUtil.getFileDataDirPath(identityInfo)).mkdirs();
     }
-    connectionManager.createConnection(identityInfo);
+    createConnection(identityInfo);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
@@ -196,7 +216,7 @@ public class TransportProcessor {
 
   public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
       throws TException {
-    TSyncIdentityInfo identityInfo = connectionManager.getCurrentTSyncIdentityInfo();
+    TSyncIdentityInfo identityInfo = getCurrentTSyncIdentityInfo();
     if (identityInfo == null) {
       throw new TException("Thrift connection is not alive.");
     }
@@ -293,7 +313,7 @@ public class TransportProcessor {
 
   public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
       throws TException {
-    TSyncIdentityInfo identityInfo = connectionManager.getCurrentTSyncIdentityInfo();
+    TSyncIdentityInfo identityInfo = getCurrentTSyncIdentityInfo();
     if (identityInfo == null) {
       throw new TException("Thrift connection is not alive.");
     }
@@ -348,14 +368,6 @@ public class TransportProcessor {
   }
 
   /**
-   * release resources or cleanup when a client (a sender) is disconnected (normally or abnormally).
-   */
-  public void handleClientExit() {
-    // Handle client exit here.
-    connectionManager.exitConnection();
-  }
-
-  /**
    * handle when successfully receive tsFilePipeData. Rename .patch file and reset tsFilePipeData's
    * path.
    *
@@ -387,4 +399,50 @@ public class TransportProcessor {
           String.format("Delete record file %s error, because %s.", recordFile.getPath(), e));
     }
   }
+
+  // endregion
+
+  // region Interfaces and Implementation of Connection Manager
+
+  /** Check if the connection is legally established by handshaking */
+  private boolean checkConnection() {
+    return currentConnectionId.get() != null;
+  }
+
+  /**
+   * Get current TSyncIdentityInfo
+   *
+   * @return null if connection has been exited
+   */
+  private TSyncIdentityInfo getCurrentTSyncIdentityInfo() {
+    Long id = currentConnectionId.get();
+    if (id != null) {
+      return connectionIdToIdentityInfoMap.get(id);
+    } else {
+      return null;
+    }
+  }
+
+  private void createConnection(TSyncIdentityInfo identityInfo) {
+    long connectionId = connectionIdGenerator.incrementAndGet();
+    currentConnectionId.set(connectionId);
+    connectionIdToIdentityInfoMap.put(connectionId, identityInfo);
+  }
+
+  /**
+   * release resources or cleanup when a client (a sender) is disconnected (normally or abnormally).
+   */
+  public void handleClientExit() {
+    if (checkConnection()) {
+      long id = currentConnectionId.get();
+      connectionIdToIdentityInfoMap.remove(id);
+      currentConnectionId.remove();
+    }
+  }
+
+  public List<TSyncIdentityInfo> getAllTSyncIdentityInfos() {
+    return new ArrayList<>(connectionIdToIdentityInfoMap.values());
+  }
+
+  // endregion
 }

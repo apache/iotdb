@@ -52,9 +52,9 @@ import java.security.NoSuchAlgorithmException;
 import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
 import static org.apache.iotdb.db.sync.transport.conf.TransportConfig.isCheckFileDegistAgain;
 
-public class IoTDBSInkTransportClient implements ITransportClient {
+public class IoTDBSinkTransportClient implements ITransportClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBSInkTransportClient.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBSinkTransportClient.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -78,7 +78,7 @@ public class IoTDBSInkTransportClient implements ITransportClient {
    * @param port remote port
    * @param localIP local ip address
    */
-  public IoTDBSInkTransportClient(Pipe pipe, String ipAddress, int port, String localIP) {
+  public IoTDBSinkTransportClient(Pipe pipe, String ipAddress, int port, String localIP) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
     this.pipe = pipe;
     this.ipAddress = ipAddress;

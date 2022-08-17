@@ -31,7 +31,7 @@ import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.transport.client.IoTDBSInkTransportClient;
+import org.apache.iotdb.db.sync.transport.client.IoTDBSinkTransportClient;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -68,7 +68,7 @@ public class IoTDBSyncReceiverIT {
   String remoteIp1;
   long createdTime1 = System.currentTimeMillis();
   String showPipeSql = "SHOW PIPE";
-  IoTDBSInkTransportClient client;
+  IoTDBSinkTransportClient client;
 
   @Before
   public void setUp() throws Exception {
@@ -93,7 +93,7 @@ public class IoTDBSyncReceiverIT {
     EnvironmentUtils.envSetUp();
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
     remoteIp1 = "127.0.0.1";
-    client = new IoTDBSInkTransportClient(pipe, remoteIp1, 6667, "127.0.0.1");
+    client = new IoTDBSinkTransportClient(pipe, remoteIp1, 6667, "127.0.0.1");
     client.handshake();
   }
 

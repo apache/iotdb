@@ -74,7 +74,7 @@ import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Operation;
-import org.apache.iotdb.db.sync.transport.server.TransportProcessor;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -308,12 +308,9 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   protected final ServiceProvider serviceProvider;
 
-  private final TransportProcessor transportService;
-
   public TSServiceImpl() {
     super();
     serviceProvider = IoTDB.serviceProvider;
-    transportService = new TransportProcessor();
   }
 
   @Override
@@ -1125,7 +1122,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
       closeSession(req);
     }
-    transportService.handleClientExit();
+    SyncService.getInstance().handleClientExit();
   }
 
   @Override
@@ -2112,19 +2109,19 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(TSyncIdentityInfo info) throws TException {
-    return transportService.handshake(info);
+    return SyncService.getInstance().handshake(info);
   }
 
   @Override
   public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
       throws TException {
-    return transportService.transportData(metaInfo, buff, digest);
+    return SyncService.getInstance().transportData(metaInfo, buff, digest);
   }
 
   @Override
   public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
       throws TException {
-    return transportService.checkFileDigest(metaInfo, digest);
+    return SyncService.getInstance().checkFileDigest(metaInfo, digest);
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
