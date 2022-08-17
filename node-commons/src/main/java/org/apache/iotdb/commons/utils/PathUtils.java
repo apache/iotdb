@@ -65,7 +65,7 @@ public class PathUtils {
       return;
     }
     for (List<String> measurements : measurementLists) {
-      isLegalMeasurements(measurements);
+      isLegalSingleMeasurements(measurements);
     }
   }
 

@@ -19,6 +19,7 @@
  */
 package org.apache.iotdb.db.sync.transport.client;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -29,9 +30,9 @@ import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.service.transport.thrift.MetaInfo;
-import org.apache.iotdb.service.transport.thrift.TransportStatus;
-import org.apache.iotdb.service.transport.thrift.Type;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
+import org.apache.iotdb.service.rpc.thrift.TSyncTransportType;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -49,14 +50,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
-import static org.apache.iotdb.commons.sync.SyncConstant.REBASE_CODE;
-import static org.apache.iotdb.commons.sync.SyncConstant.RETRY_CODE;
-import static org.apache.iotdb.commons.sync.SyncConstant.SUCCESS_CODE;
 import static org.apache.iotdb.db.sync.transport.conf.TransportConfig.isCheckFileDegistAgain;
 
-public class IoTDBSInkTransportClient implements ITransportClient {
+public class IoTDBSinkTransportClient implements ITransportClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBSInkTransportClient.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBSinkTransportClient.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -80,7 +78,7 @@ public class IoTDBSInkTransportClient implements ITransportClient {
    * @param port remote port
    * @param localIP local ip address
    */
-  public IoTDBSInkTransportClient(Pipe pipe, String ipAddress, int port, String localIP) {
+  public IoTDBSinkTransportClient(Pipe pipe, String ipAddress, int port, String localIP) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
     this.pipe = pipe;
     this.ipAddress = ipAddress;
@@ -258,9 +256,10 @@ public class IoTDBSInkTransportClient implements ITransportClient {
           messageDigest.reset();
           messageDigest.update(buffer, 0, dataLength);
           ByteBuffer buffToSend = ByteBuffer.wrap(buffer, 0, dataLength);
-          MetaInfo metaInfo = new MetaInfo(Type.FILE, file.getName(), position);
+          TSyncTransportMetaInfo metaInfo =
+              new TSyncTransportMetaInfo(TSyncTransportType.FILE, file.getName(), position);
 
-          TransportStatus status = null;
+          TSStatus status = null;
           int retryCount = 0;
           while (true) {
             retryCount++;
@@ -283,21 +282,21 @@ public class IoTDBSInkTransportClient implements ITransportClient {
             break;
           }
 
-          if (status.code == REBASE_CODE) {
-            position = Long.parseLong(status.msg);
+          if (status.code == TSStatusCode.SYNC_FILE_REBASE.getStatusCode()) {
+            position = Long.parseLong(status.message);
             continue outer;
-          } else if (status.code == RETRY_CODE) {
+          } else if (status.code == TSStatusCode.SYNC_FILE_RETRY.getStatusCode()) {
             logger.info(
                 "Receiver failed to receive data from {} because {}, retry.",
                 file.getAbsoluteFile(),
-                status.msg);
+                status.message);
             continue outer;
-          } else if (status.code != SUCCESS_CODE) {
+          } else if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             logger.info(
                 "Receiver failed to receive data from {} because {}, abort.",
                 file.getAbsoluteFile(),
-                status.msg);
-            throw new SyncConnectionException(status.msg);
+                status.message);
+            throw new SyncConnectionException(status.message);
           } else { // Success
             position += dataLength;
             if (position >= limit) {
@@ -339,8 +338,10 @@ public class IoTDBSInkTransportClient implements ITransportClient {
       }
     }
 
-    MetaInfo metaInfo = new MetaInfo(Type.FILE, file.getName(), 0);
-    TransportStatus status;
+    TSyncTransportMetaInfo metaInfo =
+        new TSyncTransportMetaInfo(TSyncTransportType.FILE, file.getName(), 0);
+
+    TSStatus status;
     int retryCount = 0;
 
     while (true) {
@@ -364,7 +365,7 @@ public class IoTDBSInkTransportClient implements ITransportClient {
       break;
     }
 
-    if (status.code != SUCCESS_CODE) {
+    if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       logger.error("Digest check of tsfile {} failed, retry", file.getAbsoluteFile());
       return false;
     }
@@ -392,14 +393,15 @@ public class IoTDBSInkTransportClient implements ITransportClient {
         messageDigest.update(buffer);
         ByteBuffer buffToSend = ByteBuffer.wrap(buffer);
 
-        MetaInfo metaInfo =
-            new MetaInfo(Type.findByValue(pipeData.getType().ordinal()), "fileName", 0);
-        TransportStatus status =
+        TSyncTransportMetaInfo metaInfo =
+            new TSyncTransportMetaInfo(
+                TSyncTransportType.findByValue(pipeData.getType().ordinal()), "fileName", 0);
+        TSStatus status =
             serviceClient
                 .getClient()
                 .transportData(metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
 
-        if (status.code == SUCCESS_CODE) {
+        if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           break;
         } else {
           logger.error("Digest check of pipeData failed, retry");

@@ -111,6 +111,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -2371,6 +2372,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       clearCacheStatement.setCluster(true);
     }
     return clearCacheStatement;
+  }
+
+  // Load Configuration
+
+  @Override
+  public Statement visitLoadConfiguration(IoTDBSqlParser.LoadConfigurationContext ctx) {
+    LoadConfigurationStatement loadConfigurationStatement =
+        new LoadConfigurationStatement(StatementType.LOAD_CONFIGURATION);
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException(
+          "LOAD CONFIGURATION ON CLUSTER is not supported in standalone mode");
+    }
+    if (ctx.LOCAL() != null) {
+      loadConfigurationStatement.setCluster(false);
+    } else {
+      loadConfigurationStatement.setCluster(true);
+    }
+    return loadConfigurationStatement;
   }
 
   // show region

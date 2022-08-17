@@ -54,20 +54,6 @@ public class SyncLogWriter {
     }
   }
 
-  public void startPipeServer() throws IOException {
-    getBufferedWriter();
-    pipeInfoWriter.write(Operator.OperatorType.START_PIPE_SERVER.name());
-    pipeInfoWriter.newLine();
-    pipeInfoWriter.flush();
-  }
-
-  public void stopPipeServer() throws IOException {
-    getBufferedWriter();
-    pipeInfoWriter.write(Operator.OperatorType.STOP_PIPE_SERVER.name());
-    pipeInfoWriter.newLine();
-    pipeInfoWriter.flush();
-  }
-
   public synchronized void addPipeSink(CreatePipeSinkPlan plan) throws IOException {
     getBufferedWriter();
     pipeInfoWriter.write(Operator.OperatorType.CREATE_PIPESINK.name());

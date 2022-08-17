@@ -23,9 +23,11 @@ public class UDFTestConstant {
   public static final String ACCESS_STRATEGY_ROW_BY_ROW = "row-by-row";
   public static final String ACCESS_STRATEGY_SLIDING_SIZE = "size";
   public static final String ACCESS_STRATEGY_SLIDING_TIME = "time";
+  public static final String ACCESS_STRATEGY_SESSION = "session";
   public static final String WINDOW_SIZE_KEY = "windowSize";
   public static final String TIME_INTERVAL_KEY = "timeInterval";
   public static final String SLIDING_STEP_KEY = "slidingStep";
+  public static final String SESSION_GAP_KEY = "sessionGap";
   public static final String DISPLAY_WINDOW_BEGIN_KEY = "displayWindowBegin";
   public static final String DISPLAY_WINDOW_END_KEY = "displayWindowEnd";
 }

@@ -23,18 +23,15 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.sync.common.ISyncInfoFetcher;
@@ -50,26 +47,25 @@ import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.sender.service.TransportHandler;
-import org.apache.iotdb.db.sync.transport.server.TransportServerManager;
+import org.apache.iotdb.db.sync.transport.server.ReceiverManager;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
+import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESERVER_STATUS;
 
 public class SyncService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(SyncService.class);
@@ -83,7 +79,12 @@ public class SyncService implements IService {
 
   private ISyncInfoFetcher syncInfoFetcher = LocalSyncInfoFetcher.getInstance();
 
-  private SyncService() {}
+  /* handle rpc in receiver-side*/
+  private ReceiverManager receiverManager;
+
+  private SyncService() {
+    receiverManager = new ReceiverManager();
+  }
 
   private static class SyncServiceHolder {
     private static final SyncService INSTANCE = new SyncService();
@@ -94,6 +95,30 @@ public class SyncService implements IService {
   public static SyncService getInstance() {
     return SyncServiceHolder.INSTANCE;
   }
+
+  // region Interfaces and Implementation of Transport Layer
+
+  public TSStatus handshake(TSyncIdentityInfo identityInfo) {
+    return receiverManager.handshake(identityInfo);
+  }
+
+  public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
+      throws TException {
+    return receiverManager.transportData(metaInfo, buff, digest);
+  }
+
+  // TODO: this will be deleted later
+  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
+      throws TException {
+    return receiverManager.checkFileDigest(metaInfo, digest);
+  }
+
+  public void handleClientExit() {
+    // Handle client exit here.
+    receiverManager.handleClientExit();
+  }
+
+  // endregion
 
   // region Interfaces and Implementation of PipeSink
 
@@ -117,60 +142,6 @@ public class SyncService implements IService {
 
   public List<PipeSink> getAllPipeSink() {
     return syncInfoFetcher.getAllPipeSinks();
-  }
-
-  // endregion
-
-  // region Interfaces and Implementation of PipeServer
-
-  /**
-   * start receiver service
-   *
-   * @param isRecovery if isRecovery, it will ignore check and force a start
-   */
-  public synchronized void startPipeServer(boolean isRecovery) throws PipeServerException {
-    if (syncInfoFetcher.isPipeServerEnable() && !isRecovery) {
-      return;
-    }
-    try {
-      TransportServerManager.getInstance().startService();
-      TSStatus status = syncInfoFetcher.startPipeServer();
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new PipeServerException("Failed to start pipe server because " + status.getMessage());
-      }
-    } catch (StartupException e) {
-      throw new PipeServerException("Failed to start pipe server because " + e.getMessage());
-    }
-  }
-
-  /** stop receiver service */
-  public synchronized void stopPipeServer() throws PipeServerException {
-    if (!syncInfoFetcher.isPipeServerEnable()) {
-      return;
-    }
-    TransportServerManager.getInstance().stopService();
-    TSStatus status = syncInfoFetcher.stopPipeServer();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeServerException("Failed to stop pipe server because " + status.getMessage());
-    }
-  }
-
-  /**
-   * query by sql SHOW PIPESERVER STATUS
-   *
-   * @return QueryDataSet contained one column: enable
-   */
-  public QueryDataSet showPipeServer(ShowPipeServerPlan plan) {
-    ListDataSet dataSet =
-        new ListDataSet(
-            Collections.singletonList(new PartialPath(COLUMN_PIPESERVER_STATUS, false)),
-            Collections.singletonList(TSDataType.BOOLEAN));
-    RowRecord rowRecord = new RowRecord(0);
-    Field status = new Field(TSDataType.BOOLEAN);
-    status.setBoolV(syncInfoFetcher.isPipeServerEnable());
-    rowRecord.addField(status);
-    dataSet.putRecord(rowRecord);
-    return dataSet;
   }
 
   // endregion
@@ -334,6 +305,7 @@ public class SyncService implements IService {
 
   public void showPipe(ShowPipePlan plan, ListDataSet listDataSet) {
     boolean showAll = "".equals(plan.getPipeName());
+    // show pipe in sender
     for (PipeInfo pipe : SyncService.getInstance().getAllPipeInfos()) {
       if (showAll || plan.getPipeName().equals(pipe.getPipeName())) {
         RowRecord record = new RowRecord(0);
@@ -376,7 +348,23 @@ public class SyncService implements IService {
         listDataSet.putRecord(record);
       }
     }
-    // TODO: implement show pipe in receiver
+    // show pipe in receiver
+    List<TSyncIdentityInfo> identityInfoList = receiverManager.getAllTSyncIdentityInfos();
+    for (TSyncIdentityInfo identityInfo : identityInfoList) {
+      // TODO(sync): Removing duplicate rows
+      RowRecord record = new RowRecord(0);
+      record.addField(
+          Binary.valueOf(DatetimeUtils.convertLongToDate(identityInfo.getCreateTime())),
+          TSDataType.TEXT);
+      record.addField(Binary.valueOf(identityInfo.getPipeName()), TSDataType.TEXT);
+      record.addField(Binary.valueOf(IoTDBConstant.SYNC_RECEIVER_ROLE), TSDataType.TEXT);
+      record.addField(Binary.valueOf(identityInfo.getAddress()), TSDataType.TEXT);
+      record.addField(Binary.valueOf(Pipe.PipeStatus.RUNNING.name()), TSDataType.TEXT);
+      record.addField(Binary.valueOf(""), TSDataType.TEXT);
+      record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+      record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+      listDataSet.putRecord(record);
+    }
   }
 
   // endregion
@@ -432,15 +420,6 @@ public class SyncService implements IService {
   /** IService * */
   @Override
   public void start() throws StartupException {
-    // recover receiver
-    if (syncInfoFetcher.isPipeServerEnable()) {
-      try {
-        startPipeServer(true);
-      } catch (PipeServerException e) {
-        throw new StartupException(e.getMessage());
-      }
-    }
-    // recover sender
     // == Check whether loading extPipe plugin successfully.
     ExtPipePluginRegister extPipePluginRegister = ExtPipePluginRegister.getInstance();
     if (extPipePluginRegister == null) {
