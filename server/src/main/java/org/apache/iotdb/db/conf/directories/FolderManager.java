@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.conf.directories;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.conf.directories.strategy.MaxDiskUsableSpaceFirstStrategy;
@@ -56,10 +58,22 @@ public class FolderManager {
       default:
         throw new RuntimeException();
     }
-    this.selectStrategy.setFolders(folders);
+    try {
+      this.selectStrategy.setFolders(folders);
+    } catch (DiskSpaceInsufficientException e) {
+      logger.error("All disks of wal folders are full, change system mode to read-only.", e);
+      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
+      throw e;
+    }
   }
 
   public String getNextFolder() throws DiskSpaceInsufficientException {
-    return folders.get(selectStrategy.nextFolderIndex());
+    try {
+      return folders.get(selectStrategy.nextFolderIndex());
+    } catch (DiskSpaceInsufficientException e) {
+      logger.error("All disks of wal folders are full, change system mode to read-only.", e);
+      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
+      throw e;
+    }
   }
 }

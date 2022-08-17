@@ -70,7 +70,7 @@ public class IoTDBCheckConfigIT {
     console = System.out;
     System.setOut(new PrintStream(bytes));
 
-    systemProperties.put("partition_interval", "604800");
+    systemProperties.put("partition_interval", "86400");
     systemProperties.put("timestamp_precision", "ms");
     systemProperties.put("tsfile_storage_fs", "LOCAL");
     systemProperties.put("enable_partition", "true");

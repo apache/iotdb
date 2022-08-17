@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -40,7 +41,6 @@ import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -127,7 +127,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
                 .toString()
                 .toLowerCase(Locale.ROOT),
             tsStatus);
-        future.setException(new StatementExecutionException(tsStatus));
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
@@ -161,7 +161,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
                 .toString()
                 .toLowerCase(Locale.ROOT),
             authorizerResp.getStatus());
-        future.setException(new StatementExecutionException(authorizerResp.getStatus()));
+        future.setException(
+            new IoTDBException(
+                authorizerResp.getStatus().message, authorizerResp.getStatus().code));
       } else {
         AuthorizerManager.getInstance().buildTSBlock(authorizerResp.getAuthorizerInfo(), future);
       }
@@ -170,7 +172,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       authorizerResp.setStatus(
           RpcUtils.getStatus(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Failed to connect to config node."));
-      future.setException(new StatementExecutionException(authorizerResp.getStatus()));
+      future.setException(
+          new IoTDBException(authorizerResp.getStatus().message, authorizerResp.getStatus().code));
     } catch (AuthException e) {
       future.setException(e);
     }
