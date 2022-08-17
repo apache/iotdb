@@ -1216,6 +1216,16 @@ public class IoTDBDescriptor {
                     "max_tsblock_size_in_bytes",
                     Integer.toString(
                         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes()))));
+
+    // min(default_size, maxBytesForQuery)
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setMaxTsBlockSizeInBytes(
+            (int)
+                Math.min(
+                    TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+                    IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerQuery()));
+
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxTsBlockLineNumber(

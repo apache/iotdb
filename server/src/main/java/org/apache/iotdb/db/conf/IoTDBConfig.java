@@ -1355,6 +1355,10 @@ public class IoTDBConfig {
     this.concurrentSubRawQueryThread = concurrentSubRawQueryThread;
   }
 
+  public long getMaxBytesPerQuery() {
+    return allocateMemoryForDataExchange / concurrentQueryThread;
+  }
+
   public int getRawQueryBlockingQueueCapacity() {
     return rawQueryBlockingQueueCapacity;
   }
