@@ -60,8 +60,6 @@ public class TransportProcessor {
   private static Logger logger = LoggerFactory.getLogger(TransportProcessor.class);
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final String RECORD_SUFFIX = ".record";
-  private static final String PATCH_SUFFIX = ".patch";
   private final SyncConnectionManager connectionManager;
 
   public TransportProcessor() {
@@ -87,7 +85,7 @@ public class TransportProcessor {
   }
 
   private CheckResult checkStartIndexValid(File file, long startIndex) throws IOException {
-    File recordFile = new File(file.getAbsolutePath() + RECORD_SUFFIX);
+    File recordFile = new File(file.getAbsolutePath() + SyncConstant.RECORD_SUFFIX);
 
     if (!recordFile.exists() && startIndex != 0) {
       logger.error(
@@ -264,7 +262,7 @@ public class TransportProcessor {
     //    TSyncTransportType type = metaInfo.type;
     String fileName = metaInfo.fileName;
     long startIndex = metaInfo.startIndex;
-    File file = new File(fileDir, fileName + PATCH_SUFFIX);
+    File file = new File(fileDir, fileName + SyncConstant.PATCH_SUFFIX);
 
     // step2. check startIndex
     try {
@@ -284,7 +282,8 @@ public class TransportProcessor {
       byte[] byteArray = new byte[length];
       buff.get(byteArray);
       randomAccessFile.write(byteArray);
-      writeRecordFile(new File(fileDir, fileName + RECORD_SUFFIX), startIndex + length);
+      writeRecordFile(
+          new File(fileDir, fileName + SyncConstant.RECORD_SUFFIX), startIndex + length);
       logger.debug(
           "Sync "
               + fileName
@@ -337,7 +336,7 @@ public class TransportProcessor {
       }
 
       try (InputStream inputStream =
-          new FileInputStream(new File(fileDir, fileName + PATCH_SUFFIX))) {
+          new FileInputStream(new File(fileDir, fileName + SyncConstant.PATCH_SUFFIX))) {
         byte[] block = new byte[DATA_CHUNK_SIZE];
         int length;
         while ((length = inputStream.read(block)) > 0) {
@@ -354,7 +353,7 @@ public class TransportProcessor {
               fileName,
               localDigest,
               digest);
-          new File(fileDir, fileName + RECORD_SUFFIX).delete();
+          new File(fileDir, fileName + SyncConstant.RECORD_SUFFIX).delete();
           return RpcUtils.getStatus(TSStatusCode.PIPESERVER_ERROR, "File digest check error.");
         }
       } catch (IOException e) {
@@ -393,7 +392,9 @@ public class TransportProcessor {
     String tsFileName = tsFilePipeData.getTsFileName();
     File dir = new File(fileDir);
     File[] targetFiles =
-        dir.listFiles((dir1, name) -> name.startsWith(tsFileName) && name.endsWith(PATCH_SUFFIX));
+        dir.listFiles(
+            (dir1, name) ->
+                name.startsWith(tsFileName) && name.endsWith(SyncConstant.PATCH_SUFFIX));
     if (targetFiles != null) {
       for (File targetFile : targetFiles) {
         File newFile =
@@ -401,12 +402,13 @@ public class TransportProcessor {
                 dir,
                 targetFile
                     .getName()
-                    .substring(0, targetFile.getName().length() - PATCH_SUFFIX.length()));
+                    .substring(
+                        0, targetFile.getName().length() - SyncConstant.PATCH_SUFFIX.length()));
         targetFile.renameTo(newFile);
       }
     }
     tsFilePipeData.setParentDirPath(dir.getAbsolutePath());
-    File recordFile = new File(fileDir, tsFileName + RECORD_SUFFIX);
+    File recordFile = new File(fileDir, tsFileName + SyncConstant.RECORD_SUFFIX);
     try {
       Files.deleteIfExists(recordFile.toPath());
     } catch (IOException e) {

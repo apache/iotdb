@@ -130,7 +130,9 @@ public class SyncTransportTest {
   }
 
   @Test
-  public void testTransportPipeData() throws Exception {
+  public void testTransportFile() throws Exception {
+    TSyncIdentityInfo identityInfo =
+        new TSyncIdentityInfo("127.0.0.1", pipeName1, createdTime1, config.getIoTDBVersion());
     try (TTransport transport =
         RpcTransportFactory.INSTANCE.getTransport(
             new TSocket(
@@ -151,30 +153,80 @@ public class SyncTransportTest {
         transport.open();
       }
       byte[] buffer = new byte[10];
-      //      try {
-      //        TSStatus tsStatus = serviceClient.transportPipeData(buffToSend);
-      //        Assert.fail();
-      //      } catch (TException e) {
-      //        // do nothing
-      //      }
-      serviceClient.handshake(
-          new TSyncIdentityInfo("127.0.0.1", pipeName1, createdTime1, config.getIoTDBVersion()));
-      // response REBASE:0
       try (RandomAccessFile randomAccessFile = new RandomAccessFile(tsfile, "rw")) {
-        randomAccessFile.read(buffer, 0, 10);
-        System.out.println(randomAccessFile.length());
-      }
-      TSStatus tsStatus1 =
+        // no handshake, response TException
+        try {
           serviceClient.transportFile(
-              new TSyncTransportMetaInfo(tsfile.getName(), 1),
+              new TSyncTransportMetaInfo(tsfile.getName(), 0),
               ByteBuffer.wrap(buffer),
               ByteBuffer.wrap(buffer));
-      Assert.assertEquals(tsStatus1.getCode(), TSStatusCode.SYNC_FILE_REBASE.getStatusCode());
+          Assert.fail();
+        } catch (TException e) {
+          // do nothing
+        }
+        serviceClient.handshake(identityInfo);
+        // response REBASE:0
+        randomAccessFile.read(buffer, 0, 10);
+        TSStatus tsStatus1 =
+            serviceClient.transportFile(
+                new TSyncTransportMetaInfo(tsfile.getName(), 1),
+                ByteBuffer.wrap(buffer),
+                ByteBuffer.wrap(buffer));
+        Assert.assertEquals(tsStatus1.getCode(), TSStatusCode.SYNC_FILE_REBASE.getStatusCode());
+        Assert.assertEquals(tsStatus1.getMessage(), "0");
+        // response SUCCESS
+        TSStatus tsStatus2 =
+            serviceClient.transportFile(
+                new TSyncTransportMetaInfo(tsfile.getName(), 0),
+                ByteBuffer.wrap(buffer),
+                ByteBuffer.wrap(buffer));
+        Assert.assertEquals(tsStatus2.getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        // response response REBASE:10
+        TSStatus tsStatus3 =
+            serviceClient.transportFile(
+                new TSyncTransportMetaInfo(tsfile.getName(), 0),
+                ByteBuffer.wrap(buffer),
+                ByteBuffer.wrap(buffer));
+        Assert.assertEquals(tsStatus3.getCode(), TSStatusCode.SYNC_FILE_REBASE.getStatusCode());
+        Assert.assertEquals(tsStatus3.getMessage(), "10");
+        TSStatus tsStatus4 =
+            serviceClient.transportFile(
+                new TSyncTransportMetaInfo(tsfile.getName(), 100),
+                ByteBuffer.wrap(buffer),
+                ByteBuffer.wrap(buffer));
+        Assert.assertEquals(tsStatus4.getCode(), TSStatusCode.SYNC_FILE_REBASE.getStatusCode());
+        Assert.assertEquals(tsStatus4.getMessage(), "10");
+        // response SUCCESS
+        byte[] remainBuffer = new byte[(int) (randomAccessFile.length() - 10)];
+        randomAccessFile.read(remainBuffer, 0, (int) (randomAccessFile.length() - 10));
+        TSStatus tsStatus5 =
+            serviceClient.transportFile(
+                new TSyncTransportMetaInfo(tsfile.getName(), 10),
+                ByteBuffer.wrap(remainBuffer),
+                ByteBuffer.wrap(remainBuffer));
+        Assert.assertEquals(tsStatus5.getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
+    }
+    // check completeness of file
+    File receiveFile =
+        new File(
+            SyncPathUtil.getFileDataDirPath(identityInfo),
+            tsfile.getName() + SyncConstant.PATCH_SUFFIX);
+    Assert.assertTrue(receiveFile.exists());
+
+    try (RandomAccessFile originFileRAF = new RandomAccessFile(tsfile, "r");
+        RandomAccessFile receiveFileRAF = new RandomAccessFile(receiveFile, "r")) {
+      Assert.assertEquals(originFileRAF.length(), receiveFileRAF.length());
+      byte[] buffer1 = new byte[(int) originFileRAF.length()];
+      byte[] buffer2 = new byte[(int) receiveFile.length()];
+      originFileRAF.read(buffer1);
+      receiveFileRAF.read(buffer2);
+      Assert.assertArrayEquals(buffer1, buffer2);
     }
   }
 
   @Test
-  public void testTransportFile() throws Exception {
+  public void testTransportPipeData() throws Exception {
     try (TTransport transport =
         RpcTransportFactory.INSTANCE.getTransport(
             new TSocket(
@@ -212,7 +264,7 @@ public class SyncTransportTest {
   }
 
   @Test
-  public void test() throws Exception {
+  public void testTransportClient() throws Exception {
     // 1. prepare fake file
     Assert.assertNotNull(tsfile);
     Assert.assertNotNull(modsFile);
