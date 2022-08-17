@@ -117,7 +117,7 @@ public class MultiLeaderServerImpl {
   public TSStatus write(IConsensusRequest request) {
     stateMachineLock.lock();
     try {
-      if (needToThrottleDown()) {
+      if (needBlockWrite()) {
         logger.info(
             "[Throttle Down] index:{}, safeIndex:{}",
             getIndex(),
@@ -252,11 +252,11 @@ public class MultiLeaderServerImpl {
     return config;
   }
 
-  public boolean needToThrottleDown() {
+  public boolean needBlockWrite() {
     return reader.getTotalSize() > config.getReplication().getWalThrottleThreshold();
   }
 
-  public boolean needToThrottleUp() {
+  public boolean unblockWrite() {
     return reader.getTotalSize() < config.getReplication().getWalThrottleThreshold();
   }
 
