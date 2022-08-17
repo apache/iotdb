@@ -55,6 +55,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -339,6 +340,8 @@ public class PartitionManager {
         CreateRegionGroupsPlan createRegionGroupsPlan =
             getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
         result = getProcedureManager().createRegionGroups(createRegionGroupsPlan);
+      } else {
+        result = RpcUtils.SUCCESS_STATUS;
       }
     } catch (NotEnoughDataNodeException e) {
       LOGGER.error("ConfigNode failed to extend Region because there are not enough DataNodes");
