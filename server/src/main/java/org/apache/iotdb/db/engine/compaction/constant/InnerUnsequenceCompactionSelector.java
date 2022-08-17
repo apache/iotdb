@@ -34,15 +34,15 @@ public enum InnerUnsequenceCompactionSelector {
   }
 
   public IInnerUnseqSpaceSelector createInstance(
-      String logicalStorageGroupName,
-      String virtualStorageGroupName,
+      String storageGroupName,
+      String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager) {
     switch (this) {
       case SIZE_TIERED:
       default:
         return new SizeTieredCompactionSelector(
-            logicalStorageGroupName, virtualStorageGroupName, timePartition, false, tsFileManager);
+            storageGroupName, dataRegionId, timePartition, false, tsFileManager);
     }
   }
 }
