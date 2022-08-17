@@ -75,6 +75,11 @@ public class SimpleQueryTerminator implements IQueryTerminator {
 
   @Override
   public Future<Boolean> terminate() {
+    // For the failure dispatch, the termination should not be triggered because of connection issue
+    this.relatedHost =
+        this.relatedHost.stream()
+            .filter(endPoint -> !queryContext.getEndPointBlackList().contains(endPoint))
+            .collect(Collectors.toList());
     return scheduledExecutor.schedule(
         this::syncTerminate, TERMINATION_GRACE_PERIOD_IN_MS, TimeUnit.MILLISECONDS);
   }
@@ -98,7 +103,6 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   private List<TEndPoint> getRelatedHost(List<FragmentInstance> fragmentInstances) {
     return fragmentInstances.stream()
         .map(instance -> instance.getHostDataNode().internalEndPoint)
-        .filter(endPoint -> !queryContext.getEndPointBlackList().contains(endPoint))
         .distinct()
         .collect(Collectors.toList());
   }
