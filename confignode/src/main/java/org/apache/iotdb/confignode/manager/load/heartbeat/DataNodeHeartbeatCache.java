@@ -20,44 +20,14 @@ package org.apache.iotdb.confignode.manager.load.heartbeat;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 
-import java.util.LinkedList;
+/** DataNodeHeartbeatCache caches and maintains all the heartbeat data */
+public class DataNodeHeartbeatCache extends BaseNodeCache {
 
-/**
- * DataNodeHeartbeatCache caches and maintains all the heartbeat data
- *
- * <p>TODO: This class might be split into DataNodeCache and ConfigNodeCache
- */
-public class DataNodeHeartbeatCache implements INodeCache {
-
-  // when the response time of heartbeat is more than 20s,
-  // the datanode is considered as down
-  private static final int HEARTBEAT_TIMEOUT_TIME = 20_000;
-
-  // Cache heartbeat samples
-  private static final int MAXIMUM_WINDOW_SIZE = 100;
-  private final LinkedList<NodeHeartbeatSample> slidingWindow;
-
-  // For guiding queries, the higher the score the higher the load
+  /** For guiding queries, the higher the score the higher the load */
   private volatile long loadScore;
-  // For showing cluster
-  private volatile NodeStatus status;
-
-  // Represent that if this datanode is in removing;
-  private volatile boolean removing;
 
   public DataNodeHeartbeatCache() {
-    this.slidingWindow = new LinkedList<>();
-
     this.loadScore = 0;
-    this.status = NodeStatus.Unknown;
-  }
-
-  public void setRemoving(boolean removing) {
-    this.removing = removing;
-  }
-
-  public boolean isRemoving() {
-    return this.removing;
   }
 
   @Override

@@ -533,7 +533,9 @@ public class PartitionManager {
           (consensusGroupId, regionGroupCache) -> {
             if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
               int leaderDataNodeId = regionGroupCache.getLeaderDataNodeId();
-              if (!configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
+              if (configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
+                result.put(consensusGroupId, -1);
+              } else {
                 result.put(consensusGroupId, leaderDataNodeId);
               }
             }
@@ -550,7 +552,9 @@ public class PartitionManager {
       regionGroupCacheMap.forEach(
           (consensusGroupId, regionGroupCache) -> {
             int leaderDataNodeId = regionGroupCache.getLeaderDataNodeId();
-            if (!configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
+            if (configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
+              result.put(consensusGroupId, -1);
+            } else {
               result.put(consensusGroupId, leaderDataNodeId);
             }
           });
