@@ -142,7 +142,7 @@ public class SyncDataNodeClientPool {
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info("Delete RegionReplica: {} on DataNode: {} successfully", regionId, endPoint);
       } else {
-        LOGGER.info(
+        LOGGER.warn(
             "Failed to delete RegionReplica: {} on DataNode: {}. You might need to delete it manually",
             regionId,
             endPoint);

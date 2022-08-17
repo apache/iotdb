@@ -22,13 +22,15 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
+import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
 
 import java.util.Map;
 
-public class CreateRegionGroupsProcedure extends AbstractNodeProcedure<CreateRegionGroupsState> {
+public class CreateRegionGroupsProcedure
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, CreateRegionGroupsState> {
 
   private final CreateRegionGroupsPlan createRegionGroupsPlan;
   // Map<TConsensusGroupId, Failed RegionReplicas>
