@@ -2121,9 +2121,9 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
+  public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
       throws TException {
-    return transportService.transportFile(metaInfo, buff, digest);
+    return transportService.transportFile(metaInfo, buff);
   }
 
   @Override

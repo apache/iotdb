@@ -420,14 +420,6 @@ struct TSyncIdentityInfo{
   4:required string version
 }
 
-// TODO:delete it
-enum TSyncTransportType {
-  TSFILE,
-  DELETION,
-  PHYSICALPLAN,
-  FILE
-}
-
 struct TSyncTransportMetaInfo{
   // The name of the file in sending.
   1:required string fileName
@@ -530,7 +522,7 @@ service IClientRPCService {
 
   common.TSStatus transportPipeData(1:binary buff);
 
-  common.TSStatus transportFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff, 3:binary digest);
+  common.TSStatus transportFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
 
   common.TSStatus checkFileDigest(1:TSyncTransportMetaInfo metaInfo, 2:binary digest);
 }

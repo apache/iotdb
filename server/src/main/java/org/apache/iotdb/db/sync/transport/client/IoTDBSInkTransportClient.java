@@ -266,10 +266,7 @@ public class IoTDBSInkTransportClient implements ITransportClient {
                       file.getAbsoluteFile(), config.getMaxNumberOfSyncFileRetry()));
             }
             try {
-              status =
-                  serviceClient
-                      .getClient()
-                      .transportFile(metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
+              status = serviceClient.getClient().transportFile(metaInfo, buffToSend);
             } catch (TException e) {
               // retry
               logger.error("TException happened! ", e);
@@ -389,10 +386,7 @@ public class IoTDBSInkTransportClient implements ITransportClient {
         ByteBuffer buffToSend = ByteBuffer.wrap(buffer);
 
         TSyncTransportMetaInfo metaInfo = new TSyncTransportMetaInfo("fileName", 0);
-        TSStatus status =
-            serviceClient
-                .getClient()
-                .transportFile(metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
+        TSStatus status = serviceClient.getClient().transportFile(metaInfo, buffToSend);
 
         if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           break;

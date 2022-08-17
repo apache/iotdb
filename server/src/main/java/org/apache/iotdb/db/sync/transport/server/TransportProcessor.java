@@ -242,14 +242,7 @@ public class TransportProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
-  /**
-   * @param metaInfo
-   * @param buff
-   * @param digest
-   * @return
-   * @throws TException
-   */
-  public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
+  public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
       throws TException {
     // step1. check connection
     TSyncIdentityInfo identityInfo = connectionManager.getCurrentTSyncIdentityInfo();
