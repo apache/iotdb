@@ -518,7 +518,8 @@ public class PartitionManager {
   }
 
   /**
-   * Get the leadership of each RegionGroup
+   * Get the leadership of each RegionGroup If a node is in unknown or removing status, this node
+   * can't be leader
    *
    * @return Map<RegionGroupId, leader location>
    */
@@ -531,7 +532,10 @@ public class PartitionManager {
       regionGroupCacheMap.forEach(
           (consensusGroupId, regionGroupCache) -> {
             if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
-              result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId());
+              int leaderDataNodeId = regionGroupCache.getLeaderDataNodeId();
+              if (!configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
+                result.put(consensusGroupId, leaderDataNodeId);
+              }
             }
           });
       getLoadManager()
@@ -544,8 +548,12 @@ public class PartitionManager {
                       regionReplicaSet.getDataNodeLocations().get(0).getDataNodeId()));
     } else {
       regionGroupCacheMap.forEach(
-          (consensusGroupId, regionGroupCache) ->
-              result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId()));
+          (consensusGroupId, regionGroupCache) -> {
+            int leaderDataNodeId = regionGroupCache.getLeaderDataNodeId();
+            if (!configManager.getNodeManager().isNodeRemoving(leaderDataNodeId)) {
+              result.put(consensusGroupId, leaderDataNodeId);
+            }
+          });
     }
     return result;
   }

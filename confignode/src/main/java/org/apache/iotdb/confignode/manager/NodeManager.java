@@ -571,6 +571,23 @@ public class NodeManager {
     return result;
   }
 
+  public boolean isNodeRemoving(int dataNodeId) {
+    DataNodeHeartbeatCache cache =
+        (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeId);
+    if (cache != null) {
+      return cache.isRemoving();
+    }
+    return false;
+  }
+
+  public void setNodeRemoving(int dataNodeId) {
+    DataNodeHeartbeatCache cache =
+        (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeId);
+    if (cache != null) {
+      cache.setRemoving(true);
+    }
+  }
+
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {
     return nodeInfo.getRegisteredConfigNodes();
   }

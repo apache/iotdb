@@ -42,6 +42,9 @@ public class DataNodeHeartbeatCache implements INodeCache {
   // For showing cluster
   private volatile NodeStatus status;
 
+  // Represent that if this datanode is in removing;
+  private volatile boolean removing;
+
   public DataNodeHeartbeatCache() {
     this.slidingWindow = new LinkedList<>();
 
@@ -49,8 +52,12 @@ public class DataNodeHeartbeatCache implements INodeCache {
     this.status = NodeStatus.Unknown;
   }
 
-  public void setNodeStatus(NodeStatus status) {
-    this.status = status;
+  public void setRemoving(boolean removing) {
+    this.removing = removing;
+  }
+
+  public boolean isRemoving() {
+    return this.removing;
   }
 
   @Override
@@ -105,6 +112,10 @@ public class DataNodeHeartbeatCache implements INodeCache {
 
   @Override
   public long getLoadScore() {
+    if (isRemoving()) {
+      return Long.MAX_VALUE;
+    }
+
     // Return a copy of loadScore
     switch (status) {
       case Running:
@@ -118,6 +129,10 @@ public class DataNodeHeartbeatCache implements INodeCache {
 
   @Override
   public NodeStatus getNodeStatus() {
+    if (isRemoving()) {
+      return NodeStatus.Removing;
+    }
+
     // Return a copy of status
     switch (status) {
       case Running:
