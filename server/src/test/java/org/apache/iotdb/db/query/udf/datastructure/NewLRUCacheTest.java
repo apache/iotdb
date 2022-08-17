@@ -24,24 +24,26 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class LRUCacheTest {
+public class NewLRUCacheTest {
 
   private static final int CACHE_SIZE = 3;
   private static final int DATA_SIZE = CACHE_SIZE << 3;
 
-  private LRUCache cache;
+  private NewLRUCache cache;
 
   private int PERFORMANCE_CACHE_SIZE = 60;
-  private LRUCache performance_cache;
+  private NewLRUCache performance_cache;
   private int LOOP_COUNT = 50;
   private int PER_LOOP_NUM = 10000000;
   private Random r = new Random();
 
   @Before
   public void setUp() {
-    cache = new LRUCache(CACHE_SIZE);
-    performance_cache = new LRUCache(PERFORMANCE_CACHE_SIZE);
+    cache = new NewLRUCache(CACHE_SIZE);
+    performance_cache = new NewLRUCache(PERFORMANCE_CACHE_SIZE);
   }
 
   @Test
@@ -152,7 +154,7 @@ public class LRUCacheTest {
     double[] rate = new double[] {0.07, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
     for(int i=0;i<rate.length;i++) {
       double sum = loopsForRandom((int) (PERFORMANCE_CACHE_SIZE / rate[i]));
-      System.out.println("LRUCache " + rate[i] + " " + (sum / LOOP_COUNT));
+      System.out.println("Random NewLRUCache " + rate[i] + " " + (sum / LOOP_COUNT));
     }
   }
 
@@ -176,12 +178,13 @@ public class LRUCacheTest {
     return sum;
   }
 
+
   @Test
   public void testScanPerformance() {
     double[] rate = new double[] {0.07, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
     for(int i=0;i<rate.length;i++) {
       double sum = loopsForScan((int) (PERFORMANCE_CACHE_SIZE / rate[i]));
-      System.out.println("Scan LRUCache " + rate[i] + " " + (sum / LOOP_COUNT));
+      System.out.println("Scan NewLRUCache " + rate[i] + " " + (sum / LOOP_COUNT));
     }
   }
 }

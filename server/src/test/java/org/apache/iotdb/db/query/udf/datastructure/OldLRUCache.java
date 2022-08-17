@@ -20,15 +20,16 @@
 package org.apache.iotdb.db.query.udf.datastructure;
 
 import org.apache.iotdb.db.mpp.transformation.datastructure.Cache;
+import org.apache.iotdb.db.mpp.transformation.datastructure.OldCache;
 
 import java.util.Arrays;
 
-public class LRUCache extends Cache {
+public class OldLRUCache extends OldCache {
 
   private final int[] inMemory;
   private final int[] outMemory;
 
-  public LRUCache(int capacity) {
+  public OldLRUCache(int capacity) {
     super(capacity);
     inMemory = new int[capacity << 4];
     outMemory = new int[capacity << 4];
