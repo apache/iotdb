@@ -1,3 +1,24 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+
 # 1. TsFile 管理工具简介
    TsFile-Viewer 是一个针对 TsFile 的管理工具。当前，支持解析 TsFileV3 版本，bit 粒度解析 TsFile 文件结构并提供数据区与索引区清晰且层次分明的可视化界面。
 # 2. 主要功能点
@@ -17,29 +38,29 @@ Note: 因为使用 JavaFX 开发 UI 界面，而 JavaFX 在大于 JDK1.8 的版�
 # 4. 使用说明
 ## 4.1. 加载文件
 * 点击左上角菜单栏的的 File 按钮，选择想要打开的文件夹。（因为 JavaFX 打开文件夹方法底层调用的是 windows API，不会显示文件夹中的具体文件）。
-<img src="https://github.com/GuanchuShen/Images/blob/main/img.png?raw=true">
+<img src="https://raw.githubusercontent.com/GuanchuShen/Images/main/img.png">
 * 选择具体的某一 TsFile 右键 "open tsfile", 在弹窗中确认加载后加载此 TsFile 的数据。（下图为：非对齐时间序列数据区结构）
-<img src="https://github.com/GuanchuShen/Images/blob/main/img_1.png?raw=true">
+<img src="https://raw.githubusercontent.com/GuanchuShen/Images/main/img_1.png">
 * 对齐时间序列数据区结构（根据对齐时间序列的逻辑结构进行展示）
-<img src="https://github.com/GuanchuShen/Images/blob/main/img_2.png?raw=true">
+<img src="https://raw.githubusercontent.com/GuanchuShen/Images/main/img_2.png">
 ## 4.2. 查看数据区各个层级对应信息
 * 在数据区的文件、Chunk、Page 层级右键会呼出相应的 Menu，点击 details 会展示相应层级的相关信息。（下图为：当前 TsFile 的详细信息）
-<img src="https://github.com/GuanchuShen/Images/blob/main/img_3.png?raw=true">
+<img src="https://raw.githubusercontent.com/GuanchuShen/Images/main/img_3.png">
 * 非对齐时间序列 Page 详细数据。（如下图非对齐时间序列的包含多页的 Chunk，展示当前 Page 的统计信息、具体的数据点集合）
-<img src="https://github.com/GuanchuShen/Images/blob/main/img_4.png?raw=true">
+<img src="https://raw.githubusercontent.com/GuanchuShen/Images/main/img_4.png">
 * 对齐时间序列 Page 详细数据。（将共享同一时间戳的各个物理量的数据集中起来进行展示）
-<img src="https://github.com/GuanchuShen/Images/blob/main/img_5.png?raw=true">
+<img src="https://raw.githubusercontent.com/GuanchuShen/Images/main/img_5.png">
 ## 4.3. 查看索引区
 以类似 B+ 树的数据结构展示，可以查看二级索引的整体结构（分为四层：INTERNAL_DEVICE、LEAF_DEVICE、INTERNAL_MEASUREMENT、LEAF_MEASUREMENT）。
 * 点击某一层级的某个节点会联动到已加载的数据区的相应层级上。
-<img src="https://github.com/GuanchuShen/Images/blob/main/img_6.png?raw=true">
+<img src="https://raw.githubusercontent.com/GuanchuShen/Images/main/img_6.png">
 * 右键索引区某一节点并点击 "details"，会展示其相关信息。
-<img src="https://github.com/GuanchuShen/Images/blob/main/img_7.png?raw=true">
+<img src="https://raw.githubusercontent.com/GuanchuShen/Images/main/img_7.png">
 ## 4.4. 搜索功能
 * 时间序列搜索功能。（绑定了如：CTRL + F, ESC, ENTER 等快捷键）
-<img src="https://github.com/GuanchuShen/Images/blob/main/img_8.png?raw=true">
+<img src="https://raw.githubusercontent.com/GuanchuShen/Images/main/img_8.png">
 * 物理量数据搜索功能。
-<img src="https://github.com/GuanchuShen/Images/blob/main/img_9.png?raw=true">
+<img src="https://raw.githubusercontent.com/GuanchuShen/Images/main/img_9.png">
 ## 4.5. 编码类型与压缩类型分析
 * 提供该时间序列当前编码类型与压缩类型、以及当前时间序列的数据类型所支持的各个编码类型与 IoTDB 支持的各个压缩类型的组合的编码类型与压缩类型的分析结果。
-<img src="https://github.com/GuanchuShen/Images/blob/main/img_10.png?raw=true">
+<img src="https://raw.githubusercontent.com/GuanchuShen/Images/main/img_10.png">
