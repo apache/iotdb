@@ -331,10 +331,12 @@ public class ImportCsv extends AbstractCsvTool {
 
     Set<String> devices = deviceAndMeasurementNames.keySet();
     String devicesStr = StringUtils.join(devices, ",");
-    try {
-      queryType(devicesStr, headerTypeMap, "Time");
-    } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
+    if (headerTypeMap.isEmpty()) {
+      try {
+        queryType(devicesStr, headerTypeMap, "Time");
+      } catch (IoTDBConnectionException e) {
+        e.printStackTrace();
+      }
     }
 
     List<String> deviceIds = new ArrayList<>();
@@ -501,7 +503,9 @@ public class ImportCsv extends AbstractCsvTool {
                 // query the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
                   try {
-                    hasResult = queryType(deviceName.get(), headerTypeMap, "Device");
+                    if (headerTypeMap.isEmpty()) {
+                      hasResult = queryType(deviceName.get(), headerTypeMap, "Device");
+                    }
                     typeQueriedDevice.add(deviceName.get());
                   } catch (IoTDBConnectionException e) {
                     e.printStackTrace();
@@ -830,7 +834,7 @@ public class ImportCsv extends AbstractCsvTool {
           if (value.startsWith("\"") && value.endsWith("\"")) {
             return value.substring(1, value.length() - 1);
           }
-          return null;
+          return value;
         case BOOLEAN:
           if (!"true".equals(value) && !"false".equals(value)) {
             return null;
