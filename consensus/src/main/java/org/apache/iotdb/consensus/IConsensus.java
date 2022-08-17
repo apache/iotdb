@@ -50,7 +50,8 @@ public interface IConsensus {
    * group. This node will prepare and initialize local statemachine {@link IStateMachine} and other
    * data structures. After this method returns, we can call {@link #addPeer(ConsensusGroupId,
    * Peer)} to notify original group that this new Peer is prepared to be added into the latest
-   * configuration.
+   * configuration. createPeer should be called on a node that does not contain any peer of the
+   * consensus group, to avoid one node having more than one replica.
    *
    * @param groupId the consensus group this Peer belongs
    * @param peers other known peers in this group
@@ -61,7 +62,7 @@ public interface IConsensus {
    * When the <em>local node</em> is no longer a member of the given consensus group, call this
    * method to do cleanup works. This method will close local statemachine {@link IStateMachine},
    * delete local data and do other cleanup works. Be sure this method is called after successfully
-   * removing local peer from current consensus group configuration (by calling {@link
+   * removing this peer from current consensus group configuration (by calling {@link
    * #removePeer(ConsensusGroupId, Peer)} or {@link #changePeer(ConsensusGroupId, List)}).
    *
    * @param groupId the consensus group this Peer used to belong
@@ -75,6 +76,8 @@ public interface IConsensus {
    * #createPeer(ConsensusGroupId, List)} on the new Peer before calling this method. When this
    * method returns, the group data should be already transmitted to the new Peer. That is, the new
    * peer is available to answer client requests by the time this method successfully returns.
+   * addPeer should be called on a living peer of the consensus group. For example: We'd like to add
+   * a peer D to (A, B, C) group. We need to execute addPeer in A, B or C.
    *
    * @param groupId the consensus group this peer belongs
    * @param peer the newly added peer
@@ -84,7 +87,9 @@ public interface IConsensus {
   /**
    * Tell the group to remove an active Peer. The removed peer can no longer answer group requests
    * when this method successfully returns. Call {@link #deletePeer(ConsensusGroupId)} on the
-   * removed Peer to do cleanup jobs after this method successfully returns.
+   * removed Peer to do cleanup jobs after this method successfully returns. removePeer should be
+   * called on a living peer of its consensus group. For example: a group has A, B, C. We'd like to
+   * remove C, in case C is dead, the removePeer should be sent to A or B.
    *
    * @param groupId the consensus group this peer belongs
    * @param peer the peer to be removed
