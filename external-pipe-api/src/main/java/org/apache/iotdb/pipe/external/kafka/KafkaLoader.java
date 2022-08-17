@@ -50,6 +50,8 @@ public class KafkaLoader {
       props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
       props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
       props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, this.kafkaParams.get("offset"));
+      props.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, 100 * 1024 * 1024);
+      props.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, 100 * 1024 * 1024);
 
       props.put(ConsumerConfig.GROUP_ID_CONFIG, topic);
 

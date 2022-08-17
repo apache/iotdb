@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.external.kafka;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -74,7 +75,7 @@ public class ConsumerThreadSync implements Runnable {
     List<String> delTimeDeviceIds = new ArrayList<>(size);
 
     for (String data : datas) {
-      String[] suffix = data.split(":");
+      String[] suffix = StringUtils.split(data, ":");
       if (suffix[0].equals("delete")) {
         if (single_partition) {
           if (!deleteMap.containsKey(suffix[1])
@@ -89,14 +90,14 @@ public class ConsumerThreadSync implements Runnable {
         }
         continue;
       }
-      String[] dataArray = data.split(",");
+      String[] dataArray = StringUtils.split(data, ",");
       boolean is_string_insert = false;
       String device = dataArray[0];
       long time = Long.parseLong(dataArray[1]);
       List<String> measurements = Arrays.asList(dataArray[2].split(":"));
       List<TSDataType> types = new ArrayList<>();
 
-      for (String type : dataArray[3].split(":")) {
+      for (String type : StringUtils.split(dataArray[3], ":")) {
         try {
           types.add(TSDataType.valueOf(type));
         } catch (IllegalArgumentException e) {
@@ -114,7 +115,7 @@ public class ConsumerThreadSync implements Runnable {
       }
 
       List<Object> values = new ArrayList<>();
-      String[] valuesStr = dataArray[4].split(":");
+      String[] valuesStr = StringUtils.split(dataArray[4], ":");
       for (int i = 0; i < valuesStr.length; i++) {
         switch (types.get(i)) {
           case INT64:
@@ -219,7 +220,7 @@ public class ConsumerThreadSync implements Runnable {
   public void run() {
     try {
       do {
-        ConsumerRecords<String, String> records = this.consumer.poll(Duration.ofSeconds(1));
+        ConsumerRecords<String, String> records = this.consumer.poll(Duration.ofSeconds(10));
         List<String> datas = new ArrayList<>(records.count());
         for (ConsumerRecord<String, String> record : records) {
           datas.add(record.value());

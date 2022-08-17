@@ -48,8 +48,7 @@ public class TypeInferenceUtilsTest {
       " 7112324 "
     };
     boolean[] results = {
-      true, true, true, true, true, true, true, false, true, false, false, false, true,
-      true
+      true, true, true, true, true, true, true, false, true, false, false, false, true, true
     };
 
     for (int i = 0; i < values.length; i++) {
@@ -113,9 +112,23 @@ public class TypeInferenceUtilsTest {
   @Test
   public void testIsNumber() {
     String[] values = {
-      " 123 ", "123", ".123", "123.", "123.123", "123f", "123x", "123d", "ddd", TsFileConstant.PATH_SEPARATOR, "+.123", "-.123", "123.123.123"
+      " 123 ",
+      "123",
+      ".123",
+      "123.",
+      "123.123",
+      "123f",
+      "123x",
+      "123d",
+      "ddd",
+      TsFileConstant.PATH_SEPARATOR,
+      "+.123",
+      "-.123",
+      "123.123.123"
     };
-    Boolean[] is_value = {true, true, true, true, true, false, false, false, false, false, true, true, false};
+    Boolean[] is_value = {
+      true, true, true, true, true, false, false, false, false, false, true, true, false
+    };
 
     for (int i = 0; i < values.length; i++) {
       assertEquals(is_value[i], TypeInferenceUtils.isNumber(values[i]));

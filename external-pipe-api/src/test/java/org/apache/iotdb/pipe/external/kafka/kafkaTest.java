@@ -3,10 +3,16 @@ package org.apache.iotdb.pipe.external.kafka;
 import org.apache.iotdb.pipe.external.api.DataType;
 import org.apache.iotdb.session.pool.SessionPool;
 
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 public class kafkaTest {
 
@@ -142,6 +148,36 @@ public class kafkaTest {
     } catch (Exception e) {
       System.out.println(e.getMessage() + "\nbrokers/localhost:8000, topic/IoTDB, offset/none");
     }
+  }
+
+  private void send_random_point(int message_num, int point_num) throws IOException {
+
+    KafkaProducer<String, String> producer;
+    Properties props = new Properties();
+    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+    props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+    try {
+      producer = new KafkaProducer<>(props);
+    } catch (Exception e) {
+      throw new IOException("Connection Failed!");
+    }
+
+    String prefix = "root.test";
+
+    for (int i = 0; i < message_num; ++i) {
+      String[] devices = new String[point_num];
+      String[] values = new String[point_num];
+      String path = prefix + ".r_0" + ".d_" + i/1000000;
+      for (int j = 0; j < point_num; ++j) {
+        devices[j] = "s_" + j;
+        values[j] = String.valueOf(j);
+      }
+      String data = path + ',' + i + ',' + String.join(":", devices) + ',' + String.join(":", values);
+      producer.send(new ProducerRecord<>("IoTDB", data));
+    }
+
+    producer.close();
   }
 
   private void send_to_kafka_no_type() {
@@ -320,7 +356,7 @@ public class kafkaTest {
     System.out.println(kl);
 
     kl.run();
-    System.out.println("run:");
+    /*System.out.println("run:");
     System.out.println("status:" + kl.getStatus());
     try {
       Thread.sleep(3000);
@@ -344,23 +380,35 @@ public class kafkaTest {
       Thread.sleep(3000);
     } catch (InterruptedException ignore) {
     }
-    System.out.println(kl);
+    System.out.println(kl);*/
 
-    // while (true) {}
-    kl.close();
+    while (true) {
+      try {
+        Thread.sleep(10000);
+        System.out.println("\n");
+        System.out.println(kl);
+        System.out.println("\n");
+      } catch (InterruptedException ignore) {
+      }
+    }
+    /* kl.close();
     System.out.println("close:");
     System.out.println("status:" + kl.getStatus());
     try {
       Thread.sleep(1000);
     } catch (InterruptedException ignore) {
     }
-    System.out.println(kl);
+    System.out.println(kl);*/
   }
 
   @Test
   public void full_Test() {
     // send_to_kafka_no_type();
     // send_to_kafka_with_type();
+    try {
+      send_random_point(1000000, 200);
+    } catch (IOException ignore) {
+    }
     load_from_kafka();
   }
 }
