@@ -51,8 +51,8 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
-        run: ./mvnw -B apache-rat:check -P site -P code-coverage
+        run: mvn -B apache-rat:check -P site -P code-coverage
       - name: IT/UT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
-        run: ./mvnw -B clean verify -Dtest.port.closed=true -P '!testcontainer'
+        run: mvn -B clean verify -Dtest.port.closed=true -P '!testcontainer'

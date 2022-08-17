@@ -51,4 +51,4 @@ jobs:
 
       - name: Test Sync
         run: |
-          ./mvnw -B -T 4 integration-test -pl testcontainer -P test-sync
+          mvn -B -T 4 integration-test -pl testcontainer -P test-sync

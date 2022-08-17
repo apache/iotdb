@@ -57,7 +57,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
 
       - name: Build Distribution Zip
-        run: ./mvnw clean install -pl distribution -am -DskipTests
+        run: mvn clean install -pl distribution -am -DskipTests
 
       - name: Build Docker Image
         run: |
@@ -67,4 +67,4 @@ jobs:
       - name: IT Test
         shell: bash
         run: |
-          cd influxdb-protocol && ../mvnw -B clean compile post-integration-test -Dtest.port.closed=true -Dinfluxdb.test.skip=false
+          cd influxdb-protocol && mvn -B clean compile post-integration-test -Dtest.port.closed=true -Dinfluxdb.test.skip=false

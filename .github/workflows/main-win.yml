@@ -59,7 +59,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
-        run: ./mvnw -B apache-rat:check
+        run: mvn -B apache-rat:check
       - name: Download Hadoop Tools if Needed
         # Using Powershell ...
         # github action put codes to d:\a
@@ -102,9 +102,9 @@ jobs:
       - name: Test Server Module with Maven
         shell: bash
         if: ${{ matrix.it_task == 'server'}}
-        run: source ~/.bash_profile && ./mvnw -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
+        run: source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
       - name: Test Other Modules with Maven
         shell: bash
         if: ${{ matrix.it_task == 'others'}}
-        run: source ~/.bash_profile && ./mvnw -B clean verify -Dtest.port.closed=true -Diotdb.test.skip=true
+        run: source ~/.bash_profile && mvn -B clean verify -Dtest.port.closed=true -Diotdb.test.skip=true
 
