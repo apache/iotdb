@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-import org.apache.iotdb.db.mpp.transformation.datastructure.Cache;
 import org.apache.iotdb.db.mpp.transformation.datastructure.OldCache;
 
 import java.util.Arrays;
