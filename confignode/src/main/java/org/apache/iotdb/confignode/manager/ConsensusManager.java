@@ -125,7 +125,7 @@ public class ConsensusManager {
     for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
       peerList.add(new Peer(consensusGroupId, configNodeLocation.getConsensusEndPoint()));
     }
-    consensusImpl.addConsensusGroup(consensusGroupId, peerList);
+    consensusImpl.createPeer(consensusGroupId, peerList);
   }
 
   /**
