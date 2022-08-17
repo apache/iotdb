@@ -40,6 +40,4 @@ public class TransportConfig {
     }
     return dir;
   }
-
-  public static boolean isCheckFileDegistAgain = false;
 }

@@ -523,6 +523,4 @@ service IClientRPCService {
   common.TSStatus transportPipeData(1:binary buff);
 
   common.TSStatus transportFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
-
-  common.TSStatus checkFileDigest(1:TSyncTransportMetaInfo metaInfo, 2:binary digest);
 }

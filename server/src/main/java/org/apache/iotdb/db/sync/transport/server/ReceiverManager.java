@@ -45,21 +45,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
 
 /**
  * This class is responsible for implementing the RPC processing on the receiver-side. It should
@@ -317,54 +311,6 @@ public class ReceiverManager {
     }
 
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
-  }
-
-  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
-      throws TException {
-    TSyncIdentityInfo identityInfo = getCurrentTSyncIdentityInfo();
-    if (identityInfo == null) {
-      throw new TException("Thrift connection is not alive.");
-    }
-    logger.debug("Invoke checkFileDigest method from client ip = {}", identityInfo.address);
-    String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
-    synchronized (fileDir.intern()) {
-      String fileName = metaInfo.fileName;
-      MessageDigest messageDigest = null;
-      try {
-        messageDigest = MessageDigest.getInstance("SHA-256");
-      } catch (NoSuchAlgorithmException e) {
-        logger.error(e.getMessage());
-        return RpcUtils.getStatus(TSStatusCode.PIPESERVER_ERROR, e.getMessage());
-      }
-
-      try (InputStream inputStream =
-          new FileInputStream(new File(fileDir, fileName + SyncConstant.PATCH_SUFFIX))) {
-        byte[] block = new byte[DATA_CHUNK_SIZE];
-        int length;
-        while ((length = inputStream.read(block)) > 0) {
-          messageDigest.update(block, 0, length);
-        }
-
-        String localDigest = (new BigInteger(1, messageDigest.digest())).toString(16);
-        byte[] digestBytes = new byte[digest.capacity()];
-        digest.get(digestBytes);
-        if (!Arrays.equals(messageDigest.digest(), digestBytes)) {
-          logger.error(
-              "The file {} digest check error. "
-                  + "The local digest is {} (should be equal to {}).",
-              fileName,
-              localDigest,
-              digest);
-          new File(fileDir, fileName + SyncConstant.RECORD_SUFFIX).delete();
-          return RpcUtils.getStatus(TSStatusCode.PIPESERVER_ERROR, "File digest check error.");
-        }
-      } catch (IOException e) {
-        logger.error(e.getMessage());
-        return RpcUtils.getStatus(TSStatusCode.PIPESERVER_ERROR, e.getMessage());
-      }
-
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
-    }
   }
 
   private void writeRecordFile(File recordFile, long position) throws IOException {

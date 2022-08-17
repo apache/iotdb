@@ -111,12 +111,6 @@ public class SyncService implements IService {
     return receiverManager.transportPipeData(buff);
   }
 
-  // TODO: this will be deleted later
-  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
-      throws TException {
-    return receiverManager.checkFileDigest(metaInfo, digest);
-  }
-
   public void handleClientExit() {
     // Handle client exit here.
     receiverManager.handleClientExit();

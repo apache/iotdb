@@ -2123,12 +2123,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
     return SyncService.getInstance().transportFile(metaInfo, buff);
   }
 
-  @Override
-  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
-      throws TException {
-    return SyncService.getInstance().checkFileDigest(metaInfo, digest);
-  }
-
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     try {
       return serviceProvider.executeNonQuery(plan)
