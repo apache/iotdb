@@ -136,15 +136,15 @@ public class SnapshotTaker {
       throws IOException {
     for (TsFileResource resource : resources) {
       File tsFile = resource.getTsFile();
-      File dir = getSnapshotDirDirForResource(tsFile, snapshotId);
+      File snapshotTsFile = getSnapshotFilePathForResource(tsFile, snapshotId);
       // create hard link for tsfile, resource, mods, compaction mods
-      createHardLink(new File(dir, tsFile.getName()), tsFile);
+      createHardLink(snapshotTsFile, tsFile);
       createHardLink(
-          new File(dir, tsFile.getName() + TsFileResource.RESOURCE_SUFFIX),
+          new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
           new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       if (resource.getModFile().exists()) {
         createHardLink(
-            new File(dir, tsFile.getName() + ModificationFile.FILE_SUFFIX),
+            new File(snapshotTsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX),
             new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
       }
     }
@@ -156,12 +156,25 @@ public class SnapshotTaker {
     snapshotLogger.logFile(source.getAbsolutePath(), target.getAbsolutePath());
   }
 
-  private File getSnapshotDirDirForResource(File tsFile, String snapshotId) throws IOException {
+  /**
+   * Construct the snapshot file path for a given tsfile, and will create the dir. Eg, given a
+   * tsfile in /data/iotdb/data/sequence/root.testsg/1/0/1-1-0-0.tsfile, with snapshotId "sm123",
+   * the snapshot location will be /data/iotdb/data/snapshot/sm123/root.testsg/1/0/1-1-0-0.tsfile
+   *
+   * @param tsFile tsfile to be taken a snapshot
+   * @param snapshotId the id for current snapshot
+   * @return the File object of the snapshot file, and its parent directory will be created
+   * @throws IOException
+   */
+  public File getSnapshotFilePathForResource(File tsFile, String snapshotId) throws IOException {
     // ... data (un)sequence sgName dataRegionId timePartition tsFileName
     String[] splittedPath =
         tsFile.getAbsolutePath().split(File.separator.equals("\\") ? "\\\\" : File.separator);
+    // snapshot dir will be like
+    // ... data snapshot snapshotId (un)sequence sgName dataRegionId timePartition
     StringBuilder stringBuilder = new StringBuilder();
     int i = 0;
+    // build the prefix part of data dir
     for (; i < splittedPath.length - 5; ++i) {
       stringBuilder.append(splittedPath[i]);
       stringBuilder.append(File.separator);
@@ -170,6 +183,10 @@ public class SnapshotTaker {
     stringBuilder.append(File.separator);
     stringBuilder.append(snapshotId);
     stringBuilder.append(File.separator);
+    // the content in here will be
+    // ... data snapshot snapshotId
+
+    // build the rest part for the dir
     for (; i < splittedPath.length - 1; ++i) {
       stringBuilder.append(splittedPath[i]);
       stringBuilder.append(File.separator);
@@ -178,6 +195,6 @@ public class SnapshotTaker {
     if (!dir.exists() && !dir.mkdirs()) {
       throw new IOException("Cannot create directory " + dir.getAbsolutePath());
     }
-    return dir;
+    return new File(dir, tsFile.getName());
   }
 }
