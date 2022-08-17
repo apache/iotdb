@@ -642,6 +642,9 @@ public abstract class AbstractMemTable implements IMemTable {
       return;
     }
     totalPointsNum -= memChunkGroup.delete(originalPath, devicePath, startTimestamp, endTimestamp);
+    if (memChunkGroup.getMemChunkMap().isEmpty()) {
+      memTableMap.remove(getDeviceID(devicePath));
+    }
   }
 
   @Override

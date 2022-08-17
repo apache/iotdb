@@ -250,4 +250,8 @@ public class MultiLeaderServerImpl {
   public AtomicLong getIndexObject() {
     return index;
   }
+
+  public boolean isReadOnly() {
+    return stateMachine.isReadOnly();
+  }
 }

@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
@@ -600,7 +601,9 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateSetSystemMode(SetSystemModePlan plan) {
-    IoTDBDescriptor.getInstance().getConfig().setReadOnly(plan.isReadOnly());
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSystemStatus(plan.isReadOnly() ? SystemStatus.READ_ONLY : SystemStatus.NORMAL);
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
