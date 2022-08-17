@@ -1586,9 +1586,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 TimeJoinOperator.class.getSimpleName());
 
-    SortItem item = node.getMergeOrderParameter().getSortItemList().get(0);
+    List<SortItem> items = node.getMergeOrderParameter().getSortItemList();
     Comparator<Binary> comparator =
-        item.getOrdering() == Ordering.ASC ? ASC_BINARY_COMPARATOR : DESC_BINARY_COMPARATOR;
+        (items.isEmpty() || items.get(0).getOrdering() == Ordering.ASC)
+            ? ASC_BINARY_COMPARATOR
+            : DESC_BINARY_COMPARATOR;
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new LastQueryMergeOperator(operatorContext, children, comparator);
