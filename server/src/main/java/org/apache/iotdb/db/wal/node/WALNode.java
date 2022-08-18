@@ -682,12 +682,22 @@ public class WALNode implements IWALNode {
 
     @Override
     public void waitForNextReady() throws InterruptedException {
+      boolean needEmptyWALFile = true;
       while (!hasNext()) {
         boolean timeout =
             !buffer.waitForFlush(WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
         if (timeout) {
-          logger.info("timeout when waiting for next WAL entry ready, execute rollWALFile");
-          rollWALFile();
+          if (buffer.getCurrentWALFileSize() > 0) {
+            // current file is not empty, roll current file to find entries in it
+            logger.info("timeout when waiting for next WAL entry ready, execute rollWALFile");
+            rollWALFile();
+            needEmptyWALFile = true;
+          } else if (needEmptyWALFile) {
+            // roll file after a non-empty file to find last file's last entry
+            logger.info("timeout when waiting for next WAL entry ready, execute rollWALFile");
+            rollWALFile();
+            needEmptyWALFile = false;
+          }
         }
       }
     }
