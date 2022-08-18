@@ -72,6 +72,8 @@ public class RegionBalancer {
     List<TDataNodeConfiguration> onlineDataNodes =
         getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running);
     List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllReplicaSets();
+    allocatedRegions.removeIf(
+        allocateRegion -> allocateRegion.getRegionId().getType() != consensusGroupType);
 
     for (Map.Entry<String, Integer> entry : allotmentMap.entrySet()) {
       String storageGroup = entry.getKey();
