@@ -155,7 +155,7 @@ public class FileMetrics implements IMetricSet {
                                     .size();
                           } catch (UncheckedIOException exception) {
                             // do nothing
-                            logger.debug("Failed when count wal file: ", exception);
+                            logger.debug("Failed when count wal folder {}: ", walNodeFolder.getName(), exception);
                           }
                         }
                       }
@@ -179,7 +179,7 @@ public class FileMetrics implements IMetricSet {
                           .size();
                     } catch (UncheckedIOException exception) {
                       // do nothing
-                      logger.debug("Failed when count sequence tsfile: ", exception);
+                      logger.debug("Failed when count sequence tsfile: ",  exception);
                     }
                   }
                   return 0L;
