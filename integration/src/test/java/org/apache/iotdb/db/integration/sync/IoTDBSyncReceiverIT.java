@@ -21,19 +21,17 @@ package org.apache.iotdb.db.integration.sync;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.transport.client.IoTDBSInkTransportClient;
+import org.apache.iotdb.db.sync.transport.client.IoTDBSinkTransportClient;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -51,7 +49,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -71,7 +68,7 @@ public class IoTDBSyncReceiverIT {
   String remoteIp1;
   long createdTime1 = System.currentTimeMillis();
   String showPipeSql = "SHOW PIPE";
-  IoTDBSInkTransportClient client;
+  IoTDBSinkTransportClient client;
 
   @Before
   public void setUp() throws Exception {
@@ -94,15 +91,9 @@ public class IoTDBSyncReceiverIT {
     FileUtils.moveDirectory(srcDir, tmpDir);
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.envSetUp();
-    try {
-      SyncService.getInstance().startPipeServer(true);
-      new Socket("localhost", 6670).close();
-    } catch (Exception e) {
-      Assert.fail("Failed to start pipe server because " + e.getMessage());
-    }
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
     remoteIp1 = "127.0.0.1";
-    client = new IoTDBSInkTransportClient(pipe, remoteIp1, 6670, "127.0.0.1");
+    client = new IoTDBSinkTransportClient(pipe, remoteIp1, 6667, "127.0.0.1");
     client.handshake();
   }
 
@@ -118,16 +109,6 @@ public class IoTDBSyncReceiverIT {
     FileUtils.deleteDirectory(tmpDir);
     client.close();
     EnvironmentUtils.cleanEnv();
-  }
-
-  @Test
-  public void testStopPipeServer() {
-    logger.info("testStopPipeServerCheck");
-    try {
-      SyncService.getInstance().stopPipeServer();
-    } catch (PipeServerException e) {
-      Assert.fail("Can not stop pipe server");
-    }
   }
 
   @Test

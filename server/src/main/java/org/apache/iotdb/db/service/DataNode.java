@@ -129,6 +129,7 @@ public class DataNode implements DataNodeMBean {
       active();
       // setup rpc service
       setUpRPCService();
+      logger.info("IoTDB configuration: " + config.getConfigMessage());
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
     } catch (StartupException e) {
       logger.error("Fail to start server", e);
@@ -138,7 +139,7 @@ public class DataNode implements DataNodeMBean {
 
   /** initialize the current node and its services */
   public boolean initLocalEngines() {
-    IoTDB.setClusterMode();
+    config.setClusterMode(true);
     return true;
   }
 

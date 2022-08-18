@@ -46,34 +46,6 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
     syncInfo = new SyncInfo();
   }
 
-  // region Interfaces of PipeServer
-  @Override
-  public TSStatus startPipeServer() {
-    try {
-      syncInfo.startServer();
-    } catch (IOException e) {
-      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-    }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-  }
-
-  @Override
-  public TSStatus stopPipeServer() {
-    try {
-      syncInfo.stopServer();
-    } catch (IOException e) {
-      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-    }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-  }
-
-  @Override
-  public boolean isPipeServerEnable() {
-    return syncInfo.isPipeServerEnable();
-  }
-
-  // endregion
-
   // region Implement of PipeSink
   @Override
   public TSStatus addPipeSink(CreatePipeSinkPlan plan) {

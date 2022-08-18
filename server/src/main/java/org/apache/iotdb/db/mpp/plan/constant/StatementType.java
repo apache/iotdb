@@ -139,5 +139,5 @@ public enum StatementType {
   FETCH_SCHEMA,
   INTERNAL_CREATE_TIMESERIES,
 
-  COUNT
+  COUNT,
 }

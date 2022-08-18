@@ -48,8 +48,9 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
           new FolderManager(
               Arrays.asList(config.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
     } catch (DiskSpaceInsufficientException e) {
-      logger.error("All disks of wal folders are full, change system mode to read-only.", e);
-      config.setReadOnly(true);
+      logger.error(
+          "Fail to create wal node allocation strategy because all disks of wal folders are full.",
+          e);
     }
   }
 
@@ -59,8 +60,7 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
     try {
       folder = folderManager.getNextFolder();
     } catch (DiskSpaceInsufficientException e) {
-      logger.error("All disks of wal folders are full, change system mode to read-only.", e);
-      config.setReadOnly(true);
+      logger.error("Fail to create wal node because all disks of wal folders are full.", e);
       return WALFakeNode.getFailureInstance(e);
     }
     folder = folder + File.separator + identifier;

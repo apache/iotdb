@@ -32,6 +32,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
@@ -66,6 +67,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
   private final QueryType type;
+  private final MPPQueryContext queryContext;
   private final String localhostIpAddr;
   private final int localhostInternalPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
@@ -73,10 +75,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   public FragmentInstanceDispatcherImpl(
       QueryType type,
+      MPPQueryContext queryContext,
       ExecutorService executor,
       ExecutorService writeOperationExecutor,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.type = type;
+    this.queryContext = queryContext;
     this.executor = executor;
     this.writeOperationExecutor = writeOperationExecutor;
     this.internalServiceClientManager = internalServiceClientManager;
@@ -187,6 +191,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode());
       status.setMessage("can't connect to node {}" + endPoint);
+      // If the DataNode cannot be connected, its endPoint will be put into black list
+      // so that the following retry will avoid dispatching instance towards this DataNode.
+      queryContext.addFailedEndPoint(endPoint);
       throw new FragmentInstanceDispatchException(status);
     }
   }

@@ -203,6 +203,7 @@ public abstract class BinaryExpression extends Expression {
     rightExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
 
     final String digest = toString();
+
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
     }

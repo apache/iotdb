@@ -44,15 +44,66 @@ public interface IConsensus {
   ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest);
 
   // multi consensus group API
-  ConsensusGenericResponse addConsensusGroup(ConsensusGroupId groupId, List<Peer> peers);
 
-  ConsensusGenericResponse removeConsensusGroup(ConsensusGroupId groupId);
+  /**
+   * Require the <em>local node</em> to create a Peer and become a member of the given consensus
+   * group. This node will prepare and initialize local statemachine {@link IStateMachine} and other
+   * data structures. After this method returns, we can call {@link #addPeer(ConsensusGroupId,
+   * Peer)} to notify original group that this new Peer is prepared to be added into the latest
+   * configuration. createPeer should be called on a node that does not contain any peer of the
+   * consensus group, to avoid one node having more than one replica.
+   *
+   * @param groupId the consensus group this Peer belongs
+   * @param peers other known peers in this group
+   */
+  ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers);
+
+  /**
+   * When the <em>local node</em> is no longer a member of the given consensus group, call this
+   * method to do cleanup works. This method will close local statemachine {@link IStateMachine},
+   * delete local data and do other cleanup works. Be sure this method is called after successfully
+   * removing this peer from current consensus group configuration (by calling {@link
+   * #removePeer(ConsensusGroupId, Peer)} or {@link #changePeer(ConsensusGroupId, List)}).
+   *
+   * @param groupId the consensus group this Peer used to belong
+   */
+  ConsensusGenericResponse deletePeer(ConsensusGroupId groupId);
 
   // single consensus group API
+
+  /**
+   * Tell the group that a new Peer is prepared to be added into this group. Call {@link
+   * #createPeer(ConsensusGroupId, List)} on the new Peer before calling this method. When this
+   * method returns, the group data should be already transmitted to the new Peer. That is, the new
+   * peer is available to answer client requests by the time this method successfully returns.
+   * addPeer should be called on a living peer of the consensus group. For example: We'd like to add
+   * a peer D to (A, B, C) group. We need to execute addPeer in A, B or C.
+   *
+   * @param groupId the consensus group this peer belongs
+   * @param peer the newly added peer
+   */
   ConsensusGenericResponse addPeer(ConsensusGroupId groupId, Peer peer);
 
+  /**
+   * Tell the group to remove an active Peer. The removed peer can no longer answer group requests
+   * when this method successfully returns. Call {@link #deletePeer(ConsensusGroupId)} on the
+   * removed Peer to do cleanup jobs after this method successfully returns. removePeer should be
+   * called on a living peer of its consensus group. For example: a group has A, B, C. We'd like to
+   * remove C, in case C is dead, the removePeer should be sent to A or B.
+   *
+   * @param groupId the consensus group this peer belongs
+   * @param peer the peer to be removed
+   */
   ConsensusGenericResponse removePeer(ConsensusGroupId groupId, Peer peer);
 
+  /**
+   * Change group configuration. This method allows you to add/remove multiple Peers at once. This
+   * method is similar to {@link #addPeer(ConsensusGroupId, Peer)} or {@link
+   * #removePeer(ConsensusGroupId, Peer)}
+   *
+   * @param groupId the consensus group
+   * @param newPeers the new member configuration of this group
+   */
   ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers);
 
   // management API

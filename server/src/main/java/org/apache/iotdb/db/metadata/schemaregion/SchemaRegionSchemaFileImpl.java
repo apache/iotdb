@@ -75,7 +75,6 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -1578,7 +1577,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             measurementList[i] = measurementMNode.getName();
           }
         } catch (MetadataException e) {
-          if (IoTDB.isClusterMode()) {
+          if (config.isClusterMode()) {
             logger.debug(
                 "meet error when check {}.{}, message: {}",
                 devicePath,

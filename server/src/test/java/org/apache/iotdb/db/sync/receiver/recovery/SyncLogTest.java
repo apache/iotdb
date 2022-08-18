@@ -64,15 +64,12 @@ public class SyncLogTest {
   public void testServiceLog() {
     try {
       SyncLogWriter log = SyncLogWriter.getInstance();
-      log.startPipeServer();
       CreatePipeSinkPlan createPipeSinkPlan = new CreatePipeSinkPlan("demo", "iotdb");
       createPipeSinkPlan.addPipeSinkAttribute("ip", "127.0.0.1");
       createPipeSinkPlan.addPipeSinkAttribute("port", "6670");
       log.addPipeSink(createPipeSinkPlan);
       log.addPipe(new CreatePipePlan(pipe1, "demo"), 1);
       log.operatePipe(pipe1, Operator.OperatorType.DROP_PIPE);
-      log.stopPipeServer();
-      log.startPipeServer();
 
       log.addPipe(new CreatePipePlan(pipe2, "demo"), 2);
       log.operatePipe(pipe1, Operator.OperatorType.STOP_PIPE);
@@ -83,7 +80,6 @@ public class SyncLogTest {
       List<PipeInfo> pipes = syncLogReader.getAllPipeInfos();
       Map<String, PipeSink> allPipeSinks = syncLogReader.getAllPipeSinks();
       PipeInfo runningPipe = syncLogReader.getRunningPipeInfo();
-      Assert.assertTrue(syncLogReader.isPipeServerEnable());
       Assert.assertEquals(1, allPipeSinks.size());
       Assert.assertEquals(2, pipes.size());
       Assert.assertEquals(pipe2, runningPipe.getPipeName());

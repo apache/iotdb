@@ -47,7 +47,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -79,7 +82,11 @@ public class IoTDBConfig {
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
-  private volatile boolean readOnly = false;
+  /** Shutdown system or set it to read-only mode when unrecoverable error occurs. */
+  private boolean allowReadOnlyWhenErrorsOccur = true;
+
+  /** Status of current system. */
+  private volatile SystemStatus status = SystemStatus.NORMAL;
 
   /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
@@ -506,9 +513,6 @@ public class IoTDBConfig {
    */
   private int externalSortThreshold = 1000;
 
-  /** If this IoTDB instance is a receiver of sync, set the server port. */
-  private int pipeServerPort = 6670;
-
   /** White list for sync */
   private String ipWhiteList = "0.0.0.0/0";
 
@@ -730,9 +734,9 @@ public class IoTDBConfig {
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second. Default time is
-   * a week.
+   * a day.
    */
-  private long partitionInterval = 604800;
+  private long partitionInterval = 86400;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
@@ -961,7 +965,7 @@ public class IoTDBConfig {
   private int driverTaskExecutionTimeSliceInMs = 100;
 
   /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
-  private long throttleDownThreshold = 50 * 1024 * 1024 * 1024L;
+  private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
   IoTDBConfig() {}
 
@@ -1093,6 +1097,7 @@ public class IoTDBConfig {
   }
 
   void reloadDataDirs(String[] dataDirs) throws LoadConfigurationException {
+    // format data directories
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
       for (int i = 0; i < dataDirs.length; i++) {
@@ -1101,6 +1106,16 @@ public class IoTDBConfig {
     } else {
       for (int i = 0; i < dataDirs.length; i++) {
         dataDirs[i] = addHomeDir(dataDirs[i]);
+      }
+    }
+    // make sure old data directories not removed
+    HashSet<String> newDirs = new HashSet<>(Arrays.asList(dataDirs));
+    for (String oldDir : this.dataDirs) {
+      if (!newDirs.contains(oldDir)) {
+        String msg =
+            String.format("%s is removed from data_dirs parameter, please add it back.", oldDir);
+        logger.error(msg);
+        throw new LoadConfigurationException(msg);
       }
     }
     this.dataDirs = dataDirs;
@@ -1119,7 +1134,7 @@ public class IoTDBConfig {
     return dir;
   }
 
-  private void confirmMultiDirStrategy() {
+  void confirmMultiDirStrategy() {
     if (getMultiDirStrategyClassName() == null) {
       multiDirStrategyClassName = DEFAULT_MULTI_DIR_STRATEGY;
     }
@@ -1439,14 +1454,6 @@ public class IoTDBConfig {
     this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
   }
 
-  public int getPipeServerPort() {
-    return pipeServerPort;
-  }
-
-  public void setPipeServerPort(int pipeServerPort) {
-    this.pipeServerPort = pipeServerPort;
-  }
-
   public int getMaxNumberOfSyncFileRetry() {
     return maxNumberOfSyncFileRetry;
   }
@@ -1509,12 +1516,44 @@ public class IoTDBConfig {
     this.sessionTimeoutThreshold = sessionTimeoutThreshold;
   }
 
-  public boolean isReadOnly() {
-    return readOnly;
+  boolean isAllowReadOnlyWhenErrorsOccur() {
+    return allowReadOnlyWhenErrorsOccur;
   }
 
-  public void setReadOnly(boolean readOnly) {
-    this.readOnly = readOnly;
+  void setAllowReadOnlyWhenErrorsOccur(boolean allowReadOnlyWhenErrorsOccur) {
+    this.allowReadOnlyWhenErrorsOccur = allowReadOnlyWhenErrorsOccur;
+  }
+
+  public boolean isReadOnly() {
+    return status == SystemStatus.READ_ONLY
+        || (status == SystemStatus.ERROR && allowReadOnlyWhenErrorsOccur);
+  }
+
+  public SystemStatus getSystemStatus() {
+    return status;
+  }
+
+  public void setSystemStatus(SystemStatus newStatus) {
+    if (newStatus == SystemStatus.READ_ONLY) {
+      logger.error(
+          "Change system mode to read-only! Only query statements are permitted!",
+          new RuntimeException("System mode is set to READ_ONLY"));
+    } else if (newStatus == SystemStatus.ERROR) {
+      if (allowReadOnlyWhenErrorsOccur) {
+        logger.error(
+            "Unrecoverable error occurs! Make system read-only when allow_read_only_when_errors_occur is true.",
+            new RuntimeException("System mode is set to READ_ONLY"));
+        newStatus = SystemStatus.READ_ONLY;
+      } else {
+        logger.error(
+            "Unrecoverable error occurs! Shutdown system directly when allow_read_only_when_errors_occur is false.",
+            new RuntimeException("System mode is set to ERROR"));
+        System.exit(-1);
+      }
+    } else {
+      logger.info("Set system mode from {} to NORMAL.", status);
+    }
+    this.status = newStatus;
   }
 
   public String getRpcImplClassName() {
@@ -3060,11 +3099,44 @@ public class IoTDBConfig {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
 
-  public long getThrottleDownThreshold() {
-    return throttleDownThreshold;
+  public long getThrottleThreshold() {
+    return throttleThreshold;
   }
 
-  public void setThrottleDownThreshold(long throttleDownThreshold) {
-    this.throttleDownThreshold = throttleDownThreshold;
+  public void setThrottleThreshold(long throttleThreshold) {
+    this.throttleThreshold = throttleThreshold;
+  }
+
+  public String getConfigMessage() {
+    String configMessage = "";
+    String configContent;
+    String[] notShowArray = {
+      "NODE_NAME_MATCHER",
+      "PARTIAL_NODE_MATCHER",
+      "STORAGE_GROUP_MATCHER",
+      "STORAGE_GROUP_PATTERN",
+      "NODE_MATCHER",
+      "NODE_PATTERN"
+    };
+    List<String> notShowStrings = Arrays.asList(notShowArray);
+    for (Field configField : IoTDBConfig.class.getDeclaredFields()) {
+      try {
+        String configFieldString = configField.getName();
+        if (notShowStrings.contains(configFieldString)) {
+          continue;
+        }
+        String configType = configField.getGenericType().getTypeName();
+        if (configType.contains("java.lang.String[]")) {
+          String[] configList = (String[]) configField.get(this);
+          configContent = Arrays.asList(configList).toString();
+        } else {
+          configContent = configField.get(this).toString();
+        }
+        configMessage = configMessage + configField.getName() + "=" + configContent + "; ";
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+    return configMessage;
   }
 }
