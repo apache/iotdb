@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
@@ -45,6 +46,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   private static final long TERMINATION_GRACE_PERIOD_IN_MS = 1000L;
   protected ScheduledExecutorService scheduledExecutor;
   private final QueryId queryId;
+  private final MPPQueryContext queryContext;
   private List<TEndPoint> relatedHost;
   private Map<TEndPoint, List<TFragmentInstanceId>> ownedFragmentInstance;
 
@@ -53,11 +55,12 @@ public class SimpleQueryTerminator implements IQueryTerminator {
 
   public SimpleQueryTerminator(
       ScheduledExecutorService scheduledExecutor,
-      QueryId queryId,
+      MPPQueryContext queryContext,
       List<FragmentInstance> fragmentInstances,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.scheduledExecutor = scheduledExecutor;
-    this.queryId = queryId;
+    this.queryId = queryContext.getQueryId();
+    this.queryContext = queryContext;
     this.internalServiceClientManager = internalServiceClientManager;
     calculateParameter(fragmentInstances);
   }
@@ -72,6 +75,11 @@ public class SimpleQueryTerminator implements IQueryTerminator {
 
   @Override
   public Future<Boolean> terminate() {
+    // For the failure dispatch, the termination should not be triggered because of connection issue
+    this.relatedHost =
+        this.relatedHost.stream()
+            .filter(endPoint -> !queryContext.getEndPointBlackList().contains(endPoint))
+            .collect(Collectors.toList());
     return scheduledExecutor.schedule(
         this::syncTerminate, TERMINATION_GRACE_PERIOD_IN_MS, TimeUnit.MILLISECONDS);
   }

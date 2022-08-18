@@ -264,6 +264,7 @@ public class ExpressionAnalyzer {
       List<PartialPath> actualPaths = new ArrayList<>();
       if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         actualPaths.add(rawPath);
+        patternTree.appendPathPattern(rawPath);
       } else {
         for (PartialPath prefixPath : prefixPaths) {
           PartialPath concatPath = prefixPath.concatPath(rawPath);
