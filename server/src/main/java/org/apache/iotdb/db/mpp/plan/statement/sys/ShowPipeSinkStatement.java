@@ -26,23 +26,23 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
 public class ShowPipeSinkStatement extends ShowStatement implements IConfigStatement {
 
-    private String pipeSinkName;
+  private String pipeSinkName;
 
-    public String getPipeSinkName() {
-        return pipeSinkName;
-    }
+  public String getPipeSinkName() {
+    return pipeSinkName;
+  }
 
-    public void setPipeSinkName(String pipeSinkName) {
-        this.pipeSinkName = pipeSinkName;
-    }
+  public void setPipeSinkName(String pipeSinkName) {
+    this.pipeSinkName = pipeSinkName;
+  }
 
-    @Override
-    public QueryType getQueryType() {
-        return QueryType.READ;
-    }
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
+  }
 
-    @Override
-    public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-        return visitor.visitShowPipeSink(this, context);
-    }
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowPipeSink(this, context);
+  }
 }

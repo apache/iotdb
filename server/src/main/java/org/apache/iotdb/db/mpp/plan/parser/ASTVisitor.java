@@ -34,7 +34,21 @@ import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
-import org.apache.iotdb.db.mpp.plan.expression.binary.*;
+import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
@@ -94,11 +108,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeSinkTypeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.OperatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.OperatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -113,9 +122,13 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.OperatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.OperatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeSinkTypeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
@@ -2614,7 +2627,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   public Map<String, String> parseSyncAttributeClauses(
-          IoTDBSqlParser.SyncAttributeClausesContext ctx){
+      IoTDBSqlParser.SyncAttributeClausesContext ctx) {
 
     Map<String, String> attributes = new HashMap<>();
 
@@ -2622,8 +2635,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.attributePair(0) != null) {
       for (IoTDBSqlParser.AttributePairContext attributePair : attributePairs) {
         attributes.put(
-                parseAttributeKey(attributePair.attributeKey()).toLowerCase(),
-                parseAttributeValue(attributePair.attributeValue()).toLowerCase());
+            parseAttributeKey(attributePair.attributeKey()).toLowerCase(),
+            parseAttributeValue(attributePair.attributeValue()).toLowerCase());
       }
     }
 
@@ -2631,8 +2644,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private void parseSelectStatementForPipe(
-          IoTDBSqlParser.SelectStatementContext ctx, OperatePipeStatement statement)
-          throws SQLParserException {
+      IoTDBSqlParser.SelectStatementContext ctx, OperatePipeStatement statement)
+      throws SQLParserException {
     if (ctx.TRACING() != null || ctx.intoClause() != null || ctx.specialClause() != null) {
       throw new SQLParserException("Not support for this sql in pipe.");
     }
@@ -2644,7 +2657,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     IoTDBSqlParser.ResultColumnContext resultColumnCtx = selectCtx.resultColumn(0);
     if (resultColumnCtx.AS() != null
-            || !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(
+        || !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(
             resultColumnCtx.expression().getText())) {
       throw new SQLParserException("Not support for this sql in pipe.");
     }
@@ -2652,7 +2665,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // parse from
     IoTDBSqlParser.FromClauseContext fromCtx = ctx.fromClause();
     if (fromCtx.prefixPath().size() != 1
-            || !IoTDBConstant.PATH_ROOT.equals(fromCtx.prefixPath(0).getText())) {
+        || !IoTDBConstant.PATH_ROOT.equals(fromCtx.prefixPath(0).getText())) {
       throw new SQLParserException("Not support for this sql in pipe.");
     }
 
@@ -2660,9 +2673,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     IoTDBSqlParser.WhereClauseContext whereCtx = ctx.whereClause();
     if (whereCtx != null) {
       Expression predicate =
-              parseExpression(whereCtx.expression(), whereCtx.expression().OPERATOR_NOT() == null);
+          parseExpression(whereCtx.expression(), whereCtx.expression().OPERATOR_NOT() == null);
       if (!((predicate instanceof GreaterThanExpression)
-              || (predicate instanceof GreaterEqualExpression))) {
+          || (predicate instanceof GreaterEqualExpression))) {
         throw new SQLParserException("Not support for this sql in pipe.");
       }
       Expression left = ((BinaryExpression) predicate).getLeftExpression();
@@ -2684,8 +2697,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-// PIPE
-
+  // PIPE
 
   @Override
   public Statement visitShowPipe(IoTDBSqlParser.ShowPipeContext ctx) {
@@ -2699,7 +2711,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreatePipe(IoTDBSqlParser.CreatePipeContext ctx) throws SQLParserException {
 
-    OperatePipeStatement operatePipeStatement = new OperatePipeStatement(OperatePipeStatement.PipeOperateType.CREATE_PIPE);
+    OperatePipeStatement operatePipeStatement =
+        new OperatePipeStatement(OperatePipeStatement.PipeOperateType.CREATE_PIPE);
 
     if (ctx.pipeName != null && ctx.pipeSinkName != null) {
       operatePipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
@@ -2716,7 +2729,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitStartPipe(IoTDBSqlParser.StartPipeContext ctx) {
-    OperatePipeStatement operatePipeStatement = new OperatePipeStatement(OperatePipeStatement.PipeOperateType.START_PIPE);
+    OperatePipeStatement operatePipeStatement =
+        new OperatePipeStatement(OperatePipeStatement.PipeOperateType.START_PIPE);
 
     if (ctx.pipeName != null) {
       operatePipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
@@ -2726,19 +2740,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitStopPipe(IoTDBSqlParser.StopPipeContext ctx) {
-    OperatePipeStatement operatePipeStatement = new OperatePipeStatement(OperatePipeStatement.PipeOperateType.STOP_PIPE);
+    OperatePipeStatement operatePipeStatement =
+        new OperatePipeStatement(OperatePipeStatement.PipeOperateType.STOP_PIPE);
 
     if (ctx.pipeName != null) {
       operatePipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     }
     return operatePipeStatement;
   }
-
 
   @Override
   public Statement visitDropPipe(IoTDBSqlParser.DropPipeContext ctx) {
 
-    OperatePipeStatement operatePipeStatement = new OperatePipeStatement(OperatePipeStatement.PipeOperateType.DROP_PIPE);
+    OperatePipeStatement operatePipeStatement =
+        new OperatePipeStatement(OperatePipeStatement.PipeOperateType.DROP_PIPE);
 
     if (ctx.pipeName != null) {
       operatePipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
@@ -2746,8 +2761,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return operatePipeStatement;
   }
 
-
-//pipeSink
+  // pipeSink
 
   @Override
   public Statement visitShowPipeSink(IoTDBSqlParser.ShowPipeSinkContext ctx) {
@@ -2767,7 +2781,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreatePipeSink(IoTDBSqlParser.CreatePipeSinkContext ctx) {
 
-    OperatePipeSinkStatement operatePipeSinkStatement = new OperatePipeSinkStatement(OperatePipeSinkStatement.PipeSinkOperateType.CREATE_PIPESINK);
+    OperatePipeSinkStatement operatePipeSinkStatement =
+        new OperatePipeSinkStatement(OperatePipeSinkStatement.PipeSinkOperateType.CREATE_PIPESINK);
 
     if (ctx.pipeSinkName != null) {
       operatePipeSinkStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));
@@ -2775,23 +2790,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeSinkType != null) {
       operatePipeSinkStatement.setPipeSinkType(parseIdentifier(ctx.pipeSinkType.getText()));
     }
-    if(ctx.syncAttributeClauses() != null) {
+    if (ctx.syncAttributeClauses() != null) {
       operatePipeSinkStatement.setAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
     }
 
     return operatePipeSinkStatement;
-
   }
 
   @Override
   public Statement visitDropPipeSink(IoTDBSqlParser.DropPipeSinkContext ctx) {
 
-    OperatePipeSinkStatement operatePipeSinkStatement = new OperatePipeSinkStatement(OperatePipeSinkStatement.PipeSinkOperateType.DROP_PIPESINK);
+    OperatePipeSinkStatement operatePipeSinkStatement =
+        new OperatePipeSinkStatement(OperatePipeSinkStatement.PipeSinkOperateType.DROP_PIPESINK);
 
     if (ctx.pipeSinkName != null) {
       operatePipeSinkStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));
     }
     return operatePipeSinkStatement;
   }
-
 }

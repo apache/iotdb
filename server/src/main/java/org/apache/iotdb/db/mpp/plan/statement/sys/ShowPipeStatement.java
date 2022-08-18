@@ -26,23 +26,23 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
 public class ShowPipeStatement extends ShowStatement implements IConfigStatement {
 
-    private String pipeName;
+  private String pipeName;
 
-    public String getPipeName() {
-        return pipeName;
-    }
+  public String getPipeName() {
+    return pipeName;
+  }
 
-    public void setPipeName(String pipeName) {
-        this.pipeName = pipeName;
-    }
+  public void setPipeName(String pipeName) {
+    this.pipeName = pipeName;
+  }
 
-    @Override
-    public QueryType getQueryType() {
-        return QueryType.READ;
-    }
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
+  }
 
-    @Override
-    public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-        return visitor.visitShowPipe(this, context);
-    }
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowPipe(this, context);
+  }
 }

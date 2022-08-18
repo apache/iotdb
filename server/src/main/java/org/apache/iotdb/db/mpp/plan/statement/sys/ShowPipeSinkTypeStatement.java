@@ -26,13 +26,13 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
 public class ShowPipeSinkTypeStatement extends ShowStatement implements IConfigStatement {
 
-    @Override
-    public QueryType getQueryType() {
-        return QueryType.READ;
-    }
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
+  }
 
-    @Override
-    public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-        return visitor.visitShowPipeSinkType(this, context);
-    }
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowPipeSinkType(this, context);
+  }
 }

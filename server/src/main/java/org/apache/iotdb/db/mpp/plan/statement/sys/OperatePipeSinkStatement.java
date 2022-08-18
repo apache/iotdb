@@ -25,81 +25,83 @@ import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 
-import java.util.Map;
-import java.util.List;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class OperatePipeSinkStatement extends Statement implements IConfigStatement {
 
-    private final OperatePipeSinkStatement.PipeSinkOperateType pipeSinkOperateType;
+  private final OperatePipeSinkStatement.PipeSinkOperateType pipeSinkOperateType;
 
-    private String pipeSinkName;
+  private String pipeSinkName;
 
-    private String pipeSinkType;
+  private String pipeSinkType;
 
-    private Map<String,String> attributes;
+  private Map<String, String> attributes;
 
-    public OperatePipeSinkStatement(PipeSinkOperateType type) {
-        super();
-        pipeSinkOperateType = type;
-        switch (pipeSinkOperateType) {
-            case CREATE_PIPESINK:
-                this.setType(StatementType.CREATE_PIPESINK);
-                break;
-            case DROP_PIPESINK:
-                this.setType(StatementType.DROP_PIPESINK);
-                break;
-            default:;
-        }
+  public OperatePipeSinkStatement(PipeSinkOperateType type) {
+    super();
+    pipeSinkOperateType = type;
+    switch (pipeSinkOperateType) {
+      case CREATE_PIPESINK:
+        this.setType(StatementType.CREATE_PIPESINK);
+        break;
+      case DROP_PIPESINK:
+        this.setType(StatementType.DROP_PIPESINK);
+        break;
+      default:;
     }
+  }
 
-    public String getPipeSinkName() {
-        return pipeSinkName;
-    }
-    public Map<String, String> getAttributes() {
-        return attributes;
-    }
-    public String getPipeSinkType() {
-        return pipeSinkType;
-    }
-    public PipeSinkOperateType getPipeSinkOperateType() {
-        return pipeSinkOperateType;
-    }
+  public String getPipeSinkName() {
+    return pipeSinkName;
+  }
 
-    public void setPipeSinkName(String pipeSinkName) {
-        this.pipeSinkName = pipeSinkName;
-    }
+  public Map<String, String> getAttributes() {
+    return attributes;
+  }
 
-    public void setPipeSinkType(String pipeSinkType) {
-        this.pipeSinkType = pipeSinkType;
-    }
+  public String getPipeSinkType() {
+    return pipeSinkType;
+  }
 
-    public void setAttributes(Map<String, String> attributes) {
-        this.attributes = attributes;
-    }
+  public PipeSinkOperateType getPipeSinkOperateType() {
+    return pipeSinkOperateType;
+  }
 
+  public void setPipeSinkName(String pipeSinkName) {
+    this.pipeSinkName = pipeSinkName;
+  }
 
-    @Override
-    public QueryType getQueryType() {
-        QueryType queryType;
-        switch (pipeSinkOperateType) {
-            case CREATE_PIPESINK:
-            case DROP_PIPESINK:
-                queryType = QueryType.WRITE;
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown operator: " + pipeSinkOperateType);
-        }
-        return queryType;
-    }
+  public void setPipeSinkType(String pipeSinkType) {
+    this.pipeSinkType = pipeSinkType;
+  }
 
-    @Override
-    public List<PartialPath> getPaths() {
-        return Collections.emptyList();
-    }
+  public void setAttributes(Map<String, String> attributes) {
+    this.attributes = attributes;
+  }
 
-    public enum PipeSinkOperateType {
-        CREATE_PIPESINK,
-        DROP_PIPESINK
+  @Override
+  public QueryType getQueryType() {
+    QueryType queryType;
+    switch (pipeSinkOperateType) {
+      case CREATE_PIPESINK:
+      case DROP_PIPESINK:
+        queryType = QueryType.WRITE;
+        break;
+      default:
+        throw new IllegalArgumentException("Unknown operator: " + pipeSinkOperateType);
     }
+    return queryType;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
+  }
+
+  public enum PipeSinkOperateType {
+    CREATE_PIPESINK,
+    DROP_PIPESINK
+  }
 }
