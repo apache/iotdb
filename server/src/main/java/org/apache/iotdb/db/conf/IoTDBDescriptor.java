@@ -1225,7 +1225,7 @@ public class IoTDBDescriptor {
             (int)
                 Math.min(
                     TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-                    IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerQuery()));
+                    conf.getMaxBytesPerQuery()));
 
     TSFileDescriptor.getInstance()
         .getConfig()
