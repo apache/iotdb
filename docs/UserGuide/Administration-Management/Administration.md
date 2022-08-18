@@ -367,7 +367,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 
 |privilege Name|Interpretation|Example|
 |:---|:---|----|
-|SET\_STORAGE\_GROUP|set storage groups; path dependent|Eg: `set storage group to root.ln;`|
+|SET\_STORAGE\_GROUP|set storage groups; set/unset storage group ttl; path dependent|Eg1: `set storage group to root.ln;`<br />Eg2:`set ttl to root.ln 3600000;`<br />Eg3:`unset ttl to root.ln;`|
 |DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|Eg: `delete storage group root.ln;`|
 |CREATE\_TIMESERIES|create timeseries; path dependent|Eg1: create timeseries<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: create aligned timeseries<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`|
 |INSERT\_TIMESERIES|insert data; path dependent|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|
@@ -445,46 +445,6 @@ In distributed related permission operations, when changing permissions other th
 
 At present, the following SQL statements supported by iotdb can only be operated by the `root` user, and no corresponding permission can be given to the new user.
 
-###### TTL
-
-- set ttl
-
-```
-Eg: IoTDB > set ttl to root.ln 3600
-```
-
-- unset ttl
-
-```
-Eg: IoTDB > unset ttl to root.ln
-```
-
-###### Schema Template
-
-- Create Schema Template
-
-```
-Eg: IoTDB > create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
-```
-
--  Set Schema Template
-
-```
-Eg: IoTDB > set schema template t1 to root.sg1.d1
-```
-
-- Uset Schema Template
-
-```
-Eg: IoTDB > unset schema template t1 from root.sg1.d1
-```
-
--  Drop Schema Template
-
-```
-Eg: IoTDB > drop schema template t1
-```
-
 ###### TsFile Management
 
 - Load TsFiles
@@ -503,17 +463,6 @@ Eg: IoTDB > remove '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-
 
 ```
 Eg: IoTDB > unload '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile' '/data/data/tmp'
-```
-
-###### Count
-
-- Count storage group/Number of nodes/device/timeseries
-
-```
-Eg: IoTDB > count storage group
-Eg: IoTDB > count nodes root.** LEVEL=2
-Eg: IoTDB > count devices root.ln.**
-Eg: IoTDB > count timeseries root.**
 ```
 
 ###### Delete Time Partition (experimental)
