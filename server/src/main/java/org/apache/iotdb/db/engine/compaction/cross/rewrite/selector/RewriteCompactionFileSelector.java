@@ -254,8 +254,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceCompactionFileS
       long unseqStartTime = unseqFile.getStartTime(deviceId);
       long unseqEndTime = unseqFile.getEndTime(deviceId);
 
-      boolean noMoreOverlap = false;
-      for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
+      boolean hasOverlapFiles = false;
+      for (int i = 0; i < resource.getSeqFiles().size(); i++) {
         TsFileResource seqFile = resource.getSeqFiles().get(i);
         if (!seqFile.mayContainsDevice(deviceId)) {
           continue;
@@ -268,16 +268,22 @@ public class RewriteCompactionFileSelector implements ICrossSpaceCompactionFileS
           if (unseqEndTime >= seqStartTime) {
             tmpSelectedSeqFiles.add(i);
           }
-        } else if (unseqEndTime <= seqEndTime) {
-          // if time range in unseq file is 10-20, seq file is 30-40, or
-          // time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
+        } else if (unseqEndTime < seqStartTime) {
+          // if time range in unseq file is 10-20, seq file is 30-40, then
           // there is no more overlap later.
-          tmpSelectedSeqFiles.add(i);
-          noMoreOverlap = true;
+          if (!hasOverlapFiles) {
+            if (!((i > 0 && (seqSelected[i - 1] || tmpSelectedSeqFiles.contains(i - 1)))
+                || tmpSelectedSeqFiles.contains(i)
+                || seqSelected[i])) {
+              tmpSelectedSeqFiles.add(i);
+            }
+          }
+          break;
         } else if (unseqStartTime <= seqEndTime) {
           // if time range in unseq file is 10-20, seq file is 0-15, then select this seq file and
           // there may be overlap later.
           tmpSelectedSeqFiles.add(i);
+          hasOverlapFiles = true;
         }
       }
     }
