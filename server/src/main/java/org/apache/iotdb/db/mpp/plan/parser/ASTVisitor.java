@@ -168,8 +168,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
-
 /** Parse AST to Statement. */
 public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
@@ -2649,7 +2647,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (expression instanceof TimeSeriesOperand) {
       return ((TimeSeriesOperand) expression).getPath();
     } else if (expression instanceof TimestampOperand) {
-      return TIME_PATH;
+      return SQLConstant.TIME_PATH;
     } else {
       throw new IllegalArgumentException(
           "Unsupported expression type: " + expression.getExpressionType());
@@ -2693,9 +2691,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       Expression left = ((BinaryExpression) predicate).getLeftExpression();
       Expression right = ((BinaryExpression) predicate).getRightExpression();
-      if (!(left instanceof TimestampOperand)) {
-        throw new SQLParserException("Not support for this sql in pipe.");
-      }
+
       if (!SQLConstant.isReservedPath(parsePathFromExpression(left))) {
         throw new SQLParserException("Not support for this sql in pipe.");
       }
