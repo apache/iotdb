@@ -96,7 +96,7 @@ public abstract class PageManager implements IPageManager {
       ISegmentedPage rootPage = ISchemaPage.initSegmentedPage(ByteBuffer.allocate(PAGE_LENGTH), 0);
       rootPage.allocNewSegment(SEG_MAX_SIZ);
       pageInstCache.put(rootPage.getPageIndex(), rootPage);
-      dirtyPages.put(rootPage.getPageIndex(), rootPage);
+      markDirty(rootPage);
     }
   }
 
@@ -142,7 +142,7 @@ public abstract class PageManager implements IPageManager {
 
       try {
         curPage.getAsSegmentedPage().write(getSegIndex(actualAddress), entry.getKey(), childBuffer);
-        dirtyPages.put(curPage.getPageIndex(), curPage);
+        markDirty(curPage);
         addPageToCache(curPage.getPageIndex(), curPage);
 
         subIndex = subIndexRootPage(curSegAddr);
@@ -178,7 +178,7 @@ public abstract class PageManager implements IPageManager {
           curPage.getAsSegmentedPage().deleteSegment(actSegId);
           setNodeAddress(node, curSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
-          dirtyPages.put(curPage.getPageIndex(), curPage);
+          markDirty(curPage);
           addPageToCache(curPage.getPageIndex(), curPage);
         }
       }
@@ -238,7 +238,7 @@ public abstract class PageManager implements IPageManager {
         curPage
             .getAsSegmentedPage()
             .update(getSegIndex(actualAddress), entry.getKey(), childBuffer);
-        dirtyPages.put(curPage.getPageIndex(), curPage);
+        markDirty(curPage);
         addPageToCache(curPage.getPageIndex(), curPage);
 
         subIndex = subIndexRootPage(curSegAddr);
@@ -283,7 +283,7 @@ public abstract class PageManager implements IPageManager {
           newPage.update(getSegIndex(curSegAddr), entry.getKey(), childBuffer);
           setNodeAddress(node, curSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
-          dirtyPages.put(curPage.getPageIndex(), curPage);
+          markDirty(curPage);
           addPageToCache(curPage.getPageIndex(), curPage);
         }
       }
@@ -412,7 +412,7 @@ public abstract class PageManager implements IPageManager {
   }
 
   protected ISchemaPage replacePageInCache(ISchemaPage page) {
-    dirtyPages.put(page.getPageIndex(), page);
+    markDirty(page);
     return addPageToCache(page.getPageIndex(), page);
   }
 
@@ -427,7 +427,7 @@ public abstract class PageManager implements IPageManager {
     for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
       if (entry.getValue().getAsSegmentedPage() != null
           && entry.getValue().isCapableForSize(size)) {
-        dirtyPages.putIfAbsent(entry.getKey(), entry.getValue());
+        markDirty(entry.getValue());
         return pageInstCache.get(entry.getKey()).getAsSegmentedPage();
       }
     }
@@ -438,14 +438,19 @@ public abstract class PageManager implements IPageManager {
     lastPageIndex.incrementAndGet();
     ISchemaPage newPage =
         ISchemaPage.initSegmentedPage(ByteBuffer.allocate(PAGE_LENGTH), lastPageIndex.get());
-    dirtyPages.put(newPage.getPageIndex(), newPage);
+    markDirty(newPage);
     return addPageToCache(newPage.getPageIndex(), newPage);
   }
 
   protected synchronized ISchemaPage registerAsNewPage(ISchemaPage page) {
     page.setPageIndex(lastPageIndex.incrementAndGet());
-    dirtyPages.put(page.getPageIndex(), page);
+    markDirty(page);
     return addPageToCache(page.getPageIndex(), page);
+  }
+
+  protected void markDirty(ISchemaPage page) {
+    page.markDirty();
+    dirtyPages.put(page.getPageIndex(), page);
   }
 
   protected ISchemaPage addPageToCache(int pageIndex, ISchemaPage page) {
@@ -490,7 +495,7 @@ public abstract class PageManager implements IPageManager {
     parSegAddr = getTargetSegmentAddress(parSegAddr, key);
     ISchemaPage page = getPageInstance(getPageIndex(parSegAddr));
     ((SegmentedPage) page).updateRecordSegAddr(getSegIndex(parSegAddr), key, newSegAddr);
-    dirtyPages.putIfAbsent(page.getPageIndex(), page);
+    markDirty(page);
   }
 
   // endregion

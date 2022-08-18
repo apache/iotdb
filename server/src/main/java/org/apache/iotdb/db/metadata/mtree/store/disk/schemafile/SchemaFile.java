@@ -161,7 +161,10 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public IMNode init() throws MetadataException {
     IMNode resNode;
-    String[] sgPathNodes = PathUtils.splitPathToDetachedNodes(storageGroupName);
+    String[] sgPathNodes =
+        storageGroupName == null
+            ? new String[] {"noName"}
+            : PathUtils.splitPathToDetachedNodes(storageGroupName);
     if (isEntity) {
       resNode =
           setNodeAddress(

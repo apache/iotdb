@@ -62,6 +62,7 @@ public class BTreePageManager extends PageManager {
     curPage
         .getAsSegmentedPage()
         .setNextSegAddress((short) 0, getGlobalIndex(newPage.getPageIndex(), (short) 0));
+    markDirty(curPage);
     insertIndexEntryEntrance(curPage, newPage, sk);
   }
 
@@ -283,7 +284,7 @@ public class BTreePageManager extends PageManager {
             .setNextSegAddress(trsPage.getAsInternalPage().getNextSegAddress());
       }
     }
-    dirtyPages.put(iPage.getPageIndex(), iPage);
+    markDirty(iPage);
     addPageToCache(iPage.getPageIndex(), iPage);
   }
 
@@ -293,7 +294,7 @@ public class BTreePageManager extends PageManager {
     long recSegAddr = getNodeAddress(node.getParent());
     recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName());
     ISchemaPage tarPage = getPageInstance(getPageIndex(recSegAddr));
-    dirtyPages.putIfAbsent(tarPage.getPageIndex(), tarPage);
+    markDirty(tarPage);
     tarPage.getAsSegmentedPage().removeRecord(getSegIndex(recSegAddr), node.getName());
 
     // remove segments belongs to node
@@ -303,7 +304,7 @@ public class BTreePageManager extends PageManager {
 
       if (tarPage.getAsSegmentedPage() != null) {
         // TODO: may produce fractured page
-        dirtyPages.putIfAbsent(tarPage.getPageIndex(), tarPage);
+        markDirty(tarPage);
         tarPage.getAsSegmentedPage().deleteSegment(getSegIndex(delSegAddr));
         if (tarPage.getAsSegmentedPage().validSegments() == 0) {
           tarPage.getAsSegmentedPage().purgeSegments();
@@ -326,7 +327,7 @@ public class BTreePageManager extends PageManager {
           tarPage = getPageInstance(cascadePages.poll());
           if (tarPage.getAsSegmentedPage() != null) {
             tarPage.getAsSegmentedPage().purgeSegments();
-            dirtyPages.put(tarPage.getPageIndex(), tarPage);
+            markDirty(tarPage);
             addPageToCache(tarPage.getPageIndex(), tarPage);
             continue;
           }

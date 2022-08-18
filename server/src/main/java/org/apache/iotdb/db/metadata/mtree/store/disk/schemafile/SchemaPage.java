@@ -41,6 +41,8 @@ public abstract class SchemaPage implements ISchemaPage {
   protected short spareSize; // traces spare space size simultaneously
   protected short memberNum; // amount of the member, definition depends on implementation
 
+  protected volatile boolean dirtyFlag = false; // any modification turns it true
+
   protected SchemaPage(ByteBuffer pageBuffer) {
     this.pageBuffer = pageBuffer;
 
@@ -74,6 +76,7 @@ public abstract class SchemaPage implements ISchemaPage {
     this.syncPageBuffer();
     this.pageBuffer.clear();
     channel.write(pageBuffer, SchemaFile.getPageAddress(pageIndex));
+    dirtyFlag = false;
   }
 
   @Override
@@ -117,6 +120,16 @@ public abstract class SchemaPage implements ISchemaPage {
   @Override
   public ByteBuffer getEntireSegmentSlice() throws MetadataException {
     return null;
+  }
+
+  @Override
+  public void markDirty() {
+    dirtyFlag = true;
+  }
+
+  @Override
+  public boolean isDirty() {
+    return dirtyFlag;
   }
 
   @Override
