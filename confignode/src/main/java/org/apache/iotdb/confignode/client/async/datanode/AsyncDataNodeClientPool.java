@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.client.async.handlers.ClearCacheHandler;
 import org.apache.iotdb.confignode.client.async.handlers.CreateRegionHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
+import org.apache.iotdb.confignode.client.async.handlers.LoadConfigurationHandler;
 import org.apache.iotdb.confignode.client.async.handlers.MergeHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
@@ -134,6 +135,15 @@ public class AsyncDataNodeClientPool {
                     dataNodeLocationMap,
                     dataNodeResponseStatus);
             break;
+          case LOAD_CONFIGURATION:
+            handler =
+                new LoadConfigurationHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
           case UPDATE_REGION_ROUTE_MAP:
             handler =
                 new UpdateRegionRouteMapHandler(
@@ -194,6 +204,9 @@ public class AsyncDataNodeClientPool {
           break;
         case CLEAR_CACHE:
           client.clearCache((ClearCacheHandler) handler);
+          break;
+        case LOAD_CONFIGURATION:
+          client.loadConfiguration((LoadConfigurationHandler) handler);
           break;
         case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);

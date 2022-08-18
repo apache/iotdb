@@ -31,8 +31,7 @@ import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.transport.client.IoTDBSInkTransportClient;
-import org.apache.iotdb.db.sync.transport.server.TransportServerManager;
+import org.apache.iotdb.db.sync.transport.client.IoTDBSinkTransportClient;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
@@ -53,7 +52,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class TransportServiceTest {
+public class SyncTransportTest {
   /** create tsfile and move to tmpDir for sync test */
   File tmpDir = new File("target/synctest");
 
@@ -130,23 +129,17 @@ public class TransportServiceTest {
     Deletion deletion = new Deletion(new PartialPath("root.vehicle.**"), 0, 33, 38);
     pipeDataList.add(new DeletionPipeData(deletion, serialNum++));
 
-    // 3. start server
-    TransportServerManager.getInstance().startService();
-
-    // 4. start client
+    // 3. start client
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
-    IoTDBSInkTransportClient client =
-        new IoTDBSInkTransportClient(
-            pipe,
-            "127.0.0.1",
-            IoTDBDescriptor.getInstance().getConfig().getPipeServerPort(),
-            "127.0.0.1");
+    IoTDBSinkTransportClient client =
+        new IoTDBSinkTransportClient(
+            pipe, "127.0.0.1", IoTDBDescriptor.getInstance().getConfig().getRpcPort(), "127.0.0.1");
     client.handshake();
     for (PipeData pipeData : pipeDataList) {
       client.senderTransport(pipeData);
     }
 
-    // 5. check result
+    // 4. check result
     checkResult(
         "select ** from root.vehicle",
         new String[] {"Time", "root.vehicle.d0.s0"},

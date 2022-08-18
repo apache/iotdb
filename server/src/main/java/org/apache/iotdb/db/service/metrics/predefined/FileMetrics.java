@@ -121,6 +121,8 @@ public class FileMetrics implements IMetricSet {
   }
 
   private void collect() {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
     walFileTotalSize = WALManager.getInstance().getTotalDiskUsage();
     sequenceFileTotalSize =
         Stream.of(dataDirs)
