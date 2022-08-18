@@ -66,6 +66,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> clearCache(boolean isCluster);
 
+  SettableFuture<ConfigTaskResult> loadConfiguration(boolean isCluster);
+
   SettableFuture<ConfigTaskResult> showCluster();
 
   SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement);

@@ -85,7 +85,6 @@
         <module>thrift-commons</module>
         <module>thrift-confignode</module>
         <module>thrift-multi-leader-consensus</module>
-        <module>thrift-sync</module>
         <module>thrift-influxdb</module>
         <module>service-rpc</module>
         <module>jdbc</module>

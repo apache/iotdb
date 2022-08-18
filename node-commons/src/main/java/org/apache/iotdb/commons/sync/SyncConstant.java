@@ -72,12 +72,6 @@ public class SyncConstant {
   public static final int DATA_CHUNK_SIZE =
       Math.min(16 * 1024 * 1024, RpcUtils.THRIFT_FRAME_MAX_SIZE);
 
-  public static final int SUCCESS_CODE = 1;
-  public static final int ERROR_CODE = -1;
-  public static final int REBASE_CODE = -2;
-  public static final int RETRY_CODE = -3;
-  public static final int CONFLICT_CODE = -4;
-
   /** receiver */
   public static final String RECEIVER_DIR_NAME = "receiver";
 

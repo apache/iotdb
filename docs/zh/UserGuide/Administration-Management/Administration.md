@@ -183,13 +183,14 @@ Eg: IoTDB > DROP ROLE `admin`;
 ```
 GRANT USER <userName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES INSERT_TIMESERIES, DELETE_TIMESERIES on root.ln.**, root.sgcc.**;
+Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES CREATE_ROLE;
 ```
 
 - 赋予用户全部的权限
 
 ```
-GRANT USER <userName> PRIVILEGES ALL ON <nodeNames>; 
-Eg: IoTDB > grant user renyuhua privileges all on root.sgcc.**, root.**;
+GRANT USER <userName> PRIVILEGES ALL; 
+Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES ALL;
 ```
 
 * 赋予角色权限
@@ -197,13 +198,14 @@ Eg: IoTDB > grant user renyuhua privileges all on root.sgcc.**, root.**;
 ```
 GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES INSERT_TIMESERIES, DELETE_TIMESERIES ON root.sgcc.**, root.ln.**;
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES CREATE_ROLE;
 ```
 
 - 赋予角色全部的权限
 
 ```
-GRANT ROLE <roleName> PRIVILEGES ALL ON <nodeNames>;  
-Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
+GRANT ROLE <roleName> PRIVILEGES ALL;  
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES ALL;
 ```
 
 * 赋予用户角色
@@ -218,13 +220,14 @@ Eg: IoTDB > GRANT `temprole` TO tempuser;
 ```
 REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeNames>;   
 Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
+Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES CREATE_ROLE;
 ```
 
 - 移除用户所有权限
 
 ```
-REVOKE USER <userName> PRIVILEGES ALL ON <nodeNames>; 
-Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL on root.ln.**;
+REVOKE USER <userName> PRIVILEGES ALL; 
+Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL;
 ```
 
 * 撤销角色权限
@@ -232,13 +235,14 @@ Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL on root.ln.**;
 ```
 REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
+Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES CREATE_ROLE;
 ```
 
 - 撤销角色全部的权限
 
 ```
-REVOKE ROLE <roleName> PRIVILEGES ALL ON <nodeNames>;  
-Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
+REVOKE ROLE <roleName> PRIVILEGES ALL;  
+Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES ALL;
 ```
 
 * 撤销用户角色
@@ -367,7 +371,7 @@ Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 |CREATE\_TIMESERIES|创建时间序列。路径相关|Eg1: 创建时间序列<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: 创建对齐时间序列<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`|
 |INSERT\_TIMESERIES|插入数据。路径相关|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|
 |ALTER\_TIMESERIES|修改时间序列标签。路径相关|Eg1: `alter timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4;`<br />Eg2: `ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4);`|
-|READ\_TIMESERIES|查询数据。路径相关|Eg1: `show storage group;` <br />Eg2: `show child paths root.ln, show child nodes root.ln;`<br />Eg3: `show devices;`<br />Eg4: `show timeseries root.**;`<br />Eg5: `show schema templates;`<br />Eg6: `show all ttl`<br />Eg7: [数据查询](../Query-Data/Overview.md)（这一节之下的查询语句均使用该权限）<br />Eg8: CVS格式数据导出<br />`./export-csv.bat -h 127.0.0.1 -p 6667 -u tempuser -pw root -td ./`<br />Eg9: 查询性能追踪<br />`tracing select * from root.**`<br />Eg10: UDF查询<br />`select example(*) from root.sg.d1`<br />Eg11: 查询触发器<br />`show triggers`|
+|READ\_TIMESERIES|查询数据。路径相关|Eg1: `show storage group;` <br />Eg2: `show child paths root.ln, show child nodes root.ln;`<br />Eg3: `show devices;`<br />Eg4: `show timeseries root.**;`<br />Eg5: `show schema templates;`<br />Eg6: `show all ttl`<br />Eg7: [数据查询](../Query-Data/Overview.md)（这一节之下的查询语句均使用该权限）<br />Eg8: CVS格式数据导出<br />`./export-csv.bat -h 127.0.0.1 -p 6667 -u tempuser -pw root -td ./`<br />Eg9: 查询性能追踪<br />`tracing select * from root.**`<br />Eg10: UDF查询<br />`select example(*) from root.sg.d1`<br />Eg11: 查询触发器<br />`show triggers`<br />Eg12: 统计查询<br />`count devices`|
 |DELETE\_TIMESERIES|删除数据或时间序列。路径相关|Eg1: 删除时间序列<br />`delete timeseries root.ln.wf01.wt01.status`<br />Eg2: 删除数据<br />`delete from root.ln.wf02.wt02.status where time < 10`|
 |CREATE\_USER|创建用户。路径无关|Eg: `create user thulab 'passwd';`|
 |DELETE\_USER|删除用户。路径无关|Eg: `drop user xiaoming;`|
@@ -394,6 +398,8 @@ Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 |READ_TEMPLATE|查看所有模板、模板内容。 路径无关|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1`
 |APPLY_TEMPLATE|挂载、卸载、激活模板。路径有关。|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `create timeseries of schema template on root.sg.d`
 |READ_TEMPLATE_APPLICATION|查看模板的挂载路径和激活路径。路径无关|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`
+
+注意： 路径无关的权限只能在路径root.**下赋予或撤销；
 
 注意: 下述sql语句需要赋予多个权限才可以使用：
 

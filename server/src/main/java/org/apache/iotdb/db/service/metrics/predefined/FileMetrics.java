@@ -39,8 +39,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class FileMetrics implements IMetricSet {
-  private final String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
-  private final String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
   private long walFileTotalSize = 0L;
   private long walFileTotalCount = 0L;
@@ -116,6 +114,8 @@ public class FileMetrics implements IMetricSet {
   }
 
   private void collect() {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
     walFileTotalSize = WALManager.getInstance().getTotalDiskUsage();
     sequenceFileTotalSize =
         Stream.of(dataDirs)
