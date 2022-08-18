@@ -797,6 +797,22 @@ public class ConfigNodeClient
   }
 
   @Override
+  public TSStatus loadConfiguration() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.loadConfiguration();
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TShowRegionResp showRegion(TShowRegionReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {

@@ -32,6 +32,7 @@ import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClie
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -46,7 +47,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class MultiLeaderServerImpl {
 
@@ -56,6 +61,8 @@ public class MultiLeaderServerImpl {
 
   private final Peer thisNode;
   private final IStateMachine stateMachine;
+  private final Lock stateMachineLock = new ReentrantLock();
+  private final Condition stateMachineCondition = stateMachineLock.newCondition();
   private final String storageDir;
   private final List<Peer> configuration;
   private final AtomicLong index;
@@ -108,14 +115,20 @@ public class MultiLeaderServerImpl {
    * records the index of the log and writes locally, and then asynchronous replication is performed
    */
   public TSStatus write(IConsensusRequest request) {
-    synchronized (stateMachine) {
-      if (needToThrottleDown()) {
+    stateMachineLock.lock();
+    try {
+      if (needBlockWrite()) {
         logger.info(
             "[Throttle Down] index:{}, safeIndex:{}",
             getIndex(),
             getCurrentSafelyDeletedSearchIndex());
         try {
-          stateMachine.wait(config.getReplication().getThrottleTimeOutMs());
+          boolean timeout =
+              !stateMachineCondition.await(
+                  config.getReplication().getThrottleTimeOutMs(), TimeUnit.MILLISECONDS);
+          if (timeout) {
+            return RpcUtils.getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR);
+          }
         } catch (InterruptedException e) {
           logger.error("Failed to throttle down because ", e);
           Thread.currentThread().interrupt();
@@ -151,6 +164,8 @@ public class MultiLeaderServerImpl {
             result.getCode());
       }
       return result;
+    } finally {
+      stateMachineLock.unlock();
     }
   }
 
@@ -237,14 +252,21 @@ public class MultiLeaderServerImpl {
     return config;
   }
 
-  public boolean needToThrottleDown() {
-    return reader.getTotalSize() > config.getReplication().getThrottleDownThreshold();
+  public boolean needBlockWrite() {
+    return reader.getTotalSize() > config.getReplication().getWalThrottleThreshold();
   }
 
-  public boolean needToThrottleUp() {
-    return reader.getTotalSize()
-        < config.getReplication().getThrottleDownThreshold()
-            - config.getReplication().getThrottleUpThreshold();
+  public boolean unblockWrite() {
+    return reader.getTotalSize() < config.getReplication().getWalThrottleThreshold();
+  }
+
+  public void signal() {
+    stateMachineLock.lock();
+    try {
+      stateMachineCondition.signalAll();
+    } finally {
+      stateMachineLock.unlock();
+    }
   }
 
   public AtomicLong getIndexObject() {

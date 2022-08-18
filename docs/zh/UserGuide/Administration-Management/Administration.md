@@ -183,13 +183,14 @@ Eg: IoTDB > DROP ROLE `admin`;
 ```
 GRANT USER <userName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES INSERT_TIMESERIES, DELETE_TIMESERIES on root.ln.**, root.sgcc.**;
+Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES CREATE_ROLE;
 ```
 
 - 赋予用户全部的权限
 
 ```
-GRANT USER <userName> PRIVILEGES ALL ON <nodeNames>; 
-Eg: IoTDB > grant user renyuhua privileges all on root.sgcc.**, root.**;
+GRANT USER <userName> PRIVILEGES ALL; 
+Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES ALL;
 ```
 
 * 赋予角色权限
@@ -197,13 +198,14 @@ Eg: IoTDB > grant user renyuhua privileges all on root.sgcc.**, root.**;
 ```
 GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES INSERT_TIMESERIES, DELETE_TIMESERIES ON root.sgcc.**, root.ln.**;
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES CREATE_ROLE;
 ```
 
 - 赋予角色全部的权限
 
 ```
-GRANT ROLE <roleName> PRIVILEGES ALL ON <nodeNames>;  
-Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
+GRANT ROLE <roleName> PRIVILEGES ALL;  
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES ALL;
 ```
 
 * 赋予用户角色
@@ -218,13 +220,14 @@ Eg: IoTDB > GRANT `temprole` TO tempuser;
 ```
 REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeNames>;   
 Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
+Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES CREATE_ROLE;
 ```
 
 - 移除用户所有权限
 
 ```
-REVOKE USER <userName> PRIVILEGES ALL ON <nodeNames>; 
-Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL on root.ln.**;
+REVOKE USER <userName> PRIVILEGES ALL; 
+Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL;
 ```
 
 * 撤销角色权限
@@ -232,13 +235,14 @@ Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL on root.ln.**;
 ```
 REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
+Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES CREATE_ROLE;
 ```
 
 - 撤销角色全部的权限
 
 ```
-REVOKE ROLE <roleName> PRIVILEGES ALL ON <nodeNames>;  
-Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
+REVOKE ROLE <roleName> PRIVILEGES ALL;  
+Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES ALL;
 ```
 
 * 撤销用户角色
@@ -394,6 +398,8 @@ Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 |READ_TEMPLATE|查看所有模板、模板内容。 路径无关|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1`
 |APPLY_TEMPLATE|挂载、卸载、激活模板。路径有关。|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `create timeseries of schema template on root.sg.d`
 |READ_TEMPLATE_APPLICATION|查看模板的挂载路径和激活路径。路径无关|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`
+
+注意： 路径无关的权限只能在路径root.**下赋予或撤销；
 
 注意: 下述sql语句需要赋予多个权限才可以使用：
 

@@ -184,13 +184,14 @@ Eg: IoTDB > DROP ROLE `admin`;
 ```
 GRANT USER <userName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES INSERT_TIMESERIES, DELETE_TIMESERIES on root.ln.**, root.sgcc.**;
+Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES CREATE_ROLE;
 ```
 
 - Grant User All Privileges
 
 ```
-GRANT USER <userName> PRIVILEGES ALL ON <nodeNames>; 
-Eg: IoTDB > grant user renyuhua privileges all on root.sgcc.**, root.**;
+GRANT USER <userName> PRIVILEGES ALL; 
+Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES ALL;
 ```
 
 * Grant Role Privileges
@@ -198,13 +199,14 @@ Eg: IoTDB > grant user renyuhua privileges all on root.sgcc.**, root.**;
 ```
 GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES INSERT_TIMESERIES, DELETE_TIMESERIES ON root.sgcc.**, root.ln.**;
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES CREATE_ROLE;
 ```
 
 - Grant Role All Privileges
 
 ```
 GRANT ROLE <roleName> PRIVILEGES ALL ON <nodeNames>;  
-Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES ALL;
 ```
 
 * Grant User Role
@@ -219,13 +221,14 @@ Eg: IoTDB > GRANT `temprole` TO tempuser;
 ```
 REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeNames>;   
 Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
+Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES CREATE_ROLE;
 ```
 
 * Revoke User All Privileges
 
 ```
-REVOKE USER <userName> PRIVILEGES ALL ON <nodeNames>; 
-Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL on root.ln.**;
+REVOKE USER <userName> PRIVILEGES ALL; 
+Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL;
 ```
 
 * Revoke Role Privileges
@@ -233,13 +236,14 @@ Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL on root.ln.**;
 ```
 REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
+Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES CREATE_ROLE;
 ```
 
 * Revoke All Role Privileges
 
 ```
-REVOKE ROLE <roleName> PRIVILEGES ALL ON <nodeNames>;  
-Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
+REVOKE ROLE <roleName> PRIVILEGES ALL;  
+Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES ALL;
 ```
 
 * Revoke Role From User
@@ -395,6 +399,8 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |READ_TEMPLATE|show schema templates and show nodes in schema template; path independent|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1` 
 |APPLY_TEMPLATE|set, unset and activate schema template; path dependent|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `create timeseries of schema template on root.sg.d`
 |READ_TEMPLATE_APPLICATION|show paths set and using schema template; path independent|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`
+
+Note that path dependent privileges can only be granted or revoked on root.**;
 
 Note that the following SQL statements need to be granted multiple permissions before they can be used：
 

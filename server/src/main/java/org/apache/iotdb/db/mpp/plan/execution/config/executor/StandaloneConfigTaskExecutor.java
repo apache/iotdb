@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -248,6 +249,18 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> loadConfiguration(boolean isCluster) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TSStatus tsStatus = LocalConfigNode.getInstance().executeLoadConfigurationOperation();
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
     }
     return future;
   }
