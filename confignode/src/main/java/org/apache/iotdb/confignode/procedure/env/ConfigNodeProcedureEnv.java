@@ -20,20 +20,27 @@
 package org.apache.iotdb.confignode.procedure.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
+import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -48,7 +55,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ConfigNodeProcedureEnv {
@@ -288,6 +297,39 @@ public class ConfigNodeProcedureEnv {
             configManager.getNodeManager().getRegisteredConfigNodes());
   }
 
+  /**
+   * Broadcast the CreateRegionGroupsPlan
+   *
+   * @return Those RegionGroups that failed to create
+   */
+  public Map<TConsensusGroupId, TRegionReplicaSet> doRegionCreation(
+      CreateRegionGroupsPlan createRegionGroupsPlan) {
+    Map<String, Long> ttlMap = new HashMap<>();
+    for (String storageGroup : createRegionGroupsPlan.getRegionGroupMap().keySet()) {
+      try {
+        ttlMap.put(
+            storageGroup,
+            getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL());
+      } catch (StorageGroupNotExistsException e) {
+        // Notice: This line will never
+        LOG.error("StorageGroup doesn't exist", e);
+      }
+    }
+    return AsyncDataNodeClientPool.getInstance().createRegionGroups(createRegionGroupsPlan, ttlMap);
+  }
+
+  public void persistAndBroadcastRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
+    // Persist the allocation result
+    getConsensusManager().write(createRegionGroupsPlan);
+    // Broadcast the latest RegionRouteMap
+    getLoadManager().broadcastLatestRegionRouteMap();
+  }
+
+  /** Submit the RegionReplicas to the RegionCleaner when there are creation failures */
+  public void submitFailedRegionReplicas(DeleteRegionGroupsPlan deleteRegionGroupsPlan) {
+    getConsensusManager().write(deleteRegionGroupsPlan);
+  }
+
   public LockQueue getNodeLock() {
     return nodeLock;
   }
@@ -310,5 +352,13 @@ public class ConfigNodeProcedureEnv {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  private ClusterSchemaManager getClusterSchemaManager() {
+    return configManager.getClusterSchemaManager();
+  }
+
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 }
