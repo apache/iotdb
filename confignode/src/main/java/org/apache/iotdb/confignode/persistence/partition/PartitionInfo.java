@@ -78,7 +78,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -561,7 +560,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return All Regions' RegionReplicaSet
    */
   public List<TRegionReplicaSet> getAllReplicaSets() {
-    List<TRegionReplicaSet> result = new Vector<>();
+    List<TRegionReplicaSet> result = new ArrayList<>();
     storageGroupPartitionTables
         .values()
         .forEach(
