@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -95,13 +94,8 @@ public class IoTDBSortedShowTimeseriesIT {
         "insert into root.turbine.d2(timestamp,s0,s1,s3) values(6,6,6,6)"
       };
 
-  private static int pageSizeInBytes;
-
   @BeforeClass
   public static void setUp() throws Exception {
-    pageSizeInBytes = ConfigFactory.getConfig().getPageSizeInByte();
-
-    ConfigFactory.getConfig().setPageSizeInByte(1024);
     EnvFactory.getEnv().initBeforeTest();
     createSchema();
   }
@@ -109,7 +103,6 @@ public class IoTDBSortedShowTimeseriesIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setPageSizeInByte(pageSizeInBytes);
   }
 
   @Test

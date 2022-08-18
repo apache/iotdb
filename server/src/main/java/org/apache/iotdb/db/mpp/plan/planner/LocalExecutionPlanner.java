@@ -27,7 +27,6 @@ import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.timer.ITimeSliceAllocator;
@@ -36,12 +35,18 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import io.airlift.concurrent.SetThreadName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
  * Operator tree, but in the future, we may split one fragment instance into multiple pipeline to
  * run a fragment instance parallel and take full advantage of multi-cores
  */
 public class LocalExecutionPlanner {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanner.class);
 
   /** allocated memory for operator execution */
   private long freeMemoryForOperators =
@@ -127,14 +132,25 @@ public class LocalExecutionPlanner {
             TSStatusCode.MEMORY_NOT_ENOUGH.getStatusCode());
       } else {
         freeMemoryForOperators -= estimatedMemorySize;
+        LOGGER.info(
+            String.format(
+                "consume memory: %d, current remaining memory: %d",
+                estimatedMemorySize, freeMemoryForOperators));
       }
     }
 
     stateMachine.addStateChangeListener(
         newState -> {
-          if (newState == FragmentInstanceState.FLUSHING || newState.isDone()) {
-            synchronized (this) {
-              this.freeMemoryForOperators += estimatedMemorySize;
+          if (newState.isDone()) {
+            try (SetThreadName fragmentInstanceName =
+                new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
+              synchronized (this) {
+                this.freeMemoryForOperators += estimatedMemorySize;
+                LOGGER.info(
+                    String.format(
+                        "release memory: %d, current remaining memory: %d",
+                        estimatedMemorySize, freeMemoryForOperators));
+              }
             }
           }
         });
