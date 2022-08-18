@@ -71,7 +71,7 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     }
 
     // TODO: Optimize judge logic
-    if (System.currentTimeMillis() - lastSendTime > MAXIMUM_WINDOW_SIZE) {
+    if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
       status = NodeStatus.Unknown;
     } else {
       status = NodeStatus.Running;
