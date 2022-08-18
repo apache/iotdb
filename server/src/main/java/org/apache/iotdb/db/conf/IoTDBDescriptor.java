@@ -417,11 +417,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "session_timeout_threshold",
                   Integer.toString(conf.getSessionTimeoutThreshold()))));
-      conf.setPipeServerPort(
-          Integer.parseInt(
-              properties
-                  .getProperty("pipe_server_port", Integer.toString(conf.getPipeServerPort()))
-                  .trim()));
       conf.setMaxNumberOfSyncFileRetry(
           Integer.parseInt(
               properties
@@ -669,6 +664,12 @@ public class IoTDBDescriptor {
           properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
       conf.setKerberosPrincipal(
           properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
+
+      conf.setAllowReadOnlyWhenErrorsOccur(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "allow_read_only_when_errors_occur",
+                  String.valueOf(conf.isAllowReadOnlyWhenErrorsOccur()))));
 
       // the num of memtables in each storage group
       conf.setConcurrentWritingTimePartition(
@@ -1077,10 +1078,10 @@ public class IoTDBDescriptor {
     long throttleDownThresholdInByte =
         Long.parseLong(
             properties.getProperty(
-                "multi_leader_throttle_down_threshold_in_byte",
-                Long.toString(conf.getThrottleDownThreshold())));
+                "multi_leader_throttle_threshold_in_byte",
+                Long.toString(conf.getThrottleThreshold())));
     if (throttleDownThresholdInByte > 0) {
-      conf.setThrottleDownThreshold(throttleDownThresholdInByte);
+      conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
   }
 
@@ -1332,11 +1333,12 @@ public class IoTDBDescriptor {
         conf.reloadDataDirs(dataDirs.split(","));
       }
 
-      // update dir strategy
+      // update dir strategy, must update after data dirs
       String multiDirStrategyClassName = properties.getProperty("multi_dir_strategy", null);
       if (multiDirStrategyClassName != null
           && !multiDirStrategyClassName.equals(conf.getMultiDirStrategyClassName())) {
         conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
+        conf.confirmMultiDirStrategy();
         DirectoryManager.getInstance().updateDirectoryStrategy();
       }
 
@@ -1410,10 +1412,6 @@ public class IoTDBDescriptor {
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
       // update sync config
-      conf.setPipeServerPort(
-          Integer.parseInt(
-              properties.getProperty(
-                  "pipe_server_port", String.valueOf(conf.getPipeServerPort()))));
       conf.setMaxNumberOfSyncFileRetry(
           Integer.parseInt(
               properties

@@ -47,7 +47,7 @@ public class TsFileProcessorInfo {
               Metric.MEM.toString(),
               MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
-              "chunkMetaData_" + storageGroupInfo.getDataRegion().getLogicalStorageGroupName())
+              "chunkMetaData_" + storageGroupInfo.getDataRegion().getStorageGroupName())
           .incr(cost);
     }
   }
@@ -61,7 +61,7 @@ public class TsFileProcessorInfo {
             Metric.MEM.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            "chunkMetaData_" + storageGroupInfo.getDataRegion().getLogicalStorageGroupName())
+            "chunkMetaData_" + storageGroupInfo.getDataRegion().getStorageGroupName())
         .decr(cost);
   }
 
@@ -73,7 +73,7 @@ public class TsFileProcessorInfo {
             Metric.MEM.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            "chunkMetaData_" + storageGroupInfo.getDataRegion().getLogicalStorageGroupName())
+            "chunkMetaData_" + storageGroupInfo.getDataRegion().getStorageGroupName())
         .decr(memCost);
     memCost = 0L;
   }

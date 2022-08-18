@@ -254,7 +254,7 @@ public class StorageGroupManager {
         logger.info(
             "{} closing sg processor is called for closing {}, seq = {}",
             isSync ? "sync" : "async",
-            processor.getDataRegionId() + "-" + processor.getLogicalStorageGroupName(),
+            processor.getDataRegionId() + "-" + processor.getStorageGroupName(),
             isSeq);
       }
 
@@ -293,7 +293,7 @@ public class StorageGroupManager {
       if (processor != null) {
         logger.info(
             "async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
-            processor.getDataRegionId() + "-" + processor.getLogicalStorageGroupName(),
+            processor.getDataRegionId() + "-" + processor.getStorageGroupName(),
             isSeq,
             partitionId);
         processor.writeLock("VirtualCloseStorageGroupProcessor-242");

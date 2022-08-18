@@ -15,20 +15,18 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.sync.transport.server;
+package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.commons.exception.StartupException;
-
-public interface TransportServerManagerMBean {
-  String getRPCServiceStatus();
-
-  int getRPCPort();
-
-  void startService() throws StartupException;
-
-  void restartService() throws StartupException;
-
-  void stopService();
+/** Status of current system */
+public enum SystemStatus {
+  /** System can read and write normally */
+  NORMAL,
+  /** Only query statements are permitted */
+  READ_ONLY,
+  /**
+   * Unrecoverable errors occur, system will be read-only or exit according to the param
+   * allow_read_only_when_errors_occur
+   */
+  ERROR,
 }
