@@ -31,6 +31,7 @@ import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -193,7 +194,13 @@ public abstract class InsertNode extends WritePlanNode {
       if (measurements[i] == null) {
         continue;
       }
-      WALWriteUtils.write(measurementSchemas[i], buffer);
+
+      // serialize measurementId only for standalone version for better write performance
+      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        WALWriteUtils.write(measurementSchemas[i], buffer);
+      } else {
+        WALWriteUtils.write(measurements[i], buffer);
+      }
     }
   }
 
@@ -203,8 +210,12 @@ public abstract class InsertNode extends WritePlanNode {
    */
   protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {
     for (int i = 0; i < measurementSchemas.length; i++) {
-      measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
-      measurements[i] = measurementSchemas[i].getMeasurementId();
+      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
+        measurements[i] = measurementSchemas[i].getMeasurementId();
+      } else {
+        measurements[i] = ReadWriteIOUtils.readString(stream);
+      }
     }
   }
 
