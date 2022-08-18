@@ -148,18 +148,23 @@ public class IDTableHashmapImpl implements IDTable {
     Set<String> failedNames = new HashSet<>();
     List<Pair<PartialPath, Long>> deletedPairs = new ArrayList<>(fullPaths.size());
     for (PartialPath fullPath : fullPaths) {
-      try {
-        Map<String, SchemaEntry> map = getDeviceEntry(fullPath.getDevice()).getMeasurementMap();
-        Long offset = map.get(fullPath.getMeasurement()).getDiskPointer();
-        deletedPairs.add(new Pair<>(fullPath, offset));
-      } catch (NullPointerException e) {
+      Map<String, SchemaEntry> map = getDeviceEntry(fullPath.getDevice()).getMeasurementMap();
+      if (map == null) {
         failedNames.add(fullPath.getFullPath());
+      } else {
+        SchemaEntry schemaEntry = map.get(fullPath.getMeasurement());
+        if (schemaEntry == null) {
+          failedNames.add(fullPath.getFullPath());
+        } else {
+          deletedPairs.add(new Pair<>(fullPath, schemaEntry.getDiskPointer()));
+        }
       }
     }
+    // Sort by the offset of the disk records,transpose the random I/O to the order I/O
     deletedPairs.sort(Comparator.comparingLong(o -> o.right));
     for (Pair<PartialPath, Long> pair : deletedPairs) {
       try {
-        getIDiskSchemaManager().deleteDiskSchemaEntriesByOffset(pair.right);
+        getIDiskSchemaManager().deleteDiskSchemaEntryByOffset(pair.right);
         Map<String, SchemaEntry> map = getDeviceEntry(pair.left.getDevice()).getMeasurementMap();
         map.keySet().remove(pair.left.getMeasurement());
         deletedNum++;
@@ -374,6 +379,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @return DiskSchemaEntries
    */
   @Override
+  @TestOnly
   public List<DiskSchemaEntry> getDiskSchemaEntries(List<SchemaEntry> schemaEntries) {
     List<Long> offsets = new ArrayList<>(schemaEntries.size());
     for (SchemaEntry schemaEntry : schemaEntries) {

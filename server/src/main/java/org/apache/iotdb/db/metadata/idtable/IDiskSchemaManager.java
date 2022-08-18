@@ -66,7 +66,7 @@ public interface IDiskSchemaManager {
    * @param offset the offset of a record on the disk file
    * @throws MetadataException
    */
-  void deleteDiskSchemaEntriesByOffset(long offset) throws MetadataException;
+  void deleteDiskSchemaEntryByOffset(long offset) throws MetadataException;
 
   /** close file and free resource */
   void close() throws IOException;

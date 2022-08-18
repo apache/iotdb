@@ -212,8 +212,6 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
       for (long offset : offsets) {
         diskSchemaEntries.add(getDiskSchemaEntryByOffset(randomAccessFile, offset));
       }
-    } catch (FileNotFoundException e) {
-      logger.info(e.getMessage());
     } catch (IOException e) {
       logger.error(e.getMessage());
     }
@@ -221,15 +219,19 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
   }
 
   /**
-   * delete DiskSchemaEntries on disk
+   * delete DiskSchemaEntry on disk
    *
    * @param offset the offset of a record on the disk file
    * @throws MetadataException
    */
   @Override
-  public void deleteDiskSchemaEntriesByOffset(long offset) throws MetadataException {
+  public void deleteDiskSchemaEntryByOffset(long offset) throws MetadataException {
     try (RandomAccessFile randomAccessFile = new RandomAccessFile(dataFile, "rw")) {
-      DiskSchemaEntry.writeTombstone(randomAccessFile, offset + FILE_VERSION.length() + 4);
+      randomAccessFile.seek(offset + FILE_VERSION.length() + Integer.BYTES);
+      int strLength = randomAccessFile.readInt();
+      byte[] bytes = new byte[strLength];
+      // change the deviceID of the DiskSchemaEntry to be deleted to a tombstone: bytes=[0,...,0]
+      randomAccessFile.write(bytes, 0, strLength);
     } catch (IOException e) {
       logger.error(e.getMessage());
       throw new MetadataException(e.getMessage());
@@ -238,11 +240,11 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
 
   private DiskSchemaEntry getDiskSchemaEntryByOffset(RandomAccessFile randomAccessFile, long offset)
       throws IOException {
-    randomAccessFile.seek(offset + FILE_VERSION.length() + 4);
+    randomAccessFile.seek(offset + FILE_VERSION.length() + Integer.BYTES);
     // skip reading deviceID
-    DiskSchemaEntry.readString(randomAccessFile);
-    String seriesKey = DiskSchemaEntry.readString(randomAccessFile);
-    String measurementName = DiskSchemaEntry.readString(randomAccessFile);
+    readString(randomAccessFile);
+    String seriesKey = readString(randomAccessFile);
+    String measurementName = readString(randomAccessFile);
     String deviceID =
         DeviceIDFactory.getInstance()
             .getDeviceID(seriesKey.substring(0, seriesKey.length() - measurementName.length() - 1))
@@ -255,6 +257,13 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
         randomAccessFile.readByte(),
         randomAccessFile.readByte(),
         randomAccessFile.readBoolean());
+  }
+
+  private String readString(RandomAccessFile randomAccessFile) throws IOException {
+    int strLength = randomAccessFile.readInt();
+    byte[] bytes = new byte[strLength];
+    randomAccessFile.read(bytes, 0, strLength);
+    return new String(bytes, 0, strLength);
   }
 
   @Override

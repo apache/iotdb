@@ -212,6 +212,7 @@ public interface IDTable {
    * @param schemaEntries get the disk pointers from schemaEntries
    * @return DiskSchemaEntries
    */
+  @TestOnly
   List<DiskSchemaEntry> getDiskSchemaEntries(List<SchemaEntry> schemaEntries);
 
   @TestOnly

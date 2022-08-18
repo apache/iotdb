@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.RandomAccessFile;
 
 /**
  * the disk schema entry of schema entry of id table. This is a po class, so every field is public
@@ -105,21 +104,6 @@ public class DiskSchemaEntry {
     res.entrySize += Integer.BYTES;
     if (isTombstone(res.deviceID)) res.deviceID = TOMBSTONE;
     return res;
-  }
-
-  public static void writeTombstone(RandomAccessFile randomAccessFile, long offset)
-      throws IOException {
-    randomAccessFile.seek(offset);
-    int strLength = randomAccessFile.readInt();
-    byte[] bytes = new byte[strLength];
-    randomAccessFile.write(bytes, 0, strLength);
-  }
-
-  public static String readString(RandomAccessFile randomAccessFile) throws IOException {
-    int strLength = randomAccessFile.readInt();
-    byte[] bytes = new byte[strLength];
-    randomAccessFile.read(bytes, 0, strLength);
-    return new String(bytes, 0, strLength);
   }
 
   private static Boolean isTombstone(String deviceID) {
