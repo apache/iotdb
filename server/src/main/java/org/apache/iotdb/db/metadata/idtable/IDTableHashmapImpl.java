@@ -142,7 +142,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @throws MetadataException
    */
   @Override
-  public Pair<Integer, Set<String>> deleteTimeseries(List<PartialPath> fullPaths)
+  public synchronized Pair<Integer, Set<String>> deleteTimeseries(List<PartialPath> fullPaths)
       throws MetadataException {
     int deletedNum = 0;
     Set<String> failedNames = new HashSet<>();
@@ -165,6 +165,7 @@ public class IDTableHashmapImpl implements IDTable {
     for (Pair<PartialPath, Long> pair : deletedPairs) {
       try {
         getIDiskSchemaManager().deleteDiskSchemaEntryByOffset(pair.right);
+        DeviceEntry deviceEntry = getDeviceEntry(pair.left.getDevice());
         Map<String, SchemaEntry> map = getDeviceEntry(pair.left.getDevice()).getMeasurementMap();
         map.keySet().remove(pair.left.getMeasurement());
         deletedNum++;
@@ -380,7 +381,7 @@ public class IDTableHashmapImpl implements IDTable {
    */
   @Override
   @TestOnly
-  public List<DiskSchemaEntry> getDiskSchemaEntries(List<SchemaEntry> schemaEntries) {
+  public synchronized List<DiskSchemaEntry> getDiskSchemaEntries(List<SchemaEntry> schemaEntries) {
     List<Long> offsets = new ArrayList<>(schemaEntries.size());
     for (SchemaEntry schemaEntry : schemaEntries) {
       offsets.add(schemaEntry.getDiskPointer());

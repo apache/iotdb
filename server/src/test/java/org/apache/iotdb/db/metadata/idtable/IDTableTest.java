@@ -679,6 +679,8 @@ public class IDTableTest {
         assertNotEquals("root.laptop.d0.s0", diskSchemaEntry.seriesKey);
         assertNotEquals("root.laptop.d8.s8", diskSchemaEntry.seriesKey);
       }
+      assertNull(idTable.getDeviceEntry("root.laptop.d0").getMeasurementMap().get("s0"));
+      assertNull(idTable.getDeviceEntry("root.laptop.d8").getMeasurementMap().get("s1"));
     } catch (Exception e) {
       e.printStackTrace();
       fail("throw exception");

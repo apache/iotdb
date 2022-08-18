@@ -55,6 +55,8 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
 
   FileOutputStream outputStream;
 
+  RandomAccessFile randomAccessFile;
+
   long loc;
 
   private static final Logger logger = LoggerFactory.getLogger(AppendOnlyDiskSchemaManager.class);
@@ -63,6 +65,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     try {
       initFile(dir);
       outputStream = new FileOutputStream(dataFile, true);
+      randomAccessFile = new RandomAccessFile(dataFile, "rw");
       // we write file version to new file
       if (loc == 0) {
         ReadWriteIOUtils.write(FILE_VERSION, outputStream);
@@ -207,9 +210,9 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
   public List<DiskSchemaEntry> getDiskSchemaEntriesByOffset(List<Long> offsets) {
     List<DiskSchemaEntry> diskSchemaEntries = new ArrayList<>(offsets.size());
     Collections.sort(offsets);
-    try (RandomAccessFile randomAccessFile = new RandomAccessFile(dataFile, "r")) {
+    try {
       for (long offset : offsets) {
-        diskSchemaEntries.add(getDiskSchemaEntryByOffset(randomAccessFile, offset));
+        diskSchemaEntries.add(getDiskSchemaEntryByOffset(offset));
       }
     } catch (IOException e) {
       logger.error(e.getMessage());
@@ -225,7 +228,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
    */
   @Override
   public void deleteDiskSchemaEntryByOffset(long offset) throws MetadataException {
-    try (RandomAccessFile randomAccessFile = new RandomAccessFile(dataFile, "rw")) {
+    try {
       randomAccessFile.seek(offset + FILE_VERSION.length() + Integer.BYTES);
       int strLength = randomAccessFile.readInt();
       byte[] bytes = new byte[strLength];
@@ -237,13 +240,12 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     }
   }
 
-  private DiskSchemaEntry getDiskSchemaEntryByOffset(RandomAccessFile randomAccessFile, long offset)
-      throws IOException {
+  private DiskSchemaEntry getDiskSchemaEntryByOffset(long offset) throws IOException {
     randomAccessFile.seek(offset + FILE_VERSION.length() + Integer.BYTES);
     // skip reading deviceID
-    readString(randomAccessFile);
-    String seriesKey = readString(randomAccessFile);
-    String measurementName = readString(randomAccessFile);
+    readString();
+    String seriesKey = readString();
+    String measurementName = readString();
     String deviceID =
         DeviceIDFactory.getInstance()
             .getDeviceID(seriesKey.substring(0, seriesKey.length() - measurementName.length() - 1))
@@ -258,7 +260,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
         randomAccessFile.readBoolean());
   }
 
-  private String readString(RandomAccessFile randomAccessFile) throws IOException {
+  private String readString() throws IOException {
     int strLength = randomAccessFile.readInt();
     byte[] bytes = new byte[strLength];
     randomAccessFile.read(bytes, 0, strLength);
@@ -269,6 +271,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
   public void close() throws IOException {
     try {
       outputStream.close();
+      randomAccessFile.close();
     } catch (IOException e) {
       logger.error("close schema file failed");
       throw e;
