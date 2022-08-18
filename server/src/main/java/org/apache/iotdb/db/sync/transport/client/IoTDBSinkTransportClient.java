@@ -165,6 +165,13 @@ public class IoTDBSinkTransportClient implements ITransportClient {
     }
   }
 
+  /**
+   * Transport file piece by piece.
+   *
+   * @return true if success; false if failed.
+   * @throws SyncConnectionException Connection exception, wait for a while and try again
+   * @throws IOException Serialize error.
+   */
   private boolean transportSingleFilePieceByPiece(File file)
       throws SyncConnectionException, IOException {
     // Cut the file into pieces to send
@@ -223,6 +230,13 @@ public class IoTDBSinkTransportClient implements ITransportClient {
     return file.length();
   }
 
+  /**
+   * Transport and load PipeData
+   *
+   * @return true if success; false if failed.
+   * @throws SyncConnectionException Connection exception, wait for a while and try again
+   * @throws IOException Serialize error.
+   */
   private boolean transportPipeData(PipeData pipeData) throws SyncConnectionException, IOException {
     try {
       byte[] buffer = pipeData.serialize();
