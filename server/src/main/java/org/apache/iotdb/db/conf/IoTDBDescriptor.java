@@ -36,7 +36,7 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -417,11 +417,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "session_timeout_threshold",
                   Integer.toString(conf.getSessionTimeoutThreshold()))));
-      conf.setPipeServerPort(
-          Integer.parseInt(
-              properties
-                  .getProperty("pipe_server_port", Integer.toString(conf.getPipeServerPort()))
-                  .trim()));
       conf.setMaxNumberOfSyncFileRetry(
           Integer.parseInt(
               properties
@@ -669,6 +664,12 @@ public class IoTDBDescriptor {
           properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
       conf.setKerberosPrincipal(
           properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
+
+      conf.setAllowReadOnlyWhenErrorsOccur(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "allow_read_only_when_errors_occur",
+                  String.valueOf(conf.isAllowReadOnlyWhenErrorsOccur()))));
 
       // the num of memtables in each storage group
       conf.setConcurrentWritingTimePartition(
@@ -1073,6 +1074,15 @@ public class IoTDBDescriptor {
     if (deleteWalFilesPeriod > 0) {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
+
+    long throttleDownThresholdInByte =
+        Long.parseLong(
+            properties.getProperty(
+                "multi_leader_throttle_threshold_in_byte",
+                Long.toString(conf.getThrottleThreshold())));
+    if (throttleDownThresholdInByte > 0) {
+      conf.setThrottleThreshold(throttleDownThresholdInByte);
+    }
   }
 
   private void loadAutoCreateSchemaProps(Properties properties) {
@@ -1323,11 +1333,12 @@ public class IoTDBDescriptor {
         conf.reloadDataDirs(dataDirs.split(","));
       }
 
-      // update dir strategy
+      // update dir strategy, must update after data dirs
       String multiDirStrategyClassName = properties.getProperty("multi_dir_strategy", null);
       if (multiDirStrategyClassName != null
           && !multiDirStrategyClassName.equals(conf.getMultiDirStrategyClassName())) {
         conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
+        conf.confirmMultiDirStrategy();
         DirectoryManager.getInstance().updateDirectoryStrategy();
       }
 
@@ -1401,10 +1412,6 @@ public class IoTDBDescriptor {
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
       // update sync config
-      conf.setPipeServerPort(
-          Integer.parseInt(
-              properties.getProperty(
-                  "pipe_server_port", String.valueOf(conf.getPipeServerPort()))));
       conf.setMaxNumberOfSyncFileRetry(
           Integer.parseInt(
               properties
@@ -1442,8 +1449,8 @@ public class IoTDBDescriptor {
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
-    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProperties();
-    MetricsService.getInstance().reloadProperties(reloadLevel);
+    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps();
+    MetricService.getInstance().reloadProperties(reloadLevel);
   }
 
   private void initMemoryAllocate(Properties properties) {
@@ -1767,6 +1774,7 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
+    conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
   private static class IoTDBDescriptorHolder {

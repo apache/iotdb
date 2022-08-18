@@ -47,7 +47,6 @@ public class SyncInfo {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(SyncInfo.class);
 
-  protected boolean pipeServerEnable;
   // <pipeFolderName, pipeMsg>
   protected Map<String, List<PipeMessage>> pipeMessageMap;
 
@@ -60,41 +59,25 @@ public class SyncInfo {
 
   public SyncInfo() {
     syncLogWriter = SyncLogWriter.getInstance();
-    SyncLogReader analyzer = new SyncLogReader();
+    SyncLogReader logReader = new SyncLogReader();
     try {
-      analyzer.recover();
-      pipeSinks = analyzer.getAllPipeSinks();
-      pipes = analyzer.getAllPipeInfos();
-      runningPipe = analyzer.getRunningPipeInfo();
-      pipeServerEnable = analyzer.isPipeServerEnable();
-      pipeMessageMap = analyzer.getPipeMessageMap();
+      logReader.recover();
+      pipeSinks = logReader.getAllPipeSinks();
+      pipes = logReader.getAllPipeInfos();
+      runningPipe = logReader.getRunningPipeInfo();
+      pipeMessageMap = logReader.getPipeMessageMap();
     } catch (StartupException e) {
       LOGGER.error(
           "Cannot recover ReceiverInfo because {}. Use default info values.", e.getMessage());
       pipeSinks = new ConcurrentHashMap<>();
       pipes = new ArrayList<>();
       pipeMessageMap = new ConcurrentHashMap<>();
-      pipeServerEnable = false;
     }
   }
 
   public void close() throws IOException {
     syncLogWriter.close();
   }
-
-  // region Implement of PipeServer
-
-  public void startServer() throws IOException {
-    pipeServerEnable = true;
-    syncLogWriter.startPipeServer();
-  }
-
-  public void stopServer() throws IOException {
-    pipeServerEnable = false;
-    syncLogWriter.stopPipeServer();
-  }
-
-  // endregion
 
   // region Implement of PipeSink
   private boolean isPipeSinkExist(String name) {
@@ -186,6 +169,11 @@ public class SyncInfo {
     return pipes;
   }
 
+  /** @return null if no pipe has been created */
+  public PipeInfo getRunningPipeInfo() {
+    return runningPipe;
+  }
+
   private void checkIfPipeExistAndRunning(String pipeName) throws PipeException {
     if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
       throw new PipeException("There is no existing pipe.");
@@ -273,10 +261,6 @@ public class SyncInfo {
       }
     }
     return message;
-  }
-
-  public boolean isPipeServerEnable() {
-    return pipeServerEnable;
   }
 
   private void createDir(String pipeName, String remoteIp, long createTime) {

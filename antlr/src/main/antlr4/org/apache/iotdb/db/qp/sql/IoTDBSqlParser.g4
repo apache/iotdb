@@ -65,8 +65,7 @@ utilityStatement
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 syncStatement
-    : startPipeServer | stopPipeServer | showPipeServer
-    | createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
+    : createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
     | createPipe | showPipe | stopPipe | startPipe | dropPipe;
 
 /**
@@ -384,9 +383,9 @@ intoPath
 specialClause
     : specialLimit #specialLimitStatement
     | orderByClause specialLimit? #orderByTimeStatement
-    | groupByTimeClause orderByClause? specialLimit? #groupByTimeStatement
-    | groupByFillClause orderByClause? specialLimit? #groupByFillStatement
-    | groupByLevelClause orderByClause? specialLimit? #groupByLevelStatement
+    | groupByTimeClause havingClause? orderByClause? specialLimit? #groupByTimeStatement
+    | groupByFillClause havingClause? orderByClause? specialLimit? #groupByFillStatement
+    | groupByLevelClause havingClause? orderByClause? specialLimit? #groupByLevelStatement
     | fillClause orderByClause? specialLimit? #fillStatement
     ;
 
@@ -395,6 +394,10 @@ specialLimit
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
     | withoutNullClause limitClause? slimitClause? alignByDeviceClauseOrDisableAlign? #withoutNullStatement
     | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignStatement
+    ;
+
+havingClause
+    : HAVING expression
     ;
 
 alignByDeviceClauseOrDisableAlign
@@ -534,7 +537,7 @@ grantUser
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=identifier PRIVILEGES privileges ON prefixPath (COMMA prefixPath)*
+    : GRANT ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Grant User Role
@@ -549,7 +552,7 @@ revokeUser
 
 // Revoke Role Privileges
 revokeRole
-    : REVOKE ROLE roleName=identifier PRIVILEGES privileges ON prefixPath (COMMA prefixPath)*
+    : REVOKE ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Revoke Role From User
@@ -684,7 +687,7 @@ revokeWatermarkEmbedding
 
 // Load Configuration
 loadConfiguration
-    : LOAD CONFIGURATION (MINUS GLOBAL)?
+    : LOAD CONFIGURATION (MINUS GLOBAL)? (ON (LOCAL | CLUSTER))?
     ;
 
 // Load Timeseries
@@ -760,18 +763,6 @@ syncAttributeClauses
     : attributePair (COMMA attributePair)*
     ;
 
-// sync receiver
-startPipeServer
-    : START PIPESERVER
-    ;
-
-stopPipeServer
-    : STOP PIPESERVER
-    ;
-
-showPipeServer
-    : SHOW PIPESERVER
-    ;
 
 /**
  * 7. Common Clauses

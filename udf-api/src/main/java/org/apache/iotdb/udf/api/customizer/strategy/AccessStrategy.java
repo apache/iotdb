@@ -41,7 +41,10 @@ public interface AccessStrategy {
     SLIDING_TIME_WINDOW,
 
     /** @see SlidingSizeWindowAccessStrategy */
-    SLIDING_SIZE_WINDOW
+    SLIDING_SIZE_WINDOW,
+
+    /** @see SessionTimeWindowAccessStrategy */
+    SESSION_TIME_WINDOW
   }
 
   /**

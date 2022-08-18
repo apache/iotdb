@@ -51,6 +51,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * This interface defines all interfaces and behaviours that one SchemaRegion should support and
@@ -358,7 +359,10 @@ public interface ISchemaRegion {
   IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException, IOException;
 
   DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
-      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned)
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned)
       throws MetadataException;
   // endregion
 

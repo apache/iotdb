@@ -71,7 +71,6 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EncodingInferenceUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -1898,7 +1897,7 @@ public class RSchemaRegion implements ISchemaRegion {
           measurementList[i] = nodeMap.get(i).getName();
         }
       } catch (MetadataException e) {
-        if (IoTDB.isClusterMode()) {
+        if (config.isClusterMode()) {
           logger.debug(
               "meet error when check {}.{}, message: {}",
               devicePath,
@@ -1924,7 +1923,10 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
-      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned)
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }

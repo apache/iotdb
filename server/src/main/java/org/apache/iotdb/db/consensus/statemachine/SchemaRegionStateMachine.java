@@ -22,6 +22,7 @@ package org.apache.iotdb.db.consensus.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
@@ -50,6 +51,11 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void stop() {}
+
+  @Override
+  public boolean isReadOnly() {
+    return IoTDBDescriptor.getInstance().getConfig().isReadOnly();
+  }
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {

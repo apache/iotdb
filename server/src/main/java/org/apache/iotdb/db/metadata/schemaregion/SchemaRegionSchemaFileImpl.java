@@ -75,7 +75,6 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -104,6 +103,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -1577,7 +1577,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             measurementList[i] = measurementMNode.getName();
           }
         } catch (MetadataException e) {
-          if (IoTDB.isClusterMode()) {
+          if (config.isClusterMode()) {
             logger.debug(
                 "meet error when check {}.{}, message: {}",
                 devicePath,
@@ -1609,7 +1609,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   @Override
   public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
-      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned)
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }

@@ -29,14 +29,6 @@ import java.util.List;
 
 public interface ISyncInfoFetcher {
 
-  // region Interfaces of PipeServer
-  TSStatus startPipeServer();
-
-  TSStatus stopPipeServer();
-
-  boolean isPipeServerEnable();
-  // endregion
-
   // region Interfaces of PipeSink
   // TODO: use CreatePipeSinkNode as parameter
   TSStatus addPipeSink(CreatePipeSinkPlan plan);
@@ -45,7 +37,7 @@ public interface ISyncInfoFetcher {
 
   PipeSink getPipeSink(String name);
 
-  List<PipeSink> getAllPipeSink();
+  List<PipeSink> getAllPipeSinks();
   // endregion
 
   // region Interfaces of Pipe
@@ -60,6 +52,8 @@ public interface ISyncInfoFetcher {
   TSStatus dropPipe(String pipeName);
 
   List<PipeInfo> getAllPipeInfos();
+
+  PipeInfo getRunningPipeInfo();
 
   // endregion
 

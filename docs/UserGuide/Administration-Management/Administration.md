@@ -184,13 +184,14 @@ Eg: IoTDB > DROP ROLE `admin`;
 ```
 GRANT USER <userName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES INSERT_TIMESERIES, DELETE_TIMESERIES on root.ln.**, root.sgcc.**;
+Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES CREATE_ROLE;
 ```
 
 - Grant User All Privileges
 
 ```
-GRANT USER <userName> PRIVILEGES ALL ON <nodeNames>; 
-Eg: IoTDB > grant user renyuhua privileges all on root.sgcc.**, root.**;
+GRANT USER <userName> PRIVILEGES ALL; 
+Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES ALL;
 ```
 
 * Grant Role Privileges
@@ -198,13 +199,14 @@ Eg: IoTDB > grant user renyuhua privileges all on root.sgcc.**, root.**;
 ```
 GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES INSERT_TIMESERIES, DELETE_TIMESERIES ON root.sgcc.**, root.ln.**;
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES CREATE_ROLE;
 ```
 
 - Grant Role All Privileges
 
 ```
 GRANT ROLE <roleName> PRIVILEGES ALL ON <nodeNames>;  
-Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES ALL;
 ```
 
 * Grant User Role
@@ -219,13 +221,14 @@ Eg: IoTDB > GRANT `temprole` TO tempuser;
 ```
 REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeNames>;   
 Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
+Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES CREATE_ROLE;
 ```
 
 * Revoke User All Privileges
 
 ```
-REVOKE USER <userName> PRIVILEGES ALL ON <nodeNames>; 
-Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL on root.ln.**;
+REVOKE USER <userName> PRIVILEGES ALL; 
+Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL;
 ```
 
 * Revoke Role Privileges
@@ -233,13 +236,14 @@ Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL on root.ln.**;
 ```
 REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
+Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES CREATE_ROLE;
 ```
 
 * Revoke All Role Privileges
 
 ```
-REVOKE ROLE <roleName> PRIVILEGES ALL ON <nodeNames>;  
-Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
+REVOKE ROLE <roleName> PRIVILEGES ALL;  
+Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES ALL;
 ```
 
 * Revoke Role From User
@@ -368,7 +372,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |CREATE\_TIMESERIES|create timeseries; path dependent|Eg1: create timeseries<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: create aligned timeseries<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`|
 |INSERT\_TIMESERIES|insert data; path dependent|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|
 |ALTER\_TIMESERIES|alter timeseries; path dependent|Eg1: `alter timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4;`<br />Eg2: `ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4);`|
-|READ\_TIMESERIES|query data; path dependent|Eg1: `show storage group;` <br />Eg2: `show child paths root.ln, show child nodes root.ln;`<br />Eg3: `show devices;`<br />Eg4: `show timeseries root.**;`<br />Eg5: `show schema templates;`<br />Eg6: `show all ttl`<br />Eg7: [Query-Data](../Query-Data/Overview.md)（The query statements under this section all use this permission）<br />Eg8: CVS format data export<br />`./export-csv.bat -h 127.0.0.1 -p 6667 -u tempuser -pw root -td ./`<br />Eg9: Performance Tracing Tool<br />`tracing select * from root.**`<br />Eg10: UDF-Query<br />`select example(*) from root.sg.d1`<br />Eg11: Triggers-Query<br />`show triggers`|
+|READ\_TIMESERIES|query data; path dependent|Eg1: `show storage group;` <br />Eg2: `show child paths root.ln, show child nodes root.ln;`<br />Eg3: `show devices;`<br />Eg4: `show timeseries root.**;`<br />Eg5: `show schema templates;`<br />Eg6: `show all ttl`<br />Eg7: [Query-Data](../Query-Data/Overview.md)（The query statements under this section all use this permission）<br />Eg8: CVS format data export<br />`./export-csv.bat -h 127.0.0.1 -p 6667 -u tempuser -pw root -td ./`<br />Eg9: Performance Tracing Tool<br />`tracing select * from root.**`<br />Eg10: UDF-Query<br />`select example(*) from root.sg.d1`<br />Eg11: Triggers-Query<br />`show triggers`<br />Eg12: Count-Query<br />`count devices`|
 |DELETE\_TIMESERIES|delete data or timeseries; path dependent|Eg1: delete timeseries<br />`delete timeseries root.ln.wf01.wt01.status`<br />Eg2: delete data<br />`delete from root.ln.wf02.wt02.status where time < 10`|
 |CREATE\_USER|create users; path independent|Eg: `create user thulab 'passwd';`|
 |DELETE\_USER|delete users; path independent|Eg: `drop user xiaoming;`|
@@ -395,6 +399,8 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |READ_TEMPLATE|show schema templates and show nodes in schema template; path independent|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1` 
 |APPLY_TEMPLATE|set, unset and activate schema template; path dependent|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `create timeseries of schema template on root.sg.d`
 |READ_TEMPLATE_APPLICATION|show paths set and using schema template; path independent|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`
+
+Note that path dependent privileges can only be granted or revoked on root.**;
 
 Note that the following SQL statements need to be granted multiple permissions before they can be used：
 

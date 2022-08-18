@@ -44,8 +44,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SyncLogReader {
   private static final Logger logger = LoggerFactory.getLogger(SyncLogReader.class);
-  // record recovery result of receiver server status
-  private boolean pipeServerEnable = false;
   // <pipeFolderName, pipeMsg>
   private Map<String, List<PipeMessage>> pipeMessageMap = new ConcurrentHashMap<>();
   // <pipeSinkName, PipeSink>
@@ -56,7 +54,6 @@ public class SyncLogReader {
   public void recover() throws StartupException {
     logger.info("Start to recover all sync state for sync.");
     this.pipeMessageMap = new ConcurrentHashMap<>();
-    this.pipeServerEnable = false;
     this.pipeSinks = new ConcurrentHashMap<>();
     this.pipes = new ArrayList<>();
     File serviceLogFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_LOG_NAME);
@@ -77,17 +74,13 @@ public class SyncLogReader {
           logger.error("Sync msg log recovery error: log file parse error at line " + lineNum);
           logger.error(e.getMessage());
           throw new StartupException(
-              ServiceType.RECEIVER_SERVICE.getName(),
+              ServiceType.SYNC_SERVICE.getName(),
               "Sync msg log file recover error at line " + lineNum);
         }
       }
     } catch (IOException e) {
       logger.info("Sync msg log file not found");
     }
-  }
-
-  public boolean isPipeServerEnable() {
-    return pipeServerEnable;
   }
 
   public Map<String, List<PipeMessage>> getPipeMessageMap() {
@@ -148,12 +141,6 @@ public class SyncLogReader {
             break;
           case DROP_PIPE:
             runningPipe.drop();
-            break;
-          case START_PIPE_SERVER:
-            pipeServerEnable = true;
-            break;
-          case STOP_PIPE_SERVER:
-            pipeServerEnable = false;
             break;
           default:
             throw new UnsupportedOperationException(

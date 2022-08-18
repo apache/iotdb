@@ -38,13 +38,11 @@ import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
-import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -278,11 +276,17 @@ public interface IManager {
 
   TSStatus dropFunction(String udfName);
 
-  TSStatus merge(TMergeReq req);
+  /** Merge on all DataNodes */
+  TSStatus merge();
 
+  /** Flush on all DataNodes */
   TSStatus flush(TFlushReq req);
 
-  TSStatus clearCache(TClearCacheReq req);
+  /** Clear cache on all DataNodes */
+  TSStatus clearCache();
+
+  /** Load configuration on all DataNodes */
+  TSStatus loadConfiguration();
 
   /**
    * Get the latest RegionRouteMap

@@ -245,7 +245,7 @@ public class DeletionFileNodeTest {
         };
 
     File fileNodeDir =
-        new File(DirectoryManager.getInstance().getSequenceFileFolder(0), processorName);
+        new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(), processorName);
     List<File> modFiles = new ArrayList<>();
     for (File directory : fileNodeDir.listFiles()) {
       assertTrue(directory.isDirectory());

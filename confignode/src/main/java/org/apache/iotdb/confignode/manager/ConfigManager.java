@@ -75,7 +75,6 @@ import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
@@ -84,7 +83,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
-import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -247,7 +245,7 @@ public class ConfigManager implements IManager {
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
       Map<Integer, String> nodeStatus = new HashMap<>();
-      getLoadManager()
+      getNodeManager()
           .getNodeCacheMap()
           .forEach(
               (nodeId, heartbeatCache) ->
@@ -783,7 +781,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      status = nodeManager.checkConfigNode(removeConfigNodePlan);
+      status = nodeManager.checkConfigNodeBeforeRemove(removeConfigNodePlan);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         procedureManager.removeConfigNode(removeConfigNodePlan);
       }
@@ -809,10 +807,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus merge(TMergeReq req) {
+  public TSStatus merge() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.merge(req))
+        ? RpcUtils.squashResponseStatusList(nodeManager.merge())
         : status;
   }
 
@@ -825,10 +823,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus clearCache(TClearCacheReq req) {
+  public TSStatus clearCache() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache(req))
+        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache())
+        : status;
+  }
+
+  @Override
+  public TSStatus loadConfiguration() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.loadConfiguration())
         : status;
   }
 
@@ -860,7 +866,8 @@ public class ConfigManager implements IManager {
           .getRegionInfoList()
           .forEach(
               regionInfo -> {
-                Map<TConsensusGroupId, Integer> allLeadership = loadManager.getAllLeadership();
+                Map<TConsensusGroupId, Integer> allLeadership =
+                    getPartitionManager().getAllLeadership();
                 if (!allLeadership.isEmpty()) {
                   String regionType =
                       regionInfo.getDataNodeId()
