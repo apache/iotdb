@@ -37,17 +37,10 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,13 +56,13 @@ public class ReceiverManager {
   private static Logger logger = LoggerFactory.getLogger(ReceiverManager.class);
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final String RECORD_SUFFIX = ".record";
-  private static final String PATCH_SUFFIX = ".patch";
 
   // When the client abnormally exits, we can still know who to disconnect
   private final ThreadLocal<Long> currentConnectionId;
   // Record the remote message for every rpc connection
   private final Map<Long, TSyncIdentityInfo> connectionIdToIdentityInfoMap;
+  // Record the remote message for every rpc connection
+  private final Map<Long, Map<String, Long>> connectionIdToStartIndexRecord;
 
   // The sync connectionId is unique in one IoTDB instance.
   private final AtomicLong connectionIdGenerator;
@@ -77,6 +70,7 @@ public class ReceiverManager {
   public ReceiverManager() {
     currentConnectionId = new ThreadLocal<>();
     connectionIdToIdentityInfoMap = new ConcurrentHashMap<>();
+    connectionIdToStartIndexRecord = new ConcurrentHashMap<>();
     connectionIdGenerator = new AtomicLong();
   }
 
@@ -101,46 +95,38 @@ public class ReceiverManager {
   }
 
   private CheckResult checkStartIndexValid(File file, long startIndex) throws IOException {
-    File recordFile = new File(file.getAbsolutePath() + SyncConstant.RECORD_SUFFIX);
-
-    if (!recordFile.exists() && startIndex != 0) {
+    // get local index from memory map
+    long localIndex = getCurrentFileStartIndex(file.getAbsolutePath());
+    // get local index from file
+    if (localIndex < 0 && file.exists()) {
+      localIndex = file.length();
+      recordStartIndex(file, localIndex);
+    }
+    // compare and check
+    if (localIndex < 0 && startIndex != 0) {
       logger.error(
           "The start index {} of data sync is not valid. "
-              + "The file {} is not exist and start index should equal to 0).",
-          startIndex,
-          recordFile.getAbsolutePath());
+              + "The file is not exist and start index should equal to 0).",
+          startIndex);
       return new CheckResult(false, "0");
+    } else if (localIndex >= 0 && localIndex != startIndex) {
+      logger.error(
+          "The start index {} of data sync is not valid. "
+              + "The start index of the file should equal to {}.",
+          startIndex,
+          localIndex);
+      return new CheckResult(false, String.valueOf(localIndex));
     }
-
-    if (recordFile.exists()) {
-      try (InputStream inputStream = new FileInputStream(recordFile);
-          BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
-        String index = bufferedReader.readLine();
-
-        if ((index == null) || (index.length() == 0)) {
-          if (startIndex != 0) {
-            logger.error(
-                "The start index {} of data sync is not valid. "
-                    + "The file {} is not exist and start index is should equal to 0.",
-                startIndex,
-                recordFile.getAbsolutePath());
-            return new CheckResult(false, "0");
-          }
-        }
-
-        if (Long.parseLong(index) != startIndex) {
-          logger.error(
-              "The start index {} of data sync is not valid. "
-                  + "The start index of the file {} should equal to {}.",
-              startIndex,
-              recordFile.getAbsolutePath(),
-              index);
-          return new CheckResult(false, index);
-        }
-      }
-    }
-
     return new CheckResult(true, "0");
+  }
+
+  private void recordStartIndex(File file, long position) {
+    Long id = currentConnectionId.get();
+    if (id != null) {
+      Map<String, Long> map =
+          connectionIdToStartIndexRecord.computeIfAbsent(id, i -> new ConcurrentHashMap<>());
+      map.put(file.getAbsolutePath(), position);
+    }
   }
 
   // endregion
@@ -311,8 +297,7 @@ public class ReceiverManager {
       byte[] byteArray = new byte[length];
       buff.get(byteArray);
       randomAccessFile.write(byteArray);
-      writeRecordFile(
-          new File(fileDir, fileName + SyncConstant.RECORD_SUFFIX), startIndex + length);
+      recordStartIndex(new File(fileDir, fileName), startIndex + length);
       logger.debug(
           "Sync "
               + fileName
@@ -327,14 +312,6 @@ public class ReceiverManager {
     }
 
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
-  }
-
-  private void writeRecordFile(File recordFile, long position) throws IOException {
-    File tmpFile = new File(recordFile.getAbsolutePath() + ".tmp");
-    FileWriter fileWriter = new FileWriter(tmpFile, false);
-    fileWriter.write(String.valueOf(position));
-    fileWriter.close();
-    Files.move(tmpFile.toPath(), recordFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
   }
 
   /**
@@ -364,13 +341,6 @@ public class ReceiverManager {
       }
     }
     tsFilePipeData.setParentDirPath(dir.getAbsolutePath());
-    File recordFile = new File(fileDir, tsFileName + SyncConstant.RECORD_SUFFIX);
-    try {
-      Files.deleteIfExists(recordFile.toPath());
-    } catch (IOException e) {
-      logger.warn(
-          String.format("Delete record file %s error, because %s.", recordFile.getPath(), e));
-    }
   }
 
   // endregion
@@ -394,6 +364,22 @@ public class ReceiverManager {
     } else {
       return null;
     }
+  }
+
+  /**
+   * Get current TSyncIdentityInfo
+   *
+   * @return -1
+   */
+  private long getCurrentFileStartIndex(String absolutePath) {
+    Long id = currentConnectionId.get();
+    if (id != null) {
+      Map<String, Long> map = connectionIdToStartIndexRecord.get(id);
+      if (map != null && map.containsKey(absolutePath)) {
+        return map.get(absolutePath);
+      }
+    }
+    return -1;
   }
 
   private void createConnection(TSyncIdentityInfo identityInfo) {

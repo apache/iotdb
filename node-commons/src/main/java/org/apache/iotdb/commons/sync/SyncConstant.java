@@ -72,7 +72,6 @@ public class SyncConstant {
   public static final int DATA_CHUNK_SIZE =
       Math.min(16 * 1024 * 1024, RpcUtils.THRIFT_FRAME_MAX_SIZE);
 
-  public static final String RECORD_SUFFIX = ".record";
   public static final String PATCH_SUFFIX = ".patch";
 
   /** receiver */
