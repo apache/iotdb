@@ -147,6 +147,12 @@ public class ReceiverManager {
 
   // region Interfaces and Implementation of RPC Handler
 
+  /**
+   * Create connection from sender
+   *
+   * @return {@link TSStatusCode#PIPESERVER_ERROR} if fail to connect; {@link
+   *     TSStatusCode#SUCCESS_STATUS} if success to connect.
+   */
   public TSStatus handshake(TSyncIdentityInfo identityInfo) {
     logger.debug("Invoke handshake method from client ip = {}", identityInfo.address);
     // check ip address
@@ -212,11 +218,12 @@ public class ReceiverManager {
   }
 
   /**
-   * Transport and load {@linkplain PipeData}.
+   * Receive {@link PipeData} and load it into IoTDB Engine.
    *
-   * @param buff
-   * @return
-   * @throws TException
+   * @return {@link TSStatusCode#PIPESERVER_ERROR} if fail to receive or load; {@link
+   *     TSStatusCode#SUCCESS_STATUS} if load successfully.
+   * @throws TException The connection between the sender and the receiver has not been established
+   *     by {@link ReceiverManager#handshake(TSyncIdentityInfo)}
    */
   public TSStatus transportPipeData(ByteBuffer buff) throws TException {
     // step1. check connection
@@ -240,7 +247,7 @@ public class ReceiverManager {
     } catch (IOException | IllegalPathException e) {
       logger.error("Pipe data transport error, {}", e.getMessage());
       return RpcUtils.getStatus(
-          TSStatusCode.PIPESERVER_ERROR, "\"Pipe data transport error, " + e.getMessage());
+          TSStatusCode.PIPESERVER_ERROR, "Pipe data transport error, " + e.getMessage());
     }
 
     // step3. load PipeData
@@ -262,6 +269,15 @@ public class ReceiverManager {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
+  /**
+   * Receive TsFile based on startIndex.
+   *
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if receive successfully; {@link
+   *     TSStatusCode#SYNC_FILE_REBASE} if startIndex needs to rollback because mismatched; {@link
+   *     TSStatusCode#SYNC_FILE_ERROR} if fail to receive file.
+   * @throws TException The connection between the sender and the receiver has not been established
+   *     by {@link ReceiverManager#handshake(TSyncIdentityInfo)}
+   */
   public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
       throws TException {
     // step1. check connection

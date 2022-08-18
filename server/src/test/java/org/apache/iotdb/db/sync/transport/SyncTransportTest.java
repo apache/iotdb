@@ -281,7 +281,7 @@ public class SyncTransportTest {
             pipe, "127.0.0.1", IoTDBDescriptor.getInstance().getConfig().getRpcPort(), "127.0.0.1");
     client.handshake();
     for (PipeData pipeData : pipeDataList) {
-      client.senderTransport(pipeData);
+      client.sendTransport(pipeData);
     }
 
     // 4. check result

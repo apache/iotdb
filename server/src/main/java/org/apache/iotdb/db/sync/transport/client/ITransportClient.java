@@ -19,4 +19,25 @@
  */
 package org.apache.iotdb.db.sync.transport.client;
 
-public interface ITransportClient extends Runnable {}
+import org.apache.iotdb.db.exception.SyncConnectionException;
+import org.apache.iotdb.db.sync.pipedata.PipeData;
+
+public interface ITransportClient {
+  /**
+   * Create connection and handshake before sending messages
+   *
+   * @return true if success; false if failed to check IoTDB version.
+   * @throws SyncConnectionException cannot create connection to receiver
+   */
+  boolean handshake() throws SyncConnectionException;
+
+  /**
+   * Send {@link PipeData} to receiver and load.
+   *
+   * @return true if success; false if failed to send or load.
+   * @throws SyncConnectionException cannot create connection to receiver
+   */
+  boolean sendTransport(PipeData pipeData) throws SyncConnectionException;
+
+  void close();
+}

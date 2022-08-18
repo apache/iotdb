@@ -29,7 +29,7 @@ import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.sender.service.TransportHandler;
+import org.apache.iotdb.db.sync.transport.client.SenderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -63,8 +63,8 @@ public class IoTDBSyncSenderIT {
   private static final String pipeSinkName = "test_pipesink";
   private static final String pipeName = "test_pipe";
 
-  private TransportHandlerMock handler;
-  private TransportClientMock transportClient;
+  private SenderManager handler;
+  private MockTransportClient transportClient;
 
   private final Map<String, List<PipeData>> resultMap = new HashMap<>();
   private static final TsFilePipeData simpleTsFilePipeData =
@@ -90,9 +90,10 @@ public class IoTDBSyncSenderIT {
 
     IoTDBPipeSink pipeSink = new IoTDBPipeSink(pipeSinkName);
     TsFilePipe pipe = new TsFilePipe(0L, pipeName, pipeSink, 0L, true);
-    transportClient = new TransportClientMock(pipe, pipeSink.getIp(), pipeSink.getPort());
-    handler = new TransportHandlerMock(pipe, pipeSink, transportClient);
-    TransportHandler.setDebugTransportHandler(handler);
+    transportClient = new MockTransportClient();
+    handler = SenderManager.getTransportHandler(pipe, pipeSink);
+    handler.setTransportClient(transportClient);
+    SenderManager.setDebugSenderManager(handler);
     LocalSyncInfoFetcher.getInstance().reset();
   }
 
