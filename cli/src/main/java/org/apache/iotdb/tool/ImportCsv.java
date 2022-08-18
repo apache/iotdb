@@ -362,7 +362,6 @@ public class ImportCsv extends AbstractCsvTool {
     List<List<TSDataType>> typesList = new ArrayList<>();
     List<List<Object>> valuesList = new ArrayList<>();
 
-    AtomicReference<SimpleDateFormat> timeFormatter = new AtomicReference<>(null);
     AtomicReference<Boolean> hasStarted = new AtomicReference<>(false);
     AtomicInteger pointSize = new AtomicInteger(0);
 
@@ -372,7 +371,6 @@ public class ImportCsv extends AbstractCsvTool {
         record -> {
           if (!hasStarted.get()) {
             hasStarted.set(true);
-            // timeFormatter.set(formatterInit(record.get(0)));
           } else if (pointSize.get() >= batchPointSize) {
             writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
             pointSize.set(0);
@@ -420,9 +418,7 @@ public class ImportCsv extends AbstractCsvTool {
               }
             }
             if (!measurements.isEmpty()) {
-              times.add(
-                  DatetimeUtils.convertDatetimeStrToLong(
-                      record.get(timeColumn), zoneId, timestampPrecision));
+              times.add(parseTimestamp(record.get(timeColumn)));
               deviceIds.add(deviceId);
               typesList.add(types);
               valuesList.add(values);
@@ -556,9 +552,7 @@ public class ImportCsv extends AbstractCsvTool {
             if (timeFormatter.get() == null) {
               times.add(Long.valueOf(record.get(timeColumn)));
             } else {
-              times.add(
-                  DatetimeUtils.convertDatetimeStrToLong(
-                      record.get(timeColumn), zoneId, timestampPrecision));
+              times.add(parseTimestamp(record.get(timeColumn)));
             }
             typesList.add(types);
             valuesList.add(values);
@@ -745,32 +739,6 @@ public class ImportCsv extends AbstractCsvTool {
   }
 
   /**
-   * return a suit time formatter
-   *
-   * @param time
-   * @return
-   */
-  private static SimpleDateFormat formatterInit(String time) {
-    try {
-      Long.parseLong(time);
-      return null;
-    } catch (Exception ignored) {
-      // do nothing
-    }
-
-    for (String timeFormat : STRING_TIME_FORMAT) {
-      SimpleDateFormat format = new SimpleDateFormat(timeFormat);
-      try {
-        format.parse(time);
-        return format;
-      } catch (java.text.ParseException ignored) {
-        // do nothing
-      }
-    }
-    return null;
-  }
-
-  /**
    * return the TSDataType
    *
    * @param typeStr
@@ -858,5 +826,15 @@ public class ImportCsv extends AbstractCsvTool {
     } catch (NumberFormatException e) {
       return null;
     }
+  }
+
+  private static long parseTimestamp(String str) {
+    long timestamp;
+    try {
+      timestamp = Long.parseLong(str);
+    } catch (NumberFormatException e) {
+      timestamp = DatetimeUtils.convertDatetimeStrToLong(str, zoneId, timestampPrecision);
+    }
+    return timestamp;
   }
 }
