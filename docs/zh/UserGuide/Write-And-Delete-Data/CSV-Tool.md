@@ -175,9 +175,9 @@ Time,Device,str(TEXT),int(INT32)
 
 ```shell
 # Unix/OS X
->tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>]
+>tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>]
 # Windows
->tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>]
+>tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>]
 ```
 
 参数:
@@ -198,6 +198,9 @@ Time,Device,str(TEXT),int(INT32)
   - 用于指定每一批插入的数据的点数。如果程序报了`org.apache.thrift.transport.TTransportException: Frame size larger than protect max size`这个错的话，就可以适当的调低这个参数。
   - 例如: `-batch 100000`，`100000`是默认值。
 
+* `-tp`:
+  - 用于指定时间精度，可选值包括`ms`（毫秒），`ns`（纳秒），`us`（微秒），默认值为`ms`。
+
 ### 运行示例
 
 ```sh
@@ -209,6 +212,8 @@ Time,Device,str(TEXT),int(INT32)
 >tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv
 # or
 >tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
+# or
+> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed -tp ns
 ```
 
 ### 注意
