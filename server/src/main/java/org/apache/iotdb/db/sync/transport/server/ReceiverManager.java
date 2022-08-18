@@ -395,6 +395,7 @@ public class ReceiverManager {
     if (checkConnection()) {
       long id = currentConnectionId.get();
       connectionIdToIdentityInfoMap.remove(id);
+      connectionIdToIdentityInfoMap.remove(id);
       currentConnectionId.remove();
     }
   }
