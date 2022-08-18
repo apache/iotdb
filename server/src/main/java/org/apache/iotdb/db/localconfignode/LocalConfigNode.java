@@ -977,8 +977,8 @@ public class LocalConfigNode {
         // use an empty dataPartitionMap to init DataPartition
         if (dataRegionId != null) {
           Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-              new HashMap<>();
-
+              deviceToRegionsMap.getOrDefault(
+                  executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
           timePartitionToRegionsMap.put(
               new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME),
               Collections.singletonList(
@@ -1031,7 +1031,8 @@ public class LocalConfigNode {
         DataRegionId dataRegionId =
             getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId));
         Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-            new HashMap<>();
+            deviceToRegionsMap.getOrDefault(
+                executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
         for (TTimePartitionSlot timePartitionSlot :
             dataPartitionQueryParam.getTimePartitionSlotList()) {
           // for each time partition
