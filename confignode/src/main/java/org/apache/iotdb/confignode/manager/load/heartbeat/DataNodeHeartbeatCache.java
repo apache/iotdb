@@ -32,6 +32,10 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
 
   @Override
   public void cacheHeartbeatSample(NodeHeartbeatSample newHeartbeatSample) {
+    if (isRemoving()) {
+      return;
+    }
+
     synchronized (slidingWindow) {
       // Only sequential HeartbeatSamples are accepted.
       // And un-sequential HeartbeatSamples will be discarded.
@@ -48,6 +52,10 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
 
   @Override
   public boolean updateLoadStatistic() {
+    if (isRemoving()) {
+      return false;
+    }
+
     long lastSendTime = 0;
     synchronized (slidingWindow) {
       if (slidingWindow.size() > 0) {
