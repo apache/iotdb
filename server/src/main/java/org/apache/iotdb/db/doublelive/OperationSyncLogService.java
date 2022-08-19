@@ -97,10 +97,12 @@ public class OperationSyncLogService implements Runnable {
       }
 
       for (int i = firstID; i < logFileIDList.size(); i++) {
-        protector.registerLogFile(LOG_FILE_DIR + File.separator + logFileName + logFileIDList.get(i));
+        protector.registerLogFile(
+            LOG_FILE_DIR + File.separator + logFileName + logFileIDList.get(i));
       }
       for (int i = 0; i < firstID; i++) {
-        protector.registerLogFile(LOG_FILE_DIR + File.separator + logFileName + logFileIDList.get(i));
+        protector.registerLogFile(
+            LOG_FILE_DIR + File.separator + logFileName + logFileIDList.get(i));
       }
 
       int nextID;
@@ -118,7 +120,8 @@ public class OperationSyncLogService implements Runnable {
       // Check the validity of logFile
       logWriterLock.lock();
       try {
-        if (logWriter != null && System.currentTimeMillis() - logFileCreateTime > LOG_FILE_VALIDITY) {
+        if (logWriter != null
+            && System.currentTimeMillis() - logFileCreateTime > LOG_FILE_VALIDITY) {
           // Submit logFile when it's expired
           submitLogFile();
         }

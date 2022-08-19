@@ -266,7 +266,7 @@ public class StorageEngine implements IService {
         OperationSyncWriteTask ddlTask =
             new OperationSyncWriteTask(
                 buffer,
-                    operationSyncSessionPool,
+                operationSyncSessionPool,
                 operationSyncDDLProtector,
                 operationSyncDDLLogService);
         ddlTask.run();
