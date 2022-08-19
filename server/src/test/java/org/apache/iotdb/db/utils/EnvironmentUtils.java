@@ -177,6 +177,9 @@ public class EnvironmentUtils {
     // clear last query executor
     LastQueryExecutor.clear();
 
+    // clear migration manager
+    StorageEngine.getInstance().getMigrationManager().clear();
+
     // delete all directory
     cleanAllDir();
     config.setSeqTsFileSize(oldSeqTsFileSize);

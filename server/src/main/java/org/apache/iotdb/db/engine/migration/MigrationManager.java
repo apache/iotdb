@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -62,11 +63,8 @@ public class MigrationManager {
   private boolean initialized = false;
   private static final long MIGRATE_CHECK_INTERVAL = 60 * 1000L;
   private static final String LOG_FILE_NAME =
-      FilePathUtils.regularizePath(config.getSystemDir())
-          + File.separator
-          + "migration"
-          + File.separator
-          + "log.bin";
+      Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "log.bin")
+          .toString();
 
   protected MigrationManager() {
     init();
@@ -168,6 +166,15 @@ public class MigrationManager {
         IoTDBThreadPoolFactory.newFixedThreadPool(config.getMigrationThread(), "Migration-Task");
     logger.info("start migration check thread successfully.");
     initialized = true;
+  }
+
+  /** function for clearing migration manager */
+  public void clear() {
+    try {
+      logWriter.close();
+    } catch (Exception e) {
+      logger.error("Cannot close migration log writer, because:", e);
+    }
   }
 
   /** creates a copy of migrationTask and returns */
