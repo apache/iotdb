@@ -87,14 +87,7 @@ public class InsertRowNodeSerdeTest {
 
     InsertRowNode tmpNode = InsertRowNode.deserializeFromWAL(dataInputStream);
     tmpNode.setPlanNodeId(insertRowNode.getPlanNodeId());
-    tmpNode.setMeasurementSchemas(
-        new MeasurementSchema[] {
-          new MeasurementSchema("s1", TSDataType.DOUBLE),
-          new MeasurementSchema("s2", TSDataType.FLOAT),
-          new MeasurementSchema("s3", TSDataType.INT64),
-          new MeasurementSchema("s4", TSDataType.INT32),
-          new MeasurementSchema("s5", TSDataType.BOOLEAN)
-        });
+
     Assert.assertEquals(insertRowNode, tmpNode);
   }
 

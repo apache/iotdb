@@ -262,7 +262,15 @@ public class WALFileTest {
             columns,
             false);
 
-    insertRowNode.setMeasurementSchemas(new MeasurementSchema[6]);
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN),
+          new MeasurementSchema("s6", TSDataType.TEXT)
+        });
     return insertRowNode;
   }
 
@@ -315,7 +323,16 @@ public class WALFileTest {
             bitMaps,
             columns,
             times.length);
-    insertTabletNode.setMeasurementSchemas(new MeasurementSchema[6]);
+
+    insertTabletNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN),
+          new MeasurementSchema("s6", TSDataType.TEXT)
+        });
 
     return insertTabletNode;
   }

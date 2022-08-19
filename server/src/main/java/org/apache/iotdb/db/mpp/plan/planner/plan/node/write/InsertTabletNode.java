@@ -916,8 +916,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     int measurementSize = stream.readInt();
     measurements = new String[measurementSize];
     measurementSchemas = new MeasurementSchema[measurementSize];
-    dataTypes = new TSDataType[measurementSize];
     deserializeMeasurementSchemas(stream);
+
+    // data types are serialized in measurement schemas
+    dataTypes = new TSDataType[measurementSize];
+    for (int i = 0; i < measurementSize; i++) {
+      dataTypes[i] = measurementSchemas[i].getType();
+    }
 
     rowCount = stream.readInt();
     times = new long[rowCount];

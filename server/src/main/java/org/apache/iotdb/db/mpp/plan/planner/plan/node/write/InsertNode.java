@@ -31,7 +31,6 @@ import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -182,13 +181,7 @@ public abstract class InsertNode extends WritePlanNode {
       if (measurements[i] == null) {
         continue;
       }
-      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-        byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
-      } else {
-        byteLen += ReadWriteIOUtils.sizeToWrite(measurements[i]);
-        // datatype size
-        byteLen++;
-      }
+      byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
     }
     return byteLen;
   }
@@ -200,14 +193,7 @@ public abstract class InsertNode extends WritePlanNode {
       if (measurements[i] == null) {
         continue;
       }
-
-      // serialize measurementId only for standalone version for better write performance
-      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-        WALWriteUtils.write(measurementSchemas[i], buffer);
-      } else {
-        WALWriteUtils.write(measurements[i], buffer);
-        WALWriteUtils.write(dataTypes[i], buffer);
-      }
+      WALWriteUtils.write(measurementSchemas[i], buffer);
     }
   }
 
@@ -217,14 +203,8 @@ public abstract class InsertNode extends WritePlanNode {
    */
   protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {
     for (int i = 0; i < measurementSchemas.length; i++) {
-      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-        measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
-        measurements[i] = measurementSchemas[i].getMeasurementId();
-        dataTypes[i] = measurementSchemas[i].getType();
-      } else {
-        measurements[i] = ReadWriteIOUtils.readString(stream);
-        dataTypes[i] = TSDataType.deserialize(ReadWriteIOUtils.readByte(stream));
-      }
+      measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
+      measurements[i] = measurementSchemas[i].getMeasurementId();
     }
   }
 
