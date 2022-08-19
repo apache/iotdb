@@ -38,7 +38,11 @@ public class MigrationLogWriter implements AutoCloseable {
   private FileOutputStream logFileOutStream;
 
   public MigrationLogWriter(String logFileName) throws FileNotFoundException {
-    logFile = SystemFileFactory.INSTANCE.getFile(logFileName);
+    this(SystemFileFactory.INSTANCE.getFile(logFileName));
+  }
+
+  public MigrationLogWriter(File logFile) throws FileNotFoundException {
+    this.logFile = logFile;
     if (!logFile.exists()) {
       if (logFile.getParentFile() != null) {
         if (logFile.getParentFile().mkdirs()) {
@@ -48,11 +52,6 @@ public class MigrationLogWriter implements AutoCloseable {
         }
       }
     }
-    logFileOutStream = new FileOutputStream(logFile, true);
-  }
-
-  public MigrationLogWriter(File logFile) throws FileNotFoundException {
-    this.logFile = logFile;
     logFileOutStream = new FileOutputStream(logFile, true);
   }
 
@@ -68,6 +67,8 @@ public class MigrationLogWriter implements AutoCloseable {
         ReadWriteIOUtils.write(log.startTime, logFileOutStream);
         ReadWriteIOUtils.write(log.ttl, logFileOutStream);
       }
+
+      logFileOutStream.flush();
     } catch (IOException e) {
       logger.error("unable to write to migrate log");
     }

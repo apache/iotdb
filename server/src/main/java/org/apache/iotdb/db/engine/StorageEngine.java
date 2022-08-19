@@ -1265,7 +1265,7 @@ public class StorageEngine implements IService {
   }
 
   public void unsetMigration(long taskId, PartialPath storageGroup) {
-    if (taskId != -1) {
+    if (taskId >= 0) {
       migrationManager.unsetMigration(taskId);
     } else if (storageGroup != null) {
       migrationManager.unsetMigration(storageGroup);
