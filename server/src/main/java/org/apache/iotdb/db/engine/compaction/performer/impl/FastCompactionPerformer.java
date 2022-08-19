@@ -44,6 +44,8 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
 
   private List<TsFileResource> unseqFiles;
 
+  private List<TsFileResource> sortedSourceFiles;
+
   private static final int subTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
@@ -82,11 +84,16 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
   @Override
   public void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
+    sortedSourceFiles = CompactionUtils.sortSourceFiles(seqFiles, unseqFiles);
     try (FastCrossCompactionWriter compactionWriter = new FastCrossCompactionWriter(targetFiles)) {
       MultiTsFileDeviceIterator deviceIterator =
           new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
 
       // iterate each device
+      // Todo: to decrease memory, get device in batch on one node instead of getting all at one
+      // time.
+      // Todo: use tsfile resource to get device in memory instead of getting them with I/O
+      // readings.
       while (deviceIterator.hasNextDevice()) {
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
@@ -106,6 +113,8 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
             TsFileResource seqFile = seqFiles.get(i);
 
             // get chunk metadata list of all sensors under this device in this seq file
+            // Todo: to decrease memory, use iterator to get measurement metadata in batch instead
+            // of getting all at one time.
             Map<String, List<ChunkMetadata>> measurmentMetadataList =
                 readerCacheMap
                     .computeIfAbsent(
@@ -129,16 +138,23 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
             }
 
             // put all unseq measurements into map
-            for (String measurement : unseqMeasurements) {
-              if (!measurmentMetadataList.containsKey(measurement)) {
-                measurmentMetadataList.put(measurement, null);
+            unseqMeasurements.forEach(
+                measurement -> {
+                  measurmentMetadataList.putIfAbsent(measurement, null);
+                });
+
+            // get schema of measurements under this device
+            Set<String> measurentsUnknownSchema = new HashSet<>();
+            for (String measurementID : measurmentMetadataList.keySet()) {
+              if (!schemaMapCache.containsKey(measurementID)) {
+                measurentsUnknownSchema.add(measurementID);
               }
             }
 
-            // get schema of measurements under this device
             schemaMapCache.putAll(
+                // Todo：speed up, avoid sorting all source files on every seq file traversal
                 CompactionUtils.getMeasurementSchema(
-                    device, measurmentMetadataList.keySet(), seqFiles, unseqFiles, readerCacheMap));
+                    device, measurentsUnknownSchema, sortedSourceFiles, readerCacheMap));
 
             if (isAligned) {
               compactAlignedSeries();

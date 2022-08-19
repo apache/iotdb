@@ -820,7 +820,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
-
+    targetResources.removeIf(resource -> resource == null);
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 7; j++) {
         PartialPath path =
@@ -2493,7 +2493,16 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    Assert.assertEquals(2, targetResources.size());
+    Assert.assertEquals(4, targetResources.size());
+    for (int i = 0; i < targetResources.size(); i++) {
+      TsFileResource resource = targetResources.get(i);
+      if (i < 2) {
+        Assert.assertEquals(null, resource);
+      } else {
+        Assert.assertTrue(resource.getTsFile().exists());
+      }
+    }
+    targetResources.removeIf(resource -> resource == null);
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
     for (int i = 0; i < 2; i++) {

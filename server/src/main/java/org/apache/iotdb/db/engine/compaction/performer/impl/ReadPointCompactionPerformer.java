@@ -70,6 +70,8 @@ public class ReadPointCompactionPerformer
   private final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private List<TsFileResource> seqFiles = Collections.emptyList();
   private List<TsFileResource> unseqFiles = Collections.emptyList();
+
+  private List<TsFileResource> sortedSourceFiles;
   private static final int subTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
@@ -104,7 +106,7 @@ public class ReadPointCompactionPerformer
     QueryResourceManager.getInstance()
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
-
+    sortedSourceFiles = CompactionUtils.sortSourceFiles(seqFiles, unseqFiles);
     try (AbstractCompactionWriter compactionWriter =
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
@@ -156,7 +158,7 @@ public class ReadPointCompactionPerformer
         deviceIterator.iterateAlignedSeries(device);
     Set<String> allMeasurements = alignedMeasurementIterator.getAllMeasurements();
     Map<String, MeasurementSchema> schemaMap =
-        CompactionUtils.getMeasurementSchema(device, allMeasurements, seqFiles, unseqFiles, null);
+        CompactionUtils.getMeasurementSchema(device, allMeasurements, sortedSourceFiles, null);
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
     if (measurementSchemas.isEmpty()) {
       return;
@@ -197,7 +199,7 @@ public class ReadPointCompactionPerformer
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
     Map<String, MeasurementSchema> schemaMap =
-        CompactionUtils.getMeasurementSchema(device, allMeasurements, seqFiles, unseqFiles, null);
+        CompactionUtils.getMeasurementSchema(device, allMeasurements, sortedSourceFiles, null);
 
     // assign all measurements to different sub tasks
     Set<String>[] measurementsForEachSubTask = new HashSet[subTaskNums];

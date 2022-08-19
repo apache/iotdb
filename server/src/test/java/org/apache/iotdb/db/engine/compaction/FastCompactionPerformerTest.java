@@ -353,8 +353,10 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
           InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
-    createFiles(2, 2, 2, 300, 0, 0, 0, 0, false, true);
-    createFiles(1, 2, 3, 1000, 0, 0, 50, 50, false, true);
+    createFiles(4, 1, 1, 100, 200, 200, 0, 0, false, true);
+    createFiles(2, 1, 3, 100, 250, 10250, 0, 0, false, false);
+    createFiles(1, 1, 3, 190, 210, 30210, 0, 0, false, false);
+    createFiles(1, 1, 3, 70, 430, 40430, 0, 0, false, false);
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {

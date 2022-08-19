@@ -80,7 +80,9 @@ public class CompactionUtils {
       fileSuffix = IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
     }
     for (TsFileResource targetResource : targetResources) {
-      moveOneTargetFile(targetResource, fileSuffix, fullStorageGroupName);
+      if (targetResource != null) {
+        moveOneTargetFile(targetResource, fileSuffix, fullStorageGroupName);
+      }
     }
   }
 
@@ -112,33 +114,29 @@ public class CompactionUtils {
    * Collect all the compaction modification files of source files, and combines them as the
    * modification file of target file.
    */
+  // Todo: improve performance
   public static void combineModsInCrossCompaction(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
       List<TsFileResource> targetResources)
       throws IOException {
-    // target file may less than source seq files, so we should find each target file with its
-    // corresponding source seq file.
-    Map<String, TsFileResource> seqFileInfoMap = new HashMap<>();
-    for (TsFileResource tsFileResource : seqResources) {
-      seqFileInfoMap.put(
-          TsFileNameGenerator.increaseCrossCompactionCnt(tsFileResource.getTsFile()).getName(),
-          tsFileResource);
+    Set<Modification> modifications = new HashSet<>();
+    // get compaction mods from all source unseq files
+    for (TsFileResource unseqFile : unseqResources) {
+      modifications.addAll(ModificationFile.getCompactionMods(unseqFile).getModifications());
     }
-    // update each target mods file.
-    for (TsFileResource targetResource : targetResources) {
-      TsFileResource seqFile = seqFileInfoMap.get(targetResource.getTsFile().getName());
-      Set<Modification> modifications = new HashSet<>();
-      if (seqFile != null) {
-        // get compaction mods from its corresponding source seq file
-        modifications.addAll(ModificationFile.getCompactionMods(seqFile).getModifications());
-      }
-      // get compaction mods from all source unseq files
-      for (TsFileResource unseqFile : unseqResources) {
-        modifications.addAll(ModificationFile.getCompactionMods(unseqFile).getModifications());
-      }
 
+    // write target mods file
+    for (int i = 0; i < targetResources.size(); i++) {
+      TsFileResource targetResource = targetResources.get(i);
+      if (targetResource == null) {
+        continue;
+      }
+      Set<Modification> seqModifications =
+          new HashSet<>(ModificationFile.getCompactionMods(seqResources.get(i)).getModifications());
+      modifications.addAll(seqModifications);
       updateOneTargetMods(targetResource, modifications);
+      modifications.removeAll(seqModifications);
     }
   }
 
@@ -281,7 +279,8 @@ public class CompactionUtils {
       TsFileResource targetResource = targetResources.get(i);
       // remove the target file been deleted from list
       if (!targetResource.getTsFile().exists()) {
-        targetResources.remove(i--);
+        targetResources.remove(i);
+        targetResources.add(i, null);
         continue;
       }
       for (TsFileResource unseqResource : unseqResources) {
@@ -293,17 +292,11 @@ public class CompactionUtils {
     }
   }
 
-  public static Map<String, MeasurementSchema> getMeasurementSchema(
-      String device,
-      Set<String> measurements,
-      List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles,
-      Map<TsFileResource, TsFileSequenceReader> readerCacheMap)
-      throws IllegalPathException, IOException {
-    HashMap<String, MeasurementSchema> schemaMap = new HashMap<>();
+  public static List<TsFileResource> sortSourceFiles(
+      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     List<TsFileResource> allResources = new LinkedList<>(seqFiles);
     allResources.addAll(unseqFiles);
-    // sort the tsfile by version, so that we can iterate the tsfile from the newest to oldest
+    // sort the tsfile by version, from the newest to oldest
     allResources.sort(
         (o1, o2) -> {
           try {
@@ -316,6 +309,16 @@ public class CompactionUtils {
             return 0;
           }
         });
+    return allResources;
+  }
+
+  public static Map<String, MeasurementSchema> getMeasurementSchema(
+      String device,
+      Set<String> measurements,
+      List<TsFileResource> allResources,
+      Map<TsFileResource, TsFileSequenceReader> readerCacheMap)
+      throws IllegalPathException, IOException {
+    HashMap<String, MeasurementSchema> schemaMap = new HashMap<>();
     for (String measurement : measurements) {
       for (TsFileResource tsFileResource : allResources) {
         if (!tsFileResource.mayContainsDevice(device)) {
@@ -358,6 +361,7 @@ public class CompactionUtils {
     if (chunkMetadata.size() > 0) {
       chunkMetadata.get(chunkMetadata.size() - 1).setFilePath(resource.getTsFilePath());
       Chunk chunk = ChunkCache.getInstance().get(chunkMetadata.get(chunkMetadata.size() - 1));
+      // Chunk chunk = reader.readMemChunk(chunkMetadata.get(chunkMetadata.size() - 1));
       ChunkHeader header = chunk.getHeader();
       return new MeasurementSchema(
           measurement, header.getDataType(), header.getEncodingType(), header.getCompressionType());

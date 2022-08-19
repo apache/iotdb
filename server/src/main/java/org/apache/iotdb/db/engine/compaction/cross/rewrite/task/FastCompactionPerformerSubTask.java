@@ -104,6 +104,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
               (curChunkMetadata.getDeleteIntervalList() != null
                   && !curChunkMetadata.getDeleteIntervalList().isEmpty());
           Chunk chunk = ChunkCache.getInstance().get(curChunkMetadata);
+          // Chunk chunk =
+          // fastCompactionPerformer.readerCacheMap.get(seqFile).readMemChunk(curChunkMetadata);
           if (isChunkOverlap) {
             fastCrossCompactionWriter.compactWithOverlapSeqChunk(chunk, unseqReader, subTaskId);
           } else {
