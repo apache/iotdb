@@ -140,7 +140,7 @@ public class SnapshotTest {
        * create a real snapshot file and a log file recording real snapshot file path
        */
       File snapshotRaw = new File(snapshotDir.getAbsolutePath() + File.separator + "snapshot");
-      File snapshotRecord = new File(snapshotDir.getAbsolutePath() + File.separator  + "record");
+      File snapshotRecord = new File(snapshotDir.getAbsolutePath() + File.separator + "record");
       try {
         Assert.assertTrue(snapshotRaw.createNewFile());
         FileWriter writer = new FileWriter(snapshotRecord);
@@ -154,7 +154,7 @@ public class SnapshotTest {
 
     @Override
     public List<File> getSnapshotFiles(File latestSnapshotRootDir) {
-      File log = new File(latestSnapshotRootDir.getAbsolutePath() + File.separator  + "record");
+      File log = new File(latestSnapshotRootDir.getAbsolutePath() + File.separator + "record");
       Assert.assertTrue(log.exists());
       Scanner scanner = null;
       try {
@@ -176,12 +176,12 @@ public class SnapshotTest {
     proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
     proxy.notifyTermIndexUpdated(20, 1005);
     proxy.takeSnapshot();
-    String actualSnapshotName = CrossDiskLinkStatemachine.ensureSnapshotFileName(testDir, "20_1005");
+    String actualSnapshotName =
+        CrossDiskLinkStatemachine.ensureSnapshotFileName(testDir, "20_1005");
     File actualSnapshotFile = new File(actualSnapshotName);
     Assert.assertEquals(proxy.getLatestSnapshot().getFiles().size(), 1);
     Assert.assertEquals(
         proxy.getLatestSnapshot().getFiles().get(0).getPath().toFile().getAbsolutePath(),
-        actualSnapshotFile.getAbsolutePath()
-    );
+        actualSnapshotFile.getAbsolutePath());
   }
 }
