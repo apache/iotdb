@@ -22,18 +22,24 @@ package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ShowRegionTask implements IConfigTask {
 
@@ -53,7 +59,11 @@ public class ShowRegionTask implements IConfigTask {
 
   public static void buildTSBlock(
       TShowRegionResp showRegionResp, SettableFuture<ConfigTaskResult> future) {
-    TsBlockBuilder builder = new TsBlockBuilder(HeaderConstant.showRegionHeader.getRespDataTypes());
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showRegionColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     if (showRegionResp.getRegionInfoList() != null) {
       for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
         builder.getTimeColumnBuilder().writeLong(0L);
@@ -83,7 +93,7 @@ public class ShowRegionTask implements IConfigTask {
         builder.declarePosition();
       }
     }
-    DatasetHeader datasetHeader = HeaderConstant.showRegionHeader;
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowRegionHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

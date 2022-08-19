@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
@@ -36,6 +37,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,7 +127,7 @@ public class ConsensusManager {
     for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
       peerList.add(new Peer(consensusGroupId, configNodeLocation.getConsensusEndPoint()));
     }
-    consensusImpl.addConsensusGroup(consensusGroupId, peerList);
+    consensusImpl.createPeer(consensusGroupId, peerList);
   }
 
   /**
@@ -200,6 +202,30 @@ public class ConsensusManager {
       }
     }
     return null;
+  }
+
+  /**
+   * Confirm the current ConfigNode's leadership
+   *
+   * @return SUCCESS_STATUS if the current ConfigNode is leader, NEED_REDIRECTION otherwise
+   */
+  public TSStatus confirmLeader() {
+    TSStatus result = new TSStatus();
+
+    if (isLeader()) {
+      return result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      result.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+      result.setMessage(
+          "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
+
+      TConfigNodeLocation leaderLocation = getLeader();
+      if (leaderLocation != null) {
+        result.setRedirectNode(leaderLocation.getInternalEndPoint());
+      }
+
+      return result;
+    }
   }
 
   public ConsensusGroupId getConsensusGroupId() {

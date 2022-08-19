@@ -21,10 +21,12 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -32,6 +34,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -42,9 +47,15 @@ public class NodePathsConvertOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
   private final Operator child;
 
+  private final List<TSDataType> outputDataTypes;
+
   public NodePathsConvertOperator(OperatorContext operatorContext, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.child = requireNonNull(child, "child operator is null");
+    this.outputDataTypes =
+        ColumnHeaderConstant.showChildPathsColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -63,8 +74,7 @@ public class NodePathsConvertOperator implements ProcessOperator {
     if (block == null || block.isEmpty()) {
       return null;
     }
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showChildNodesHeader.getRespDataTypes());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
 
     for (int i = 0; i < block.getPositionCount(); i++) {
       String path = block.getColumn(0).getBinary(i).toString();
@@ -96,5 +106,20 @@ public class NodePathsConvertOperator implements ProcessOperator {
   @Override
   public boolean isFinished() {
     return child.isFinished();
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return child.calculateMaxReturnSize() + child.calculateMaxPeekMemory();
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return child.calculateMaxReturnSize();
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return child.calculateRetainedSizeAfterCallingNext();
   }
 }

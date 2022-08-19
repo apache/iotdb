@@ -32,7 +32,7 @@ public enum ConfigPhysicalPlanType {
   GetStorageGroup,
   CountStorageGroup,
   CreateRegionGroups,
-  DeleteRegions,
+  DeleteRegionGroups,
   GetSchemaPartition,
   CreateSchemaPartition,
   GetOrCreateSchemaPartition,

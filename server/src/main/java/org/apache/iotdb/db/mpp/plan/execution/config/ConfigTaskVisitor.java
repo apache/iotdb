@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchem
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.AuthorizerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.ClearCacheTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.FlushTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.LoadConfigurationTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.MergeTask;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
@@ -67,6 +68,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -152,6 +154,12 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitClearCache(ClearCacheStatement clearCacheStatement, TaskContext context) {
     return new ClearCacheTask(clearCacheStatement);
+  }
+
+  @Override
+  public IConfigTask visitLoadConfiguration(
+      LoadConfigurationStatement loadConfigurationStatement, TaskContext context) {
+    return new LoadConfigurationTask(loadConfigurationStatement);
   }
 
   @Override

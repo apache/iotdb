@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
@@ -47,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -85,13 +87,18 @@ public class DataRegionStateMachine extends BaseStateMachine {
   public void stop() {}
 
   @Override
+  public boolean isReadOnly() {
+    return IoTDBDescriptor.getInstance().getConfig().isReadOnly();
+  }
+
+  @Override
   public boolean takeSnapshot(File snapshotDir) {
     try {
       return new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
     } catch (Exception e) {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
-          region.getLogicalStorageGroupName(),
+          region.getStorageGroupName(),
           region.getDataRegionId(),
           snapshotDir,
           e);
@@ -104,7 +111,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     DataRegion newRegion =
         new SnapshotLoader(
                 latestSnapshotRootDir.getAbsolutePath(),
-                region.getLogicalStorageGroupName(),
+                region.getStorageGroupName(),
                 region.getDataRegionId())
             .loadSnapshotForStateMachine();
     if (newRegion == null) {
@@ -252,8 +259,20 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public List<File> getSnapshotFiles(File latestSnapshotRootDir) {
-    // TODO: implement this method
-    return super.getSnapshotFiles(latestSnapshotRootDir);
+    try {
+      return new SnapshotLoader(
+              latestSnapshotRootDir.getAbsolutePath(),
+              region.getStorageGroupName(),
+              region.getDataRegionId())
+          .getSnapshotFileInfo();
+    } catch (IOException e) {
+      logger.error(
+          "Meets error when getting snapshot files for {}-{}",
+          region.getStorageGroupName(),
+          region.getDataRegionId(),
+          e);
+      return null;
+    }
   }
 
   @Override

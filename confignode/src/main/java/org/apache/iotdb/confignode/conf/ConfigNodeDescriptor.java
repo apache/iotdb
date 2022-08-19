@@ -223,8 +223,8 @@ public class ConfigNodeDescriptor {
                   "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
 
       String routingPolicy = properties.getProperty("routing_policy", conf.getRoutingPolicy());
-      if (routingPolicy.equals(RouteBalancer.greedyPolicy)
-          || routingPolicy.equals(RouteBalancer.leaderPolicy)) {
+      if (routingPolicy.equals(RouteBalancer.GREEDY_POLICY)
+          || routingPolicy.equals(RouteBalancer.LEADER_POLICY)) {
         conf.setRoutingPolicy(routingPolicy);
       } else {
         throw new IOException(

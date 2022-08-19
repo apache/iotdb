@@ -142,12 +142,14 @@ Time,root.test.t1.str,root.test.t2.str,root.test.t2.int
 1970-01-01T08:00:00.002+08:00,"123",,
 ```
 
-通过时间对齐，并且header中包含数据类型的数据。
+通过时间对齐，并且header中包含数据类型的数据。（Text类型数据支持加双引号和不加双引号）
 
 ```sql
 Time,root.test.t1.str(TEXT),root.test.t2.str(TEXT),root.test.t2.int(INT32)
 1970-01-01T08:00:00.001+08:00,"123hello world","123\,abc",100
-1970-01-01T08:00:00.002+08:00,"123",,
+1970-01-01T08:00:00.002+08:00,123,hello world,123
+1970-01-01T08:00:00.003+08:00,"123",,
+1970-01-01T08:00:00.004+08:00,123,,12
 ```
 
 通过设备对齐，并且header中不包含数据类型的数据。
@@ -159,22 +161,23 @@ Time,Device,str,int
 1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
 ```
 
-通过设备对齐，并且header中包含数据类型的数据。
+通过设备对齐，并且header中包含数据类型的数据。（Text类型数据支持加双引号和不加双引号）
 
 ```sql
 Time,Device,str(TEXT),int(INT32)
 1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",
 1970-01-01T08:00:00.002+08:00,root.test.t1,"123",
 1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
+1970-01-01T08:00:00.002+08:00,root.test.t1,hello world,123
 ```
 
 ### 运行方法
 
 ```shell
 # Unix/OS X
->tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>]
+>tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>]
 # Windows
->tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>]
+>tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>]
 ```
 
 参数:
@@ -195,6 +198,9 @@ Time,Device,str(TEXT),int(INT32)
   - 用于指定每一批插入的数据的点数。如果程序报了`org.apache.thrift.transport.TTransportException: Frame size larger than protect max size`这个错的话，就可以适当的调低这个参数。
   - 例如: `-batch 100000`，`100000`是默认值。
 
+* `-tp`:
+  - 用于指定时间精度，可选值包括`ms`（毫秒），`ns`（纳秒），`us`（微秒），默认值为`ms`。
+
 ### 运行示例
 
 ```sh
@@ -206,6 +212,8 @@ Time,Device,str(TEXT),int(INT32)
 >tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv
 # or
 >tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
+# or
+> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed -tp ns
 ```
 
 ### 注意

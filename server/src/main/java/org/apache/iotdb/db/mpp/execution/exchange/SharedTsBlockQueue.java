@@ -143,7 +143,8 @@ public class SharedTsBlockQueue {
     blockedOnMemory =
         localMemoryManager
             .getQueryPool()
-            .reserve(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
+            .reserve(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes())
+            .left;
     bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
     queue.add(tsBlock);
     if (!blocked.isDone()) {

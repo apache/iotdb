@@ -616,22 +616,7 @@ public class ConfigManager implements IManager {
   }
 
   private TSStatus confirmLeader() {
-    TSStatus result = new TSStatus();
-
-    if (getConsensusManager().isLeader()) {
-      return result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } else {
-      result.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
-      result.setMessage(
-          "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
-
-      TConfigNodeLocation leaderLocation = consensusManager.getLeader();
-      if (leaderLocation != null) {
-        result.setRedirectNode(leaderLocation.getInternalEndPoint());
-      }
-
-      return result;
-    }
+    return getConsensusManager().confirmLeader();
   }
 
   @Override
@@ -827,6 +812,14 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? RpcUtils.squashResponseStatusList(nodeManager.clearCache())
+        : status;
+  }
+
+  @Override
+  public TSStatus loadConfiguration() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.loadConfiguration())
         : status;
   }
 

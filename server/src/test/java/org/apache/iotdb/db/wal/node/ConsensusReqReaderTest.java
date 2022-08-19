@@ -58,6 +58,7 @@ public class ConsensusReqReaderTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory);
+    config.setClusterMode(true);
     prevMode = config.getWalMode();
     config.setWalMode(WALMode.SYNC);
     walNode = new WALNode(identifier, logDirectory);
@@ -67,6 +68,7 @@ public class ConsensusReqReaderTest {
   public void tearDown() throws Exception {
     walNode.close();
     config.setWalMode(prevMode);
+    config.setClusterMode(false);
     EnvironmentUtils.cleanDir(logDirectory);
   }
 
