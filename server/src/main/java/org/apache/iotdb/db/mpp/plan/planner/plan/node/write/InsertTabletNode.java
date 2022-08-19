@@ -236,7 +236,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       // generate a new times and values
       locs = entry.getValue();
       // Avoid using system arraycopy when there is no need to split
-      if (splitMap.size() == 1 && locs.size() == 1) {
+      if (splitMap.size() == 1 && locs.size() == 2) {
         setRange(locs);
         setDataRegionReplicaSet(entry.getKey());
         result.add(this);
