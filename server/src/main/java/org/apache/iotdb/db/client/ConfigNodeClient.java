@@ -74,6 +74,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -852,6 +853,24 @@ public class ConfigNodeClient
         TShowConfigNodesResp showConfigNodesResp = client.showConfigNodes();
         if (!updateConfigNodeLeader(showConfigNodesResp.getStatus())) {
           return showConfigNodesResp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TShowStorageGroupResp showStorageGroup(List<String> storageGroupPathPattern)
+      throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowStorageGroupResp showStorageGroupResp =
+            client.showStorageGroup(storageGroupPathPattern);
+        if (!updateConfigNodeLeader(showStorageGroupResp.getStatus())) {
+          return showStorageGroupResp;
         }
       } catch (TException e) {
         configLeader = null;
