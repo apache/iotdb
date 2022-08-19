@@ -34,16 +34,11 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class SnapshotStorage implements StateMachineStorage {
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
@@ -94,46 +89,6 @@ public class SnapshotStorage implements StateMachineStorage {
     return snapshots[snapshots.length - 1].toFile();
   }
 
-  private List<Path> getAllFilesUnder(File rootDir) {
-    List<Path> allFiles = new ArrayList<>();
-    try {
-      Files.walkFileTree(
-          rootDir.toPath(),
-          new FileVisitor<Path>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
-                throws IOException {
-              return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                throws IOException {
-              if (attrs.isRegularFile()) {
-                allFiles.add(file);
-              }
-              return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-              logger.info("visit file {} failed due to {}", file.toAbsolutePath(), exc);
-              return FileVisitResult.TERMINATE;
-            }
-
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc)
-                throws IOException {
-              return FileVisitResult.CONTINUE;
-            }
-          });
-    } catch (IOException ioException) {
-      logger.error("IOException occurred during listing snapshot directory: ", ioException);
-      return Collections.emptyList();
-    }
-    return allFiles;
-  }
-
   @Override
   public SnapshotInfo getLatestSnapshot() {
     File latestSnapshotDir = findLatestSnapshotDir();
@@ -143,17 +98,16 @@ public class SnapshotStorage implements StateMachineStorage {
     TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
 
     List<File> actualSnapshotFiles = applicationStateMachine.getSnapshotFiles(latestSnapshotDir);
-    List<Path> filesIncludedInSnapshot =
-        actualSnapshotFiles != null
-            ? actualSnapshotFiles.stream().map(File::toPath).collect(Collectors.toList())
-            : getAllFilesUnder(latestSnapshotDir);
+    if (actualSnapshotFiles == null) {
+      return null;
+    }
 
     List<FileInfo> fileInfos = new ArrayList<>();
-    for (Path file : filesIncludedInSnapshot) {
-      if (file.endsWith(".md5")) {
+    for (File file : actualSnapshotFiles) {
+      if (file.toPath().endsWith(".md5")) {
         continue;
       }
-      FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
+      FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file.toPath());
       fileInfos.add(fileInfo);
     }
 
