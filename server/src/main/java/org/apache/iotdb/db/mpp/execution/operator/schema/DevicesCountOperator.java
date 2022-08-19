@@ -21,13 +21,18 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class DevicesCountOperator implements SourceOperator {
   private final PlanNodeId sourceId;
@@ -36,6 +41,8 @@ public class DevicesCountOperator implements SourceOperator {
   private final boolean isPrefixPath;
 
   private boolean isFinished;
+
+  private final List<TSDataType> outputDataTypes;
 
   @Override
   public PlanNodeId getSourceId() {
@@ -51,6 +58,10 @@ public class DevicesCountOperator implements SourceOperator {
     this.operatorContext = operatorContext;
     this.partialPath = partialPath;
     this.isPrefixPath = isPrefixPath;
+    this.outputDataTypes =
+        ColumnHeaderConstant.countDevicesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -61,8 +72,7 @@ public class DevicesCountOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.countDevicesHeader.getRespDataTypes());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     int count = 0;
     try {
       count =

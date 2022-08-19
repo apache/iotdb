@@ -23,15 +23,18 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -46,12 +49,18 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
 
   private boolean isFinished;
 
+  private final List<TSDataType> outputDataTypes;
+
   public NodePathsSchemaScanOperator(
       PlanNodeId sourceId, OperatorContext operatorContext, PartialPath partialPath, int level) {
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.partialPath = partialPath;
     this.level = level;
+    this.outputDataTypes =
+        ColumnHeaderConstant.showChildPathsColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -62,8 +71,7 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     try {
       if (-1 == level) {
         // show child paths and show child nodes

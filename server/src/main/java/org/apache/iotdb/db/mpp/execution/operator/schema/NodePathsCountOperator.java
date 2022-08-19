@@ -19,17 +19,21 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -40,11 +44,17 @@ public class NodePathsCountOperator implements ProcessOperator {
   private boolean isFinished;
   private final Set<String> nodePaths;
 
+  private final List<TSDataType> outputDataTypes;
+
   public NodePathsCountOperator(OperatorContext operatorContext, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.child = requireNonNull(child, "child operator is null");
     this.isFinished = false;
     this.nodePaths = new HashSet<>();
+    this.outputDataTypes =
+        ColumnHeaderConstant.countNodesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -55,8 +65,7 @@ public class NodePathsCountOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.countNodesHeader.getRespDataTypes());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
 
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeInt(nodePaths.size());

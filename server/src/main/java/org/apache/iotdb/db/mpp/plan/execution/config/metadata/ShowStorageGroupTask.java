@@ -20,24 +20,29 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ShowStorageGroupTask implements IConfigTask {
 
-  private ShowStorageGroupStatement showStorageGroupStatement;
+  private final ShowStorageGroupStatement showStorageGroupStatement;
 
   public ShowStorageGroupTask(ShowStorageGroupStatement showStorageGroupStatement) {
     this.showStorageGroupStatement = showStorageGroupStatement;
@@ -52,8 +57,11 @@ public class ShowStorageGroupTask implements IConfigTask {
   public static void buildTSBlock(
       Map<String, TStorageGroupSchema> storageGroupSchemaMap,
       SettableFuture<ConfigTaskResult> future) {
-    TsBlockBuilder builder =
-        new TsBlockBuilder(HeaderConstant.showStorageGroupHeader.getRespDataTypes());
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showStorageGroupColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (Map.Entry<String, TStorageGroupSchema> entry : storageGroupSchemaMap.entrySet()) {
       String storageGroup = entry.getKey();
       TStorageGroupSchema storageGroupSchema = entry.getValue();
@@ -69,7 +77,7 @@ public class ShowStorageGroupTask implements IConfigTask {
       builder.getColumnBuilder(4).writeLong(storageGroupSchema.getTimePartitionInterval());
       builder.declarePosition();
     }
-    DatasetHeader datasetHeader = HeaderConstant.showStorageGroupHeader;
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowStorageGroupHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }
