@@ -55,6 +55,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.db.mpp.plan.expression.ExpressionType.BETWEEN;
+
 public class ExpressionUtils {
 
   public static List<Expression> reconstructTimeSeriesOperands(
@@ -273,15 +275,13 @@ public class ExpressionUtils {
     for (Expression fe : firstExpressions) {
       for (Expression se : secondExpressions)
         for (Expression te : thirdExpressions) {
-          switch (expression.getExpressionType()) {
-            case BETWEEN:
-              resultExpressions.add(
-                  new BetweenExpression(
-                      fe, se, te, ((BetweenExpression) expression).isNotBetween()));
-              break;
-            default:
-              throw new IllegalArgumentException(
-                  "unsupported expression type: " + expression.getExpressionType());
+          if(BETWEEN == expression.getExpressionType()) {
+            resultExpressions.add(
+                    new BetweenExpression(
+                            fe, se, te, ((BetweenExpression) expression).isNotBetween()));
+          } else {
+            throw new IllegalArgumentException(
+                    "unsupported expression type: " + expression.getExpressionType());
           }
         }
     }
@@ -293,17 +293,15 @@ public class ExpressionUtils {
       Expression firstExpression,
       Expression secondExpression,
       Expression thirdExpression) {
-    switch (expression.getExpressionType()) {
-      case BETWEEN:
-        return new BetweenExpression(
-            firstExpression,
-            secondExpression,
-            thirdExpression,
-            ((BetweenExpression) expression).isNotBetween());
-      default:
-        throw new IllegalArgumentException(
-            "unsupported expression type: " + expression.getExpressionType());
+    if(BETWEEN == expression.getExpressionType()) {
+      return new BetweenExpression(
+              firstExpression,
+              secondExpression,
+              thirdExpression,
+              ((BetweenExpression) expression).isNotBetween());
     }
+    throw new IllegalArgumentException(
+            "unsupported expression type: " + expression.getExpressionType());
   }
 
   public static <T> void cartesianProduct(
