@@ -67,10 +67,11 @@ public class Utils {
               long bytesToReserve = invocation.getArgument(1);
               if (reservedBytes.get() + bytesToReserve <= capacityInBytes) {
                 reservedBytes.updateAndGet(v -> v + (long) invocation.getArgument(1));
+                return new Pair<>(settableFuture.get(), true);
               } else {
                 settableFuture.set(SettableFuture.create());
+                return new Pair<>(settableFuture.get(), false);
               }
-              return settableFuture.get();
             });
     Mockito.doAnswer(
             (Answer<Void>)
