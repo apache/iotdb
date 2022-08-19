@@ -95,10 +95,7 @@ public class FastCrossCompactionWriter implements AutoCloseable {
       throws IOException, PageException {
     if (!isChunkModified) {
       // flush chunk to tsfileIOWriter directly
-      TsFileIOWriter tsFileIOWriter = targetFileWriters.get(targetFileIndex);
-      synchronized (tsFileIOWriter) {
-        tsFileIOWriter.writeChunk(seqChunk, seqChunkMetadata);
-      }
+      flushChunkToFileWriter(seqChunk, seqChunkMetadata, subTaskId);
     } else {
       ChunkReader chunkReader = new ChunkReader(seqChunk);
       ByteBuffer chunkDataBuffer = seqChunk.getData();
@@ -144,83 +141,89 @@ public class FastCrossCompactionWriter implements AutoCloseable {
     isDeviceExistedInTargetFiles[targetFileIndex] = true;
   }
 
-  public void compactWithOverlapSeqChunk(Chunk seqChunk, IPointReader unseqReader, int subTaskId)
+  public void compactWithOverlapSeqChunk(
+      Chunk seqChunk,
+      ChunkMetadata seqChunkMetadata,
+      boolean isChunkModified,
+      IPointReader unseqReader,
+      int subTaskId)
       throws IOException, PageException {
-    ChunkReader chunkReader = new ChunkReader(seqChunk);
-    ChunkHeader chunkHeader = seqChunk.getHeader();
-    ByteBuffer chunkDataBuffer = seqChunk.getData();
-    while (chunkDataBuffer.hasRemaining()) {
-      // deserialize a PageHeader from chunkDataBuffer
-      PageHeader pageHeader;
-      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, seqChunk.getChunkStatistic());
-      } else {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-      }
+    // 1. write unseq point.time< seq chunk.startTime
+    writeUnseqPoints(unseqReader, seqChunk.getChunkStatistic().getStartTime(), subTaskId);
 
-      // compact with unseq data points
-      // 1. write unseq point.time < seq page.startTime
-      while (unseqReader.hasNextTimeValuePair()
-          && unseqReader.currentTimeValuePair().getTimestamp() < pageHeader.getStartTime()) {
-        TimeValuePair timeValuePair = unseqReader.nextTimeValuePair();
-        CompactionWriterUtils.writeTVPair(
-            timeValuePair,
-            chunkWriters[subTaskId],
-            ++measurementPointCountArray[subTaskId] % checkPoint == 0
-                ? targetFileWriters.get(targetFileIndex)
-                : null,
-            true);
-      }
-
-      // 2. compact with this seq page, write point.time < seq page.endTime
-      if (unseqReader.currentTimeValuePair().getTimestamp() <= pageHeader.getEndTime()) {
-        // overlap with this page, then deserialize it and compact with unseq data point
-        PageReader pageReader = chunkReader.constructPageReaderForNextPage(pageHeader);
-        BatchData batchData = pageReader.getAllSatisfiedPageData();
-        while (batchData.hasCurrent()) {
-          boolean hasOverWritenSeqPoint = false;
-          long seqTimestamp = batchData.currentTime();
-          while (unseqReader.hasNextTimeValuePair()
-              && unseqReader.currentTimeValuePair().getTimestamp() <= seqTimestamp) {
-            // write unseq point
-            TimeValuePair timeValuePair = unseqReader.nextTimeValuePair();
-            long unseqTimestamp = timeValuePair.getTimestamp();
-            if (unseqTimestamp == seqTimestamp) {
-              hasOverWritenSeqPoint = true;
-            }
-            CompactionWriterUtils.writeTVPair(
-                timeValuePair,
-                chunkWriters[subTaskId],
-                ++measurementPointCountArray[subTaskId] % checkPoint == 0
-                    ? targetFileWriters.get(targetFileIndex)
-                    : null,
-                true);
-          }
-          // write seq point
-          if (!hasOverWritenSeqPoint) {
-            CompactionWriterUtils.writeDataPoint(
-                seqTimestamp,
-                batchData.currentValue(),
-                isAlign,
-                chunkWriters[subTaskId],
-                ++measurementPointCountArray[subTaskId] % checkPoint == 0
-                    ? targetFileWriters.get(targetFileIndex)
-                    : null,
-                true);
-          }
-          batchData.next();
+    if (unseqReader.currentTimeValuePair().getTimestamp()
+            > seqChunk.getChunkStatistic().getEndTime()
+        && !isChunkModified) {
+      // 2.1 flush chunk to tsfileIOWriter directly
+      flushChunkToFileWriter(seqChunk, seqChunkMetadata, subTaskId);
+    } else {
+      // 2.2 deserialize seq chunk
+      ChunkReader chunkReader = new ChunkReader(seqChunk);
+      ChunkHeader chunkHeader = seqChunk.getHeader();
+      ByteBuffer chunkDataBuffer = seqChunk.getData();
+      while (chunkDataBuffer.hasRemaining()) {
+        // deserialize a PageHeader from chunkDataBuffer
+        PageHeader pageHeader;
+        if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, seqChunk.getChunkStatistic());
+        } else {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
         }
-      } else {
-        // do not overlap with this seq page, then flush it to chunkWriter directly
-        flushPageToChunkWriter(chunkDataBuffer, pageHeader, subTaskId);
+
+        // compact with unseq data points
+        // 1. write unseq point.time < seq page.startTime
+        writeUnseqPoints(unseqReader, pageHeader.getStartTime(), subTaskId);
+
+        // 2. compact with this seq page, write point.time < seq page.endTime
+        if (unseqReader.currentTimeValuePair().getTimestamp() <= pageHeader.getEndTime()) {
+          // overlap with this page, then deserialize it and compact with unseq data point
+          PageReader pageReader = chunkReader.constructPageReaderForNextPage(pageHeader);
+          BatchData batchData = pageReader.getAllSatisfiedPageData();
+          while (batchData.hasCurrent()) {
+            boolean hasOverWritenSeqPoint = false;
+            long seqTimestamp = batchData.currentTime();
+            while (unseqReader.hasNextTimeValuePair()
+                && unseqReader.currentTimeValuePair().getTimestamp() <= seqTimestamp) {
+              // write unseq point
+              TimeValuePair timeValuePair = unseqReader.nextTimeValuePair();
+              long unseqTimestamp = timeValuePair.getTimestamp();
+              if (unseqTimestamp == seqTimestamp) {
+                hasOverWritenSeqPoint = true;
+              }
+              CompactionWriterUtils.writeTVPair(
+                  timeValuePair,
+                  chunkWriters[subTaskId],
+                  ++measurementPointCountArray[subTaskId] % checkPoint == 0
+                      ? targetFileWriters.get(targetFileIndex)
+                      : null,
+                  true);
+            }
+            // write seq point
+            if (!hasOverWritenSeqPoint) {
+              CompactionWriterUtils.writeDataPoint(
+                  seqTimestamp,
+                  batchData.currentValue(),
+                  isAlign,
+                  chunkWriters[subTaskId],
+                  ++measurementPointCountArray[subTaskId] % checkPoint == 0
+                      ? targetFileWriters.get(targetFileIndex)
+                      : null,
+                  true);
+            }
+            batchData.next();
+          }
+        } else {
+          // do not overlap with this seq page, then flush it to chunkWriter directly
+          flushPageToChunkWriter(chunkDataBuffer, pageHeader, subTaskId);
+        }
       }
     }
   }
 
-  public void writeRemainingUnseqPoints(IPointReader unseqReader, long timeLimit, int subTaskId)
+  public void writeUnseqPoints(IPointReader unseqReader, long timeLimit, int subTaskId)
       throws IOException {
     while (unseqReader.hasNextTimeValuePair()
-        && unseqReader.currentTimeValuePair().getTimestamp() <= timeLimit) {
+        && unseqReader.currentTimeValuePair().getTimestamp() < timeLimit) {
       TimeValuePair timeValuePair = unseqReader.nextTimeValuePair();
       CompactionWriterUtils.writeTVPair(
           timeValuePair,
@@ -229,6 +232,18 @@ public class FastCrossCompactionWriter implements AutoCloseable {
               ? targetFileWriters.get(targetFileIndex)
               : null,
           true);
+    }
+  }
+
+  private void flushChunkToFileWriter(Chunk seqChunk, ChunkMetadata seqChunkMetadata, int subTaskId)
+      throws IOException {
+    TsFileIOWriter tsFileIOWriter = targetFileWriters.get(targetFileIndex);
+    // seal last chunk to file writer
+    // Todo: may cause small chunk
+    chunkWriters[subTaskId].writeToFileWriter(tsFileIOWriter);
+
+    synchronized (tsFileIOWriter) {
+      tsFileIOWriter.writeChunk(seqChunk, seqChunkMetadata);
     }
   }
 
@@ -250,6 +265,7 @@ public class FastCrossCompactionWriter implements AutoCloseable {
     // seal current page
     chunkWriter.sealCurrentPage();
     // flush new page to chunk writer directly
+    // Todo: may cause small page
     chunkWriter.writePageHeaderAndDataIntoBuff(ByteBuffer.wrap(compressedPageBody), pageHeader);
 
     // check chunk size and may open a new chunk

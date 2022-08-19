@@ -107,7 +107,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
           // Chunk chunk =
           // fastCompactionPerformer.readerCacheMap.get(seqFile).readMemChunk(curChunkMetadata);
           if (isChunkOverlap) {
-            fastCrossCompactionWriter.compactWithOverlapSeqChunk(chunk, unseqReader, subTaskId);
+            fastCrossCompactionWriter.compactWithOverlapSeqChunk(
+                chunk, curChunkMetadata, isChunkModified, unseqReader, subTaskId);
           } else {
             fastCrossCompactionWriter.compactWithNonOverlapSeqChunk(
                 chunk, isChunkModified, curChunkMetadata, subTaskId);
@@ -115,8 +116,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
         }
       }
       // write remaining unseq data points
-      fastCrossCompactionWriter.writeRemainingUnseqPoints(
-          unseqReader, isLastFile ? Long.MAX_VALUE : seqFile.getEndTime(deviceID), subTaskId);
+      fastCrossCompactionWriter.writeUnseqPoints(
+          unseqReader, isLastFile ? Long.MAX_VALUE : seqFile.getEndTime(deviceID) + 1, subTaskId);
       fastCrossCompactionWriter.endMeasurment(subTaskId);
     }
     return null;

@@ -995,6 +995,7 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
+    targetResources.removeIf(resource -> resource == null);
     Assert.assertEquals(2, targetResources.size());
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
