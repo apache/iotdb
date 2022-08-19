@@ -66,9 +66,14 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -117,6 +122,7 @@ public class StorageEngine implements IService {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
   private static final long HEARTBEAT_CHECK_INTERVAL = 30L;
+  private static final long SECONDARY_METRIC_INTERVAL = 30L;
 
   /* OperationSync module */
   private static final boolean isEnableOperationSync =
@@ -160,6 +166,8 @@ public class StorageEngine implements IService {
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
+  ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>>
+      arrayListBlockQueue;
 
   private StorageEngine() {
     if (isEnableOperationSync) {
@@ -173,7 +181,7 @@ public class StorageEngine implements IService {
               config.getSecondaryPort(),
               config.getSecondaryUser(),
               config.getSecondaryPassword(),
-              5,
+              10,
               config.isRpcThriftCompressionEnable());
       ThreadPoolExecutor threadPool =
           new ThreadPoolExecutor(
@@ -186,16 +194,17 @@ public class StorageEngine implements IService {
       // create operationSyncDDLProtector and operationSyncDDLLogService
       ScheduledExecutorService secondaryCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("secondary-Check");
+
       secondaryCheckThread.scheduleAtFixedRate(
           this::checkSecondaryIsLife, 0L, HEARTBEAT_CHECK_INTERVAL, TimeUnit.SECONDS);
+
       operationSyncDDLProtector = new OperationSyncDDLProtector(operationSyncsessionPool);
       threadPool.execute(operationSyncDDLProtector);
       operationSyncDDLLogService =
           new OperationSyncLogService("OperationSyncDDLLog", operationSyncDDLProtector);
       threadPool.execute(operationSyncDDLLogService);
       // create OperationSyncProducer
-      ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>>
-          arrayListBlockQueue = new ArrayList<>(cacheNum);
+      arrayListBlockQueue = new ArrayList<>(cacheNum);
       for (int i = 0; i < cacheNum; i++) {
         BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
             blockingQueue = new ArrayBlockingQueue<>(config.getOperationSyncProducerCacheSize());
@@ -216,12 +225,19 @@ public class StorageEngine implements IService {
             new OperationSyncConsumer(
                 arrayListBlockQueue.get(i), operationSyncsessionPool, operationSyncDMLLogService));
       }
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+        ScheduledExecutorService secondaryMetricThread =
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("secondary-Metric");
+        secondaryMetricThread.scheduleAtFixedRate(
+            this::secondaryMetric, 0L, SECONDARY_METRIC_INTERVAL, TimeUnit.SECONDS);
+      }
       logger.info("Successfully initialize OperationSync!");
     } else {
       operationSyncsessionPool = null;
       operationSyncProducer = null;
       operationSyncDDLProtector = null;
       operationSyncDDLLogService = null;
+      arrayListBlockQueue = null;
     }
   }
 
@@ -434,6 +450,21 @@ public class StorageEngine implements IService {
       isSecondaryAlive.set(operationSyncsessionPool.getSystemStatus() == SystemStatus.NORMAL);
     } catch (IoTDBConnectionException e) {
       isSecondaryAlive.set(false);
+    }
+  }
+
+  private void secondaryMetric() {
+    for (int i = 0; i < arrayListBlockQueue.size(); i++) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.QUEUE.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              "OperationSyncProducerQueueSize" + i,
+              Tag.STATUS.toString(),
+              "running")
+          .set(arrayListBlockQueue.get(i).size());
     }
   }
 

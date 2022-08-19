@@ -126,7 +126,7 @@ public abstract class OperationSyncProtector implements Runnable {
             e);
         continue;
       }
-
+      LOGGER.info("begin trans " + logFileName);
       while (logReader.hasNext()) {
         // read and re-serialize the PhysicalPlan
         PhysicalPlan nextPlan = logReader.next();
@@ -140,7 +140,7 @@ public abstract class OperationSyncProtector implements Runnable {
         protectorByteStream.reset();
         transmitPhysicalPlan(nextBuffer, nextPlan);
       }
-
+      LOGGER.info("end trans " + logFileName);
       logReader.close();
       try {
         // sleep one second then delete OperationSyncLog
