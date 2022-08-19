@@ -513,6 +513,7 @@ public class StorageEngine implements IService {
     shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     processorMap.clear();
+    migrationManager.shutdown();
   }
 
   private void shutdownTimedService(ScheduledExecutorService pool, String poolName) {

@@ -177,6 +177,12 @@ public class MigrationManager {
     }
   }
 
+  /** function for shutdown */
+  public void shutdown() {
+    migrationCheckThread.shutdown();
+    migrationTaskThreadPool.shutdown();
+  }
+
   /** creates a copy of migrationTask and returns */
   public ConcurrentHashMap<Long, MigrationTask> getMigrateTasks() {
     return new ConcurrentHashMap<>(migrationTasks);
