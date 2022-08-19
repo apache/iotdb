@@ -29,9 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class OperatePipeSinkStatement extends Statement implements IConfigStatement {
-
-  private final OperatePipeSinkStatement.PipeSinkOperateType pipeSinkOperateType;
+public class CreatePipeSinkStatement extends Statement implements IConfigStatement {
 
   private String pipeSinkName;
 
@@ -39,18 +37,8 @@ public class OperatePipeSinkStatement extends Statement implements IConfigStatem
 
   private Map<String, String> attributes;
 
-  public OperatePipeSinkStatement(PipeSinkOperateType type) {
-    super();
-    pipeSinkOperateType = type;
-    switch (pipeSinkOperateType) {
-      case CREATE_PIPESINK:
-        this.setType(StatementType.CREATE_PIPESINK);
-        break;
-      case DROP_PIPESINK:
-        this.setType(StatementType.DROP_PIPESINK);
-        break;
-      default:;
-    }
+  public CreatePipeSinkStatement(StatementType createPipeSinkStatement) {
+    this.statementType = createPipeSinkStatement;
   }
 
   public String getPipeSinkName() {
@@ -63,10 +51,6 @@ public class OperatePipeSinkStatement extends Statement implements IConfigStatem
 
   public String getPipeSinkType() {
     return pipeSinkType;
-  }
-
-  public PipeSinkOperateType getPipeSinkOperateType() {
-    return pipeSinkOperateType;
   }
 
   public void setPipeSinkName(String pipeSinkName) {
@@ -83,25 +67,11 @@ public class OperatePipeSinkStatement extends Statement implements IConfigStatem
 
   @Override
   public QueryType getQueryType() {
-    QueryType queryType;
-    switch (pipeSinkOperateType) {
-      case CREATE_PIPESINK:
-      case DROP_PIPESINK:
-        queryType = QueryType.WRITE;
-        break;
-      default:
-        throw new IllegalArgumentException("Unknown operator: " + pipeSinkOperateType);
-    }
-    return queryType;
+    return QueryType.WRITE;
   }
 
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
-  }
-
-  public enum PipeSinkOperateType {
-    CREATE_PIPESINK,
-    DROP_PIPESINK
   }
 }

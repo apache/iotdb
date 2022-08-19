@@ -118,16 +118,20 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTe
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.DropPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.DropPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.OperatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.OperatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeSinkTypeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.StopPipeStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -2655,7 +2659,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private void parseSelectStatementForPipe(
-      IoTDBSqlParser.SelectStatementContext ctx, OperatePipeStatement statement)
+      IoTDBSqlParser.SelectStatementContext ctx, CreatePipeStatement statement)
       throws SQLParserException {
     if (ctx.TRACING() != null || ctx.intoClause() != null || ctx.specialClause() != null) {
       throw new SQLParserException("Not support for this sql in pipe.");
@@ -2720,54 +2724,59 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreatePipe(IoTDBSqlParser.CreatePipeContext ctx) throws SQLParserException {
 
-    OperatePipeStatement operatePipeStatement =
-        new OperatePipeStatement(OperatePipeStatement.PipeOperateType.CREATE_PIPE);
+    CreatePipeStatement createPipeStatement = new CreatePipeStatement(StatementType.CREATE_PIPE);
 
     if (ctx.pipeName != null && ctx.pipeSinkName != null) {
-      operatePipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
-      operatePipeStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));
+      createPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+      createPipeStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));
+    } else {
+      throw new SQLParserException(
+          "Not support for this sql in CREATEPIPE, please enter pipename or pipesinkname.");
     }
     if (ctx.selectStatement() != null) {
-      parseSelectStatementForPipe(ctx.selectStatement(), operatePipeStatement);
+      parseSelectStatementForPipe(ctx.selectStatement(), createPipeStatement);
     }
     if (ctx.syncAttributeClauses() != null) {
-      operatePipeStatement.setPipeAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
+      createPipeStatement.setPipeAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
     }
-    return operatePipeStatement;
+    return createPipeStatement;
   }
 
   @Override
   public Statement visitStartPipe(IoTDBSqlParser.StartPipeContext ctx) {
-    OperatePipeStatement operatePipeStatement =
-        new OperatePipeStatement(OperatePipeStatement.PipeOperateType.START_PIPE);
+    StartPipeStatement startPipeStatement = new StartPipeStatement(StatementType.START_PIPE);
 
     if (ctx.pipeName != null) {
-      operatePipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+      startPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+    } else {
+      throw new SQLParserException("Not support for this sql in STARTPIPE, please enter pipename.");
     }
-    return operatePipeStatement;
+    return startPipeStatement;
   }
 
   @Override
   public Statement visitStopPipe(IoTDBSqlParser.StopPipeContext ctx) {
-    OperatePipeStatement operatePipeStatement =
-        new OperatePipeStatement(OperatePipeStatement.PipeOperateType.STOP_PIPE);
+    StopPipeStatement stopPipeStatement = new StopPipeStatement(StatementType.STOP_PIPE);
 
     if (ctx.pipeName != null) {
-      operatePipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+      stopPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+    } else {
+      throw new SQLParserException("Not support for this sql in STOPPIPE, please enter pipename.");
     }
-    return operatePipeStatement;
+    return stopPipeStatement;
   }
 
   @Override
   public Statement visitDropPipe(IoTDBSqlParser.DropPipeContext ctx) {
 
-    OperatePipeStatement operatePipeStatement =
-        new OperatePipeStatement(OperatePipeStatement.PipeOperateType.DROP_PIPE);
+    DropPipeStatement dropPipeStatement = new DropPipeStatement(StatementType.DROP_PIPE);
 
     if (ctx.pipeName != null) {
-      operatePipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+      dropPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+    } else {
+      throw new SQLParserException("Not support for this sql in DROPPIPE, please enter pipename.");
     }
-    return operatePipeStatement;
+    return dropPipeStatement;
   }
 
   // pipeSink
@@ -2790,31 +2799,40 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreatePipeSink(IoTDBSqlParser.CreatePipeSinkContext ctx) {
 
-    OperatePipeSinkStatement operatePipeSinkStatement =
-        new OperatePipeSinkStatement(OperatePipeSinkStatement.PipeSinkOperateType.CREATE_PIPESINK);
+    CreatePipeSinkStatement createPipeSinkStatement =
+        new CreatePipeSinkStatement(StatementType.CREATE_PIPESINK);
 
     if (ctx.pipeSinkName != null) {
-      operatePipeSinkStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));
+      createPipeSinkStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));
+    } else {
+      throw new SQLParserException(
+          "Not support for this sql in CREATEPIPESINK, please enter pipesinkname.");
     }
     if (ctx.pipeSinkType != null) {
-      operatePipeSinkStatement.setPipeSinkType(parseIdentifier(ctx.pipeSinkType.getText()));
+      createPipeSinkStatement.setPipeSinkType(parseIdentifier(ctx.pipeSinkType.getText()));
+    } else {
+      throw new SQLParserException(
+          "Not support for this sql in CREATEPIPESINK, please enter pipesinktype.");
     }
     if (ctx.syncAttributeClauses() != null) {
-      operatePipeSinkStatement.setAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
+      createPipeSinkStatement.setAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
     }
 
-    return operatePipeSinkStatement;
+    return createPipeSinkStatement;
   }
 
   @Override
   public Statement visitDropPipeSink(IoTDBSqlParser.DropPipeSinkContext ctx) {
 
-    OperatePipeSinkStatement operatePipeSinkStatement =
-        new OperatePipeSinkStatement(OperatePipeSinkStatement.PipeSinkOperateType.DROP_PIPESINK);
+    DropPipeSinkStatement dropPipeSinkStatement =
+        new DropPipeSinkStatement(StatementType.DROP_PIPESINK);
 
     if (ctx.pipeSinkName != null) {
-      operatePipeSinkStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));
+      dropPipeSinkStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));
+    } else {
+      throw new SQLParserException(
+          "Not support for this sql in DROPPIPESINK, please enter pipesinkname.");
     }
-    return operatePipeSinkStatement;
+    return dropPipeSinkStatement;
   }
 }

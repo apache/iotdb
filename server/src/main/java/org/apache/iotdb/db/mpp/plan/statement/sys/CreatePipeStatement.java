@@ -29,41 +29,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class OperatePipeStatement extends Statement implements IConfigStatement {
-
-  private final OperatePipeStatement.PipeOperateType pipeOperateType;
+public class CreatePipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
   private String pipeSinkName;
   private long startTime;
   private Map<String, String> pipeAttributes;
 
-  public OperatePipeStatement(OperatePipeStatement.PipeOperateType type) {
-    super();
-    this.pipeName = pipeName;
-    this.pipeSinkName = pipeSinkName;
-    this.startTime = 0;
-
-    pipeOperateType = type;
-    switch (pipeOperateType) {
-      case CREATE_PIPE:
-        this.setType(StatementType.CREATE_PIPE);
-        break;
-      case START_PIPE:
-        this.setType(StatementType.START_PIPE);
-        break;
-      case STOP_PIPE:
-        this.setType(StatementType.STOP_PIPE);
-        break;
-      case DROP_PIPE:
-        this.setType(StatementType.DROP_PIPE);
-        break;
-      default:
-    }
-  }
-
-  public PipeOperateType getPipeOperateType() {
-    return pipeOperateType;
+  public CreatePipeStatement(StatementType createPipeStatement) {
+    this.statementType = createPipeStatement;
   }
 
   public String getPipeName() {
@@ -100,29 +74,11 @@ public class OperatePipeStatement extends Statement implements IConfigStatement 
 
   @Override
   public QueryType getQueryType() {
-    QueryType queryType;
-    switch (pipeOperateType) {
-      case CREATE_PIPE:
-      case START_PIPE:
-      case STOP_PIPE:
-      case DROP_PIPE:
-        queryType = QueryType.WRITE;
-        break;
-      default:
-        throw new IllegalArgumentException("Unknown operator: " + pipeOperateType);
-    }
-    return queryType;
+    return QueryType.WRITE;
   }
 
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
-  }
-
-  public enum PipeOperateType {
-    CREATE_PIPE,
-    START_PIPE,
-    STOP_PIPE,
-    DROP_PIPE
   }
 }
