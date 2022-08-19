@@ -38,7 +38,7 @@ public class SetMigrationOperator extends Operator {
 
   public SetMigrationOperator(int tokenIntType) {
     super(tokenIntType);
-    this.operatorType = OperatorType.MIGRATION;
+    this.operatorType = OperatorType.SET_MIGRATION;
   }
 
   public PartialPath getStorageGroup() {

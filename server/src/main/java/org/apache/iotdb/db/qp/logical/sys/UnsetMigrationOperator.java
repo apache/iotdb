@@ -34,7 +34,7 @@ public class UnsetMigrationOperator extends Operator {
 
   public UnsetMigrationOperator(int tokenIntType) {
     super(tokenIntType);
-    this.operatorType = OperatorType.MIGRATION;
+    this.operatorType = OperatorType.SET_MIGRATION;
   }
 
   public PartialPath getStorageGroup() {

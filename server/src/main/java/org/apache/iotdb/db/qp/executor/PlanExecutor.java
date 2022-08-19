@@ -420,8 +420,8 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case SHOW_QUERY_RESOURCE:
         return processShowQueryResource();
-      case MIGRATION:
-        operateMigration((SetMigrationPlan) plan);
+      case SET_MIGRATION:
+        operateSetMigration((SetMigrationPlan) plan);
         return true;
       case PAUSE_MIGRATION:
         operatePauseMigration((PauseMigrationPlan) plan);
@@ -778,7 +778,7 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowPathsSetSchemaTemplate((ShowPathsSetTemplatePlan) showPlan);
       case PATHS_USING_SCHEMA_TEMPLATE:
         return processShowPathsUsingSchemaTemplate((ShowPathsUsingTemplatePlan) showPlan);
-      case MIGRATION:
+      case SHOW_MIGRATION:
         return processShowMigration((ShowMigrationPlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
@@ -1687,7 +1687,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void operateMigration(SetMigrationPlan plan) throws QueryProcessException {
+  private void operateSetMigration(SetMigrationPlan plan) throws QueryProcessException {
     if (plan.getTargetDir() == null) {
       // is unset plan
       StorageEngine.getInstance().unsetMigration(plan.getIndex(), plan.getStorageGroup());

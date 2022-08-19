@@ -40,11 +40,11 @@ public class SetMigrationPlan extends PhysicalPlan {
   private long startTime;
 
   public SetMigrationPlan() {
-    super(OperatorType.MIGRATION);
+    super(OperatorType.SET_MIGRATION);
   }
 
   public SetMigrationPlan(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
-    super(OperatorType.MIGRATION);
+    super(OperatorType.SET_MIGRATION);
     this.storageGroup = storageGroup;
     this.targetDir = targetDir;
     this.ttl = ttl;
@@ -54,7 +54,7 @@ public class SetMigrationPlan extends PhysicalPlan {
   public SetMigrationPlan(
       long taskId, PartialPath storageGroup, File targetDir, long ttl, long startTime) {
     // set migrate w/ taskId
-    super(OperatorType.MIGRATION);
+    super(OperatorType.SET_MIGRATION);
     this.taskId = taskId;
     this.storageGroup = storageGroup;
     this.targetDir = targetDir;

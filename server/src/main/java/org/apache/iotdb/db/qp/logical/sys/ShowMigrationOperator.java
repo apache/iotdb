@@ -31,7 +31,7 @@ public class ShowMigrationOperator extends ShowOperator {
   private List<PartialPath> storageGroups;
 
   public ShowMigrationOperator(List<PartialPath> storageGroups) {
-    super(SQLConstant.TOK_SHOW, OperatorType.MIGRATION);
+    super(SQLConstant.TOK_SHOW, OperatorType.SHOW_MIGRATION);
     this.storageGroups = storageGroups;
   }
 

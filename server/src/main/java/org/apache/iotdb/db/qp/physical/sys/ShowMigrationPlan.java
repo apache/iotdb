@@ -27,7 +27,7 @@ public class ShowMigrationPlan extends ShowPlan {
   private List<PartialPath> storageGroups;
 
   public ShowMigrationPlan(List<PartialPath> storageGroups) {
-    super(ShowContentType.MIGRATION);
+    super(ShowContentType.SHOW_MIGRATION);
     this.storageGroups = storageGroups;
   }
 
