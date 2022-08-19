@@ -830,8 +830,10 @@ public class IoTDBConfig {
   private String secondaryUser = "root";
   private String secondaryPassword = "root";
 
+  private int secondarySessionPoolMaxSize = 10;
+
   // The transmitting concurrency size of operation sync SessionPool
-  private int OperationSyncSessionConcurrencySize = 8;
+  private int operationSyncSessionConcurrencySize = 8;
 
   // OperationSyncLog dir
   private String operationSyncLogDir =
@@ -2663,12 +2665,20 @@ public class IoTDBConfig {
     this.secondaryPassword = secondaryPassword;
   }
 
+  public int getSecondarySessionPoolMaxSize() {
+    return secondarySessionPoolMaxSize;
+  }
+
+  public void setSecondarySessionPoolMaxSize(int secondarySessionPoolMaxSize) {
+    this.secondarySessionPoolMaxSize = secondarySessionPoolMaxSize;
+  }
+
   public int getOperationSyncSessionConcurrencySize() {
-    return OperationSyncSessionConcurrencySize;
+    return operationSyncSessionConcurrencySize;
   }
 
   public void setOperationSyncSessionConcurrencySize(int operationSyncSessionConcurrencySize) {
-    this.OperationSyncSessionConcurrencySize = operationSyncSessionConcurrencySize;
+    this.operationSyncSessionConcurrencySize = operationSyncSessionConcurrencySize;
   }
 
   public String getOperationSyncLogDir() {

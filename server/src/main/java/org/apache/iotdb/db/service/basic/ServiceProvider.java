@@ -64,6 +64,8 @@ public abstract class ServiceProvider {
       LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   public static final Logger SLOW_SQL_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
+  public static final Logger DOUBLE_LIVE_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.DOUBLE_LIVE_LOGGER_NAME);
 
   public static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;

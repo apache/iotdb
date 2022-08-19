@@ -23,7 +23,6 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,17 +33,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import static org.apache.iotdb.db.service.basic.ServiceProvider.DOUBLE_LIVE_LOGGER;
+
 public class OperationSyncLogService implements Runnable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncLogService.class);
+  private static final Logger LOGGER = DOUBLE_LIVE_LOGGER;
 
-  private static final String logFileDir =
+  private static final String LOG_FILE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogDir();
-  private static final long logFileValidity =
+  private static final long LOG_FILE_VALIDITY =
       IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogValidity() * 1000L;
-  private static final int maxLogFileNum =
+  private static final int MAX_LOG_FILE_NUM =
       IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogNum();
-  private static final long maxLogFileSize =
+  private static final long MAX_LOG_FILE_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getOperationSyncMaxLogSize();
 
   private static long currentLogFileSize = 0;
@@ -65,7 +66,7 @@ public class OperationSyncLogService implements Runnable {
     this.logFile = null;
     this.logWriter = null;
 
-    File logDir = new File(logFileDir);
+    File logDir = new File(LOG_FILE_DIR);
     if (!logDir.exists()) {
       if (!logDir.mkdirs()) {
         LOGGER.error("Can't make OperationSyncLog file dir: {}", logDir.getAbsolutePath());
@@ -77,9 +78,9 @@ public class OperationSyncLogService implements Runnable {
   public void run() {
     // Check if there exists remnant logs
     List<Integer> logFileIDList = new ArrayList<>();
-    for (int ID = 0; ID < maxLogFileNum; ID++) {
+    for (int ID = 0; ID < MAX_LOG_FILE_NUM; ID++) {
       File file =
-          SystemFileFactory.INSTANCE.getFile(logFileDir + File.separator + logFileName + ID);
+          SystemFileFactory.INSTANCE.getFile(LOG_FILE_DIR + File.separator + logFileName + ID);
       if (file.exists()) {
         logFileIDList.add(ID);
       }
@@ -96,10 +97,10 @@ public class OperationSyncLogService implements Runnable {
       }
 
       for (int i = firstID; i < logFileIDList.size(); i++) {
-        protector.registerLogFile(logFileDir + File.separator + logFileName + logFileIDList.get(i));
+        protector.registerLogFile(LOG_FILE_DIR + File.separator + logFileName + logFileIDList.get(i));
       }
       for (int i = 0; i < firstID; i++) {
-        protector.registerLogFile(logFileDir + File.separator + logFileName + logFileIDList.get(i));
+        protector.registerLogFile(LOG_FILE_DIR + File.separator + logFileName + logFileIDList.get(i));
       }
 
       int nextID;
@@ -108,7 +109,7 @@ public class OperationSyncLogService implements Runnable {
       } else {
         nextID = logFileIDList.get(firstID - 1) + 1;
       }
-      logFileID = nextID % maxLogFileNum;
+      logFileID = nextID % MAX_LOG_FILE_NUM;
     } else {
       logFileID = 0;
     }
@@ -117,7 +118,7 @@ public class OperationSyncLogService implements Runnable {
       // Check the validity of logFile
       logWriterLock.lock();
       try {
-        if (logWriter != null && System.currentTimeMillis() - logFileCreateTime > logFileValidity) {
+        if (logWriter != null && System.currentTimeMillis() - logFileCreateTime > LOG_FILE_VALIDITY) {
           // Submit logFile when it's expired
           submitLogFile();
         }
@@ -161,10 +162,10 @@ public class OperationSyncLogService implements Runnable {
     }
 
     protector.registerLogFile(
-        logFileDir
+        LOG_FILE_DIR
             + File.separator
             + logFileName
-            + (logFileID - 1 + maxLogFileNum) % maxLogFileNum);
+            + (logFileID - 1 + MAX_LOG_FILE_NUM) % MAX_LOG_FILE_NUM);
 
     logWriter = null;
     logFile = null;
@@ -172,7 +173,7 @@ public class OperationSyncLogService implements Runnable {
 
   private void createLogFile() {
     logFile =
-        SystemFileFactory.INSTANCE.getFile(logFileDir + File.separator + logFileName + logFileID);
+        SystemFileFactory.INSTANCE.getFile(LOG_FILE_DIR + File.separator + logFileName + logFileID);
     while (true) {
       try {
         if (logFile.createNewFile()) {
@@ -190,7 +191,7 @@ public class OperationSyncLogService implements Runnable {
         }
       }
     }
-    logFileID = (logFileID + 1) % maxLogFileNum;
+    logFileID = (logFileID + 1) % MAX_LOG_FILE_NUM;
   }
 
   public static synchronized void incLogFileSize(long size) {
@@ -202,7 +203,7 @@ public class OperationSyncLogService implements Runnable {
   }
 
   public void write(ByteBuffer buffer) throws IOException {
-    if (currentLogFileSize < maxLogFileSize) {
+    if (currentLogFileSize < MAX_LOG_FILE_SIZE) {
       if (logWriter == null) {
         // Create logFile when there are no valid
         createLogFile();

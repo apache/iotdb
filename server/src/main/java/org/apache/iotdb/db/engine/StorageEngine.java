@@ -127,7 +127,7 @@ public class StorageEngine implements IService {
   /* OperationSync module */
   private static final boolean isEnableOperationSync =
       IoTDBDescriptor.getInstance().getConfig().isEnableOperationSync();
-  private static SessionPool operationSyncsessionPool;
+  private static SessionPool operationSyncSessionPool;
   private static OperationSyncProducer operationSyncProducer;
   private static OperationSyncDDLProtector operationSyncDDLProtector;
   private static OperationSyncLogService operationSyncDDLLogService;
@@ -171,17 +171,18 @@ public class StorageEngine implements IService {
 
   private StorageEngine() {
     if (isEnableOperationSync) {
-      /* Open OperationSync */
+      // Open OperationSync
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       int cacheNum = config.getOperationSyncProducerCacheNum();
+
       // create SessionPool for OperationSync
-      operationSyncsessionPool =
+      operationSyncSessionPool =
           new SessionPool(
               config.getSecondaryAddress(),
               config.getSecondaryPort(),
               config.getSecondaryUser(),
               config.getSecondaryPassword(),
-              10,
+              config.getSecondarySessionPoolMaxSize(),
               config.isRpcThriftCompressionEnable());
       ThreadPoolExecutor threadPool =
           new ThreadPoolExecutor(
@@ -189,8 +190,9 @@ public class StorageEngine implements IService {
               cacheNum + 5,
               3,
               TimeUnit.SECONDS,
-              new ArrayBlockingQueue<Runnable>(5),
+              new ArrayBlockingQueue<>(5),
               new ThreadPoolExecutor.AbortPolicy());
+
       // create operationSyncDDLProtector and operationSyncDDLLogService
       ScheduledExecutorService secondaryCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("secondary-Check");
@@ -198,11 +200,12 @@ public class StorageEngine implements IService {
       secondaryCheckThread.scheduleAtFixedRate(
           this::checkSecondaryIsLife, 0L, HEARTBEAT_CHECK_INTERVAL, TimeUnit.SECONDS);
 
-      operationSyncDDLProtector = new OperationSyncDDLProtector(operationSyncsessionPool);
+      operationSyncDDLProtector = new OperationSyncDDLProtector(operationSyncSessionPool);
       threadPool.execute(operationSyncDDLProtector);
       operationSyncDDLLogService =
           new OperationSyncLogService("OperationSyncDDLLog", operationSyncDDLProtector);
       threadPool.execute(operationSyncDDLLogService);
+
       // create OperationSyncProducer
       arrayListBlockQueue = new ArrayList<>(cacheNum);
       for (int i = 0; i < cacheNum; i++) {
@@ -211,7 +214,7 @@ public class StorageEngine implements IService {
         arrayListBlockQueue.add(blockingQueue);
       }
       OperationSyncDMLProtector operationSyncDMLProtector =
-          new OperationSyncDMLProtector(operationSyncDDLProtector, operationSyncsessionPool);
+          new OperationSyncDMLProtector(operationSyncDDLProtector, operationSyncSessionPool);
       threadPool.execute(operationSyncDMLProtector);
       OperationSyncLogService operationSyncDMLLogService =
           new OperationSyncLogService("OperationSyncDMLLog", operationSyncDMLProtector);
@@ -223,7 +226,7 @@ public class StorageEngine implements IService {
       for (int i = 0; i < cacheNum; i++) {
         threadPool.execute(
             new OperationSyncConsumer(
-                arrayListBlockQueue.get(i), operationSyncsessionPool, operationSyncDMLLogService));
+                arrayListBlockQueue.get(i), operationSyncSessionPool, operationSyncDMLLogService));
       }
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
         ScheduledExecutorService secondaryMetricThread =
@@ -233,7 +236,7 @@ public class StorageEngine implements IService {
       }
       logger.info("Successfully initialize OperationSync!");
     } else {
-      operationSyncsessionPool = null;
+      operationSyncSessionPool = null;
       operationSyncProducer = null;
       operationSyncDDLProtector = null;
       operationSyncDDLLogService = null;
@@ -279,7 +282,7 @@ public class StorageEngine implements IService {
         OperationSyncWriteTask ddlTask =
             new OperationSyncWriteTask(
                 buffer,
-                operationSyncsessionPool,
+                    operationSyncSessionPool,
                 operationSyncDDLProtector,
                 operationSyncDDLLogService);
         ddlTask.run();
@@ -447,7 +450,7 @@ public class StorageEngine implements IService {
 
   private void checkSecondaryIsLife() {
     try {
-      isSecondaryAlive.set(operationSyncsessionPool.getSystemStatus() == SystemStatus.NORMAL);
+      isSecondaryAlive.set(operationSyncSessionPool.getSystemStatus() == SystemStatus.NORMAL);
     } catch (IoTDBConnectionException e) {
       isSecondaryAlive.set(false);
     }

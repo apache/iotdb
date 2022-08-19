@@ -24,14 +24,15 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.db.service.basic.ServiceProvider.DOUBLE_LIVE_LOGGER;
+
 public class OperationSyncDDLProtector extends OperationSyncProtector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncDDLProtector.class);
+  private static final Logger LOGGER = DOUBLE_LIVE_LOGGER;
 
   private final SessionPool operationSyncSessionPool;
 
