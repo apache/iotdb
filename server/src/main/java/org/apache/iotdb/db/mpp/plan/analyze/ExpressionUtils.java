@@ -66,6 +66,10 @@ public class ExpressionUtils {
     return resultExpressions;
   }
 
+  public static Expression reconstructTimeSeriesOperand(PartialPath actualPath) {
+    return new TimeSeriesOperand(actualPath);
+  }
+
   public static List<Expression> reconstructFunctionExpressions(
       FunctionExpression expression, List<List<Expression>> childExpressionsList) {
     List<Expression> resultExpressions = new ArrayList<>();
@@ -77,6 +81,12 @@ public class ExpressionUtils {
               functionExpressions));
     }
     return resultExpressions;
+  }
+
+  public static Expression reconstructFunctionExpression(
+      FunctionExpression expression, List<Expression> childExpressions) {
+    return new FunctionExpression(
+        expression.getFunctionName(), expression.getFunctionAttributes(), childExpressions);
   }
 
   public static List<Expression> reconstructUnaryExpressions(
@@ -121,6 +131,39 @@ public class ExpressionUtils {
       }
     }
     return resultExpressions;
+  }
+
+  public static Expression reconstructUnaryExpression(
+      UnaryExpression expression, Expression childExpression) {
+    switch (expression.getExpressionType()) {
+      case IS_NULL:
+        return new IsNullExpression(childExpression, ((IsNullExpression) expression).isNot());
+      case IN:
+        return new InExpression(
+            childExpression,
+            ((InExpression) expression).isNotIn(),
+            ((InExpression) expression).getValues());
+      case LIKE:
+        return new LikeExpression(
+            childExpression,
+            ((LikeExpression) expression).getPatternString(),
+            ((LikeExpression) expression).getPattern());
+      case LOGIC_NOT:
+        return new LogicNotExpression(childExpression);
+
+      case NEGATION:
+        return new NegationExpression(childExpression);
+
+      case REGEXP:
+        return new RegularExpression(
+            childExpression,
+            ((RegularExpression) expression).getPatternString(),
+            ((RegularExpression) expression).getPattern());
+
+      default:
+        throw new IllegalArgumentException(
+            "unsupported expression type: " + expression.getExpressionType());
+    }
   }
 
   public static List<Expression> reconstructBinaryExpressions(
@@ -178,6 +221,49 @@ public class ExpressionUtils {
     return resultExpressions;
   }
 
+  public static Expression reconstructBinaryExpression(
+      ExpressionType expressionType, Expression leftExpression, Expression rightExpression) {
+    switch (expressionType) {
+      case ADDITION:
+        return new AdditionExpression(leftExpression, rightExpression);
+
+      case SUBTRACTION:
+        return new SubtractionExpression(leftExpression, rightExpression);
+      case MULTIPLICATION:
+        return new MultiplicationExpression(leftExpression, rightExpression);
+      case DIVISION:
+        return new DivisionExpression(leftExpression, rightExpression);
+      case MODULO:
+        return new ModuloExpression(leftExpression, rightExpression);
+
+      case LESS_THAN:
+        return new LessThanExpression(leftExpression, rightExpression);
+      case LESS_EQUAL:
+        return new LessEqualExpression(leftExpression, rightExpression);
+
+      case GREATER_THAN:
+        return new GreaterThanExpression(leftExpression, rightExpression);
+
+      case GREATER_EQUAL:
+        return new GreaterEqualExpression(leftExpression, rightExpression);
+
+      case EQUAL_TO:
+        return new EqualToExpression(leftExpression, rightExpression);
+
+      case NON_EQUAL:
+        return new NonEqualExpression(leftExpression, rightExpression);
+
+      case LOGIC_AND:
+        return new LogicAndExpression(leftExpression, rightExpression);
+
+      case LOGIC_OR:
+        return new LogicOrExpression(leftExpression, rightExpression);
+
+      default:
+        throw new IllegalArgumentException("unsupported expression type: " + expressionType);
+    }
+  }
+
   public static List<Expression> reconstructTernaryExpressions(
       Expression expression,
       List<Expression> firstExpressions,
@@ -194,11 +280,30 @@ public class ExpressionUtils {
                       fe, se, te, ((BetweenExpression) expression).isNotBetween()));
               break;
             default:
-              throw new UnsupportedOperationException();
+              throw new IllegalArgumentException(
+                  "unsupported expression type: " + expression.getExpressionType());
           }
         }
     }
     return resultExpressions;
+  }
+
+  public static Expression reconstructTernaryExpression(
+      Expression expression,
+      Expression firstExpression,
+      Expression secondExpression,
+      Expression thirdExpression) {
+    switch (expression.getExpressionType()) {
+      case BETWEEN:
+        return new BetweenExpression(
+            firstExpression,
+            secondExpression,
+            thirdExpression,
+            ((BetweenExpression) expression).isNotBetween());
+      default:
+        throw new IllegalArgumentException(
+            "unsupported expression type: " + expression.getExpressionType());
+    }
   }
 
   public static <T> void cartesianProduct(

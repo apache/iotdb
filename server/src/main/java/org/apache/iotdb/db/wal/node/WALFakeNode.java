@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.wal.node;
 
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
@@ -27,8 +26,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
-
-import java.util.List;
 
 /** This class provides fake wal node when wal is disabled or exception happens. */
 public class WALFakeNode implements IWALNode {
@@ -105,16 +102,6 @@ public class WALFakeNode implements IWALNode {
   }
 
   @Override
-  public IConsensusRequest getReq(long index) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public List<IConsensusRequest> getReqs(long startIndex, int num) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public ReqIterator getReqIterator(long startIndex) {
     throw new UnsupportedOperationException();
   }
@@ -127,6 +114,11 @@ public class WALFakeNode implements IWALNode {
   @Override
   public long getCurrentSearchIndex() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public long getTotalSize() {
+    return 0;
   }
 
   public static WALFakeNode getFailureInstance(Exception e) {

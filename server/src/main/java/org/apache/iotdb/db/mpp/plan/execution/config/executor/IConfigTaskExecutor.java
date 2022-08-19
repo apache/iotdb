@@ -60,7 +60,13 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
-  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq);
+  SettableFuture<ConfigTaskResult> merge(boolean isCluster);
+
+  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean isCluster);
+
+  SettableFuture<ConfigTaskResult> clearCache(boolean isCluster);
+
+  SettableFuture<ConfigTaskResult> loadConfiguration(boolean isCluster);
 
   SettableFuture<ConfigTaskResult> showCluster();
 
@@ -69,6 +75,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement);
 
   SettableFuture<ConfigTaskResult> showDataNodes(ShowDataNodesStatement showDataNodesStatement);
+
+  SettableFuture<ConfigTaskResult> showConfigNodes();
 
   SettableFuture<ConfigTaskResult> createSchemaTemplate(
       CreateSchemaTemplateStatement createSchemaTemplateStatement);

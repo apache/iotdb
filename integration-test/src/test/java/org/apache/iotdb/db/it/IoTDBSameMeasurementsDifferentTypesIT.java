@@ -47,7 +47,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSameMeasurementsDifferentTypesIT {
 
-  private static BaseConfig tsFileConfig = ConfigFactory.getConfig();
+  private static final BaseConfig tsFileConfig = ConfigFactory.getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
   private static int groupSizeInByte;
@@ -88,10 +88,6 @@ public class IoTDBSameMeasurementsDifferentTypesIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      for (String sql : TestConstant.createSql) {
-        statement.execute(sql);
-      }
-
       statement.execute("SET STORAGE GROUP TO root.fans");
       statement.execute("CREATE TIMESERIES root.fans.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
       statement.execute("CREATE TIMESERIES root.fans.d1.s0 WITH DATATYPE=INT64, ENCODING=RLE");
@@ -127,14 +123,13 @@ public class IoTDBSameMeasurementsDifferentTypesIT {
       ResultSet resultSet1 = statement1.executeQuery(selectSql);
       int cnt1 = 0;
       while (resultSet1.next() && cnt1 < 5) {
-        StringBuilder builder = new StringBuilder();
-        builder
-            .append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
-            .append(",")
-            .append(resultSet1.getString("root.fans.d0.s0"))
-            .append(",")
-            .append(resultSet1.getString("root.fans.d1.s0"));
-        Assert.assertEquals(retArray[cnt1], builder.toString());
+        String ans =
+            resultSet1.getString(TestConstant.TIMESTAMP_STR)
+                + ","
+                + resultSet1.getString("root.fans.d0.s0")
+                + ","
+                + resultSet1.getString("root.fans.d1.s0");
+        Assert.assertEquals(retArray[cnt1], ans);
         cnt1++;
       }
 
@@ -142,14 +137,13 @@ public class IoTDBSameMeasurementsDifferentTypesIT {
       ResultSet resultSet2 = statement2.executeQuery(selectSql);
       int cnt2 = 0;
       while (resultSet2.next()) {
-        StringBuilder builder = new StringBuilder();
-        builder
-            .append(resultSet2.getString(TestConstant.TIMESTAMP_STR))
-            .append(",")
-            .append(resultSet2.getString("root.fans.d0.s0"))
-            .append(",")
-            .append(resultSet2.getString("root.fans.d1.s0"));
-        Assert.assertEquals(retArray[cnt2], builder.toString());
+        String ans =
+            resultSet2.getString(TestConstant.TIMESTAMP_STR)
+                + ","
+                + resultSet2.getString("root.fans.d0.s0")
+                + ","
+                + resultSet2.getString("root.fans.d1.s0");
+        Assert.assertEquals(retArray[cnt2], ans);
         cnt2++;
       }
       Assert.assertEquals(9, cnt2);
@@ -158,14 +152,13 @@ public class IoTDBSameMeasurementsDifferentTypesIT {
       // function,
       // and the cursor has been moved to the next position, so we should fetch that value first.
       do {
-        StringBuilder builder = new StringBuilder();
-        builder
-            .append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
-            .append(",")
-            .append(resultSet1.getString("root.fans.d0.s0"))
-            .append(",")
-            .append(resultSet1.getString("root.fans.d1.s0"));
-        Assert.assertEquals(retArray[cnt1], builder.toString());
+        String ans =
+            resultSet1.getString(TestConstant.TIMESTAMP_STR)
+                + ","
+                + resultSet1.getString("root.fans.d0.s0")
+                + ","
+                + resultSet1.getString("root.fans.d1.s0");
+        Assert.assertEquals(retArray[cnt1], ans);
         cnt1++;
       } while (resultSet1.next());
       // Although the statement2 has the same sql as statement1, they shouldn't affect each other.

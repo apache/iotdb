@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.common.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 public class ConsensusWriteResponse extends ConsensusResponse {
 
@@ -38,6 +39,22 @@ public class ConsensusWriteResponse extends ConsensusResponse {
   @Override
   public String toString() {
     return "ConsensusWriteResponse{" + "status=" + status + "} " + super.toString();
+  }
+
+  public boolean isSuccessful() {
+    return status != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  public String getErrorMessage() {
+    if (status != null && status.message != null && status.message.length() > 0) {
+      return status.message;
+    }
+    if (exception != null
+        && exception.getMessage() != null
+        && exception.getMessage().length() > 0) {
+      return exception.getMessage();
+    }
+    return "unknown error message";
   }
 
   public static ConsensusWriteResponse.Builder newBuilder() {

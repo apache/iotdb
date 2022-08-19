@@ -257,6 +257,16 @@ public abstract class Statistics<T extends Serializable> {
     count += batchSize;
   }
 
+  public void update(long[] time, int batchSize, int arrayOffset) {
+    if (time[arrayOffset] < startTime) {
+      startTime = time[arrayOffset];
+    }
+    if (time[arrayOffset + batchSize - 1] > this.endTime) {
+      endTime = time[arrayOffset + batchSize - 1];
+    }
+    count += batchSize;
+  }
+
   protected abstract void mergeStatisticsValue(Statistics<T> stats);
 
   public boolean isEmpty() {

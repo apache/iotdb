@@ -19,7 +19,7 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -100,7 +100,8 @@ public class ThriftCommonsSerDeUtils {
     return dataNodeLocation;
   }
 
-  public static void serializeTDataNodeInfo(TDataNodeInfo dataNodeInfo, DataOutputStream stream) {
+  public static void serializeTDataNodeInfo(
+      TDataNodeConfiguration dataNodeInfo, DataOutputStream stream) {
     try {
       dataNodeInfo.write(generateWriteProtocol(stream));
     } catch (TException e) {
@@ -108,8 +109,8 @@ public class ThriftCommonsSerDeUtils {
     }
   }
 
-  public static TDataNodeInfo deserializeTDataNodeInfo(ByteBuffer buffer) {
-    TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+  public static TDataNodeConfiguration deserializeTDataNodeInfo(ByteBuffer buffer) {
+    TDataNodeConfiguration dataNodeInfo = new TDataNodeConfiguration();
     try {
       dataNodeInfo.read(generateReadProtocol(buffer));
     } catch (TException e) {

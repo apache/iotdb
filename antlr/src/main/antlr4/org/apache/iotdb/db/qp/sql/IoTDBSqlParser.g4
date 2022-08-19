@@ -43,7 +43,7 @@ ddlStatement
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showRegion | showDataNodes
+    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showRegion | showDataNodes | showConfigNodes
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -56,7 +56,6 @@ dclStatement
     : createUser | createRole | alterUser | grantUser | grantRole | grantRoleToUser
     | revokeUser |  revokeRole | revokeRoleFromUser | dropUser | dropRole
     | listUser | listRole | listPrivilegesUser | listPrivilegesRole
-    | listUserPrivileges | listRolePrivileges | listAllRoleOfUser | listAllUserOfRole
     ;
 
 utilityStatement
@@ -66,8 +65,7 @@ utilityStatement
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 syncStatement
-    : startPipeServer | stopPipeServer | showPipeServer
-    | createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
+    : createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
     | createPipe | showPipe | stopPipe | startPipe | dropPipe;
 
 /**
@@ -261,11 +259,7 @@ showDevices
 
 // Show Timeseries
 showTimeseries
-    : SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
-    ;
-
-showWhereClause
-    : WHERE (attributePair | containsExpression)
+    : SHOW LATEST? TIMESERIES prefixPath? tagWhereClause? limitClause?
     ;
 
 // Show Child Paths
@@ -315,7 +309,12 @@ showRegion
 
 // Show Data Nodes
 showDataNodes
-    : SHOW  DATANODES
+    : SHOW DATANODES
+    ;
+
+// Show Config Nodes
+showConfigNodes
+    : SHOW CONFIGNODES
     ;
 
 // Show Schema Template
@@ -350,12 +349,16 @@ countDevices
 
 // Count Timeseries
 countTimeseries
-    : COUNT TIMESERIES prefixPath? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
+    : COUNT TIMESERIES prefixPath? tagWhereClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
     ;
 
 // Count Nodes
 countNodes
     : COUNT NODES prefixPath LEVEL operator_eq INTEGER_LITERAL
+    ;
+
+tagWhereClause
+    : WHERE (attributePair | containsExpression)
     ;
 
 
@@ -379,11 +382,11 @@ intoPath
 
 specialClause
     : specialLimit #specialLimitStatement
-    | orderByTimeClause specialLimit? #orderByTimeStatement
-    | groupByTimeClause orderByTimeClause? specialLimit? #groupByTimeStatement
-    | groupByFillClause orderByTimeClause? specialLimit? #groupByFillStatement
-    | groupByLevelClause orderByTimeClause? specialLimit? #groupByLevelStatement
-    | fillClause orderByTimeClause? specialLimit? #fillStatement
+    | orderByClause specialLimit? #orderByTimeStatement
+    | groupByTimeClause havingClause? orderByClause? specialLimit? #groupByTimeStatement
+    | groupByFillClause havingClause? orderByClause? specialLimit? #groupByFillStatement
+    | groupByLevelClause havingClause? orderByClause? specialLimit? #groupByLevelStatement
+    | fillClause orderByClause? specialLimit? #fillStatement
     ;
 
 specialLimit
@@ -391,6 +394,10 @@ specialLimit
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
     | withoutNullClause limitClause? slimitClause? alignByDeviceClauseOrDisableAlign? #withoutNullStatement
     | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignStatement
+    ;
+
+havingClause
+    : HAVING expression
     ;
 
 alignByDeviceClauseOrDisableAlign
@@ -407,8 +414,18 @@ disableAlign
     : DISABLE ALIGN
     ;
 
-orderByTimeClause
-    : ORDER BY TIME (DESC | ASC)?
+orderByClause
+    : ORDER BY orderByAttributeClause (COMMA orderByAttributeClause)*
+    ;
+
+orderByAttributeClause
+    : sortKey (DESC | ASC)?
+    ;
+
+sortKey
+    : TIME
+    | TIMESERIES
+    | DEVICE
     ;
 
 groupByTimeClause
@@ -515,12 +532,12 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath)?
+    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=identifier PRIVILEGES privileges ON prefixPath
+    : GRANT ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Grant User Role
@@ -530,12 +547,12 @@ grantRoleToUser
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE USER userName=identifier PRIVILEGES privileges (ON prefixPath)?
+    : REVOKE USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Revoke Role Privileges
 revokeRole
-    : REVOKE ROLE roleName=identifier PRIVILEGES privileges ON prefixPath
+    : REVOKE ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Revoke Role From User
@@ -555,42 +572,22 @@ dropRole
 
 // List Users
 listUser
-    : LIST USER
+    : LIST USER (OF ROLE roleName=identifier)?
     ;
 
 // List Roles
 listRole
-    : LIST ROLE
+    : LIST ROLE (OF USER userName=usernameWithRoot)?
     ;
 
-// List Privileges
+// List Privileges of Users On Specific Path
 listPrivilegesUser
-    : LIST PRIVILEGES USER userName=usernameWithRoot ON prefixPath
+    : LIST PRIVILEGES USER userName=usernameWithRoot (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // List Privileges of Roles On Specific Path
 listPrivilegesRole
-    : LIST PRIVILEGES ROLE roleName=identifier ON prefixPath
-    ;
-
-// List Privileges of Users
-listUserPrivileges
-    : LIST USER PRIVILEGES userName=usernameWithRoot
-    ;
-
-// List Privileges of Roles
-listRolePrivileges
-    : LIST ROLE PRIVILEGES roleName=identifier
-    ;
-
-// List Roles of Users
-listAllRoleOfUser
-    : LIST ALL ROLE OF USER userName=usernameWithRoot
-    ;
-
-// List Users of Role
-listAllUserOfRole
-    : LIST ALL USER OF ROLE roleName=identifier
+    : LIST PRIVILEGES ROLE roleName=identifier (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 privileges
@@ -614,12 +611,12 @@ usernameWithRoot
 
 // Merge
 merge
-    : MERGE
+    : MERGE (ON (LOCAL | CLUSTER))?
     ;
 
 // Full Merge
 fullMerge
-    : FULL MERGE
+    : FULL MERGE (ON (LOCAL | CLUSTER))?
     ;
 
 // Flush
@@ -629,7 +626,7 @@ flush
 
 // Clear Cache
 clearCache
-    : CLEAR CACHE
+    : CLEAR CACHE (ON (LOCAL | CLUSTER))?
     ;
 
 // Settle
@@ -690,7 +687,7 @@ revokeWatermarkEmbedding
 
 // Load Configuration
 loadConfiguration
-    : LOAD CONFIGURATION (MINUS GLOBAL)?
+    : LOAD CONFIGURATION (MINUS GLOBAL)? (ON (LOCAL | CLUSTER))?
     ;
 
 // Load Timeseries
@@ -766,18 +763,6 @@ syncAttributeClauses
     : attributePair (COMMA attributePair)*
     ;
 
-// sync receiver
-startPipeServer
-    : START PIPESERVER
-    ;
-
-stopPipeServer
-    : STOP PIPESERVER
-    ;
-
-showPipeServer
-    : SHOW PIPESERVER
-    ;
 
 /**
  * 7. Common Clauses
@@ -844,7 +829,7 @@ realLiteral
 timeValue
     : datetimeLiteral
     | dateExpression
-    | INTEGER_LITERAL
+    | (PLUS | MINUS)? INTEGER_LITERAL
     ;
 
 // Expression & Predicate

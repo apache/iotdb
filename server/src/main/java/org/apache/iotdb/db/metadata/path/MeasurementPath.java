@@ -58,8 +58,16 @@ public class MeasurementPath extends PartialPath {
   }
 
   public MeasurementPath(PartialPath measurementPath, IMeasurementSchema measurementSchema) {
+    this(measurementPath, measurementSchema, false);
+  }
+
+  public MeasurementPath(
+      PartialPath measurementPath,
+      IMeasurementSchema measurementSchema,
+      boolean isUnderAlignedEntity) {
     super(measurementPath.getNodes());
     this.measurementSchema = measurementSchema;
+    this.isUnderAlignedEntity = isUnderAlignedEntity;
   }
 
   public MeasurementPath(String device, String measurement, IMeasurementSchema measurementSchema)

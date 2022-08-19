@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.mpp.plan.parser;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
@@ -45,12 +47,19 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
@@ -62,10 +71,14 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
+import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -73,9 +86,13 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.tree.ParseTree;
 
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
@@ -479,5 +496,112 @@ public class StatementGenerator {
 
     insertRowStatement.setValues(newValues.toArray(new Object[0]));
     insertRowStatement.setMeasurements(newMeasurements.toArray(new String[0]));
+  }
+
+  public static CreateSchemaTemplateStatement createStatement(TSCreateSchemaTemplateReq req)
+      throws MetadataException {
+    ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
+    Map<String, List<String>> alignedPrefix = new HashMap<>();
+    Map<String, List<TSDataType>> alignedDataTypes = new HashMap<>();
+    Map<String, List<TSEncoding>> alignedEncodings = new HashMap<>();
+    Map<String, List<CompressionType>> alignedCompressions = new HashMap<>();
+
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<TSDataType>> dataTypes = new ArrayList<>();
+    List<List<TSEncoding>> encodings = new ArrayList<>();
+    List<List<CompressionType>> compressors = new ArrayList<>();
+
+    String templateName = ReadWriteIOUtils.readString(buffer);
+    boolean isAlign = ReadWriteIOUtils.readBool(buffer);
+    if (isAlign) {
+      alignedPrefix.put("", new ArrayList<>());
+      alignedDataTypes.put("", new ArrayList<>());
+      alignedEncodings.put("", new ArrayList<>());
+      alignedCompressions.put("", new ArrayList<>());
+    }
+
+    while (buffer.position() != buffer.limit()) {
+      String prefix = ReadWriteIOUtils.readString(buffer);
+      isAlign = ReadWriteIOUtils.readBool(buffer);
+      String measurementName = ReadWriteIOUtils.readString(buffer);
+      TSDataType dataType = TSDataType.values()[ReadWriteIOUtils.readByte(buffer)];
+      TSEncoding encoding = TSEncoding.values()[ReadWriteIOUtils.readByte(buffer)];
+      CompressionType compressionType = CompressionType.values()[ReadWriteIOUtils.readByte(buffer)];
+
+      if (alignedPrefix.containsKey(prefix) && !isAlign) {
+        throw new MetadataException("Align designation incorrect at: " + prefix);
+      }
+
+      if (isAlign && !alignedPrefix.containsKey(prefix)) {
+        alignedPrefix.put(prefix, new ArrayList<>());
+        alignedDataTypes.put(prefix, new ArrayList<>());
+        alignedEncodings.put(prefix, new ArrayList<>());
+        alignedCompressions.put(prefix, new ArrayList<>());
+      }
+
+      if (alignedPrefix.containsKey(prefix)) {
+        alignedPrefix.get(prefix).add(measurementName);
+        alignedDataTypes.get(prefix).add(dataType);
+        alignedEncodings.get(prefix).add(encoding);
+        alignedCompressions.get(prefix).add(compressionType);
+      } else {
+        if ("".equals(prefix)) {
+          measurements.add(Collections.singletonList(measurementName));
+        } else {
+          measurements.add(
+              Collections.singletonList(prefix + TsFileConstant.PATH_SEPARATOR + measurementName));
+        }
+        dataTypes.add(Collections.singletonList(dataType));
+        encodings.add(Collections.singletonList(encoding));
+        compressors.add(Collections.singletonList(compressionType));
+      }
+    }
+
+    for (String prefix : alignedPrefix.keySet()) {
+      List<String> thisMeasurements = new ArrayList<>();
+      List<TSDataType> thisDataTypes = new ArrayList<>();
+      List<TSEncoding> thisEncodings = new ArrayList<>();
+      List<CompressionType> thisCompressors = new ArrayList<>();
+
+      for (int i = 0; i < alignedPrefix.get(prefix).size(); i++) {
+        if ("".equals(prefix)) {
+          thisMeasurements.add(alignedPrefix.get(prefix).get(i));
+        } else {
+          thisMeasurements.add(
+              prefix + TsFileConstant.PATH_SEPARATOR + alignedPrefix.get(prefix).get(i));
+        }
+        thisDataTypes.add(alignedDataTypes.get(prefix).get(i));
+        thisEncodings.add(alignedEncodings.get(prefix).get(i));
+        thisCompressors.add(alignedCompressions.get(prefix).get(i));
+      }
+
+      measurements.add(thisMeasurements);
+      dataTypes.add(thisDataTypes);
+      encodings.add(thisEncodings);
+      compressors.add(thisCompressors);
+    }
+    return new CreateSchemaTemplateStatement(
+        templateName, measurements, dataTypes, encodings, compressors, alignedPrefix.keySet());
+  }
+
+  public static Statement createStatement(TSQueryTemplateReq req) {
+    switch (TemplateQueryType.values()[req.getQueryType()]) {
+      case SHOW_MEASUREMENTS:
+        return new ShowNodesInSchemaTemplateStatement(req.getName());
+      case SHOW_TEMPLATES:
+        return new ShowSchemaTemplateStatement();
+      case SHOW_SET_TEMPLATES:
+        return new ShowPathSetTemplateStatement(req.getName());
+      case SHOW_USING_TEMPLATES:
+        return new ShowPathsUsingTemplateStatement(req.getName());
+      default:
+        return null;
+    }
+  }
+
+  public static SetSchemaTemplateStatement createStatement(TSSetSchemaTemplateReq req)
+      throws IllegalPathException {
+    return new SetSchemaTemplateStatement(
+        req.getTemplateName(), new PartialPath(req.getPrefixPath()));
   }
 }

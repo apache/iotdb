@@ -58,6 +58,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     if (this.targetConfigNode != null) {
       properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNode);
     }
+    properties.setProperty("max_tsblock_size_in_bytes", "1024");
+    properties.setProperty("page_size_in_byte", "1024");
   }
 
   @Override
@@ -87,5 +89,21 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   protected String mainClassName() {
     return "org.apache.iotdb.db.service.DataNode";
+  }
+
+  public int getMppDataExchangePort() {
+    return mppDataExchangePort;
+  }
+
+  public int getInternalPort() {
+    return internalPort;
+  }
+
+  public int getDataRegionConsensusPort() {
+    return dataRegionConsensusPort;
+  }
+
+  public int getSchemaRegionConsensusPort() {
+    return schemaRegionConsensusPort;
   }
 }

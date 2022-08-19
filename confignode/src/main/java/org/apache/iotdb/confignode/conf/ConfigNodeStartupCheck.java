@@ -92,8 +92,8 @@ public class ConfigNodeStartupCheck {
               "%s or %s", ConsensusFactory.StandAloneConsensus, ConsensusFactory.RatisConsensus));
     }
 
-    if (!conf.getRoutingPolicy().equals(RouteBalancer.leaderPolicy)
-        && !conf.getRoutingPolicy().equals(RouteBalancer.greedyPolicy)) {
+    if (!conf.getRoutingPolicy().equals(RouteBalancer.LEADER_POLICY)
+        && !conf.getRoutingPolicy().equals(RouteBalancer.GREEDY_POLICY)) {
       throw new ConfigurationException(
           "routing_policy", conf.getRoutingPolicy(), "leader or greedy");
     }

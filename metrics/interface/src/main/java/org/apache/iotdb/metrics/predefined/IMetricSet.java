@@ -19,13 +19,18 @@
 
 package org.apache.iotdb.metrics.predefined;
 
-import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 
 public interface IMetricSet {
   /** bind related metric to metric manager */
-  void bindTo(MetricManager metricManager);
+  void bindTo(AbstractMetricManager metricManager);
 
   /** get type of metric set */
   PredefinedMetric getType();
+
+  /** start async collectd metric */
+  default void startAsyncCollectedMetrics() {}
+
+  /** stop async collectd metric */
+  default void stopAsyncCollectedMetrics() {}
 }

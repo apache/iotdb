@@ -95,7 +95,11 @@ public class SessionConnection {
     this.endPoint = endPoint;
     endPointList.add(endPoint);
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
-    init(endPoint);
+    try {
+      init(endPoint);
+    } catch (IoTDBConnectionException e) {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
+    }
   }
 
   public SessionConnection(Session session, ZoneId zoneId) throws IoTDBConnectionException {
@@ -168,7 +172,7 @@ public class SessionConnection {
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
           logger.error("Cluster has no nodes to connect");
-          throw new IoTDBConnectionException(e);
+          throw new IoTDBConnectionException(logForReconnectionFailure());
         }
       }
       break;
@@ -391,11 +395,13 @@ public class SessionConnection {
     }
   }
 
-  protected SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+  protected SessionDataSet executeRawDataQuery(
+      List<String> paths, long startTime, long endTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException, RedirectException {
     TSRawDataQueryReq execReq =
         new TSRawDataQueryReq(sessionId, paths, startTime, endTime, statementId);
     execReq.setFetchSize(session.fetchSize);
+    execReq.setTimeout(timeOut);
     TSExecuteStatementResp execResp;
     try {
       execReq.setEnableRedirectQuery(enableRedirect);
@@ -429,12 +435,13 @@ public class SessionConnection {
         execResp.isIgnoreTimeStamp());
   }
 
-  protected SessionDataSet executeLastDataQuery(List<String> paths, long time)
+  protected SessionDataSet executeLastDataQuery(List<String> paths, long time, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException, RedirectException {
     TSLastDataQueryReq tsLastDataQueryReq =
         new TSLastDataQueryReq(sessionId, paths, time, statementId);
     tsLastDataQueryReq.setFetchSize(session.fetchSize);
     tsLastDataQueryReq.setEnableRedirectQuery(enableRedirect);
+    tsLastDataQueryReq.setTimeout(timeOut);
     TSExecuteStatementResp tsExecuteStatementResp;
     try {
       tsExecuteStatementResp = client.executeLastDataQuery(tsLastDataQueryReq);

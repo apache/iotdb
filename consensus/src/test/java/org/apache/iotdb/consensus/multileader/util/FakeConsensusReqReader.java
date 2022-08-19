@@ -20,11 +20,9 @@
 package org.apache.iotdb.consensus.multileader.util;
 
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -40,23 +38,6 @@ public class FakeConsensusReqReader implements ConsensusReqReader, DataSet {
   public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {}
 
   @Override
-  public IConsensusRequest getReq(long index) {
-    synchronized (requestSets) {
-      for (IndexedConsensusRequest indexedConsensusRequest : requestSets.getRequestSet()) {
-        if (indexedConsensusRequest.getSearchIndex() == index) {
-          return indexedConsensusRequest;
-        }
-      }
-      return null;
-    }
-  }
-
-  @Override
-  public List<IConsensusRequest> getReqs(long startIndex, int num) {
-    return null;
-  }
-
-  @Override
   public ReqIterator getReqIterator(long startIndex) {
     return new FakeConsensusReqIterator(startIndex);
   }
@@ -64,6 +45,11 @@ public class FakeConsensusReqReader implements ConsensusReqReader, DataSet {
   @Override
   public long getCurrentSearchIndex() {
     return requestSets.getLocalRequestNumber();
+  }
+
+  @Override
+  public long getTotalSize() {
+    return 0;
   }
 
   private class FakeConsensusReqIterator implements ConsensusReqReader.ReqIterator {

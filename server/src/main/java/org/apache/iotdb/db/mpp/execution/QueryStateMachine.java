@@ -92,12 +92,24 @@ public class QueryStateMachine {
     return queryState.get();
   }
 
+  public void transitionToQueued() {
+    queryState.set(QueryState.QUEUED);
+  }
+
   public void transitionToPlanned() {
     queryState.set(QueryState.PLANNED);
   }
 
   public void transitionToDispatching() {
     queryState.set(QueryState.DISPATCHING);
+  }
+
+  public void transitionToPendingRetry(TSStatus failureStatus) {
+    if (queryState.get().isDone()) {
+      return;
+    }
+    this.failureStatus = failureStatus;
+    queryState.set(QueryState.PENDING_RETRY);
   }
 
   public void transitionToRunning() {
@@ -123,6 +135,13 @@ public class QueryStateMachine {
       return;
     }
     queryState.set(QueryState.ABORTED);
+  }
+
+  public void transitionToFailed() {
+    if (queryState.get().isDone()) {
+      return;
+    }
+    queryState.set(QueryState.FAILED);
   }
 
   public void transitionToFailed(Throwable throwable) {

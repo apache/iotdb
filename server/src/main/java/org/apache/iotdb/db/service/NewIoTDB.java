@@ -42,15 +42,13 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
-import org.apache.iotdb.db.sync.receiver.ReceiverService;
-import org.apache.iotdb.db.sync.sender.service.SenderService;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.wal.WALManager;
 
 import org.slf4j.Logger;
@@ -122,7 +120,7 @@ public class NewIoTDB implements NewIoTDBMBean {
         .getConfig()
         .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
 
-    registerManager.register(MetricsService.getInstance());
+    registerManager.register(MetricService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
     registerManager.register(new JMXService());
@@ -130,12 +128,10 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
-    registerManager.register(SenderService.getInstance());
+    registerManager.register(SyncService.getInstance());
     registerManager.register(WALManager.getInstance());
 
     registerManager.register(StorageEngineV2.getInstance());
-    registerManager.register(MPPDataExchangeService.getInstance());
-    registerManager.register(DataNodeInternalRPCService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
 
     registerManager.register(TemporaryQueryDataFileService.getInstance());
@@ -148,7 +144,6 @@ public class NewIoTDB implements NewIoTDBMBean {
                 + File.separator
                 + "udf"
                 + File.separator));
-    registerManager.register(ReceiverService.getInstance());
 
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
@@ -180,8 +175,9 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(ContinuousQueryService.getInstance());
 
     // start reporter
-    MetricsService.getInstance().startAllReporter();
+    MetricService.getInstance().startAllReporter();
 
+    logger.info("IoTDB configuration: " + config.getConfigMessage());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
 

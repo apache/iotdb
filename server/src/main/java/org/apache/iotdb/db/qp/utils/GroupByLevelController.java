@@ -22,14 +22,15 @@ package org.apache.iotdb.db.qp.utils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -113,8 +114,7 @@ public class GroupByLevelController {
           List<PartialPath> paths = ((FunctionExpression) expression).getPaths();
           String functionName = ((FunctionExpression) expression).getFunctionName();
           boolean isCountStar = countWildcardIterIndices.contains(idx++);
-          String groupedPath =
-              generatePartialPathByLevel(isCountStar, paths.get(0).getNodes(), levels);
+          String groupedPath = generatePartialPathByLevel(isCountStar, paths.get(0), levels);
           String rawPath = String.format("%s(%s)", functionName, paths.get(0).getFullPath());
           String pathWithFunction = String.format("%s(%s)", functionName, groupedPath);
 
@@ -207,28 +207,39 @@ public class GroupByLevelController {
    *
    * @return result partial path
    */
-  public String generatePartialPathByLevel(boolean isCountStar, String[] nodes, int[] pathLevels) {
+  public String generatePartialPathByLevel(
+      boolean isCountStar, PartialPath rawPath, int[] pathLevels) {
+    String[] nodes = rawPath.getNodes();
     Set<Integer> levelSet = new HashSet<>();
     for (int level : pathLevels) {
       levelSet.add(level);
     }
 
-    StringBuilder transformedPath = new StringBuilder();
-    transformedPath.append(nodes[0]).append(TsFileConstant.PATH_SEPARATOR);
+    List<String> transformedNodes = new ArrayList<>(nodes.length);
+
+    transformedNodes.add(nodes[0]);
     for (int k = 1; k < nodes.length - 1; k++) {
       if (levelSet.contains(k)) {
-        transformedPath.append(nodes[k]);
+        transformedNodes.add(nodes[k]);
       } else {
-        transformedPath.append(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
+        transformedNodes.add(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
       }
-      transformedPath.append(TsFileConstant.PATH_SEPARATOR);
     }
     if (isCountStar) {
-      transformedPath.append(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
+      transformedNodes.add(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
     } else {
-      transformedPath.append(nodes[nodes.length - 1]);
+      transformedNodes.add(nodes[nodes.length - 1]);
     }
-    return transformedPath.toString();
+
+    MeasurementPath groupedPath =
+        new MeasurementPath(
+            new PartialPath(transformedNodes.toArray(new String[0])),
+            ((MeasurementPath) rawPath).getMeasurementSchema());
+    if (rawPath.isMeasurementAliasExists()) {
+      groupedPath.setMeasurementAlias(rawPath.getMeasurementAlias());
+      return groupedPath.getFullPathWithAlias();
+    }
+    return groupedPath.getFullPath();
   }
 
   public void serialize(ByteBuffer byteBuffer) {

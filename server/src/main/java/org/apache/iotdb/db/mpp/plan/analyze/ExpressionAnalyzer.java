@@ -24,19 +24,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.LessEqualExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -45,14 +37,11 @@ import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
@@ -61,6 +50,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
@@ -69,17 +59,21 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.constructTime
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.getPairFromBetweenTimeFirst;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.getPairFromBetweenTimeSecond;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.getPairFromBetweenTimeThird;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpressions;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperand;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpressions;
 
 public class ExpressionAnalyzer {
-
   /**
-   * Check if all suffix paths in expression are measurements or one-level wildcards in ALIGN BY
-   * DEVICE query. If not, throw a {@link SemanticException}.
+   * Check if all suffix paths in expression are measurements or one-level wildcards, used in ALIGN
+   * BY DEVICE query or GroupByLevel query. If not, throw a {@link SemanticException}.
    *
    * @param expression expression to be checked
    */
@@ -102,7 +96,7 @@ public class ExpressionAnalyzer {
       if (path.getNodes().length > 1
           || path.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
         throw new SemanticException(
-            "ALIGN BY DEVICE: the suffix paths can only be measurement or one-level wildcard");
+            "the suffix paths can only be measurement or one-level wildcard");
       }
     } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
       // do nothing
@@ -270,6 +264,7 @@ public class ExpressionAnalyzer {
       List<PartialPath> actualPaths = new ArrayList<>();
       if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         actualPaths.add(rawPath);
+        patternTree.appendPathPattern(rawPath);
       } else {
         for (PartialPath prefixPath : prefixPaths) {
           PartialPath concatPath = prefixPath.concatPath(rawPath);
@@ -343,7 +338,7 @@ public class ExpressionAnalyzer {
    * @return the expression list after binding schema
    */
   public static List<Expression> removeWildcardInExpression(
-      Expression expression, SchemaTree schemaTree) {
+      Expression expression, ISchemaTree schemaTree) {
     if (expression instanceof TernaryExpression) {
       List<Expression> firstExpressions =
           removeWildcardInExpression(
@@ -406,53 +401,60 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Concat suffix path in WHERE clause with the prefix path in the FROM clause. And then, bind
-   * schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in Expression.
+   * Concat suffix path in WHERE and HAVING clause with the prefix path in the FROM clause. And
+   * then, bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
+   * Expression.
    *
    * @param prefixPaths prefix paths in the FROM clause
    * @param schemaTree interface for querying schema information
    * @param typeProvider a map to record output symbols and their data types
    * @return the expression list with full path and after binding schema
    */
-  public static List<Expression> removeWildcardInQueryFilter(
+  public static List<Expression> removeWildcardInFilter(
       Expression predicate,
       List<PartialPath> prefixPaths,
-      SchemaTree schemaTree,
-      TypeProvider typeProvider) {
+      ISchemaTree schemaTree,
+      TypeProvider typeProvider,
+      boolean isWhere) {
     if (predicate instanceof TernaryExpression) {
       List<Expression> firstExpressions =
-          removeWildcardInQueryFilter(
+          removeWildcardInFilter(
               ((TernaryExpression) predicate).getFirstExpression(),
               prefixPaths,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       List<Expression> secondExpressions =
-          removeWildcardInQueryFilter(
+          removeWildcardInFilter(
               ((TernaryExpression) predicate).getSecondExpression(),
               prefixPaths,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       List<Expression> thirdExpressions =
-          removeWildcardInQueryFilter(
+          removeWildcardInFilter(
               ((TernaryExpression) predicate).getThirdExpression(),
               prefixPaths,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       return reconstructTernaryExpressions(
           predicate, firstExpressions, secondExpressions, thirdExpressions);
     } else if (predicate instanceof BinaryExpression) {
       List<Expression> leftExpressions =
-          removeWildcardInQueryFilter(
+          removeWildcardInFilter(
               ((BinaryExpression) predicate).getLeftExpression(),
               prefixPaths,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       List<Expression> rightExpressions =
-          removeWildcardInQueryFilter(
+          removeWildcardInFilter(
               ((BinaryExpression) predicate).getRightExpression(),
               prefixPaths,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
         List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
         resultExpressions.addAll(rightExpressions);
@@ -462,17 +464,22 @@ public class ExpressionAnalyzer {
           predicate.getExpressionType(), leftExpressions, rightExpressions);
     } else if (predicate instanceof UnaryExpression) {
       List<Expression> childExpressions =
-          removeWildcardInQueryFilter(
-              ((UnaryExpression) predicate).getExpression(), prefixPaths, schemaTree, typeProvider);
+          removeWildcardInFilter(
+              ((UnaryExpression) predicate).getExpression(),
+              prefixPaths,
+              schemaTree,
+              typeProvider,
+              isWhere);
       return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
     } else if (predicate instanceof FunctionExpression) {
-      if (predicate.isBuiltInAggregationFunctionExpression()) {
+      if (predicate.isBuiltInAggregationFunctionExpression() && isWhere) {
         throw new SemanticException("aggregate functions are not supported in WHERE clause");
       }
       List<List<Expression>> extendedExpressions = new ArrayList<>();
       for (Expression suffixExpression : predicate.getExpressions()) {
         extendedExpressions.add(
-            removeWildcardInQueryFilter(suffixExpression, prefixPaths, schemaTree, typeProvider));
+            removeWildcardInFilter(
+                suffixExpression, prefixPaths, schemaTree, typeProvider, isWhere));
       }
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
@@ -492,7 +499,9 @@ public class ExpressionAnalyzer {
         List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
         if (actualPaths.size() == 0) {
           throw new SemanticException(
-              String.format("the path '%s' in WHERE clause does not exist", concatPath));
+              String.format(
+                  "the path '%s' in %s clause does not exist",
+                  concatPath, isWhere ? "WHERE" : "HAVING"));
         }
         noStarPaths.addAll(actualPaths);
       }
@@ -503,6 +512,57 @@ public class ExpressionAnalyzer {
       return Collections.singletonList(predicate);
     } else if (predicate instanceof ConstantOperand) {
       return Collections.singletonList(predicate);
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + predicate.getExpressionType());
+    }
+  }
+
+  public static Expression replaceRawPathWithGroupedPath(
+      Expression predicate, Map<Expression, Expression> rawPathToGroupedPathMapInHaving) {
+    if (predicate instanceof TernaryExpression) {
+      Expression firstExpression =
+          replaceRawPathWithGroupedPath(
+              ((TernaryExpression) predicate).getFirstExpression(),
+              rawPathToGroupedPathMapInHaving);
+      Expression secondExpression =
+          replaceRawPathWithGroupedPath(
+              ((TernaryExpression) predicate).getSecondExpression(),
+              rawPathToGroupedPathMapInHaving);
+      Expression thirdExpression =
+          replaceRawPathWithGroupedPath(
+              ((TernaryExpression) predicate).getThirdExpression(),
+              rawPathToGroupedPathMapInHaving);
+      return reconstructTernaryExpression(
+          predicate, firstExpression, secondExpression, thirdExpression);
+    } else if (predicate instanceof BinaryExpression) {
+      Expression leftExpression =
+          replaceRawPathWithGroupedPath(
+              ((BinaryExpression) predicate).getLeftExpression(), rawPathToGroupedPathMapInHaving);
+      Expression rightExpression =
+          replaceRawPathWithGroupedPath(
+              ((BinaryExpression) predicate).getRightExpression(), rawPathToGroupedPathMapInHaving);
+      return reconstructBinaryExpression(
+          predicate.getExpressionType(), leftExpression, rightExpression);
+    } else if (predicate instanceof UnaryExpression) {
+      Expression expression =
+          replaceRawPathWithGroupedPath(
+              ((UnaryExpression) predicate).getExpression(), rawPathToGroupedPathMapInHaving);
+      return reconstructUnaryExpression((UnaryExpression) predicate, expression);
+    } else if (predicate instanceof FunctionExpression) {
+      List<Expression> expressions = predicate.getExpressions();
+      List<Expression> childrenExpressions = new ArrayList<>();
+      for (Expression expression : expressions) {
+        childrenExpressions.add(
+            replaceRawPathWithGroupedPath(expression, rawPathToGroupedPathMapInHaving));
+      }
+      return reconstructFunctionExpression((FunctionExpression) predicate, childrenExpressions);
+    } else if (predicate instanceof TimeSeriesOperand) {
+      PartialPath groupedPath =
+          ((TimeSeriesOperand) rawPathToGroupedPathMapInHaving.get(predicate)).getPath();
+      return reconstructTimeSeriesOperand(groupedPath);
+    } else if (predicate instanceof TimestampOperand || predicate instanceof ConstantOperand) {
+      return predicate;
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + predicate.getExpressionType());
@@ -520,7 +580,7 @@ public class ExpressionAnalyzer {
   public static List<Expression> concatDeviceAndRemoveWildcard(
       Expression expression,
       PartialPath devicePath,
-      SchemaTree schemaTree,
+      ISchemaTree schemaTree,
       TypeProvider typeProvider) {
     if (expression instanceof TernaryExpression) {
       List<Expression> firstExpressions =
@@ -598,50 +658,56 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Concat measurement in WHERE clause with device path. And then, bind schema ({@link PartialPath}
-   * -> {@link MeasurementPath}) and removes wildcards.
+   * Concat measurement in WHERE and HAVING clause with device path. And then, bind schema ({@link
+   * PartialPath} -> {@link MeasurementPath}) and removes wildcards.
    *
    * @return the expression list with full path and after binding schema
    */
-  public static List<Expression> removeWildcardInQueryFilterByDevice(
+  public static List<Expression> removeWildcardInFilterByDevice(
       Expression predicate,
       PartialPath devicePath,
-      SchemaTree schemaTree,
-      TypeProvider typeProvider) {
+      ISchemaTree schemaTree,
+      TypeProvider typeProvider,
+      boolean isWhere) {
     if (predicate instanceof TernaryExpression) {
       List<Expression> firstExpressions =
-          removeWildcardInQueryFilterByDevice(
+          removeWildcardInFilterByDevice(
               ((TernaryExpression) predicate).getFirstExpression(),
               devicePath,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       List<Expression> secondExpressions =
-          removeWildcardInQueryFilterByDevice(
+          removeWildcardInFilterByDevice(
               ((TernaryExpression) predicate).getSecondExpression(),
               devicePath,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       List<Expression> thirdExpressions =
-          removeWildcardInQueryFilterByDevice(
+          removeWildcardInFilterByDevice(
               ((TernaryExpression) predicate).getThirdExpression(),
               devicePath,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       return reconstructTernaryExpressions(
           predicate, firstExpressions, secondExpressions, thirdExpressions);
     } else if (predicate instanceof BinaryExpression) {
       List<Expression> leftExpressions =
-          removeWildcardInQueryFilterByDevice(
+          removeWildcardInFilterByDevice(
               ((BinaryExpression) predicate).getLeftExpression(),
               devicePath,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       List<Expression> rightExpressions =
-          removeWildcardInQueryFilterByDevice(
+          removeWildcardInFilterByDevice(
               ((BinaryExpression) predicate).getRightExpression(),
               devicePath,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
         List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
         resultExpressions.addAll(rightExpressions);
@@ -651,18 +717,22 @@ public class ExpressionAnalyzer {
           predicate.getExpressionType(), leftExpressions, rightExpressions);
     } else if (predicate instanceof UnaryExpression) {
       List<Expression> childExpressions =
-          removeWildcardInQueryFilterByDevice(
-              ((UnaryExpression) predicate).getExpression(), devicePath, schemaTree, typeProvider);
+          removeWildcardInFilterByDevice(
+              ((UnaryExpression) predicate).getExpression(),
+              devicePath,
+              schemaTree,
+              typeProvider,
+              isWhere);
       return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
     } else if (predicate instanceof FunctionExpression) {
-      if (predicate.isBuiltInAggregationFunctionExpression()) {
+      if (predicate.isBuiltInAggregationFunctionExpression() && isWhere) {
         throw new SemanticException("aggregate functions are not supported in WHERE clause");
       }
       List<List<Expression>> extendedExpressions = new ArrayList<>();
       for (Expression suffixExpression : predicate.getExpressions()) {
         extendedExpressions.add(
-            removeWildcardInQueryFilterByDevice(
-                suffixExpression, devicePath, schemaTree, typeProvider));
+            removeWildcardInFilterByDevice(
+                suffixExpression, devicePath, schemaTree, typeProvider, isWhere));
       }
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
@@ -696,14 +766,34 @@ public class ExpressionAnalyzer {
    * Extract global time filter from query filter.
    *
    * @param predicate raw query filter
+   * @param canRewrite determined by the father of current expression
+   * @param isFirstOr whether it is the first LogicOrExpression encountered
    * @return global time filter
    */
-  public static Pair<Filter, Boolean> transformToGlobalTimeFilter(Expression predicate) {
-    if (predicate instanceof LogicAndExpression) {
+  public static Pair<Filter, Boolean> transformToGlobalTimeFilter(
+      Expression predicate, boolean canRewrite, boolean isFirstOr) {
+    if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
       Pair<Filter, Boolean> leftResultPair =
-          transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression());
+          transformToGlobalTimeFilter(
+              ((BinaryExpression) predicate).getLeftExpression(), canRewrite, isFirstOr);
       Pair<Filter, Boolean> rightResultPair =
-          transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression());
+          transformToGlobalTimeFilter(
+              ((BinaryExpression) predicate).getRightExpression(), canRewrite, isFirstOr);
+
+      // rewrite predicate to avoid duplicate calculation on time filter
+      // If Left-child or Right-child does not contain value filter
+      // We can set it to true in Predicate Tree
+      if (canRewrite) {
+        if (leftResultPair.left != null && !leftResultPair.right) {
+          ((BinaryExpression) predicate)
+              .setLeftExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
+        }
+        if (rightResultPair.left != null && !rightResultPair.right) {
+          ((BinaryExpression) predicate)
+              .setRightExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
+        }
+      }
+
       if (leftResultPair.left != null && rightResultPair.left != null) {
         return new Pair<>(
             FilterFactory.and(leftResultPair.left, rightResultPair.left),
@@ -714,27 +804,32 @@ public class ExpressionAnalyzer {
         return new Pair<>(rightResultPair.left, true);
       }
       return new Pair<>(null, true);
-    } else if (predicate instanceof LogicOrExpression) {
+    } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
       Pair<Filter, Boolean> leftResultPair =
-          transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression());
+          transformToGlobalTimeFilter(
+              ((BinaryExpression) predicate).getLeftExpression(), false, false);
       Pair<Filter, Boolean> rightResultPair =
-          transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression());
+          transformToGlobalTimeFilter(
+              ((BinaryExpression) predicate).getRightExpression(), false, false);
+
       if (leftResultPair.left != null && rightResultPair.left != null) {
+        if (isFirstOr && !leftResultPair.right && !rightResultPair.right) {
+          ((BinaryExpression) predicate)
+              .setLeftExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
+          ((BinaryExpression) predicate)
+              .setRightExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
+        }
         return new Pair<>(
             FilterFactory.or(leftResultPair.left, rightResultPair.left),
             leftResultPair.right || rightResultPair.right);
       }
       return new Pair<>(null, true);
-    } else if (predicate instanceof LogicNotExpression) {
+    } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
       Pair<Filter, Boolean> childResultPair =
-          transformToGlobalTimeFilter(((UnaryExpression) predicate).getExpression());
+          transformToGlobalTimeFilter(
+              ((UnaryExpression) predicate).getExpression(), canRewrite, isFirstOr);
       return new Pair<>(FilterFactory.not(childResultPair.left), childResultPair.right);
-    } else if (predicate instanceof GreaterEqualExpression
-        || predicate instanceof GreaterThanExpression
-        || predicate instanceof LessEqualExpression
-        || predicate instanceof LessThanExpression
-        || predicate instanceof EqualToExpression
-        || predicate instanceof NonEqualExpression) {
+    } else if (predicate.isCompareBinaryExpression()) {
       Filter timeInLeftFilter =
           constructTimeFilter(
               predicate.getExpressionType(),
@@ -752,22 +847,23 @@ public class ExpressionAnalyzer {
         return new Pair<>(timeInRightFilter, false);
       }
       return new Pair<>(null, true);
-    } else if (predicate instanceof LikeExpression || predicate instanceof RegularExpression) {
+    } else if (predicate.getExpressionType().equals(ExpressionType.LIKE)
+        || predicate.getExpressionType().equals(ExpressionType.REGEXP)) {
       return new Pair<>(null, true);
-    } else if (predicate instanceof BetweenExpression) {
+    } else if (predicate.getExpressionType().equals(ExpressionType.BETWEEN)) {
       Expression firstExpression = ((TernaryExpression) predicate).getFirstExpression();
       Expression secondExpression = ((TernaryExpression) predicate).getSecondExpression();
       Expression thirdExpression = ((TernaryExpression) predicate).getThirdExpression();
-      if (firstExpression instanceof TimestampOperand) {
+      if (firstExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
         return getPairFromBetweenTimeFirst(
             secondExpression, thirdExpression, ((BetweenExpression) predicate).isNotBetween());
-      } else if (secondExpression instanceof TimestampOperand) {
+      } else if (secondExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
         if (checkConstantSatisfy(firstExpression, thirdExpression)) {
           return getPairFromBetweenTimeSecond((BetweenExpression) predicate, firstExpression);
         } else {
           return new Pair<>(null, true); // TODO return Filter.True/False
         }
-      } else if (thirdExpression instanceof TimestampOperand) {
+      } else if (thirdExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
         if (checkConstantSatisfy(secondExpression, firstExpression)) {
           return getPairFromBetweenTimeThird((BetweenExpression) predicate, firstExpression);
         } else {
@@ -775,11 +871,11 @@ public class ExpressionAnalyzer {
         }
       }
       return new Pair<>(null, true);
-    } else if (predicate instanceof IsNullExpression) {
+    } else if (predicate.getExpressionType().equals(ExpressionType.IS_NULL)) {
       return new Pair<>(null, true);
-    } else if (predicate instanceof InExpression) {
+    } else if (predicate.getExpressionType().equals(ExpressionType.IN)) {
       Expression timeExpression = ((InExpression) predicate).getExpression();
-      if (timeExpression instanceof TimestampOperand) {
+      if (timeExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
         return new Pair<>(
             TimeFilter.in(
                 ((InExpression) predicate)
@@ -968,10 +1064,12 @@ public class ExpressionAnalyzer {
           functionExpression.getFunctionAttributes(),
           childExpressions);
     } else if (expression instanceof TimeSeriesOperand) {
-      MeasurementPath rawPath = (MeasurementPath) ((TimeSeriesOperand) expression).getPath();
+      PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
       if (rawPath.isMeasurementAliasExists()) {
-        MeasurementPath newPath = new MeasurementPath(rawPath, rawPath.getMeasurementSchema());
-        newPath.setUnderAlignedEntity(rawPath.isUnderAlignedEntity());
+        MeasurementPath measurementPath = (MeasurementPath) rawPath;
+        MeasurementPath newPath =
+            new MeasurementPath(measurementPath, measurementPath.getMeasurementSchema());
+        newPath.setUnderAlignedEntity(measurementPath.isUnderAlignedEntity());
         return new TimeSeriesOperand(newPath);
       }
       return expression;
@@ -1091,5 +1189,35 @@ public class ExpressionAnalyzer {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());
     }
+  }
+
+  public static Expression evaluatePredicate(Expression predicate) {
+    if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
+      Expression left = evaluatePredicate(((BinaryExpression) predicate).getLeftExpression());
+      Expression right = evaluatePredicate(((BinaryExpression) predicate).getRightExpression());
+      boolean isLeftTrue =
+          left.isConstantOperand() && Boolean.parseBoolean(left.getExpressionString());
+      boolean isRightTrue =
+          right.isConstantOperand() && Boolean.parseBoolean(right.getExpressionString());
+      if (isLeftTrue && isRightTrue) {
+        return new ConstantOperand(TSDataType.BOOLEAN, "true");
+      } else if (isLeftTrue) {
+        return right;
+      } else if (isRightTrue) {
+        return left;
+      }
+      return predicate;
+    } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
+      Expression left = evaluatePredicate(((BinaryExpression) predicate).getLeftExpression());
+      Expression right = evaluatePredicate(((BinaryExpression) predicate).getRightExpression());
+      boolean isLeftTrue =
+          left.isConstantOperand() && Boolean.parseBoolean(left.getExpressionString());
+      boolean isRightTrue =
+          right.isConstantOperand() && Boolean.parseBoolean(right.getExpressionString());
+      if (isRightTrue || isLeftTrue) {
+        return new ConstantOperand(TSDataType.BOOLEAN, "true");
+      }
+    }
+    return predicate;
   }
 }

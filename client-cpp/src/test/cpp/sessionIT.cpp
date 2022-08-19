@@ -245,7 +245,8 @@ TEST_CASE("Test insertTablet ", "[testInsertTablet]") {
         int row = tablet.rowSize++;
         tablet.timestamps[row] = time;
         for (int i = 0; i < 3; i++) {
-            tablet.values[i][row] = to_string(i);
+            int64_t randVal = rand();
+            tablet.addValue(i, row, &randVal);
         }
         if (tablet.rowSize == tablet.maxRowNumber) {
             session->insertTablet(tablet);
@@ -292,4 +293,32 @@ TEST_CASE("Test Last query ", "[testLastQuery]") {
         REQUIRE(fields[1].stringV == measurementValues[index]);
         index++;
     }
+}
+
+TEST_CASE("Test Huge query ", "[testHugeQuery]") {
+    prepareTimeseries();
+    string deviceId = "root.test.d1";
+    vector<string> measurements = {"s1", "s2", "s3"};
+    vector<TSDataType::TSDataType> types = {TSDataType::INT32, TSDataType::INT32, TSDataType::INT32};
+    int value1 = 1, value2 = 2, value3 = 3;
+    vector<char*> values = {(char*)&value1, (char*)&value2, (char*)&value3};
+
+    for (long time = 0; time < 1000000; time++) {
+        session->insertRecord(deviceId, time, measurements, types, values);
+    }
+	
+    unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select * from root.test.d1");
+    sessionDataSet->setBatchSize(1024);
+    RowRecord* rowRecord;
+    int count = 0;
+    while (sessionDataSet->hasNext()) {
+        rowRecord = sessionDataSet->next();
+        REQUIRE(rowRecord->timestamp == count);
+        REQUIRE(rowRecord->fields[0].intV == 1);
+        REQUIRE(rowRecord->fields[1].intV == 2);
+        REQUIRE(rowRecord->fields[2].intV == 3);
+        count++;
+    }
+	
+    REQUIRE(count == 1000000);
 }

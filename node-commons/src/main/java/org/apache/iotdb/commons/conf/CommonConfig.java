@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.conf;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
 
@@ -63,6 +64,10 @@ public class CommonConfig {
           + File.separator
           + "procedure";
 
+  /** Sync directory, including the log and hardlink tsfiles */
+  private String syncFolder =
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
+
   /** Default system file storage is in local file system (unsupported) */
   private FSType systemFileStorageFs = FSType.LOCAL;
 
@@ -74,12 +79,28 @@ public class CommonConfig {
    */
   private long defaultTTL = Long.MAX_VALUE;
 
+  /** Thrift socket and connection timeout between data node and config node. */
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+
+  /**
+   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
+   * clients.
+   */
+  private int selectorNumOfClientManager =
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
+
+  /** whether to use thrift compression. */
+  private boolean isRpcThriftCompressionEnabled = false;
+
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
     userFolder = addHomeDir(userFolder, homeDir);
     roleFolder = addHomeDir(roleFolder, homeDir);
     procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);
+    syncFolder = addHomeDir(syncFolder, homeDir);
   }
 
   private String addHomeDir(String dir, String homeDir) {
@@ -165,6 +186,14 @@ public class CommonConfig {
     this.procedureWalFolder = procedureWalFolder;
   }
 
+  public String getSyncFolder() {
+    return syncFolder;
+  }
+
+  public void setSyncFolder(String syncFolder) {
+    this.syncFolder = syncFolder;
+  }
+
   public FSType getSystemFileStorageFs() {
     return systemFileStorageFs;
   }
@@ -179,5 +208,29 @@ public class CommonConfig {
 
   public void setDefaultTTL(long defaultTTL) {
     this.defaultTTL = defaultTTL;
+  }
+
+  public int getConnectionTimeoutInMS() {
+    return connectionTimeoutInMS;
+  }
+
+  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    this.connectionTimeoutInMS = connectionTimeoutInMS;
+  }
+
+  public int getSelectorNumOfClientManager() {
+    return selectorNumOfClientManager;
+  }
+
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+    this.selectorNumOfClientManager = selectorNumOfClientManager;
+  }
+
+  public boolean isRpcThriftCompressionEnabled() {
+    return isRpcThriftCompressionEnabled;
+  }
+
+  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
+    isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
   }
 }

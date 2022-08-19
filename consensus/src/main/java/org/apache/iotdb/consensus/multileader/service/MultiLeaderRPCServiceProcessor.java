@@ -21,7 +21,11 @@ package org.apache.iotdb.consensus.multileader.service;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.consensus.multileader.MultiLeaderConsensus;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
 import org.apache.iotdb.consensus.multileader.thrift.MultiLeaderConsensusIService;
@@ -30,7 +34,6 @@ import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,8 +53,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
   }
 
   @Override
-  public void syncLog(TSyncLogReq req, AsyncMethodCallback<TSyncLogRes> resultHandler)
-      throws TException {
+  public void syncLog(TSyncLogReq req, AsyncMethodCallback<TSyncLogRes> resultHandler) {
     try {
       ConsensusGroupId groupId =
           ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
@@ -67,19 +69,44 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
         resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
         return;
       }
-      List<TSStatus> statuses = new ArrayList<>();
+      if (impl.isReadOnly()) {
+        String message = "Fail to sync log because system is read-only.";
+        logger.error(message);
+        resultHandler.onError(
+            new IoTDBException(message, TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode()));
+        return;
+      }
+      BatchIndexedConsensusRequest requestsInThisBatch = new BatchIndexedConsensusRequest();
       // We use synchronized to ensure atomicity of executing multiple logs
-      synchronized (impl.getStateMachine()) {
+      if (!req.getBatches().isEmpty()) {
+        List<IConsensusRequest> consensusRequests = new ArrayList<>();
+        long currentSearchIndex = req.getBatches().get(0).getSearchIndex();
         for (TLogBatch batch : req.getBatches()) {
-          statuses.add(
-              impl.getStateMachine()
-                  .write(
-                      impl.buildIndexedConsensusRequestForRemoteRequest(
-                          new ByteBufferConsensusRequest(batch.data))));
+          IConsensusRequest request =
+              batch.isFromWAL()
+                  ? new MultiLeaderConsensusRequest(batch.data)
+                  : new ByteBufferConsensusRequest(batch.data);
+          // merge TLogBatch with same search index into one request
+          if (batch.getSearchIndex() != currentSearchIndex) {
+            requestsInThisBatch.add(
+                impl.buildIndexedConsensusRequestForRemoteRequest(
+                    currentSearchIndex, consensusRequests));
+            consensusRequests = new ArrayList<>();
+            currentSearchIndex = batch.getSearchIndex();
+          }
+          consensusRequests.add(request);
+        }
+        // write last request
+        if (!consensusRequests.isEmpty()) {
+          requestsInThisBatch.add(
+              impl.buildIndexedConsensusRequestForRemoteRequest(
+                  currentSearchIndex, consensusRequests));
         }
       }
-      logger.debug("Execute TSyncLogReq for {} with result {}", req.consensusGroupId, statuses);
-      resultHandler.onComplete(new TSyncLogRes(statuses));
+      TSStatus writeStatus = impl.getStateMachine().write(requestsInThisBatch);
+      logger.debug(
+          "Execute TSyncLogReq for {} with result {}", req.consensusGroupId, writeStatus.subStatus);
+      resultHandler.onComplete(new TSyncLogRes(writeStatus.subStatus));
     } catch (Exception e) {
       resultHandler.onError(e);
     }

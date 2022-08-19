@@ -22,7 +22,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.wal.WALManager;
@@ -36,7 +35,6 @@ public class IoTDBShutdownHook extends Thread {
 
   @Override
   public void run() {
-    CompactionTaskManager.getInstance().stop();
     // close rocksdb if possible to avoid lose data
     if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
         .equals(SchemaEngineMode.Rocksdb_based)) {
@@ -53,7 +51,7 @@ public class IoTDBShutdownHook extends Thread {
     }
     WALManager.getInstance().deleteOutdatedWALFiles();
 
-    if (IoTDB.isClusterMode()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       // This setting ensures that compaction work is not discarded
       // even if there are frequent restarts
       DataRegionConsensusImpl.getInstance()

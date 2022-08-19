@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -84,6 +85,27 @@ public class SeriesPartitionTable {
     }
 
     return result.get();
+  }
+
+  /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does
+   *
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @param timePartitionInterval Time partition interval
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPrecededDataPartition(
+      TTimePartitionSlot timePartitionSlot, long timePartitionInterval) {
+    if (timePartitionSlot.getStartTime() < timePartitionInterval) {
+      // The first DataPartition doesn't have predecessor
+      return null;
+    } else {
+      TTimePartitionSlot predecessorSlot =
+          new TTimePartitionSlot(timePartitionSlot.getStartTime() - timePartitionInterval);
+      return seriesPartitionMap
+          .getOrDefault(predecessorSlot, Collections.singletonList(null))
+          .get(0);
+    }
   }
 
   /**

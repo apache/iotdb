@@ -53,6 +53,9 @@ public class UDTFUpper implements UDTF {
 
   @Override
   public Object transform(Row row) throws IOException {
+    if (row.isNull(0)) {
+      return null;
+    }
     return Binary.valueOf(row.getString(0).toUpperCase());
   }
 }
