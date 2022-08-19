@@ -365,6 +365,7 @@ public class DataNodeRemoveHandler {
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
                 dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE);
+    configManager.getNodeManager().removeNodeCache(dataNode.getDataNodeId());
     LOGGER.info("stop Data Node {} result: {}", dataNode, status);
     return status;
   }
