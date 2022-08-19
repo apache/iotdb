@@ -447,6 +447,15 @@ public class IoTDBDescriptor {
         conf.setConcurrentSubRawQueryThread(Runtime.getRuntime().availableProcessors());
       }
 
+      conf.setMigrationThread(
+          Integer.parseInt(
+              properties.getProperty(
+                  "migration_thread_num", Integer.toString(conf.getMigrationThread()))));
+
+      if (conf.getMigrationThread() <= 0) {
+        conf.setMigrationThread(Runtime.getRuntime().availableProcessors());
+      }
+
       conf.setRawQueryBlockingQueueCapacity(
           Integer.parseInt(
               properties.getProperty(
