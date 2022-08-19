@@ -61,6 +61,8 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class SlidingWindowAggregationOperatorTest {
 
@@ -232,9 +234,11 @@ public class SlidingWindowAggregationOperatorTest {
             Collections.singleton("sensor0"),
             fragmentInstanceContext.getOperatorContexts().get(0),
             aggregators,
+            initTimeRangeIterator(groupByTimeParameter, ascending, true),
             null,
             ascending,
-            groupByTimeParameter);
+            groupByTimeParameter,
+            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
     seriesAggregationScanOperator.initQueryDataSource(
         new QueryDataSource(seqResources, unSeqResources));
 
@@ -254,8 +258,10 @@ public class SlidingWindowAggregationOperatorTest {
     return new SlidingWindowAggregationOperator(
         fragmentInstanceContext.getOperatorContexts().get(1),
         finalAggregators,
+        initTimeRangeIterator(groupByTimeParameter, ascending, false),
         seriesAggregationScanOperator,
         ascending,
-        groupByTimeParameter);
+        groupByTimeParameter,
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
   }
 }

@@ -189,6 +189,7 @@ public class IoTDBSortedShowTimeseriesIT {
         count++;
       }
       assertEquals(retArray1.size(), count);
+      resultSet.close();
 
       resultSet = statement.executeQuery("show LATEST timeseries");
       count = 0;
@@ -214,6 +215,7 @@ public class IoTDBSortedShowTimeseriesIT {
         count++;
       }
       assertEquals(retArray2.size(), count);
+      resultSet.close();
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -266,6 +268,7 @@ public class IoTDBSortedShowTimeseriesIT {
         count++;
       }
       assertEquals(retSet.size(), count);
+      resultSet.close();
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -313,6 +316,7 @@ public class IoTDBSortedShowTimeseriesIT {
         count++;
       }
       assertEquals(retArray.length, count);
+      resultSet.close();
 
     } catch (Exception e) {
       e.printStackTrace();

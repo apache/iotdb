@@ -28,6 +28,8 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
@@ -84,8 +86,9 @@ public class GroupByLevelController {
     PartialPath rawPath = ((TimeSeriesOperand) expression.getExpressions().get(0)).getPath();
     PartialPath groupedPath = generatePartialPathByLevel(isCountStar, rawPath, levels);
 
-    checkDatatypeConsistency(
-        groupedPath.getFullPath(), ((FunctionExpression) expression).getFunctionName(), rawPath);
+    String functionName = ((FunctionExpression) expression).getFunctionName();
+    checkDatatypeConsistency(groupedPath.getFullPath(), functionName, rawPath);
+    updateTypeProvider(functionName, groupedPath.getFullPath(), rawPath);
 
     Expression rawPathExpression = new TimeSeriesOperand(rawPath);
     Expression groupedPathExpression = new TimeSeriesOperand(groupedPath);
@@ -122,9 +125,7 @@ public class GroupByLevelController {
       case SQLConstant.COUNT:
       case SQLConstant.AVG:
       case SQLConstant.SUM:
-        try {
-          typeProvider.getType(groupedPath);
-        } catch (StatementAnalyzeException e) {
+        if (!typeProvider.containsTypeInfoOf(groupedPath)) {
           typeProvider.setType(groupedPath, rawPath.getSeriesType());
         }
         return;
@@ -133,7 +134,9 @@ public class GroupByLevelController {
       case SQLConstant.FIRST_VALUE:
       case SQLConstant.MAX_VALUE:
       case SQLConstant.EXTREME:
-        try {
+        if (!typeProvider.containsTypeInfoOf(groupedPath)) {
+          typeProvider.setType(groupedPath, rawPath.getSeriesType());
+        } else {
           TSDataType tsDataType = typeProvider.getType(groupedPath);
           if (tsDataType != rawPath.getSeriesType()) {
             throw new SemanticException(
@@ -141,8 +144,6 @@ public class GroupByLevelController {
                     "GROUP BY LEVEL: the data types of the same output column[%s] should be the same.",
                     groupedPath));
           }
-        } catch (StatementAnalyzeException e) {
-          typeProvider.setType(groupedPath, rawPath.getSeriesType());
         }
         return;
       default:
@@ -223,5 +224,16 @@ public class GroupByLevelController {
 
   public Map<Expression, Expression> getRawPathToGroupedPathMap() {
     return rawPathToGroupedPathMap;
+  }
+
+  private void updateTypeProvider(String functionName, String groupedPath, PartialPath rawPath) {
+    List<AggregationType> splitAggregations =
+        SchemaUtils.splitPartialAggregation(AggregationType.valueOf(functionName.toUpperCase()));
+    for (AggregationType aggregationType : splitAggregations) {
+      String splitFunctionName = aggregationType.toString().toLowerCase();
+      typeProvider.setType(
+          String.format("%s(%s)", splitFunctionName, groupedPath),
+          SchemaUtils.getSeriesTypeByPath(rawPath, splitFunctionName));
+    }
   }
 }

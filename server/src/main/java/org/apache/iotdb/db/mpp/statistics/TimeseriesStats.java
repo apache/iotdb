@@ -17,27 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.memory;
+package org.apache.iotdb.db.mpp.statistics;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
-/**
- * Manages memory of a data node. The memory is divided into two memory pools so that the memory for
- * read and for write can be isolated.
- */
-public class LocalMemoryManager {
-
-  private final MemoryPool queryPool;
-
-  public LocalMemoryManager() {
-    queryPool =
-        new MemoryPool(
-            "query",
-            IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForDataExchange(),
-            IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerQuery());
-  }
-
-  public MemoryPool getQueryPool() {
-    return queryPool;
-  }
+public class TimeseriesStats {
+  // TODO collect time series statistics
 }

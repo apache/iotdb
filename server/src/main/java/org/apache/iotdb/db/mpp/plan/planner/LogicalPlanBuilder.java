@@ -471,9 +471,8 @@ public class LogicalPlanBuilder {
         constructAggregationDescriptorList(aggregationExpressions, curStep);
     if (curStep.isOutputPartial()) {
       aggregationDescriptorList.forEach(
-          aggregationDescriptor -> {
-            updateTypeProviderByPartialAggregation(aggregationDescriptor, typeProvider);
-          });
+          aggregationDescriptor ->
+              updateTypeProviderByPartialAggregation(aggregationDescriptor, typeProvider));
     }
     this.root =
         new AggregationNode(
