@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class SnapshotStorage implements StateMachineStorage {
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
@@ -141,8 +142,14 @@ public class SnapshotStorage implements StateMachineStorage {
     }
     TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
 
+    List<File> actualSnapshotFiles = applicationStateMachine.getSnapshotFiles(latestSnapshotDir);
+    List<Path> filesIncludedInSnapshot =
+        actualSnapshotFiles != null
+            ? actualSnapshotFiles.stream().map(File::toPath).collect(Collectors.toList())
+            : getAllFilesUnder(latestSnapshotDir);
+
     List<FileInfo> fileInfos = new ArrayList<>();
-    for (Path file : getAllFilesUnder(latestSnapshotDir)) {
+    for (Path file : filesIncludedInSnapshot) {
       if (file.endsWith(".md5")) {
         continue;
       }
