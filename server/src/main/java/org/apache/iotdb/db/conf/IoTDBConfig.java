@@ -3068,7 +3068,7 @@ public class IoTDBConfig {
   }
 
   public String getConfigMessage() {
-    String configMessage = "";
+    StringBuilder configMessage = new StringBuilder();
     String configContent;
     String[] notShowArray = {
       "NODE_NAME_MATCHER",
@@ -3085,18 +3085,23 @@ public class IoTDBConfig {
         if (notShowStrings.contains(configFieldString)) {
           continue;
         }
-        String configType = configField.getGenericType().getTypeName();
-        if (configType.contains("java.lang.String[]")) {
-          String[] configList = (String[]) configField.get(this);
-          configContent = Arrays.asList(configList).toString();
+        Object obj = configField.get(this);
+        if (obj != null) {
+          String configType = configField.getGenericType().getTypeName();
+          if (configType.contains("java.lang.String[]")) {
+            String[] configList = (String[]) obj;
+            configContent = Arrays.asList(configList).toString();
+          } else {
+            configContent = obj.toString();
+          }
         } else {
-          configContent = configField.get(this).toString();
+          configContent = null;
         }
-        configMessage = configMessage + configField.getName() + "=" + configContent + "; ";
+        configMessage.append(configField.getName()).append("=").append(configContent).append("; ");
       } catch (Exception e) {
-        e.printStackTrace();
+        logger.error("Printing configuration field [{}] failed ", configField.getName(), e);
       }
     }
-    return configMessage;
+    return configMessage.toString();
   }
 }
