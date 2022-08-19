@@ -366,7 +366,7 @@ Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 
 |权限名称|说明|示例|
 |:---|:---|----|
-|SET\_STORAGE\_GROUP|创建存储组。包含设置存储组的权限。路径相关|Eg: `set storage group to root.ln;`|
+|SET\_STORAGE\_GROUP|创建存储组。包含设置存储组的权限和TTL。路径相关|Eg1: `set storage group to root.ln;`<br />Eg2:`set ttl to root.ln 3600000;`<br />Eg3:`unset ttl to root.ln;`|
 |DELETE\_STORAGE\_GROUP|删除存储组。路径相关|Eg: `delete storage group root.ln;`|
 |CREATE\_TIMESERIES|创建时间序列。路径相关|Eg1: 创建时间序列<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: 创建对齐时间序列<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`|
 |INSERT\_TIMESERIES|插入数据。路径相关|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|
@@ -441,46 +441,6 @@ IoTDB 规定角色名的字符长度不小于 4，其中角色名不能包含空
 
 目前以下IoTDB支持的sql语句只有`root`用户可以进行操作，且没有对应的权限可以赋予新用户。
 
-###### TTL
-
-- 设置ttl
-
-```
-Eg: IoTDB > set ttl to root.ln 3600
-```
-
-- 取消ttl
-
-```
-Eg: IoTDB > unset ttl to root.ln
-```
-
-###### 元数据模板
-
-- 创建元数据模板
-
-```
-Eg: IoTDB > create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
-```
-
-- 挂载元数据模板
-
-```
-Eg: IoTDB > set schema template t1 to root.sg1.d1
-```
-
-- 卸载元数据模板
-
-```
-Eg: IoTDB > unset schema template t1 from root.sg1.d1
-```
-
-- 删除元数据模板
-
-```
-Eg: IoTDB > drop schema template t1
-```
-
 ###### TsFile管理
 
 - 加载TsFile
@@ -499,17 +459,6 @@ Eg: IoTDB > remove '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-
 
 ```
 Eg: IoTDB > unload '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile' '/data/data/tmp'
-```
-
-###### 统计
-
-- 统计存储组/节点数/设备/时间序列
-
-```
-Eg: IoTDB > count storage group
-Eg: IoTDB > count nodes root.** LEVEL=2
-Eg: IoTDB > count devices root.ln.**
-Eg: IoTDB > count timeseries root.**
 ```
 
 ###### 删除时间分区（实验性功能）
