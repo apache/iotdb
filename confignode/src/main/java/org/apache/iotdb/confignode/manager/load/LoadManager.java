@@ -215,7 +215,7 @@ public class LoadManager {
       isNeedBroadcast = true;
     }
 
-    if (RouteBalancer.leaderPolicy.equals(CONF.getRoutingPolicy())) {
+    if (RouteBalancer.LEADER_POLICY.equals(CONF.getRoutingPolicy())) {
       // Check the condition of leader routing policy
       if (existChangeLeaderSchemaRegionGroup.get()) {
         // Broadcast the RegionRouteMap if some SchemaRegionGroups change their leader

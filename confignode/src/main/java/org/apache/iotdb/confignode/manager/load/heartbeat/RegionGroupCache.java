@@ -100,7 +100,7 @@ public class RegionGroupCache implements IRegionGroupCache {
       leaderDataNodeId.set(updateLeaderDataNodeId);
     }
 
-    return !(originLeaderDataNodeId == leaderDataNodeId.get());
+    return originLeaderDataNodeId != leaderDataNodeId.get();
   }
 
   @Override

@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.env;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
@@ -298,7 +299,19 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Broadcast the CreateRegionGroupsPlan
+   * Mark the given datanode as removing status, and broadcast the region map, to avoid read or
+   * write request routing to this node.
+   *
+   * @param dataNodeLocation the datanode to be marked as removing status
+   */
+  public void markDataNodeAsRemovingAndBroadCast(TDataNodeLocation dataNodeLocation) {
+    int dataNodeId = dataNodeLocation.getDataNodeId();
+    configManager.getNodeManager().setNodeRemovingStatus(dataNodeId, true);
+    configManager.getLoadManager().broadcastLatestRegionRouteMap();
+  }
+
+  /**
+   * Do region creations and broadcast the CreateRegionGroupsPlan
    *
    * @return Those RegionGroups that failed to create
    */
