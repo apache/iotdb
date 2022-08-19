@@ -22,14 +22,15 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static org.apache.iotdb.db.service.basic.ServiceProvider.DOUBLE_LIVE_LOGGER;
+
 /** OperationSyncWriteTask is used for transmit one E-Plan sending by a client */
 public class OperationSyncWriteTask implements Runnable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncWriteTask.class);
+  private static final Logger LOGGER = DOUBLE_LIVE_LOGGER;
 
   private final ByteBuffer physicalPlanBuffer;
   private final SessionPool operationSyncSessionPool;

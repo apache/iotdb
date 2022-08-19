@@ -24,16 +24,17 @@ import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
 
-public class OperationSyncConsumer implements Runnable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncConsumer.class);
+import static org.apache.iotdb.db.service.basic.ServiceProvider.DOUBLE_LIVE_LOGGER;
 
-  private BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
+public class OperationSyncConsumer implements Runnable {
+  private static final Logger LOGGER = DOUBLE_LIVE_LOGGER;
+
+  private final BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
       operationSyncQueue;
   private final SessionPool operationSyncSessionPool;
   private final OperationSyncLogService dmlLogService;
@@ -53,11 +54,9 @@ public class OperationSyncConsumer implements Runnable {
     while (true) {
       Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType> head;
       ByteBuffer headBuffer;
-      OperationSyncPlanTypeUtils.OperationSyncPlanType headType;
       try {
         head = operationSyncQueue.take();
         headBuffer = head.left;
-        headType = head.right;
       } catch (InterruptedException e) {
         LOGGER.error("OperationSyncConsumer been interrupted: ", e);
         continue;
