@@ -208,6 +208,15 @@ public class ChunkReader implements IChunkReader {
     return reader;
   }
 
+  public BatchData readPageData(PageHeader pageHeader, ByteBuffer pageData) throws IOException {
+    TSDataType dataType = chunkHeader.getDataType();
+    Decoder valueDecoder = Decoder.getDecoderByType(chunkHeader.getEncodingType(), dataType);
+    PageReader pageReader =
+        new PageReader(pageHeader, pageData, dataType, valueDecoder, timeDecoder, filter);
+    pageReader.setDeleteIntervalList(deleteIntervalList);
+    return pageReader.getAllSatisfiedPageData(true);
+  }
+
   @Override
   public void close() {}
 

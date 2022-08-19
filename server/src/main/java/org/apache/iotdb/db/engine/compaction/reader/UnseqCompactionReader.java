@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.engine.compaction.reader;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -37,21 +38,21 @@ public class UnseqCompactionReader {
     }
   }
 
-  class ChunkMetadataElement {
-    ChunkMetadata chunkMetadata;
-    int priority;
-
-    public ChunkMetadataElement(ChunkMetadata chunkMetadata, int priority) {
-      this.chunkMetadata = chunkMetadata;
-      this.priority = priority;
-    }
-
-    public long getStartTime() {
-      return chunkMetadata.getStartTime();
-    }
-
-    public int getPriority() {
-      return priority;
-    }
-  }
+  //  class ChunkMetadataElement {
+  //    ChunkMetadata chunkMetadata;
+  //    int priority;
+  //
+  //    public ChunkMetadataElement(ChunkMetadata chunkMetadata, int priority) {
+  //      this.chunkMetadata = chunkMetadata;
+  //      this.priority = priority;
+  //    }
+  //
+  //    public long getStartTime() {
+  //      return chunkMetadata.getStartTime();
+  //    }
+  //
+  //    public int getPriority() {
+  //      return priority;
+  //    }
+  //  }
 }
