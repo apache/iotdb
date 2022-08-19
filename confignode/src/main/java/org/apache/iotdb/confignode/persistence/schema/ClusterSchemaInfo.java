@@ -202,7 +202,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error("Error StorageGroup name", e);
       result.setStatus(
           new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-              .setMessage("Error StorageGroup name"));
+              .setMessage("Error StorageGroup name: " + e));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }

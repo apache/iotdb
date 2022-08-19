@@ -127,7 +127,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
           new ColumnHeader(COLUMN_SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(COLUMN_DATA_REPLICATION_FACTOR, TSDataType.INT32),
-          new ColumnHeader(COLUMN_TIME_PARTITION_INTERVAL, TSDataType.INT64));
+          new ColumnHeader(COLUMN_TIME_PARTITION_INTERVAL, TSDataType.INT64),
+          new ColumnHeader(COLUMN_SCHEMA_REGION_NUM, TSDataType.INT32),
+          new ColumnHeader(COLUMN_DATA_REGION_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
       ImmutableList.of(

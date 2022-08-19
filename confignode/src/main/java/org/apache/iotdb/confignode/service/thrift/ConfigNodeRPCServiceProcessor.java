@@ -99,6 +99,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -276,9 +277,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             configManager.getMatchedStorageGroupSchemas(
                 new GetStorageGroupPlan(storageGroupPathPattern));
 
-    TStorageGroupSchemaResp resp = new TStorageGroupSchemaResp();
-    storageGroupSchemaResp.convertToRPCStorageGroupSchemaResp(resp);
-    return resp;
+    return storageGroupSchemaResp.convertToRPCStorageGroupSchemaResp();
   }
 
   @Override
@@ -568,9 +567,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return configManager.showConfigNodes();
   }
 
-  public void handleClientExit() {}
+  @Override
+  public TShowStorageGroupResp showStorageGroup(List<String> storageGroupPathPattern)
+      throws TException {
+    return configManager.showStorageGroup(new GetStorageGroupPlan(storageGroupPathPattern));
+  }
 
-  // TODO: Interfaces for data operations
+  public void handleClientExit() {}
 
   @Override
   public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) throws TException {
