@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
@@ -25,18 +24,12 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class PrimitiveArrayManagerTest {
-
   @Test
   public void testGetArrayRowCount() {
-
     Assert.assertEquals(1224827, PrimitiveArrayManager.getArrayRowCount(1224826 * 32 + 1));
-
     Assert.assertEquals(1224826, PrimitiveArrayManager.getArrayRowCount(1224826 * 32));
-
     Assert.assertEquals(1, PrimitiveArrayManager.getArrayRowCount(32));
-
     Assert.assertEquals(1, PrimitiveArrayManager.getArrayRowCount(5));
-
     Assert.assertEquals(2, PrimitiveArrayManager.getArrayRowCount(33));
   }
 }

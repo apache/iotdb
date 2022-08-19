@@ -201,6 +201,9 @@ public class IoTDBConstant {
   public static final String WAL_FOLDER_NAME = "wal";
   public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
 
+  // Operation Sync folder name
+  public static final String OPERATION_SYNC_FOLDER_NAME = "operationsync";
+
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
   public static final String MQTT_HOST_NAME = "mqtt_host";

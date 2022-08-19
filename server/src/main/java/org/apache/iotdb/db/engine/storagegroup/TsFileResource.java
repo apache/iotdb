@@ -18,24 +18,23 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion.SettleTsFileCallBack;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.TsFileName;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.SettleTsFileCallBack;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
@@ -63,7 +62,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.getTsFileName;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -572,7 +571,7 @@ public class TsFileResource {
   }
 
   public boolean isDeleted() {
-    return !this.file.exists();
+    return this.status == TsFileResourceStatus.DELETED;
   }
 
   public boolean isCompacting() {
@@ -586,18 +585,28 @@ public class TsFileResource {
   public void setStatus(TsFileResourceStatus status) {
     switch (status) {
       case CLOSED:
-        this.status = TsFileResourceStatus.CLOSED;
+        if (this.status != TsFileResourceStatus.DELETED) {
+          this.status = TsFileResourceStatus.CLOSED;
+        }
         break;
       case UNCLOSED:
+        // Print a stack trace in a warn statement.
         this.status = TsFileResourceStatus.UNCLOSED;
+        break;
+      case DELETED:
+        if (this.status != TsFileResourceStatus.UNCLOSED) {
+          this.status = TsFileResourceStatus.DELETED;
+        } else {
+          throw new RuntimeException(
+              "Cannot set the status of an unclosed TsFileResource to DELETED");
+        }
         break;
       case COMPACTING:
         if (this.status == TsFileResourceStatus.COMPACTION_CANDIDATE) {
           this.status = TsFileResourceStatus.COMPACTING;
         } else {
           throw new RuntimeException(
-              this.file.getAbsolutePath()
-                  + " Cannot set the status of TsFileResource to COMPACTING while its status is "
+              "Cannot set the status of TsFileResource to COMPACTING while its status is "
                   + this.status);
         }
         break;
@@ -606,18 +615,13 @@ public class TsFileResource {
           this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
         } else {
           throw new RuntimeException(
-              this.file.getAbsolutePath()
-                  + " Cannot set the status of TsFileResource to COMPACTION_CANDIDATE while its status is "
+              "Cannot set the status of TsFileResource to COMPACTION_CANDIDATE while its status is "
                   + this.status);
         }
         break;
       default:
         break;
     }
-  }
-
-  public TsFileResourceStatus getStatus() {
-    return this.status;
   }
 
   /**
@@ -834,10 +838,8 @@ public class TsFileResource {
     return newResource;
   }
 
-  public void setModFile(ModificationFile modFile) {
-    synchronized (this) {
-      this.modFile = modFile;
-    }
+  public synchronized void setModFile(ModificationFile modFile) {
+    this.modFile = modFile;
   }
 
   /** @return resource map size */
@@ -995,9 +997,8 @@ public class TsFileResource {
     for (PartialPath path : pathToChunkMetadataListMap.keySet()) {
       pathToTimeSeriesMetadataMap.put(
           path,
-          ResourceByPathUtils.getResourceInstance(path)
-              .generateTimeSeriesMetadata(
-                  pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
+          path.generateTimeSeriesMetadata(
+              pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
     }
   }
 

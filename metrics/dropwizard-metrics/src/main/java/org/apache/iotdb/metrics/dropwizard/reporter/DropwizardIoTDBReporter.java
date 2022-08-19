@@ -19,51 +19,47 @@
 
 package org.apache.iotdb.metrics.dropwizard.reporter;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import com.codahale.metrics.MetricFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
 public class DropwizardIoTDBReporter implements Reporter {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DropwizardIoTDBReporter.class);
 
-  private AbstractMetricManager dropwizardMetricManager = null;
-  private IoTDBReporter reporter;
+  private MetricManager dropwizardMetricManager = null;
+  private IoTDBReporter ioTDBReporter;
+
+  private static final MetricConfig metricConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig();
 
   @Override
   public boolean start() {
-    if (reporter != null) {
-      LOGGER.warn("Dropwizard IoTDBReporter already start!");
+    if (!metricConfig.getEnableMetric()) {
       return false;
     }
-    reporter =
+    ioTDBReporter =
         IoTDBReporter.forRegistry(
                 ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
             .prefixedWith("dropwizard:")
             .filter(MetricFilter.ALL)
             .build();
-    reporter.start(
-        MetricConfigDescriptor.getInstance()
-            .getMetricConfig()
-            .getIoTDBReporterConfig()
-            .getPushPeriodInSecond(),
-        TimeUnit.SECONDS);
+    ioTDBReporter.start(
+        metricConfig.getIoTDBReporterConfig().getPushPeriodInSecond(), TimeUnit.SECONDS);
     return true;
   }
 
   @Override
   public boolean stop() {
-    if (reporter != null) {
-      reporter.stop();
-      reporter = null;
+    if (ioTDBReporter == null) {
+      return false;
     }
+    ioTDBReporter.stop();
     return true;
   }
 
@@ -73,7 +69,7 @@ public class DropwizardIoTDBReporter implements Reporter {
   }
 
   @Override
-  public void setMetricManager(AbstractMetricManager metricManager) {
+  public void setMetricManager(MetricManager metricManager) {
     this.dropwizardMetricManager = metricManager;
   }
 }

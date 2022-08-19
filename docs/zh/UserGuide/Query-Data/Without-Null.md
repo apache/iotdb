@@ -94,14 +94,33 @@ select * from root.ln.sg1 WITHOUT NULL ALL(s1, s2)
 
 ```sql
 select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null all (s2+s4, s2)
-```
+``` 
 
 2. 计算s2+s4和s2这两列是否至少有一列为null,如果是则过滤
 
 ```sql
 select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null any (s2+s4, s2)
+``` 
+
+### 别名
+
+指定的列可以为别名
+
+1. 计算t2和t1这两列是否都为null,如果是则过滤
+
+```sql
+select s2 as t1, - s2, s4, + s4, s2 + s4 as t2, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null all (t2, t1)
 ```
 
+```sql
+select s1, sin(s2) + cos(s2) as t1, cos(sin(s2 + s4) + s2) as t2 from root.test.sg1 without null all (t1, t2)
+```
+
+2. 当你指定了别名，如果在without null指定的列集中再使用原始列名，则会报错：`The without null columns don't match the columns queried.If has alias, please use the alias.` 比如下面同时使用了tan(s1)和t
+
+```sql
+select s1 as d, sin(s1), cos(s1), tan(s1) as t, s2 from root.test.sg1 without null all(d,  tan(s1), t) limit 5
+```
 
 ### 带函数查询
 
@@ -153,13 +172,13 @@ select avg(s4), sum(s2), count(s3) from root.test.sg1 group by ([1,10), 2ms) wit
 1. 指定`root.test.sg1.s2`, `root.test.sg2.s3`两列都为null则过滤
 
 ```sql
-select s2, s3 from root.test.** without null all(root.test.sg1.s2, root.test.sg2.s3)
+select s2, s3 from root.test.** without null all(`root.test.sg1.s2`, `root.test.sg2.s3`)
 ```
 
 2. 指定`root.test.sg1.s2`, `root.test.sg1.s3`, `root.test.sg2.s3`三列都为null则过滤
 
 ```sql
-select s2, s3 from root.test.** without null all(root.test.sg1.s2, s3)
+select s2, s3 from root.test.** without null all(`root.test.sg1.s2`, s3)
 ```
 
 ### 对齐序列查询

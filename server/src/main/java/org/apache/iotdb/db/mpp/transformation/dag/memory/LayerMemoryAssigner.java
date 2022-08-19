@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.transformation.dag.memory;
+package org.apache.iotdb.db.query.udf.core.layer;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 
 import java.util.HashMap;
 import java.util.Map;

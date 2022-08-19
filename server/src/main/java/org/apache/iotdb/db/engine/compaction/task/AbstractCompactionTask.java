@@ -19,75 +19,68 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * AbstractCompactionTask is the base class for all compaction task, it carries out the execution of
- * compaction. AbstractCompactionTask uses a template method, it executes the abstract function
- * {@link AbstractCompactionTask#doCompaction()} implemented by subclass, and decrease the
- * currentTaskNum in CompactionScheduler when the {@link AbstractCompactionTask#doCompaction()} is
+ * * compaction. AbstractCompactionTask uses a template method, it executes the abstract function *
+ * {@link AbstractCompactionTask#doCompaction()} implemented by subclass, and decrease the *
+ * currentTaskNum in CompactionScheduler when the {@link AbstractCompactionTask#doCompaction()} is *
  * finished. The future returns the {@link CompactionTaskSummary} of this task execution.
  */
-public abstract class AbstractCompactionTask {
+public abstract class AbstractCompactionTask implements Callable<CompactionTaskSummary> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  protected String dataRegionId;
-  protected String storageGroupName;
+  protected String fullStorageGroupName;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
   protected final TsFileManager tsFileManager;
-  protected ICompactionPerformer performer;
-  protected int hashCode = -1;
-  protected CompactionTaskSummary summary = new CompactionTaskSummary();
-  protected long serialId;
+  protected long timeCost = 0L;
 
   public AbstractCompactionTask(
-      String storageGroupName,
-      String dataRegionId,
+      String fullStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      AtomicInteger currentTaskNum,
-      long serialId) {
-    this.storageGroupName = storageGroupName;
-    this.dataRegionId = dataRegionId;
+      AtomicInteger currentTaskNum) {
+    this.fullStorageGroupName = fullStorageGroupName;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.currentTaskNum = currentTaskNum;
-    this.serialId = serialId;
   }
 
   public abstract void setSourceFilesToCompactionCandidate();
 
-  protected abstract void doCompaction();
+  protected abstract void doCompaction() throws Exception;
 
-  public void start() {
+  @Override
+  public CompactionTaskSummary call() throws Exception {
+    long startTime = System.currentTimeMillis();
     currentTaskNum.incrementAndGet();
     boolean isSuccess = false;
     try {
-      summary.start();
       doCompaction();
       isSuccess = true;
+    } catch (Exception e) {
+      LOGGER.error("Running compaction task failed", e);
     } finally {
+      CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
+      timeCost = System.currentTimeMillis() - startTime;
       this.currentTaskNum.decrementAndGet();
-      summary.finish(isSuccess);
-      CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
     }
+
+    return new CompactionTaskSummary(isSuccess);
   }
 
-  public String getStorageGroupName() {
-    return this.storageGroupName;
-  }
-
-  public String getDataRegionId() {
-    return this.dataRegionId;
+  public String getFullStorageGroupName() {
+    return fullStorageGroupName;
   }
 
   public long getTimePartition() {
@@ -115,37 +108,6 @@ public abstract class AbstractCompactionTask {
   public abstract void resetCompactionCandidateStatusForAllSourceFiles();
 
   public long getTimeCost() {
-    return summary.getTimeCost();
-  }
-
-  protected void checkInterrupted() throws InterruptedException {
-    if (Thread.currentThread().isInterrupted()) {
-      throw new InterruptedException(
-          String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
-    }
-  }
-
-  public boolean isTaskRan() {
-    return summary.isRan();
-  }
-
-  public void cancel() {
-    summary.cancel();
-  }
-
-  public boolean isSuccess() {
-    return summary.isSuccess();
-  }
-
-  public CompactionTaskSummary getSummary() {
-    return summary;
-  }
-
-  public boolean isTaskFinished() {
-    return summary.isFinished();
-  }
-
-  public long getSerialId() {
-    return serialId;
+    return timeCost;
   }
 }

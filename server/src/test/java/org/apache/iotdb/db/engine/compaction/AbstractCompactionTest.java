@@ -186,6 +186,12 @@ public class AbstractCompactionTest {
           startTime + pointNum * i + timeInterval * i + pointNum - 1,
           isAlign,
           isSeq);
+      // sleep a moment to avoid generating files with same timestamp
+      try {
+        Thread.sleep(10);
+      } catch (Exception e) {
+
+      }
     }
     // sleep a few milliseconds to avoid generating files with same timestamps
     try {

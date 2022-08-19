@@ -20,14 +20,12 @@
 package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
-public class DoNothingMetricService extends AbstractMetricService {
+public class DoNothingMetricService extends MetricService {
 
   @Override
-  public void enablePredefinedMetrics(PredefinedMetric metric) {
-    // do nothing
-  }
+  public void enablePredefinedMetric(PredefinedMetric metric) {}
 
   @Override
   protected void reloadProperties(ReloadLevel reloadLevel) {

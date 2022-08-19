@@ -18,31 +18,27 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.exception.ShutdownException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.ShutdownException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -64,12 +60,10 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class StorageGroupProcessorTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -79,7 +73,7 @@ public class StorageGroupProcessorTest {
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
-  private DataRegion processor;
+  private VirtualStorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
   @Before
@@ -669,7 +663,7 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
     processor.compact();
     long totalWaitingTime = 0;
-    do {
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       // wait
       try {
         Thread.sleep(100);
@@ -684,7 +678,7 @@ public class StorageGroupProcessorTest {
         Assert.fail();
         break;
       }
-    } while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0);
+    }
 
     QueryDataSource queryDataSource =
         processor.query(
@@ -709,53 +703,6 @@ public class StorageGroupProcessorTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableUnseqSpaceCompaction(originEnableUnseqSpaceCompaction);
-  }
-
-  @Test
-  public void testDeleteStorageGroupWhenCompacting() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(10);
-    try {
-      for (int j = 0; j < 10; j++) {
-        TSRecord record = new TSRecord(j, deviceId);
-        record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-        processor.insert(new InsertRowPlan(record));
-        processor.asyncCloseAllWorkingTsFileProcessors();
-      }
-      processor.syncCloseAllWorkingTsFileProcessors();
-      InnerSpaceCompactionTask task =
-          new InnerSpaceCompactionTask(
-              0,
-              processor.getTsFileManager(),
-              processor.getSequenceFileList(),
-              true,
-              new ReadChunkCompactionPerformer(processor.getSequenceFileList()),
-              new AtomicInteger(0),
-              0);
-      CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
-      Thread.sleep(20);
-      StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));
-      Thread.sleep(500);
-
-      for (TsFileResource resource : processor.getSequenceFileList()) {
-        Assert.assertFalse(resource.getTsFile().exists());
-      }
-      TsFileResource targetTsFileResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(
-              processor.getSequenceFileList(), true);
-      Assert.assertFalse(targetTsFileResource.getTsFile().exists());
-      String dataDirectory = targetTsFileResource.getTsFile().getParent();
-      File logFile =
-          new File(
-              dataDirectory
-                  + File.separator
-                  + targetTsFileResource.getTsFile().getName()
-                  + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
-      Assert.assertFalse(logFile.exists());
-      Assert.assertFalse(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
-      Assert.assertTrue(processor.getTsFileManager().isAllowCompaction());
-    } finally {
-      new CompactionConfigRestorer().restoreCompactionConfig();
-    }
   }
 
   @Test
@@ -861,10 +808,234 @@ public class StorageGroupProcessorTest {
     config.setUnseqMemtableFlushInterval(preFLushInterval);
   }
 
-  class DummySGP extends DataRegion {
+  @Test
+  public void testTimedCloseTsFile()
+      throws IllegalPathException, InterruptedException, WriteProcessException,
+          TriggerExecutionException, ShutdownException {
+    // create one sequence memtable
+    TSRecord record = new TSRecord(10000, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    processor.insert(new InsertRowPlan(record));
+    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
 
-    DummySGP(String systemInfoDir, String storageGroupName) throws DataRegionException {
-      super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
+    // change config & reboot timed service
+    long prevSeqTsFileSize = config.getSeqTsFileSize();
+    config.setSeqTsFileSize(1);
+    boolean prevEnableTimedFlushSeqMemtable = config.isEnableTimedFlushSeqMemtable();
+    long preFLushInterval = config.getSeqMemtableFlushInterval();
+    config.setEnableTimedFlushSeqMemtable(true);
+    config.setSeqMemtableFlushInterval(5);
+    boolean prevEnableTimedCloseTsFile = config.isEnableTimedCloseTsFile();
+    long prevCloseTsFileInterval = config.getCloseTsFileIntervalAfterFlushing();
+    config.setEnableTimedCloseTsFile(true);
+    config.setCloseTsFileIntervalAfterFlushing(5);
+    StorageEngine.getInstance().rebootTimedService();
+
+    Thread.sleep(500);
+
+    // flush the sequence memtable
+    processor.timedFlushSeqMemTable();
+
+    // wait until memtable flush task is done
+    Assert.assertEquals(1, processor.getWorkSequenceTsFileProcessors().size());
+    TsFileProcessor tsFileProcessor = processor.getWorkSequenceTsFileProcessors().iterator().next();
+    FlushManager flushManager = FlushManager.getInstance();
+    int waitCnt = 0;
+    while (tsFileProcessor.getFlushingMemTableSize() != 0
+        || tsFileProcessor.isManagedByFlushManager()
+        || flushManager.getNumberOfPendingTasks() != 0
+        || flushManager.getNumberOfPendingSubTasks() != 0
+        || flushManager.getNumberOfWorkingTasks() != 0
+        || flushManager.getNumberOfWorkingSubTasks() != 0) {
+      Thread.sleep(500);
+      ++waitCnt;
+      if (waitCnt % 10 == 0) {
+        logger.info("already wait {} s", waitCnt / 2);
+      }
+    }
+
+    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+    Assert.assertFalse(tsFileProcessor.alreadyMarkedClosing());
+
+    // close the tsfile
+    processor.timedCloseTsFileProcessor();
+
+    Thread.sleep(500);
+
+    Assert.assertTrue(tsFileProcessor.alreadyMarkedClosing());
+
+    config.setSeqTsFileSize(prevSeqTsFileSize);
+    config.setEnableTimedFlushSeqMemtable(prevEnableTimedFlushSeqMemtable);
+    config.setSeqMemtableFlushInterval(preFLushInterval);
+    config.setEnableTimedCloseTsFile(prevEnableTimedCloseTsFile);
+    config.setCloseTsFileIntervalAfterFlushing(prevCloseTsFileInterval);
+  }
+
+  /**
+   * Totally 5 tsfiles<br>
+   * file 0, file 2 and file 4 has d0 ~ d1, time range is 0 ~ 99, 200 ~ 299, 400 ~ 499<br>
+   * file 1, file 3 has d0 ~ d2, time range is 100 ~ 199, 300 ~ 399<br>
+   * delete d2 in time range 50 ~ 150 and 150 ~ 450. Therefore, only file 1 and file 3 has mods.
+   */
+  @Test
+  public void testDeleteDataNotInFile()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException,
+          InterruptedException, IOException {
+    for (int i = 0; i < 5; i++) {
+      if (i % 2 == 0) {
+        for (int d = 0; d < 2; d++) {
+          for (int count = i * 100; count < i * 100 + 100; count++) {
+            TSRecord record = new TSRecord(count, "root.vehicle.d" + d);
+            record.addTuple(
+                DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(count)));
+            processor.insert(new InsertRowPlan(record));
+          }
+        }
+      } else {
+        for (int d = 0; d < 3; d++) {
+          for (int count = i * 100; count < i * 100 + 100; count++) {
+            TSRecord record = new TSRecord(count, "root.vehicle.d" + d);
+            record.addTuple(
+                DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(count)));
+            processor.insert(new InsertRowPlan(record));
+          }
+        }
+      }
+      processor.syncCloseAllWorkingTsFileProcessors();
+    }
+
+    // delete root.vehicle.d2.s0 data in the second file
+    processor.delete(new PartialPath("root.vehicle.d2.s0"), 50, 150, 0, null);
+
+    // delete root.vehicle.d2.s0 data in the third file
+    processor.delete(new PartialPath("root.vehicle.d2.s0"), 150, 450, 0, null);
+
+    for (int i = 0; i < processor.getTsFileResourceManager().getTsFileList(true).size(); i++) {
+      TsFileResource resource = processor.getTsFileResourceManager().getTsFileList(true).get(i);
+      if (i == 1) {
+        Assert.assertTrue(resource.getModFile().exists());
+        Assert.assertEquals(2, resource.getModFile().getModifications().size());
+      } else if (i == 3) {
+        Assert.assertTrue(resource.getModFile().exists());
+        Assert.assertEquals(1, resource.getModFile().getModifications().size());
+      } else {
+        Assert.assertFalse(resource.getModFile().exists());
+      }
+    }
+  }
+
+  @Test
+  public void testDeleteDataNotInFlushingMemtable()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+    for (int j = 0; j < 100; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+    }
+    TsFileResource tsFileResource = processor.getTsFileResourceManager().getTsFileList(true).get(0);
+    TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+    tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
+
+    // delete data which is not in memtable
+    processor.delete(new PartialPath("root.vehicle.d2.s0"), 50, 70, 0, null);
+
+    // delete data which is not in memtable
+    processor.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    processor.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+  }
+
+  @Test
+  public void testDeleteDataInSeqFlushingMemtable()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+    }
+    TsFileResource tsFileResource = processor.getTsFileResourceManager().getTsFileList(true).get(0);
+    TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+    tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
+
+    // delete data which is not in flushing memtable
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0, null);
+    processor.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in flushing memtable
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 50, 100, 0, null);
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 50, 150, 0, null);
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 100, 300, 0, null);
+
+    processor.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertTrue(tsFileResource.getModFile().exists());
+    Assert.assertEquals(3, tsFileResource.getModFile().getModifications().size());
+  }
+
+  @Test
+  public void testDeleteDataInUnSeqFlushingMemtable()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+    }
+    TsFileResource tsFileResource = processor.getTsFileResourceManager().getTsFileList(true).get(0);
+
+    // delete data which is not in work memtable
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0, null);
+    processor.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in work memtable
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 50, 100, 0, null);
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 50, 150, 0, null);
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 100, 300, 0, null);
+
+    processor.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+
+    // insert unseq data points
+    for (int j = 50; j < 100; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+    }
+    // delete data which is not in work memtable
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 200, 299, 0, null);
+    processor.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in work memtable
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 80, 85, 0, null);
+
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+
+    tsFileResource = processor.getTsFileResourceManager().getTsFileList(false).get(0);
+    TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+    tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
+
+    // delete data which is not in flushing memtable
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 0, 49, 0, null);
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 100, 200, 0, null);
+    processor.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in flushing memtable
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 25, 50, 0, null);
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 50, 80, 0, null);
+    processor.delete(new PartialPath("root.vehicle.d0.s0"), 99, 150, 0, null);
+
+    processor.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertTrue(tsFileResource.getModFile().exists());
+    Assert.assertEquals(3, tsFileResource.getModFile().getModifications().size());
+  }
+
+  class DummySGP extends VirtualStorageGroupProcessor {
+
+    DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
+      super(
+          systemInfoDir,
+          storageGroupName,
+          new TsFileFlushPolicy.DirectFlushPolicy(),
+          storageGroupName);
     }
   }
 }

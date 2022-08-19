@@ -81,7 +81,7 @@ public class SessionExample {
       }
     }
 
-    //     createTemplate();
+    // createTemplate();
     createTimeseries();
     createMultiTimeseries();
     insertRecord();
@@ -606,7 +606,7 @@ public class SessionExample {
    * write data of String type or Binary type.
    */
   private static void insertText() throws IoTDBConnectionException, StatementExecutionException {
-    String device = "root.sg1.text";
+    String device = "root.sg1.text_type";
     // the first data is String type and the second data is Binary type
     List<Object> datas = Arrays.asList("String", new Binary("Binary"));
     // insertRecord example
@@ -754,9 +754,8 @@ public class SessionExample {
     paths.add(ROOT_SG1_D1_S3);
     long startTime = 10L;
     long endTime = 200L;
-    long timeOut = 60000;
 
-    try (SessionDataSet dataSet = session.executeRawDataQuery(paths, startTime, endTime, timeOut)) {
+    try (SessionDataSet dataSet = session.executeRawDataQuery(paths, startTime, endTime)) {
 
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024);
@@ -771,7 +770,7 @@ public class SessionExample {
     paths.add(ROOT_SG1_D1_S1);
     paths.add(ROOT_SG1_D1_S2);
     paths.add(ROOT_SG1_D1_S3);
-    try (SessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3, 60000)) {
+    try (SessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3)) {
       System.out.println(sessionDataSet.getColumnNames());
       sessionDataSet.setFetchSize(1024);
       while (sessionDataSet.hasNext()) {

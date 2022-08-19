@@ -27,7 +27,9 @@
 
 ## 如何使用 （示例）
 
-首先下载包：`pip3 install apache-iotdb`
+首先下载最新安装包：`pip3 install apache-iotdb`
+
+*注意：如果您想要安装 0.13.0 版本的 Python API，不要使用 `pip install apache-iotdb==0.13.0`，请使用 `pip install apache-iotdb==0.13.0.post1` 作为替代！*
 
 您可以从这里得到一个使用该包进行数据读写的例子：[Session Example](https://github.com/apache/iotdb/blob/master/client-py/SessionExample.py)
 

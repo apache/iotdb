@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceCompactionFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -65,7 +65,6 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
-    TsFileValidationTool.badFileNum = 0;
   }
 
   /**
@@ -75,7 +74,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void test1() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test1() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -86,7 +85,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -97,18 +96,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -120,7 +110,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void test2() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test2() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -131,7 +121,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -143,18 +133,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -166,7 +147,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void test3() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test3() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 1500, 1500, 1500, 100, 100, true, false);
@@ -177,7 +158,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -189,18 +170,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -213,7 +185,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2, 3, 4
    */
   @Test
-  public void test4() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test4() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 1000, 1500, 1500, 100, 100, true, false);
@@ -229,7 +201,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -243,18 +215,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(2), unseqResources.get(2));
     Assert.assertEquals(result[1].get(3), unseqResources.get(3));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -267,9 +230,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void test5() throws MetadataException, IOException, WriteProcessException, MergeException {
-    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(7);
+  public void test5() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
+    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(7);
     createFiles(7, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 3300, 2150, 2150, 100, 100, true, false);
     createFiles(1, 5, 10, 4400, 1150, 1150, 100, 100, true, false);
@@ -279,7 +242,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -294,18 +257,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -317,7 +271,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2, 3
    */
   @Test
-  public void test6() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test6() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 3000, 1100, 1100, 100, 100, true, true);
@@ -330,7 +284,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -343,18 +297,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
     Assert.assertEquals(result[1].get(2), unseqResources.get(2));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -366,7 +311,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2, 3, 4
    */
   @Test
-  public void test7() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test7() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 3000, 1100, 1100, 100, 100, true, true);
@@ -380,7 +325,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -395,18 +340,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(2), unseqResources.get(2));
     Assert.assertEquals(result[1].get(3), unseqResources.get(3));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -418,7 +354,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2, 3, 4
    */
   @Test
-  public void test8() throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void test8() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 1000, 1500, 1500, 100, 100, true, false);
@@ -431,7 +367,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -446,18 +382,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(2), unseqResources.get(2));
     Assert.assertEquals(result[1].get(3), unseqResources.get(3));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -473,8 +400,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile10()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile10() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -485,7 +411,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -497,18 +423,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -524,8 +441,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile11()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile11() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -537,7 +453,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -549,18 +465,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -576,8 +483,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile12()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile12() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -590,7 +496,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -601,18 +507,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -628,8 +525,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile20()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile20() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -641,7 +537,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -653,18 +549,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -680,8 +567,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile21()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile21() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -694,7 +580,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -706,18 +592,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -733,8 +610,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile22()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile22() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -748,7 +624,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -760,18 +636,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -787,8 +654,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile30()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile30() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, true, true);
@@ -801,7 +667,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -814,18 +680,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -841,8 +698,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile31()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile31() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, true, true);
@@ -856,7 +712,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -869,18 +725,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -896,8 +743,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile32()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile32() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, true, true);
@@ -912,7 +758,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -925,18 +771,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -948,8 +785,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile50()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile50() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, true, true);
@@ -967,7 +803,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -981,18 +817,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1004,8 +831,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile51()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile51() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, true, true);
@@ -1023,7 +849,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1037,18 +863,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1060,8 +877,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile52()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile52() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, true, true);
@@ -1079,7 +895,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1093,18 +909,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[0].get(5), seqResources.get(7));
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1116,8 +923,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithNewAlignedDeviceAndSensorInUnseqFile53()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile53() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, true, true);
@@ -1135,7 +941,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1148,18 +954,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[0].get(4), seqResources.get(7));
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1175,8 +972,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile10()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile10() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
@@ -1187,7 +983,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1199,18 +995,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1226,8 +1013,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile11()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile11() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
@@ -1239,7 +1025,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1251,18 +1037,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1278,8 +1055,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile12()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile12() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
@@ -1292,7 +1068,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1303,18 +1079,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1330,8 +1097,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile20()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile20() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
@@ -1343,7 +1109,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1355,18 +1121,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1382,8 +1139,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile21()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile21() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
@@ -1396,7 +1152,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1408,18 +1164,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1435,8 +1182,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile22()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile22() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
@@ -1450,7 +1196,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1462,18 +1208,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1489,8 +1226,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile30()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile30() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, false, true);
@@ -1503,7 +1239,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1516,18 +1252,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1543,8 +1270,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile31()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile31() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, false, true);
@@ -1558,7 +1284,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1571,18 +1297,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1598,8 +1315,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile32()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile32() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, false, true);
@@ -1614,7 +1330,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1627,18 +1343,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1650,8 +1357,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile50()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile50() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, false, true);
@@ -1669,7 +1375,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1683,18 +1389,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1706,8 +1403,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile51()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile51() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, false, true);
@@ -1725,7 +1421,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1739,18 +1435,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1762,8 +1449,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile52()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile52() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, false, true);
@@ -1781,7 +1467,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1795,18 +1481,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[0].get(5), seqResources.get(7));
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1818,8 +1495,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile53()
-      throws MetadataException, IOException, WriteProcessException, MergeException {
+  public void testWithNewDeviceAndSensorInUnseqFile53() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, false, true);
@@ -1837,7 +1513,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1850,18 +1526,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[0].get(4), seqResources.get(7));
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1873,8 +1540,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithUnclosedSeqFile()
-      throws MergeException, IOException, MetadataException, WriteProcessException {
+  public void testWithUnclosedSeqFile() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
@@ -1893,7 +1559,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -1903,18 +1569,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[0].get(1), seqResources.get(3));
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1926,8 +1583,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithUnclosedSeqFileAndNewSensorInUnseqFile()
-      throws MergeException, IOException, MetadataException, WriteProcessException {
+  public void testWithUnclosedSeqFileAndNewSensorInUnseqFile() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(3, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 5, 1000, 3300, 3300, 100, 100, false, true);
@@ -1948,22 +1604,18 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
-    // Assert.assertEquals(0, result.length);
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -1975,8 +1627,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testUnseqFileOverlapWithUnclosedSeqFile()
-      throws MergeException, IOException, MetadataException, WriteProcessException {
+  public void testUnseqFileOverlapWithUnclosedSeqFile() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
@@ -1996,7 +1647,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -2006,18 +1657,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[0].get(1), seqResources.get(3));
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -2029,8 +1671,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testUnseqFileOverlapWithUnclosedSeqFile2()
-      throws MergeException, IOException, MetadataException, WriteProcessException {
+  public void testUnseqFileOverlapWithUnclosedSeqFile2() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
@@ -2050,7 +1691,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -2060,19 +1701,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[0].get(1), seqResources.get(3));
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
-
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }
@@ -2084,8 +1715,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithUnclosedUnSeqFile()
-      throws MergeException, IOException, MetadataException, WriteProcessException {
+  public void testWithUnclosedUnSeqFile() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
@@ -2106,7 +1736,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
+    ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
@@ -2116,18 +1746,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[0].get(1), seqResources.get(3));
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result[0],
-            result[1],
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getCrossCompactionPerformer()
-                .createInstance(),
-            new AtomicInteger(0),
-            tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
 
     validateSeqFiles();
   }

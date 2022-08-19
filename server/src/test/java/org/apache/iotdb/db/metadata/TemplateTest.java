@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -32,6 +33,8 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
@@ -57,6 +60,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -440,6 +444,24 @@ public class TemplateTest {
   }
 
   @Test
+  public void testDropTemplateWithStorageGroupDeleted() throws MetadataException {
+    MManager manager = IoTDB.metaManager;
+    manager.createSchemaTemplate(getTreeTemplatePlan());
+    manager.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.sg1.d1"));
+    try {
+      manager.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
+      fail();
+    } catch (MetadataException e) {
+      assertEquals(
+          "Template [treeTemplate] has been set on MTree, cannot be dropped now.", e.getMessage());
+    }
+
+    manager.deleteStorageGroups(Arrays.asList(new PartialPath("root.sg1")));
+    manager.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
+    assertEquals(0, manager.getAllTemplates().size());
+  }
+
+  @Test
   public void testTemplateAlignment() throws MetadataException {
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     schemaProcessor.createTimeseries(
@@ -476,6 +498,147 @@ public class TemplateTest {
           "Template[templateDA] and mounted node[root.laptop.d1.vs0] has different alignment.",
           e.getMessage());
     }
+  }
+
+  @Test
+  public void testDeactivateTemplate() throws Exception {
+    IoTDB.metaManager.createSchemaTemplate(getCreateTemplatePlan());
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.sg0"));
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.sg1.v1"));
+
+    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg2.v2"));
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.sg2.v2.d2"));
+
+    IoTDB.metaManager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg1.v1.d1.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null));
+
+    assertEquals(1, IoTDB.metaManager.getAllTimeseriesCount(new PartialPath("root.**")));
+    IoTDB.metaManager.setUsingSchemaTemplate(
+        new ActivateTemplatePlan(new PartialPath("root.sg0.v1")));
+    IoTDB.metaManager.setUsingSchemaTemplate(
+        new ActivateTemplatePlan(new PartialPath("root.sg0.v1.d1")));
+    IoTDB.metaManager.setUsingSchemaTemplate(
+        new ActivateTemplatePlan(new PartialPath("root.sg0.v1.d2")));
+
+    assertEquals(
+        1 + 3L * IoTDB.metaManager.countMeasurementsInTemplate("template1"),
+        IoTDB.metaManager.getAllTimeseriesCount(new PartialPath("root.**")));
+
+    IoTDB.metaManager.setUsingSchemaTemplate(
+        new ActivateTemplatePlan(new PartialPath("root.sg1.v1")));
+    IoTDB.metaManager.setUsingSchemaTemplate(
+        new ActivateTemplatePlan(new PartialPath("root.sg1.v1.d1")));
+    IoTDB.metaManager.setUsingSchemaTemplate(
+        new ActivateTemplatePlan(new PartialPath("root.sg1.v1.d2")));
+    IoTDB.metaManager.setUsingSchemaTemplate(
+        new ActivateTemplatePlan(new PartialPath("root.sg1.v1.d3")));
+
+    IoTDB.metaManager.setUsingSchemaTemplate(
+        new ActivateTemplatePlan(new PartialPath("root.sg2.v2.d2")));
+    IoTDB.metaManager.setUsingSchemaTemplate(
+        new ActivateTemplatePlan(new PartialPath("root.sg2.v2.d2.s0")));
+    IoTDB.metaManager.setUsingSchemaTemplate(
+        new ActivateTemplatePlan(new PartialPath("root.sg2.v2.d2.sd.s0")));
+
+    assertEquals(10, IoTDB.metaManager.getPathsUsingTemplate("template1").size());
+
+    try {
+      IoTDB.metaManager.unsetSchemaTemplate(new UnsetTemplatePlan("root.sg0", "template1"));
+      fail();
+    } catch (TemplateIsInUseException e) {
+      assertEquals("Template is in use on root.sg0.v1", e.getMessage());
+    }
+
+    assertEquals(
+        3,
+        IoTDB.metaManager.getPathsUsingTemplateUnderPrefix("template1", "root.sg0", true).size());
+    assertEquals(
+        4,
+        IoTDB.metaManager.getPathsUsingTemplateUnderPrefix("template1", "root.sg1", true).size());
+    assertEquals(
+        4,
+        IoTDB.metaManager
+            .getPathsUsingTemplateUnderPrefix("template1", "root.sg1.v1", true)
+            .size());
+    assertEquals(
+        3,
+        IoTDB.metaManager.getPathsUsingTemplateUnderPrefix("template1", "root.sg2", true).size());
+    assertEquals(
+        3,
+        IoTDB.metaManager
+            .getPathsUsingTemplateUnderPrefix("template1", "root.sg2.v2.d2", true)
+            .size());
+
+    // check wildcard usage
+    Set<String> ans1 =
+        new HashSet<>(Arrays.asList("root.sg2.v2.d2", "root.sg2.v2.d2.s0", "root.sg2.v2.d2.sd.s0"));
+    Set<String> ans2 = new HashSet<>(Arrays.asList("root.sg2.v2.d2.s0"));
+    Set<String> ans3 = new HashSet<>(Arrays.asList("root.sg2.v2.d2.s0", "root.sg2.v2.d2.sd.s0"));
+
+    assertEquals(
+        ans1,
+        IoTDB.metaManager.getPathsUsingTemplateUnderPrefix("template1", "root.sg2.v2.d2", true)
+            .stream()
+            .map(PartialPath::getFullPath)
+            .collect(Collectors.toSet()));
+    assertEquals(
+        ans2,
+        IoTDB.metaManager.getPathsUsingTemplateUnderPrefix("template1", "root.sg2.v2.d2.*", true)
+            .stream()
+            .map(PartialPath::getFullPath)
+            .collect(Collectors.toSet()));
+    assertEquals(
+        ans3,
+        IoTDB.metaManager.getPathsUsingTemplateUnderPrefix("template1", "root.sg2.v2.d2.**", true)
+            .stream()
+            .map(PartialPath::getFullPath)
+            .collect(Collectors.toSet()));
+
+    System.out.println(
+        IoTDB.metaManager
+            .getPathsUsingTemplateUnderPrefix("template1", "root.sg2.v2.d2", false)
+            .toString());
+
+    IoTDB.metaManager.deactivateSchemaTemplate(getDeactivatePlan("template1", "root.sg1.v1"));
+    assertEquals(
+        3,
+        IoTDB.metaManager
+            .getPathsUsingTemplateUnderPrefix("template1", "root.sg1.v1", true)
+            .size());
+    IoTDB.metaManager.deactivateSchemaTemplate(getDeactivatePlan("template1", "root.sg1.v1.**"));
+    IoTDB.metaManager.unsetSchemaTemplate(new UnsetTemplatePlan("root.sg1.v1", "template1"));
+    assertEquals(2, IoTDB.metaManager.getPathsSetTemplate("template1").size());
+
+    IoTDB.metaManager.deactivateSchemaTemplate(getDeactivatePlan("template1", "root.sg2.v2.*"));
+    assertEquals(
+        2,
+        IoTDB.metaManager.getPathsUsingTemplateUnderPrefix("template1", "root.sg2", true).size());
+
+    IoTDB.metaManager.deactivateSchemaTemplate(getDeactivatePlan("template1", "root.**"));
+    assertEquals(1, IoTDB.metaManager.getAllTimeseriesCount(new PartialPath("root.**")));
+
+    EnvironmentUtils.restartDaemon();
+    assertEquals(1, IoTDB.metaManager.getAllTimeseriesCount(new PartialPath("root.**")));
+    IoTDB.metaManager.unsetSchemaTemplate(new UnsetTemplatePlan("root.sg0", "template1"));
+    IoTDB.metaManager.unsetSchemaTemplate(new UnsetTemplatePlan("root.sg2.v2.d2", "template1"));
+    IoTDB.metaManager.dropSchemaTemplate(new DropTemplatePlan("template1"));
+    assertEquals(0, IoTDB.metaManager.getAllTemplates().size());
+  }
+
+  private DeactivateTemplatePlan getDeactivatePlan(String tName, String prefix)
+      throws MetadataException {
+    DeactivateTemplatePlan plan = new DeactivateTemplatePlan(tName, new PartialPath(prefix));
+    plan.setPaths(
+        new ArrayList<>(IoTDB.metaManager.getPathsUsingTemplateUnderPrefix(tName, prefix, false)));
+    return plan;
   }
 
   private InsertRowPlan getInsertRowPlan(String prefixPath, String measurement)

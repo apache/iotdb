@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
@@ -226,6 +227,7 @@ public class MLogParser {
             break;
           case PRUNE_TEMPLATE:
             mLogTxtWriter.pruneTemplate((PruneTemplatePlan) plan);
+            break;
           case SET_TEMPLATE:
             mLogTxtWriter.setTemplate((SetTemplatePlan) plan);
             break;
@@ -237,6 +239,9 @@ public class MLogParser {
             break;
           case ACTIVATE_TEMPLATE:
             mLogTxtWriter.setUsingTemplate((ActivateTemplatePlan) plan);
+            break;
+          case DEACTIVATE_TEMPLATE:
+            mLogTxtWriter.deactivateTemplate((DeactivateTemplatePlan) plan);
             break;
           case AUTO_CREATE_DEVICE_MNODE:
             mLogTxtWriter.autoCreateDeviceNode(

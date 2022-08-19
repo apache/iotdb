@@ -18,16 +18,10 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.Set;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 /**
  * This class defines any node in MTree as potential target node. On finding a path matching the
@@ -43,11 +37,8 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
   // level query option
   protected int targetLevel = -1;
 
-  private Set<IMNode> processedNodes = new HashSet<>();
-
-  public MNodeCollector(IMNode startNode, PartialPath path, IMTreeStore store)
-      throws MetadataException {
-    super(startNode, path, store);
+  public MNodeCollector(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
   }
 
   @Override
@@ -72,25 +63,30 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
       if (level < targetLevel) {
         return false;
       }
-      Deque<IMNode> stack = new ArrayDeque<>();
       while (level > targetLevel) {
-        node = traverseContext.pop();
-        stack.push(node);
+        node = node.getParent();
         level--;
       }
-      // record processed node so they will not be processed twice
-      if (!processedNodes.contains(node)) {
-        processedNodes.add(node);
-        transferToResult(node);
-      }
-      while (!stack.isEmpty()) {
-        traverseContext.push(stack.pop());
-      }
+
+      processResult(node);
       return true;
     } else {
-      transferToResult(node);
+      processResult(node);
+      return false;
     }
-    return false;
+  }
+
+  private void processResult(IMNode node) {
+    if (hasLimit) {
+      curOffset += 1;
+      if (curOffset < offset) {
+        return;
+      }
+
+      count++;
+    }
+
+    transferToResult(node);
   }
 
   protected abstract void transferToResult(IMNode node);

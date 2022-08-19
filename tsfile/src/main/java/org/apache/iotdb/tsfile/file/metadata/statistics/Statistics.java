@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -163,6 +162,7 @@ public abstract class Statistics<T extends Serializable> {
         if (stats.endTime > this.endTime) {
           this.endTime = stats.endTime;
         }
+
         // must be sure no overlap between two statistics
         this.count += stats.count;
         mergeStatisticsValue((Statistics<T>) stats);
@@ -253,16 +253,6 @@ public abstract class Statistics<T extends Serializable> {
     }
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
-    }
-    count += batchSize;
-  }
-
-  public void update(long[] time, int batchSize, int arrayOffset) {
-    if (time[arrayOffset] < startTime) {
-      startTime = time[arrayOffset];
-    }
-    if (time[arrayOffset + batchSize - 1] > this.endTime) {
-      endTime = time[arrayOffset + batchSize - 1];
     }
     count += batchSize;
   }
@@ -383,10 +373,6 @@ public abstract class Statistics<T extends Serializable> {
   }
 
   public abstract long calculateRamSize();
-
-  public boolean containedByTimeFilter(Filter timeFilter) {
-    return timeFilter == null || timeFilter.containStartEndTime(getStartTime(), getEndTime());
-  }
 
   @Override
   public String toString() {

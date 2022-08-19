@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.logfile;
 
-import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
@@ -45,13 +47,12 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
-import org.apache.iotdb.db.utils.writelog.LogWriter;
+import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,26 +101,30 @@ public class MLogWriter implements AutoCloseable {
     logWriter.close();
   }
 
-  public synchronized void copyTo(File targetFile) throws IOException {
-    // flush the mlogBuffer
-    sync();
-    // flush the os buffer
-    force();
-    FileUtils.copyFile(logFile, targetFile);
-  }
-
   private void sync() {
-    try {
-      logWriter.write(mlogBuffer);
-    } catch (IOException e) {
-      logger.error(
-          "MLog {} sync failed, change system mode to read-only", logFile.getAbsoluteFile(), e);
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+    int retryCnt = 0;
+    mlogBuffer.mark();
+    while (true) {
+      try {
+        logWriter.write(mlogBuffer);
+        break;
+      } catch (IOException e) {
+        if (retryCnt < 3) {
+          logger.warn("MLog {} sync failed, retry it again", logFile.getAbsoluteFile(), e);
+          mlogBuffer.reset();
+          retryCnt++;
+        } else {
+          logger.error(
+              "MLog {} sync failed, change system mode to error", logFile.getAbsoluteFile(), e);
+          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
+          break;
+        }
+      }
     }
     mlogBuffer.clear();
   }
 
-  public synchronized void putLog(PhysicalPlan plan) throws IOException {
+  synchronized void putLog(PhysicalPlan plan) throws IOException {
     try {
       plan.serialize(mlogBuffer);
       sync();
@@ -228,6 +233,10 @@ public class MLogWriter implements AutoCloseable {
 
   public void setUsingSchemaTemplate(PartialPath path) throws IOException {
     ActivateTemplatePlan plan = new ActivateTemplatePlan(path);
+    putLog(plan);
+  }
+
+  public void deactivateSchemaTemplate(DeactivateTemplatePlan plan) throws IOException {
     putLog(plan);
   }
 

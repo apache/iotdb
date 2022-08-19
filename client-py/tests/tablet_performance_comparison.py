@@ -75,9 +75,9 @@ def generate_csv_data(
         if _type == TSDataType.BOOLEAN:
             return [random.randint(0, 1) == 1 for _ in range(_row)]
         elif _type == TSDataType.INT32:
-            return [random.randint(-(2 ** 31), 2 ** 31) for _ in range(_row)]
+            return [random.randint(-(2**31), 2**31) for _ in range(_row)]
         elif _type == TSDataType.INT64:
-            return [random.randint(-(2 ** 63), 2 ** 63) for _ in range(_row)]
+            return [random.randint(-(2**63), 2**63) for _ in range(_row)]
         elif _type == TSDataType.FLOAT:
             return [1.5 for _ in range(_row)]
         elif _type == TSDataType.DOUBLE:

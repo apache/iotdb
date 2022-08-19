@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class QueryUtils {
@@ -219,5 +220,13 @@ public class QueryUtils {
         .collect(Collectors.toList())
         .forEach(item -> orderIndex[index.getAndIncrement()] = item.getKey());
     dataSource.setUnSeqFileOrderIndex(orderIndex);
+  }
+
+  /**
+   * @return A predicate used to judge whether the current timestamp is out of time range, returns
+   *     true if it is.
+   */
+  public static Predicate<Long> getPredicate(long minBound, long maxBound, boolean ascending) {
+    return ascending ? time -> time >= maxBound : time -> time < minBound;
   }
 }

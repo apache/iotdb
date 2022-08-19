@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
@@ -369,6 +370,16 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
+  public void deactivateTemplate(DeactivateTemplatePlan plan) throws IOException {
+    StringBuilder buf = new StringBuilder((MetadataOperationType.UNSET_USING_TEMPLATE));
+    buf.append(",");
+    buf.append(plan.getPrefixPath().getFullPath());
+    buf.append(LINE_SEPARATOR);
+    ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
+    channel.write(buff);
+    lineNumber.incrementAndGet();
+  }
+
   public void createSchemaTemplate(CreateTemplatePlan plan) throws IOException {
     // CreateTemplatePlan txt Log be like:
     // OperationType,templateName[,measurementPath,isAlign,dataType,encoding,compressor]
@@ -408,7 +419,9 @@ public class MLogTxtWriter implements AutoCloseable {
     // OperationType,templateName,isAlign[,measurementPath,dataType,encoding,compressor]
     StringBuilder buf = new StringBuilder();
     buf.append(MetadataOperationType.APPEND_TEMPLATE);
+    buf.append(",");
     buf.append(plan.getName());
+    buf.append(",");
     buf.append(plan.isAligned());
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       buf.append(
@@ -430,8 +443,10 @@ public class MLogTxtWriter implements AutoCloseable {
     // OperationType,templateName[,measurementPath]
     StringBuilder buf = new StringBuilder();
     buf.append(MetadataOperationType.PRUNE_TEMPLATE);
+    buf.append(",");
     buf.append(plan.getName());
     for (int i = 0; i < plan.getPrunedMeasurements().size(); i++) {
+      buf.append(",");
       buf.append(plan.getPrunedMeasurements().get(i));
     }
     buf.append(LINE_SEPARATOR);

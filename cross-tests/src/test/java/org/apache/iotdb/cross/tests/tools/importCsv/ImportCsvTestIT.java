@@ -198,7 +198,7 @@ public class ImportCsvTestIT extends AbstractScript {
   @Test
   public void testAligned() throws IOException, ClassNotFoundException {
     assertTrue(generateTestCSV(false, false, false, false, false));
-    String[] params = {"-f", CSV_FILE, "-aligned "};
+    String[] params = {"-f", CSV_FILE, "-aligned", "true"};
     testMethod(params, null);
     File file = new File(CSV_FILE);
     Class.forName(Config.JDBC_DRIVER_NAME);

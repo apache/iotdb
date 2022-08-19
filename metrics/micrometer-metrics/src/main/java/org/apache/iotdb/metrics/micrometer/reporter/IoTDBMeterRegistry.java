@@ -56,7 +56,7 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
             ioTDBReporterConfig.getPort(),
             ioTDBReporterConfig.getUsername(),
             ioTDBReporterConfig.getPassword(),
-            ioTDBReporterConfig.getMaxConnectionNumber());
+            3);
     IoTDBMetricsUtils.checkOrCreateStorageGroup(sessionPool);
   }
 

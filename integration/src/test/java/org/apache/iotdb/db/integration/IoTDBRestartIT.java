@@ -20,8 +20,12 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
@@ -62,7 +66,8 @@ public class IoTDBRestartIT {
   }
 
   @Test
-  public void testRestart() throws SQLException, IOException, StorageEngineException {
+  public void testRestart()
+      throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -111,7 +116,8 @@ public class IoTDBRestartIT {
   }
 
   @Test
-  public void testRestartDelete() throws SQLException, IOException, StorageEngineException {
+  public void testRestartDelete()
+      throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -401,7 +407,24 @@ public class IoTDBRestartIT {
       statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
     }
 
-    // mock exception during flush memtable
+    // mock exception
+    TsFileProcessor[] tsFileProcessors =
+        StorageEngine.getInstance()
+            .getProcessor(new PartialPath("root.turbine1"))
+            .getWorkSequenceTsFileProcessors()
+            .toArray(new TsFileProcessor[0]);
+    Assert.assertEquals(1, tsFileProcessors.length);
+    IMemTable memTable = tsFileProcessors[0].getWorkMemTable();
+    memTable.clear();
+    memTable.addTextDataSize(1);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("flush");
+    }
+
+    IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.NORMAL);
     EnvironmentUtils.restartDaemon();
 
     try (Connection connection =
@@ -420,7 +443,7 @@ public class IoTDBRestartIT {
           Assert.assertEquals("2.2", resultSet.getString(3));
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        Assert.assertEquals(0, cnt);
       }
     }
   }

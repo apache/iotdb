@@ -19,13 +19,12 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionMetricsManager;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -50,6 +49,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected String deviceId;
   private final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  private final boolean enableMetrics =
+      MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   // Each sub task has point count in current measurment, which is used to check size.
   // The index of the array corresponds to subTaskId.
@@ -72,8 +73,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public abstract void write(long timestamp, Object value, int subTaskId) throws IOException;
 
-  public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
-      throws IOException;
+  public abstract void write(long[] timestamps, Object values);
 
   public abstract void endFile() throws IOException;
 
@@ -150,9 +150,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
       throws IOException {
-    if (checkChunkSize(subTaskId)) {
+    if (measurementPointCountArray[subTaskId] % 10 == 0 && checkChunkSize(subTaskId)) {
       flushChunkToFileWriter(fileWriter, subTaskId);
-      CompactionMetricsRecorder.recordWriteInfo(
+      CompactionMetricsManager.recordWriteInfo(
           this instanceof CrossSpaceCompactionWriter
               ? CompactionType.CROSS_COMPACTION
               : CompactionType.INNER_UNSEQ_COMPACTION,

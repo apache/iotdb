@@ -44,7 +44,7 @@ IoTDB 为您提供了两种安装方式，您可以参考下面的建议，任�
 下载后，您可使用以下操作对 IoTDB 的压缩包进行解压：
 
 ```
-Shell > unzip iotdb-<version>.zip
+Shell > uzip iotdb-<version>.zip
 ```
 
 ### 使用源码编译
@@ -75,14 +75,13 @@ Shell > unzip iotdb-<version>.zip
 +- tools/      <-- system tools
 ```
 
-如果您想要编译项目中的某个模块，您可以在源码文件夹中使用`mvn clean package -pl {module.name} -am -DskipTests`命令进行编译。如果您需要的是带依赖的 jar 包，您可以在编译命令后面加上`-P get-jar-with-dependencies`参数。比如您想编译带依赖的 jdbc jar 包，您就可以使用以下命令进行编译：  
+如果您想要编译项目中的某个模块，您可以在源码文件夹中使用`mvn clean package -pl {module.name} -am -DskipTests`命令进行编译。如果您需要的是带依赖的 jar 包，您可以在编译命令后面加上`-P get-jar-with-dependencies`参数。比如您想编译带依赖的 jdbc jar 包，您就可以使用以下命令进行编译：
 
 ```shell
 > mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
 ```
 
 编译完成后就可以在`{module.name}/target`目录中找到需要的包了。
-
 
 ### 通过 Docker 安装 (Dockerfile)
 
@@ -154,7 +153,7 @@ $ /%IOTDB_HOME%/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
-            <version>0.14.0-SNAPSHOT</version>
+            <version>0.13.0-SNAPSHOT</version>
         </dependency>
 ```
 这里是一些使用 IoTDB-JDBC 连接 IoTDB 的示例：https://github.com/apache/iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb

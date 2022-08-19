@@ -24,14 +24,14 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>0.13.2-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <packaging>pom</packaging>
     <artifactId>iotdb-examples</artifactId>
     <name>IoTDB Examples</name>
     <properties>
-        <zookeeper.version>3.4.14</zookeeper.version>
+        <zookeeper.version>3.4.6</zookeeper.version>
     </properties>
     <modules>
         <module>kafka</module>

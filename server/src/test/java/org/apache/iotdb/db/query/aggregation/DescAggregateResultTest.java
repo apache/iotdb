@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -72,7 +73,7 @@ public class DescAggregateResultTest {
     maxTimeDescAggrResult.updateResultFromPageData(it);
     Assert.assertEquals(5L, maxTimeDescAggrResult.getResult());
     it.reset();
-    maxTimeDescAggrResult.updateResultFromPageData(it, 2, 5);
+    maxTimeDescAggrResult.updateResultFromPageData(it, QueryUtils.getPredicate(2, 5, false));
     Assert.assertEquals(5L, maxTimeDescAggrResult.getResult());
   }
 
@@ -109,7 +110,7 @@ public class DescAggregateResultTest {
     minTimeDescAggrResult.updateResultFromPageData(it);
     Assert.assertEquals(1L, minTimeDescAggrResult.getResult());
     it.reset();
-    minTimeDescAggrResult.updateResultFromPageData(it, 1, 3);
+    minTimeDescAggrResult.updateResultFromPageData(it, QueryUtils.getPredicate(1, 3, false));
     Assert.assertEquals(1L, minTimeDescAggrResult.getResult());
   }
 
@@ -147,7 +148,7 @@ public class DescAggregateResultTest {
     firstValueDescAggrResult.updateResultFromPageData(it);
     Assert.assertTrue((boolean) firstValueDescAggrResult.getResult());
     it.reset();
-    firstValueDescAggrResult.updateResultFromPageData(it, 1, 3);
+    firstValueDescAggrResult.updateResultFromPageData(it, QueryUtils.getPredicate(1, 3, false));
     Assert.assertTrue((boolean) firstValueDescAggrResult.getResult());
   }
 
@@ -184,7 +185,7 @@ public class DescAggregateResultTest {
     lastValueDescAggrResult.updateResultFromPageData(it);
     Assert.assertEquals("e", ((Binary) lastValueDescAggrResult.getResult()).getStringValue());
     it.reset();
-    lastValueDescAggrResult.updateResultFromPageData(it, 3, 5);
+    lastValueDescAggrResult.updateResultFromPageData(it, QueryUtils.getPredicate(3, 5, false));
     Assert.assertEquals("e", ((Binary) lastValueDescAggrResult.getResult()).getStringValue());
   }
 }

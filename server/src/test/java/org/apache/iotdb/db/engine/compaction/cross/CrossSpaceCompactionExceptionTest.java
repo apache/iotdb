@@ -18,22 +18,19 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.task.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -49,8 +46,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_SOURCE_FILES;
-import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_TARGET_FILES;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_TARGET_FILES;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
@@ -93,10 +90,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
-    ICompactionPerformer performer =
-        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
-    performer.perform();
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     compactionLogger.close();
     CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
@@ -167,10 +161,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
-    ICompactionPerformer performer =
-        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
-    performer.perform();
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     compactionLogger.close();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     CompactionExceptionHandler.handleException(
@@ -242,10 +233,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
-    ICompactionPerformer performer =
-        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
-    performer.perform();
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     for (TsFileResource resource : seqResources) {
       tsFileManager.getSequenceListByTimePartition(0).remove(resource);
@@ -327,10 +315,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
-    ICompactionPerformer performer =
-        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
-    performer.perform();
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     compactionLogger.close();
     for (int i = 0; i < seqResources.size(); i++) {
@@ -349,7 +334,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), false);
     }
-    CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
+    CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
     for (TsFileResource resource : seqResources) {
       tsFileManager.getSequenceListByTimePartition(0).remove(resource);
     }
@@ -444,10 +429,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
-    ICompactionPerformer performer =
-        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
-    performer.perform();
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     compactionLogger.close();
     for (int i = 0; i < seqResources.size(); i++) {
@@ -466,7 +448,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), false);
     }
-    CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
+    CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
 
     CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,

@@ -128,6 +128,7 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          Collections.emptyList(),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           dataSize - i - 1,
@@ -136,6 +137,7 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          Collections.emptyList(),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
@@ -177,6 +179,7 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          Collections.emptyList(),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
@@ -186,6 +189,7 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          Collections.emptyList(),
           schemaList,
           i,
           new Object[] {i, i});
@@ -197,6 +201,7 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.writeAlignedRow(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          Collections.emptyList(),
           schemaList,
           i,
           new Object[] {i, i});
@@ -204,6 +209,7 @@ public class PrimitiveMemTableTest {
     Assert.assertEquals(5, memTable.getSeriesNumber());
     memTable.writeAlignedRow(
         DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+        Collections.emptyList(),
         Collections.singletonList(
             new MeasurementSchema(measurementId[2], TSDataType.INT32, TSEncoding.PLAIN)),
         0,
@@ -225,6 +231,7 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          Collections.emptyList(),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           dataSize - i - 1,
@@ -233,6 +240,7 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          Collections.emptyList(),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
@@ -279,6 +287,7 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.writeAlignedRow(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          Collections.emptyList(),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           dataSize - i - 1,
@@ -287,6 +296,7 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.writeAlignedRow(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          Collections.emptyList(),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
@@ -332,6 +342,7 @@ public class PrimitiveMemTableTest {
     for (TimeValuePair aRet : ret) {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          Collections.emptyList(),
           Collections.singletonList(new MeasurementSchema(sensorId, dataType, encoding)),
           aRet.getTimestamp(),
           new Object[] {aRet.getValue().getValue()});

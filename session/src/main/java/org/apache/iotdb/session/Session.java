@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -38,16 +39,19 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
+import org.apache.iotdb.service.rpc.thrift.TSOperationSyncWriteReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetUsingTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
+import org.apache.iotdb.session.util.SystemStatus;
 import org.apache.iotdb.session.util.ThreadUtils;
 import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -121,14 +125,15 @@ public class Session {
   protected int thriftDefaultBufferSize;
   protected int thriftMaxFrameSize;
 
-  protected TEndPoint defaultEndPoint;
+  protected EndPoint defaultEndPoint;
   protected SessionConnection defaultSessionConnection;
   private boolean isClosed = true;
 
   // Cluster version cache
   protected boolean enableCacheLeader;
-  protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
-  protected volatile Map<TEndPoint, SessionConnection> endPointToSessionConnection;
+  protected SessionConnection metaSessionConnection;
+  protected volatile Map<String, EndPoint> deviceIdToEndpoint;
+  protected volatile Map<EndPoint, SessionConnection> endPointToSessionConnection;
 
   protected boolean enableQueryRedirection = false;
 
@@ -274,7 +279,7 @@ public class Session {
       int thriftMaxFrameSize,
       boolean enableCacheLeader,
       Version version) {
-    this.defaultEndPoint = new TEndPoint(host, rpcPort);
+    this.defaultEndPoint = new EndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -384,6 +389,7 @@ public class Session {
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     defaultSessionConnection = constructSessionConnection(this, defaultEndPoint, zoneId);
     defaultSessionConnection.setEnableRedirect(enableQueryRedirection);
+    metaSessionConnection = defaultSessionConnection;
     isClosed = false;
     if (enableCacheLeader || enableQueryRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
@@ -410,11 +416,15 @@ public class Session {
   }
 
   public SessionConnection constructSessionConnection(
-      Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
+      Session session, EndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
       return new SessionConnection(session, zoneId);
     }
     return new SessionConnection(session, endpoint, zoneId);
+  }
+
+  public SystemStatus getSystemStatus() throws IoTDBConnectionException {
+    return defaultSessionConnection.getSystemStatus();
   }
 
   public synchronized String getTimeZone() {
@@ -428,17 +438,29 @@ public class Session {
 
   public void setStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.setStorageGroup(storageGroup);
+    try {
+      metaSessionConnection.setStorageGroup(storageGroup);
+    } catch (RedirectException e) {
+      handleMetaRedirection(storageGroup, e);
+    }
   }
 
   public void deleteStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.deleteStorageGroups(Collections.singletonList(storageGroup));
+    try {
+      metaSessionConnection.deleteStorageGroups(Collections.singletonList(storageGroup));
+    } catch (RedirectException e) {
+      handleMetaRedirection(storageGroup, e);
+    }
   }
 
   public void deleteStorageGroups(List<String> storageGroups)
       throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.deleteStorageGroups(storageGroups);
+    try {
+      metaSessionConnection.deleteStorageGroups(storageGroups);
+    } catch (RedirectException e) {
+      handleMetaRedirection(storageGroups.toString(), e);
+    }
   }
 
   public void createTimeseries(
@@ -496,37 +518,7 @@ public class Session {
       throws IoTDBConnectionException, StatementExecutionException {
     TSCreateAlignedTimeseriesReq request =
         getTSCreateAlignedTimeseriesReq(
-            deviceId,
-            measurements,
-            dataTypes,
-            encodings,
-            compressors,
-            measurementAliasList,
-            null,
-            null);
-    defaultSessionConnection.createAlignedTimeseries(request);
-  }
-
-  public void createAlignedTimeseries(
-      String deviceId,
-      List<String> measurements,
-      List<TSDataType> dataTypes,
-      List<TSEncoding> encodings,
-      List<CompressionType> compressors,
-      List<String> measurementAliasList,
-      List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList)
-      throws IoTDBConnectionException, StatementExecutionException {
-    TSCreateAlignedTimeseriesReq request =
-        getTSCreateAlignedTimeseriesReq(
-            deviceId,
-            measurements,
-            dataTypes,
-            encodings,
-            compressors,
-            measurementAliasList,
-            tagsList,
-            attributesList);
+            deviceId, measurements, dataTypes, encodings, compressors, measurementAliasList);
     defaultSessionConnection.createAlignedTimeseries(request);
   }
 
@@ -536,9 +528,7 @@ public class Session {
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       List<CompressionType> compressors,
-      List<String> measurementAliasList,
-      List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList) {
+      List<String> measurementAliasList) {
     TSCreateAlignedTimeseriesReq request = new TSCreateAlignedTimeseriesReq();
     request.setPrefixPath(prefixPath);
     request.setMeasurements(measurements);
@@ -547,8 +537,6 @@ public class Session {
     request.setCompressors(
         compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
     request.setMeasurementAlias(measurementAliasList);
-    request.setTagsList(tagsList);
-    request.setAttributesList(attributesList);
     return request;
   }
 
@@ -706,18 +694,17 @@ public class Session {
    * @throws StatementExecutionException statement is not right
    * @throws IoTDBConnectionException the network is not good
    */
-  public SessionDataSet executeRawDataQuery(
-      List<String> paths, long startTime, long endTime, long timeOut)
+  public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime, timeOut);
+      return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
         logger.debug("redirect query {} to {}", paths, e.getEndPoint());
         // retry
         try {
-          return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime, timeOut);
+          return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime);
         } catch (RedirectException redirectException) {
           logger.error("Redirect twice", redirectException);
           throw new StatementExecutionException("Redirect twice, please try again.");
@@ -735,16 +722,16 @@ public class Session {
    * @param LastTime get the last data, whose timestamp is greater than or equal LastTime e.g.
    *     1621326244168
    */
-  public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
+  public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeLastDataQuery(paths, LastTime, timeOut);
+      return defaultSessionConnection.executeLastDataQuery(paths, LastTime);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
         // retry
         try {
-          return defaultSessionConnection.executeLastDataQuery(paths, LastTime, timeOut);
+          return defaultSessionConnection.executeLastDataQuery(paths, LastTime);
         } catch (RedirectException redirectException) {
           logger.error("redirect twice", redirectException);
           throw new StatementExecutionException("redirect twice, please try again.");
@@ -763,7 +750,7 @@ public class Session {
   public SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
-    return executeLastDataQuery(paths, time, 60000);
+    return executeLastDataQuery(paths, time);
   }
 
   /**
@@ -780,8 +767,20 @@ public class Session {
       List<TSDataType> types,
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request =
-        genTSInsertRecordReq(deviceId, time, measurements, types, Arrays.asList(values), false);
+    TSInsertRecordReq request;
+    try {
+      request =
+          filterAndGenTSInsertRecordReq(
+              deviceId, time, measurements, types, Arrays.asList(values), false);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
+          deviceId,
+          time,
+          measurements.toString());
+      return;
+    }
+
     insertRecord(deviceId, request);
   }
 
@@ -804,7 +803,7 @@ public class Session {
   }
 
   private SessionConnection getSessionConnection(String deviceId) {
-    TEndPoint endPoint;
+    EndPoint endPoint;
     if (enableCacheLeader
         && !deviceIdToEndpoint.isEmpty()
         && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
@@ -822,11 +821,11 @@ public class Session {
   private void removeBrokenSessionConnection(SessionConnection sessionConnection) {
     // remove the cached broken leader session
     if (enableCacheLeader) {
-      TEndPoint endPoint = null;
-      for (Iterator<Entry<TEndPoint, SessionConnection>> it =
+      EndPoint endPoint = null;
+      for (Iterator<Entry<EndPoint, SessionConnection>> it =
               endPointToSessionConnection.entrySet().iterator();
           it.hasNext(); ) {
-        Map.Entry<TEndPoint, SessionConnection> entry = it.next();
+        Map.Entry<EndPoint, SessionConnection> entry = it.next();
         if (entry.getValue().equals(sessionConnection)) {
           endPoint = entry.getKey();
           it.remove();
@@ -834,9 +833,9 @@ public class Session {
         }
       }
 
-      for (Iterator<Entry<String, TEndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
+      for (Iterator<Entry<String, EndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
           it.hasNext(); ) {
-        Map.Entry<String, TEndPoint> entry = it.next();
+        Map.Entry<String, EndPoint> entry = it.next();
         if (entry.getValue().equals(endPoint)) {
           it.remove();
         }
@@ -844,7 +843,30 @@ public class Session {
     }
   }
 
-  private void handleRedirection(String deviceId, TEndPoint endpoint)
+  private void handleMetaRedirection(String storageGroup, RedirectException e)
+      throws IoTDBConnectionException {
+    if (enableCacheLeader) {
+      logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
+      AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
+      SessionConnection connection =
+          endPointToSessionConnection.computeIfAbsent(
+              e.getEndPoint(),
+              k -> {
+                try {
+                  return constructSessionConnection(this, e.getEndPoint(), zoneId);
+                } catch (IoTDBConnectionException ex) {
+                  exceptionReference.set(ex);
+                  return null;
+                }
+              });
+      if (connection == null) {
+        throw new IoTDBConnectionException(exceptionReference.get());
+      }
+      metaSessionConnection = connection;
+    }
+  }
+
+  private void handleRedirection(String deviceId, EndPoint endpoint)
       throws IoTDBConnectionException {
     if (enableCacheLeader) {
       AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
@@ -867,7 +889,7 @@ public class Session {
     }
   }
 
-  private void handleQueryRedirection(TEndPoint endPoint) throws IoTDBConnectionException {
+  private void handleQueryRedirection(EndPoint endPoint) throws IoTDBConnectionException {
     if (enableQueryRedirection) {
       AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
       SessionConnection connection =
@@ -906,8 +928,18 @@ public class Session {
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
     // not vector by default
-    TSInsertRecordReq request =
-        genTSInsertRecordReq(deviceId, time, measurements, types, values, false);
+    TSInsertRecordReq request;
+    try {
+      request = filterAndGenTSInsertRecordReq(deviceId, time, measurements, types, values, false);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
+          deviceId,
+          time,
+          measurements.toString());
+      return;
+    }
+
     insertRecord(deviceId, request);
   }
 
@@ -925,9 +957,39 @@ public class Session {
       List<TSDataType> types,
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request =
-        genTSInsertRecordReq(deviceId, time, measurements, types, values, true);
+    TSInsertRecordReq request;
+    try {
+      request = filterAndGenTSInsertRecordReq(deviceId, time, measurements, types, values, true);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
+          deviceId,
+          time,
+          measurements.toString());
+      return;
+    }
     insertRecord(deviceId, request);
+  }
+
+  private TSInsertRecordReq filterAndGenTSInsertRecordReq(
+      String prefixPath,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<Object> values,
+      boolean isAligned)
+      throws IoTDBConnectionException {
+    if (hasNull(values)) {
+      measurements = new ArrayList<>(measurements);
+      values = new ArrayList<>(values);
+      types = new ArrayList<>(types);
+      boolean isAllValuesNull =
+          filterNullValueAndMeasurement(prefixPath, measurements, types, values);
+      if (isAllValuesNull) {
+        throw new NoValidValueException("All inserted data is null.");
+      }
+    }
+    return genTSInsertRecordReq(prefixPath, time, measurements, types, values, isAligned);
   }
 
   private TSInsertRecordReq genTSInsertRecordReq(
@@ -958,8 +1020,17 @@ public class Session {
   public void insertRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertStringRecordReq request =
-        genTSInsertStringRecordReq(deviceId, time, measurements, values, false);
+    TSInsertStringRecordReq request;
+    try {
+      request = filterAndGenTSInsertStringRecordReq(deviceId, time, measurements, values, false);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
+          deviceId,
+          time,
+          measurements.toString());
+      return;
+    }
     insertRecord(deviceId, request);
   }
 
@@ -973,9 +1044,36 @@ public class Session {
   public void insertAlignedRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertStringRecordReq request =
-        genTSInsertStringRecordReq(deviceId, time, measurements, values, true);
+    TSInsertStringRecordReq request;
+    try {
+      request = filterAndGenTSInsertStringRecordReq(deviceId, time, measurements, values, true);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
+          deviceId,
+          time,
+          measurements.toString());
+      return;
+    }
     insertRecord(deviceId, request);
+  }
+
+  private TSInsertStringRecordReq filterAndGenTSInsertStringRecordReq(
+      String prefixPath,
+      long time,
+      List<String> measurements,
+      List<String> values,
+      boolean isAligned) {
+    if (hasNull(values)) {
+      measurements = new ArrayList<>(measurements);
+      values = new ArrayList<>(values);
+      boolean isAllValueNull =
+          filterNullValueAndMeasurementWithStringType(values, prefixPath, measurements);
+      if (isAllValueNull) {
+        throw new NoValidValueException("All inserted data is null.");
+      }
+    }
+    return genTSInsertStringRecordReq(prefixPath, time, measurements, values, isAligned);
   }
 
   private TSInsertStringRecordReq genTSInsertStringRecordReq(
@@ -1016,17 +1114,232 @@ public class Session {
     if (enableCacheLeader) {
       insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, false);
     } else {
-      TSInsertStringRecordsReq request =
-          genTSInsertStringRecordsReq(deviceIds, times, measurementsList, valuesList, false);
+      TSInsertStringRecordsReq request;
+      try {
+        request =
+            filterAndGenTSInsertStringRecordsReq(
+                deviceIds, times, measurementsList, valuesList, false);
+      } catch (NoValidValueException e) {
+        logger.warn(
+            "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]",
+            deviceIds.toString(),
+            times.toString(),
+            measurementsList.toString());
+        return;
+      }
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
           handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
         }
       }
     }
+  }
+
+  /**
+   * When the value is null,filter this,don't use this measurement.
+   *
+   * @param times
+   * @param measurementsList
+   * @param valuesList
+   * @param typesList
+   */
+  private void filterNullValueAndMeasurement(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<Object>> valuesList,
+      List<List<TSDataType>> typesList) {
+    for (int i = valuesList.size() - 1; i >= 0; i--) {
+      List<Object> values = valuesList.get(i);
+      List<String> measurements = measurementsList.get(i);
+      List<TSDataType> types = typesList.get(i);
+      boolean isAllValuesNull =
+          filterNullValueAndMeasurement(deviceIds.get(i), measurements, types, values);
+      if (isAllValuesNull) {
+        valuesList.remove(i);
+        measurementsList.remove(i);
+        deviceIds.remove(i);
+        times.remove(i);
+        typesList.remove(i);
+      }
+    }
+    if (valuesList.size() == 0) {
+      throw new NoValidValueException("All inserted data is null.");
+    }
+  }
+
+  /**
+   * Filter the null value of list。
+   *
+   * @param deviceId
+   * @param times
+   * @param measurementsList
+   * @param typesList
+   * @param valuesList
+   */
+  private void filterNullValueAndMeasurementOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList) {
+    for (int i = valuesList.size() - 1; i >= 0; i--) {
+      List<Object> values = valuesList.get(i);
+      List<String> measurements = measurementsList.get(i);
+      List<TSDataType> types = typesList.get(i);
+      boolean isAllValuesNull =
+          filterNullValueAndMeasurement(deviceId, measurements, types, values);
+      if (isAllValuesNull) {
+        valuesList.remove(i);
+        measurementsList.remove(i);
+        typesList.remove(i);
+        times.remove(i);
+      }
+    }
+    if (valuesList.size() == 0) {
+      throw new NoValidValueException("All inserted data is null.");
+    }
+  }
+
+  /**
+   * Filter the null value of list。
+   *
+   * @param times
+   * @param deviceId
+   * @param measurementsList
+   * @param valuesList
+   */
+  private void filterNullValueAndMeasurementWithStringTypeOfOneDevice(
+      List<Long> times,
+      String deviceId,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList) {
+    for (int i = valuesList.size() - 1; i >= 0; i--) {
+      List<String> values = valuesList.get(i);
+      List<String> measurements = measurementsList.get(i);
+      boolean isAllValuesNull =
+          filterNullValueAndMeasurementWithStringType(values, deviceId, measurements);
+      if (isAllValuesNull) {
+        valuesList.remove(i);
+        measurementsList.remove(i);
+        times.remove(i);
+      }
+    }
+    if (valuesList.size() == 0) {
+      throw new NoValidValueException("All inserted data is null.");
+    }
+  }
+
+  /**
+   * Filter the null object of list。
+   *
+   * @param deviceId
+   * @param measurementsList
+   * @param types
+   * @param valuesList
+   * @return true:all value is null;false:not all null value is null.
+   */
+  private boolean filterNullValueAndMeasurement(
+      String deviceId,
+      List<String> measurementsList,
+      List<TSDataType> types,
+      List<Object> valuesList) {
+    Map<String, Object> nullMap = new HashMap<>();
+    for (int i = valuesList.size() - 1; i >= 0; i--) {
+      if (valuesList.get(i) == null) {
+        nullMap.put(measurementsList.get(i), valuesList.get(i));
+        valuesList.remove(i);
+        measurementsList.remove(i);
+        types.remove(i);
+      }
+    }
+    if (valuesList.size() == 0) {
+      logger.info("All values of the {} are null,null values are {}", deviceId, nullMap.toString());
+      return true;
+    } else {
+      logger.info("Some values of {} are null,null values are {}", deviceId, nullMap.toString());
+    }
+    return false;
+  }
+
+  /**
+   * Filter the null object of list。
+   *
+   * @param prefixPaths devices path。
+   * @param times
+   * @param measurementsList
+   * @param valuesList
+   * @return true:all values of valuesList are null;false:Not all values of valuesList are null.
+   */
+  private void filterNullValueAndMeasurementWithStringType(
+      List<String> prefixPaths,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList) {
+    for (int i = valuesList.size() - 1; i >= 0; i--) {
+      List<String> values = valuesList.get(i);
+      List<String> measurements = measurementsList.get(i);
+      boolean isAllValueNull =
+          filterNullValueAndMeasurementWithStringType(values, prefixPaths.get(i), measurements);
+      if (isAllValueNull) {
+        valuesList.remove(i);
+        measurementsList.remove(i);
+        times.remove(i);
+        prefixPaths.remove(i);
+      }
+    }
+    if (valuesList.size() == 0) {
+      throw new NoValidValueException("All inserted data is null.");
+    }
+  }
+
+  /**
+   * When the value is null,filter this,don't use this measurement.
+   *
+   * @param valuesList
+   * @param measurementsList
+   * @return true:all value is null;false:not all null value is null.
+   */
+  private boolean filterNullValueAndMeasurementWithStringType(
+      List<String> valuesList, String deviceId, List<String> measurementsList) {
+    Map<String, Object> nullMap = new HashMap<>();
+    for (int i = valuesList.size() - 1; i >= 0; i--) {
+      if (valuesList.get(i) == null) {
+        nullMap.put(measurementsList.get(i), valuesList.get(i));
+        valuesList.remove(i);
+        measurementsList.remove(i);
+      }
+    }
+    if (valuesList.size() == 0) {
+      logger.info("All values of the {} are null,null values are {}", deviceId, nullMap.toString());
+      return true;
+    } else {
+      logger.info("Some values of {} are null,null values are {}", deviceId, nullMap.toString());
+    }
+    return false;
+  }
+
+  private boolean hasNull(List valuesList) {
+    boolean haveNull = false;
+    for (int i1 = 0; i1 < valuesList.size(); i1++) {
+      Object o = valuesList.get(i1);
+      if (o instanceof List) {
+        List o1 = (List) o;
+        if (hasNull(o1)) {
+          haveNull = true;
+          break;
+        }
+      } else {
+        if (o == null) {
+          haveNull = true;
+          break;
+        }
+      }
+    }
+    return haveNull;
   }
 
   /**
@@ -1053,13 +1366,25 @@ public class Session {
     if (enableCacheLeader) {
       insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, true);
     } else {
-      TSInsertStringRecordsReq request =
-          genTSInsertStringRecordsReq(deviceIds, times, measurementsList, valuesList, true);
+      TSInsertStringRecordsReq request;
+      try {
+        request =
+            filterAndGenTSInsertStringRecordsReq(
+                deviceIds, times, measurementsList, valuesList, true);
+      } catch (NoValidValueException e) {
+        logger.warn(
+            "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]",
+            deviceIds.toString(),
+            times.toString(),
+            measurementsList.toString());
+        return;
+      }
+
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
           handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
         }
       }
@@ -1079,11 +1404,75 @@ public class Session {
       TSInsertStringRecordsReq request =
           recordsGroup.computeIfAbsent(connection, k -> new TSInsertStringRecordsReq());
       request.setIsAligned(isAligned);
-      updateTSInsertStringRecordsReq(
-          request, deviceIds.get(i), times.get(i), measurementsList.get(i), valuesList.get(i));
+      try {
+        filterAndUpdateTSInsertStringRecordsReq(
+            request, deviceIds.get(i), times.get(i), measurementsList.get(i), valuesList.get(i));
+      } catch (NoValidValueException e) {
+        logger.warn(
+            "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
+            deviceIds.get(i),
+            times.get(i),
+            measurementsList.get(i).toString());
+        continue;
+      }
     }
 
     insertByGroup(recordsGroup, SessionConnection::insertRecords);
+  }
+
+  private TSInsertStringRecordsReq filterAndGenTSInsertStringRecordsReq(
+      List<String> prefixPaths,
+      List<Long> time,
+      List<List<String>> measurements,
+      List<List<String>> values,
+      boolean isAligned) {
+    if (hasNull(values)) {
+      values = changeToArrayListWithStringType(values);
+      measurements = changeToArrayListWithStringType(measurements);
+      prefixPaths = new ArrayList<>(prefixPaths);
+      time = new ArrayList<>(time);
+      filterNullValueAndMeasurementWithStringType(prefixPaths, time, measurements, values);
+    }
+    return genTSInsertStringRecordsReq(prefixPaths, time, measurements, values, isAligned);
+  }
+
+  private List<List<String>> changeToArrayListWithStringType(List<List<String>> values) {
+    if (!(values instanceof ArrayList)) {
+      values = new ArrayList<>(values);
+    }
+    for (int i = 0; i < values.size(); i++) {
+      List<String> currentValue = values.get(i);
+      if (!(currentValue instanceof ArrayList)) {
+        values.set(i, new ArrayList<>(currentValue));
+      }
+    }
+    return values;
+  }
+
+  private List<List<Object>> changeToArrayList(List<List<Object>> values) {
+    if (!(values instanceof ArrayList)) {
+      values = new ArrayList<>(values);
+    }
+    for (int i = 0; i < values.size(); i++) {
+      List<Object> currentValue = values.get(i);
+      if (!(currentValue instanceof ArrayList)) {
+        values.set(i, new ArrayList<>(currentValue));
+      }
+    }
+    return values;
+  }
+
+  private List<List<TSDataType>> changeToArrayListWithTSDataType(List<List<TSDataType>> values) {
+    if (!(values instanceof ArrayList)) {
+      values = new ArrayList<>(values);
+    }
+    for (int i = 0; i < values.size(); i++) {
+      List<TSDataType> currentValue = values.get(i);
+      if (!(currentValue instanceof ArrayList)) {
+        values.set(i, new ArrayList<>(currentValue));
+      }
+    }
+    return values;
   }
 
   private TSInsertStringRecordsReq genTSInsertStringRecordsReq(
@@ -1093,13 +1482,30 @@ public class Session {
       List<List<String>> values,
       boolean isAligned) {
     TSInsertStringRecordsReq request = new TSInsertStringRecordsReq();
-
     request.setPrefixPaths(prefixPaths);
     request.setTimestamps(time);
     request.setMeasurementsList(measurements);
     request.setValuesList(values);
     request.setIsAligned(isAligned);
     return request;
+  }
+
+  private void filterAndUpdateTSInsertStringRecordsReq(
+      TSInsertStringRecordsReq request,
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<String> values) {
+    if (hasNull(values)) {
+      measurements = new ArrayList<>(measurements);
+      values = new ArrayList<>(values);
+      boolean isAllValueNull =
+          filterNullValueAndMeasurementWithStringType(values, deviceId, measurements);
+      if (isAllValueNull) {
+        throw new NoValidValueException("All inserted data is null.");
+      }
+    }
+    updateTSInsertStringRecordsReq(request, deviceId, time, measurements, values);
   }
 
   private void updateTSInsertStringRecordsReq(
@@ -1139,13 +1545,24 @@ public class Session {
       insertRecordsWithLeaderCache(
           deviceIds, times, measurementsList, typesList, valuesList, false);
     } else {
-      TSInsertRecordsReq request =
-          genTSInsertRecordsReq(deviceIds, times, measurementsList, typesList, valuesList, false);
+      TSInsertRecordsReq request;
+      try {
+        request =
+            filterAndGenTSInsertRecordsReq(
+                deviceIds, times, measurementsList, typesList, valuesList, false);
+      } catch (NoValidValueException e) {
+        logger.warn(
+            "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]",
+            deviceIds.toString(),
+            times.toString(),
+            measurementsList.toString());
+        return;
+      }
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
           handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
         }
       }
@@ -1177,13 +1594,24 @@ public class Session {
     if (enableCacheLeader) {
       insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList, true);
     } else {
-      TSInsertRecordsReq request =
-          genTSInsertRecordsReq(deviceIds, times, measurementsList, typesList, valuesList, true);
+      TSInsertRecordsReq request;
+      try {
+        request =
+            filterAndGenTSInsertRecordsReq(
+                deviceIds, times, measurementsList, typesList, valuesList, true);
+      } catch (NoValidValueException e) {
+        logger.warn(
+            "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]",
+            deviceIds.toString(),
+            times.toString(),
+            measurementsList.toString());
+        return;
+      }
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
           handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
         }
       }
@@ -1232,9 +1660,19 @@ public class Session {
       throw new IllegalArgumentException(
           "times, measurementsList and valuesList's size should be equal");
     }
-    TSInsertRecordsOfOneDeviceReq request =
-        genTSInsertRecordsOfOneDeviceReq(
-            deviceId, times, measurementsList, typesList, valuesList, haveSorted, false);
+    TSInsertRecordsOfOneDeviceReq request;
+    try {
+      request =
+          filterAndGenTSInsertRecordsOfOneDeviceReq(
+              deviceId, times, measurementsList, typesList, valuesList, haveSorted, false);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]",
+          deviceId,
+          times.toString(),
+          measurementsList.toString());
+      return;
+    }
     try {
       getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
     } catch (RedirectException e) {
@@ -1264,9 +1702,19 @@ public class Session {
       throw new IllegalArgumentException(
           "times, measurementsList and valuesList's size should be equal");
     }
-    TSInsertStringRecordsOfOneDeviceReq req =
-        genTSInsertStringRecordsOfOneDeviceReq(
-            deviceId, times, measurementsList, valuesList, haveSorted, false);
+    TSInsertStringRecordsOfOneDeviceReq req;
+    try {
+      req =
+          filterAndGenTSInsertStringRecordsOfOneDeviceReq(
+              deviceId, times, measurementsList, valuesList, haveSorted, false);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]",
+          deviceId,
+          times.toString(),
+          measurementsList.toString());
+      return;
+    }
     try {
       getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
     } catch (RedirectException e) {
@@ -1334,9 +1782,19 @@ public class Session {
       throw new IllegalArgumentException(
           "times, subMeasurementsList and valuesList's size should be equal");
     }
-    TSInsertRecordsOfOneDeviceReq request =
-        genTSInsertRecordsOfOneDeviceReq(
-            deviceId, times, measurementsList, typesList, valuesList, haveSorted, true);
+    TSInsertRecordsOfOneDeviceReq request;
+    try {
+      request =
+          filterAndGenTSInsertRecordsOfOneDeviceReq(
+              deviceId, times, measurementsList, typesList, valuesList, haveSorted, true);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]",
+          deviceId,
+          times.toString(),
+          measurementsList.toString());
+      return;
+    }
     try {
       getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
     } catch (RedirectException e) {
@@ -1366,9 +1824,19 @@ public class Session {
       throw new IllegalArgumentException(
           "times, measurementsList and valuesList's size should be equal");
     }
-    TSInsertStringRecordsOfOneDeviceReq req =
-        genTSInsertStringRecordsOfOneDeviceReq(
-            deviceId, times, measurementsList, valuesList, haveSorted, true);
+    TSInsertStringRecordsOfOneDeviceReq req;
+    try {
+      req =
+          filterAndGenTSInsertStringRecordsOfOneDeviceReq(
+              deviceId, times, measurementsList, valuesList, haveSorted, true);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]",
+          deviceId,
+          times.toString(),
+          measurementsList.toString());
+      return;
+    }
     try {
       getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
     } catch (RedirectException e) {
@@ -1395,6 +1863,27 @@ public class Session {
     insertAlignedStringRecordsOfOneDevice(deviceId, times, measurementsList, valuesList, false);
   }
 
+  private TSInsertRecordsOfOneDeviceReq filterAndGenTSInsertRecordsOfOneDeviceReq(
+      String prefixPath,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean haveSorted,
+      boolean isAligned)
+      throws IoTDBConnectionException, BatchExecutionException {
+    if (hasNull(valuesList)) {
+      measurementsList = changeToArrayListWithStringType(measurementsList);
+      valuesList = changeToArrayList(valuesList);
+      typesList = changeToArrayListWithTSDataType(typesList);
+      times = new ArrayList<>(times);
+      filterNullValueAndMeasurementOfOneDevice(
+          prefixPath, times, measurementsList, typesList, valuesList);
+    }
+    return genTSInsertRecordsOfOneDeviceReq(
+        prefixPath, times, measurementsList, typesList, valuesList, haveSorted, isAligned);
+  }
+
   private TSInsertRecordsOfOneDeviceReq genTSInsertRecordsOfOneDeviceReq(
       String prefixPath,
       List<Long> times,
@@ -1410,7 +1899,6 @@ public class Session {
       throw new IllegalArgumentException(
           "times, measurementsList and valuesList's size should be equal");
     }
-
     if (!checkSorted(times)) {
       // sort
       Integer[] index = new Integer[times.size()];
@@ -1435,6 +1923,24 @@ public class Session {
     request.setValuesList(buffersList);
     request.setIsAligned(isAligned);
     return request;
+  }
+
+  private TSInsertStringRecordsOfOneDeviceReq filterAndGenTSInsertStringRecordsOfOneDeviceReq(
+      String prefixPath,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted,
+      boolean isAligned) {
+    if (hasNull(valuesList)) {
+      measurementsList = changeToArrayListWithStringType(measurementsList);
+      valuesList = changeToArrayListWithStringType(valuesList);
+      times = new ArrayList<>(times);
+      filterNullValueAndMeasurementWithStringTypeOfOneDevice(
+          times, prefixPath, measurementsList, valuesList);
+    }
+    return genTSInsertStringRecordsOfOneDeviceReq(
+        prefixPath, times, measurementsList, valuesList, haveSorted, isAligned);
   }
 
   private TSInsertStringRecordsOfOneDeviceReq genTSInsertStringRecordsOfOneDeviceReq(
@@ -1512,15 +2018,44 @@ public class Session {
       TSInsertRecordsReq request =
           recordsGroup.computeIfAbsent(connection, k -> new TSInsertRecordsReq());
       request.setIsAligned(isAligned);
-      updateTSInsertRecordsReq(
-          request,
-          deviceIds.get(i),
-          times.get(i),
-          measurementsList.get(i),
-          typesList.get(i),
-          valuesList.get(i));
+      try {
+        filterAndUpdateTSInsertRecordsReq(
+            request,
+            deviceIds.get(i),
+            times.get(i),
+            measurementsList.get(i),
+            typesList.get(i),
+            valuesList.get(i));
+      } catch (NoValidValueException e) {
+        logger.warn(
+            "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements are [{}]",
+            deviceIds.get(i),
+            times.get(i),
+            measurementsList.get(i).toString());
+        continue;
+      }
     }
     insertByGroup(recordsGroup, SessionConnection::insertRecords);
+  }
+
+  private TSInsertRecordsReq filterAndGenTSInsertRecordsReq(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean isAligned)
+      throws IoTDBConnectionException {
+    if (hasNull(valuesList)) {
+      measurementsList = changeToArrayListWithStringType(measurementsList);
+      valuesList = changeToArrayList(valuesList);
+      deviceIds = new ArrayList<>(deviceIds);
+      times = new ArrayList<>(times);
+      typesList = changeToArrayListWithTSDataType(typesList);
+      filterNullValueAndMeasurement(deviceIds, times, measurementsList, valuesList, typesList);
+    }
+    return genTSInsertRecordsReq(
+        deviceIds, times, measurementsList, typesList, valuesList, isAligned);
   }
 
   private TSInsertRecordsReq genTSInsertRecordsReq(
@@ -1539,6 +2074,27 @@ public class Session {
     List<ByteBuffer> buffersList = objectValuesListToByteBufferList(valuesList, typesList);
     request.setValuesList(buffersList);
     return request;
+  }
+
+  private void filterAndUpdateTSInsertRecordsReq(
+      TSInsertRecordsReq request,
+      String deviceId,
+      Long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<Object> values)
+      throws IoTDBConnectionException {
+    if (hasNull(values)) {
+      measurements = new ArrayList<>(measurements);
+      types = new ArrayList<>(types);
+      values = new ArrayList<>(values);
+      boolean isAllValuesNull =
+          filterNullValueAndMeasurement(deviceId, measurements, types, values);
+      if (isAllValuesNull) {
+        throw new NoValidValueException("All inserted data is null.");
+      }
+    }
+    updateTSInsertRecordsReq(request, deviceId, time, measurements, types, values);
   }
 
   private void updateTSInsertRecordsReq(
@@ -1668,8 +2224,8 @@ public class Session {
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
           handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
         }
       }
@@ -1706,8 +2262,8 @@ public class Session {
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
           handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
         }
       }
@@ -1810,8 +2366,20 @@ public class Session {
       List<List<String>> measurementsList,
       List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertStringRecordsReq request =
-        genTSInsertStringRecordsReq(deviceIds, times, measurementsList, valuesList, false);
+    TSInsertStringRecordsReq request;
+    try {
+      request =
+          filterAndGenTSInsertStringRecordsReq(
+              deviceIds, times, measurementsList, valuesList, false);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]",
+          deviceIds.toString(),
+          times.toString(),
+          measurementsList.toString());
+      return;
+    }
+
     defaultSessionConnection.testInsertRecords(request);
   }
 
@@ -1826,8 +2394,20 @@ public class Session {
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordsReq request =
-        genTSInsertRecordsReq(deviceIds, times, measurementsList, typesList, valuesList, false);
+    TSInsertRecordsReq request;
+    try {
+      request =
+          filterAndGenTSInsertRecordsReq(
+              deviceIds, times, measurementsList, typesList, valuesList, false);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]",
+          deviceIds.toString(),
+          times.toString(),
+          measurementsList.toString());
+      return;
+    }
+
     defaultSessionConnection.testInsertRecords(request);
   }
 
@@ -1838,8 +2418,17 @@ public class Session {
   public void testInsertRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertStringRecordReq request =
-        genTSInsertStringRecordReq(deviceId, time, measurements, values, false);
+    TSInsertStringRecordReq request;
+    try {
+      request = filterAndGenTSInsertStringRecordReq(deviceId, time, measurements, values, false);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
+          deviceId,
+          time,
+          measurements.toString());
+      return;
+    }
     defaultSessionConnection.testInsertRecord(request);
   }
 
@@ -1854,8 +2443,17 @@ public class Session {
       List<TSDataType> types,
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request =
-        genTSInsertRecordReq(deviceId, time, measurements, types, values, false);
+    TSInsertRecordReq request;
+    try {
+      request = filterAndGenTSInsertRecordReq(deviceId, time, measurements, types, values, false);
+    } catch (NoValidValueException e) {
+      logger.warn(
+          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
+          deviceId,
+          time,
+          measurements.toString());
+      return;
+    }
     defaultSessionConnection.testInsertRecord(request);
   }
 
@@ -2098,12 +2696,12 @@ public class Session {
    * Create a template with flat measurements, not tree structured. Need to specify datatype,
    * encoding and compressor of each measurement, and alignment of these measurements at once.
    *
+   * @oaram templateName name of template to create
    * @param measurements flat measurements of the template, cannot contain character dot
    * @param dataTypes datatype of each measurement in the template
    * @param encodings encodings of each measurement in the template
    * @param compressors compression type of each measurement in the template
    * @param isAligned specify whether these flat measurements are aligned
-   * @oaram templateName name of template to create
    */
   public void createSchemaTemplate(
       String templateName,
@@ -2365,6 +2963,20 @@ public class Session {
     defaultSessionConnection.unsetSchemaTemplate(request);
   }
 
+  /** Set designated path using template, act like the sql-statement with same name and syntax. */
+  public void createTimeseriesOfTemplateOnPath(String path)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSSetUsingTemplateReq request = new TSSetUsingTemplateReq();
+    request.setDstPath(path);
+    defaultSessionConnection.setUsingTemplate(request);
+  }
+
+  /** Inverse of {@linkplain #createTimeseriesOfTemplateOnPath}, IMPLYING data deletion. */
+  public void deactivateTemplateOn(String templateName, String prefixPath)
+      throws IoTDBConnectionException, StatementExecutionException {
+    defaultSessionConnection.deactivateTemplate(templateName, prefixPath);
+  }
+
   public void dropSchemaTemplate(String templateName)
       throws IoTDBConnectionException, StatementExecutionException {
     TSDropSchemaTemplateReq request = getTSDropSchemaTemplateReq(templateName);
@@ -2458,6 +3070,24 @@ public class Session {
     }
   }
 
+  /** Transmit insert record request for operation sync */
+  public void operationSyncTransmit(ByteBuffer buffer)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try {
+      TSOperationSyncWriteReq request = genTSExecuteOperationSyncReq(buffer);
+      defaultSessionConnection.executeOperationSync(request);
+    } catch (RedirectException e) {
+      // ignored
+    }
+  }
+
+  private TSOperationSyncWriteReq genTSExecuteOperationSyncReq(ByteBuffer buffer) {
+    TSOperationSyncWriteReq request = new TSOperationSyncWriteReq();
+    request.setOperationSyncType((byte) 0);
+    request.setPhysicalPlan(buffer);
+    return request;
+  }
+
   public boolean isEnableQueryRedirection() {
     return enableQueryRedirection;
   }
@@ -2485,7 +3115,6 @@ public class Session {
     private int thriftMaxFrameSize = Config.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
     private Version version = Config.DEFAULT_VERSION;
-    private long timeOut = Config.DEFAULT_QUERY_TIME_OUT;
 
     private List<String> nodeUrls = null;
 
@@ -2541,11 +3170,6 @@ public class Session {
 
     public Builder version(Version version) {
       this.version = version;
-      return this;
-    }
-
-    public Builder timeOut(long timeOut) {
-      this.timeOut = timeOut;
       return this;
     }
 

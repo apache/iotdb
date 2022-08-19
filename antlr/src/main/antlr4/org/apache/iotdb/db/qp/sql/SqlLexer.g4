@@ -32,7 +32,7 @@ WS
 
 
 /**
- * 2. Keywords, new keywords should be added into IdentifierParser.g4
+ * 2. Keywords
  */
 
 // Common Keywords
@@ -117,16 +117,16 @@ CLEAR
     : C L E A R
     ;
 
-CLUSTER
-    : C L U S T E R
+COMPRESSION
+    : C O M P R E S S I O N
+    ;
+
+COMPRESSOR
+    : C O M P R E S S O R
     ;
 
 CONCAT
     : C O N C A T
-    ;
-
-CONFIGNODES
-    : C O N F I G N O D E S
     ;
 
 CONFIGURATION
@@ -157,13 +157,8 @@ CREATE
     : C R E A T E
     ;
 
-DATA
-    : D A T A
-    ;
-
-DATANODES
-
-    : D A T A N O D E S
+DATATYPE
+    : D A T A T Y P E
     ;
 
 DEBUG
@@ -196,6 +191,10 @@ DISABLE
 
 DROP
     : D R O P
+    ;
+
+ENCODING
+    : E N C O D I N G
     ;
 
 END
@@ -249,10 +248,6 @@ GRANT
 
 GROUP
     : G R O U P
-    ;
-
-HAVING
-    : H A V I N G
     ;
 
 INDEX
@@ -315,10 +310,6 @@ LOAD
     : L O A D
     ;
 
-LOCAL
-    : L O C A L
-    ;
-
 LOCK
     : L O C K
     ;
@@ -371,30 +362,6 @@ PATHS
     : P A T H S
     ;
 
-PIPE
-    : P I P E
-    ;
-
-PIPES
-    : P I P E S
-    ;
-
-PIPESERVER
-    : P I P E S E R V E R
-    ;
-
-PIPESINK
-    : P I P E S I N K
-    ;
-
-PIPESINKS
-    : P I P E S I N K S
-    ;
-
-PIPESINKTYPE
-    : P I P E S I N K T Y P E
-    ;
-
 PREVIOUS
     : P R E V I O U S
     ;
@@ -433,10 +400,6 @@ READONLY
 
 REGEXP
     : R E G E X P
-    ;
-
-REGIONS
-    : R E G I O N S
     ;
 
 REMOVE
@@ -495,6 +458,10 @@ SLIMIT
     : S L I M I T
     ;
 
+SNAPSHOT
+    : S N A P S H O T
+    ;
+
 SOFFSET
     : S O F F S E T
     ;
@@ -529,6 +496,10 @@ TEMPLATE
 
 TEMPLATES
     : T E M P L A T E S
+    ;
+
+DEACTIVATE
+    : D E A C T I V A T E
     ;
 
 TIME
@@ -632,17 +603,106 @@ WRITABLE
     ;
 
 
+// Data Type Keywords
+
+DATATYPE_VALUE
+    : BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
+    ;
+
+BOOLEAN
+    : B O O L E A N
+    ;
+
+DOUBLE
+    : D O U B L E
+    ;
+
+FLOAT
+    : F L O A T
+    ;
+
+INT32
+    : I N T '3' '2'
+    ;
+
+INT64
+    : I N T '6' '4'
+    ;
+
+TEXT
+    : T E X T
+    ;
+
+
+// Encoding Type Keywords
+
+ENCODING_VALUE
+    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF
+    ;
+
+DICTIONARY
+    : D I C T I O N A R Y
+    ;
+
+DIFF
+    : D I F F
+    ;
+
+GORILLA
+    : G O R I L L A
+    ;
+
+PLAIN
+    : P L A I N
+    ;
+
+REGULAR
+    : R E G U L A R
+    ;
+
+RLE
+    : R L E
+    ;
+
+TS_2DIFF
+    : T S '_' '2' D I F F
+    ;
+
+
+// Compressor Type Keywords
+
+COMPRESSOR_VALUE
+    : GZIP | LZ4 | SNAPPY | UNCOMPRESSED
+    ;
+
+GZIP
+    : G Z I P
+    ;
+
+LZ4
+    : L Z '4'
+    ;
+
+SNAPPY
+    : S N A P P Y
+    ;
+
+UNCOMPRESSED
+    : U N C O M P R E S S E D
+    ;
+
+
 // Privileges Keywords
 
 PRIVILEGE_VALUE
     : SET_STORAGE_GROUP | DELETE_STORAGE_GROUP
-    | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES | ALTER_TIMESERIES
+    | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES
     | CREATE_USER | DELETE_USER | MODIFY_PASSWORD | LIST_USER
     | GRANT_USER_PRIVILEGE | REVOKE_USER_PRIVILEGE | GRANT_USER_ROLE | REVOKE_USER_ROLE
     | CREATE_ROLE | DELETE_ROLE | LIST_ROLE | GRANT_ROLE_PRIVILEGE | REVOKE_ROLE_PRIVILEGE
     | CREATE_FUNCTION | DROP_FUNCTION | CREATE_TRIGGER | DROP_TRIGGER | START_TRIGGER | STOP_TRIGGER
     | CREATE_CONTINUOUS_QUERY | DROP_CONTINUOUS_QUERY
-    | APPLY_TEMPLATE | UPDATE_TEMPLATE | READ_TEMPLATE | READ_TEMPLATE_APPLICATION
+    | APPLY_TEMPLATE | UPDATE_TEMPLATE
     ;
 
 SET_STORAGE_GROUP
@@ -667,10 +727,6 @@ READ_TIMESERIES
 
 DELETE_TIMESERIES
     : D E L E T E '_' T I M E S E R I E S
-    ;
-
-ALTER_TIMESERIES
-    : A L T E R '_' T I M E S E R I E S
     ;
 
 CREATE_USER
@@ -757,32 +813,12 @@ DROP_CONTINUOUS_QUERY
     : D R O P '_' C O N T I N U O U S '_' Q U E R Y
     ;
 
-SCHEMA_REPLICATION_FACTOR
-    : S C H E M A '_' R E P L I C A T I O N '_' F A C T O R
-    ;
-
-DATA_REPLICATION_FACTOR
-    : D A T A '_' R E P L I C A T I O N '_' F A C T O R
-    ;
-
-TIME_PARTITION_INTERVAL
-    : T I M E '_' P A R T I T I O N '_' I N T E R V A L
-    ;
-
 APPLY_TEMPLATE
     : A P P L Y '_' T E M P L A T E
     ;
 
 UPDATE_TEMPLATE
     : U P D A T E '_' T E M P L A T E
-    ;
-
-READ_TEMPLATE
-    : R E A D '_' T E M P L A T E
-    ;
-
-READ_TEMPLATE_APPLICATION
-    : R E A D '_' T E M P L A T E '_' A P P L I C A T I O N
     ;
 
 /**
@@ -799,17 +835,12 @@ MOD : '%';
 
 // Operators. Comparation
 
-OPERATOR_DEQ : '==';
-OPERATOR_SEQ : '=';
+OPERATOR_EQ : '=' | '==';
 OPERATOR_GT : '>';
 OPERATOR_GTE : '>=';
 OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 OPERATOR_NEQ : '!=' | '<>';
-
-OPERATOR_BETWEEN : B E T W E E N;
-
-OPERATOR_IS : I S;
 
 OPERATOR_IN : I N;
 
@@ -914,15 +945,20 @@ NAN_LITERAL
     : N A N
     ;
 
+
 /**
- * 6. ID
+ * 6. Identifier
  */
 
 ID
     : NAME_CHAR+
     ;
 
-QUOTED_ID
+QUTOED_ID_IN_NODE_NAME
+    : BQUOTA_STRING_IN_NODE_NAME
+    ;
+
+QUTOED_ID
     : BQUOTA_STRING
     ;
 
@@ -945,17 +981,20 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | '""' | ~('"') )* '"'
+    : '"' ( '\\'. | ~('"'| '\\') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\'. | '\'\'' |~('\'') )* '\''
+    : '\'' ( '\\'. | ~('\''| '\\') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\' ~('`') | '``' | ~('`') )* '`'
+    : '`' ( '\\'. | ~('`'| '\\') )* '`'
     ;
 
+fragment BQUOTA_STRING_IN_NODE_NAME
+    : '`' ( '\\' ('`'|'\\'|'\''|'"') | ~('`'|'\\'|'.'|'\''|'"'))* '`'
+    ;
 
 // Characters and write it this way for case sensitivity
 

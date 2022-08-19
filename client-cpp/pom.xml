@@ -24,7 +24,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>0.13.2-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp</artifactId>
@@ -48,11 +48,6 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>client-cpp-tools-thrift</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
@@ -121,8 +116,8 @@
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
                 <iotdb.server.script>start-server.bat</iotdb.server.script>
-                <boost.include.dir/>
-                <boost.library.dir/>
+                <boost.include.dir />
+                <boost.library.dir />
             </properties>
         </profile>
         <profile>
@@ -165,12 +160,8 @@
                                 <configuration>
                                     <fileSets>
                                         <fileSet>
-                                            <sourceFile>../thrift/src/main/thrift/client.thrift</sourceFile>
-                                            <destinationFile>${project.build.directory}/thrift/client.thrift</destinationFile>
-                                        </fileSet>
-                                        <fileSet>
-                                            <sourceFile>../thrift-commons/src/main/thrift/common.thrift</sourceFile>
-                                            <destinationFile>${project.build.directory}/thrift/common.thrift</destinationFile>
+                                            <sourceFile>../thrift/src/main/thrift/rpc.thrift</sourceFile>
+                                            <destinationFile>${project.build.directory}/thrift/rpc.thrift</destinationFile>
                                         </fileSet>
                                     </fileSets>
                                 </configuration>

@@ -31,30 +31,30 @@ public class CompositeReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(CompositeReporter.class);
   private final List<Reporter> reporters = new ArrayList<>();
 
-  /** start all reporters */
+  /** Start all reporter */
   public boolean startAll() {
     boolean result = true;
     for (Reporter reporter : reporters) {
       if (!reporter.start()) {
-        LOGGER.warn("Failed to start {} reporter.", reporter.getReporterType());
+        LOGGER.warn("Failed to init {} reporter.", reporter.getReporterType());
         result = false;
       }
     }
     return result;
   }
 
-  /** start reporter by reporterType */
+  /** Start reporter by name values in jmx, prometheus, iotdb */
   public boolean start(ReporterType reporterType) {
     for (Reporter reporter : reporters) {
       if (reporter.getReporterType() == reporterType) {
         return reporter.start();
       }
     }
-    LOGGER.error("Failed to start {} reporter because not find.", reporterType);
+    LOGGER.error("Failed to find {} reporter.", reporterType);
     return false;
   }
 
-  /** stop all reporters */
+  /** Stop all reporter */
   public boolean stopAll() {
     boolean result = true;
     for (Reporter reporter : reporters) {
@@ -66,31 +66,30 @@ public class CompositeReporter {
     return result;
   }
 
-  /** stop reporter by reporterType */
+  /** Stop reporter by name, values in jmx, prometheus, iotdb */
   public boolean stop(ReporterType reporterType) {
     for (Reporter reporter : reporters) {
       if (reporter.getReporterType() == reporterType) {
         return reporter.stop();
       }
     }
-    LOGGER.error("Failed to stop {} reporter because not find.", reporterType.name());
-    return false;
+    LOGGER.error("Failed to stop reporter: {}", reporterType.name());
+    return true;
   }
 
-  /** add reporter */
+  /** Clear reporter */
+  public void clearReporter() {
+    reporters.clear();
+  }
+
+  /** Add reporter */
   public void addReporter(Reporter reporter) {
     for (Reporter originReporter : reporters) {
       if (originReporter.getReporterType() == reporter.getReporterType()) {
-        LOGGER.warn(
-            "Failed to load {} reporter because already existed", reporter.getReporterType());
+        LOGGER.warn("Already exist reporter, type is " + reporter.getReporterType());
         return;
       }
     }
     reporters.add(reporter);
-  }
-
-  /** clear reporters */
-  public void clearReporter() {
-    reporters.clear();
   }
 }

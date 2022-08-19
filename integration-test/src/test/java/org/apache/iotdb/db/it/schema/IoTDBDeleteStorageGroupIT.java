@@ -16,22 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.it.schema;
+package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterTest;
+import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -40,8 +39,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBDeleteStorageGroupIT {
 
   @Before
@@ -63,13 +61,14 @@ public class IoTDBDeleteStorageGroupIT {
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt03");
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt04");
       statement.execute("DELETE STORAGE GROUP root.ln.wf01.wt01");
-      ;
+      boolean hasResult = statement.execute("SHOW STORAGE GROUP");
+      assertTrue(hasResult);
       String[] expected =
           new String[] {"root.ln.wf01.wt02", "root.ln.wf01.wt03", "root.ln.wf01.wt04"};
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW STORAGE GROUP")) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -88,11 +87,13 @@ public class IoTDBDeleteStorageGroupIT {
       statement.execute("SET STORAGE GROUP TO root.ln1.wf02.wt03");
       statement.execute("SET STORAGE GROUP TO root.ln1.wf02.wt04");
       statement.execute("DELETE STORAGE GROUP root.ln1.wf01.wt01, root.ln1.wf02.wt03");
+      boolean hasResult = statement.execute("SHOW STORAGE GROUP");
+      assertTrue(hasResult);
       String[] expected = new String[] {"root.ln1.wf01.wt02", "root.ln1.wf02.wt04"};
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW STORAGE GROUP")) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -102,7 +103,7 @@ public class IoTDBDeleteStorageGroupIT {
     }
   }
 
-  @Test(expected = SQLException.class)
+  @Test(expected = IoTDBSQLException.class)
   public void deleteNonExistStorageGroup() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -120,11 +121,13 @@ public class IoTDBDeleteStorageGroupIT {
       statement.execute("SET STORAGE GROUP TO root.ln3.wf02.wt03");
       statement.execute("SET STORAGE GROUP TO root.ln3.wf02.wt04");
       statement.execute("DELETE STORAGE GROUP root.ln3.wf02.*");
+      boolean hasResult = statement.execute("SHOW STORAGE GROUP");
+      assertTrue(hasResult);
       String[] expected = new String[] {"root.ln3.wf01.wt01", "root.ln3.wf01.wt02"};
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW STORAGE GROUP")) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -143,8 +146,10 @@ public class IoTDBDeleteStorageGroupIT {
       statement.execute("SET STORAGE GROUP TO root.ln4.wf02.wt03");
       statement.execute("SET STORAGE GROUP TO root.ln4.wf02.wt04");
       statement.execute("DELETE STORAGE GROUP root.**");
+      boolean hasResult = statement.execute("SHOW STORAGE GROUP");
+      assertTrue(hasResult);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW STORAGE GROUP")) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -163,8 +168,10 @@ public class IoTDBDeleteStorageGroupIT {
       statement.execute("delete storage group root.sg1");
       statement.execute("insert into root.sg1.sdhkajhd(time,s1) values(1,1);");
       statement.execute("flush");
+      boolean hasResult = statement.execute("select count(*) from root.**");
+      assertTrue(hasResult);
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.**")) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           count++;
           assertEquals(1, resultSet.getLong("count(root.sg1.sdhkajhd.s1)"));

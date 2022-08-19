@@ -68,6 +68,9 @@ public class TsFileResourceList implements List<TsFileResource> {
    * @param newNode the file to insert
    */
   public void insertAfter(TsFileResource node, TsFileResource newNode) {
+    if (node.equals(newNode)) {
+      return;
+    }
     newNode.prev = node;
     newNode.next = node.next;
     if (node.next == null) {

@@ -18,35 +18,28 @@
  */
 package org.apache.iotdb.db.service.metrics.predefined;
 
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import com.sun.management.OperatingSystemMXBean;
 
 import java.io.File;
 import java.lang.management.ManagementFactory;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class SystemMetrics implements IMetricSet {
   private com.sun.management.OperatingSystemMXBean osMXBean;
-  private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-  private long systemDiskTotalSpace = 0L;
-  private long systemDiskFreeSpace = 0L;
 
   public SystemMetrics() {
     osMXBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
   }
 
   @Override
-  public void bindTo(AbstractMetricManager metricManager) {
+  public void bindTo(MetricManager metricManager) {
     collectSystemCpuInfo(metricManager);
     collectSystemDiskInfo(metricManager);
     collectSystemMEMInfo(metricManager);
@@ -57,7 +50,7 @@ public class SystemMetrics implements IMetricSet {
     return PredefinedMetric.SYSTEM;
   }
 
-  private void collectSystemCpuInfo(AbstractMetricManager metricManager) {
+  private void collectSystemCpuInfo(MetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_CPU_LOAD.toString(),
         MetricLevel.CORE,
@@ -72,7 +65,7 @@ public class SystemMetrics implements IMetricSet {
         .set(osMXBean.getAvailableProcessors());
   }
 
-  private void collectSystemMEMInfo(AbstractMetricManager metricManager) {
+  private void collectSystemMEMInfo(MetricManager metricManager) {
     metricManager
         .getOrCreateGauge(
             Metric.SYS_TOTAL_PHYSICAL_MEMORY_SIZE.toString(),
@@ -110,63 +103,39 @@ public class SystemMetrics implements IMetricSet {
         "system");
   }
 
-  private void collectSystemDiskInfo(AbstractMetricManager metricManager) {
+  private void collectSystemDiskInfo(MetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,
         this,
-        SystemMetrics::getSystemDiskTotalSpace,
+        a -> getSysDiskTotalSpace(),
         Tag.NAME.toString(),
         "system");
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_DISK_FREE_SPACE.toString(),
         MetricLevel.CORE,
         this,
-        SystemMetrics::getSystemDiskFreeSpace,
+        a -> getSysDickFreeSpace(),
         Tag.NAME.toString(),
         "system");
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
   }
 
-  @Override
-  public void startAsyncCollectedMetrics() {
-    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-        service,
-        this::collect,
-        1,
-        MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
-        TimeUnit.SECONDS);
-  }
-
-  @Override
-  public void stopAsyncCollectedMetrics() {
-    service.shutdown();
-  }
-
-  private void collect() {
+  private long getSysDiskTotalSpace() {
     File[] files = File.listRoots();
     long sysTotalSpace = 0L;
-    long sysFreeSpace = 0L;
     for (File file : files) {
       sysTotalSpace += file.getTotalSpace();
+    }
+    return sysTotalSpace;
+  }
+
+  private long getSysDickFreeSpace() {
+    File[] files = File.listRoots();
+    long sysFreeSpace = 0L;
+    for (File file : files) {
       sysFreeSpace += file.getFreeSpace();
     }
-    systemDiskTotalSpace = sysTotalSpace;
-    systemDiskFreeSpace = sysFreeSpace;
-  }
-
-  public long getSystemDiskTotalSpace() {
-    return systemDiskTotalSpace;
-  }
-
-  public void setSystemDiskTotalSpace(long systemDiskTotalSpace) {
-    this.systemDiskTotalSpace = systemDiskTotalSpace;
-  }
-
-  public long getSystemDiskFreeSpace() {
-    return systemDiskFreeSpace;
-  }
-
-  public void setSystemDiskFreeSpace(long systemDiskFreeSpace) {
-    this.systemDiskFreeSpace = systemDiskFreeSpace;
+    return sysFreeSpace;
   }
 }

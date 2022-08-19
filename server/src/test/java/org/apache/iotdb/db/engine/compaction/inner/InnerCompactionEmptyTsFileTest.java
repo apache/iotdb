@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -75,20 +75,16 @@ public class InnerCompactionEmptyTsFileTest extends InnerCompactionTest {
     tsFileManager.addAll(unseqResources, false);
 
     // Here we compact file 0-2
-    InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
+    AbstractInnerSpaceCompactionTask task =
+        new SizeTieredCompactionTask(
+            "root.compactionTest",
+            "0",
             0,
             tsFileManager,
             unseqResources.subList(0, 3),
             false,
-            new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
-            0);
-    unseqResources.get(0).readLock();
-    CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
-    Future<CompactionTaskSummary> future =
-        CompactionTaskManager.getInstance().getCompactionTaskFutureMayBlock(task);
-    unseqResources.get(0).readUnlock();
+            new AtomicInteger(0));
+    Future<CompactionTaskSummary> future = CompactionTaskManager.getInstance().submitTask(task);
     Assert.assertTrue(future.get().isSuccess());
   }
 }

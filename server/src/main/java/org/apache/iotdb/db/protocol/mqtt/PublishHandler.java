@@ -17,14 +17,16 @@
  */
 package org.apache.iotdb.db.protocol.mqtt;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import io.moquette.interception.AbstractInterceptHandler;
 import io.moquette.interception.messages.InterceptConnectMessage;
@@ -42,9 +44,10 @@ import java.util.List;
 /** PublishHandler handle the messages from MQTT clients. */
 public class PublishHandler extends AbstractInterceptHandler {
 
-  private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+  private final ServiceProvider serviceProvider = IoTDB.serviceProvider;
   private long sessionId;
-
+  private static final boolean isEnableOperationSync =
+      IoTDBDescriptor.getInstance().getConfig().isEnableOperationSync();
   private static final Logger LOG = LoggerFactory.getLogger(PublishHandler.class);
 
   private final PayloadFormatter payloadFormat;
@@ -66,7 +69,7 @@ public class PublishHandler extends AbstractInterceptHandler {
   public void onConnect(InterceptConnectMessage msg) {
     try {
       BasicOpenSessionResp basicOpenSessionResp =
-          SESSION_MANAGER.openSession(
+          serviceProvider.openSession(
               msg.getUsername(),
               new String(msg.getPassword()),
               ZoneId.systemDefault().toString(),
@@ -79,7 +82,7 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onDisconnect(InterceptDisconnectMessage msg) {
-    SESSION_MANAGER.closeSession(sessionId);
+    serviceProvider.closeSession(sessionId);
   }
 
   @Override
@@ -119,11 +122,15 @@ public class PublishHandler extends AbstractInterceptHandler {
                 event.getTimestamp(),
                 event.getMeasurements().toArray(new String[0]),
                 event.getValues().toArray(new String[0]));
-        TSStatus tsStatus = SESSION_MANAGER.checkAuthority(plan, sessionId);
+        TSStatus tsStatus = serviceProvider.checkAuthority(plan, sessionId);
         if (tsStatus != null) {
           LOG.warn(tsStatus.message);
         } else {
-          status = IoTDB.serviceProvider.executeNonQuery(plan);
+          if (isEnableOperationSync) {
+            // OperationSync should transmit before execute
+            StorageEngine.transmitOperationSync(plan);
+          }
+          status = serviceProvider.executeNonQuery(plan);
         }
       } catch (Exception e) {
         LOG.warn(

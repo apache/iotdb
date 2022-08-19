@@ -52,12 +52,14 @@ public interface IMemTable extends WALEntryValue {
 
   void write(
       IDeviceID deviceId,
+      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       long insertTime,
       Object[] objectValue);
 
   void writeAlignedRow(
       IDeviceID deviceId,
+      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       long insertTime,
       Object[] objectValue);

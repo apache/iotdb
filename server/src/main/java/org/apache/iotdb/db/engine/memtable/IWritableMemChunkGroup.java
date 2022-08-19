@@ -33,6 +33,7 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
       long[] times,
       Object[] columns,
       BitMap[] bitMaps,
+      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       int start,
       int end);
@@ -43,7 +44,11 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   boolean contains(String measurement);
 
-  void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
+  void write(
+      long insertTime,
+      Object[] objectValue,
+      List<Integer> failedIndices,
+      List<IMeasurementSchema> schemaList);
 
   Map<String, IWritableMemChunk> getMemChunkMap();
 

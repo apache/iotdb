@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.metrics.predefined.jvm;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import java.lang.management.CompilationMXBean;
 import java.lang.management.ManagementFactory;
@@ -30,7 +30,7 @@ import java.lang.management.ManagementFactory;
 /** This file is modified from io.micrometer.core.instrument.binder.jvm.JvmCompilationMetrics */
 public class JvmCompileMetrics implements IMetricSet {
   @Override
-  public void bindTo(AbstractMetricManager metricManager) {
+  public void bindTo(MetricManager metricManager) {
     CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
     if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
       metricManager.getOrCreateAutoGauge(

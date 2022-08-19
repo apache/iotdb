@@ -26,7 +26,6 @@ public enum Metric {
   FILE_SIZE,
   FILE_COUNT,
   MEM,
-  CACHE,
   CACHE_HIT,
   ERROR_LOG,
   QUANTITY,
@@ -55,13 +54,7 @@ public enum Metric {
   SYS_COMMITTED_VM_SIZE,
   SYS_DISK_TOTAL_SPACE,
   SYS_DISK_FREE_SPACE,
-  CONFIG_NODE,
-  DATA_NODE,
-  STORAGE_GROUP,
-  REGION,
-  SLOT,
-  THRIFT_CONNECTIONS,
-  THRIFT_ACTIVE_THREADS;
+  THRIFT_CONNECTIONS;
 
   @Override
   public String toString() {

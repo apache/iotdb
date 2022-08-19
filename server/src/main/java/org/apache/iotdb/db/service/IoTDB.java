@@ -18,18 +18,11 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.ConfigurationException;
-import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.service.JMXService;
-import org.apache.iotdb.commons.service.RegisterManager;
-import org.apache.iotdb.commons.service.StartupChecks;
-import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConfigCheck;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -38,23 +31,26 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
+import org.apache.iotdb.db.exception.ConfigurationException;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
+import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
+import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.sync.SyncService;
-import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.sync.receiver.SyncServerManager;
+import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 
 public class IoTDB implements IoTDBMBean {
@@ -64,9 +60,9 @@ public class IoTDB implements IoTDBMBean {
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final RegisterManager registerManager = new RegisterManager();
-  public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
-  public static LocalConfigNode configManager = LocalConfigNode.getInstance();
+  public static MManager metaManager = MManager.getInstance();
   public static ServiceProvider serviceProvider;
+  public static volatile boolean activated = false;
   private static boolean clusterMode = false;
 
   public static IoTDB getInstance() {
@@ -75,7 +71,7 @@ public class IoTDB implements IoTDBMBean {
 
   public static void main(String[] args) {
     try {
-      IoTDBStartCheck.getInstance().checkConfig();
+      IoTDBConfigCheck.getInstance().checkConfig();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
@@ -85,8 +81,8 @@ public class IoTDB implements IoTDBMBean {
     daemon.active();
   }
 
-  public static void setSchemaProcessor(LocalSchemaProcessor schemaProcessor) {
-    IoTDB.schemaProcessor = schemaProcessor;
+  public static void setMetaManager(MManager metaManager) {
+    IoTDB.metaManager = metaManager;
   }
 
   public static void setServiceProvider(ServiceProvider serviceProvider) {
@@ -130,6 +126,7 @@ public class IoTDB implements IoTDBMBean {
     // reset config
     config.setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
     config.setEnablePartialInsert(prevIsEnablePartialInsert);
+    activated = true;
 
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
@@ -139,32 +136,20 @@ public class IoTDB implements IoTDBMBean {
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
-    initServiceProvider();
-
-    registerManager.register(MetricService.getInstance());
+    registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
-    initConfigManager();
-    registerManager.register(new JMXService());
+    initMManager();
+    initServiceProvider();
+    registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
+    registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
-    registerManager.register(SyncService.getInstance());
-    registerManager.register(WALManager.getInstance());
-
     registerManager.register(StorageEngine.getInstance());
-
     registerManager.register(TemporaryQueryDataFileService.getInstance());
-    registerManager.register(
-        UDFClassLoaderManager.setupAndGetInstance(
-            IoTDBDescriptor.getInstance().getConfig().getUdfDir()));
-    registerManager.register(
-        UDFRegistrationService.setupAndGetInstance(
-            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-                + File.separator
-                + "udf"
-                + File.separator));
-
+    registerManager.register(UDFClassLoaderManager.getInstance());
+    registerManager.register(UDFRegistrationService.getInstance());
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
       registerManager.register(RPCService.getInstance());
@@ -178,8 +163,7 @@ public class IoTDB implements IoTDBMBean {
       initInfluxDBMManager();
     }
 
-    logger.info(
-        "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
+    logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");
 
     while (!StorageEngine.getInstance().isAllSgReady()) {
       try {
@@ -191,13 +175,14 @@ public class IoTDB implements IoTDBMBean {
       }
     }
 
+    registerManager.register(SyncServerManager.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
 
     // start reporter
-    MetricService.getInstance().startAllReporter();
+    MetricsService.getInstance().startAllReporter();
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
@@ -231,15 +216,16 @@ public class IoTDB implements IoTDBMBean {
     logger.info("IoTDB is deactivated.");
   }
 
-  private void initConfigManager() {
+  private void initMManager() {
     long time = System.currentTimeMillis();
-    IoTDB.configManager.init();
+    IoTDB.metaManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
     logger.info(
-        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
+        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}, memtableSize is {}",
         IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize());
+        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize(),
+        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
   }
 
   @Override
@@ -254,6 +240,7 @@ public class IoTDB implements IoTDBMBean {
     PrimitiveArrayManager.close();
     SystemInfo.getInstance().close();
     JMXService.deregisterMBean(mbeanName);
+    activated = false;
     logger.info("IoTDB is deactivated.");
   }
 
