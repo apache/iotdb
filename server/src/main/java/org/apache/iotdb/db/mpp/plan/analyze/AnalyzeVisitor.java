@@ -253,12 +253,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                           false)
                       .stream()
                       .collect(Collectors.toSet()));
+            } catch (MeasurementNotExistException mne) {
+              logger.warn(mne.getMessage());
+              measurementNotExistDevices.add(device);
+              continue;
             } catch (SemanticException e) {
-              if (e instanceof MeasurementNotExistException) {
-                logger.warn(e.getMessage());
-                measurementNotExistDevices.add(device);
-                continue;
-              }
               throw e;
             }
           }
