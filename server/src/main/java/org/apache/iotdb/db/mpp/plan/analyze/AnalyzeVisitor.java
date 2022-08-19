@@ -810,14 +810,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<Expression> aggregationExpressionsInHaving) {
 
     if (queryStatement.isGroupByLevel()) {
-      Map<Expression, Expression> RawPathToGroupedPathMapInHaving =
+      Map<Expression, Expression> rawPathToGroupedPathMapInHaving =
           analyzeGroupByLevelInHaving(
               queryStatement, aggregationExpressionsInHaving, groupByLevelExpressions);
       List<Expression> convertedPredicates = new ArrayList<>();
       for (Expression expression : transformExpressionsInHaving) {
         convertedPredicates.add(
             ExpressionAnalyzer.replaceRawPathWithGroupedPath(
-                expression, RawPathToGroupedPathMapInHaving));
+                expression, rawPathToGroupedPathMapInHaving));
       }
       return ExpressionUtils.constructQueryFilter(
           convertedPredicates.stream().distinct().collect(Collectors.toList()));
