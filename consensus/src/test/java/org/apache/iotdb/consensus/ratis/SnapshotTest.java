@@ -157,13 +157,16 @@ public class SnapshotTest {
       File log = new File(latestSnapshotRootDir.getAbsolutePath() + File.separator + "record");
       Assert.assertTrue(log.exists());
       Scanner scanner = null;
+      String actualSnapshotPath = null;
       try {
         scanner = new Scanner(log);
+        actualSnapshotPath = scanner.nextLine();
+        scanner.close();
       } catch (FileNotFoundException e) {
         e.printStackTrace();
       }
       Assert.assertNotNull(scanner);
-      String actualSnapshotPath = scanner.nextLine();
+
       return Collections.singletonList(new File(actualSnapshotPath));
     }
   }
