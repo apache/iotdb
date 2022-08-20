@@ -573,8 +573,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return configManager.showStorageGroup(new GetStorageGroupPlan(storageGroupPathPattern));
   }
 
-  public void handleClientExit() {}
-
   @Override
   public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) throws TException {
     return configManager.createSchemaTemplate(req);
