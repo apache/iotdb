@@ -33,6 +33,9 @@ public class KafkaLoader {
     if (!kafkaParams.containsKey("offset")) {
       kafkaParams.put("offset", "earliest");
     }
+    if (kafkaParams.containsKey("max_consumer")) {
+      this.consumer_num = (int) Math.floor(Double.parseDouble(kafkaParams.get("max_consumer")));
+    }
   }
 
   public int open() {
@@ -44,7 +47,6 @@ public class KafkaLoader {
     for (int i = 0; i < consumer_num; i++) {
       String topic = this.kafkaParams.get("topic");
       Properties props = new Properties();
-
       props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, this.kafkaParams.get("brokers"));
 
       props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
@@ -110,8 +112,8 @@ public class KafkaLoader {
     DROP
   }
 
-  public LoaderStatus getStatus() {
-    return this.status;
+  public String getStatus() {
+    return this.status.toString();
   }
 
   @Override

@@ -168,12 +168,13 @@ public class kafkaTest {
     for (int i = 0; i < message_num; ++i) {
       String[] devices = new String[point_num];
       String[] values = new String[point_num];
-      String path = prefix + ".r_0" + ".d_" + i/1000000;
+      String path = prefix + ".r_0" + ".d_" + i / 1000000;
       for (int j = 0; j < point_num; ++j) {
         devices[j] = "s_" + j;
         values[j] = String.valueOf(j);
       }
-      String data = path + ',' + i + ',' + String.join(":", devices) + ',' + String.join(":", values);
+      String data =
+          path + ',' + i + ',' + String.join(":", devices) + ',' + String.join(":", values);
       producer.send(new ProducerRecord<>("IoTDB", data));
     }
 
@@ -406,9 +407,9 @@ public class kafkaTest {
     // send_to_kafka_no_type();
     // send_to_kafka_with_type();
     try {
-      send_random_point(1000000, 200);
+      send_random_point(10000, 100);
     } catch (IOException ignore) {
     }
-    load_from_kafka();
+    // load_from_kafka();
   }
 }
