@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.idtable.entry;
+package org.apache.iotdb.db.metadata.idtable.DeviceID;
 
 import java.nio.ByteBuffer;
 
@@ -29,7 +29,7 @@ public interface IDeviceID {
    *
    * @return string format device id
    */
-  public String toStringID();
+  String toStringID();
 
-  public void serialize(ByteBuffer byteBuffer);
+  void serialize(ByteBuffer byteBuffer);
 }

@@ -22,6 +22,10 @@ package org.apache.iotdb.db.metadata.idtable.entry;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.idtable.DeviceID.AutoIncrementDeviceID;
+import org.apache.iotdb.db.metadata.idtable.DeviceID.IDeviceID;
+import org.apache.iotdb.db.metadata.idtable.DeviceID.PlainDeviceID;
+import org.apache.iotdb.db.metadata.idtable.DeviceID.SHA256DeviceID;
 
 import java.util.function.Function;
 
@@ -49,15 +53,22 @@ public class DeviceIDFactory {
   }
 
   private DeviceIDFactory() {
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()
-        && IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getDeviceIDTransformationMethod()
-            .equals("SHA256")) {
-      getDeviceIDFunction = SHA256DeviceID::new;
-    } else {
-      getDeviceIDFunction = PlainDeviceID::new;
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
+      if (IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getDeviceIDTransformationMethod()
+          .equals("SHA256")) {
+        getDeviceIDFunction = SHA256DeviceID::new;
+        return;
+      } else if (IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getDeviceIDTransformationMethod()
+          .equals("AutoIncrement_INT")) {
+        getDeviceIDFunction = AutoIncrementDeviceID::new;
+        return;
+      }
     }
+    getDeviceIDFunction = PlainDeviceID::new;
   }
   // endregion
 
@@ -84,14 +95,21 @@ public class DeviceIDFactory {
   /** reset id method */
   @TestOnly
   public void reset() {
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()
-        && IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getDeviceIDTransformationMethod()
-            .equals("SHA256")) {
-      getDeviceIDFunction = SHA256DeviceID::new;
-    } else {
-      getDeviceIDFunction = PlainDeviceID::new;
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
+      if (IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getDeviceIDTransformationMethod()
+          .equals("SHA256")) {
+        getDeviceIDFunction = SHA256DeviceID::new;
+        return;
+      } else if (IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getDeviceIDTransformationMethod()
+          .equals("AutoIncrement_INT")) {
+        getDeviceIDFunction = AutoIncrementDeviceID::new;
+        return;
+      }
     }
+    getDeviceIDFunction = PlainDeviceID::new;
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.idtable.entry;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.idtable.DeviceID.IDeviceID;
 
 import org.junit.Test;
 

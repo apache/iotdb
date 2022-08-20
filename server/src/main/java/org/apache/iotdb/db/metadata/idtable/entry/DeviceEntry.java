@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.metadata.idtable.entry;
 
+import org.apache.iotdb.db.metadata.idtable.DeviceID.IDeviceID;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;

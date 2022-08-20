@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.idtable.entry;
+package org.apache.iotdb.db.metadata.idtable.DeviceID;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
