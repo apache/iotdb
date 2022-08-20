@@ -33,7 +33,7 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_DEVICE = "Device";
 
   // column names for schema statement
-  public static final String COLUMN_STORAGE_GROUP = "storage group";
+  public static final String COLUMN_STORAGE_GROUP = "StorageGroup";
   public static final String COLUMN_TIMESERIES = "timeseries";
   public static final String COLUMN_TIMESERIES_ALIAS = "alias";
   public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
@@ -45,9 +45,9 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TTL = "ttl";
-  public static final String COLUMN_SCHEMA_REPLICATION_FACTOR = "schema_replication_factor";
-  public static final String COLUMN_DATA_REPLICATION_FACTOR = "data_replication_factor";
-  public static final String COLUMN_TIME_PARTITION_INTERVAL = "time_partition_interval";
+  public static final String COLUMN_SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
+  public static final String COLUMN_DATA_REPLICATION_FACTOR = "DataReplicationFactor";
+  public static final String COLUMN_TIME_PARTITION_INTERVAL = "TimePartitionInterval";
   public static final String COLUMN_CHILDPATHS = "child paths";
   public static final String COLUMN_NODETYPES = "node types";
   public static final String COLUMN_CHILDNODES = "child nodes";
@@ -77,8 +77,8 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_REGION_ID = "RegionId";
   public static final String COLUMN_TYPE = "Type";
   public static final String COLUMN_DATANODE_ID = "DataNodeId";
-  public static final String COLUMN_SERIES_SLOTS = "Series Slots";
-  public static final String COLUMN_TIME_SLOTS = "Time Slots";
+  public static final String COLUMN_SERIES_SLOTS = "SeriesSlots";
+  public static final String COLUMN_TIME_SLOTS = "TimeSlots";
   public static final String COLUMN_ROLE = "Role";
 
   // column names for show datanodes
