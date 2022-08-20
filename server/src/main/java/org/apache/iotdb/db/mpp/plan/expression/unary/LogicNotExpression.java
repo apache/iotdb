@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.expression.unary;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenVisitor;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -76,5 +77,10 @@ public class LogicNotExpression extends UnaryExpression {
   @Override
   public ExpressionType getExpressionType() {
     return ExpressionType.LOGIC_NOT;
+  }
+
+  @Override
+  public boolean codegenAccept(CodegenVisitor visitor) {
+    return visitor.logicNotExpressionVisitor(this);
   }
 }

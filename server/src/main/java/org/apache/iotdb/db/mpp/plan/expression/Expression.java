@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenVisitor;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
@@ -415,4 +416,8 @@ public abstract class Expression {
   protected abstract void serialize(ByteBuffer byteBuffer);
 
   protected abstract void serialize(DataOutputStream stream) throws IOException;
+
+  public boolean codegenAccept(CodegenVisitor visitor) {
+    return false;
+  };
 }

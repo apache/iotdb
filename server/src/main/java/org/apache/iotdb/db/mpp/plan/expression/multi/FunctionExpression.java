@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenVisitor;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -77,7 +78,6 @@ public class FunctionExpression extends Expression {
 
   private final String functionName;
   private final Map<String, String> functionAttributes;
-
   /**
    * example: select udf(a, b, udf(c)) from root.sg.d;
    *
@@ -624,5 +624,10 @@ public class FunctionExpression extends Expression {
     for (Expression expression : expressions) {
       Expression.serialize(expression, stream);
     }
+  }
+
+  @Override
+  public boolean codegenAccept(CodegenVisitor visitor) {
+    return visitor.functionExpressionVisitor(this);
   }
 }

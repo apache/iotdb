@@ -25,6 +25,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.Codegen;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenImpl;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -41,17 +44,21 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class TransformOperator implements ProcessOperator {
 
@@ -74,7 +81,15 @@ public class TransformOperator implements ProcessOperator {
   protected List<TSDataType> outputDataTypes;
 
   protected TimeSelector timeHeap;
+  protected TimeSelector transformerTimeHeap;
   protected boolean[] shouldIterateReadersToNextValid;
+
+  protected List<Boolean> codeGeneratedSuccess;
+  protected LayerPointReader timeReader;
+  protected LayerPointReader[] dataReaders;
+  protected boolean codegenExpressionsHaveCache;
+  protected Object[] cacheValues;
+  protected Codegen generatedEvaluate;
 
   public TransformOperator(
       OperatorContext operatorContext,
@@ -94,9 +109,33 @@ public class TransformOperator implements ProcessOperator {
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);
     initTransformers(inputLocations, outputExpressions, typeProvider);
+    initGeneratedEvaluate(inputLocations, outputExpressions, typeProvider, inputDataTypes);
     timeHeap = new TimeSelector(transformers.length << 1, isAscending);
+    transformerTimeHeap = new TimeSelector(transformers.length << 1, isAscending);
     shouldIterateReadersToNextValid = new boolean[outputExpressions.length];
     Arrays.fill(shouldIterateReadersToNextValid, true);
+  }
+
+  private void initGeneratedEvaluate(
+      Map<String, List<InputLocation>> inputLocations,
+      Expression[] outputExpressions,
+      TypeProvider typeProvider,
+      List<TSDataType> inputDataTypes) {
+    generatedEvaluate = new CodegenImpl(typeProvider, udtfContext, new CodegenContext());
+    List<String> paths = new ArrayList<>(inputLocations.keySet());
+
+    generatedEvaluate.setInputs(paths, inputDataTypes);
+
+    for (Expression expression : outputExpressions) {
+      generatedEvaluate.addExpression(expression);
+    }
+    codeGeneratedSuccess = generatedEvaluate.isGenerated();
+    try {
+      generatedEvaluate.generateScriptEvaluator();
+    } catch (Exception exception) {
+      // code generate fail, all marked as false
+      codeGeneratedSuccess = Collections.nCopies(codeGeneratedSuccess.size(), false);
+    }
   }
 
   private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
@@ -105,6 +144,12 @@ public class TransformOperator implements ProcessOperator {
             operatorContext.getOperatorId(),
             udfReaderMemoryBudgetInMB,
             new TsBlockInputDataSet(inputOperator, inputDataTypes));
+
+    timeReader = inputLayer.constructTimePointReader();
+    dataReaders = new LayerPointReader[inputDataTypes.size()];
+    for (int i = 0; i < inputDataTypes.size(); ++i) {
+      dataReaders[i] = inputLayer.constructValuePointReader(i);
+    }
   }
 
   private void initUdtfContext(Expression[] outputExpressions, ZoneId zoneId) {
@@ -140,16 +185,82 @@ public class TransformOperator implements ProcessOperator {
     }
   }
 
+  protected Object[] collectRow() throws IOException {
+    Object[] row = new Object[dataReaders.length];
+    for (int i = 0; i < dataReaders.length; ++i) {
+      Object value;
+      if (dataReaders[i].isCurrentNull()) {
+        value = null;
+      } else {
+        switch (dataReaders[i].getDataType()) {
+          case INT32:
+            value = dataReaders[i].currentInt();
+            break;
+          case INT64:
+            value = dataReaders[i].currentLong();
+            break;
+          case FLOAT:
+            value = dataReaders[i].currentFloat();
+            break;
+          case DOUBLE:
+            value = dataReaders[i].currentDouble();
+            break;
+          case BOOLEAN:
+            value = dataReaders[i].currentBoolean();
+            break;
+            //          case TEXT:
+            //            value = dataReaders[i].currentBinary();
+            //            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format(
+                    "Data type %s is not supported while codegen.", dataReaders[i].getDataType()));
+        }
+      }
+      row[i] = value;
+    }
+    return row;
+  }
+
   protected YieldableState iterateAllColumnsToNextValid()
-      throws QueryProcessException, IOException {
+      throws QueryProcessException, IOException, InvocationTargetException {
+    YieldableState yieldableState = iterateTransformerNextValid();
+    if (yieldableState != YieldableState.YIELDABLE) {
+      return yieldableState;
+    }
+    return iterateCodeGenExpressionsToNextValid();
+  }
+
+  protected YieldableState iterateTransformerNextValid() throws QueryProcessException, IOException {
     for (int i = 0, n = shouldIterateReadersToNextValid.length; i < n; ++i) {
-      if (shouldIterateReadersToNextValid[i]) {
+      if (shouldIterateReadersToNextValid[i] && !codeGeneratedSuccess.get(i)) {
         final YieldableState yieldableState = iterateReaderToNextValid(transformers[i]);
         if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
           return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
         }
         shouldIterateReadersToNextValid[i] = false;
       }
+    }
+    return YieldableState.YIELDABLE;
+  }
+
+  protected YieldableState iterateCodeGenExpressionsToNextValid()
+      throws QueryProcessException, IOException, InvocationTargetException {
+    if (!codegenExpressionsHaveCache) {
+      YieldableState yieldableState = timeReader.yield();
+      if (yieldableState != YieldableState.YIELDABLE) {
+        return yieldableState;
+      } else {
+        for (LayerPointReader dataReader : dataReaders) {
+          if (dataReader.yield() == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+            return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+          }
+        }
+        long currentTime = timeReader.currentLong();
+        timeHeap.add(currentTime);
+        cacheValues = generatedEvaluate.accept(collectRow(), currentTime);
+      }
+      codegenExpressionsHaveCache = true;
     }
     return YieldableState.YIELDABLE;
   }
@@ -165,6 +276,7 @@ public class TransformOperator implements ProcessOperator {
         reader.readyForNext();
         continue;
       }
+      transformerTimeHeap.add(reader.currentTime());
       timeHeap.add(reader.currentTime());
       break;
     }
@@ -210,32 +322,49 @@ public class TransformOperator implements ProcessOperator {
 
       int rowCount = 0;
       while (!timeHeap.isEmpty()) {
+        final long minTransformerHeapTime = transformerTimeHeap.pollFirst();
         final long currentTime = timeHeap.pollFirst();
 
-        // time
-        timeBuilder.writeLong(currentTime);
+        if (currentTime < minTransformerHeapTime && isCodegenExpressionsCacheAllNull()) {
+          // no data need to write
+          transformerTimeHeap.add(minTransformerHeapTime);
+        } else {
+          // some data need to write
+          if (currentTime != minTransformerHeapTime) {
+            transformerTimeHeap.add(minTransformerHeapTime);
+          }
 
-        // values
-        for (int i = 0; i < columnCount; ++i) {
-          yieldableState = collectDataPoint(transformers[i], columnBuilders[i], currentTime, i);
-          if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
-            for (int j = 0; j <= i; ++j) {
-              shouldIterateReadersToNextValid[j] = false;
+          // values
+          for (int i = 0; i < columnCount; ++i) {
+            if (codeGeneratedSuccess.get(i)) {
+              collectGeneratedData(columnBuilders[i], i, outputDataTypes.get(i));
+            } else {
+              yieldableState = collectDataPoint(transformers[i], columnBuilders[i], currentTime, i);
+              if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+                for (int j = 0; j <= i; ++j) {
+                  shouldIterateReadersToNextValid[j] = false;
+                }
+                timeHeap.add(currentTime);
+                if (currentTime == minTransformerHeapTime) {
+                  transformerTimeHeap.add(currentTime);
+                }
+
+                tsBlockBuilder.declarePositions(rowCount);
+                return tsBlockBuilder.build();
+              }
             }
-            timeHeap.add(currentTime);
+          }
 
-            tsBlockBuilder.declarePositions(rowCount);
-            return tsBlockBuilder.build();
+          timeBuilder.writeLong(currentTime);
+          ++rowCount;
+          for (int i = 0; i < columnCount; ++i) {
+            if (shouldIterateReadersToNextValid[i] && !codeGeneratedSuccess.get(i)) {
+              transformers[i].readyForNext();
+            }
           }
         }
 
-        for (int i = 0; i < columnCount; ++i) {
-          if (shouldIterateReadersToNextValid[i]) {
-            transformers[i].readyForNext();
-          }
-        }
-
-        ++rowCount;
+        codegenExpressionReadyForNext();
 
         yieldableState = iterateAllColumnsToNextValid();
         if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -252,6 +381,56 @@ public class TransformOperator implements ProcessOperator {
       LOGGER.error("TransformOperator#next()", e);
       throw new RuntimeException(e);
     }
+  }
+
+  private boolean isCodegenExpressionsCacheAllNull() {
+    for (Object o : cacheValues) {
+      if (!Objects.isNull(o)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  protected void codegenExpressionReadyForNext() {
+    codegenExpressionsHaveCache = false;
+    cacheValues = null;
+    timeReader.readyForNext();
+    for (LayerPointReader layerPointReader : dataReaders) {
+      layerPointReader.readyForNext();
+    }
+  }
+
+  protected boolean collectGeneratedData(
+      ColumnBuilder writer, int dataIndex, TSDataType tsDataType) {
+    if (Objects.isNull(cacheValues[dataIndex])) {
+      writer.appendNull();
+      return false;
+    }
+    switch (tsDataType) {
+      case INT32:
+        writer.writeInt((int) cacheValues[dataIndex]);
+        return true;
+      case INT64:
+        writer.writeLong((long) cacheValues[dataIndex]);
+        return true;
+      case FLOAT:
+        writer.writeFloat((float) cacheValues[dataIndex]);
+        return true;
+      case DOUBLE:
+        writer.writeDouble((double) cacheValues[dataIndex]);
+        return true;
+      case BOOLEAN:
+        writer.writeBoolean((boolean) cacheValues[dataIndex]);
+        return true;
+      case TEXT:
+        writer.writeBinary((Binary) cacheValues[dataIndex]);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", tsDataType));
+    }
+    return false;
   }
 
   protected boolean collectReaderAppendIsNull(LayerPointReader reader, long currentTime)

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenVisitor;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -188,5 +189,10 @@ public class TimeSeriesOperand extends LeafOperand {
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
     path.serialize(stream);
+  }
+
+  @Override
+  public boolean codegenAccept(CodegenVisitor visitor) {
+    return visitor.timeSeriesOperandVisitor(this);
   }
 }

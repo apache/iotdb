@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenVisitor;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -174,5 +175,10 @@ public class ConstantOperand extends LeafOperand {
   protected void serialize(DataOutputStream stream) throws IOException {
     dataType.serializeTo(stream);
     ReadWriteIOUtils.write(valueString, stream);
+  }
+
+  @Override
+  public boolean codegenAccept(CodegenVisitor visitor) {
+    return visitor.constantOperandVisitor(this);
   }
 }

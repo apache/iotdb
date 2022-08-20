@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.expression.binary;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenVisitor;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -338,6 +339,10 @@ public abstract class BinaryExpression extends Expression {
     return builder.toString();
   }
 
+  public String getOperator() {
+    return operator();
+  }
+
   protected abstract String operator();
 
   @Override
@@ -350,5 +355,10 @@ public abstract class BinaryExpression extends Expression {
   protected void serialize(DataOutputStream stream) throws IOException {
     Expression.serialize(leftExpression, stream);
     Expression.serialize(rightExpression, stream);
+  }
+
+  @Override
+  public boolean codegenAccept(CodegenVisitor visitor) {
+    return visitor.binaryExpressionVisitor(this);
   }
 }
