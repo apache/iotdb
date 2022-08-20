@@ -75,7 +75,7 @@ setStorageGroup
     ;
 
 createStorageGroup
-    : CREATE STORAGE GROUP prefixPath
+    : CREATE STORAGE GROUP prefixPath (VIRTUALSTORAGEGROUPNUM OPERATOR_EQ INTEGER_LITERAL)?
     ;
 
 // Create Timeseries

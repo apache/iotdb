@@ -29,9 +29,18 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
    */
   private long dataTTL;
 
+  private int virtualStorageGroupNum;
+
   public StorageGroupEntityMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
+  }
+
+  public StorageGroupEntityMNode(
+      IMNode parent, String name, long dataTTL, int virtualStorageGroupNum) {
+    super(parent, name);
+    this.dataTTL = dataTTL;
+    this.virtualStorageGroupNum = virtualStorageGroupNum;
   }
 
   @Override
@@ -42,6 +51,16 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
+  }
+
+  @Override
+  public int getVirtualStorageGroupNum() {
+    return virtualStorageGroupNum;
+  }
+
+  @Override
+  public void setVirtualStorageGroupNum(int virtualStorageGroupNum) {
+    this.virtualStorageGroupNum = virtualStorageGroupNum;
   }
 
   @Override

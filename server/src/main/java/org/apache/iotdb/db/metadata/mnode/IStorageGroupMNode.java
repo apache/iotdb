@@ -24,4 +24,8 @@ public interface IStorageGroupMNode extends IMNode {
   long getDataTTL();
 
   void setDataTTL(long dataTTL);
+
+  int getVirtualStorageGroupNum();
+
+  void setVirtualStorageGroupNum(int virtualStorageGroupNum);
 }

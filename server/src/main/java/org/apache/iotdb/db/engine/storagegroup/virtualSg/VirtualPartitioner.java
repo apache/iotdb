@@ -30,6 +30,8 @@ public interface VirtualPartitioner {
    */
   int deviceToVirtualStorageGroupId(PartialPath deviceId);
 
+  int deviceToVirtualStorageGroupId(PartialPath deviceId, int virtualStorageGroupNum);
+
   /**
    * get total number of virtual storage group
    *

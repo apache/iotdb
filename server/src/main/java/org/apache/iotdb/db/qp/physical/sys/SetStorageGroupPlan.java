@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -34,6 +35,9 @@ public class SetStorageGroupPlan extends PhysicalPlan {
 
   private PartialPath path;
 
+  private int virtualStorageGroupNum =
+      IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+
   public SetStorageGroupPlan() {
     super(Operator.OperatorType.SET_STORAGE_GROUP);
   }
@@ -43,12 +47,26 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     this.path = path;
   }
 
+  public SetStorageGroupPlan(PartialPath path, int virtualStorageGroupNum) {
+    super(Operator.OperatorType.SET_STORAGE_GROUP);
+    this.path = path;
+    this.virtualStorageGroupNum = virtualStorageGroupNum;
+  }
+
   public PartialPath getPath() {
     return path;
   }
 
   public void setPath(PartialPath path) {
     this.path = path;
+  }
+
+  public int getVirtualStorageGroupNum() {
+    return virtualStorageGroupNum;
+  }
+
+  public void setVirtualStorageGroupNum(int virtualStorageGroupNum) {
+    this.virtualStorageGroupNum = virtualStorageGroupNum;
   }
 
   @Override
@@ -61,6 +79,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     stream.write((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
     putString(stream, path.getFullPath());
     stream.writeLong(index);
+    stream.writeInt(virtualStorageGroupNum);
   }
 
   @Override
@@ -68,17 +87,21 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     buffer.put((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
     putString(buffer, path.getFullPath());
     buffer.putLong(index);
+    buffer.putInt(virtualStorageGroupNum);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     path = new PartialPath(readString(buffer));
     this.index = buffer.getLong();
+    if (buffer.hasRemaining()) {
+      virtualStorageGroupNum = buffer.getInt();
+    }
   }
 
   @Override
   public String toString() {
-    return "SetStorageGroup{" + path + '}';
+    return "SetStorageGroup{" + path + "," + virtualStorageGroupNum + '}';
   }
 
   @Override

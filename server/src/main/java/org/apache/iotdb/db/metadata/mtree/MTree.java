@@ -627,13 +627,19 @@ public class MTree implements Serializable {
   }
   // endregion
 
+  public void setStorageGroup(PartialPath path) throws MetadataException {
+    int STORAGE_GROUP_NUM = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+    setStorageGroup(path, STORAGE_GROUP_NUM);
+  }
+
   // region StorageGroup Operation, including set and delete
   /**
    * Set storage group. Make sure check seriesPath before setting storage group
    *
    * @param path path
    */
-  public void setStorageGroup(PartialPath path) throws MetadataException {
+  public void setStorageGroup(PartialPath path, int virtualStorageGroupNum)
+      throws MetadataException {
     String[] nodeNames = path.getNodes();
     MetaFormatUtils.checkStorageGroup(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
@@ -677,7 +683,10 @@ public class MTree implements Serializable {
         }
         IStorageGroupMNode storageGroupMNode =
             new StorageGroupMNode(
-                cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+                cur,
+                nodeNames[i],
+                IoTDBDescriptor.getInstance().getConfig().getDefaultTTL(),
+                virtualStorageGroupNum);
         cur.addChild(nodeNames[i], storageGroupMNode);
       }
     }

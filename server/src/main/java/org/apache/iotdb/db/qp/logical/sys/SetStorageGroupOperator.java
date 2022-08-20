@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -27,6 +28,8 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 public class SetStorageGroupOperator extends Operator {
 
   private PartialPath path;
+
+  private int virtualStorageGroupNum;
 
   public SetStorageGroupOperator(int tokenIntType) {
     super(tokenIntType);
@@ -41,8 +44,13 @@ public class SetStorageGroupOperator extends Operator {
     this.path = path;
   }
 
+  public void setPath(PartialPath path, int virtualStorageGroupNum) {
+    this.path = path;
+    this.virtualStorageGroupNum = virtualStorageGroupNum;
+  }
+
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
-    return new SetStorageGroupPlan(path);
+    return new SetStorageGroupPlan(path, virtualStorageGroupNum);
   }
 }

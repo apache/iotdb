@@ -2069,7 +2069,11 @@ public class PlanExecutor implements IPlanExecutor {
     AUDIT_LOGGER.info("set storage group to {}", setStorageGroupPlan.getPaths());
     PartialPath path = setStorageGroupPlan.getPath();
     try {
-      IoTDB.metaManager.setStorageGroup(path);
+      if (setStorageGroupPlan.getVirtualStorageGroupNum() == 0) {
+        IoTDB.metaManager.setStorageGroup(path);
+      } else {
+        IoTDB.metaManager.setStorageGroup(path, setStorageGroupPlan.getVirtualStorageGroupNum());
+      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

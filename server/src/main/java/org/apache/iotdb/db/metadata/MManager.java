@@ -505,7 +505,9 @@ public class MManager {
         break;
       case SET_STORAGE_GROUP:
         SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
-        setStorageGroup(setStorageGroupPlan.getPath());
+        //        setStorageGroup(setStorageGroupPlan.getPath());
+        setStorageGroup(
+            setStorageGroupPlan.getPath(), setStorageGroupPlan.getVirtualStorageGroupNum());
         break;
       case DELETE_STORAGE_GROUP:
         DeleteStorageGroupPlan deleteStorageGroupPlan = (DeleteStorageGroupPlan) plan;
@@ -867,13 +869,24 @@ public class MManager {
    * @param storageGroup root.node.(node)*
    */
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
+    int STORAGE_GROUP_NUM = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+    setStorageGroup(storageGroup, STORAGE_GROUP_NUM);
+  }
+
+  /**
+   * Set storage group of the given path to MTree.
+   *
+   * @param storageGroup root.node.(node)*
+   */
+  public void setStorageGroup(PartialPath storageGroup, int virtualStorageGroupNum)
+      throws MetadataException {
     try {
-      mtree.setStorageGroup(storageGroup);
+      mtree.setStorageGroup(storageGroup, virtualStorageGroupNum);
       if (!config.isEnableMemControl()) {
         MemTableManager.getInstance().addOrDeleteStorageGroup(1);
       }
       if (!isRecovering) {
-        logWriter.setStorageGroup(storageGroup);
+        logWriter.setStorageGroup(storageGroup, virtualStorageGroupNum);
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
