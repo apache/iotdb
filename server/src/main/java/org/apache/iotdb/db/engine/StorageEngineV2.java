@@ -43,6 +43,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
@@ -171,6 +172,9 @@ public class StorageEngineV2 implements IService {
   }
 
   public static long getTimePartition(long time) {
+    if (timePartitionInterval == -1) {
+      initTimePartition();
+    }
     return enablePartition ? time / timePartitionInterval : 0;
   }
 
@@ -206,6 +210,9 @@ public class StorageEngineV2 implements IService {
   public static TTimePartitionSlot getTimePartitionSlot(long time) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
     if (enablePartition) {
+      if (timePartitionInterval == -1) {
+        initTimePartition();
+      }
       timePartitionSlot.setStartTime(time - time % timePartitionInterval);
     } else {
       timePartitionSlot.setStartTime(0);
@@ -533,7 +540,7 @@ public class StorageEngineV2 implements IService {
 
   public void closeStorageGroupProcessor(String storageGroupPath, boolean isSeq) {
     for (DataRegion dataRegion : dataRegionMap.values()) {
-      if (dataRegion.getLogicalStorageGroupName().equals(storageGroupPath)) {
+      if (dataRegion.getStorageGroupName().equals(storageGroupPath)) {
         if (isSeq) {
           for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
             dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
@@ -545,6 +552,18 @@ public class StorageEngineV2 implements IService {
         }
       }
     }
+  }
+
+  /**
+   * merge all storage groups.
+   *
+   * @throws StorageEngineException StorageEngineException
+   */
+  public void mergeAll() throws StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException("Current system mode is read only, does not support merge");
+    }
+    dataRegionMap.values().forEach(DataRegion::compact);
   }
 
   public TSStatus operateFlush(TFlushReq req) {
@@ -643,14 +662,12 @@ public class StorageEngineV2 implements IService {
                 .equals(ConsensusFactory.MultiLeaderConsensus)) {
           WALManager.getInstance()
               .deleteWALNode(
-                  region.getLogicalStorageGroupName()
-                      + FILE_NAME_SEPARATOR
-                      + region.getDataRegionId());
+                  region.getStorageGroupName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
         }
       } catch (Exception e) {
         logger.error(
             "Error occurs when deleting data region {}-{}",
-            region.getLogicalStorageGroupName(),
+            region.getStorageGroupName(),
             region.getDataRegionId(),
             e);
       } finally {
@@ -678,10 +695,25 @@ public class StorageEngineV2 implements IService {
     dataRegionMap.put(regionId, newRegion);
   }
 
+  //  public TSStatus setTTL(TSetTTLReq req) {
+  //    Map<String, List<DataRegionId>> localDataRegionInfo =
+  //        StorageEngineV2.getInstance().getLocalDataRegionInfo();
+  //    List<DataRegionId> dataRegionIdList = localDataRegionInfo.get(req.storageGroup);
+  //    for (DataRegionId dataRegionId : dataRegionIdList) {
+  //      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
+  //      if (dataRegion != null) {
+  //        dataRegion.setDataTTL(req.TTL);
+  //      }
+  //    }
+  //    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  //  }
+
   public TSStatus setTTL(TSetTTLReq req) {
     Map<String, List<DataRegionId>> localDataRegionInfo =
         StorageEngineV2.getInstance().getLocalDataRegionInfo();
-    List<DataRegionId> dataRegionIdList = localDataRegionInfo.get(req.storageGroup);
+    List<DataRegionId> dataRegionIdList = new ArrayList<>();
+    req.storageGroupPathPattern.forEach(
+        storageGroup -> dataRegionIdList.addAll(localDataRegionInfo.get(storageGroup)));
     for (DataRegionId dataRegionId : dataRegionIdList) {
       DataRegion dataRegion = dataRegionMap.get(dataRegionId);
       if (dataRegion != null) {

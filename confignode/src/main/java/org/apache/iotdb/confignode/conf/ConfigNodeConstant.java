@@ -38,6 +38,13 @@ public class ConfigNodeConstant {
 
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 
+  /** These variables are only used for cluster gauge metrics */
+  public static final String METRIC_TAG_TOTAL = "total";
+
+  public static final String METRIC_STATUS_REGISTER = "Registered";
+  public static final String METRIC_STATUS_ONLINE = "Online";
+  public static final String METRIC_STATUS_UNKNOWN = "Unknown";
+
   private ConfigNodeConstant() {
     // empty constructor
   }

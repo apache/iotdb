@@ -24,7 +24,9 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class MeasurementGroupByLevelCounter extends Traverser {
@@ -33,6 +35,8 @@ public class MeasurementGroupByLevelCounter extends Traverser {
   private int groupByLevel;
 
   private Map<PartialPath, Integer> result = new HashMap<>();
+  private List<String> timeseries = new ArrayList<>();
+  private boolean hasTag = false;
 
   // path representing current branch and matching the pattern and level
   private PartialPath path;
@@ -42,6 +46,21 @@ public class MeasurementGroupByLevelCounter extends Traverser {
       throws MetadataException {
     super(startNode, path, store);
     this.groupByLevel = groupByLevel;
+    checkLevelAboveSG();
+  }
+
+  public MeasurementGroupByLevelCounter(
+      IMNode startNode,
+      PartialPath path,
+      IMTreeStore store,
+      int groupByLevel,
+      List<String> timeseries,
+      boolean hasTag)
+      throws MetadataException {
+    super(startNode, path, store);
+    this.groupByLevel = groupByLevel;
+    this.timeseries = timeseries;
+    this.hasTag = hasTag;
     checkLevelAboveSG();
   }
 
@@ -85,6 +104,11 @@ public class MeasurementGroupByLevelCounter extends Traverser {
     }
     if (!node.isMeasurement()) {
       return false;
+    }
+    if (hasTag) {
+      if (!timeseries.contains(node.getFullPath())) {
+        return true;
+      }
     }
     if (level >= groupByLevel) {
       result.put(path, result.get(path) + 1);

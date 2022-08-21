@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -39,6 +41,9 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   private final TimeChunkWriter timeChunkWriter;
   private final List<ValueChunkWriter> valueChunkWriterList;
   private int valueIndex;
+
+  // Used for batch writing
+  private long remainingPointsNumber;
 
   /** @param schema schema of this measurement */
   public AlignedChunkWriterImpl(VectorMeasurementSchema schema) {
@@ -66,6 +71,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
 
     this.valueIndex = 0;
+    this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
   public AlignedChunkWriterImpl(List<IMeasurementSchema> schemaList) {
@@ -91,6 +97,8 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
 
     this.valueIndex = 0;
+
+    this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
   public void write(long time, int value, boolean isNull) {
@@ -154,6 +162,61 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     if (checkPageSizeAndMayOpenANewPage()) {
       writePageToPageBuffer();
     }
+  }
+
+  public void write(TimeColumn timeColumn, Column[] valueColumns, int batchSize) {
+    if (remainingPointsNumber < batchSize) {
+      int pointsHasWritten = (int) remainingPointsNumber;
+      batchWrite(timeColumn, valueColumns, pointsHasWritten, 0);
+      batchWrite(timeColumn, valueColumns, batchSize - pointsHasWritten, pointsHasWritten);
+    } else {
+      batchWrite(timeColumn, valueColumns, batchSize, 0);
+    }
+  }
+
+  private void batchWrite(
+      TimeColumn timeColumn, Column[] valueColumns, int batchSize, int arrayOffset) {
+    valueIndex = 0;
+    long[] times = timeColumn.getTimes();
+
+    for (Column column : valueColumns) {
+      ValueChunkWriter chunkWriter = valueChunkWriterList.get(valueIndex++);
+      TSDataType tsDataType = chunkWriter.getDataType();
+      switch (tsDataType) {
+        case TEXT:
+          chunkWriter.write(times, column.getBinaries(), column.isNull(), batchSize, arrayOffset);
+          break;
+        case DOUBLE:
+          chunkWriter.write(times, column.getDoubles(), column.isNull(), batchSize, arrayOffset);
+          break;
+        case BOOLEAN:
+          chunkWriter.write(times, column.getBooleans(), column.isNull(), batchSize, arrayOffset);
+          break;
+        case INT64:
+          chunkWriter.write(times, column.getLongs(), column.isNull(), batchSize, arrayOffset);
+          break;
+        case INT32:
+          chunkWriter.write(times, column.getInts(), column.isNull(), batchSize, arrayOffset);
+          break;
+        case FLOAT:
+          chunkWriter.write(times, column.getFloats(), column.isNull(), batchSize, arrayOffset);
+          break;
+        default:
+          throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+      }
+    }
+
+    write(times, batchSize, arrayOffset);
+  }
+
+  public void write(long[] time, int batchSize, int arrayOffset) {
+    valueIndex = 0;
+    timeChunkWriter.write(time, batchSize, arrayOffset);
+    if (checkPageSizeAndMayOpenANewPage()) {
+      writePageToPageBuffer();
+    }
+
+    remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
   /**

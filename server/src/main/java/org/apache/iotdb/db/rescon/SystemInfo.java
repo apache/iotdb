@@ -91,7 +91,7 @@ public class SystemInfo {
     } else {
       logger.info(
           "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}).",
-          storageGroupInfo.getDataRegion().getLogicalStorageGroupName(),
+          storageGroupInfo.getDataRegion().getStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       rejected = true;
@@ -131,13 +131,13 @@ public class SystemInfo {
         && totalStorageGroupMemCost < REJECT_THERSHOLD) {
       logger.debug(
           "SG ({}) released memory (delta: {}) but still exceeding flush proportion (totalSgMemCost: {}), call flush.",
-          storageGroupInfo.getDataRegion().getLogicalStorageGroupName(),
+          storageGroupInfo.getDataRegion().getStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       if (rejected) {
         logger.info(
             "SG ({}) released memory (delta: {}), set system to normal status (totalSgMemCost: {}).",
-            storageGroupInfo.getDataRegion().getLogicalStorageGroupName(),
+            storageGroupInfo.getDataRegion().getStorageGroupName(),
             delta,
             totalStorageGroupMemCost);
       }
@@ -146,7 +146,7 @@ public class SystemInfo {
     } else if (totalStorageGroupMemCost >= REJECT_THERSHOLD) {
       logger.warn(
           "SG ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
-          storageGroupInfo.getDataRegion().getLogicalStorageGroupName(),
+          storageGroupInfo.getDataRegion().getStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       logCurrentTotalSGMemory();
@@ -154,7 +154,7 @@ public class SystemInfo {
     } else {
       logger.debug(
           "SG ({}) released memory (delta: {}), system is in normal status (totalSgMemCost: {}).",
-          storageGroupInfo.getDataRegion().getLogicalStorageGroupName(),
+          storageGroupInfo.getDataRegion().getStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       logCurrentTotalSGMemory();

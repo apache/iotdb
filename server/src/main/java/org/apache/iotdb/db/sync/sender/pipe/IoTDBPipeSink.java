@@ -19,8 +19,8 @@
  */
 package org.apache.iotdb.db.sync.sender.pipe;
 
+import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 

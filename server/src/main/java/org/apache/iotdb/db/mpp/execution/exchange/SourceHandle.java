@@ -31,6 +31,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -86,6 +87,8 @@ public class SourceHandle implements ISourceHandle {
   private int lastSequenceId = Integer.MAX_VALUE;
   private boolean aborted = false;
 
+  private boolean closed = false;
+
   public SourceHandle(
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
@@ -116,9 +119,8 @@ public class SourceHandle implements ISourceHandle {
   public synchronized TsBlock receive() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
 
-      if (aborted) {
-        throw new IllegalStateException("Source handle is aborted.");
-      }
+      checkState();
+
       if (!blocked.isDone()) {
         throw new IllegalStateException("Source handle is blocked.");
       }
@@ -128,7 +130,7 @@ public class SourceHandle implements ISourceHandle {
         return null;
       }
       logger.info(
-          "Receive {} TsdBlock, size is {}", currSequenceId, tsBlock.getRetainedSizeInBytes());
+          "Receive {} TsBlock, size is {}", currSequenceId, tsBlock.getRetainedSizeInBytes());
       currSequenceId += 1;
       bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
       localMemoryManager
@@ -149,7 +151,7 @@ public class SourceHandle implements ISourceHandle {
 
   private synchronized void trySubmitGetDataBlocksTask() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      if (aborted) {
+      if (aborted || closed) {
         return;
       }
       if (blockedOnMemory != null && !blockedOnMemory.isDone()) {
@@ -159,33 +161,35 @@ public class SourceHandle implements ISourceHandle {
       final int startSequenceId = nextSequenceId;
       int endSequenceId = nextSequenceId;
       long reservedBytes = 0L;
-      ListenableFuture<Void> future = null;
+      Pair<ListenableFuture<Void>, Boolean> pair = null;
+      long blockedSize = 0L;
       while (sequenceIdToDataBlockSize.containsKey(endSequenceId)) {
         Long bytesToReserve = sequenceIdToDataBlockSize.get(endSequenceId);
         if (bytesToReserve == null) {
           throw new IllegalStateException("Data block size is null.");
         }
-        future =
+        pair =
             localMemoryManager
                 .getQueryPool()
                 .reserve(localFragmentInstanceId.getQueryId(), bytesToReserve);
         bufferRetainedSizeInBytes += bytesToReserve;
         endSequenceId += 1;
         reservedBytes += bytesToReserve;
-        if (!future.isDone()) {
+        if (!pair.right) {
+          blockedSize = bytesToReserve;
           break;
         }
       }
 
-      if (future == null) {
+      if (pair == null) {
         // Next data block not generated yet. Do nothing.
         return;
       }
-
       nextSequenceId = endSequenceId;
-      executorService.submit(new GetDataBlocksTask(startSequenceId, endSequenceId, reservedBytes));
-      if (!future.isDone()) {
-        blockedOnMemory = future;
+
+      if (!pair.right) {
+        endSequenceId--;
+        reservedBytes -= blockedSize;
         // The future being not completed indicates,
         //   1. Memory has been reserved for blocks in [startSequenceId, endSequenceId).
         //   2. Memory reservation for block whose sequence ID equals endSequenceId - 1 is blocked.
@@ -195,16 +199,27 @@ public class SourceHandle implements ISourceHandle {
         //         |-------- reserved --------|--- blocked ---|--- not reserved ---|
 
         // Schedule another call of trySubmitGetDataBlocksTask for the rest of blocks.
-        future.addListener(SourceHandle.this::trySubmitGetDataBlocksTask, executorService);
+        blockedOnMemory = pair.left;
+        final int blockedSequenceId = endSequenceId;
+        final long blockedRetainedSize = blockedSize;
+        blockedOnMemory.addListener(
+            () ->
+                executorService.submit(
+                    new GetDataBlocksTask(
+                        blockedSequenceId, blockedSequenceId + 1, blockedRetainedSize)),
+            executorService);
+      }
+
+      if (endSequenceId > startSequenceId) {
+        executorService.submit(
+            new GetDataBlocksTask(startSequenceId, endSequenceId, reservedBytes));
       }
     }
   }
 
   @Override
   public synchronized ListenableFuture<?> isBlocked() {
-    if (aborted) {
-      throw new IllegalStateException("Source handle is aborted.");
-    }
+    checkState();
     return nonCancellationPropagating(blocked);
   }
 
@@ -234,7 +249,7 @@ public class SourceHandle implements ISourceHandle {
   @Override
   public synchronized void abort() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      if (aborted) {
+      if (aborted || closed) {
         return;
       }
       if (blocked != null && !blocked.isDone()) {
@@ -252,6 +267,31 @@ public class SourceHandle implements ISourceHandle {
       }
       aborted = true;
       sourceHandleListener.onAborted(this);
+    }
+  }
+
+  @Override
+  public synchronized void close() {
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      if (aborted || closed) {
+        return;
+      }
+      if (blocked != null && !blocked.isDone()) {
+        blocked.set(null);
+      }
+      if (blockedOnMemory != null) {
+        bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
+      }
+      sequenceIdToDataBlockSize.clear();
+      if (bufferRetainedSizeInBytes > 0) {
+        localMemoryManager
+            .getQueryPool()
+            .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+        bufferRetainedSizeInBytes = 0;
+      }
+      closed = true;
+      currSequenceId = lastSequenceId + 1;
+      sourceHandleListener.onFinished(this);
     }
   }
 
@@ -291,6 +331,14 @@ public class SourceHandle implements ISourceHandle {
   @Override
   public boolean isAborted() {
     return aborted;
+  }
+
+  private void checkState() {
+    if (aborted) {
+      throw new IllegalStateException("Source handle is aborted.");
+    } else if (closed) {
+      throw new IllegalStateException("SourceHandle is closed.");
+    }
   }
 
   @Override
@@ -352,7 +400,7 @@ public class SourceHandle implements ISourceHandle {
             executorService.submit(
                 new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
             synchronized (SourceHandle.this) {
-              if (aborted) {
+              if (aborted || closed) {
                 return;
               }
               for (int i = startSequenceId; i < endSequenceId; i++) {

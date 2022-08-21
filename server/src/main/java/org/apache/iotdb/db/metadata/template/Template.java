@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -43,12 +42,9 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -681,31 +677,47 @@ public class Template implements Serializable {
   }
   // endregion
 
-  public ByteBuffer serialize() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-
-    try {
-      dataOutputStream.writeInt(id);
-      SerializeUtils.serialize(name, dataOutputStream);
-      dataOutputStream.writeInt(schemaMap.size());
-      for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
-        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        entry.getValue().partialSerializeTo(dataOutputStream);
-      }
-    } catch (IOException e) {
-      // unreachable
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(id, buffer);
+    ReadWriteIOUtils.write(name, buffer);
+    ReadWriteIOUtils.write(isDirectAligned, buffer);
+    ReadWriteIOUtils.write(schemaMap.size(), buffer);
+    for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), buffer);
+      entry.getValue().partialSerializeTo(buffer);
     }
-    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(id, outputStream);
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(isDirectAligned, outputStream);
+    ReadWriteIOUtils.write(schemaMap.size(), outputStream);
+    for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      entry.getValue().partialSerializeTo(outputStream);
+    }
+  }
+
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      serialize(outputStream);
+    } catch (IOException ignored) {
+
+    }
+    return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
   public void deserialize(ByteBuffer buffer) {
-    id = buffer.getInt();
-    name = SerializeUtils.deserializeString(buffer);
-    int schemaSize = buffer.getInt();
+    id = ReadWriteIOUtils.readInt(buffer);
+    name = ReadWriteIOUtils.readString(buffer);
+    isDirectAligned = ReadWriteIOUtils.readBool(buffer);
+    int schemaSize = ReadWriteIOUtils.readInt(buffer);
     schemaMap = new HashMap<>(schemaSize);
+    directNodes = new HashMap<>(schemaSize);
     for (int i = 0; i < schemaSize; i++) {
-      String schemaName = SerializeUtils.deserializeString(buffer);
+      String schemaName = ReadWriteIOUtils.readString(buffer);
       byte flag = ReadWriteIOUtils.readByte(buffer);
       IMeasurementSchema measurementSchema = null;
       if (flag == (byte) 0) {
@@ -714,6 +726,7 @@ public class Template implements Serializable {
         measurementSchema = VectorMeasurementSchema.partialDeserializeFrom(buffer);
       }
       schemaMap.put(schemaName, measurementSchema);
+      directNodes.put(schemaName, new MeasurementMNode(null, schemaName, measurementSchema, null));
     }
   }
 
@@ -744,20 +757,5 @@ public class Template implements Serializable {
    */
   public void setRehash(int code) {
     rehashCode = code;
-  }
-
-  public static ByteBuffer template2ByteBuffer(Template template) throws IOException {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    ObjectOutputStream dataOutputStream = new ObjectOutputStream(byteArrayOutputStream);
-    dataOutputStream.writeObject(template);
-    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-  }
-
-  public static Template byteBuffer2Template(ByteBuffer byteBuffer)
-      throws IOException, ClassNotFoundException {
-    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteBuffer.array());
-    ObjectInputStream ois = new ObjectInputStream(byteArrayInputStream);
-    Template template = (Template) ois.readObject();
-    return template;
   }
 }

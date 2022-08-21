@@ -35,7 +35,7 @@ public abstract class AbstractOpBlock implements Comparable<AbstractOpBlock> {
   protected String storageGroup;
   long filePipeSerialNumber;
 
-  boolean closed = true;
+  boolean closed = false;
 
   // record First Entry's index
   protected long beginIndex = -1;
@@ -93,7 +93,7 @@ public abstract class AbstractOpBlock implements Comparable<AbstractOpBlock> {
 
   /** release current class' resource */
   public void close() {
-    closed = false;
+    closed = true;
   };
 
   public boolean isClosed() {
@@ -106,5 +106,17 @@ public abstract class AbstractOpBlock implements Comparable<AbstractOpBlock> {
 
   public void setFilePipeSerialNumber(long filePipeSerialNumber) {
     this.filePipeSerialNumber = filePipeSerialNumber;
+  }
+
+  @Override
+  public String toString() {
+    return "storageGroup="
+        + storageGroup
+        + ", filePipeSerialNumber="
+        + filePipeSerialNumber
+        + ", beginIndex="
+        + beginIndex
+        + ", dataCount="
+        + dataCount;
   }
 }

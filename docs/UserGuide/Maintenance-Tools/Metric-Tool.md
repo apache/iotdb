@@ -78,14 +78,14 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 #### 4.3.1. API
 
-| Metric              | Tag                   | level     | Description                              | Sample                                       |
-| ------------------- | --------------------- | --------- | ---------------------------------------- | -------------------------------------------- |
-| entry_seconds_count | name="{{interface}}" | important | The total request count of the interface | entry_seconds_count{name="openSession",} 1.0 |
-| entry_seconds_sum   | name="{{interface}}" | important | The total cost seconds of the interface  | entry_seconds_sum{name="openSession",} 0.024 |
-| entry_seconds_max   | name="{{interface}}" | important | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
-| quantity_total      | name="pointsIn"       | important | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
-| thrift_connections  | name="{{thriftService}}" | core | current number of thrift connections | thrift_connections{name="RPC",} 1.0 |
-| thrift_active_threads | name="{{thriftThread}}" | core | current number if thrift worker threads | thrift_active_threads{name="RPC",} 1.0 |
+| Metric                | Tag                      | level     | Description                              | Sample                                       |
+| --------------------- | ------------------------ | --------- | ---------------------------------------- | -------------------------------------------- |
+| entry_seconds_count   | name="{{interface}}"     | important | The total request count of the interface | entry_seconds_count{name="openSession",} 1.0 |
+| entry_seconds_sum     | name="{{interface}}"     | important | The total cost seconds of the interface  | entry_seconds_sum{name="openSession",} 0.024 |
+| entry_seconds_max     | name="{{interface}}"     | important | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
+| quantity_total        | name="pointsIn"          | important | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
+| thrift_connections    | name="{{thriftService}}" | core      | current number of thrift connections     | thrift_connections{name="RPC",} 1.0          |
+| thrift_active_threads | name="{{thriftThread}}"  | core      | current number if thrift worker threads  | thrift_active_threads{name="RPC",} 1.0       |
 
 #### 4.3.2. Task
 | Metric                  | Tag                                                                           | level     | Description                                              | Sample                                                                                  |
@@ -96,6 +96,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cost_task_seconds_sum   | name="inner_compaction/cross_compaction/flush"                                | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
 | data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | The size of data written in compaction                   | data_written{name="compaction",type="total",} 10240                                     |
 | data_read               | name="compaction"                                                             | important | The size of data read in compaction                      | data_read={name="compaction",} 10240                                                    |
+| compaction_task_count   | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross"  | important | The number of compaction task                            | compaction_task_count{name="inner_compaction",type="sequence",} 1                       |
 
 #### 4.3.3. Memory Usage
 
@@ -121,12 +122,12 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 | Metric                    | Tag                                                                | level     | Description                                                                                  | Sample                                                                       |
 | ------------------------- | ------------------------------------------------------------------ | --------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| cluster_node_leader_count | name="{{ip}}"                                                      | important | The count of  ```dataGroupLeader``` on each node, which reflects the distribution of leaders | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
+| cluster_node_leader_count | name="{{ip}}:{{port}}"                                             | important | The count of  ```dataGroupLeader``` on each node, which reflects the distribution of leaders | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
 | cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"                                      | important | The count of ```uncommitted_log``` on each node in data groups it belongs to                 | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
-| cluster_node_status       | name="{{ip}}"                                                      | important | The current node status, 1=online  2=offline                                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
+| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode"                  | important | The current node status, 0=Unkonwn 1=online                                                  | cluster_node_status{name="0.0.0.0:22277",type="ConfigNode",} 1.0             |
 | cluster_elect_total       | name="{{ip}}",status="fail/win"                                    | important | The count and result (won or failed) of elections the node participated in.                  | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
-| config_node               | name="online"                                                      | core      | The number of online confignodes                                                             | config_node{name="online",} 3.0                                              |
-| data_node                 | name="online"                                                      | core      | The number of online datanodes                                                               | data_node{name="online",} 3.0                                                |
+| config_node               | name="total",status="Registered/Online/Unknown"                    | core      | The number of registered/online/offline confignodes                                          | config_node{name="total",status="Online",} 3.0                               |
+| data_node                 | name="total",status="Registered/Online/Unknown"                    | core      | The number of registered/online/offline datanodes                                            | data_node{name="total",status="Registered",} 3.0                             |
 | partition_table           | name="number"                                                      | core      | The number of partition table                                                                | partition_table{name="number",} 2.0                                          |
 | region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | The number of schemaRegion/dataRegion of cluster or specific node                            | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
 | region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | The number of DataRegion/SchemaRegion in storage group                                       | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |

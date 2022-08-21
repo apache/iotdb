@@ -41,7 +41,7 @@ import java.util.Set;
 
 public class AuthorizerManagerTest {
 
-  ClusterAuthorityFetcher authorityFetcher = ClusterAuthorityFetcher.getInstance();
+  ClusterAuthorityFetcher authorityFetcher = new ClusterAuthorityFetcher(new BasicAuthorityCache());
 
   @Test
   public void permissionCacheTest() {
@@ -90,8 +90,10 @@ public class AuthorizerManagerTest {
     result.setRoleInfo(new HashMap<>());
 
     // User authentication permission without role
-    authorityFetcher.getUserCache().put(user.getName(), authorityFetcher.cacheUser(result));
-    User user1 = authorityFetcher.getUserCache().getIfPresent(user.getName());
+    authorityFetcher
+        .getAuthorCache()
+        .putUserCache(user.getName(), authorityFetcher.cacheUser(result));
+    User user1 = authorityFetcher.getAuthorCache().getUserCache(user.getName());
     assert user1 != null;
     Assert.assertEquals(user.getName(), user1.getName());
     Assert.assertEquals(user.getPassword(), user1.getPassword());
@@ -113,7 +115,7 @@ public class AuthorizerManagerTest {
             .getCode());
 
     // Authenticate users with roles
-    authorityFetcher.invalidateCache(user.getName(), "");
+    authorityFetcher.getAuthorCache().invalidateCache(user.getName(), "");
     tUserResp.setPrivilegeList(new ArrayList<>());
     tUserResp.setRoleList(user.getRoleList());
 
@@ -131,8 +133,10 @@ public class AuthorizerManagerTest {
       tRoleRespMap.put(role.getName(), tRoleResp);
     }
     result.setRoleInfo(tRoleRespMap);
-    authorityFetcher.getUserCache().put(user.getName(), authorityFetcher.cacheUser(result));
-    Role role3 = authorityFetcher.getRoleCache().getIfPresent(role1.getName());
+    authorityFetcher
+        .getAuthorCache()
+        .putUserCache(user.getName(), authorityFetcher.cacheUser(result));
+    Role role3 = authorityFetcher.getAuthorCache().getRoleCache(role1.getName());
     Assert.assertEquals(role1.getName(), role3.getName());
     Assert.assertEquals(role1.getPrivilegeList(), role3.getPrivilegeList());
 
@@ -151,10 +155,10 @@ public class AuthorizerManagerTest {
                 "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_USER.ordinal())
             .getCode());
 
-    authorityFetcher.invalidateCache(user.getName(), "");
+    authorityFetcher.getAuthorCache().invalidateCache(user.getName(), "");
 
-    user1 = authorityFetcher.getUserCache().getIfPresent(user.getName());
-    role1 = authorityFetcher.getRoleCache().getIfPresent(role1.getName());
+    user1 = authorityFetcher.getAuthorCache().getUserCache(user.getName());
+    role1 = authorityFetcher.getAuthorCache().getRoleCache(role1.getName());
 
     Assert.assertNull(user1);
     Assert.assertNull(role1);

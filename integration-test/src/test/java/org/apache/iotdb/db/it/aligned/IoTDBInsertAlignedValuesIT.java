@@ -292,4 +292,16 @@ public class IoTDBInsertAlignedValuesIT {
           e.getMessage().contains("Insertion contains duplicated measurement: status"));
     }
   }
+
+  @Test
+  public void testInsertMultiRows() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "insert into root.sg1.d1(time, s1, s2) aligned values(10, 2, 2), (11, 3, '3'), (12,12.11,false);");
+      fail();
+    } catch (SQLException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("data type is not consistent"));
+    }
+  }
 }

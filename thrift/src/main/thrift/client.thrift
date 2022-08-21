@@ -215,6 +215,7 @@ struct TSInsertStringRecordReq {
   4: required list<string> values
   5: required i64 timestamp
   6: optional bool isAligned
+  7: optional i64 timeout
 }
 
 struct TSInsertTabletReq {
@@ -315,6 +316,7 @@ struct TSRawDataQueryReq {
   6: required i64 statementId
   7: optional bool enableRedirectQuery;
   8: optional bool jdbcQuery;
+  9: optional i64 timeout
 }
 
 struct TSLastDataQueryReq {
@@ -325,6 +327,7 @@ struct TSLastDataQueryReq {
   5: required i64 statementId
   6: optional bool enableRedirectQuery;
   7: optional bool jdbcQuery;
+  8: optional i64 timeout
 }
 
 struct TSCreateMultiTimeseriesReq {
@@ -404,6 +407,33 @@ struct TSUnsetSchemaTemplateReq {
 struct TSDropSchemaTemplateReq {
   1: required i64 sessionId
   2: required string templateName
+}
+
+// The sender and receiver need to check some info to confirm validity
+struct TSyncIdentityInfo{
+  // Check whether the ip of sender is in the white list of receiver.
+  1:required string address
+  // Sender needs to tell receiver its identity.
+  2:required string pipeName
+  3:required i64 createTime
+  // The version of sender and receiver need to be the same.
+  4:required string version
+}
+
+enum TSyncTransportType {
+  TSFILE,
+  DELETION,
+  PHYSICALPLAN,
+  FILE
+}
+
+struct TSyncTransportMetaInfo{
+  // The type of the pipeData in sending.
+  1:required TSyncTransportType type
+  // The name of the file in sending.
+  2:required string fileName
+  // The start index of the file slice in sending.
+  3:required i64 startIndex
 }
 
 service IClientRPCService {
@@ -496,4 +526,10 @@ service IClientRPCService {
   common.TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
 
   common.TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
+
+  common.TSStatus handshake(TSyncIdentityInfo info);
+
+  common.TSStatus transportData(1:TSyncTransportMetaInfo metaInfo, 2:binary buff, 3:binary digest);
+
+  common.TSStatus checkFileDigest(1:TSyncTransportMetaInfo metaInfo, 2:binary digest);
 }

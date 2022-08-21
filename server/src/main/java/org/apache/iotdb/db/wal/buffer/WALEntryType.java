@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-/** Type of {@link WALEntry} */
+/** Type of {@link WALEntry}, including info type and signal type */
 public enum WALEntryType {
+  // region info entry type
   /** {@link org.apache.iotdb.db.qp.physical.crud.InsertRowPlan} */
   INSERT_ROW_PLAN((byte) 0),
   /** {@link org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan} */
@@ -32,7 +33,16 @@ public enum WALEntryType {
   INSERT_ROW_NODE((byte) 4),
   /** {@link org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode} */
   INSERT_TABLET_NODE((byte) 5),
-  ;
+  // endregion
+  // region signal entry type
+  /** signal wal buffer has been closed */
+  CLOSE_SIGNAL(Byte.MIN_VALUE),
+  /** signal wal buffer to roll wal log writer */
+  ROLL_WAL_LOG_WRITER_SIGNAL((byte) (Byte.MIN_VALUE + 1)),
+  /** mark the wal file info part ends */
+  WAL_FILE_INFO_END_MARKER((byte) (Byte.MIN_VALUE + 2)),
+// endregion
+;
 
   private final byte code;
 

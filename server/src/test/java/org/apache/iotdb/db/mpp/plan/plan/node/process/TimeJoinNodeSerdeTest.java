@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
@@ -42,7 +42,7 @@ public class TimeJoinNodeSerdeTest {
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             TimeFilter.gt(100),
             null,
             100,
@@ -52,15 +52,14 @@ public class TimeJoinNodeSerdeTest {
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null,
             ValueFilter.gt(100),
             100,
             100,
             null);
 
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(new PlanNodeId("TestTimeJoinNode"), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(new PlanNodeId("TestTimeJoinNode"), Ordering.ASC);
     timeJoinNode.addChild(seriesScanNode1);
     timeJoinNode.addChild(seriesScanNode2);
 

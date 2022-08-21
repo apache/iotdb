@@ -26,22 +26,23 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
@@ -50,20 +51,21 @@ import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
-import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -117,8 +119,8 @@ public class ConfigPlanExecutor {
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
       throws UnknownPhysicalPlanTypeException, AuthException {
     switch (req.getType()) {
-      case GetDataNodeInfo:
-        return nodeInfo.getDataNodeInfo((GetDataNodeInfoPlan) req);
+      case GetDataNodeConfiguration:
+        return nodeInfo.getDataNodeConfiguration((GetDataNodeConfigurationPlan) req);
       case CountStorageGroup:
         return clusterSchemaInfo.countMatchedStorageGroups((CountStorageGroupPlan) req);
       case GetStorageGroup:
@@ -130,71 +132,76 @@ public class ConfigPlanExecutor {
       case GetOrCreateSchemaPartition:
         return partitionInfo.getSchemaPartition((GetSchemaPartitionPlan) req);
       case ListUser:
-        return authorInfo.executeListUser();
+        return authorInfo.executeListUsers((AuthorPlan) req);
       case ListRole:
-        return authorInfo.executeListRole();
+        return authorInfo.executeListRoles((AuthorPlan) req);
       case ListUserPrivilege:
         return authorInfo.executeListUserPrivileges((AuthorPlan) req);
       case ListRolePrivilege:
         return authorInfo.executeListRolePrivileges((AuthorPlan) req);
-      case ListUserRoles:
-        return authorInfo.executeListUserRoles((AuthorPlan) req);
-      case ListRoleUsers:
-        return authorInfo.executeListRoleUsers((AuthorPlan) req);
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
       case GetRegionInfoList:
         return getRegionInfoList(req);
-      case ShowSchemaTemplate:
+      case GetAllSchemaTemplate:
         return clusterSchemaInfo.getAllTemplates();
-      case ShowNodesInSchemaTemplate:
-        GetNodesInSchemaTemplatePlan plan = (GetNodesInSchemaTemplatePlan) req;
-        return clusterSchemaInfo.getTemplate(plan.getTemplateName());
+      case GetSchemaTemplate:
+        return clusterSchemaInfo.getTemplate((GetSchemaTemplatePlan) req);
+      case CheckTemplateSettable:
+        return clusterSchemaInfo.checkTemplateSettable((CheckTemplateSettablePlan) req);
       case GetPathsSetTemplate:
         return clusterSchemaInfo.getPathsSetTemplate((GetPathsSetTemplatePlan) req);
+      case GetAllTemplateSetInfo:
+        return clusterSchemaInfo.getAllTemplateSetInfo();
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
   }
 
-  public TSStatus executeNonQueryPlan(ConfigPhysicalPlan req)
+  public TSStatus executeNonQueryPlan(ConfigPhysicalPlan physicalPlan)
       throws UnknownPhysicalPlanTypeException, AuthException {
-    switch (req.getType()) {
+    switch (physicalPlan.getType()) {
       case RegisterDataNode:
-        return nodeInfo.registerDataNode((RegisterDataNodePlan) req);
+        return nodeInfo.registerDataNode((RegisterDataNodePlan) physicalPlan);
       case RemoveDataNode:
-        return nodeInfo.removeDataNode((RemoveDataNodePlan) req);
+        return nodeInfo.removeDataNode((RemoveDataNodePlan) physicalPlan);
       case SetStorageGroup:
-        TSStatus status = clusterSchemaInfo.setStorageGroup((SetStorageGroupPlan) req);
+        TSStatus status = clusterSchemaInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
-        return partitionInfo.setStorageGroup((SetStorageGroupPlan) req);
+        return partitionInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
       case AdjustMaxRegionGroupCount:
-        return clusterSchemaInfo.adjustMaxRegionGroupCount((AdjustMaxRegionGroupCountPlan) req);
+        return clusterSchemaInfo.adjustMaxRegionGroupCount(
+            (AdjustMaxRegionGroupCountPlan) physicalPlan);
       case DeleteStorageGroup:
-        partitionInfo.deleteStorageGroup((DeleteStorageGroupPlan) req);
-        return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupPlan) req);
+        partitionInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
+        return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
       case PreDeleteStorageGroup:
-        return partitionInfo.preDeleteStorageGroup((PreDeleteStorageGroupPlan) req);
+        return partitionInfo.preDeleteStorageGroup((PreDeleteStorageGroupPlan) physicalPlan);
       case SetTTL:
-        return clusterSchemaInfo.setTTL((SetTTLPlan) req);
+        return clusterSchemaInfo.setTTL((SetTTLPlan) physicalPlan);
       case SetSchemaReplicationFactor:
-        return clusterSchemaInfo.setSchemaReplicationFactor((SetSchemaReplicationFactorPlan) req);
+        return clusterSchemaInfo.setSchemaReplicationFactor(
+            (SetSchemaReplicationFactorPlan) physicalPlan);
       case SetDataReplicationFactor:
-        return clusterSchemaInfo.setDataReplicationFactor((SetDataReplicationFactorPlan) req);
+        return clusterSchemaInfo.setDataReplicationFactor(
+            (SetDataReplicationFactorPlan) physicalPlan);
       case SetTimePartitionInterval:
-        return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalPlan) req);
+        return clusterSchemaInfo.setTimePartitionInterval(
+            (SetTimePartitionIntervalPlan) physicalPlan);
       case CreateRegionGroups:
-        return partitionInfo.createRegionGroups((CreateRegionGroupsPlan) req);
+        return partitionInfo.createRegionGroups((CreateRegionGroupsPlan) physicalPlan);
+      case DeleteRegionGroups:
+        return partitionInfo.deleteRegionGroups((DeleteRegionGroupsPlan) physicalPlan);
       case CreateSchemaPartition:
-        return partitionInfo.createSchemaPartition((CreateSchemaPartitionPlan) req);
+        return partitionInfo.createSchemaPartition((CreateSchemaPartitionPlan) physicalPlan);
       case CreateDataPartition:
-        return partitionInfo.createDataPartition((CreateDataPartitionPlan) req);
+        return partitionInfo.createDataPartition((CreateDataPartitionPlan) physicalPlan);
       case UpdateProcedure:
-        return procedureInfo.updateProcedure((UpdateProcedurePlan) req);
+        return procedureInfo.updateProcedure((UpdateProcedurePlan) physicalPlan);
       case DeleteProcedure:
-        return procedureInfo.deleteProcedure((DeleteProcedurePlan) req);
+        return procedureInfo.deleteProcedure((DeleteProcedurePlan) physicalPlan);
       case CreateUser:
       case CreateRole:
       case DropUser:
@@ -206,23 +213,23 @@ public class ConfigPlanExecutor {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
-        return authorInfo.authorNonQuery((AuthorPlan) req);
+        return authorInfo.authorNonQuery((AuthorPlan) physicalPlan);
       case ApplyConfigNode:
-        return nodeInfo.applyConfigNode((ApplyConfigNodePlan) req);
+        return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);
       case RemoveConfigNode:
-        return nodeInfo.removeConfigNode((RemoveConfigNodePlan) req);
+        return nodeInfo.removeConfigNode((RemoveConfigNodePlan) physicalPlan);
       case CreateFunction:
-        return udfInfo.createFunction((CreateFunctionPlan) req);
+        return udfInfo.createFunction((CreateFunctionPlan) physicalPlan);
       case DropFunction:
-        return udfInfo.dropFunction((DropFunctionPlan) req);
+        return udfInfo.dropFunction((DropFunctionPlan) physicalPlan);
       case CreateSchemaTemplate:
-        return clusterSchemaInfo.createSchemaTemplate((CreateSchemaTemplatePlan) req);
+        return clusterSchemaInfo.createSchemaTemplate((CreateSchemaTemplatePlan) physicalPlan);
       case UpdateRegionLocation:
-        return partitionInfo.updateRegionLocation((UpdateRegionLocationPlan) req);
+        return partitionInfo.updateRegionLocation((UpdateRegionLocationPlan) physicalPlan);
       case SetSchemaTemplate:
-        return clusterSchemaInfo.setSchemaTemplate((SetSchemaTemplatePlan) req);
+        return clusterSchemaInfo.setSchemaTemplate((SetSchemaTemplatePlan) physicalPlan);
       default:
-        throw new UnknownPhysicalPlanTypeException(req.getType());
+        throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }
   }
 

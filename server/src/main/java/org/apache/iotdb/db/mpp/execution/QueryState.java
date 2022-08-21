@@ -28,6 +28,7 @@ public enum QueryState {
   QUEUED(false),
   PLANNED(false),
   DISPATCHING(false),
+  PENDING_RETRY(false),
   RUNNING(false),
   FINISHED(true),
   CANCELED(true),

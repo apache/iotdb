@@ -300,7 +300,7 @@ public class ReadPointCompactionPerformer
       TsFileResource resource, TsFileSequenceReader reader, String device, String measurement)
       throws IllegalPathException, IOException {
     List<ChunkMetadata> chunkMetadata =
-        reader.getChunkMetadataList(new PartialPath(device, measurement));
+        reader.getChunkMetadataList(new PartialPath(device, measurement), true);
     if (chunkMetadata.size() > 0) {
       chunkMetadata.get(0).setFilePath(resource.getTsFilePath());
       Chunk chunk = ChunkCache.getInstance().get(chunkMetadata.get(0));
@@ -371,15 +371,19 @@ public class ReadPointCompactionPerformer
       throws IOException {
     while (reader.hasNextBatch()) {
       TsBlock tsBlock = reader.nextBatch();
-      IPointReader pointReader;
       if (isAligned) {
-        pointReader = tsBlock.getTsBlockAlignedRowIterator();
+        writer.write(
+            tsBlock.getTimeColumn(),
+            tsBlock.getValueColumns(),
+            subTaskId,
+            tsBlock.getPositionCount());
       } else {
-        pointReader = tsBlock.getTsBlockSingleColumnIterator();
-      }
-      while (pointReader.hasNextTimeValuePair()) {
-        TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
-        writer.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(), subTaskId);
+        IPointReader pointReader = tsBlock.getTsBlockSingleColumnIterator();
+        while (pointReader.hasNextTimeValuePair()) {
+          TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
+          writer.write(
+              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(), subTaskId);
+        }
       }
     }
   }

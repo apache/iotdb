@@ -173,7 +173,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         LOGGER.error(
             "{}-{} [Compaction] Meet errors in cross space compaction.",
             storageGroupName,
-            dataRegionId);
+            dataRegionId,
+            throwable);
       } else {
         LOGGER.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
         // clean the interrupted flag

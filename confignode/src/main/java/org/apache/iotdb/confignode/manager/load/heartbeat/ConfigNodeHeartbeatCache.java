@@ -20,25 +20,14 @@ package org.apache.iotdb.confignode.manager.load.heartbeat;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.NodeManager;
 
-import java.util.LinkedList;
-
-public class ConfigNodeHeartbeatCache implements INodeCache {
-
-  // Cache heartbeat samples
-  private static final int maximumWindowSize = 100;
-  private final LinkedList<NodeHeartbeatSample> slidingWindow;
+public class ConfigNodeHeartbeatCache extends BaseNodeCache {
 
   private final TConfigNodeLocation configNodeLocation;
 
-  // For showing cluster
-  private volatile NodeStatus status;
-
   public ConfigNodeHeartbeatCache(TConfigNodeLocation configNodeLocation) {
     this.configNodeLocation = configNodeLocation;
-    this.slidingWindow = new LinkedList<>();
-    this.status = NodeStatus.Running;
   }
 
   @Override
@@ -51,7 +40,7 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
         slidingWindow.add(newHeartbeatSample);
       }
 
-      if (slidingWindow.size() > maximumWindowSize) {
+      if (slidingWindow.size() > MAXIMUM_WINDOW_SIZE) {
         slidingWindow.removeFirst();
       }
     }
@@ -59,8 +48,8 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
 
   @Override
   public boolean updateLoadStatistic() {
-    if (configNodeLocation.getInternalEndPoint().equals(LoadManager.currentNode)) {
-      // We don't need to update itself
+    if (configNodeLocation.getInternalEndPoint().equals(NodeManager.CURRENT_NODE)) {
+      this.status = NodeStatus.Running;
       return false;
     }
 
@@ -82,7 +71,7 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
     }
 
     // TODO: Optimize judge logic
-    if (System.currentTimeMillis() - lastSendTime > 20_000) {
+    if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
       status = NodeStatus.Unknown;
     } else {
       status = NodeStatus.Running;

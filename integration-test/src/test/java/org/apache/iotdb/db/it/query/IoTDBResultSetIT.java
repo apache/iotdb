@@ -39,6 +39,7 @@ import java.sql.Statement;
 import java.sql.Types;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -53,9 +54,15 @@ public class IoTDBResultSetIT {
         "CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.t1.wf01.wt01.type WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.t1.wf01.wt01.grade WITH DATATYPE=INT64, ENCODING=RLE",
+        "CREATE TIMESERIES root.t1.wf01.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.t1.wf01.wt02.temperature WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE TIMESERIES root.t1.wf01.wt02.type WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.t1.wf01.wt02.grade WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.sg.dev.status WITH DATATYPE=text,ENCODING=PLAIN",
         "insert into root.sg.dev(time,status) values(1,3.14)"
       };
+
+  private static final String[] emptyResultSet = new String[] {};
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -127,5 +134,31 @@ public class IoTDBResultSetIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void emptyQueryTest1() {
+    String expectedHeader = "Time,";
+    resultSetEqualTest("select * from root.sg1.d1", expectedHeader, emptyResultSet);
+  }
+
+  @Test
+  public void emptyQueryTest2() {
+    String expectedHeader =
+        "Time,root.t1.wf01.wt02.grade,root.t1.wf01.wt02.temperature,root.t1.wf01.wt02.type,root.t1.wf01.wt02.status,";
+    resultSetEqualTest("select * from root.t1.wf01.wt02", expectedHeader, emptyResultSet);
+  }
+
+  @Test
+  public void emptyShowTimeseriesTest() {
+    String expectedHeader =
+        "timeseries,alias,storage group,dataType,encoding,compression,tags,attributes,";
+    resultSetEqualTest("show timeseries root.sg1.**", expectedHeader, emptyResultSet);
+  }
+
+  @Test
+  public void emptyShowDeviceTest() {
+    String expectedHeader = "devices,isAligned,";
+    resultSetEqualTest("show devices root.sg1.**", expectedHeader, emptyResultSet);
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.mockito.Mockito;
@@ -54,6 +55,7 @@ public class Utils {
 
   public static MemoryPool createMockBlockedMemoryPool(
       String queryId, int numOfMockTsBlock, long mockTsBlockSize) {
+    long capacityInBytes = numOfMockTsBlock * mockTsBlockSize;
     MemoryPool mockMemoryPool = Mockito.mock(MemoryPool.class);
     AtomicReference<SettableFuture<Void>> settableFuture = new AtomicReference<>();
     settableFuture.set(SettableFuture.create());
@@ -62,9 +64,14 @@ public class Utils {
     Mockito.when(mockMemoryPool.reserve(Mockito.eq(queryId), Mockito.anyLong()))
         .thenAnswer(
             invocation -> {
-              reservedBytes.updateAndGet(v -> v + (long) invocation.getArgument(1));
-              settableFuture.set(SettableFuture.create());
-              return settableFuture.get();
+              long bytesToReserve = invocation.getArgument(1);
+              if (reservedBytes.get() + bytesToReserve <= capacityInBytes) {
+                reservedBytes.updateAndGet(v -> v + (long) invocation.getArgument(1));
+                return new Pair<>(settableFuture.get(), true);
+              } else {
+                settableFuture.set(SettableFuture.create());
+                return new Pair<>(settableFuture.get(), false);
+              }
             });
     Mockito.doAnswer(
             (Answer<Void>)
@@ -72,12 +79,12 @@ public class Utils {
                   reservedBytes.updateAndGet(v -> v - (long) invocation.getArgument(1));
                   if (reservedBytes.get() <= 0) {
                     settableFuture.get().set(null);
+                    reservedBytes.updateAndGet(v -> v + mockTsBlockSize);
                   }
                   return null;
                 })
         .when(mockMemoryPool)
         .free(Mockito.eq(queryId), Mockito.anyLong());
-    long capacityInBytes = numOfMockTsBlock * mockTsBlockSize;
     Mockito.when(mockMemoryPool.tryReserve(Mockito.eq(queryId), Mockito.anyLong()))
         .thenAnswer(
             invocation -> {
@@ -95,7 +102,7 @@ public class Utils {
   public static MemoryPool createMockNonBlockedMemoryPool() {
     MemoryPool mockMemoryPool = Mockito.mock(MemoryPool.class);
     Mockito.when(mockMemoryPool.reserve(Mockito.anyString(), Mockito.anyLong()))
-        .thenReturn(immediateFuture(null));
+        .thenReturn(new Pair<>(immediateFuture(null), true));
     Mockito.when(mockMemoryPool.tryReserve(Mockito.anyString(), Mockito.anyLong()))
         .thenReturn(true);
     return mockMemoryPool;

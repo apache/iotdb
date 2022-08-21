@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.it.env;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
@@ -29,7 +35,6 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 
-import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -40,10 +45,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
@@ -54,8 +59,6 @@ public abstract class AbstractEnv implements BaseEnv {
   private final int NODE_START_TIMEOUT = 100;
   private final int PROBE_TIMEOUT_MS = 2000;
   private final int NODE_NETWORK_TIMEOUT_MS = 65_000;
-  private final String lockFilePath =
-      System.getProperty("user.dir") + File.separator + "target" + File.separator + "lock-";
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
   private final Random rand = new Random();
@@ -69,7 +72,8 @@ public abstract class AbstractEnv implements BaseEnv {
     final String testMethodName = getTestMethodName();
 
     ConfigNodeWrapper seedConfigNodeWrapper =
-        new ConfigNodeWrapper(true, "", testClassName, testMethodName, searchAvailablePorts());
+        new ConfigNodeWrapper(
+            true, "", testClassName, testMethodName, EnvUtils.searchAvailablePorts());
     seedConfigNodeWrapper.createDir();
     seedConfigNodeWrapper.changeConfig(ConfigFactory.getConfig().getConfignodeProperties());
     seedConfigNodeWrapper.start();
@@ -81,11 +85,15 @@ public abstract class AbstractEnv implements BaseEnv {
     for (int i = 1; i < configNodesNum; i++) {
       ConfigNodeWrapper configNodeWrapper =
           new ConfigNodeWrapper(
-              false, targetConfigNode, testClassName, testMethodName, searchAvailablePorts());
+              false,
+              targetConfigNode,
+              testClassName,
+              testMethodName,
+              EnvUtils.searchAvailablePorts());
       this.configNodeWrapperList.add(configNodeWrapper);
       configNodeEndpoints.add(configNodeWrapper.getIpAndPortString());
       configNodeWrapper.createDir();
-      configNodeWrapper.changeConfig(null);
+      configNodeWrapper.changeConfig(ConfigFactory.getConfig().getConfignodeProperties());
       configNodesDelegate.addRequest(
           () -> {
             configNodeWrapper.start();
@@ -105,7 +113,7 @@ public abstract class AbstractEnv implements BaseEnv {
     for (int i = 0; i < dataNodesNum; i++) {
       DataNodeWrapper dataNodeWrapper =
           new DataNodeWrapper(
-              targetConfigNode, testClassName, testMethodName, searchAvailablePorts());
+              targetConfigNode, testClassName, testMethodName, EnvUtils.searchAvailablePorts());
       this.dataNodeWrapperList.add(dataNodeWrapper);
       dataNodeEndpoints.add(dataNodeWrapper.getIpAndPortString());
       dataNodeWrapper.createDir();
@@ -134,7 +142,7 @@ public abstract class AbstractEnv implements BaseEnv {
       nodeWrapper.stop();
       nodeWrapper.waitingToShutDown();
       nodeWrapper.destroyDir();
-      String lockPath = getLockFilePath(nodeWrapper.getPort());
+      String lockPath = EnvUtils.getLockFilePath(nodeWrapper.getPort());
       if (!new File(lockPath).delete()) {
         logger.error("Delete lock file {} failed", lockPath);
       }
@@ -179,10 +187,41 @@ public abstract class AbstractEnv implements BaseEnv {
     try {
       long startTime = System.currentTimeMillis();
       testDelegate.requestAll();
+      if (!configNodeWrapperList.isEmpty()) {
+        checkNodeHeartbeat();
+      }
       logger.info("Start cluster costs: {}s", (System.currentTimeMillis() - startTime) / 1000.0);
     } catch (Exception e) {
       fail("After 30 times retry, the cluster can't work!");
     }
+  }
+
+  private void checkNodeHeartbeat() throws Exception {
+    TShowClusterResp showClusterResp;
+    Exception lastException = null;
+    boolean flag;
+    for (int i = 0; i < 30; i++) {
+      try (SyncConfigNodeIServiceClient client =
+          (SyncConfigNodeIServiceClient) getConfigNodeConnection()) {
+        flag = true;
+        showClusterResp = client.showCluster();
+        Map<Integer, String> nodeStatus = showClusterResp.getNodeStatus();
+        for (String status : nodeStatus.values()) {
+          if (!status.equals("Running")) {
+            flag = false;
+            break;
+          }
+        }
+        int nodeNum = configNodeWrapperList.size() + dataNodeWrapperList.size();
+        if (flag && nodeStatus.size() == nodeNum) {
+          return;
+        }
+      } catch (Exception e) {
+        lastException = e;
+      }
+      TimeUnit.SECONDS.sleep(1L);
+    }
+    throw lastException;
   }
 
   @Override
@@ -193,60 +232,6 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void cleanAfterTest() {
     cleanupEnvironment();
-  }
-
-  public final int[] searchAvailablePorts() {
-    do {
-      int randomPortStart = 1000 + (int) (Math.random() * (1999 - 1000));
-      randomPortStart = randomPortStart * 10 + 1;
-      File lockFile = new File(getLockFilePath(randomPortStart));
-      if (lockFile.exists()) {
-        continue;
-      }
-
-      List<Integer> requiredPorts =
-          IntStream.rangeClosed(randomPortStart, randomPortStart + 9)
-              .boxed()
-              .collect(Collectors.toList());
-      try {
-        if (checkPortsAvailable(requiredPorts) && lockFile.createNewFile()) {
-          return requiredPorts.stream().mapToInt(Integer::intValue).toArray();
-        }
-      } catch (IOException e) {
-        // ignore
-      }
-    } while (true);
-  }
-
-  private boolean checkPortsAvailable(List<Integer> ports) {
-    String cmd = getSearchAvailablePortCmd(ports);
-    try {
-      Process proc = Runtime.getRuntime().exec(cmd);
-      return proc.waitFor() == 1;
-    } catch (IOException e) {
-      // ignore
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
-    return false;
-  }
-
-  private String getSearchAvailablePortCmd(List<Integer> ports) {
-    if (SystemUtils.IS_OS_WINDOWS) {
-      return getWindowsSearchPortCmd(ports);
-    }
-    return getUnixSearchPortCmd(ports);
-  }
-
-  private String getWindowsSearchPortCmd(List<Integer> ports) {
-    String cmd = "netstat -aon -p tcp | findStr ";
-    return cmd
-        + ports.stream().map(v -> "/C:'127.0.0.1:" + v + "'").collect(Collectors.joining(" "));
-  }
-
-  private String getUnixSearchPortCmd(List<Integer> ports) {
-    String cmd = "lsof -iTCP -sTCP:LISTEN -P -n | awk '{print $9}' | grep -E ";
-    return cmd + ports.stream().map(String::valueOf).collect(Collectors.joining("|")) + "\"";
   }
 
   @Override
@@ -349,7 +334,40 @@ public abstract class AbstractEnv implements BaseEnv {
     }
   }
 
-  private String getLockFilePath(int port) {
-    return lockFilePath + port;
+  @Override
+  public List<ConfigNodeWrapper> getConfigNodeWrapperList() {
+    return configNodeWrapperList;
+  }
+
+  @Override
+  public void setConfigNodeWrapperList(List<ConfigNodeWrapper> configNodeWrapperList) {
+    this.configNodeWrapperList = configNodeWrapperList;
+  }
+
+  @Override
+  public List<DataNodeWrapper> getDataNodeWrapperList() {
+    return dataNodeWrapperList;
+  }
+
+  @Override
+  public void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList) {
+    this.dataNodeWrapperList = dataNodeWrapperList;
+  }
+
+  @Override
+  public IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException {
+    IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
+        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+            .createClientManager(
+                new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+    for (int i = 0; i < 30; i++) {
+      try {
+        return clientManager.borrowClient(
+            new TEndPoint(
+                configNodeWrapperList.get(0).getIp(), configNodeWrapperList.get(0).getPort()));
+      } catch (IOException ignored) {
+      }
+    }
+    throw new IOException("Failed to get config node connection");
   }
 }

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -166,7 +166,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public boolean validateAndSetSchema(SchemaTree schemaTree) {
+  public boolean validateAndSetSchema(ISchemaTree schemaTree) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
     if (deviceSchemaInfo.isAligned() != isAligned) {
@@ -780,13 +780,17 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return size;
   }
 
+  /**
+   * Compared with {@link this#serialize(ByteBuffer)}, more info: search index and data types, less
+   * info: isNeedInferType
+   */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     serializeToWAL(buffer, 0, rowCount);
   }
 
   public void serializeToWAL(IWALByteBufferView buffer, int start, int end) {
-    buffer.putShort((short) PlanNodeType.INSERT_TABLET.ordinal());
+    buffer.putShort(PlanNodeType.INSERT_TABLET.getNodeType());
     subSerialize(buffer, start, end);
   }
 
@@ -894,28 +898,26 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   /** Deserialize from wal */
-  public static InsertTabletNode deserialize(DataInputStream stream)
-      throws IllegalPathException, IOException {
+  public static InsertTabletNode deserializeFromWAL(DataInputStream stream) throws IOException {
     // we do not store plan node id in wal entry
     InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
-    insertNode.subDeserialize(stream);
+    insertNode.subDeserializeFromWAL(stream);
     return insertNode;
   }
 
-  private void subDeserialize(DataInputStream stream) throws IllegalPathException, IOException {
+  private void subDeserializeFromWAL(DataInputStream stream) throws IOException {
     searchIndex = stream.readLong();
-    devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
+    try {
+      devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
+    }
 
     int measurementSize = stream.readInt();
     measurements = new String[measurementSize];
     measurementSchemas = new MeasurementSchema[measurementSize];
-    deserializeMeasurementSchemas(stream);
-
-    // data types are serialized in measurement schemas
     dataTypes = new TSDataType[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      dataTypes[i] = measurementSchemas[i].getType();
-    }
+    deserializeMeasurementSchemas(stream);
 
     rowCount = stream.readInt();
     times = new long[rowCount];
@@ -928,6 +930,45 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     columns =
         QueryDataSetUtils.readTabletValuesFromStream(stream, dataTypes, measurementSize, rowCount);
     isAligned = stream.readByte() == 1;
+  }
+
+  public static InsertTabletNode deserializeFromWAL(ByteBuffer buffer) {
+    // we do not store plan node id in wal entry
+    InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
+    insertNode.subDeserializeFromWAL(buffer);
+    return insertNode;
+  }
+
+  private void subDeserializeFromWAL(ByteBuffer buffer) {
+    searchIndex = buffer.getLong();
+    try {
+      devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
+    }
+
+    int measurementSize = buffer.getInt();
+    measurements = new String[measurementSize];
+    measurementSchemas = new MeasurementSchema[measurementSize];
+    deserializeMeasurementSchemas(buffer);
+
+    // data types are serialized in measurement schemas
+    dataTypes = new TSDataType[measurementSize];
+    for (int i = 0; i < measurementSize; i++) {
+      dataTypes[i] = measurementSchemas[i].getType();
+    }
+
+    rowCount = buffer.getInt();
+    times = new long[rowCount];
+    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount);
+
+    boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
+    if (hasBitMaps) {
+      bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, measurementSize, rowCount);
+    }
+    columns =
+        QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount);
+    isAligned = buffer.get() == 1;
   }
   // endregion
 

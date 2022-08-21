@@ -215,6 +215,8 @@ public class AuthorityChecker {
       case DELETE:
       case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
+      case ALTER_TIMESERIES:
+        return PrivilegeType.ALTER_TIMESERIES.ordinal();
       case SHOW:
       case QUERY:
       case GROUP_BY_TIME:
@@ -267,29 +269,30 @@ public class AuthorityChecker {
 
   private static int translateToPermissionId(StatementType type) {
     switch (type) {
-      case GRANT_ROLE_PRIVILEGE:
-        return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
       case CREATE_ROLE:
         return PrivilegeType.CREATE_ROLE.ordinal();
       case CREATE_USER:
         return PrivilegeType.CREATE_USER.ordinal();
-      case MODIFY_PASSWORD:
-        return PrivilegeType.MODIFY_PASSWORD.ordinal();
-      case GRANT_USER_PRIVILEGE:
-        return PrivilegeType.GRANT_USER_PRIVILEGE.ordinal();
-      case REVOKE_ROLE_PRIVILEGE:
-        return PrivilegeType.REVOKE_ROLE_PRIVILEGE.ordinal();
-      case REVOKE_USER_PRIVILEGE:
-        return PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal();
-      case GRANT_USER_ROLE:
-        return PrivilegeType.GRANT_USER_ROLE.ordinal();
       case DELETE_USER:
         return PrivilegeType.DELETE_USER.ordinal();
       case DELETE_ROLE:
         return PrivilegeType.DELETE_ROLE.ordinal();
+      case MODIFY_PASSWORD:
+        return PrivilegeType.MODIFY_PASSWORD.ordinal();
+      case GRANT_USER_PRIVILEGE:
+        return PrivilegeType.GRANT_USER_PRIVILEGE.ordinal();
+      case GRANT_ROLE_PRIVILEGE:
+        return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
+      case REVOKE_USER_PRIVILEGE:
+        return PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal();
+      case REVOKE_ROLE_PRIVILEGE:
+        return PrivilegeType.REVOKE_ROLE_PRIVILEGE.ordinal();
+      case GRANT_USER_ROLE:
+        return PrivilegeType.GRANT_USER_ROLE.ordinal();
       case REVOKE_USER_ROLE:
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
+      case TTL:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();
       case DELETE_STORAGE_GROUP:
         return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
@@ -300,6 +303,8 @@ public class AuthorityChecker {
       case DELETE:
       case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
+      case ALTER_TIMESERIES:
+        return PrivilegeType.ALTER_TIMESERIES.ordinal();
       case SHOW:
       case QUERY:
       case GROUP_BY_TIME:
@@ -311,6 +316,7 @@ public class AuthorityChecker {
       case FILL:
       case GROUP_BY_FILL:
       case SELECT_INTO:
+      case COUNT:
         return PrivilegeType.READ_TIMESERIES.ordinal();
       case INSERT:
       case LOAD_DATA:
@@ -344,6 +350,17 @@ public class AuthorityChecker {
         return PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal();
       case DROP_CONTINUOUS_QUERY:
         return PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal();
+      case CREATE_TEMPLATE:
+        return PrivilegeType.UPDATE_TEMPLATE.ordinal();
+      case SET_TEMPLATE:
+      case ACTIVATE_TEMPLATE:
+        return PrivilegeType.APPLY_TEMPLATE.ordinal();
+      case SHOW_SCHEMA_TEMPLATE:
+      case SHOW_NODES_IN_SCHEMA_TEMPLATE:
+        return PrivilegeType.READ_TEMPLATE.ordinal();
+      case SHOW_PATH_SET_SCHEMA_TEMPLATE:
+      case SHOW_PATH_USING_SCHEMA_TEMPLATE:
+        return PrivilegeType.READ_TEMPLATE_APPLICATION.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

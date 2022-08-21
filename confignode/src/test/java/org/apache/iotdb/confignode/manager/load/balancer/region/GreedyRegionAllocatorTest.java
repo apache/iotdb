@@ -20,8 +20,9 @@ package org.apache.iotdb.confignode.manager.load.balancer.region;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import com.google.common.collect.Lists;
@@ -39,11 +40,14 @@ public class GreedyRegionAllocatorTest {
   @Test
   public void testAllocateRegion() {
     GreedyRegionAllocator greedyRegionAllocator = new GreedyRegionAllocator();
-    List<TDataNodeInfo> registeredDataNodes =
+    List<TDataNodeConfiguration> registeredDataNodes =
         Lists.newArrayList(
-            new TDataNodeInfo(new TDataNodeLocation(1, null, null, null, null, null), 0, 0),
-            new TDataNodeInfo(new TDataNodeLocation(2, null, null, null, null, null), 0, 0),
-            new TDataNodeInfo(new TDataNodeLocation(3, null, null, null, null, null), 0, 0));
+            new TDataNodeConfiguration(
+                new TDataNodeLocation(1, null, null, null, null, null), new TNodeResource()),
+            new TDataNodeConfiguration(
+                new TDataNodeLocation(2, null, null, null, null, null), new TNodeResource()),
+            new TDataNodeConfiguration(
+                new TDataNodeLocation(3, null, null, null, null, null), new TNodeResource()));
     List<TRegionReplicaSet> allocatedRegions = new ArrayList<>();
     List<TConsensusGroupId> tConsensusGroupIds =
         Lists.newArrayList(
@@ -61,7 +65,7 @@ public class GreedyRegionAllocatorTest {
     }
 
     Map<TDataNodeLocation, Integer> countMap = new HashMap<>();
-    for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
+    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
       countMap.put(dataNodeInfo.getLocation(), 0);
     }
 

@@ -53,6 +53,7 @@ keyWords
     | CLEAR
     | CLUSTER
     | CONCAT
+    | CONFIGNODES
     | CONFIGURATION
     | CONTINUOUS
     | COUNT
@@ -83,6 +84,7 @@ keyWords
     | GLOBAL
     | GRANT
     | GROUP
+    | HAVING
     | INDEX
     | INFO
     | INSERT

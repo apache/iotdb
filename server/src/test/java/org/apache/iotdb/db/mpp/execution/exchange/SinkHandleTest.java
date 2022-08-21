@@ -41,13 +41,15 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+
 public class SinkHandleTest {
 
   @Test
   public void testOneTimeNotBlockedSend() {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
-    final int numOfMockTsBlock = 10;
+    final int numOfMockTsBlock = 1;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -95,18 +97,20 @@ public class SinkHandleTest {
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
-    Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    sinkHandle.send(mockTsBlocks);
+    sinkHandle.send(mockTsBlocks.get(0));
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
     Assert.assertEquals(
-        mockTsBlockSize * numOfMockTsBlock, sinkHandle.getBufferRetainedSizeInBytes());
+        mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
-    Mockito.verify(mockMemoryPool, Mockito.times(1))
+    Mockito.verify(mockMemoryPool, Mockito.times(2))
         .reserve(queryId, mockTsBlockSize * numOfMockTsBlock);
     try {
       Thread.sleep(100L);
@@ -148,7 +152,7 @@ public class SinkHandleTest {
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertTrue(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
-    Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(mockTsBlockSize, sinkHandle.getBufferRetainedSizeInBytes());
     Mockito.verify(mockMemoryPool, Mockito.times(1))
         .free(queryId, numOfMockTsBlock * mockTsBlockSize);
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onFinish(sinkHandle);
@@ -173,7 +177,7 @@ public class SinkHandleTest {
   public void testMultiTimesBlockedSend() {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
-    final int numOfMockTsBlock = 10;
+    final int numOfMockTsBlock = 1;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -223,18 +227,20 @@ public class SinkHandleTest {
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
-    Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    sinkHandle.send(mockTsBlocks);
+    sinkHandle.send(mockTsBlocks.get(0));
     Assert.assertFalse(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
     Assert.assertEquals(
-        mockTsBlockSize * numOfMockTsBlock, sinkHandle.getBufferRetainedSizeInBytes());
+        mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
-    Mockito.verify(mockMemoryPool, Mockito.times(1))
+    Mockito.verify(mockMemoryPool, Mockito.times(2))
         .reserve(queryId, mockTsBlockSize * numOfMockTsBlock);
     try {
       Thread.sleep(100L);
@@ -269,19 +275,21 @@ public class SinkHandleTest {
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
-    Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkHandle.getBufferRetainedSizeInBytes());
     Mockito.verify(mockMemoryPool, Mockito.times(1))
         .free(queryId, numOfMockTsBlock * mockTsBlockSize);
 
     // Send tsblocks.
-    sinkHandle.send(mockTsBlocks);
+    sinkHandle.send(mockTsBlocks.get(0));
     Assert.assertFalse(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
     Assert.assertEquals(
-        mockTsBlockSize * numOfMockTsBlock, sinkHandle.getBufferRetainedSizeInBytes());
+        mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
-    Mockito.verify(mockMemoryPool, Mockito.times(2))
+    Mockito.verify(mockMemoryPool, Mockito.times(3))
         .reserve(queryId, mockTsBlockSize * numOfMockTsBlock);
     try {
       Thread.sleep(100L);
@@ -334,7 +342,8 @@ public class SinkHandleTest {
     sinkHandle.acknowledgeTsBlock(numOfMockTsBlock, numOfMockTsBlock * 2);
     Assert.assertTrue(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
-    Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkHandle.getBufferRetainedSizeInBytes());
     Mockito.verify(mockMemoryPool, Mockito.times(2))
         .free(queryId, numOfMockTsBlock * mockTsBlockSize);
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onFinish(sinkHandle);
@@ -344,7 +353,7 @@ public class SinkHandleTest {
   public void testFailedSend() {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
-    final int numOfMockTsBlock = 10;
+    final int numOfMockTsBlock = 1;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -395,18 +404,20 @@ public class SinkHandleTest {
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
-    Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    sinkHandle.send(mockTsBlocks);
+    sinkHandle.send(mockTsBlocks.get(0));
     Assert.assertFalse(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
     Assert.assertEquals(
-        mockTsBlockSize * numOfMockTsBlock, sinkHandle.getBufferRetainedSizeInBytes());
+        mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
-    Mockito.verify(mockMemoryPool, Mockito.times(1))
+    Mockito.verify(mockMemoryPool, Mockito.times(2))
         .reserve(queryId, mockTsBlockSize * numOfMockTsBlock);
     try {
       Thread.sleep(100L);
@@ -446,7 +457,7 @@ public class SinkHandleTest {
   public void testAbort() {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
-    final int numOfMockTsBlock = 10;
+    final int numOfMockTsBlock = 1;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -456,7 +467,9 @@ public class SinkHandleTest {
     // Construct a mock LocalMemoryManager that returns blocked futures.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
     MemoryPool spyMemoryPool =
-        Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 10 * mockTsBlockSize));
+        Mockito.spy(
+            new MemoryPool(
+                "test", numOfMockTsBlock * mockTsBlockSize, numOfMockTsBlock * mockTsBlockSize));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
 
     // Construct a mock SinkHandleListener.
@@ -496,20 +509,21 @@ public class SinkHandleTest {
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
-    Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkHandle.getBufferRetainedSizeInBytes());
     Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    sinkHandle.send(mockTsBlocks);
-    sinkHandle.send(mockTsBlocks);
+    sinkHandle.send(mockTsBlocks.get(0));
     Future<?> blocked = sinkHandle.isFull();
     Assert.assertFalse(blocked.isDone());
     Assert.assertFalse(blocked.isCancelled());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
     Assert.assertEquals(
-        2 * mockTsBlockSize * numOfMockTsBlock, sinkHandle.getBufferRetainedSizeInBytes());
-    Assert.assertEquals(2 * numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
+        mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        sinkHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
 
     sinkHandle.abort();
     Assert.assertTrue(blocked.isDone());

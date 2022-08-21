@@ -179,6 +179,9 @@ public class StorageEngine implements IService {
   }
 
   public static long getTimePartition(long time) {
+    if (timePartitionInterval == -1) {
+      initTimePartition();
+    }
     return enablePartition ? time / timePartitionInterval : 0;
   }
 
@@ -1110,7 +1113,7 @@ public class StorageEngine implements IService {
   public String getStorageGroupPath(PartialPath path) throws StorageEngineException {
     PartialPath deviceId = path.getDevicePath();
     DataRegion storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.getLogicalStorageGroupName()
+    return storageGroupProcessor.getStorageGroupName()
         + File.separator
         + storageGroupProcessor.getDataRegionId();
   }
