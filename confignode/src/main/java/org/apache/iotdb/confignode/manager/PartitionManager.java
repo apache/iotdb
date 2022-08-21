@@ -497,6 +497,8 @@ public class PartitionManager {
             deletedRegionSet.stream()
                 .map(TRegionReplicaSet::getRegionId)
                 .collect(Collectors.toList()));
+        deletedRegionSet.forEach(
+            regionReplicaSet -> removeRegionGroupCache(regionReplicaSet.regionId));
         SyncDataNodeClientPool.getInstance().deleteRegions(deletedRegionSet);
       }
     }
@@ -532,6 +534,10 @@ public class PartitionManager {
 
   public Map<TConsensusGroupId, IRegionGroupCache> getRegionGroupCacheMap() {
     return regionGroupCacheMap;
+  }
+
+  public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {
+    regionGroupCacheMap.remove(consensusGroupId);
   }
 
   /**

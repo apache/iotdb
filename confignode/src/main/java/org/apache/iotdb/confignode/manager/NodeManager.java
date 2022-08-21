@@ -525,6 +525,10 @@ public class NodeManager {
     return nodeCacheMap;
   }
 
+  public void removeNodeCache(int nodeId) {
+    nodeCacheMap.remove(nodeId);
+  }
+
   /**
    * Safely get the specific Node's current status
    *
