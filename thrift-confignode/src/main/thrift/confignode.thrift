@@ -121,13 +121,6 @@ struct TSchemaPartitionReq {
   1: required binary pathPatternTree
 }
 
-// TODO: Replace this by TSchemaPartitionTableResp
-struct TSchemaPartitionResp {
-  1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
-  2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
-}
-
 struct TSchemaPartitionTableResp {
   1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, TConsensusGroupId>>
@@ -151,13 +144,6 @@ struct TSchemaNodeManagementResp {
 struct TDataPartitionReq {
   // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
   1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
-}
-
-// TODO: Replace this by TDataPartitionTableResp
-struct TDataPartitionResp {
-  1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
-  2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
 }
 
 struct TDataPartitionTableResp {
@@ -429,18 +415,12 @@ service IConfigNodeRPCService {
   // SchemaPartition
   // ======================================================
 
-  // TODO: Replace this by getSchemaPartitionTable
-  TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
-
   /**
    * Get SchemaPartitionTable by specific PathPatternTree,
    * the returned SchemaPartitionTable will not contain the unallocated SeriesPartitionSlots
    * See https://apache-iotdb.feishu.cn/docs/doccnqe3PLPEKwsCX1xadXQ2JOg for detailed matching rules
    */
   TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
-
-  // TODO: Replace this by getOrCreateSchemaPartitionTable
-  TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
 
   /**
    * Get or create SchemaPartitionTable by specific PathPatternTree,
@@ -463,17 +443,11 @@ service IConfigNodeRPCService {
   // DataPartition
   // ======================================================
 
-  // TODO: Replace this by getDataPartitionTable
-  TDataPartitionResp getDataPartition(TDataPartitionReq req)
-
   /**
    * Get DataPartitionTable by specific PartitionSlotsMap,
    * the returned DataPartitionTable will not contain the unallocated SeriesPartitionSlots and TimePartitionSlots
    */
   TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req)
-
-  // TODO: Replace this by getOrCreateDataPartitionTable
-  TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
   /**
    * Get or create DataPartitionTable by specific PartitionSlotsMap,
