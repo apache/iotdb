@@ -102,7 +102,7 @@ struct TCountStorageGroupResp {
 
 struct TStorageGroupSchemaResp {
   1: required common.TSStatus status
-  // map<string, StorageGroupMessage>
+  // map<string, TStorageGroupSchema>
   2: optional map<string, TStorageGroupSchema> storageGroupSchemaMap
 }
 
@@ -278,6 +278,23 @@ struct TConfigNodeInfo {
 struct TShowConfigNodesResp {
   1: required common.TSStatus status
   2: optional list<TConfigNodeInfo> configNodesInfoList
+}
+
+// Show storageGroup
+struct TStorageGroupInfo {
+  1: required string name
+  2: required i64 TTL
+  3: required i32 schemaReplicationFactor
+  4: required i32 dataReplicationFactor
+  5: required i64 timePartitionInterval
+  6: required i32 schemaRegionNum
+  7: required i32 dataRegionNum
+}
+
+struct TShowStorageGroupResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, TStorageGroupInfo>
+  2: optional map<string, TStorageGroupInfo> storageGroupInfoMap
 }
 
 // Show regions
@@ -620,6 +637,9 @@ service IConfigNodeRPCService {
 
   /** Show cluster ConfigNodes' information */
   TShowConfigNodesResp showConfigNodes()
+
+  /** Show cluster StorageGroups' information */
+  TShowStorageGroupResp showStorageGroup(list<string> storageGroupPathPattern)
 
   /**
    * Show the matched cluster Regions' information
