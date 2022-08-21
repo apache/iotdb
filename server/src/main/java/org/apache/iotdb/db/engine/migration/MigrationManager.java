@@ -465,4 +465,14 @@ public class MigrationManager {
       }
     }
   }
+
+  // test
+  public void setCheckThreadTime(long checkThreadTime) {
+    migrationCheckThread.shutdown();
+
+    migrationCheckThread =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Migration-Check");
+    migrationCheckThread.scheduleAtFixedRate(
+        this::checkMigration, checkThreadTime, checkThreadTime, TimeUnit.MILLISECONDS);
+  }
 }
