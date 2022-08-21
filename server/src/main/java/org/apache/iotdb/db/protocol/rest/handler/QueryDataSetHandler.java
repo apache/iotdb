@@ -294,7 +294,9 @@ public class QueryDataSetHandler {
         targetDataSetColumn.add(
             sourceDataSetField.getDataType().equals(TSDataType.TEXT)
                 ? sourceDataSetField.getStringValue()
-                : sourceDataSetField.getObjectValue(sourceDataSetField.getDataType()));
+                : sourceDataSetField.getDataType().equals(TSDataType.BOOLEAN)
+                    ? sourceDataSetField.getStringValue().equalsIgnoreCase("true") ? 1 : 0
+                    : sourceDataSetField.getObjectValue(sourceDataSetField.getDataType()));
       }
     }
   }
