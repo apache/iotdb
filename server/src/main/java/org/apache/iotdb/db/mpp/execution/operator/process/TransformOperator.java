@@ -81,9 +81,8 @@ public class TransformOperator implements ProcessOperator {
   protected List<TSDataType> outputDataTypes;
 
   protected TimeSelector timeHeap;
-  protected TimeSelector transformerTimeHeap;
   protected boolean[] shouldIterateReadersToNextValid;
-
+  protected TimeSelector transformerTimeHeap;
   protected List<Boolean> codeGeneratedSuccess;
   protected LayerPointReader timeReader;
   protected LayerPointReader[] dataReaders;
@@ -322,17 +321,32 @@ public class TransformOperator implements ProcessOperator {
 
       int rowCount = 0;
       while (!timeHeap.isEmpty()) {
-        final long minTransformerHeapTime = transformerTimeHeap.pollFirst();
+
         final long currentTime = timeHeap.pollFirst();
 
-        if (currentTime < minTransformerHeapTime && isCodegenExpressionsCacheAllNull()) {
-          // no data need to write
-          transformerTimeHeap.add(minTransformerHeapTime);
+        // infer are there anything need to be written
+        boolean somethingNeedToWrite;
+        boolean causedByCodegen;
+        boolean causedByTransformer;
+
+        if (transformerTimeHeap.isEmpty()) {
+          causedByTransformer = false;
         } else {
-          // some data need to write
-          if (currentTime != minTransformerHeapTime) {
-            transformerTimeHeap.add(minTransformerHeapTime);
+          long minTransformerTime = transformerTimeHeap.first();
+          if (currentTime == minTransformerTime) {
+            transformerTimeHeap.pollFirst();
+            causedByTransformer = true;
+          } else {
+            causedByTransformer = false;
           }
+        }
+
+        causedByCodegen = !isCodegenExpressionsCacheAllNull();
+        somethingNeedToWrite = causedByCodegen || causedByTransformer;
+
+        if (somethingNeedToWrite) {
+          // time
+          timeBuilder.writeLong(currentTime);
 
           // values
           for (int i = 0; i < columnCount; ++i) {
@@ -345,7 +359,7 @@ public class TransformOperator implements ProcessOperator {
                   shouldIterateReadersToNextValid[j] = false;
                 }
                 timeHeap.add(currentTime);
-                if (currentTime == minTransformerHeapTime) {
+                if (causedByTransformer) {
                   transformerTimeHeap.add(currentTime);
                 }
 
@@ -354,17 +368,16 @@ public class TransformOperator implements ProcessOperator {
               }
             }
           }
-
-          timeBuilder.writeLong(currentTime);
           ++rowCount;
-          for (int i = 0; i < columnCount; ++i) {
-            if (shouldIterateReadersToNextValid[i] && !codeGeneratedSuccess.get(i)) {
-              transformers[i].readyForNext();
-            }
-          }
         }
 
         codegenExpressionReadyForNext();
+
+        for (int i = 0; i < columnCount; ++i) {
+          if (shouldIterateReadersToNextValid[i] && !codeGeneratedSuccess.get(i)) {
+            transformers[i].readyForNext();
+          }
+        }
 
         yieldableState = iterateAllColumnsToNextValid();
         if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -384,6 +397,9 @@ public class TransformOperator implements ProcessOperator {
   }
 
   private boolean isCodegenExpressionsCacheAllNull() {
+    if (Objects.isNull(cacheValues)) {
+      return true;
+    }
     for (Object o : cacheValues) {
       if (!Objects.isNull(o)) {
         return false;

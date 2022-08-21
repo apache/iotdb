@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -69,15 +88,15 @@ public class FunctionExpressionNode extends ExpressionNodeImpl {
       return null;
     }
     if (subNodes.size() == 1) {
-      return new IsNullExpressionNode(subNodes.get(0), false);
+      return new IsNullExpressionNode(subNodes.get(0), true);
     }
     ExpressionNode retNode = subNodes.get(0);
     for (int i = 1; i < subNodes.size(); ++i) {
       retNode =
           new BinaryExpressionNode(
               "||",
-              new IsNullExpressionNode(retNode, false),
-              new IsNullExpressionNode(subNodes.get(i), false));
+              new IsNullExpressionNode(retNode, true),
+              new IsNullExpressionNode(subNodes.get(i), true));
     }
     return retNode;
   }
