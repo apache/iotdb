@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.migration.MigratingFileLogManager;
 import org.apache.iotdb.db.engine.migration.MigrationTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -1607,12 +1608,23 @@ public class VirtualStorageGroupProcessor {
         try {
           // try to migrate physical data file
           tsFileManager.remove(resource, isSeq);
-          File migratedFile = resource.migrate(targetDir);
-          logger.info(
-              "Migrated a file {} to {} before {}",
-              resource.getTsFilePath(),
-              migratedFile.getAbsolutePath(),
-              new Date(ttlLowerBound));
+
+          // start the migration
+          if (MigratingFileLogManager.getInstance().start(resource.getTsFile(), targetDir)) {
+            File migratedFile = resource.migrate(targetDir);
+            MigratingFileLogManager.getInstance().finish(resource.getTsFile());
+
+            logger.info(
+                "Migrated a file {} to {} before {}",
+                resource.getTsFilePath(),
+                migratedFile.getAbsolutePath(),
+                new Date(ttlLowerBound));
+          } else {
+            // migrating log couldn't start
+            logger.error("{} logger error", resource.getTsFilePath());
+          }
+        } catch (IOException e) {
+          logger.error("{} logger error", resource.getTsFilePath());
         } finally {
           resource.writeUnlock();
         }

@@ -1275,7 +1275,7 @@ public class StorageEngine implements IService {
   }
 
   public void pauseMigration(long taskId, PartialPath storageGroup) {
-    if (taskId != -1) {
+    if (taskId >= 0) {
       migrationManager.pauseMigration(taskId);
     } else if (storageGroup != null) {
       migrationManager.pauseMigration(storageGroup);
@@ -1285,7 +1285,7 @@ public class StorageEngine implements IService {
   }
 
   public void unpauseMigration(long taskId, PartialPath storageGroup) {
-    if (taskId != -1) {
+    if (taskId >= 0) {
       migrationManager.unpauseMigration(taskId);
     } else if (storageGroup != null) {
       migrationManager.unpauseMigration(storageGroup);

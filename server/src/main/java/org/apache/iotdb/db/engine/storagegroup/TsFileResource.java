@@ -552,7 +552,9 @@ public class TsFileResource {
         fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX);
 
     // move
-    fsFactory.moveFile(file, migratedFile);
+    if (file.exists()) {
+      fsFactory.moveFile(file, migratedFile);
+    }
     if (resourceFile.exists()) {
       fsFactory.moveFile(resourceFile, migratedResourceFile);
     }
