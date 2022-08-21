@@ -24,8 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.PathParseException;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
-
-import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.iotdb.tsfile.read.common.parser.PathVisitor;
 
 import java.util.List;
 
@@ -128,18 +127,7 @@ public class PathUtils {
 
   /** Return true if the str is a real number. Examples: 1.0; +1.0; -1.0; 0011; 011e3; +23e-3 */
   public static boolean isRealNumber(String str) {
-    if (str.startsWith("+")) {
-      return NumberUtils.isCreatable(str.substring(1));
-    }
-    int index = 0;
-    // remove zeros
-    for (int i = 0, n = str.length(); i < n; i++) {
-      if (str.charAt(i) != '0') {
-        index = i;
-        break;
-      }
-    }
-    return NumberUtils.isCreatable(str.substring(index));
+    return PathVisitor.isRealNumber(str);
   }
 
   public static boolean isStartWith(String deviceName, String storageGroup) {

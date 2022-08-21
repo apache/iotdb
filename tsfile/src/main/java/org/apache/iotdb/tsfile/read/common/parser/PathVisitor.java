@@ -75,8 +75,13 @@ public class PathVisitor extends PathParserBaseVisitor<String[]> {
 
   /** Return true if the str is a real number. Examples: 1.0; +1.0; -1.0; 0011; 011e3; +23e-3 */
   public static boolean isRealNumber(String str) {
-    if (str.startsWith("+")) {
-      return NumberUtils.isCreatable(str.substring(1));
+    if (str.startsWith("+") || str.startsWith("-")) {
+      String removeSign = str.substring(1);
+      if (removeSign.startsWith("+") || removeSign.startsWith("-")) {
+        return false;
+      } else {
+        str = removeSign;
+      }
     }
     int index = 0;
     // remove zeros
@@ -87,5 +92,9 @@ public class PathVisitor extends PathParserBaseVisitor<String[]> {
       }
     }
     return NumberUtils.isCreatable(str.substring(index));
+  }
+
+  public static void main(String[] args) {
+    System.out.println(isRealNumber("+-1"));
   }
 }

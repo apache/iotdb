@@ -156,7 +156,12 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "`1e3`",
       "`001`",
       "`-1.0`",
-      "`01e-3`"
+      "`01e-3`",
+      "`+0001`",
+      "`-0001`",
+      "`++1`",
+      "`+-1`",
+      "`--1`"
     };
 
     String[] resultTimeseries = {
@@ -175,7 +180,12 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "root.sg1.d1.`1e3`",
       "root.sg1.d1.`001`",
       "root.sg1.d1.`-1.0`",
-      "root.sg1.d1.`01e-3`"
+      "root.sg1.d1.`01e-3`",
+      "root.sg1.d1.`+0001`",
+      "root.sg1.d1.`-0001`",
+      "root.sg1.d1.`++1`",
+      "root.sg1.d1.`+-1`",
+      "root.sg1.d1.`--1`"
     };
 
     String[] selectNodeNames = {
@@ -194,7 +204,12 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "`1e3`",
       "`001`",
       "`-1.0`",
-      "`01e-3`"
+      "`01e-3`",
+      "`+0001`",
+      "`-0001`",
+      "`++1`",
+      "`+-1`",
+      "`--1`"
     };
 
     String[] suffixInResultColumns = {
@@ -213,7 +228,12 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "`1e3`",
       "`001`",
       "`-1.0`",
-      "`01e-3`"
+      "`01e-3`",
+      "`+0001`",
+      "`-0001`",
+      "`++1`",
+      "`+-1`",
+      "`--1`"
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
