@@ -21,7 +21,9 @@ package org.apache.iotdb.db.engine.migration;
 
 import org.apache.iotdb.db.engine.migration.MigrationLogWriter.MigrationLog;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -32,6 +34,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,14 +46,14 @@ public class MigrationLogWriterReaderTest {
   private static final String filePath = "logtest.test";
   private final String sg1 = "root.MIGRATE_SG1";
   private final String sg2 = "root.MIGRATE_SG1";
-  private final long startTime = 1672502400000L; // 2023-01-01
+  private long startTime; // 2023-01-01
   private final long ttl = 2000;
   private final String targetDirPath = Paths.get("data", "separated").toString();
   List<MigrationLog> migrateLogs;
   MigrationTask task1, task2;
 
   @Before
-  public void prepare() throws IllegalPathException {
+  public void prepare() throws IllegalPathException, LogicalOperatorException {
     if (new File(filePath).exists()) {
       new File(filePath).delete();
     }
@@ -63,6 +66,8 @@ public class MigrationLogWriterReaderTest {
     migrateLogs.add(new MigrationLog(MigrationLog.LogType.UNSET, task2));
     migrateLogs.add(new MigrationLog(MigrationLog.LogType.PAUSE, task2));
     migrateLogs.add(new MigrationLog(MigrationLog.LogType.UNPAUSE, task2));
+
+    startTime = DatetimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
   }
 
   public void writeLog(MigrationLogWriter writer) throws IOException {
