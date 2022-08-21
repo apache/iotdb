@@ -307,7 +307,12 @@ public interface IManager {
   /** Show ConfigNodes */
   TShowConfigNodesResp showConfigNodes();
 
-  /** Show StorageGroup */
+  /**
+   * Show StorageGroup
+   *
+   * @param getStorageGroupPlan GetStorageGroupPlan, including path patterns about StorageGroups
+   * @return TShowStorageGroupResp
+   */
   TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan);
 
   /**
