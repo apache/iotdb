@@ -256,7 +256,7 @@ public class MigrationManager {
    */
   public boolean unsetMigration(PartialPath storageGroup) {
     for (MigrationTask task : migrationTasks.values()) {
-      if (task.getStorageGroup() == storageGroup
+      if (task.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
           && (task.getStatus() == MigrationTask.MigrationTaskStatus.READY
               || task.getStatus() == MigrationTask.MigrationTaskStatus.RUNNING)) {
         // write to log
@@ -317,7 +317,7 @@ public class MigrationManager {
    */
   public boolean pauseMigration(PartialPath storageGroup) {
     for (MigrationTask task : migrationTasks.values()) {
-      if (task.getStorageGroup() == storageGroup
+      if (task.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
           && (task.getStatus() == MigrationTask.MigrationTaskStatus.READY
               || task.getStatus() == MigrationTask.MigrationTaskStatus.RUNNING)) {
         // write to log
@@ -377,7 +377,7 @@ public class MigrationManager {
    */
   public boolean unpauseMigration(PartialPath storageGroup) {
     for (MigrationTask task : migrationTasks.values()) {
-      if (task.getStorageGroup() == storageGroup
+      if (task.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
           && (task.getStatus() == MigrationTask.MigrationTaskStatus.PAUSED)) {
         // write to log
         try {

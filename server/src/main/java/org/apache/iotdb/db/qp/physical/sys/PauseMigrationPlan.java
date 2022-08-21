@@ -25,7 +25,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import java.util.List;
 
 public class PauseMigrationPlan extends PhysicalPlan {
-  private long taskId;
+  private long taskId = -1;
   private PartialPath storageGroup;
   private boolean pause = true;
 
