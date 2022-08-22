@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,8 +85,6 @@ public class TsFileValidationTool {
   private static final List<File> seqDataDirList = new ArrayList<>();
   private static final List<File> fileList = new ArrayList<>();
   public static int badFileNum = 0;
-
-  private static final Map<String, Long> measurementLastPartitionEndTime = new HashMap<>();
 
   // measurementID -> <fileName, [lastTime, endTimeInLastFile]>
   private static final Map<String, Pair<String, long[]>> measurementLastTime = new HashMap<>();
@@ -524,19 +523,6 @@ public class TsFileValidationTool {
         }
       }
     }
-
-    // record the end time of each measurement in current time partition
-    for (Map.Entry<String, Pair<String, long[]>> entry : measurementLastTime.entrySet()) {
-      String measurementID = entry.getKey();
-      long lastTime = entry.getValue().right[0];
-      if (!measurementLastPartitionEndTime.containsKey(measurementID)) {
-        measurementLastPartitionEndTime.put(measurementID, lastTime);
-      } else {
-        if (measurementLastPartitionEndTime.get(measurementID) < lastTime) {
-          measurementLastPartitionEndTime.put(measurementID, lastTime);
-        }
-      }
-    }
   }
 
   private static boolean checkArgs(String[] args) {
@@ -580,7 +566,6 @@ public class TsFileValidationTool {
   }
 
   private static void clearMap() {
-    measurementLastPartitionEndTime.clear();
     measurementLastTime.clear();
     deviceEndTime.clear();
     isBadFileMap.clear();
