@@ -25,13 +25,13 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.mpp.plan.scheduler.IFragInstanceDispatcher;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
@@ -133,42 +133,23 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
-    PlanNode planNode = instance.getFragment().getRoot();
-    boolean hasFailedMeasurement = false;
-    String partialInsertMessage = null;
-    if (planNode instanceof InsertNode) {
-      InsertNode insertNode = (InsertNode) planNode;
-      try {
-        SchemaValidator.validate(insertNode);
-      } catch (SemanticException e) {
-        throw new FragmentInstanceDispatchException(e);
-      }
-      hasFailedMeasurement = insertNode.hasFailedMeasurements();
-      if (hasFailedMeasurement) {
-        partialInsertMessage =
-            String.format(
-                "Fail to insert measurements %s caused by %s",
-                insertNode.getFailedMeasurements(), insertNode.getFailedMessages());
-        logger.warn(partialInsertMessage);
-      }
-    }
-    // TODO: write to local interface
+    logger.info(String.format("Receive load node from uuid %s.", uuid));
 
-    //    ConsensusWriteResponse writeResponse;
-    //    if (groupId instanceof DataRegionId) {
-    //      writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
-    //    } else {
-    //      writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
-    //    }
-    //
-    //    if (writeResponse.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-    //      logger.error(writeResponse.getStatus().message);
-    //      throw new FragmentInstanceDispatchException(writeResponse.getStatus());
-    //    } else if (hasFailedMeasurement) {
-    //      throw new FragmentInstanceDispatchException(
-    //          RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(),
-    // partialInsertMessage));
-    //    }
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(
+            instance.getRegionReplicaSet().getRegionId());
+    LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) instance.getFragment().getRoot();
+    if (pieceNode == null) {
+      throw new FragmentInstanceDispatchException(
+          new TSStatus(TSStatusCode.NODE_DESERIALIZE_ERROR.getStatusCode()));
+    }
+
+    TSStatus resultStatus =
+        StorageEngineV2.getInstance().writeLoadTsFileNode((DataRegionId) groupId, pieceNode, uuid);
+
+    if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
+      throw new FragmentInstanceDispatchException(resultStatus);
+    }
   }
 
   public Future<FragInstanceDispatchResult> dispatchCommand(
@@ -222,7 +203,14 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   private void dispatchLocally(TLoadCommandReq loadCommandReq)
       throws FragmentInstanceDispatchException {
-    // TODO: use local interface
+    TSStatus resultStatus =
+        StorageEngineV2.getInstance()
+            .executeLoadCommand(
+                LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
+                loadCommandReq.uuid);
+    if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
+      throw new FragmentInstanceDispatchException(resultStatus);
+    }
   }
 
   @Override
