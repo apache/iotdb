@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -72,11 +73,22 @@ public class FragmentInstanceContext extends QueryContext {
     return instanceContext;
   }
 
+  public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
+    return new FragmentInstanceContext(queryId);
+  }
+
   private FragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+  }
+
+  // used for compaction
+  private FragmentInstanceContext(long queryId) {
+    this.queryId = queryId;
+    this.id = null;
+    this.stateMachine = null;
   }
 
   public void start() {
@@ -148,6 +160,12 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void failed(Throwable cause) {
     stateMachine.failed(cause);
+  }
+
+  public String getFailedCause() {
+    return stateMachine.getFailureCauses().stream()
+        .map(Throwable::getMessage)
+        .collect(Collectors.joining("; "));
   }
 
   public void finished() {

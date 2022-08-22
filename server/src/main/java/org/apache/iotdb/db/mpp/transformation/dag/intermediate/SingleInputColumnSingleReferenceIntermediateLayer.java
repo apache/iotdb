@@ -275,12 +275,14 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       @Override
       public YieldableState yield() throws IOException, QueryProcessException {
         if (isFirstIteration) {
-          if (tvList.size() == 0 && nextWindowTimeBegin == Long.MIN_VALUE) {
+          if (tvList.size() == 0) {
             final YieldableState yieldableState =
                 LayerCacheUtils.yieldPoint(dataType, parentLayerPointReader, tvList);
             if (yieldableState != YieldableState.YIELDABLE) {
               return yieldableState;
             }
+          }
+          if (nextWindowTimeBegin == Long.MIN_VALUE) {
             // display window begin should be set to the same as the min timestamp of the query
             // result set
             nextWindowTimeBegin = tvList.getTime(0);

@@ -971,7 +971,7 @@ var config = {
 						]
 					},
 					{
-						title: 'Cluster Setup',
+						title: 'Cluster',
 						children: [
 							['Cluster/Cluster-Concept','Cluster Concept'],
 							['Cluster/Cluster-Setup','Cluster Setup']
@@ -1895,10 +1895,10 @@ var config = {
 						]
 					},
 					{
-						title: '集群搭建',
+						title: '分布式',
 						children: [
-							['Cluster/Cluster-Concept','集群基本概念'],
-							['Cluster/Cluster-Setup','集群搭建']
+							['Cluster/Cluster-Concept','基本概念'],
+							['Cluster/Cluster-Setup','分布式部署']
 						]
 					},
 					{

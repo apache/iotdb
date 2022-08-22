@@ -20,18 +20,10 @@ package org.apache.iotdb.confignode.conf;
 
 public class ConfigNodeConstant {
 
-  // when running the program in IDE, we can not get the version info using
-  // getImplementationVersion()
-  public static final String VERSION =
-      ConfigNodeConstant.class.getPackage().getImplementationVersion() != null
-          ? ConfigNodeConstant.class.getPackage().getImplementationVersion()
-          : "UNKNOWN";
-
   public static final String GLOBAL_NAME = "IoTDB-ConfigNode";
   public static final String CONFIGNODE_CONF = "CONFIGNODE_CONF";
   public static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
 
-  public static final String ENV_FILE_NAME = "confignode-env";
   public static final String CONF_FILE_NAME = "iotdb-confignode.properties";
   public static final String SYSTEM_FILE_NAME = "confignode-system.properties";
 

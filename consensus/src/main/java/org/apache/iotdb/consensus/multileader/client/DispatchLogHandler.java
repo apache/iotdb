@@ -57,6 +57,8 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
       sleepCorrespondingTimeAndRetryAsynchronous();
     } else {
       thread.getSyncStatus().removeBatch(batch);
+      // update safely deleted search index after current sync index is updated by removeBatch
+      thread.updateSafelyDeletedSearchIndex();
     }
   }
 

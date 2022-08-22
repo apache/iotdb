@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +49,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -82,7 +83,18 @@ public class TsFileValidationTool {
   private static final Logger logger = LoggerFactory.getLogger(TsFileValidationTool.class);
   private static final List<File> seqDataDirList = new ArrayList<>();
   private static final List<File> fileList = new ArrayList<>();
-  private static int badFileNum = 0;
+  public static int badFileNum = 0;
+
+  private static final Map<String, Long> measurementLastPartitionEndTime = new HashMap<>();
+
+  // measurementID -> <fileName, [lastTime, endTimeInLastFile]>
+  private static final Map<String, Pair<String, long[]>> measurementLastTime = new HashMap<>();
+
+  // deviceID -> <fileName, endTime>, the endTime of device in the last seq file
+  private static final Map<String, Pair<String, Long>> deviceEndTime = new HashMap<>();
+
+  // fileName -> isBadFile
+  private static final Map<String, Boolean> isBadFileMap = new HashMap<>();
 
   /**
    * The form of param is: [path of data dir or tsfile] [-pd = print details or not] [-f = path of
@@ -129,7 +141,9 @@ public class TsFileValidationTool {
           }
           // get time partition dirs and sort them
           List<File> timePartitionDirs =
-              Arrays.asList(Objects.requireNonNull(dataRegionDir.listFiles()));
+              Arrays.asList(Objects.requireNonNull(dataRegionDir.listFiles())).stream()
+                  .filter(file -> Pattern.compile("[0-9]*").matcher(file.getName()).matches())
+                  .collect(Collectors.toList());
           timePartitionDirs.sort(
               (f1, f2) ->
                   Long.compareUnsigned(Long.parseLong(f1.getName()), Long.parseLong(f2.getName())));
@@ -151,6 +165,8 @@ public class TsFileValidationTool {
                         Long.parseLong(f2.getName().split("-")[0])));
             findUncorrectFiles(tsFiles);
           }
+          // clear map
+          clearMap();
         }
       }
     }
@@ -162,14 +178,7 @@ public class TsFileValidationTool {
     }
   }
 
-  private static void findUncorrectFiles(List<File> tsFiles) {
-    // measurementID -> <fileName, [lastTime, endTimeInLastFile]>
-    Map<String, Pair<String, long[]>> measurementLastTime = new HashMap<>();
-    // deviceID -> <fileName, endTime>, the endTime of device in the last seq file
-    Map<String, Pair<String, Long>> deviceEndTime = new HashMap<>();
-    // fileName -> isBadFile
-    Map<String, Boolean> isBadFileMap = new HashMap<>();
-
+  public static void findUncorrectFiles(List<File> tsFiles) {
     for (File tsFile : tsFiles) {
       List<String> previousBadFileMsgs = new ArrayList<>();
       try {
@@ -497,11 +506,17 @@ public class TsFileValidationTool {
         }
       } catch (Throwable e) {
         logger.error("Meet errors in reading file {} , skip it.", tsFile.getAbsolutePath(), e);
-        if (printDetails) {
-          printBoth(
-              "-- Meet errors in reading file "
-                  + tsFile.getAbsolutePath()
-                  + ", tsfile may be corrupted.");
+        if (!isBadFileMap.get(tsFile.getName())) {
+          if (printDetails) {
+            printBoth(
+                "-- Meet errors in reading file "
+                    + tsFile.getAbsolutePath()
+                    + ", tsfile may be corrupted.");
+          } else {
+            printBoth(tsFile.getAbsolutePath());
+          }
+          isBadFileMap.put(tsFile.getName(), true);
+          badFileNum++;
         }
       } finally {
         for (String msg : previousBadFileMsgs) {
@@ -509,9 +524,22 @@ public class TsFileValidationTool {
         }
       }
     }
+
+    // record the end time of each measurement in current time partition
+    for (Map.Entry<String, Pair<String, long[]>> entry : measurementLastTime.entrySet()) {
+      String measurementID = entry.getKey();
+      long lastTime = entry.getValue().right[0];
+      if (!measurementLastPartitionEndTime.containsKey(measurementID)) {
+        measurementLastPartitionEndTime.put(measurementID, lastTime);
+      } else {
+        if (measurementLastPartitionEndTime.get(measurementID) < lastTime) {
+          measurementLastPartitionEndTime.put(measurementID, lastTime);
+        }
+      }
+    }
   }
 
-  public static boolean checkArgs(String[] args) {
+  private static boolean checkArgs(String[] args) {
     if (args.length < 1) {
       System.out.println(
           "Please input correct param, which is [path of data dir] [-pd = print details or not] [-f = path of outFile]. Eg: xxx/iotdb/data/data -pd=true -f=xxx/TsFile_validation_view.txt");
@@ -549,6 +577,13 @@ public class TsFileValidationTool {
       }
       return true;
     }
+  }
+
+  private static void clearMap() {
+    measurementLastPartitionEndTime.clear();
+    measurementLastTime.clear();
+    deviceEndTime.clear();
+    isBadFileMap.clear();
   }
 
   private static boolean checkIsDirectory(File dir) {

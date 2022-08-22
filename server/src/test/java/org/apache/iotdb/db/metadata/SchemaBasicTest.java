@@ -783,14 +783,14 @@ public abstract class SchemaBasicTest {
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     String[] res =
         new String[] {
-          "[root.laptop, root.vehicle]",
-          "[root.laptop.b1, root.laptop.b2]",
-          "[root.laptop.b1.d1, root.laptop.b1.d2]",
-          "[root.laptop.b1, root.laptop.b2, root.vehicle.b1, root.vehicle.b2]",
-          "[root.laptop.b1.d1, root.laptop.b1.d2, root.vehicle.b1.d0, root.vehicle.b1.d2, root.vehicle.b1.d3]",
-          "[root.laptop.b1.d1, root.laptop.b1.d2]",
-          "[root.vehicle.b1.d0, root.vehicle.b1.d2, root.vehicle.b1.d3, root.vehicle.b2.d0]",
-          "[root.laptop.b1.d1.s0, root.laptop.b1.d1.s1, root.laptop.b1.d2.s0, root.laptop.b2.d1.s1, root.laptop.b2.d1.s3, root.laptop.b2.d2.s2]",
+          "[TSchemaNode(nodeName:root.laptop, nodeType:2), TSchemaNode(nodeName:root.vehicle, nodeType:2)]",
+          "[TSchemaNode(nodeName:root.laptop.b1, nodeType:3), TSchemaNode(nodeName:root.laptop.b2, nodeType:3)]",
+          "[TSchemaNode(nodeName:root.laptop.b1.d1, nodeType:4), TSchemaNode(nodeName:root.laptop.b1.d2, nodeType:4)]",
+          "[TSchemaNode(nodeName:root.laptop.b1, nodeType:3), TSchemaNode(nodeName:root.laptop.b2, nodeType:3), TSchemaNode(nodeName:root.vehicle.b1, nodeType:3), TSchemaNode(nodeName:root.vehicle.b2, nodeType:3)]",
+          "[TSchemaNode(nodeName:root.laptop.b1.d1, nodeType:4), TSchemaNode(nodeName:root.laptop.b1.d2, nodeType:4), TSchemaNode(nodeName:root.vehicle.b1.d0, nodeType:4), TSchemaNode(nodeName:root.vehicle.b1.d2, nodeType:4), TSchemaNode(nodeName:root.vehicle.b1.d3, nodeType:4)]",
+          "[TSchemaNode(nodeName:root.laptop.b1.d1, nodeType:4), TSchemaNode(nodeName:root.laptop.b1.d2, nodeType:4)]",
+          "[TSchemaNode(nodeName:root.vehicle.b1.d0, nodeType:4), TSchemaNode(nodeName:root.vehicle.b1.d2, nodeType:4), TSchemaNode(nodeName:root.vehicle.b1.d3, nodeType:4), TSchemaNode(nodeName:root.vehicle.b2.d0, nodeType:4)]",
+          "[TSchemaNode(nodeName:root.laptop.b1.d1.s0, nodeType:5), TSchemaNode(nodeName:root.laptop.b1.d1.s1, nodeType:5), TSchemaNode(nodeName:root.laptop.b1.d2.s0, nodeType:5), TSchemaNode(nodeName:root.laptop.b2.d1.s1, nodeType:5), TSchemaNode(nodeName:root.laptop.b2.d1.s3, nodeType:5), TSchemaNode(nodeName:root.laptop.b2.d2.s2, nodeType:5)]",
           "[]"
         };
 
@@ -1841,8 +1841,9 @@ public abstract class SchemaBasicTest {
       Assert.assertEquals(1, schemaProcessor.getDevicesNum(new PartialPath("root.laptop.d2")));
       Assert.assertEquals(2, schemaProcessor.getDevicesNum(new PartialPath("root.laptop.*")));
       Assert.assertEquals(2, schemaProcessor.getDevicesNum(new PartialPath("root.laptop.**")));
-      Assert.assertEquals(3, schemaProcessor.getDevicesNum(new PartialPath("root.tree.**")));
-      Assert.assertEquals(5, schemaProcessor.getDevicesNum(new PartialPath("root.**")));
+      // ignore the device in tree template for new cluster single level template dev
+      Assert.assertEquals(1, schemaProcessor.getDevicesNum(new PartialPath("root.tree.**")));
+      Assert.assertEquals(3, schemaProcessor.getDevicesNum(new PartialPath("root.**")));
 
       schemaProcessor.createTimeseries(
           new PartialPath("root.laptop.d1.a.s3"),

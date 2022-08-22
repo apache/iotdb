@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -44,7 +43,6 @@ import java.util.stream.Collectors;
 public class SimpleQueryTerminator implements IQueryTerminator {
   private static final Logger logger = LoggerFactory.getLogger(SimpleQueryTerminator.class);
   private static final long TERMINATION_GRACE_PERIOD_IN_MS = 1000L;
-  private final ExecutorService executor;
   protected ScheduledExecutorService scheduledExecutor;
   private final QueryId queryId;
   private List<TEndPoint> relatedHost;
@@ -54,12 +52,10 @@ public class SimpleQueryTerminator implements IQueryTerminator {
       internalServiceClientManager;
 
   public SimpleQueryTerminator(
-      ExecutorService executor,
       ScheduledExecutorService scheduledExecutor,
       QueryId queryId,
       List<FragmentInstance> fragmentInstances,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
-    this.executor = executor;
     this.scheduledExecutor = scheduledExecutor;
     this.queryId = queryId;
     this.internalServiceClientManager = internalServiceClientManager;

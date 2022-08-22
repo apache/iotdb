@@ -274,6 +274,18 @@ bool SessionDataSet::hasNext() {
             } else {
                 tsQueryDataSet = make_shared<TSQueryDataSet>(resp->queryDataSet);
                 tsQueryDataSetTimeBuffer.str = tsQueryDataSet->time;
+                tsQueryDataSetTimeBuffer.pos = 0;
+                for (size_t i = 0; i < columnNameList.size(); i++) {
+                    valueBuffers.pop_back();
+                    bitmapBuffers.pop_back();
+                }
+                for (size_t i = 0; i < columnNameList.size(); i++) {
+                    std::string name = columnNameList[i];
+                    valueBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(tsQueryDataSet->valueList[columnMap[name]])));
+                    bitmapBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(tsQueryDataSet->bitmapList[columnMap[name]])));
+                }
                 rowsIndex = 0;
             }
         }
@@ -614,10 +626,10 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
     }
     if (enableRPCCompression) {
         shared_ptr<TCompactProtocol> protocol(new TCompactProtocol(transport));
-        client = std::make_shared<TSIServiceClient>(protocol);
+        client = std::make_shared<IClientRPCServiceClient>(protocol);
     } else {
         shared_ptr<TBinaryProtocol> protocol(new TBinaryProtocol(transport));
-        client = std::make_shared<TSIServiceClient>(protocol);
+        client = std::make_shared<IClientRPCServiceClient>(protocol);
     }
 
     std::map<std::string, std::string> configuration;
@@ -906,11 +918,7 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
                                        vector<vector<char *>> &valuesList,
                                        bool sorted) {
 
-    if (sorted) {
-        if (!checkSorted(times)) {
-            throw BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
-        }
-    } else {
+    if (!checkSorted(times)) {
         int *index = new int[times.size()];
         for (size_t i = 0; i < times.size(); i++) {
             index[i] = i;
@@ -962,11 +970,7 @@ void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
                                               vector<vector<char *>> &valuesList,
                                               bool sorted) {
 
-    if (sorted) {
-        if (!checkSorted(times)) {
-            throw BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
-        }
-    } else {
+    if (!checkSorted(times)) {
         int *index = new int[times.size()];
         for (size_t i = 0; i < times.size(); i++) {
             index[i] = i;
@@ -1015,11 +1019,7 @@ void Session::insertTablet(Tablet &tablet) {
 }
 
 void Session::insertTablet(Tablet &tablet, bool sorted) {
-    if (sorted) {
-        if (!checkSorted(tablet)) {
-            throw BatchExecutionException("Times in Tablet are not in ascending order");
-        }
-    } else {
+    if (!checkSorted(tablet)) {
         sortTablet(tablet);
     }
 
@@ -1085,11 +1085,7 @@ void Session::insertTablets(unordered_map<string, Tablet *> &tablets, bool sorte
         if (isFirstTabletAligned != item.second->isAligned) {
             throw BatchExecutionException("The tablets should be all aligned or non-aligned!");
         }
-        if (sorted) {
-            if (!checkSorted(*(item.second))) {
-                throw BatchExecutionException("Times in Tablet are not in ascending order");
-            }
-        } else {
+        if (!checkSorted(*(item.second))) {
             sortTablet(*(item.second));
         }
         request.prefixPaths.push_back(item.second->deviceId);

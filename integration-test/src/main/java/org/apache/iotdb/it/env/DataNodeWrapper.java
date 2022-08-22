@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.it.env;
 
-import org.apache.commons.lang3.SystemUtils;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 public class DataNodeWrapper extends AbstractNodeWrapper {
@@ -43,18 +45,18 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void updateConfig(Properties properties) {
-    properties.setProperty("rpc_address", super.getIp());
-    properties.setProperty("internal_address", "127.0.0.1");
-    properties.setProperty("rpc_port", String.valueOf(getPort()));
+    properties.setProperty(IoTDBConstant.RPC_ADDRESS, super.getIp());
+    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, super.getIp());
+    properties.setProperty(IoTDBConstant.RPC_PORT, String.valueOf(getPort()));
     properties.setProperty("mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
-    properties.setProperty("internal_port", String.valueOf(this.internalPort));
+    properties.setProperty(IoTDBConstant.INTERNAL_PORT, String.valueOf(this.internalPort));
     properties.setProperty(
         "data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
     properties.setProperty(
         "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
     properties.setProperty("connection_timeout_ms", "30000");
     if (this.targetConfigNode != null) {
-      properties.setProperty("config_nodes", this.targetConfigNode);
+      properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNode);
     }
   }
 
@@ -64,33 +66,42 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
-  protected String getEnvConfigPath() {
-    if (SystemUtils.IS_OS_WINDOWS) {
-      return workDirFilePath("datanode" + File.separator + "conf", "datanode-env.bat");
-    }
-    return workDirFilePath("datanode" + File.separator + "conf", "datanode-env.sh");
-  }
-
-  @Override
-  protected String getStartScriptPath() {
-    String scriptName = "start-datanode.sh";
-    if (SystemUtils.IS_OS_WINDOWS) {
-      scriptName = "start-datanode.bat";
-    }
-    return workDirFilePath("datanode" + File.separator + "sbin", scriptName);
-  }
-
-  @Override
-  protected String getStopScriptPath() {
-    String scriptName = "stop-datanode.sh";
-    if (SystemUtils.IS_OS_WINDOWS) {
-      scriptName = "stop-datanode.bat";
-    }
-    return workDirFilePath("datanode" + File.separator + "sbin", scriptName);
-  }
-
-  @Override
   public final String getId() {
     return "DataNode" + getPort();
+  }
+
+  @Override
+  protected void addStartCmdParams(List<String> params) {
+    final String workDir = getNodePath() + File.separator + "datanode";
+    final String confDir = workDir + File.separator + "conf";
+    params.addAll(
+        Arrays.asList(
+            "-Dlogback.configurationFile=" + confDir + File.separator + "logback.xml",
+            "-DIOTDB_HOME=" + workDir,
+            "-DTSFILE_HOME=" + workDir,
+            "-DIOTDB_CONF=" + confDir,
+            "-DTSFILE_CONF=" + confDir,
+            mainClassName(),
+            "-s"));
+  }
+
+  protected String mainClassName() {
+    return "org.apache.iotdb.db.service.DataNode";
+  }
+
+  public int getMppDataExchangePort() {
+    return mppDataExchangePort;
+  }
+
+  public int getInternalPort() {
+    return internalPort;
+  }
+
+  public int getDataRegionConsensusPort() {
+    return dataRegionConsensusPort;
+  }
+
+  public int getSchemaRegionConsensusPort() {
+    return schemaRegionConsensusPort;
   }
 }

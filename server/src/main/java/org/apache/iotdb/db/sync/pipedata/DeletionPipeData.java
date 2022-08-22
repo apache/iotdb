@@ -37,6 +37,10 @@ public class DeletionPipeData extends PipeData {
 
   private Deletion deletion;
 
+  public DeletionPipeData() {
+    super();
+  }
+
   public DeletionPipeData(Deletion deletion, long serialNumber) {
     super(serialNumber);
     this.deletion = deletion;
@@ -52,11 +56,9 @@ public class DeletionPipeData extends PipeData {
     return super.serialize(stream) + deletion.serializeWithoutFileOffset(stream);
   }
 
-  public static DeletionPipeData deserialize(DataInputStream stream)
-      throws IOException, IllegalPathException {
-    long serialNumber = stream.readLong();
-    Deletion deletion = Deletion.deserializeWithoutFileOffset(stream);
-    return new DeletionPipeData(deletion, serialNumber);
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+    super.deserialize(stream);
+    deletion = Deletion.deserializeWithoutFileOffset(stream);
   }
 
   @Override

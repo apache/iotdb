@@ -43,6 +43,8 @@ public class LocalSourceHandle implements ISourceHandle {
   private final SharedTsBlockQueue queue;
   private boolean aborted = false;
 
+  private boolean closed = false;
+
   private int currSequenceId;
 
   private final String threadName;
@@ -81,9 +83,8 @@ public class LocalSourceHandle implements ISourceHandle {
   @Override
   public TsBlock receive() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      if (aborted) {
-        throw new IllegalStateException("Source handle is aborted.");
-      }
+      checkState();
+
       if (!queue.isBlocked().isDone()) {
         throw new IllegalStateException("Source handle is blocked.");
       }
@@ -122,10 +123,8 @@ public class LocalSourceHandle implements ISourceHandle {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
-    if (aborted) {
-      throw new IllegalStateException("Source handle is closed.");
-    }
+  public ListenableFuture<?> isBlocked() {
+    checkState();
     return nonCancellationPropagating(queue.isBlocked());
   }
 
@@ -136,6 +135,9 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public void abort() {
+    if (aborted || closed) {
+      return;
+    }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       logger.info("Source handle is being aborted.");
       synchronized (queue) {
@@ -143,12 +145,41 @@ public class LocalSourceHandle implements ISourceHandle {
           if (aborted) {
             return;
           }
-          queue.destroy();
+          queue.abort();
           aborted = true;
           sourceHandleListener.onAborted(this);
         }
       }
       logger.info("Source handle is aborted");
+    }
+  }
+
+  @Override
+  public void close() {
+    if (aborted || closed) {
+      return;
+    }
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      logger.info("Source handle is being closed.");
+      synchronized (queue) {
+        synchronized (this) {
+          if (aborted) {
+            return;
+          }
+          queue.close();
+          closed = true;
+          sourceHandleListener.onFinished(this);
+        }
+      }
+      logger.info("Source handle is closed");
+    }
+  }
+
+  private void checkState() {
+    if (aborted) {
+      throw new IllegalStateException("Source handle is aborted.");
+    } else if (closed) {
+      throw new IllegalStateException("Source Handle is closed.");
     }
   }
 

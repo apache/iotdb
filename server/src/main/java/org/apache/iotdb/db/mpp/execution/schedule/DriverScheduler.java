@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
@@ -63,11 +64,14 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private final Set<DriverTask> blockedTasks;
   private final Map<QueryId, Set<DriverTask>> queryMap;
   private final ITaskScheduler scheduler;
-  private IMPPDataExchangeManager blockManager; // TODO: init with real IMPPDataExchangeManager
+  private IMPPDataExchangeManager blockManager;
 
-  private static final int MAX_CAPACITY = 1000; // TODO: load from config files
-  private static final int WORKER_THREAD_NUM = 4; // TODO: load from config files
-  private static final int QUERY_TIMEOUT_MS = 60_000; // TODO: load from config files or requests
+  private static final int MAX_CAPACITY =
+      IoTDBDescriptor.getInstance().getConfig().getMaxAllowedConcurrentQueries();
+  private static final int WORKER_THREAD_NUM =
+      IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread();
+  private static final long QUERY_TIMEOUT_MS =
+      IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
   private final ThreadGroup workerGroups;
   private final List<AbstractDriverThread> threads;
 
@@ -118,10 +122,13 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @Override
-  public void submitDrivers(QueryId queryId, List<IDriver> instances) {
+  public void submitDrivers(QueryId queryId, List<IDriver> instances, long timeOut) {
     List<DriverTask> tasks =
         instances.stream()
-            .map(v -> new DriverTask(v, QUERY_TIMEOUT_MS, DriverTaskStatus.READY))
+            .map(
+                v ->
+                    new DriverTask(
+                        v, timeOut > 0 ? timeOut : QUERY_TIMEOUT_MS, DriverTaskStatus.READY))
             .collect(Collectors.toList());
     queryMap
         .computeIfAbsent(queryId, v -> Collections.synchronizedSet(new HashSet<>()))

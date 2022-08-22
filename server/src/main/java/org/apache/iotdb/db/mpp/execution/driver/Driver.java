@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.GuardedBy;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -54,8 +53,7 @@ public abstract class Driver implements IDriver {
   protected final Operator root;
   protected final ISinkHandle sinkHandle;
   protected final DriverContext driverContext;
-  protected final AtomicReference<SettableFuture<Void>> driverBlockedFuture =
-      new AtomicReference<>();
+  protected final AtomicReference<SettableFuture<?>> driverBlockedFuture = new AtomicReference<>();
   protected final AtomicReference<State> state = new AtomicReference<>(State.ALIVE);
 
   protected final DriverLock exclusiveLock = new DriverLock();
@@ -93,15 +91,15 @@ public abstract class Driver implements IDriver {
    *
    * @return true if init succeed, false otherwise
    */
-  protected abstract boolean init(SettableFuture<Void> blockedFuture);
+  protected abstract boolean init(SettableFuture<?> blockedFuture);
 
   /** release resource this driver used */
   protected abstract void releaseResource();
 
   @Override
-  public ListenableFuture<Void> processFor(Duration duration) {
+  public ListenableFuture<?> processFor(Duration duration) {
 
-    SettableFuture<Void> blockedFuture = driverBlockedFuture.get();
+    SettableFuture<?> blockedFuture = driverBlockedFuture.get();
     // initialization may be time-consuming, so we keep it in the processFor method
     // in normal case, it won't cause deadlock and should finish soon, otherwise it will be a
     // critical bug
@@ -116,7 +114,7 @@ public abstract class Driver implements IDriver {
 
     long maxRuntime = duration.roundTo(TimeUnit.NANOSECONDS);
 
-    Optional<ListenableFuture<Void>> result =
+    Optional<ListenableFuture<?>> result =
         tryWithLock(
             100,
             TimeUnit.MILLISECONDS,
@@ -124,7 +122,7 @@ public abstract class Driver implements IDriver {
             () -> {
               long start = System.nanoTime();
               do {
-                ListenableFuture<Void> future = processInternal();
+                ListenableFuture<?> future = processInternal();
                 if (!future.isDone()) {
                   return updateDriverBlockedFuture(future);
                 }
@@ -174,9 +172,9 @@ public abstract class Driver implements IDriver {
     return finished;
   }
 
-  private ListenableFuture<Void> processInternal() {
+  private ListenableFuture<?> processInternal() {
     try {
-      ListenableFuture<Void> blocked = root.isBlocked();
+      ListenableFuture<?> blocked = root.isBlocked();
       if (!blocked.isDone()) {
         return blocked;
       }
@@ -187,7 +185,7 @@ public abstract class Driver implements IDriver {
       if (root.hasNext()) {
         TsBlock tsBlock = root.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
-          sinkHandle.send(Collections.singletonList(tsBlock));
+          sinkHandle.send(tsBlock);
         }
       }
       return NOT_BLOCKED;
@@ -211,11 +209,10 @@ public abstract class Driver implements IDriver {
     }
   }
 
-  private ListenableFuture<Void> updateDriverBlockedFuture(
-      ListenableFuture<Void> sourceBlockedFuture) {
+  private ListenableFuture<?> updateDriverBlockedFuture(ListenableFuture<?> sourceBlockedFuture) {
     // driverBlockedFuture will be completed as soon as the sourceBlockedFuture is completed
     // or any of the operators gets a memory revocation request
-    SettableFuture<Void> newDriverBlockedFuture = SettableFuture.create();
+    SettableFuture<?> newDriverBlockedFuture = SettableFuture.create();
     driverBlockedFuture.set(newDriverBlockedFuture);
     sourceBlockedFuture.addListener(() -> newDriverBlockedFuture.set(null), directExecutor());
 

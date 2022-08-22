@@ -54,13 +54,13 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public ListenableFuture<Void> isFull() {
+  public ListenableFuture<?> isFull() {
     return NOT_BLOCKED;
   }
 
   @Override
-  public void send(List<TsBlock> tsBlocks) {
-    this.tsBlocks.addAll(tsBlocks);
+  public void send(TsBlock tsBlock) {
+    this.tsBlocks.add(tsBlock);
   }
 
   @Override
@@ -89,6 +89,12 @@ public class StubSinkHandle implements ISinkHandle {
 
   @Override
   public void abort() {
+    closed = true;
+    tsBlocks.clear();
+  }
+
+  @Override
+  public void close() {
     closed = true;
     tsBlocks.clear();
   }

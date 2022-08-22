@@ -60,7 +60,7 @@ public class DataDriver extends Driver {
   }
 
   @Override
-  protected boolean init(SettableFuture<Void> blockedFuture) {
+  protected boolean init(SettableFuture<?> blockedFuture) {
     if (!init) {
       try {
         initialize();

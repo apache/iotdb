@@ -38,16 +38,32 @@ public interface BaseConfig {
     return this;
   }
 
+  default int getPageSizeInByte() {
+    return 64 * 1024;
+  }
+
   default BaseConfig setPageSizeInByte(int pageSizeInByte) {
     return this;
+  }
+
+  default int getGroupSizeInByte() {
+    return 128 * 1024 * 1024;
   }
 
   default BaseConfig setGroupSizeInByte(int groupSizeInByte) {
     return this;
   }
 
+  default long getMemtableSizeThreshold() {
+    return 1024 * 1024 * 1024L;
+  }
+
   default BaseConfig setMemtableSizeThreshold(long memtableSizeThreshold) {
     return this;
+  }
+
+  default int getDataRegionNum() {
+    return 1;
   }
 
   default BaseConfig setDataRegionNum(int dataRegionNum) {
@@ -152,5 +168,54 @@ public interface BaseConfig {
 
   default int getPrimitiveArraySize() {
     return 32;
+  }
+
+  default String getFlushCommand() {
+    return "flush";
+  }
+
+  default int getMaxQueryDeduplicatedPathNum() {
+    return 1000;
+  }
+
+  default int getAvgSeriesPointNumberThreshold() {
+    return 100000;
+  }
+
+  default BaseConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+    return this;
+  }
+
+  default int getMaxTsBlockLineNumber() {
+    return 1000;
+  }
+
+  default BaseConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
+    return this;
+  }
+
+  default BaseConfig setConfigNodeConsesusProtocolClass(String configNodeConsesusProtocolClass) {
+    return this;
+  }
+
+  default String getConfigNodeConsesusProtocolClass() {
+    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+  }
+
+  default BaseConfig setSchemaRegionConsensusProtocolClass(
+      String schemaRegionConsensusProtocolClass) {
+    return this;
+  }
+
+  default String getSchemaRegionConsensusProtocolClass() {
+    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+  }
+
+  default BaseConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
+    return this;
+  }
+
+  default String getDataRegionConsensusProtocolClass() {
+    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
   }
 }

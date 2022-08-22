@@ -82,18 +82,32 @@ The total process are three steps:
 
 ### Start the first ConfigNode
 
-Important parameters in iotdb-confignode.properties:
+Please set the important parameters in iotdb-confignode.properties:
 
 | **Configuration** | **Description**                                      |
 | -------- | -------------------------------------------- |
-| rpc\_address    | Internal rpc service address of ConfigNode          |
-| rpc\_port    | Internal rpc service address of ConfigNode       |
+| internal\_address    | Internal rpc service address of ConfigNode          |
+| internal\_port    | Internal rpc service address of ConfigNode       |
 | consensus\_port    | ConfigNode replication consensus protocol communication port    |
-| config\_nodes    | Target ConfigNode address, if the current is the first ConfigNode, then set its address:port    |
+| target\_config\_nodes    | Target ConfigNode address, if the current is the first ConfigNode, then set its address:port    |
 | data\_replication\_factor  | Data replication factor, no more than DataNode number        |
 | data\_region\_consensus\_protocol\_class | Consensus protocol of data replicas |
 | schema\_replication\_factor  | Schema replication factor, no more than DataNode number       |
 | schema\_region\_consensus\_protocol\_class   | Consensus protocol of schema replicas |
+
+Start on Linux
+```
+# Foreground
+./confignode/sbin/start-confignode.sh
+
+# Background
+nohup ./confignode/sbin/start-confignode.sh >/dev/null 2>&1 &
+```
+
+Start on Windows
+```
+confignode\sbin\start-confignode.bat
+```
 
 More details  [ConfigNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/ConfigNode-Config-Manual.html)
 
@@ -101,11 +115,13 @@ More details  [ConfigNode Configurations](https://iotdb.apache.org/UserGuide/Mas
 
 This will add the replication factor of ConfigNode, except for the port couldn't conflict, make sure other configurations are the same with existing ConfigNode in Cluster.
 
+The adding ConfigNode also use the start-confignode.sh/bat.
+
 ### Start DataNode
 
 You could add any number of DataNode.
 
-Important parameters in iotdb-datanode.properties
+Please set the important parameters in iotdb-datanode.properties
 
 | **Configuration** | **Description**                                      |
 | -------- | -------------------------------------------- |
@@ -116,6 +132,49 @@ Important parameters in iotdb-datanode.properties
 | mpp\_data\_exchange\_port    | Data flow port of DataNode inside cluster           |
 | data\_region\_consensus\_port    | Data replicas communication port for consensus     |
 | schema\_region\_consensus\_port    | Schema replicas communication port for consensus          |
-| config\_nodes    | Running ConfigNode of the Cluster      |
+| target\_config\_nodes    | Running ConfigNode of the Cluster      |
+
+Start on Linux
+```
+# Foreground
+./datanode/sbin/start-datanode.sh
+
+# Background
+nohup ./datanode/sbin/start-datanode.sh >/dev/null 2>&1 &
+```
+
+Start on Windows
+```
+datanode\sbin\start-datanode.bat
+```
 
 More details [DataNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html)
+
+### Start Cli
+
+Cli is in datanode/sbin folder
+
+Start on Linux
+```
+./datanode/sbin/start-cli.sh
+```
+
+Start on Windows
+```
+datanode\sbin\start-cli.bat
+```
+
+## Quick Start
+
+unzip apache-iotdb-0.14.0-preview1-all-bin.zip
+
+Deploy a one-ConfigNode and one-DataNode（1C1D）cluster, default is one replica.
+```
+./confignode/sbin/start-confignode.sh
+./datanode/sbin/start-datanode.sh
+```
+
+Start Cli
+```
+./datanode/sbin/start-cli.sh
+```

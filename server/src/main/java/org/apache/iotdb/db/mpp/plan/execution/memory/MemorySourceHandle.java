@@ -66,7 +66,7 @@ public class MemorySourceHandle implements ISourceHandle {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     return immediateFuture(null);
   }
 
@@ -77,4 +77,7 @@ public class MemorySourceHandle implements ISourceHandle {
 
   @Override
   public void abort() {}
+
+  @Override
+  public void close() {}
 }

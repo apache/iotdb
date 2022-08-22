@@ -30,6 +30,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.concurrent.SetThreadName;
@@ -46,9 +47,9 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class SinkHandle implements ISinkHandle {
 
@@ -71,17 +72,24 @@ public class SinkHandle implements ISinkHandle {
   // Use LinkedHashMap to meet 2 needs,
   //   1. Predictable iteration order so that removing buffered tsblocks can be efficient.
   //   2. Fast lookup.
-  private final LinkedHashMap<Integer, TsBlock> sequenceIdToTsBlock = new LinkedHashMap<>();
+  private final LinkedHashMap<Integer, Pair<TsBlock, Long>> sequenceIdToTsBlock =
+      new LinkedHashMap<>();
+
+  // size for current TsBlock to reserve and free
+  private long currentTsBlockSize;
 
   private final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
       mppDataExchangeServiceClientManager;
 
-  private volatile ListenableFuture<Void> blocked = immediateFuture(null);
+  private volatile ListenableFuture<Void> blocked;
   private int nextSequenceId = 0;
   /** The actual buffered memory in bytes, including the amount of memory being reserved. */
-  private long bufferRetainedSizeInBytes = 0;
+  private long bufferRetainedSizeInBytes;
 
   private boolean aborted = false;
+
+  private boolean closed = false;
+
   private boolean noMoreTsBlocks = false;
 
   public SinkHandle(
@@ -106,13 +114,17 @@ public class SinkHandle implements ISinkHandle {
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
     this.threadName = createFullIdFrom(localFragmentInstanceId, "SinkHandle");
+    this.blocked =
+        localMemoryManager
+            .getQueryPool()
+            .reserve(localFragmentInstanceId.getQueryId(), DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+    this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   @Override
-  public synchronized ListenableFuture<Void> isFull() {
-    if (aborted) {
-      throw new IllegalStateException("Sink handle is aborted.");
-    }
+  public synchronized ListenableFuture<?> isFull() {
+    checkState();
     return nonCancellationPropagating(blocked);
   }
 
@@ -121,21 +133,16 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public synchronized void send(List<TsBlock> tsBlocks) {
-    Validate.notNull(tsBlocks, "tsBlocks is null");
-    if (aborted) {
-      throw new IllegalStateException("Sink handle is aborted.");
-    }
+  public synchronized void send(TsBlock tsBlock) {
+    Validate.notNull(tsBlock, "tsBlocks is null");
+    checkState();
     if (!blocked.isDone()) {
       throw new IllegalStateException("Sink handle is blocked.");
     }
     if (noMoreTsBlocks) {
       return;
     }
-    long retainedSizeInBytes = 0L;
-    for (TsBlock tsBlock : tsBlocks) {
-      retainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
-    }
+    long retainedSizeInBytes = tsBlock.getRetainedSizeInBytes();
     int startSequenceId;
     List<Long> tsBlockSizes = new ArrayList<>();
     startSequenceId = nextSequenceId;
@@ -144,12 +151,13 @@ public class SinkHandle implements ISinkHandle {
             .getQueryPool()
             .reserve(localFragmentInstanceId.getQueryId(), retainedSizeInBytes);
     bufferRetainedSizeInBytes += retainedSizeInBytes;
-    for (TsBlock tsBlock : tsBlocks) {
-      sequenceIdToTsBlock.put(nextSequenceId, tsBlock);
-      nextSequenceId += 1;
-    }
+
+    sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
+    nextSequenceId += 1;
+    currentTsBlockSize = retainedSizeInBytes;
+
     for (int i = startSequenceId; i < nextSequenceId; i++) {
-      tsBlockSizes.add(sequenceIdToTsBlock.get(i).getRetainedSizeInBytes());
+      tsBlockSizes.add(sequenceIdToTsBlock.get(i).left.getRetainedSizeInBytes());
     }
 
     // TODO: consider merge multiple NewDataBlockEvent for less network traffic.
@@ -199,6 +207,7 @@ public class SinkHandle implements ISinkHandle {
     }
     logger.info("set noMoreTsBlocks to true");
     noMoreTsBlocks = true;
+
     if (isFinished()) {
       logger.info("revoke onFinish() of sinkHandleListener");
       sinkHandleListener.onFinish(this);
@@ -221,6 +230,22 @@ public class SinkHandle implements ISinkHandle {
     }
     sinkHandleListener.onAborted(this);
     logger.info("SinkHandle is aborted");
+  }
+
+  @Override
+  public void close() {
+    logger.info("SinkHandle is being closed.");
+    sequenceIdToTsBlock.clear();
+    closed = true;
+    bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
+    if (bufferRetainedSizeInBytes > 0) {
+      localMemoryManager
+          .getQueryPool()
+          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+      bufferRetainedSizeInBytes = 0;
+    }
+    sinkHandleListener.onFinish(this);
+    logger.info("SinkHandle is closed");
   }
 
   @Override
@@ -248,7 +273,7 @@ public class SinkHandle implements ISinkHandle {
 
   ByteBuffer getSerializedTsBlock(int sequenceId) throws IOException {
     TsBlock tsBlock;
-    tsBlock = sequenceIdToTsBlock.get(sequenceId);
+    tsBlock = sequenceIdToTsBlock.get(sequenceId).left;
     if (tsBlock == null) {
       throw new IllegalStateException("The data block doesn't exist. Sequence ID: " + sequenceId);
     }
@@ -261,17 +286,19 @@ public class SinkHandle implements ISinkHandle {
       if (aborted) {
         return;
       }
-      Iterator<Entry<Integer, TsBlock>> iterator = sequenceIdToTsBlock.entrySet().iterator();
+      Iterator<Entry<Integer, Pair<TsBlock, Long>>> iterator =
+          sequenceIdToTsBlock.entrySet().iterator();
       while (iterator.hasNext()) {
-        Entry<Integer, TsBlock> entry = iterator.next();
+        Entry<Integer, Pair<TsBlock, Long>> entry = iterator.next();
         if (entry.getKey() < startSequenceId) {
           continue;
         }
         if (entry.getKey() >= endSequenceId) {
           break;
         }
-        freedBytes += entry.getValue().getRetainedSizeInBytes();
-        bufferRetainedSizeInBytes -= entry.getValue().getRetainedSizeInBytes();
+
+        freedBytes += entry.getValue().right;
+        bufferRetainedSizeInBytes -= entry.getValue().right;
         iterator.remove();
       }
     }
@@ -304,6 +331,14 @@ public class SinkHandle implements ISinkHandle {
         localFragmentInstanceId.queryId,
         localFragmentInstanceId.fragmentId,
         localFragmentInstanceId.instanceId);
+  }
+
+  private void checkState() {
+    if (aborted) {
+      throw new IllegalStateException("Sink handle is aborted.");
+    } else if (closed) {
+      throw new IllegalStateException("SinkHandle is closed.");
+    }
   }
 
   @TestOnly

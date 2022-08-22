@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
@@ -501,8 +503,8 @@ public class StorageEngineV2 implements IService {
   }
 
   /** Write data into DataRegion. For standalone mode only. */
-  public void write(DataRegionId groupId, PlanNode planNode) {
-    planNode.accept(new DataExecutionVisitor(), dataRegionMap.get(groupId));
+  public TSStatus write(DataRegionId groupId, PlanNode planNode) {
+    return planNode.accept(new DataExecutionVisitor(), dataRegionMap.get(groupId));
   }
 
   /** This function is just for unit test. */
@@ -544,6 +546,18 @@ public class StorageEngineV2 implements IService {
         }
       }
     }
+  }
+
+  /**
+   * merge all storage groups.
+   *
+   * @throws StorageEngineException StorageEngineException
+   */
+  public void mergeAll() throws StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException("Current system mode is read only, does not support merge");
+    }
+    dataRegionMap.values().forEach(DataRegion::compact);
   }
 
   public TSStatus operateFlush(TFlushReq req) {
@@ -675,6 +689,34 @@ public class StorageEngineV2 implements IService {
       oldRegion.abortCompaction();
     }
     dataRegionMap.put(regionId, newRegion);
+  }
+
+  //  public TSStatus setTTL(TSetTTLReq req) {
+  //    Map<String, List<DataRegionId>> localDataRegionInfo =
+  //        StorageEngineV2.getInstance().getLocalDataRegionInfo();
+  //    List<DataRegionId> dataRegionIdList = localDataRegionInfo.get(req.storageGroup);
+  //    for (DataRegionId dataRegionId : dataRegionIdList) {
+  //      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
+  //      if (dataRegion != null) {
+  //        dataRegion.setDataTTL(req.TTL);
+  //      }
+  //    }
+  //    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  //  }
+
+  public TSStatus setTTL(TSetTTLReq req) {
+    Map<String, List<DataRegionId>> localDataRegionInfo =
+        StorageEngineV2.getInstance().getLocalDataRegionInfo();
+    List<DataRegionId> dataRegionIdList = new ArrayList<>();
+    req.storageGroupPathPattern.forEach(
+        storageGroup -> dataRegionIdList.addAll(localDataRegionInfo.get(storageGroup)));
+    for (DataRegionId dataRegionId : dataRegionIdList) {
+      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
+      if (dataRegion != null) {
+        dataRegion.setDataTTL(req.TTL);
+      }
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public TsFileFlushPolicy getFileFlushPolicy() {

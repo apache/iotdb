@@ -18,24 +18,22 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeConfig {
 
   /** could set ip or hostname */
-  private String rpcAddress = "0.0.0.0";
+  private String internalAddress = "0.0.0.0";
 
   /** used for communication between data node and config node */
-  private int rpcPort = 22277;
+  private int internalPort = 22277;
 
   /** used for communication between config node and config node */
   private int consensusPort = 22278;
@@ -43,35 +41,27 @@ public class ConfigNodeConfig {
   /** Used for connecting to the ConfigNodeGroup */
   private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
 
-  /** Mark if the ConfigNode needs to apply */
-  private boolean needApply = false;
-
   // TODO: Read from iotdb-confignode.properties
   private int partitionRegionId = 0;
-
-  /** Used for building the PartitionRegion */
-  private List<TConfigNodeLocation> configNodeList = new ArrayList<>();
-
-  /** Thrift socket and connection timeout between nodes */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
   /** ConfigNodeGroup consensus protocol */
   private String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
-  /** DataNode data region consensus protocol */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
-
   /** DataNode schema region consensus protocol */
   private String schemaRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
 
-  /**
-   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
-   * clients.
-   */
-  private int selectorNumOfClientManager =
-      Runtime.getRuntime().availableProcessors() / 4 > 0
-          ? Runtime.getRuntime().availableProcessors() / 4
-          : 1;
+  /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
+  private double schemaRegionPerDataNode = 1.0;
+
+  /** DataNode data region consensus protocol */
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
+
+  /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
+  private double dataRegionPerProcessor = 0.5;
+
+  /** region allocate strategy. */
+  private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
+      RegionBalancer.RegionAllocateStrategy.GREEDY;
 
   /** Number of SeriesPartitionSlots per StorageGroup */
   private int seriesPartitionSlotNum = 10000;
@@ -82,9 +72,6 @@ public class ConfigNodeConfig {
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
-
-  /** whether to use thrift compression. */
-  private boolean isRpcThriftCompressionEnabled = false;
 
   /** whether to use Snappy compression before sending data through the network */
   private boolean rpcAdvancedCompressionEnable = false;
@@ -139,7 +126,12 @@ public class ConfigNodeConfig {
   /** The heartbeat interval in milliseconds */
   private long heartbeatInterval = 1000;
 
-  ConfigNodeConfig() {
+  /** The routing policy of read/write requests */
+  private String routingPolicy = RouteBalancer.leaderPolicy;
+
+  private String readConsistencyLevel = "strong";
+
+  public ConfigNodeConfig() {
     // empty constructor
   }
 
@@ -167,20 +159,20 @@ public class ConfigNodeConfig {
     return dir;
   }
 
-  public String getRpcAddress() {
-    return rpcAddress;
+  public String getInternalAddress() {
+    return internalAddress;
   }
 
-  public void setRpcAddress(String rpcAddress) {
-    this.rpcAddress = rpcAddress;
+  public void setInternalAddress(String internalAddress) {
+    this.internalAddress = internalAddress;
   }
 
-  public int getRpcPort() {
-    return rpcPort;
+  public int getInternalPort() {
+    return internalPort;
   }
 
-  public void setRpcPort(int rpcPort) {
-    this.rpcPort = rpcPort;
+  public void setInternalPort(int internalPort) {
+    this.internalPort = internalPort;
   }
 
   public int getConsensusPort() {
@@ -189,14 +181,6 @@ public class ConfigNodeConfig {
 
   public void setConsensusPort(int consensusPort) {
     this.consensusPort = consensusPort;
-  }
-
-  public boolean isNeedApply() {
-    return needApply;
-  }
-
-  public void setNeedApply(boolean needApply) {
-    this.needApply = needApply;
   }
 
   public TEndPoint getTargetConfigNode() {
@@ -215,14 +199,6 @@ public class ConfigNodeConfig {
     this.partitionRegionId = partitionRegionId;
   }
 
-  public List<TConfigNodeLocation> getConfigNodeList() {
-    return configNodeList;
-  }
-
-  public void setConfigNodeList(List<TConfigNodeLocation> configNodeList) {
-    this.configNodeList = configNodeList;
-  }
-
   public int getSeriesPartitionSlotNum() {
     return seriesPartitionSlotNum;
   }
@@ -239,10 +215,6 @@ public class ConfigNodeConfig {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
   }
 
-  public int getSelectorNumOfClientManager() {
-    return selectorNumOfClientManager;
-  }
-
   public long getTimePartitionInterval() {
     return timePartitionInterval;
   }
@@ -257,14 +229,6 @@ public class ConfigNodeConfig {
 
   public void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
-  }
-
-  public boolean isRpcThriftCompressionEnabled() {
-    return isRpcThriftCompressionEnabled;
-  }
-
-  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
-    isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
   }
 
   public boolean isRpcAdvancedCompressionEnable() {
@@ -291,19 +255,6 @@ public class ConfigNodeConfig {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
-  public int getConnectionTimeoutInMS() {
-    return connectionTimeoutInMS;
-  }
-
-  public ConfigNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS) {
-    this.connectionTimeoutInMS = connectionTimeoutInMS;
-    return this;
-  }
-
-  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
-    this.selectorNumOfClientManager = selectorNumOfClientManager;
-  }
-
   public String getConsensusDir() {
     return consensusDir;
   }
@@ -320,6 +271,22 @@ public class ConfigNodeConfig {
     this.configNodeConsensusProtocolClass = configNodeConsensusProtocolClass;
   }
 
+  public String getSchemaRegionConsensusProtocolClass() {
+    return schemaRegionConsensusProtocolClass;
+  }
+
+  public void setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass) {
+    this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
+  }
+
+  public double getSchemaRegionPerDataNode() {
+    return schemaRegionPerDataNode;
+  }
+
+  public void setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+    this.schemaRegionPerDataNode = schemaRegionPerDataNode;
+  }
+
   public String getDataRegionConsensusProtocolClass() {
     return dataRegionConsensusProtocolClass;
   }
@@ -328,12 +295,21 @@ public class ConfigNodeConfig {
     this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
   }
 
-  public String getSchemaRegionConsensusProtocolClass() {
-    return schemaRegionConsensusProtocolClass;
+  public double getDataRegionPerProcessor() {
+    return dataRegionPerProcessor;
   }
 
-  public void setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass) {
-    this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
+  public void setDataRegionPerProcessor(double dataRegionPerProcessor) {
+    this.dataRegionPerProcessor = dataRegionPerProcessor;
+  }
+
+  public RegionBalancer.RegionAllocateStrategy getRegionAllocateStrategy() {
+    return regionAllocateStrategy;
+  }
+
+  public void setRegionAllocateStrategy(
+      RegionBalancer.RegionAllocateStrategy regionAllocateStrategy) {
+    this.regionAllocateStrategy = regionAllocateStrategy;
   }
 
   public int getThriftServerAwaitTimeForStopService() {
@@ -418,5 +394,21 @@ public class ConfigNodeConfig {
 
   public void setHeartbeatInterval(long heartbeatInterval) {
     this.heartbeatInterval = heartbeatInterval;
+  }
+
+  public String getRoutingPolicy() {
+    return routingPolicy;
+  }
+
+  public void setRoutingPolicy(String routingPolicy) {
+    this.routingPolicy = routingPolicy;
+  }
+
+  public String getReadConsistencyLevel() {
+    return readConsistencyLevel;
+  }
+
+  public void setReadConsistencyLevel(String readConsistencyLevel) {
+    this.readConsistencyLevel = readConsistencyLevel;
   }
 }

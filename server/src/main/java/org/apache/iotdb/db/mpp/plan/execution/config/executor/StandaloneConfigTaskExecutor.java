@@ -21,24 +21,33 @@ package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
+import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.plan.execution.config.CountStorageGroupTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowStorageGroupTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,6 +58,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -164,9 +174,20 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
         deletePathList.addAll(
             LocalConfigNode.getInstance().getMatchedStorageGroups(prefixPath, false));
       }
-      LocalConfigNode.getInstance().deleteStorageGroups(deletePathList);
+      if (deletePathList.isEmpty()) {
+        future.setException(
+            new IoTDBException(
+                String.format(
+                    "Path %s does not exist",
+                    Arrays.toString(deleteStorageGroupStatement.getPrefixPath().toArray())),
+                TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()));
+        return future;
+      } else {
+        LocalConfigNode.getInstance().deleteStorageGroups(deletePathList);
+      }
     } catch (MetadataException e) {
       future.setException(e);
+      return future;
     }
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     return future;
@@ -204,10 +225,36 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> merge(TMergeReq mergeReq) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
+    TSStatus tsStatus = localConfigNode.executeMergeOperation();
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
     TSStatus tsStatus = localConfigNode.executeFlushOperation(tFlushReq);
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> clearCache(TClearCacheReq tclearCacheReq) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
+    TSStatus tsStatus = localConfigNode.executeClearCacheOperation();
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
@@ -235,11 +282,15 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       Map<PartialPath, Long> allStorageGroupToTTL =
           LocalConfigNode.getInstance().getStorageGroupsTTL();
-      for (PartialPath storageGroupPath : storageGroupPaths) {
-        if (showTTLStatement.isAll()) {
-          storageGroupToTTL.put(
-              storageGroupPath.getFullPath(), allStorageGroupToTTL.get(storageGroupPath));
-        } else {
+      if (showTTLStatement.isAll()) {
+        allStorageGroupToTTL
+            .entrySet()
+            .forEach(
+                (entry) -> {
+                  storageGroupToTTL.put(entry.getKey().getFullPath(), entry.getValue());
+                });
+      } else {
+        for (PartialPath storageGroupPath : storageGroupPaths) {
           List<PartialPath> matchedStorageGroupPaths =
               LocalConfigNode.getInstance()
                   .getMatchedStorageGroups(storageGroupPath, showTTLStatement.isPrefixPath());
@@ -266,6 +317,89 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,
                 "Executing show regions in standalone mode is not supported")));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showDataNodes(
+      ShowDataNodesStatement showDataNodesStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing show datanodes in standalone mode is not supported")));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showConfigNodes() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing show confignodes in standalone mode is not supported")));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createSchemaTemplate(
+      CreateSchemaTemplateStatement createSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing create schema template is not supported")));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showSchemaTemplate(
+      ShowSchemaTemplateStatement showSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing show schema template is not supported")));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showNodesInSchemaTemplate(
+      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing show nodes in schema template is not supported")));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setSchemaTemplate(
+      SetSchemaTemplateStatement setSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing set schema template is not supported")));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showPathSetTemplate(
+      ShowPathSetTemplateStatement showPathSetTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing show path set template is not supported")));
     return future;
   }
 }

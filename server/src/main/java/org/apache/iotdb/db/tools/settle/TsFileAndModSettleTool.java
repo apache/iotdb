@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.settle.SettleLog;
 import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.tools.TsFileRewriteTool;
+import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
@@ -212,11 +212,9 @@ public class TsFileAndModSettleTool {
     if (!resourceToBeSettled.getModFile().exists()) {
       return;
     }
-    try (TsFileRewriteTool tsFileRewriteTool = new TsFileRewriteTool(resourceToBeSettled)) {
+    try (TsFileSplitByPartitionTool tsFileRewriteTool =
+        new TsFileSplitByPartitionTool(resourceToBeSettled)) {
       tsFileRewriteTool.parseAndRewriteFile(settledResources);
-    }
-    if (settledResources.size() == 0) {
-      resourceToBeSettled.setStatus(TsFileResourceStatus.DELETED);
     }
   }
 

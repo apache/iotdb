@@ -65,8 +65,8 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
-    return children.get(currentIndex).isBlocked();
+  public ListenableFuture<?> isBlocked() {
+    return currentIndex < children.size() ? children.get(currentIndex).isBlocked() : NOT_BLOCKED;
   }
 
   @Override

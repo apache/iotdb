@@ -141,7 +141,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             || sourceHandles
                 .get(e.getTargetFragmentInstanceId())
                 .get(e.getTargetPlanNodeId())
-                .isAborted()) {
+                .isAborted()
+            || sourceHandles
+                .get(e.getTargetFragmentInstanceId())
+                .get(e.getTargetPlanNodeId())
+                .isFinished()) {
           // In some scenario, when the SourceHandle sends the data block ACK event, its upstream
           // may
           // have already been stopped. For example, in the query whit LimitOperator, the downstream
@@ -176,7 +180,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             || sourceHandles
                 .get(e.getTargetFragmentInstanceId())
                 .get(e.getTargetPlanNodeId())
-                .isAborted()) {
+                .isAborted()
+            || sourceHandles
+                .get(e.getTargetFragmentInstanceId())
+                .get(e.getTargetPlanNodeId())
+                .isFinished()) {
           logger.warn(
               "received onEndOfDataBlockEvent but the downstream FragmentInstance[{}] is not found",
               e.getTargetFragmentInstanceId());

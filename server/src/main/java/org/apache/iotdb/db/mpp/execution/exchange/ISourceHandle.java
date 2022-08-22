@@ -44,14 +44,24 @@ public interface ISourceHandle {
   boolean isFinished();
 
   /** Get a future that will be completed when the input buffer is not empty. */
-  ListenableFuture<Void> isBlocked();
+  ListenableFuture<?> isBlocked();
 
   /** If this handle is aborted. */
   boolean isAborted();
 
   /**
-   * Abort the handle. Discard all tsblocks which may still be in the memory buffer and complete the
+   * Abort the handle. Discard all tsblocks which may still be in the memory buffer and cancel the
    * future returned by {@link #isBlocked()}.
+   *
+   * <p>Should only be called in abnormal case
    */
   void abort();
+
+  /**
+   * Close the handle. Discard all tsblocks which may still be in the memory buffer and complete the
+   * future returned by {@link #isBlocked()}.
+   *
+   * <p>Should only be called in normal case
+   */
+  void close();
 }

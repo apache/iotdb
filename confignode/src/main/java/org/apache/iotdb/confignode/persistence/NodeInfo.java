@@ -19,19 +19,20 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
-import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
+import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -60,7 +61,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentNavigableMap;
@@ -76,29 +76,22 @@ public class NodeInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeInfo.class);
 
-  private static final File systemPropertiesFile =
-      new File(
-          ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
-              + File.separator
-              + ConfigNodeConstant.SYSTEM_FILE_NAME);
-
   private static final int minimumDataNode =
       Math.max(
           ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor(),
           ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
 
-  // Online ConfigNodes
+  // Registered ConfigNodes
   private final ReentrantReadWriteLock configNodeInfoReadWriteLock;
-  private final Set<TConfigNodeLocation> onlineConfigNodes;
+  private final Set<TConfigNodeLocation> registeredConfigNodes;
 
-  // Online DataNodes
+  // Registered DataNodes
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
-  private final AtomicInteger nextNodeId = new AtomicInteger(1);
-  private final ConcurrentNavigableMap<Integer, TDataNodeInfo> onlineDataNodes =
+  private final AtomicInteger nextNodeId = new AtomicInteger(-1);
+  private final ConcurrentNavigableMap<Integer, TDataNodeConfiguration> registeredDataNodes =
       new ConcurrentSkipListMap<>();
 
   // For remove or draining DataNode
-  // TODO: implement
   private final Set<TDataNodeLocation> drainingDataNodes = new HashSet<>();
 
   private final String snapshotFileName = "node_info.bin";
@@ -106,8 +99,7 @@ public class NodeInfo implements SnapshotProcessor {
   public NodeInfo() {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
-    this.onlineConfigNodes =
-        new HashSet<>(ConfigNodeDescriptor.getInstance().getConf().getConfigNodeList());
+    this.registeredConfigNodes = new HashSet<>();
   }
 
   public void addMetrics() {
@@ -117,31 +109,40 @@ public class NodeInfo implements SnapshotProcessor {
           .getOrCreateAutoGauge(
               Metric.CONFIG_NODE.toString(),
               MetricLevel.CORE,
-              onlineConfigNodes,
-              o -> getOnlineDataNodeCount(),
+              registeredConfigNodes,
+              o -> getRegisteredConfigNodeCount(),
               Tag.NAME.toString(),
-              "online");
+              "total",
+              Tag.STATUS.toString(),
+              NodeStatus.Registered.toString());
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.DATA_NODE.toString(),
               MetricLevel.CORE,
-              onlineDataNodes,
+              registeredDataNodes,
               Map::size,
               Tag.NAME.toString(),
-              "online");
+              "total",
+              Tag.STATUS.toString(),
+              NodeStatus.Registered.toString());
     }
   }
 
-  /** @return true if the specific DataNode is now online */
-  public boolean isOnlineDataNode(TDataNodeLocation info) {
+  /**
+   * Only leader use this interface
+   *
+   * @return True if the specific DataNode already registered, false otherwise
+   */
+  public boolean isRegisteredDataNode(TDataNodeLocation dataNodeLocation) {
     boolean result = false;
-    dataNodeInfoReadWriteLock.readLock().lock();
+    int originalDataNodeId = dataNodeLocation.getDataNodeId();
 
+    dataNodeInfoReadWriteLock.readLock().lock();
     try {
-      for (Map.Entry<Integer, TDataNodeInfo> entry : onlineDataNodes.entrySet()) {
-        info.setDataNodeId(entry.getKey());
-        if (entry.getValue().getLocation().equals(info)) {
+      for (Map.Entry<Integer, TDataNodeConfiguration> entry : registeredDataNodes.entrySet()) {
+        dataNodeLocation.setDataNodeId(entry.getKey());
+        if (entry.getValue().getLocation().equals(dataNodeLocation)) {
           result = true;
           break;
         }
@@ -150,30 +151,31 @@ public class NodeInfo implements SnapshotProcessor {
       dataNodeInfoReadWriteLock.readLock().unlock();
     }
 
+    dataNodeLocation.setDataNodeId(originalDataNodeId);
     return result;
   }
 
   /**
    * Persist DataNode info
    *
-   * @param registerDataNodeReq RegisterDataNodePlan
+   * @param registerDataNodePlan RegisterDataNodePlan
    * @return SUCCESS_STATUS
    */
-  public TSStatus registerDataNode(RegisterDataNodeReq registerDataNodeReq) {
+  public TSStatus registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
     TSStatus result;
-    TDataNodeInfo info = registerDataNodeReq.getInfo();
+    TDataNodeConfiguration info = registerDataNodePlan.getInfo();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
-      onlineDataNodes.put(info.getLocation().getDataNodeId(), info);
 
       // To ensure that the nextNodeId is updated correctly when
-      // the ConfigNode-followers concurrently processes RegisterDataNodeReq,
+      // the ConfigNode-followers concurrently processes RegisterDataNodePlan,
       // we need to add a synchronization lock here
       synchronized (nextNodeId) {
         if (nextNodeId.get() < info.getLocation().getDataNodeId()) {
           nextNodeId.set(info.getLocation().getDataNodeId());
         }
       }
+      registeredDataNodes.put(info.getLocation().getDataNodeId(), info);
 
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       if (nextNodeId.get() < minimumDataNode) {
@@ -191,24 +193,50 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   /**
-   * Get DataNode info
+   * Persist Information about remove dataNode
    *
-   * @param getDataNodeInfoReq QueryDataNodeInfoPlan
-   * @return The specific DataNode's info or all DataNode info if dataNodeId in
-   *     QueryDataNodeInfoPlan is -1
+   * @param req RemoveDataNodeReq
+   * @return TSStatus
    */
-  public DataNodeInfosResp getDataNodeInfo(GetDataNodeInfoReq getDataNodeInfoReq) {
-    DataNodeInfosResp result = new DataNodeInfosResp();
+  public TSStatus removeDataNode(RemoveDataNodePlan req) {
+    LOGGER.info("there are {} data node in cluster before remove some", registeredDataNodes.size());
+    try {
+      dataNodeInfoReadWriteLock.writeLock().lock();
+      req.getDataNodeLocations()
+          .forEach(
+              removeDataNodes -> {
+                registeredDataNodes.remove(removeDataNodes.getDataNodeId());
+                LOGGER.info("removed the datanode {} from cluster", removeDataNodes);
+              });
+    } finally {
+      dataNodeInfoReadWriteLock.writeLock().unlock();
+    }
+    LOGGER.info("there are {} data node in cluster after remove some", registeredDataNodes.size());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /**
+   * Get DataNodeConfiguration
+   *
+   * @param getDataNodeConfigurationPlan GetDataNodeConfigurationPlan
+   * @return The specific DataNode's configuration or all DataNodes' configuration if dataNodeId in
+   *     GetDataNodeConfigurationPlan is -1
+   */
+  public DataNodeConfigurationResp getDataNodeConfiguration(
+      GetDataNodeConfigurationPlan getDataNodeConfigurationPlan) {
+    DataNodeConfigurationResp result = new DataNodeConfigurationResp();
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
-    int dataNodeId = getDataNodeInfoReq.getDataNodeID();
+    int dataNodeId = getDataNodeConfigurationPlan.getDataNodeId();
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       if (dataNodeId == -1) {
-        result.setDataNodeInfoMap(new HashMap<>(onlineDataNodes));
+        result.setDataNodeConfigurationMap(new HashMap<>(registeredDataNodes));
       } else {
-        result.setDataNodeInfoMap(
-            Collections.singletonMap(dataNodeId, onlineDataNodes.get(dataNodeId)));
+        result.setDataNodeConfigurationMap(
+            registeredDataNodes.get(dataNodeId) == null
+                ? new HashMap<>(0)
+                : Collections.singletonMap(dataNodeId, registeredDataNodes.get(dataNodeId)));
       }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
@@ -217,14 +245,40 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** Return the number of online DataNodes */
-  public int getOnlineDataNodeCount() {
+  /** Return the number of registered DataNodes */
+  public int getRegisteredDataNodeCount() {
     int result;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
-      result = onlineDataNodes.size();
+      result = registeredDataNodes.size();
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  /** Return the number of registered ConfigNodes */
+  public int getRegisteredConfigNodeCount() {
+    int result;
+    configNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = registeredConfigNodes.size();
+    } finally {
+      configNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  /** Return the number of registered Nodes */
+  public int getRegisteredNodeCount() {
+    int result;
+    configNodeInfoReadWriteLock.readLock().lock();
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = registeredConfigNodes.size() + registeredDataNodes.size();
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+      configNodeInfoReadWriteLock.readLock().unlock();
     }
     return result;
   }
@@ -234,8 +288,8 @@ public class NodeInfo implements SnapshotProcessor {
     int result = 0;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
-      for (TDataNodeInfo info : onlineDataNodes.values()) {
-        result += info.getCpuCoreNum();
+      for (TDataNodeConfiguration dataNodeConfiguration : registeredDataNodes.values()) {
+        result += dataNodeConfiguration.getResource().getCpuCoreNum();
       }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
@@ -244,21 +298,20 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   /**
-   * Return the specific online DataNode
+   * Return the specific registered DataNode
    *
    * @param dataNodeId Specific DataNodeId
-   * @return All online DataNodes if dataNodeId equals -1. And return the specific DataNode
+   * @return All registered DataNodes if dataNodeId equals -1. And return the specific DataNode
    *     otherwise.
    */
-  public List<TDataNodeInfo> getOnlineDataNodes(int dataNodeId) {
-    List<TDataNodeInfo> result;
+  public List<TDataNodeConfiguration> getRegisteredDataNodes(int dataNodeId) {
+    List<TDataNodeConfiguration> result;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
-      // TODO: Check DataNode status, ensure the returned DataNode isn't removed
       if (dataNodeId == -1) {
-        result = new ArrayList<>(onlineDataNodes.values());
+        result = new ArrayList<>(registeredDataNodes.values());
       } else {
-        result = Collections.singletonList(onlineDataNodes.get(dataNodeId));
+        result = Collections.singletonList(registeredDataNodes.get(dataNodeId));
       }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
@@ -269,28 +322,28 @@ public class NodeInfo implements SnapshotProcessor {
   /**
    * Update ConfigNodeList both in memory and confignode-system.properties file
    *
-   * @param applyConfigNodeReq ApplyConfigNodeReq
+   * @param applyConfigNodePlan ApplyConfigNodePlan
    * @return APPLY_CONFIGNODE_FAILED if update online ConfigNode failed.
    */
-  public TSStatus updateConfigNodeList(ApplyConfigNodeReq applyConfigNodeReq) {
+  public TSStatus applyConfigNode(ApplyConfigNodePlan applyConfigNodePlan) {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
       // To ensure that the nextNodeId is updated correctly when
-      // the ConfigNode-followers concurrently processes ApplyConfigNodeReq,
+      // the ConfigNode-followers concurrently processes ApplyConfigNodePlan,
       // we need to add a synchronization lock here
       synchronized (nextNodeId) {
-        if (nextNodeId.get() < applyConfigNodeReq.getConfigNodeLocation().getConfigNodeId()) {
-          nextNodeId.set(applyConfigNodeReq.getConfigNodeLocation().getConfigNodeId());
+        if (nextNodeId.get() < applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId()) {
+          nextNodeId.set(applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId());
         }
       }
 
-      onlineConfigNodes.add(applyConfigNodeReq.getConfigNodeLocation());
-      storeConfigNode();
+      registeredConfigNodes.add(applyConfigNodePlan.getConfigNodeLocation());
+      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes));
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
-          applyConfigNodeReq.getConfigNodeLocation(),
-          onlineConfigNodes);
+          applyConfigNodePlan.getConfigNodeLocation(),
+          registeredConfigNodes);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
       LOGGER.error("Update online ConfigNode failed.", e);
@@ -306,19 +359,19 @@ public class NodeInfo implements SnapshotProcessor {
   /**
    * Update ConfigNodeList both in memory and confignode-system.properties file
    *
-   * @param removeConfigNodeReq RemoveConfigNodeReq
+   * @param removeConfigNodePlan RemoveConfigNodePlan
    * @return REMOVE_CONFIGNODE_FAILED if remove online ConfigNode failed.
    */
-  public TSStatus removeConfigNodeList(RemoveConfigNodeReq removeConfigNodeReq) {
+  public TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
-      onlineConfigNodes.remove(removeConfigNodeReq.getConfigNodeLocation());
-      storeConfigNode();
+      registeredConfigNodes.remove(removeConfigNodePlan.getConfigNodeLocation());
+      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes));
       LOGGER.info(
           "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}",
-          removeConfigNodeReq.getConfigNodeLocation(),
-          onlineConfigNodes);
+          removeConfigNodePlan.getConfigNodeLocation(),
+          registeredConfigNodes);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
       LOGGER.error("Remove online ConfigNode failed.", e);
@@ -331,24 +384,11 @@ public class NodeInfo implements SnapshotProcessor {
     return status;
   }
 
-  private void storeConfigNode() throws IOException {
-    Properties systemProperties = new Properties();
-    try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
-      systemProperties.load(inputStream);
-    }
-    systemProperties.setProperty(
-        "confignode_list", NodeUrlUtils.convertTConfigNodeUrls(new ArrayList<>(onlineConfigNodes)));
-    try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
-      systemProperties.store(fileOutputStream, "");
-    }
-  }
-
-  public List<TConfigNodeLocation> getOnlineConfigNodes() {
+  public List<TConfigNodeLocation> getRegisteredConfigNodes() {
     List<TConfigNodeLocation> result;
     configNodeInfoReadWriteLock.readLock().lock();
     try {
-      // TODO: Check ConfigNode status, ensure the returned ConfigNode isn't removed
-      result = new ArrayList<>(onlineConfigNodes);
+      result = new ArrayList<>(registeredConfigNodes);
     } finally {
       configNodeInfoReadWriteLock.readLock().unlock();
     }
@@ -356,7 +396,7 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   public int generateNextNodeId() {
-    return nextNodeId.getAndIncrement();
+    return nextNodeId.incrementAndGet();
   }
 
   @Override
@@ -379,7 +419,9 @@ public class NodeInfo implements SnapshotProcessor {
 
       ReadWriteIOUtils.write(nextNodeId.get(), fileOutputStream);
 
-      serializeOnlineDataNode(fileOutputStream, protocol);
+      serializeRegisteredConfigNode(fileOutputStream, protocol);
+
+      serializeRegisteredDataNode(fileOutputStream, protocol);
 
       serializeDrainingDataNodes(fileOutputStream, protocol);
 
@@ -403,10 +445,18 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  private void serializeOnlineDataNode(OutputStream outputStream, TProtocol protocol)
+  private void serializeRegisteredConfigNode(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
-    ReadWriteIOUtils.write(onlineDataNodes.size(), outputStream);
-    for (Entry<Integer, TDataNodeInfo> entry : onlineDataNodes.entrySet()) {
+    ReadWriteIOUtils.write(registeredConfigNodes.size(), outputStream);
+    for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
+      configNodeLocation.write(protocol);
+    }
+  }
+
+  private void serializeRegisteredDataNode(OutputStream outputStream, TProtocol protocol)
+      throws IOException, TException {
+    ReadWriteIOUtils.write(registeredDataNodes.size(), outputStream);
+    for (Entry<Integer, TDataNodeConfiguration> entry : registeredDataNodes.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().write(protocol);
     }
@@ -442,7 +492,9 @@ public class NodeInfo implements SnapshotProcessor {
 
       nextNodeId.set(ReadWriteIOUtils.readInt(fileInputStream));
 
-      deserializeOnlineDataNode(fileInputStream, protocol);
+      deserializeRegisteredConfigNode(fileInputStream, protocol);
+
+      deserializeRegisteredDataNode(fileInputStream, protocol);
 
       deserializeDrainingDataNodes(fileInputStream, protocol);
 
@@ -452,14 +504,25 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  private void deserializeOnlineDataNode(InputStream inputStream, TProtocol protocol)
+  private void deserializeRegisteredConfigNode(InputStream inputStream, TProtocol protocol)
+      throws IOException, TException {
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    while (size > 0) {
+      TConfigNodeLocation configNodeLocation = new TConfigNodeLocation();
+      configNodeLocation.read(protocol);
+      registeredConfigNodes.add(configNodeLocation);
+      size--;
+    }
+  }
+
+  private void deserializeRegisteredDataNode(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
     int size = ReadWriteIOUtils.readInt(inputStream);
     while (size > 0) {
       int dataNodeId = ReadWriteIOUtils.readInt(inputStream);
-      TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+      TDataNodeConfiguration dataNodeInfo = new TDataNodeConfiguration();
       dataNodeInfo.read(protocol);
-      onlineDataNodes.put(dataNodeId, dataNodeInfo);
+      registeredDataNodes.put(dataNodeId, dataNodeInfo);
       size--;
     }
   }
@@ -486,15 +549,19 @@ public class NodeInfo implements SnapshotProcessor {
     return nextNodeId.get();
   }
 
+  public static int getMinimumDataNode() {
+    return minimumDataNode;
+  }
+
   @TestOnly
   public Set<TDataNodeLocation> getDrainingDataNodes() {
     return drainingDataNodes;
   }
 
   public void clear() {
-    nextNodeId.set(0);
-    onlineDataNodes.clear();
+    nextNodeId.set(-1);
+    registeredDataNodes.clear();
     drainingDataNodes.clear();
-    onlineConfigNodes.clear();
+    registeredConfigNodes.clear();
   }
 }

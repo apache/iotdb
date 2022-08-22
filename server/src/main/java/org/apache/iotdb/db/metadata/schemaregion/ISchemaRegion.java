@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -137,9 +139,22 @@ public interface ISchemaRegion {
   int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
+  int getAllTimeseriesCount(
+      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
+      throws MetadataException;
+
   // The measurements will be grouped by the node in given level and then counted for each group.
   Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
+
+  Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern,
+      int level,
+      boolean isPrefixMatch,
+      String key,
+      String value,
+      boolean isContains)
+      throws MetadataException;
 
   /**
    * To calculate the count of devices for given path pattern. If using prefix match, the path
@@ -181,7 +196,7 @@ public interface ISchemaRegion {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
+  Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
 
   /**
    * Get child node in the next level of the given path pattern.
@@ -249,6 +264,9 @@ public interface ISchemaRegion {
    */
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      throws MetadataException;
+
+  List<MeasurementPath> fetchSchema(PartialPath pathPattern, Map<Integer, Template> templateMap)
       throws MetadataException;
 
   Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
@@ -357,6 +375,11 @@ public interface ISchemaRegion {
   void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException;
 
   void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException;
+
+  void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+      throws MetadataException;
+
+  List<String> getPathsUsingTemplate(int templateId) throws MetadataException;
   // endregion
 
   // region Interfaces for Trigger

@@ -93,7 +93,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 
 |名字| rpc\_address |
 |:---:|:---|
-|描述| rpc地址 |
+|描述| 客户端 RPC 服务监听地址 |
 |类型| String |
 |默认值| 0.0.0.0|
 |改后生效方式|重启服务生效|
@@ -102,7 +102,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 
 |名字| rpc\_port |
 |:---:|:---|
-|描述| Client RPC 服务监听端口。|
+|描述| Client RPC 服务监听端口|
 |类型| Short Int : [0,65535] |
 |默认值| 6667 |
 |改后生效方式|重启服务生效|
@@ -181,7 +181,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |默认值| 5 |
 |改后生效方式|重启服务生效|
 
-* mpp\_data\_exchange\_core\_pool\_size
+* mpp\_data\_exchange\_keep\_alive\_time\_in\_ms
 
 |名字| mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
 |:---:|:---|
@@ -190,6 +190,32 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |默认值| 1000 |
 |改后生效方式|重启服务生效|
 
+* driver\_task\_execution\_time\_slice\_in\_ms
+
+|名字| driver\_task\_execution\_time\_slice\_in\_ms |
+|:---:|:---|
+|描述| 单个 DriverTask 最长执行时间 |
+|类型| int |
+|默认值| 100 |
+|改后生效方式|重启服务生效|
+
+* max\_tsblock\_size\_in\_bytes
+
+|名字| max\_tsblock\_size\_in\_bytes |
+|:---:|:---|
+|描述| 单个 TsBlock 的最大容量 |
+|类型| int |
+|默认值| 1024 * 1024 (1 MB) |
+|改后生效方式|重启服务生效|
+
+* max\_tsblock\_line\_numbers
+
+|名字| max\_tsblock\_line\_numbers |
+|:---:|:---|
+|描述| 单个 TsBlock 的最大行数 |
+|类型| int |
+|默认值| 1000 |
+|改后生效方式|重启服务生效|
 
 ### DataNode 内部服务参数
 
@@ -229,9 +255,9 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |默认值| 50010 |
 |改后生效方式|重启服务生效|
 
-* config\_nodes
+* target\_config\_nodes
 
-|名字| config\_nodes |
+|名字| target\_config\_nodes |
 |:---:|:---|
 |描述| ConfigNode 地址，DataNode 启动时通过此地址加入集群 |
 |类型| String |

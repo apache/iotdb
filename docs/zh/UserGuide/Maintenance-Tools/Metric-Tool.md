@@ -76,12 +76,14 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 4.3.1. 接入层
 
-| Metric              | Tag             | level     | 说明             | 示例                                         |
-| ------------------- | --------------- | --------- | ---------------- | -------------------------------------------- |
-| entry_seconds_count | name="接口名"   | important | 接口累计访问次数 | entry_seconds_count{name="openSession",} 1.0 |
-| entry_seconds_sum   | name="接口名"   | important | 接口累计耗时(s)  | entry_seconds_sum{name="openSession",} 0.024 |
-| entry_seconds_max   | name="接口名"   | important | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024 |
-| quantity_total      | name="pointsIn" | important | 系统累计写入点数 | quantity_total{name="pointsIn",} 1.0         |
+| Metric                | Tag                      | level     | 说明                | 示例                                         |
+| --------------------- | ------------------------ | --------- | ------------------- | -------------------------------------------- |
+| entry_seconds_count   | name="{{interface}}"     | important | 接口累计访问次数    | entry_seconds_count{name="openSession",} 1.0 |
+| entry_seconds_sum     | name="{{interface}}"     | important | 接口累计耗时(s)     | entry_seconds_sum{name="openSession",} 0.024 |
+| entry_seconds_max     | name="{{interface}}"     | important | 接口最大耗时(s)     | entry_seconds_max{name="openSession",} 0.024 |
+| quantity_total        | name="pointsIn"          | important | 系统累计写入点数    | quantity_total{name="pointsIn",} 1.0         |
+| thrift_connections    | name="{{thriftService}}" | core      | thrift当前连接数    | thrift_connections{name="RPC",} 1.0          |
+| thrift_active_threads | name="{{thriftThread}}"  | core      | thrift worker线程数 | thrift_active_threads{name="RPC",} 1.0       |
 
 #### 4.3.2. Task
 
@@ -93,6 +95,7 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | cost_task_seconds_sum   | name="inner_compaction/cross_compaction/flush"                                | important | 任务累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                                                         |
 | data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | 合并文件时写入量                | data_written{name="compaction",type="total",} 10240                                                |
 | data_read               | name="compaction"                                                             | important | 合并文件时的读取量              | data_read={name="compaction",} 10240                                                               |
+| compaction_task_count   | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross"  | important | 合并任务个数                    | compaction_task_count{name="inner_compaction",type="sequence",} 1                                  |
 
 #### 4.3.3. 内存占用
 
@@ -117,16 +120,16 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 | Metric                    | Tag                                                                | level     | 说明                                                          | 示例                                                                         |
 | ------------------------- | ------------------------------------------------------------------ | --------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| cluster_node_leader_count | name="{{ip}}"                                                      | important | 节点上```dataGroupLeader```的数量，用来观察leader是否分布均匀 | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
-| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"                                      | important | 节点```uncommitted_log```的数量                               | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
-| cluster_node_status       | name="{{ip}}"                                                      | important | 节点状态，1=online  2=offline                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
-| cluster_elect_total       | name="{{ip}}",status="fail/win"                                    | important | 节点参与选举的次数及结果                                      | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
-| config_node               | name="online"                                                      | core      | 上线confignode的节点数量                                      | config_node{name="online",} 3.0                                              |
-| data_node                 | name="online"                                                      | core      | 上线datanode的节点数量                                        | data_node{name="online",} 3.0                                                |
-| partition_table           | name="number"                                                      | core      | partition table表的个数                                       | partition_table{name="number",} 2.0                                          |
-| region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | 全部或某个节点的schemaRegion/dataRegion个数                   | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
-| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | 存储组的DataRegion/Schema个数                                 | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
-| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | 存储组的schemaSlot/dataSlot个数                               | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
+| cluster_node_leader_count | name="{{ip}}"                                                      | important | 节点上```dataGroupLeader```的数量，用来观察leader是否分布均匀   | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
+| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"                                      | important | 节点```uncommitted_log```的数量                                | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
+| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode"                  | important | 节点状态，0=Unkonwn 1=online                                   | cluster_node_status{name="EndPoint(0.0.0.0:22277)",type="ConfigNode",} 1.0   |
+| cluster_elect_total       | name="{{ip}}",status="fail/win"                                    | important | 节点参与选举的次数及结果                                        | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
+| config_node               | name="total",status="Registered/Online/Unknown"                    | core      | 已注册/在线/离线 confignode 的节点数量                          | config_node{name="total",status="Online",} 2.0                               |
+| data_node                 | name="total",status="Registered/Online/Unknown"                    | core      | 已注册/在线/离线 datanode 的节点数量                            | data_node{name="total",status="Registered",} 3.0                             |
+| partition_table           | name="number"                                                      | core      | partition table表的个数                                        | partition_table{name="number",} 2.0                                          |
+| region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | 全部或某个节点的schemaRegion/dataRegion个数                     | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
+| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | 存储组的DataRegion/Schema个数                                   | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
+| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | 存储组的schemaSlot/dataSlot个数                                 | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
 
 ### 4.4. IoTDB 预定义指标集
 
@@ -361,9 +364,77 @@ static_configs:
 
 ![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-Apache IoTDB Dashboard的获取方式：
-
+#### 5.3.1. 获取方式
 1. 您可以在grafana-metrics-example文件夹下获取到对应不同iotdb版本的Dashboard的json文件。
 2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
 
 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
+
+#### 5.3.2. Apache IoTDB StandAlone Dashboard 说明
+> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
+
+1. `Overview`：系统概述
+   1. `The number of entity`：实体数量，目前包含时间序列的数量。
+   2. `write point per minute`：每分钟系统累计写入点数。
+   3. `storage group used memory`：每个存储组使用的内存大小。
+2. `Interface`：接口
+   1. `The QPS of Interface`：系统接口每秒钟访问次数
+   2. `The time consumed of Interface`：系统接口的平均耗时
+   3. `Cache hit rate`：缓存命中率。
+3. `Engine`：引擎
+   1. `Task number(pending and active)`：系统中不同状态的任务个数。
+   2. `The time consumed of tasking(pending and active)`：系统中不同状态的任务的耗时。
+4. `System`：系统
+   1. `The size of file`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小。
+   2. `The number of file`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数。
+   3. `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC。
+   4. `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC。
+   5. `Heap Memory`：IoTDB的堆内存。
+   6. `Off-heap Memory`：IoTDB的堆外内存。
+   7. `The number of Java Thread`：IoTDB的不同状态线程数。
+
+#### 5.3.3. Apache IoTDB ConfigNode Dashboard 说明
+> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
+
+1. `Overview`：系统概述
+   1. `Online ConfigNode`：线上ConfigNode个数
+   2. `Online DataNode`：线上DataNode个数
+   3. `Storage Group`：存储组数量
+   4. `TotalRegion`：Region总数量
+   5. `DataRegion`：DataRegion总数量
+   6. `SchemaRegion`：SchemaRegion总数量
+2. `Region`：Region分布情况
+   1. `Total Region in Node`：不同Node的Region总数量
+   2. `Region in Node`：不同Node的Region数量，包括SchemaRegion、DataRegion
+   3. `Region in Storage Group`(Normal级别)：不同存储组的Region数量，包括SchemaRegion、DataRegion
+   4. `Slot in Storage Group`(Normal级别)：不同存储组的Slot数量，包括DataSlot数量和SchemaSlot数量
+3. `System`：系统
+   1. `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC。
+   2. `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC。
+   3. `Heap Memory`：IoTDB的堆内存。
+   4. `Off-heap Memory`：IoTDB的堆外内存。
+   5. `The number of Java Thread`：IoTDB的不同状态线程数。
+   6. `The time consumed of Interface`：系统接口的平均耗时
+
+#### 5.3.4. Apache IoTDB DataNode Dashboard 说明
+> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
+
+1. `Overview`：系统概述
+   1. `The number of entity`：实体数量，目前包含时间序列的数量。
+   2. `write point per minute`：每分钟系统累计写入点数。
+   3. `storage group used memory`：每个存储组使用的内存大小。
+2. `Interface`：接口
+   1. `The QPS of Interface`：系统接口每秒钟访问次数
+   2. `The time consumed of Interface`：系统接口的平均耗时
+3. `Engine`：引擎
+   1. `Task number(pending and active)`：系统中不同状态的任务个数。
+   2. `The time consumed of tasking(pending and active)`：系统中不同状态的任务的耗时。
+   3. `Cache hit rate`：缓存命中率。
+4. `System`：系统
+   1. `The size of file`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小。
+   2. `The number of file`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数。
+   3. `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC。
+   4. `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC。
+   5. `Heap Memory`：IoTDB的堆内存。
+   6. `Off-heap Memory`：IoTDB的堆外内存。
+   7. `The number of Java Thread`：IoTDB的不同状态线程数。

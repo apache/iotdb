@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -43,21 +42,29 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
   private static final Logger logger = LoggerFactory.getLogger(FixedRateFragInsStateTracker.class);
 
+  private static final long SAME_STATE_PRINT_RATE_IN_MS = 10 * 60 * 1000;
+
   // TODO: (xingtanzjr) consider how much Interval is OK for state tracker
   private static final long STATE_FETCH_INTERVAL_IN_MS = 500;
   private ScheduledFuture<?> trackTask;
+  private volatile FragmentInstanceState lastState;
+  private volatile long durationToLastPrintInMS;
+  private volatile boolean aborted;
 
   public FixedRateFragInsStateTracker(
       QueryStateMachine stateMachine,
-      ExecutorService executor,
       ScheduledExecutorService scheduledExecutor,
       List<FragmentInstance> instances,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
-    super(stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
+    super(stateMachine, scheduledExecutor, instances, internalServiceClientManager);
+    this.aborted = false;
   }
 
   @Override
-  public void start() {
+  public synchronized void start() {
+    if (aborted) {
+      return;
+    }
     trackTask =
         ScheduledExecutorUtil.safelyScheduleAtFixedRate(
             scheduledExecutor,
@@ -68,9 +75,17 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   }
 
   @Override
-  public void abort() {
+  public synchronized void abort() {
+    aborted = true;
     if (trackTask != null) {
-      trackTask.cancel(true);
+      boolean cancelResult = trackTask.cancel(true);
+      // TODO: (xingtanzjr) a strange case here is that sometimes
+      // the cancelResult is false but the trackTask is definitely cancelled
+      if (!cancelResult) {
+        logger.debug("cancel state tracking task failed. {}", trackTask.isCancelled());
+      }
+    } else {
+      logger.debug("trackTask not started");
     }
   }
 
@@ -78,7 +93,13 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
     for (FragmentInstance instance : instances) {
       try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         FragmentInstanceState state = fetchState(instance);
-        logger.info("State is {}", state);
+        if (needPrintState(lastState, state, durationToLastPrintInMS)) {
+          logger.info("State is {}", state);
+          lastState = state;
+          durationToLastPrintInMS = 0;
+        } else {
+          durationToLastPrintInMS += STATE_FETCH_INTERVAL_IN_MS;
+        }
 
         if (state != null) {
           stateMachine.updateFragInstanceState(instance.getId(), state);
@@ -88,5 +109,13 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
         logger.error("error happened while fetching query state", e);
       }
     }
+  }
+
+  private boolean needPrintState(
+      FragmentInstanceState previous, FragmentInstanceState current, long durationToLastPrintInMS) {
+    if (current != previous) {
+      return true;
+    }
+    return durationToLastPrintInMS >= SAME_STATE_PRINT_RATE_IN_MS;
   }
 }

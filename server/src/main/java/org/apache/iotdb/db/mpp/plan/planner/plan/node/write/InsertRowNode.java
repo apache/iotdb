@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -169,7 +169,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public boolean validateAndSetSchema(SchemaTree schemaTree) {
+  public boolean validateAndSetSchema(ISchemaTree schemaTree) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
     if (deviceSchemaInfo.isAligned() != isAligned) {
@@ -179,10 +179,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
 
     // transfer data types from string values when necessary
-    try {
-      transferType();
-    } catch (QueryProcessException e) {
-      return false;
+    if (isNeedInferType) {
+      try {
+        transferType();
+        return true;
+      } catch (QueryProcessException e) {
+        return false;
+      }
     }
 
     // validate whether data types are matched
@@ -195,9 +198,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void transferType() throws QueryProcessException {
-    if (!isNeedInferType) {
-      return;
-    }
 
     for (int i = 0; i < measurementSchemas.length; i++) {
       // null when time series doesn't exist
@@ -569,9 +569,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     return size;
   }
 
+  /**
+   * Compared with {@link this#serialize(ByteBuffer)}, more info: search index, less info:
+   * isNeedInferType
+   */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    buffer.putShort((short) PlanNodeType.INSERT_ROW.ordinal());
+    buffer.putShort(PlanNodeType.INSERT_ROW.getNodeType());
     subSerialize(buffer);
   }
 
@@ -629,19 +633,22 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   /** Deserialize from wal */
-  public static InsertRowNode deserialize(DataInputStream stream)
-      throws IOException, IllegalPathException {
+  public static InsertRowNode deserializeFromWAL(DataInputStream stream) throws IOException {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
     insertNode.setSearchIndex(stream.readLong());
     insertNode.setTime(stream.readLong());
-    insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(stream)));
-    insertNode.deserializeMeasurementsAndValues(stream);
+    try {
+      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(stream)));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+    }
+    insertNode.deserializeMeasurementsAndValuesFromWAL(stream);
 
     return insertNode;
   }
 
-  void deserializeMeasurementsAndValues(DataInputStream stream) throws IOException {
+  void deserializeMeasurementsAndValuesFromWAL(DataInputStream stream) throws IOException {
     int measurementSize = stream.readInt();
 
     measurements = new String[measurementSize];
@@ -650,13 +657,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
     dataTypes = new TSDataType[measurementSize];
     values = new Object[measurementSize];
-    fillDataTypesAndValues(stream);
+    fillDataTypesAndValuesFromWAL(stream);
 
     isAligned = stream.readByte() == 1;
   }
 
   /** Make sure the dataTypes and values have been created before calling this */
-  public void fillDataTypesAndValues(DataInputStream stream) throws IOException {
+  public void fillDataTypesAndValuesFromWAL(DataInputStream stream) throws IOException {
     for (int i = 0; i < dataTypes.length; i++) {
       byte typeNum = stream.readByte();
       if (typeNum == TYPE_NULL) {
@@ -681,6 +688,69 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           break;
         case TEXT:
           values[i] = ReadWriteIOUtils.readBinary(stream);
+          break;
+        default:
+          throw new RuntimeException("Unsupported data type:" + dataTypes[i]);
+      }
+    }
+  }
+
+  /** Deserialize from wal */
+  public static InsertRowNode deserializeFromWAL(ByteBuffer buffer) {
+    // we do not store plan node id in wal entry
+    InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
+    insertNode.setSearchIndex(buffer.getLong());
+    insertNode.setTime(buffer.getLong());
+    try {
+      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(buffer)));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+    }
+    insertNode.deserializeMeasurementsAndValuesFromWAL(buffer);
+
+    return insertNode;
+  }
+
+  void deserializeMeasurementsAndValuesFromWAL(ByteBuffer buffer) {
+    int measurementSize = buffer.getInt();
+
+    measurements = new String[measurementSize];
+    measurementSchemas = new MeasurementSchema[measurementSize];
+    deserializeMeasurementSchemas(buffer);
+
+    dataTypes = new TSDataType[measurementSize];
+    values = new Object[measurementSize];
+    fillDataTypesAndValuesFromWAL(buffer);
+
+    isAligned = buffer.get() == 1;
+  }
+
+  /** Make sure the dataTypes and values have been created before calling this */
+  public void fillDataTypesAndValuesFromWAL(ByteBuffer buffer) {
+    for (int i = 0; i < dataTypes.length; i++) {
+      byte typeNum = buffer.get();
+      if (typeNum == TYPE_NULL) {
+        continue;
+      }
+      dataTypes[i] = TSDataType.values()[typeNum];
+      switch (dataTypes[i]) {
+        case BOOLEAN:
+          values[i] = ReadWriteIOUtils.readBool(buffer);
+          break;
+        case INT32:
+          values[i] = ReadWriteIOUtils.readInt(buffer);
+          break;
+        case INT64:
+          values[i] = ReadWriteIOUtils.readLong(buffer);
+          break;
+        case FLOAT:
+          values[i] = ReadWriteIOUtils.readFloat(buffer);
+          break;
+        case DOUBLE:
+          values[i] = ReadWriteIOUtils.readDouble(buffer);
+          break;
+        case TEXT:
+          values[i] = ReadWriteIOUtils.readBinary(buffer);
           break;
         default:
           throw new RuntimeException("Unsupported data type:" + dataTypes[i]);

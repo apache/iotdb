@@ -66,23 +66,40 @@ public class MultiLeaderConfig {
   }
 
   public static class RPC {
+    private final int rpcSelectorThreadNum;
+    private final int rpcMinConcurrentClientNum;
     private final int rpcMaxConcurrentClientNum;
     private final int thriftServerAwaitTimeForStopService;
     private final boolean isRpcThriftCompressionEnabled;
     private final int selectorNumOfClientManager;
     private final int connectionTimeoutInMs;
+    private final int thriftMaxFrameSize;
 
     private RPC(
+        int rpcSelectorThreadNum,
+        int rpcMinConcurrentClientNum,
         int rpcMaxConcurrentClientNum,
         int thriftServerAwaitTimeForStopService,
         boolean isRpcThriftCompressionEnabled,
         int selectorNumOfClientManager,
-        int connectionTimeoutInMs) {
+        int connectionTimeoutInMs,
+        int thriftMaxFrameSize) {
+      this.rpcSelectorThreadNum = rpcSelectorThreadNum;
+      this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
       this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
       this.isRpcThriftCompressionEnabled = isRpcThriftCompressionEnabled;
       this.selectorNumOfClientManager = selectorNumOfClientManager;
       this.connectionTimeoutInMs = connectionTimeoutInMs;
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
+    }
+
+    public int getRpcSelectorThreadNum() {
+      return rpcSelectorThreadNum;
+    }
+
+    public int getRpcMinConcurrentClientNum() {
+      return rpcMinConcurrentClientNum;
     }
 
     public int getRpcMaxConcurrentClientNum() {
@@ -105,16 +122,33 @@ public class MultiLeaderConfig {
       return connectionTimeoutInMs;
     }
 
+    public int getThriftMaxFrameSize() {
+      return thriftMaxFrameSize;
+    }
+
     public static RPC.Builder newBuilder() {
       return new RPC.Builder();
     }
 
     public static class Builder {
+      private int rpcSelectorThreadNum = 1;
+      private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
       private int rpcMaxConcurrentClientNum = 65535;
       private int thriftServerAwaitTimeForStopService = 60;
       private boolean isRpcThriftCompressionEnabled = false;
       private int selectorNumOfClientManager = 1;
       private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(20);
+      private int thriftMaxFrameSize = 536870912;
+
+      public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
+        this.rpcSelectorThreadNum = rpcSelectorThreadNum;
+        return this;
+      }
+
+      public RPC.Builder setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
+        this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
+        return this;
+      }
 
       public RPC.Builder setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
         this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -142,13 +176,21 @@ public class MultiLeaderConfig {
         return this;
       }
 
+      public RPC.Builder setThriftMaxFrameSize(int thriftMaxFrameSize) {
+        this.thriftMaxFrameSize = thriftMaxFrameSize;
+        return this;
+      }
+
       public RPC build() {
         return new RPC(
+            rpcSelectorThreadNum,
+            rpcMinConcurrentClientNum,
             rpcMaxConcurrentClientNum,
             thriftServerAwaitTimeForStopService,
             isRpcThriftCompressionEnabled,
             selectorNumOfClientManager,
-            connectionTimeoutInMs);
+            connectionTimeoutInMs,
+            thriftMaxFrameSize);
       }
     }
   }
@@ -207,7 +249,7 @@ public class MultiLeaderConfig {
     public static class Builder {
       private int maxPendingRequestNumPerNode = 200;
       private int maxRequestPerBatch = 40;
-      private int maxPendingBatch = 6;
+      private int maxPendingBatch = 1;
       private int maxWaitingTimeForAccumulatingBatchInMs = 500;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);

@@ -33,7 +33,7 @@ import java.sql.Statement;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@Category(ClusterIT.class)
+@Category(ClusterIT.class) // TODO After old StandAlone remove
 public class IoTDBFilterNullIT {
 
   private static final String[] createSqls =

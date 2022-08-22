@@ -23,21 +23,35 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 /** This class defines the scanned result merge task of schema fetcher. */
 public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
 
-  public SchemaFetchMergeNode(PlanNodeId id) {
+  private List<String> storageGroupList;
+
+  public SchemaFetchMergeNode(PlanNodeId id, List<String> storageGroupList) {
     super(id);
+    this.storageGroupList = storageGroupList;
+  }
+
+  public List<String> getStorageGroupList() {
+    return storageGroupList;
+  }
+
+  public void setStorageGroupList(List<String> storageGroupList) {
+    this.storageGroupList = storageGroupList;
   }
 
   @Override
   public PlanNode clone() {
-    return new SchemaFetchMergeNode(getPlanNodeId());
+    return new SchemaFetchMergeNode(getPlanNodeId(), storageGroupList);
   }
 
   @Override
@@ -48,11 +62,20 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SCHEMA_FETCH_MERGE.serialize(stream);
+    ReadWriteIOUtils.write(storageGroupList.size(), stream);
+    for (String storageGroup : storageGroupList) {
+      ReadWriteIOUtils.write(storageGroup, stream);
+    }
   }
 
   public static PlanNode deserialize(ByteBuffer byteBuffer) {
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> storageGroupList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      storageGroupList.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchMergeNode(planNodeId);
+    return new SchemaFetchMergeNode(planNodeId, storageGroupList);
   }
 
   @Override

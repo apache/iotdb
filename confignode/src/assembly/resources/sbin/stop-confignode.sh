@@ -18,14 +18,13 @@
 # under the License.
 #
 
+CONFIGNODE_CONF="$(dirname "$0")/../conf"
+internal_port=$(sed '/^internal_port=/!d;s/.*=//' ${CONFIGNODE_CONF}/iotdb-confignode.properties)
 
-CONFIGNODE_CONF="`dirname "$0"`/../conf"
-rpc_port=`sed '/^rpc_port=/!d;s/.*=//' ${CONFIGNODE_CONF}/iotdb-confignode.properties`
-
-if  type lsof > /dev/null 2>&1 ; then
-  PID=$(lsof -t -i:${rpc_port} -sTCP:LISTEN)
-elif type netstat > /dev/null 2>&1 ; then
-  PID=$(netstat -anp 2>/dev/null | grep ":${rpc_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g" )
+if type lsof >/dev/null 2>&1; then
+  PID=$(lsof -t -i:${internal_port} -sTCP:LISTEN)
+elif type netstat >/dev/null 2>&1; then
+  PID=$(netstat -anp 2>/dev/null | grep ":${internal_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g")
 else
   echo ""
   echo " Error: No necessary tool."

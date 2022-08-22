@@ -896,6 +896,9 @@ public class DataRegion {
     if (!isAlive(insertRowNode.getTime())) {
       throw new OutOfTTLException(insertRowNode.getTime(), (System.currentTimeMillis() - dataTTL));
     }
+    if (enableMemControl) {
+      StorageEngineV2.blockInsertionIfReject(null);
+    }
     writeLock("InsertRow");
     try {
       // init map
@@ -1053,8 +1056,10 @@ public class DataRegion {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
-      throws BatchProcessException, TriggerExecutionException, WriteProcessException {
-
+      throws TriggerExecutionException, BatchProcessException, WriteProcessException {
+    if (enableMemControl) {
+      StorageEngineV2.blockInsertionIfReject(null);
+    }
     writeLock("insertTablet");
     try {
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
@@ -1081,7 +1086,9 @@ public class DataRegion {
       }
       // loc pointing at first legal position
       if (loc == insertTabletNode.getRowCount()) {
-        throw new BatchProcessException(results);
+        throw new OutOfTTLException(
+            insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
+            (System.currentTimeMillis() - dataTTL));
       }
 
       //      TODO(Trigger)// fire trigger before insertion
@@ -1754,9 +1761,6 @@ public class DataRegion {
       return;
     }
 
-    // prevent new merges and queries from choosing this file
-    resource.setStatus(TsFileResourceStatus.DELETED);
-
     // ensure that the file is not used by any queries
     if (resource.tryWriteLock()) {
       try {
@@ -2097,7 +2101,7 @@ public class DataRegion {
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
-
+    boolean hasReleasedLock = false;
     try {
       Set<PartialPath> devicePaths = IoTDB.schemaProcessor.getBelongedDevices(path);
       for (PartialPath device : devicePaths) {
@@ -2118,20 +2122,18 @@ public class DataRegion {
 
       Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
 
+      List<TsFileResource> sealedTsFileResource = new ArrayList<>();
+      List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
+      separateTsFile(sealedTsFileResource, unsealedTsFileResource);
+
       deleteDataInFiles(
-          tsFileManager.getTsFileList(true),
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          planIndex,
-          timePartitionFilter);
+          unsealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+
+      writeUnlock();
+      hasReleasedLock = true;
+
       deleteDataInFiles(
-          tsFileManager.getTsFileList(false),
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          planIndex,
-          timePartitionFilter);
+          sealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
 
     } catch (Exception e) {
       // roll back
@@ -2142,8 +2144,35 @@ public class DataRegion {
       }
       throw new IOException(e);
     } finally {
-      writeUnlock();
+      if (!hasReleasedLock) {
+        writeUnlock();
+      }
     }
+  }
+
+  /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */
+  private void separateTsFile(
+      List<TsFileResource> sealedResource, List<TsFileResource> unsealedResource) {
+    tsFileManager
+        .getTsFileList(true)
+        .forEach(
+            tsFileResource -> {
+              if (tsFileResource.isClosed()) {
+                sealedResource.add(tsFileResource);
+              } else {
+                unsealedResource.add(tsFileResource);
+              }
+            });
+    tsFileManager
+        .getTsFileList(false)
+        .forEach(
+            tsFileResource -> {
+              if (tsFileResource.isClosed()) {
+                sealedResource.add(tsFileResource);
+              } else {
+                unsealedResource.add(tsFileResource);
+              }
+            });
   }
 
   /**
@@ -2177,6 +2206,7 @@ public class DataRegion {
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
+    boolean hasReleasedLock = false;
 
     try {
 
@@ -2200,20 +2230,17 @@ public class DataRegion {
 
       Deletion deletion = new Deletion(pattern, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
 
+      List<TsFileResource> sealedTsFileResource = new ArrayList<>();
+      List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
+      separateTsFile(sealedTsFileResource, unsealedTsFileResource);
+
       deleteDataInFiles(
-          tsFileManager.getTsFileList(true),
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          planIndex,
-          timePartitionFilter);
+          unsealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+      writeUnlock();
+      hasReleasedLock = true;
+
       deleteDataInFiles(
-          tsFileManager.getTsFileList(false),
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          planIndex,
-          timePartitionFilter);
+          sealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
 
     } catch (Exception e) {
       // roll back
@@ -2224,7 +2251,9 @@ public class DataRegion {
       }
       throw new IOException(e);
     } finally {
-      writeUnlock();
+      if (!hasReleasedLock) {
+        writeUnlock();
+      }
     }
   }
 
@@ -2269,16 +2298,26 @@ public class DataRegion {
             logicalStorageGroupName, tsFileResource.getTimePartition())) {
       return true;
     }
+
     for (PartialPath device : devicePaths) {
       String deviceId = device.getFullPath();
-      long endTime = tsFileResource.getEndTime(deviceId);
-      if (endTime == Long.MIN_VALUE) {
-        return false;
+      if (!tsFileResource.mayContainsDevice(deviceId)) {
+        // resource does not contain this device
+        continue;
       }
 
-      if (tsFileResource.isDeviceIdExist(deviceId)
-          && (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= endTime)) {
-        return false;
+      long deviceEndTime = tsFileResource.getEndTime(deviceId);
+      if (!tsFileResource.isClosed() && deviceEndTime == Long.MIN_VALUE) {
+        // unsealed seq file
+        if (deleteEnd >= tsFileResource.getStartTime(deviceId)) {
+          return false;
+        }
+      } else {
+        // sealed file or unsealed unseq file
+        if (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= deviceEndTime) {
+          // time range of device has overlap with the deletion
+          return false;
+        }
       }
     }
     return true;
@@ -2289,7 +2328,6 @@ public class DataRegion {
       Deletion deletion,
       Set<PartialPath> devicePaths,
       List<ModificationFile> updatedModFiles,
-      long planIndex,
       TimePartitionFilter timePartitionFilter)
       throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
@@ -2302,38 +2340,38 @@ public class DataRegion {
         continue;
       }
 
-      if (tsFileResource.isCompacting()) {
-        // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-        // change after compaction
-        deletion.setFileOffset(Long.MAX_VALUE);
-        // write deletion into compaction modification file
-        tsFileResource.getCompactionModFile().write(deletion);
-        // write deletion into modification file to enable query during compaction
-        tsFileResource.getModFile().write(deletion);
-        // remember to close mod file
-        tsFileResource.getCompactionModFile().close();
-        tsFileResource.getModFile().close();
+      if (tsFileResource.isClosed()) {
+        // delete data in sealed file
+        if (tsFileResource.isCompacting()) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          deletion.setFileOffset(Long.MAX_VALUE);
+          // write deletion into compaction modification file
+          tsFileResource.getCompactionModFile().write(deletion);
+          // write deletion into modification file to enable query during compaction
+          tsFileResource.getModFile().write(deletion);
+          // remember to close mod file
+          tsFileResource.getCompactionModFile().close();
+          tsFileResource.getModFile().close();
+        } else {
+          deletion.setFileOffset(tsFileResource.getTsFileSize());
+          // write deletion into modification file
+          tsFileResource.getModFile().write(deletion);
+          // remember to close mod file
+          tsFileResource.getModFile().close();
+        }
+        logger.info(
+            "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
+            deletion.getPath(),
+            deletion.getStartTime(),
+            deletion.getEndTime(),
+            tsFileResource.getModFile().getFilePath());
       } else {
-        deletion.setFileOffset(tsFileResource.getTsFileSize());
-        // write deletion into modification file
-        tsFileResource.getModFile().write(deletion);
-        // remember to close mod file
-        tsFileResource.getModFile().close();
+        // delete data in memory of unsealed file
+        tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
       }
-      logger.info(
-          "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
-          deletion.getPath(),
-          deletion.getStartTime(),
-          deletion.getEndTime(),
-          tsFileResource.getModFile().getFilePath());
 
-      tsFileResource.updatePlanIndexes(planIndex);
-
-      // delete data in memory of unsealed file
-      if (!tsFileResource.isClosed()) {
-        TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
-        tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
-      } else if (tsFileSyncManager.isEnableSync()) {
+      if (tsFileSyncManager.isEnableSync()) {
         tsFileSyncManager.collectRealTimeDeletion(deletion);
       }
 
@@ -2445,7 +2483,6 @@ public class DataRegion {
     for (long timePartition : timePartitions) {
       CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
     }
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
   }
 
   /**
@@ -3435,6 +3472,9 @@ public class DataRegion {
    */
   public void insert(InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode)
       throws WriteProcessException, TriggerExecutionException, BatchProcessException {
+    if (enableMemControl) {
+      StorageEngineV2.blockInsertionIfReject(null);
+    }
     writeLock("InsertRowsOfOneDevice");
     try {
       boolean isSequence = false;
@@ -3493,7 +3533,7 @@ public class DataRegion {
       writeUnlock();
     }
     if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertRowsOfOneDeviceNode.getFailingStatus());
+      throw new BatchProcessException("Partial failed inserting rows of one device");
     }
   }
 
@@ -3513,7 +3553,7 @@ public class DataRegion {
     }
 
     if (!insertRowsNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertRowsNode.getFailingStatus());
+      throw new BatchProcessException("Partial failed inserting rows");
     }
   }
 
@@ -3528,7 +3568,7 @@ public class DataRegion {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
         insertTablet(insertTabletNode);
-      } catch (TriggerExecutionException | BatchProcessException | WriteProcessException e) {
+      } catch (TriggerExecutionException | WriteProcessException | BatchProcessException e) {
         insertMultiTabletsNode
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
@@ -3536,7 +3576,7 @@ public class DataRegion {
     }
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertMultiTabletsNode.getFailingStatus());
+      throw new BatchProcessException("Partial failed inserting multi tablets");
     }
   }
 

@@ -20,13 +20,12 @@
 package org.apache.iotdb.db.it.udf;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -36,6 +35,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -85,8 +86,8 @@ public class IoTDBUDTFBuiltinFunctionIT {
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (String dataGenerationSql : INSERTION_SQLS) {
-        statement.execute(dataGenerationSql);
+      for (String dataGenerationSQL : INSERTION_SQLS) {
+        statement.execute(dataGenerationSQL);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -258,8 +259,6 @@ public class IoTDBUDTFBuiltinFunctionIT {
     }
   }
 
-  // TODO remove @Ignore while completely supporting udf in LocalStandaloneOnMpp
-  @Ignore
   @Test
   public void testConstantTimeSeriesGeneratingFunctions() {
     String[] expected = {
@@ -387,8 +386,8 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (String dataGenerationSql : ZERO_ONE_SQL) {
-        statement.execute(dataGenerationSql);
+      for (String dataGenerationSQL : ZERO_ONE_SQL) {
+        statement.execute(dataGenerationSQL);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -746,8 +745,8 @@ public class IoTDBUDTFBuiltinFunctionIT {
     int[] ANSWER1 = new int[] {1, 2, 39, 40, 41, 42, 79, 80, 81, 82, 99, 100};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (String dataGenerationSql : SQL_FOR_SAMPLE) {
-        statement.execute(dataGenerationSql);
+      for (String dataGenerationSQL : SQL_FOR_SAMPLE) {
+        statement.execute(dataGenerationSQL);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -912,8 +911,6 @@ public class IoTDBUDTFBuiltinFunctionIT {
     }
   }
 
-  // TODO remove @Ignore while completely supporting udf in LocalStandaloneOnMpp
-  @Ignore
   @Test
   public void testUDTFJexl() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -1044,18 +1041,16 @@ public class IoTDBUDTFBuiltinFunctionIT {
     }
   }
 
-  // TODO remove @Ignore while completely supporting udf in LocalStandaloneOnMpp
-  @Ignore
   @Test
   public void testStringFunctions() {
-    String[] createSqls =
+    String[] createSQLs =
         new String[] {
           "SET STORAGE GROUP TO root.testStringFunctions",
           "CREATE TIMESERIES root.testStringFunctions.d1.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
           "CREATE TIMESERIES root.testStringFunctions.d1.s2 WITH DATATYPE=TEXT, ENCODING=PLAIN",
         };
 
-    String[] insertSqls =
+    String[] insertSQLs =
         new String[] {
           "INSERT INTO root.testStringFunctions.d1(timestamp,s1,s2) values(1, \"1111test1111\", \"  1111test1111 \")",
           "INSERT INTO root.testStringFunctions.d1(timestamp,s1) values(2, \"2222test2222\")"
@@ -1064,13 +1059,13 @@ public class IoTDBUDTFBuiltinFunctionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      for (String createSql : createSqls) {
-        statement.execute(createSql);
+      for (String createSQL : createSQLs) {
+        statement.execute(createSQL);
       }
 
-      for (String insertSql : insertSqls) {
-        // TODO statement.addBatch(insertSql);
-        statement.execute(insertSql);
+      for (String insertSQL : insertSQLs) {
+        // TODO statement.addBatch(insertSQL);
+        statement.execute(insertSQL);
       }
       // TODO statement.executeBatch();
 
@@ -1234,6 +1229,67 @@ public class IoTDBUDTFBuiltinFunctionIT {
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testDeDup() {
+    String[] createSQLs =
+        new String[] {
+          "SET STORAGE GROUP TO root.testDeDup",
+          "CREATE TIMESERIES root.testDeDup.d1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testDeDup.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testDeDup.d1.s3 WITH DATATYPE=INT64, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testDeDup.d1.s4 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testDeDup.d1.s5 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testDeDup.d1.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        };
+
+    String[] insertSQLs =
+        new String[] {
+          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(1, true, 1, 1, 1.0, 1.0, \"1test1\")",
+          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(2, true, 2, 2, 2.0, 1.0, \"2test2\")",
+          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(3, false, 1, 2, 1.0, 1.0, \"2test2\")",
+          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(4, true, 1, 3, 1.0, 1.0, \"1test1\")",
+          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(5, true, 1, 3, 1.0, 1.0, \"1test1\")"
+        };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      for (String createSQL : createSQLs) {
+        statement.execute(createSQL);
+      }
+
+      for (String insertSQL : insertSQLs) {
+        statement.execute(insertSQL);
+      }
+
+      String[] expectedHeader =
+          new String[] {
+            TIMESTAMP_STR,
+            "deDup(root.testDeDup.d1.s1)",
+            "deDup(root.testDeDup.d1.s2)",
+            "deDup(root.testDeDup.d1.s3)",
+            "deDup(root.testDeDup.d1.s4)",
+            "deDup(root.testDeDup.d1.s5)",
+            "deDup(root.testDeDup.d1.s6)"
+          };
+
+      String[] retArray =
+          new String[] {
+            "1,true,1,1,1.0,1.0,1test1,",
+            "2,null,2,2,2.0,null,2test2,",
+            "3,false,1,null,1.0,null,null,",
+            "4,true,null,3,null,null,1test1,"
+          };
+
+      resultSetEqualTest(
+          "select deDup(s1), deDup(s2), deDup(s3), deDup(s4), deDup(s5), deDup(s6) from root.testDeDup.d1",
+          expectedHeader,
+          retArray);
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 }

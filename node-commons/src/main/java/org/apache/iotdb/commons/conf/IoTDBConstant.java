@@ -29,6 +29,13 @@ public class IoTDBConstant {
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
 
+  public static final String RPC_ADDRESS = "rpc_address";
+  public static final String RPC_PORT = "rpc_port";
+  public static final String INTERNAL_ADDRESS = "internal_address";
+  public static final String INTERNAL_PORT = "internal_port";
+  public static final String CONSENSUS_PORT = "consensus_port";
+  public static final String TARGET_CONFIG_NODES = "target_config_nodes";
+
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
   public static final String VERSION =
@@ -86,6 +93,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TIMESERIES_COMPRESSION = "compression";
   public static final String COLUMN_TIMESERIES_COMPRESSOR = "compressor";
   public static final String COLUMN_CHILD_PATHS = "child paths";
+  public static final String COLUMN_CHILD_PATHS_TYPES = "node types";
   public static final String COLUMN_CHILD_NODES = "child nodes";
   public static final String COLUMN_DEVICES = "devices";
   public static final String COLUMN_COLUMN = "column";

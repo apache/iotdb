@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -176,6 +178,29 @@ public class ExpressionUtils {
     return resultExpressions;
   }
 
+  public static List<Expression> reconstructTernaryExpressions(
+      Expression expression,
+      List<Expression> firstExpressions,
+      List<Expression> secondExpressions,
+      List<Expression> thirdExpressions) {
+    List<Expression> resultExpressions = new ArrayList<>();
+    for (Expression fe : firstExpressions) {
+      for (Expression se : secondExpressions)
+        for (Expression te : thirdExpressions) {
+          switch (expression.getExpressionType()) {
+            case BETWEEN:
+              resultExpressions.add(
+                  new BetweenExpression(
+                      fe, se, te, ((BetweenExpression) expression).isNotBetween()));
+              break;
+            default:
+              throw new UnsupportedOperationException();
+          }
+        }
+    }
+    return resultExpressions;
+  }
+
   public static <T> void cartesianProduct(
       List<List<T>> dimensionValue, List<List<T>> resultList, int layer, List<T> currentList) {
     if (layer < dimensionValue.size() - 1) {
@@ -225,6 +250,54 @@ public class ExpressionUtils {
       }
     }
     return null;
+  }
+
+  public static Pair<Filter, Boolean> getPairFromBetweenTimeFirst(
+      Expression firstExpression, Expression secondExpression, boolean not) {
+    if (firstExpression instanceof ConstantOperand
+        && secondExpression instanceof ConstantOperand
+        && ((ConstantOperand) firstExpression).getDataType() == TSDataType.INT64
+        && ((ConstantOperand) secondExpression).getDataType() == TSDataType.INT64) {
+      long value1 = Long.parseLong(((ConstantOperand) firstExpression).getValueString());
+      long value2 = Long.parseLong(((ConstantOperand) secondExpression).getValueString());
+      return new Pair<>(TimeFilter.between(value1, value2, not), false);
+    } else {
+      return new Pair<>(null, true);
+    }
+  }
+
+  public static Pair<Filter, Boolean> getPairFromBetweenTimeSecond(
+      BetweenExpression predicate, Expression expression) {
+    if (predicate.isNotBetween()) {
+      return new Pair<>(
+          TimeFilter.gt(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+
+    } else {
+      return new Pair<>(
+          TimeFilter.ltEq(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+    }
+  }
+
+  public static Pair<Filter, Boolean> getPairFromBetweenTimeThird(
+      BetweenExpression predicate, Expression expression) {
+    if (predicate.isNotBetween()) {
+      return new Pair<>(
+          TimeFilter.lt(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+
+    } else {
+      return new Pair<>(
+          TimeFilter.gtEq(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+    }
+  }
+
+  public static boolean checkConstantSatisfy(
+      Expression firstExpression, Expression secondExpression) {
+    return firstExpression.isConstantOperand()
+        && secondExpression.isConstantOperand()
+        && ((ConstantOperand) firstExpression).getDataType() == TSDataType.INT64
+        && ((ConstantOperand) secondExpression).getDataType() == TSDataType.INT64
+        && (Long.parseLong(((ConstantOperand) firstExpression).getValueString())
+            <= Long.parseLong(((ConstantOperand) secondExpression).getValueString()));
   }
 
   public static Expression constructQueryFilter(List<Expression> expressions) {

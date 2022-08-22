@@ -351,6 +351,17 @@ void insertTablets(Map<String, Tablet> tablets)
 
 * 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。这里的 value 是 Object 类型，相当于提供了一个公用接口，后面可以通过 TSDataType 将 value 强转为原类型
 
+  其中，Object 类型与 TSDataType 类型的对应关系如下表所示：
+
+  | TSDataType | Object         |
+  | ---------- | -------------- |
+  | BOOLEAN    | Boolean        |
+  | INT32      | Integer        |
+  | INT64      | Long           |
+  | FLOAT      | Float          |
+  | DOUBLE     | Double         |
+  | TEXT       | String, Binary |
+
 ```java
 void insertRecord(String prefixPath, long time, List<String> measurements,
    List<TSDataType> types, List<Object> values)

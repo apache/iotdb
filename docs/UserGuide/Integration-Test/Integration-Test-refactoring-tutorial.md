@@ -47,7 +47,7 @@ Black-box testing is a software testing method that evaluates the functionality 
 
 Generally, there are three steps to finish the integration test, (1) constructing the test class and annotating the environment, (2) housekeeping to prepare for the test and clean up the environment after the test, and (3) implementing the logic of the integration test. To test IoTDB not under the default configuration, the configuration should be changed before the test, which will be introduced in section 4. 
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/integration-test/pic/step.svg">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/integration-test/pic/step_en.svg">
 
 #### 1. Integration Test Class (IT Class) and Annotations
 
@@ -220,44 +220,6 @@ public class IoTDBAlignedSeriesQueryIT {
 }
 ```
 
-### Commands for starting IT 
-
-1 Execute IT in the cluster environment
-
-```shell script
-mvn clean verify \
-  -Dsession.test.skip=true \
-  -Diotdb.test.skip=true \
-  -Dcluster.test.skip=true \
-  -Dtsfile.test.skip=true \
-  -Dcommons.test.skip=true \
-  -Dconfignode.test.skip=true \
-  -Dconsensus.test.skip=true \
-  -Djdbc.test.skip=true \
-  -Dmetrics.test.skip=true \
-  -pl integration-test -am -PClusterIT
-```
-2 Execute IT in the local standalone environment
-
-```shell script
-mvn clean verify \
-  -Dsession.test.skip=true \
-  -Diotdb.test.skip=true \
-  -Dcluster.test.skip=true \
-  -Dtsfile.test.skip=true \
-  -Dcommons.test.skip=true \
-  -Dconfignode.test.skip=true \
-  -Dconsensus.test.skip=true \
-  -pl integration-test -am
-```
-
-3 Execute IT in the remote environment
-
-```shell script
-mvn clean verify -pl integration-test -am -PRemoteIT \
-  -DRemoteIp=127.0.0.1 \
-  -DRemotePort=6667
-```
 
 ## Q&A
 ### Ways to check the log after the CI failure
@@ -273,3 +235,6 @@ You can also click the *summary* at the upper left and then check and download t
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/integration-test/pic/download2.png">
 
+### Commands for running IT
+
+Please check [Integration Test For the MPP Architecture](https://github.com/apache/iotdb/blob/master/integration-test/README.md) for details.

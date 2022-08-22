@@ -259,7 +259,7 @@ public class WALNodeTest {
     }
     walNode.onMemTableFlushed(memTable);
     walNode.onMemTableCreated(new PrimitiveMemTable(), tsFilePath);
-    // check existence of _0-0-0.wal file
+    // check existence of _0-0-0.wal file and _1-0-1.wal file
     assertTrue(
         new File(
                 logDirectory
@@ -270,7 +270,7 @@ public class WALNodeTest {
         new File(
                 logDirectory
                     + File.separator
-                    + WALFileUtils.getLogFileName(1, 0, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX))
+                    + WALFileUtils.getLogFileName(1, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
             .exists());
     walNode.deleteOutdatedFiles();
     assertFalse(
@@ -283,7 +283,7 @@ public class WALNodeTest {
         new File(
                 logDirectory
                     + File.separator
-                    + WALFileUtils.getLogFileName(1, 0, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX))
+                    + WALFileUtils.getLogFileName(1, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
             .exists());
     // check flush listeners
     try {

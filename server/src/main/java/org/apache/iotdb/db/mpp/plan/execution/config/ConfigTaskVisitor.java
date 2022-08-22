@@ -19,6 +19,29 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateFunctionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropFunctionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowDataNodesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowFunctionsTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.UnSetTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.SetSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.AuthorizerTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.ClearCacheTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.FlushTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.MergeTask;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -29,13 +52,22 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 public class ConfigTaskVisitor
@@ -108,8 +140,18 @@ public class ConfigTaskVisitor
   }
 
   @Override
+  public IConfigTask visitMerge(MergeStatement mergeStatement, TaskContext context) {
+    return new MergeTask(mergeStatement);
+  }
+
+  @Override
   public IConfigTask visitFlush(FlushStatement flushStatement, TaskContext context) {
     return new FlushTask(flushStatement);
+  }
+
+  @Override
+  public IConfigTask visitClearCache(ClearCacheStatement clearCacheStatement, TaskContext context) {
+    return new ClearCacheTask(clearCacheStatement);
   }
 
   @Override
@@ -127,6 +169,48 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitShowRegion(ShowRegionStatement showRegionStatement, TaskContext context) {
     return new ShowRegionTask(showRegionStatement);
+  }
+
+  @Override
+  public IConfigTask visitCreateSchemaTemplate(
+      CreateSchemaTemplateStatement createSchemaTemplateStatement, TaskContext context) {
+    return new CreateSchemaTemplateTask(createSchemaTemplateStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowNodesInSchemaTemplate(
+      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement, TaskContext context) {
+    return new ShowNodesInSchemaTemplateTask(showNodesInSchemaTemplateStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowSchemaTemplate(
+      ShowSchemaTemplateStatement showSchemaTemplateStatement, TaskContext context) {
+    return new ShowSchemaTemplateTask(showSchemaTemplateStatement);
+  }
+
+  @Override
+  public IConfigTask visitSetSchemaTemplate(
+      SetSchemaTemplateStatement setSchemaTemplateStatement, TaskContext context) {
+    return new SetSchemaTemplateTask(setSchemaTemplateStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowPathSetTemplate(
+      ShowPathSetTemplateStatement showPathSetTemplateStatement, TaskContext context) {
+    return new ShowPathSetTemplateTask(showPathSetTemplateStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowDataNodes(
+      ShowDataNodesStatement showDataNodesStatement, TaskContext context) {
+    return new ShowDataNodesTask(showDataNodesStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowConfigNodes(
+      ShowConfigNodesStatement showConfigNodesStatement, TaskContext context) {
+    return new ShowConfigNodesTask(showConfigNodesStatement);
   }
 
   public static class TaskContext {}

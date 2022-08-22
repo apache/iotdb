@@ -31,7 +31,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.tools.TsFileRewriteTool;
+import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -236,7 +236,7 @@ public class TsFileRewriteToolTest {
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     List<TsFileResource> splitResource = new ArrayList<>();
     try {
-      TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResource);
+      TsFileSplitByPartitionTool.rewriteTsFile(tsFileResource, splitResource);
     } catch (IOException | WriteProcessException | IllegalPathException e) {
       Assert.fail(e.getMessage());
     }
@@ -416,7 +416,7 @@ public class TsFileRewriteToolTest {
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     List<TsFileResource> splitResource = new ArrayList<>();
     try {
-      TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResource);
+      TsFileSplitByPartitionTool.rewriteTsFile(tsFileResource, splitResource);
     } catch (IOException | WriteProcessException | IllegalPathException e) {
       Assert.fail(e.getMessage());
     }

@@ -71,7 +71,7 @@ public class LocalSourceHandleTest {
     // Consume tsblocks.
     Assert.assertTrue(localSourceHandle.isBlocked().isDone());
     localSourceHandle.receive();
-    ListenableFuture<Void> blocked = localSourceHandle.isBlocked();
+    ListenableFuture<?> blocked = localSourceHandle.isBlocked();
     Assert.assertTrue(blocked.isDone());
     Assert.assertFalse(localSourceHandle.isAborted());
     Assert.assertTrue(localSourceHandle.isFinished());
@@ -103,7 +103,7 @@ public class LocalSourceHandleTest {
             localPlanNodeId,
             queue,
             mockSourceHandleListener);
-    ListenableFuture<Void> future = localSourceHandle.isBlocked();
+    ListenableFuture<?> future = localSourceHandle.isBlocked();
     Assert.assertFalse(future.isDone());
     Assert.assertFalse(localSourceHandle.isAborted());
     Assert.assertFalse(localSourceHandle.isFinished());

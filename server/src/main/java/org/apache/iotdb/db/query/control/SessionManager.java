@@ -211,7 +211,8 @@ public class SessionManager {
    * @return true: If logged in; false: If not logged in
    */
   public boolean checkLogin(long sessionId) {
-    boolean isLoggedIn = sessionIdToUsername.get(sessionId) != null;
+    Long currentSessionId = getCurrSessionId();
+    boolean isLoggedIn = currentSessionId != null && currentSessionId == sessionId;
     if (!isLoggedIn) {
       LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
     } else {
@@ -228,6 +229,7 @@ public class SessionManager {
     sessionIdToUsername.put(sessionId, username);
     sessionIdToZoneId.put(sessionId, ZoneId.of(zoneId));
     sessionIdToClientVersion.put(sessionId, clientVersion);
+    sessionIdToSessionInfo.put(sessionId, new SessionInfo(sessionId, username, zoneId));
 
     return sessionId;
   }

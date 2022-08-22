@@ -34,14 +34,14 @@ public interface ISinkHandle {
   long getBufferRetainedSizeInBytes();
 
   /** Get a future that will be completed when the output buffer is not full. */
-  ListenableFuture<Void> isFull();
+  ListenableFuture<?> isFull();
 
   /**
    * Send a list of tsblocks to an unpartitioned output buffer. If no-more-tsblocks has been set,
    * the invocation will be ignored. This can happen with limit queries. A {@link RuntimeException}
    * will be thrown if any exception happened during the data transmission.
    */
-  void send(List<TsBlock> tsBlocks);
+  void send(TsBlock tsBlock);
 
   /**
    * Send a {@link TsBlock} to a specific partition. If no-more-tsblocks has been set, the send
@@ -68,6 +68,16 @@ public interface ISinkHandle {
   /**
    * Abort the sink handle. Discard all tsblocks which may still be in the memory buffer and cancel
    * the future returned by {@link #isFull()}.
+   *
+   * <p>Should only be called in abnormal case
    */
   void abort();
+
+  /**
+   * Close the sink handle. Discard all tsblocks which may still be in the memory buffer and
+   * complete the future returned by {@link #isFull()}.
+   *
+   * <p>Should only be called in normal case.
+   */
+  void close();
 }

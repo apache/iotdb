@@ -491,9 +491,9 @@ public class LogicalPlannerTest {
       Assert.assertFalse(showTimeSeriesNode.isContains());
       Assert.assertEquals("tagK", showTimeSeriesNode.getKey());
       Assert.assertEquals("tagV", showTimeSeriesNode.getValue());
-      Assert.assertEquals(30, showTimeSeriesNode.getLimit());
+      Assert.assertEquals(0, showTimeSeriesNode.getLimit());
       Assert.assertEquals(0, showTimeSeriesNode.getOffset());
-      Assert.assertTrue(showTimeSeriesNode.isHasLimit());
+      Assert.assertFalse(showTimeSeriesNode.isHasLimit());
 
       // test serialize and deserialize
       ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
@@ -509,9 +509,9 @@ public class LogicalPlannerTest {
       Assert.assertFalse(showTimeSeriesNode2.isContains());
       Assert.assertEquals("tagK", showTimeSeriesNode2.getKey());
       Assert.assertEquals("tagV", showTimeSeriesNode2.getValue());
-      Assert.assertEquals(30, showTimeSeriesNode2.getLimit());
+      Assert.assertEquals(0, showTimeSeriesNode2.getLimit());
       Assert.assertEquals(0, showTimeSeriesNode2.getOffset());
-      Assert.assertTrue(showTimeSeriesNode2.isHasLimit());
+      Assert.assertFalse(showTimeSeriesNode2.isHasLimit());
     } catch (Exception e) {
       e.printStackTrace();
       fail();

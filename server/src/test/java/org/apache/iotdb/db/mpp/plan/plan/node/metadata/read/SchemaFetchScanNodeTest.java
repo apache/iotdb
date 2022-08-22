@@ -30,6 +30,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 
 public class SchemaFetchScanNodeTest {
 
@@ -38,7 +39,8 @@ public class SchemaFetchScanNodeTest {
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.sg.**.*"));
     SchemaFetchScanNode schemaFetchScanNode =
-        new SchemaFetchScanNode(new PlanNodeId("0"), new PartialPath("root.sg"), patternTree);
+        new SchemaFetchScanNode(
+            new PlanNodeId("0"), new PartialPath("root.sg"), patternTree, Collections.emptyMap());
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
     schemaFetchScanNode.serialize(byteBuffer);
     byteBuffer.flip();
