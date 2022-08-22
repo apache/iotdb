@@ -309,6 +309,9 @@
     <logger level="info" name="SLOW_SQL">
         <appender-ref ref="SLOW_SQL"/>
     </logger>
+    <logger level="info" name="DOUBLE_LIVE">
+        <appender-ref ref="DOUBLE_LIVE"/>
+    </logger>
     <logger level="info" name="QUERY_FREQUENCY">
         <appender-ref ref="QUERY_FREQUENCY"/>
     </logger>
