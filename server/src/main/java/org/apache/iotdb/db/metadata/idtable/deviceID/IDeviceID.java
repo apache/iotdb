@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.idtable.DeviceID;
+package org.apache.iotdb.db.metadata.idtable.deviceID;
+
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.nio.ByteBuffer;
 
@@ -32,4 +34,21 @@ public interface IDeviceID {
   String toStringID();
 
   void serialize(ByteBuffer byteBuffer);
+
+  static Class getDeviceIDClass() {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
+      if (IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getDeviceIDTransformationMethod()
+          .equals("SHA256")) {
+        return SHA256DeviceID.class;
+      } else if (IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getDeviceIDTransformationMethod()
+          .equals("AutoIncrement_INT")) {
+        return AutoIncrementDeviceID.class;
+      }
+    }
+    return PlainDeviceID.class;
+  }
 }

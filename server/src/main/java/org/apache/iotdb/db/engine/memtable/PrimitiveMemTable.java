@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.metadata.idtable.DeviceID.IDeviceID;
+import org.apache.iotdb.db.metadata.idtable.deviceID.IDeviceID;
 
 import java.util.HashMap;
 import java.util.Map;

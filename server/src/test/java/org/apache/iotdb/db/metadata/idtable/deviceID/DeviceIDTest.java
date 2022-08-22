@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.idtable.entry;
+package org.apache.iotdb.db.metadata.idtable.deviceID;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.idtable.DeviceID.IDeviceID;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 
 import org.junit.Test;
 

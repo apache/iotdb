@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.idtable.DeviceID.IDeviceID;
+import org.apache.iotdb.db.metadata.idtable.deviceID.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
@@ -136,12 +136,27 @@ public interface IDTable {
   void clear() throws IOException;
 
   /**
+   * in a cluster environment, an int id is required to represent IdTableID
+   *
+   * @return IdTableID
+   */
+  int getIdTableID();
+
+  /**
    * get device entry from device path
    *
    * @param deviceName device name of the time series
    * @return device entry of the timeseries
    */
   DeviceEntry getDeviceEntry(String deviceName);
+
+  /**
+   * 通过IDeviceID获取device entry
+   *
+   * @param deviceID
+   * @return
+   */
+  DeviceEntry getDeviceEntry(IDeviceID deviceID);
 
   /**
    * get schema from device and measurements

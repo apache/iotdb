@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.idtable.DeviceID;
+package org.apache.iotdb.db.metadata.idtable.deviceID;
 
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -90,7 +90,7 @@ public class SHA256DeviceID implements IDeviceID {
    *
    * @param deviceID device path
    */
-  private void buildSHA256(String deviceID) {
+  protected void buildSHA256(String deviceID) {
     byte[] hashVal;
     int slot = calculateSlot(deviceID);
 

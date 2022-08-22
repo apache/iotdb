@@ -22,10 +22,10 @@ package org.apache.iotdb.db.metadata.idtable.entry;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.idtable.DeviceID.AutoIncrementDeviceID;
-import org.apache.iotdb.db.metadata.idtable.DeviceID.IDeviceID;
-import org.apache.iotdb.db.metadata.idtable.DeviceID.PlainDeviceID;
-import org.apache.iotdb.db.metadata.idtable.DeviceID.SHA256DeviceID;
+import org.apache.iotdb.db.metadata.idtable.deviceID.AutoIncrementDeviceID;
+import org.apache.iotdb.db.metadata.idtable.deviceID.IDeviceID;
+import org.apache.iotdb.db.metadata.idtable.deviceID.PlainDeviceID;
+import org.apache.iotdb.db.metadata.idtable.deviceID.SHA256DeviceID;
 
 import java.util.function.Function;
 

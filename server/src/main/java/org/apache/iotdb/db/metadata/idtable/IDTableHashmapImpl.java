@@ -25,7 +25,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.metadata.idtable.DeviceID.IDeviceID;
+import org.apache.iotdb.db.metadata.idtable.deviceID.IDeviceID;
+import org.apache.iotdb.db.metadata.idtable.deviceID.StatefulIDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
@@ -48,6 +49,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -72,10 +75,13 @@ public class IDTableHashmapImpl implements IDTable {
 
   /** disk schema manager to manage disk schema entry */
   private IDiskSchemaManager IDiskSchemaManager;
+
+  private int idTableID;
+
   /** iotdb config */
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  public IDTableHashmapImpl(File storageGroupDir) {
+  public IDTableHashmapImpl(File storageGroupDir, int idTableID) {
     idTables = new Map[NUM_OF_SLOTS];
     for (int i = 0; i < NUM_OF_SLOTS; i++) {
       idTables[i] = new HashMap<>();
@@ -84,6 +90,7 @@ public class IDTableHashmapImpl implements IDTable {
       IDiskSchemaManager = new AppendOnlyDiskSchemaManager(storageGroupDir);
       IDiskSchemaManager.recover(this);
     }
+    this.idTableID = idTableID;
   }
 
   /**
@@ -311,6 +318,19 @@ public class IDTableHashmapImpl implements IDTable {
     if (IDiskSchemaManager != null) {
       IDiskSchemaManager.close();
     }
+    if (StatefulIDeviceID.class.isAssignableFrom(IDeviceID.getDeviceIDClass())) {
+      try {
+        Method method = IDeviceID.getDeviceIDClass().getMethod("clear");
+        method.invoke(null);
+      } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+        logger.error(e.getMessage());
+      }
+    }
+  }
+
+  @Override
+  public int getIdTableID() {
+    return this.idTableID;
   }
 
   /**
@@ -321,7 +341,11 @@ public class IDTableHashmapImpl implements IDTable {
    */
   @Override
   public DeviceEntry getDeviceEntry(String deviceName) {
-    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(deviceName);
+    return getDeviceEntry(DeviceIDFactory.getInstance().getDeviceID(deviceName));
+  }
+
+  @Override
+  public DeviceEntry getDeviceEntry(IDeviceID deviceID) {
     int slot = calculateSlot(deviceID);
 
     // reuse device entry in map

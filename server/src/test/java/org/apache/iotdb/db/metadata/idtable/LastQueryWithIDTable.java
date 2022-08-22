@@ -82,7 +82,7 @@ public class LastQueryWithIDTable {
     IoTDBDescriptor.getInstance().getConfig().setEnableLastCache(false);
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
+    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement_INT");
     EnvironmentUtils.envSetUp();
   }
 

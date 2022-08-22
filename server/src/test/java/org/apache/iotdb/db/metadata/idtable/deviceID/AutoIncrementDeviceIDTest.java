@@ -16,12 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.idtable.DeviceID;
+package org.apache.iotdb.db.metadata.idtable.deviceID;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
+import org.apache.iotdb.db.metadata.idtable.IDTableManager;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;
 import org.junit.Before;
@@ -39,23 +46,35 @@ public class AutoIncrementDeviceIDTest {
 
   private String originalDeviceIDTransformationMethod = null;
 
+  private boolean isEnableIDTableLogFile = false;
+  private IDTable idTable = null;
+
   @Before
-  public void before() {
+  public void before() throws MetadataException {
     isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
     originalDeviceIDTransformationMethod =
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
+    isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
     IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement_INT");
+    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
     EnvironmentUtils.envSetUp();
+    idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.sg"));
+    //    AutoIncrementDeviceID.reset();
+    for (int i = 1; i < 10; i++) {
+      idTable.putSchemaEntry("root.sg.x.d" + i, "s1", new SchemaEntry(TSDataType.BOOLEAN), false);
+    }
   }
 
   @After
   public void clean() throws IOException, StorageEngineException {
+    EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(isEnableIDTable);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
-    EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(isEnableIDTableLogFile);
+    idTable = null;
   }
 
   @Test
@@ -65,19 +84,10 @@ public class AutoIncrementDeviceIDTest {
     IDeviceID deviceID3 = DeviceIDFactory.getInstance().getDeviceID("root.sg.x.d2");
     assertEquals(deviceID1.hashCode(), deviceID2.hashCode());
     assertNotEquals(deviceID1.hashCode(), deviceID3.hashCode());
-
-    AutoIncrementDeviceID autoIncrementDeviceID1 = new AutoIncrementDeviceID();
-    autoIncrementDeviceID1.setAutoIncrementID(1);
-    AutoIncrementDeviceID autoIncrementDeviceID2 = new AutoIncrementDeviceID();
-    autoIncrementDeviceID2.setAutoIncrementID(1);
-    AutoIncrementDeviceID autoIncrementDeviceID3 = new AutoIncrementDeviceID();
-    autoIncrementDeviceID3.setAutoIncrementID(3);
-    assertEquals(autoIncrementDeviceID1.hashCode(), autoIncrementDeviceID2.hashCode());
-    assertNotEquals(autoIncrementDeviceID1.hashCode(), autoIncrementDeviceID3.hashCode());
   }
 
   @Test
-  public void testEquals() {
+  public void testEquals() throws MetadataException {
     IDeviceID deviceID1 = DeviceIDFactory.getInstance().getDeviceID("root.sg.x.d1");
     IDeviceID deviceID2 = DeviceIDFactory.getInstance().getDeviceID("root.sg.x.d1");
     IDeviceID deviceID3 = DeviceIDFactory.getInstance().getDeviceID("root.sg.x.d2");
@@ -85,34 +95,28 @@ public class AutoIncrementDeviceIDTest {
     assertEquals(deviceID1, deviceID2);
     assertNotEquals(deviceID1, deviceID3);
     assertNotEquals(deviceID1, sha256DeviceID);
-
-    AutoIncrementDeviceID autoIncrementDeviceID1 = new AutoIncrementDeviceID();
-    autoIncrementDeviceID1.setAutoIncrementID(1);
-    AutoIncrementDeviceID autoIncrementDeviceID2 = new AutoIncrementDeviceID();
-    autoIncrementDeviceID2.setAutoIncrementID(1);
-    AutoIncrementDeviceID autoIncrementDeviceID3 = new AutoIncrementDeviceID();
-    autoIncrementDeviceID3.setAutoIncrementID(3);
-    assertEquals(autoIncrementDeviceID1, autoIncrementDeviceID2);
-    assertNotEquals(autoIncrementDeviceID1, autoIncrementDeviceID3);
   }
 
   @Test
-  public void testToStringID() {
+  public void testToStringID() throws MetadataException {
     IDeviceID deviceID1 = DeviceIDFactory.getInstance().getDeviceID("root.sg.x.d1");
-    assertEquals(deviceID1.toStringID(), "`0`");
-    IDeviceID deviceID2 = DeviceIDFactory.getInstance().getDeviceID("root.sg.x.d1");
-    assertEquals(deviceID2.toStringID(), "`0`");
-    IDeviceID deviceID3 = DeviceIDFactory.getInstance().getDeviceID("root.sg.x.d2");
-    assertEquals(deviceID3.toStringID(), "`1`");
+    DeviceEntry deviceEntry1 = idTable.getDeviceEntry(deviceID1);
+    assertEquals(deviceEntry1.getDeviceID().toStringID(), "`0`");
+    IDeviceID deviceID2 = DeviceIDFactory.getInstance().getDeviceID("root.sg.x.d2");
+    DeviceEntry deviceEntry2 = idTable.getDeviceEntry(deviceID2);
+    assertEquals(deviceEntry2.getDeviceID().toStringID(), "`1`");
   }
 
   @Test
-  public void testSerializeAndDeserialize() {
-    ByteBuffer byteBuffer = ByteBuffer.allocate(100);
-    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID("root.sg.x.d1");
-    deviceID.serialize(byteBuffer);
-    IDeviceID deviceID1 = AutoIncrementDeviceID.deserialize(byteBuffer);
-    assertEquals(deviceID, deviceID1);
+  public void testSerializeAndDeserialize() throws MetadataException {
+    for (int i = 1; i < 10; i++) {
+      ByteBuffer byteBuffer = ByteBuffer.allocate(100);
+      IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID("root.sg.x.d" + i);
+      deviceID.serialize(byteBuffer);
+      byteBuffer.flip();
+      IDeviceID deviceID1 = AutoIncrementDeviceID.deserialize(byteBuffer);
+      assertEquals(deviceID, deviceID1);
+    }
   }
 
   @Test
@@ -125,7 +129,8 @@ public class AutoIncrementDeviceIDTest {
     assertEquals(deviceID, deviceID1);
     for (int i = 3; i < 10; i++) {
       deviceID = DeviceIDFactory.getInstance().getDeviceID("root.sg.x.d" + i);
-      assertEquals(deviceID.toStringID(), "`" + (i - 1) + "`");
+      deviceID1 = DeviceIDFactory.getInstance().getDeviceID("`" + (i - 1) + "`");
+      assertEquals(deviceID, deviceID1);
     }
   }
 }

@@ -84,8 +84,8 @@ public class IDTableManager {
           IoTDB.schemaProcessor.getStorageGroupNodeByPath(devicePath).getFullPath(),
           storageGroupPath ->
               new IDTableHashmapImpl(
-                  SystemFileFactory.INSTANCE.getFile(
-                      systemDir + File.separator + storageGroupPath)));
+                  SystemFileFactory.INSTANCE.getFile(systemDir + File.separator + storageGroupPath),
+                  idTableMap.size()));
     } catch (MetadataException e) {
       logger.error("get id table failed, path is: " + devicePath + ". caused by: " + e);
     }
@@ -104,7 +104,8 @@ public class IDTableManager {
         sgPath,
         storageGroupPath ->
             new IDTableHashmapImpl(
-                SystemFileFactory.INSTANCE.getFile(systemDir + File.separator + storageGroupPath)));
+                SystemFileFactory.INSTANCE.getFile(systemDir + File.separator + storageGroupPath),
+                idTableMap.size()));
   }
 
   /**
