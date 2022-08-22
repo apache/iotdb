@@ -25,22 +25,22 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class TimeseriesStatistics {
+public class SchemaStatisticsManager {
 
   private final AtomicLong totalSeriesNumber = new AtomicLong();
 
-  private static class TimeseriesStatisticsHolder {
+  private static class SchemaStatisticsHolder {
 
-    private TimeseriesStatisticsHolder() {
+    private SchemaStatisticsHolder() {
       // allowed to do nothing
     }
 
-    private static final TimeseriesStatistics INSTANCE = new TimeseriesStatistics();
+    private static final SchemaStatisticsManager INSTANCE = new SchemaStatisticsManager();
   }
 
   /** we should not use this function in other place, but only in IoTDB class */
-  public static TimeseriesStatistics getInstance() {
-    return TimeseriesStatisticsHolder.INSTANCE;
+  public static SchemaStatisticsManager getInstance() {
+    return SchemaStatisticsHolder.INSTANCE;
   }
 
   public void init() {

@@ -186,4 +186,44 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   public boolean isFinished() {
     return isFinished;
   }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    long maxPeekMemory = 0;
+
+    for (Operator child : operators) {
+      maxPeekMemory += child.calculateMaxReturnSize();
+    }
+
+    for (Operator child : operators) {
+      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemory());
+    }
+
+    return maxPeekMemory;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    long maxReturnSize = 0;
+
+    for (Operator child : operators) {
+      maxReturnSize += child.calculateMaxReturnSize();
+    }
+
+    return maxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long retainedSize = 0L;
+
+    for (Operator child : operators) {
+      retainedSize += child.calculateMaxReturnSize();
+    }
+
+    for (Operator child : operators) {
+      retainedSize += child.calculateRetainedSizeAfterCallingNext();
+    }
+    return retainedSize;
+  }
 }

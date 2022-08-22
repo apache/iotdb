@@ -57,10 +57,6 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
     }
     try {
       switch (state) {
-        case REMOVE_CONFIG_NODE_PREPARE:
-          env.broadCastTheLatestConfigNodeGroup();
-          setNextState(RemoveConfigNodeState.REMOVE_PEER);
-          break;
         case REMOVE_PEER:
           env.removeConfigNodePeer(tConfigNodeLocation);
           setNextState(RemoveConfigNodeState.REMOVE_CONSENSUS_GROUP);
@@ -72,6 +68,7 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
           LOG.info("Remove Consensus Group {}", tConfigNodeLocation);
           break;
         case STOP_CONFIG_NODE:
+          env.broadCastTheLatestConfigNodeGroup();
           env.stopConfigNode(tConfigNodeLocation);
           LOG.info("Stop Config Node {}", tConfigNodeLocation);
           return Flow.NO_MORE_STATE;
@@ -114,7 +111,7 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
 
   @Override
   protected RemoveConfigNodeState getInitialState() {
-    return RemoveConfigNodeState.REMOVE_CONFIG_NODE_PREPARE;
+    return RemoveConfigNodeState.REMOVE_PEER;
   }
 
   @Override

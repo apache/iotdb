@@ -58,6 +58,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     if (this.targetConfigNode != null) {
       properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNode);
     }
+    properties.setProperty("max_tsblock_size_in_bytes", "1024");
+    properties.setProperty("page_size_in_byte", "1024");
   }
 
   @Override

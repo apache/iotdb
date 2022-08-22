@@ -69,6 +69,9 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeSinkTypeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 
 /**
@@ -321,5 +324,17 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowPathsUsingTemplate(
       ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement, C context) {
     return visitStatement(showPathsUsingTemplateStatement, context);
+  }
+
+  public R visitShowPipeSink(ShowPipeSinkStatement visitShowPipeSink, C context) {
+    return visitStatement(visitShowPipeSink, context);
+  }
+
+  public R visitShowPipeSinkType(ShowPipeSinkTypeStatement visitShowPipeSinkType, C context) {
+    return visitStatement(visitShowPipeSinkType, context);
+  }
+
+  public R visitShowPipe(ShowPipeStatement visitShowPipe, C context) {
+    return visitStatement(visitShowPipe, context);
   }
 }
