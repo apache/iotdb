@@ -158,6 +158,7 @@ public abstract class PageManager implements IPageManager {
 
           subIndex = subIndexRootPage(curSegAddr);
           if (node.isEntity() && subIndex < 0) {
+            // the record occurred overflow had been inserted already
             buildSubIndex(node);
           } else if (alias != null) {
             // implied node is entity, so sub index must exist
@@ -222,15 +223,18 @@ public abstract class PageManager implements IPageManager {
       }
 
       if (alias == null && oldAlias != null) {
-        // remove old alias index
+        // remove old alias index: not exists anymore
         removeOldSubEntry = true;
+        insertNewSubEntry = false;
       } else if (alias != null && oldAlias == null) {
-        // insert alias index
+        // insert alias index: no longer null
+        removeOldSubEntry = false;
         insertNewSubEntry = true;
       } else if (alias != null && alias.compareTo(oldAlias) != 0) {
-        // remove and insert
+        // remove and (re)insert: both not null, but not equals
         insertNewSubEntry = removeOldSubEntry = true;
       } else {
+        // do nothing: both null, or both not null but equals
         insertNewSubEntry = removeOldSubEntry = false;
       }
 
