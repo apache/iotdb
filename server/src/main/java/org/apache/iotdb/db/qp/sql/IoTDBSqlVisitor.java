@@ -187,7 +187,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     int virtualStorageGroupNum = 0;
     if (ctx.INTEGER_LITERAL() != null) {
       TerminalNode virtualStorageGroupNumNode = ctx.INTEGER_LITERAL();
-      virtualStorageGroupNum =  Integer.parseInt(virtualStorageGroupNumNode.toString());
+      virtualStorageGroupNum = Integer.parseInt(virtualStorageGroupNumNode.toString());
     }
     SetStorageGroupOperator setStorageGroupOperator =
         new SetStorageGroupOperator(SQLConstant.TOK_METADATA_SET_FILE_LEVEL);

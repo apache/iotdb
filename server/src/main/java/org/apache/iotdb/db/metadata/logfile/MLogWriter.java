@@ -152,7 +152,8 @@ public class MLogWriter implements AutoCloseable {
     putLog(plan);
   }
 
-  public void setStorageGroup(PartialPath storageGroup, int virtualStorageGroupNum) throws IOException {
+  public void setStorageGroup(PartialPath storageGroup, int virtualStorageGroupNum)
+      throws IOException {
     SetStorageGroupPlan plan = new SetStorageGroupPlan(storageGroup, virtualStorageGroupNum);
     putLog(plan);
   }

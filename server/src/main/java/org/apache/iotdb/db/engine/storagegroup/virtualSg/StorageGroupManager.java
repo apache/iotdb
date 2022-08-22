@@ -160,8 +160,10 @@ public class StorageGroupManager {
   public VirtualStorageGroupProcessor getProcessor(
       PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
-//    int loc = partitioner.deviceToVirtualStorageGroupId(partialPath);
-    int loc = partitioner.deviceToVirtualStorageGroupId(partialPath, storageGroupMNode.getVirtualStorageGroupNum());
+    //    int loc = partitioner.deviceToVirtualStorageGroupId(partialPath);
+    int loc =
+        partitioner.deviceToVirtualStorageGroupId(
+            partialPath, storageGroupMNode.getVirtualStorageGroupNum());
 
     VirtualStorageGroupProcessor processor = virtualStorageGroupProcessor[loc];
     if (processor == null) {
