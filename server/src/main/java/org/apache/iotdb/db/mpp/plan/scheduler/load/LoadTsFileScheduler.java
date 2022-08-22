@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -56,6 +57,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
 
   private final MPPQueryContext queryContext;
+  private QueryStateMachine stateMachine;
   private LoadTsFileDispatcherImpl dispatcher;
   private List<LoadSingleTsFileNode> tsFileNodeList;
   private PlanFragmentId fragmentId;
@@ -65,8 +67,10 @@ public class LoadTsFileScheduler implements IScheduler {
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
       MPPQueryContext queryContext,
+      QueryStateMachine stateMachine,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.queryContext = queryContext;
+    this.stateMachine = stateMachine;
     this.tsFileNodeList = new ArrayList<>();
     this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
     this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager);
@@ -79,14 +83,19 @@ public class LoadTsFileScheduler implements IScheduler {
 
   @Override
   public void start() {
+    stateMachine.transitionToRunning();
     for (LoadSingleTsFileNode node : tsFileNodeList) {
       String uuid = UUID.randomUUID().toString();
       dispatcher.setUuid(uuid);
       allReplicaSets.clear();
 
       boolean isFirstPhaseSuccess = firstPhase(node);
-      boolean isSuccess = secondPhase(isFirstPhaseSuccess, uuid);
+      boolean isSecondPhaseSuccess = secondPhase(isFirstPhaseSuccess, uuid);
+      if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
+        return;
+      }
     }
+    stateMachine.transitionToFinished();
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
@@ -134,6 +143,7 @@ public class LoadTsFileScheduler implements IScheduler {
               }
             }
             logger.error(String.format("Dispatch piece node:%n%s", pieceNode));
+            stateMachine.transitionToFailed(result.getFailureStatus()); // TODO: record more status
             return false;
           }
         } catch (InterruptedException | ExecutionException e) {
@@ -141,6 +151,7 @@ public class LoadTsFileScheduler implements IScheduler {
             Thread.currentThread().interrupt();
           }
           logger.warn("Interrupt or Execution error.", e);
+          stateMachine.transitionToFailed(e);
           return false;
         }
       }
@@ -164,6 +175,7 @@ public class LoadTsFileScheduler implements IScheduler {
         logger.error(String.format("Result status code %s.", result.getFailureStatus().getCode()));
         logger.error(
             String.format("Result status message %s.", result.getFailureStatus().getMessage()));
+        stateMachine.transitionToFailed(result.getFailureStatus());
         return false;
       }
     } catch (InterruptedException | ExecutionException e) {
@@ -171,6 +183,7 @@ public class LoadTsFileScheduler implements IScheduler {
         Thread.currentThread().interrupt();
       }
       logger.warn("Interrupt or Execution error.", e);
+      stateMachine.transitionToFailed(e);
       return false;
     }
     return true;

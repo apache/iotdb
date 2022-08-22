@@ -121,13 +121,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       TLoadResp loadResp = client.sendLoadNode(loadTsFileReq);
       if (!loadResp.isAccepted()) {
         logger.error(loadResp.message);
-        TSStatus status = new TSStatus();
-        status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-        status.setMessage(loadResp.message);
-        if (loadResp.status != null) {
-          status.addToSubStatus(loadResp.status);
-        }
-        throw new FragmentInstanceDispatchException(status);
+        throw new FragmentInstanceDispatchException(loadResp.status);
       }
     } catch (IOException | TException e) {
       logger.error("can't connect to node {}", endPoint, e);
@@ -215,13 +209,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
       if (!loadResp.isAccepted()) {
         logger.error(loadResp.message);
-        TSStatus status = new TSStatus();
-        status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-        status.setMessage(loadResp.message);
-        if (loadResp.status != null) {
-          status.addToSubStatus(loadResp.status);
-        }
-        throw new FragmentInstanceDispatchException(status);
+        throw new FragmentInstanceDispatchException(loadResp.status);
       }
     } catch (IOException | TException e) {
       logger.error("can't connect to node {}", endPoint, e);

@@ -80,7 +80,7 @@ public class LoadTsFileManager {
     for (ChunkData chunkData : pieceNode.getAllChunkData()) {
       writerManager.write(
           getDataPartition(
-              dataRegion.getLogicalStorageGroupName(),
+              dataRegion.getStorageGroupName(),
               dataRegion.getDataRegionId(),
               chunkData.getTimePartitionSlot()),
           chunkData);
