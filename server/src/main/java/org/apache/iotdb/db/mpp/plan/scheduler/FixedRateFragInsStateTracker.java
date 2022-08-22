@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -34,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -47,8 +49,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   // TODO: (xingtanzjr) consider how much Interval is OK for state tracker
   private static final long STATE_FETCH_INTERVAL_IN_MS = 500;
   private ScheduledFuture<?> trackTask;
-  private volatile FragmentInstanceState lastState;
-  private volatile long durationToLastPrintInMS;
+  private final ConcurrentHashMap<FragmentInstanceId, InstanceStateMetrics> lastState;
   private volatile boolean aborted;
 
   public FixedRateFragInsStateTracker(
@@ -58,6 +59,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     super(stateMachine, scheduledExecutor, instances, internalServiceClientManager);
     this.aborted = false;
+    this.lastState = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -93,12 +95,12 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
     for (FragmentInstance instance : instances) {
       try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         FragmentInstanceState state = fetchState(instance);
-        if (needPrintState(lastState, state, durationToLastPrintInMS)) {
+        InstanceStateMetrics metrics = lastState.computeIfAbsent(instance.getId(), k -> new InstanceStateMetrics());
+        if (needPrintState(metrics.lastState, state, metrics.durationToLastPrintInMS)) {
           logger.info("State is {}", state);
-          lastState = state;
-          durationToLastPrintInMS = 0;
+          metrics.reset(state);
         } else {
-          durationToLastPrintInMS += STATE_FETCH_INTERVAL_IN_MS;
+          metrics.addDuration(STATE_FETCH_INTERVAL_IN_MS);
         }
 
         if (state != null) {
@@ -117,5 +119,24 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       return true;
     }
     return durationToLastPrintInMS >= SAME_STATE_PRINT_RATE_IN_MS;
+  }
+
+  private static class InstanceStateMetrics {
+    private FragmentInstanceState lastState;
+    private long durationToLastPrintInMS;
+
+    private InstanceStateMetrics() {
+      this.lastState = null;
+      this.durationToLastPrintInMS = 0L;
+    }
+
+    private void reset(FragmentInstanceState newState) {
+      this.lastState = newState;
+      this.durationToLastPrintInMS = 0L;
+    }
+
+    private void addDuration(long duration) {
+      durationToLastPrintInMS += duration;
+    }
   }
 }
