@@ -193,20 +193,20 @@ public class ValueChunkWriter {
   }
 
   public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
-          throws PageException {
+      throws PageException {
     // write the page header to pageBuffer
     try {
       logger.debug(
-              "start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
+          "start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
       // serialize pageHeader  see writePageToPageBuffer method
       if (numOfPages == 0) { // record the firstPageStatistics
         if (header.getStatistics() != null) {
           this.firstPageStatistics = header.getStatistics();
         }
         this.sizeWithoutStatistic +=
-                ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+            ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
         this.sizeWithoutStatistic +=
-                ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+            ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
       } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
         if (firstPageStatistics != null) {
           byte[] b = pageBuffer.toByteArray();
@@ -225,9 +225,9 @@ public class ValueChunkWriter {
         header.getStatistics().serialize(pageBuffer);
       }
       logger.debug(
-              "finish to flush a page header {} of time page into buffer, buffer position {} ",
-              header,
-              pageBuffer.size());
+          "finish to flush a page header {} of time page into buffer, buffer position {} ",
+          header,
+          pageBuffer.size());
 
       statistics.mergeStatistics(header.getStatistics());
 

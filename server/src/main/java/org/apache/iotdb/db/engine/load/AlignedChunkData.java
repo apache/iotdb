@@ -40,7 +40,6 @@ import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.checkerframework.checker.units.qual.A;
 
 import java.io.DataOutputStream;
 import java.io.File;
@@ -49,7 +48,6 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 public class AlignedChunkData implements ChunkData {
   private static final int DEFAULT_INT32 = 0;

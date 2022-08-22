@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -131,10 +132,12 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   @Override
   public String toString() {
-    return "LoadSingleTsFileNode{" +
-            "tsFile=" + tsFile +
-            ", replicaSets=" + replicaSet2Pieces.keySet() +
-            '}';
+    return "LoadSingleTsFileNode{"
+        + "tsFile="
+        + tsFile
+        + ", replicaSets="
+        + replicaSet2Pieces.keySet()
+        + '}';
   }
 
   public void splitTsFileByDataPartition(DataPartition dataPartition) throws IOException {
@@ -257,7 +260,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
             header = reader.readChunkHeader(marker);
             if (header.getDataSize() == 0) {
               Set<ChunkData> allChunkData = new HashSet<>();
-              for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
+              for (Map.Entry<Integer, List<AlignedChunkData>> entry :
+                  pageIndex2ChunkData.entrySet()) {
                 for (AlignedChunkData alignedChunkData : entry.getValue()) {
                   if (!allChunkData.contains(alignedChunkData)) {
                     alignedChunkData.addValueChunk(-2, header);

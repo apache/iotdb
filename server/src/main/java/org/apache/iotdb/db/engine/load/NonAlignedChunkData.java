@@ -266,7 +266,8 @@ public class NonAlignedChunkData implements ChunkData {
     }
   }
 
-  public static NonAlignedChunkData deserialize(InputStream stream) throws IOException, PageException {
+  public static NonAlignedChunkData deserialize(InputStream stream)
+      throws IOException, PageException {
     long timePartition = ReadWriteIOUtils.readLong(stream);
     String device = ReadWriteIOUtils.readString(stream);
     byte chunkType = ReadWriteIOUtils.readByte(stream);
