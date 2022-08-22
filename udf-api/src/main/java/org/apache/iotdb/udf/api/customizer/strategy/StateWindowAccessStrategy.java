@@ -41,6 +41,16 @@ public class StateWindowAccessStrategy implements AccessStrategy {
   }
 
   /**
+   * @param displayWindowBegin displayWindowBegin < displayWindowEnd
+   * @param displayWindowEnd displayWindowBegin < displayWindowEnd
+   */
+  public StateWindowAccessStrategy(long displayWindowBegin, long displayWindowEnd) {
+    this.displayWindowBegin = displayWindowBegin;
+    this.displayWindowEnd = displayWindowEnd;
+    this.delta = 0.0;
+  }
+
+  /**
    * Display window begin will be set to the same as the minimum timestamp of the query result set,
    * and display window end will be set to the same as the maximum timestamp of the query result
    * set.
