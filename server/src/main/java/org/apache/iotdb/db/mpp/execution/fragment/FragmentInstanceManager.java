@@ -102,7 +102,7 @@ public class FragmentInstanceManager {
                 try {
                   DataDriver driver =
                       planner.plan(
-                          instance.getFragment().getRoot(),
+                          instance.getFragment().getPlanNodeTree(),
                           instance.getFragment().getTypeProvider(),
                           context,
                           instance.getTimeFilter(),
@@ -144,7 +144,7 @@ public class FragmentInstanceManager {
 
               try {
                 SchemaDriver driver =
-                    planner.plan(instance.getFragment().getRoot(), context, schemaRegion);
+                    planner.plan(instance.getFragment().getPlanNodeTree(), context, schemaRegion);
                 return createFragmentInstanceExecution(
                     scheduler,
                     instanceId,
