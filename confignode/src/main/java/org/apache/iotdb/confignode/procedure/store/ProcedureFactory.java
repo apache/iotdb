@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
@@ -73,6 +74,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.REMOVE_DATA_NODE_PROCEDURE;
     } else if (procedure instanceof RegionMigrateProcedure) {
       return ProcedureType.REGION_MIGRATE_PROCEDURE;
+    } else if (procedure instanceof CreateRegionGroupsProcedure) {
+      return ProcedureType.CREATE_REGION_GROUPS;
     }
     return null;
   }
@@ -82,7 +85,8 @@ public class ProcedureFactory implements IProcedureFactory {
     ADD_CONFIG_NODE_PROCEDURE,
     REMOVE_CONFIG_NODE_PROCEDURE,
     REMOVE_DATA_NODE_PROCEDURE,
-    REGION_MIGRATE_PROCEDURE
+    REGION_MIGRATE_PROCEDURE,
+    CREATE_REGION_GROUPS
   }
 
   private static class ProcedureFactoryHolder {

@@ -31,6 +31,7 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -39,7 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
-/** Statemachine for PartitionRegion */
+/** StateMachine for PartitionRegion */
 public class PartitionRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
@@ -141,13 +142,15 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     if (currentNode.equals(newLeader)) {
       LOGGER.info("Current node {} becomes Leader", newLeader);
       configManager.getProcedureManager().shiftExecutor(true);
-      configManager.getLoadManager().start();
+      configManager.getLoadManager().startLoadBalancingService();
+      configManager.getNodeManager().startHeartbeatService();
       configManager.getPartitionManager().startRegionCleaner();
     } else {
       LOGGER.info(
           "Current node {} is not longer the leader, the new leader is {}", currentNode, newLeader);
       configManager.getProcedureManager().shiftExecutor(false);
-      configManager.getLoadManager().stop();
+      configManager.getLoadManager().stopLoadBalancingService();
+      configManager.getNodeManager().stopHeartbeatService();
       configManager.getPartitionManager().stopRegionCleaner();
     }
   }
@@ -160,5 +163,10 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   @Override
   public void stop() {
     // do nothing
+  }
+
+  @Override
+  public boolean isReadOnly() {
+    return IoTDBDescriptor.getInstance().getConfig().isReadOnly();
   }
 }

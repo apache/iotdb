@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.schema;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -186,7 +187,7 @@ public class IoTDBAutoCreateSchemaIT {
     Set<String> resultList = new HashSet<>();
     try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
       while (resultSet.next()) {
-        String str = resultSet.getString("timeseries");
+        String str = resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES);
         resultList.add(str);
       }
     }
@@ -195,7 +196,7 @@ public class IoTDBAutoCreateSchemaIT {
     resultList.clear();
     try (ResultSet resultSet = statement.executeQuery("show storage group")) {
       while (resultSet.next()) {
-        resultList.add(resultSet.getString("storage group"));
+        resultList.add(resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP));
       }
     }
     Assert.assertTrue(resultList.contains(storageGroup));

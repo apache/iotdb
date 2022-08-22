@@ -301,10 +301,23 @@ service IDataNodeRPCService {
   common.TSStatus addToRegionConsensusGroup(TAddConsensusGroup req);
 
   /**
-   * Config node will migrate a region from this node to newNode
-   * @param migrate which region from one node to other node
+   * Config node will add a region peer to a region group
+   * @param add region req which region from one node to other node
    */
-  common.TSStatus migrateRegion(TMigrateRegionReq req);
+  common.TSStatus addRegionPeer(TMigrateRegionReq req);
+
+  /**
+   * Config node will remove a region peer to a region group
+   * @param remove region peer region from one node to other node
+   */
+  common.TSStatus removeRegionPeer(TMigrateRegionReq req);
+
+  /**
+   * Config node will remove a region group from this node to newNode. Usually a region group has
+   * multiple replicas, thus relates to multiple nodes.
+   * @param remove consensus group req which region from one node to other node
+  */
+  common.TSStatus removeToRegionConsensusGroup(TMigrateRegionReq req);
 
   /**
   * Config node will disable the Data node, the Data node will not accept read/write request when disabled
@@ -359,6 +372,8 @@ service IDataNodeRPCService {
   common.TSStatus flush(common.TFlushReq req)
 
   common.TSStatus clearCache()
+
+  common.TSStatus loadConfiguration()
 
   /**
    * Config node will Set the TTL for the storage group on a list of data nodes.

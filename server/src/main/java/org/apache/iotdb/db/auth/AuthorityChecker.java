@@ -269,29 +269,30 @@ public class AuthorityChecker {
 
   private static int translateToPermissionId(StatementType type) {
     switch (type) {
-      case GRANT_ROLE_PRIVILEGE:
-        return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
       case CREATE_ROLE:
         return PrivilegeType.CREATE_ROLE.ordinal();
       case CREATE_USER:
         return PrivilegeType.CREATE_USER.ordinal();
-      case MODIFY_PASSWORD:
-        return PrivilegeType.MODIFY_PASSWORD.ordinal();
-      case GRANT_USER_PRIVILEGE:
-        return PrivilegeType.GRANT_USER_PRIVILEGE.ordinal();
-      case REVOKE_ROLE_PRIVILEGE:
-        return PrivilegeType.REVOKE_ROLE_PRIVILEGE.ordinal();
-      case REVOKE_USER_PRIVILEGE:
-        return PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal();
-      case GRANT_USER_ROLE:
-        return PrivilegeType.GRANT_USER_ROLE.ordinal();
       case DELETE_USER:
         return PrivilegeType.DELETE_USER.ordinal();
       case DELETE_ROLE:
         return PrivilegeType.DELETE_ROLE.ordinal();
+      case MODIFY_PASSWORD:
+        return PrivilegeType.MODIFY_PASSWORD.ordinal();
+      case GRANT_USER_PRIVILEGE:
+        return PrivilegeType.GRANT_USER_PRIVILEGE.ordinal();
+      case GRANT_ROLE_PRIVILEGE:
+        return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
+      case REVOKE_USER_PRIVILEGE:
+        return PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal();
+      case REVOKE_ROLE_PRIVILEGE:
+        return PrivilegeType.REVOKE_ROLE_PRIVILEGE.ordinal();
+      case GRANT_USER_ROLE:
+        return PrivilegeType.GRANT_USER_ROLE.ordinal();
       case REVOKE_USER_ROLE:
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
+      case TTL:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();
       case DELETE_STORAGE_GROUP:
         return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
@@ -315,6 +316,7 @@ public class AuthorityChecker {
       case FILL:
       case GROUP_BY_FILL:
       case SELECT_INTO:
+      case COUNT:
         return PrivilegeType.READ_TIMESERIES.ordinal();
       case INSERT:
       case LOAD_DATA:

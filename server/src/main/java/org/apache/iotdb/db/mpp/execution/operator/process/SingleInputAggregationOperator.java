@@ -23,7 +23,6 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -37,7 +36,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 
 public abstract class SingleInputAggregationOperator implements ProcessOperator {
 
@@ -57,26 +55,30 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
   // using for building result tsBlock
   protected final TsBlockBuilder resultTsBlockBuilder;
 
+  protected final long maxRetainedSize;
+  protected final long maxReturnSize;
+
   public SingleInputAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
       Operator child,
       boolean ascending,
-      GroupByTimeParameter groupByTimeParameter,
-      boolean outputPartialTimeWindow) {
+      ITimeRangeIterator timeRangeIterator,
+      long maxReturnSize) {
     this.operatorContext = operatorContext;
     this.ascending = ascending;
     this.child = child;
     this.aggregators = aggregators;
-
-    this.timeRangeIterator =
-        initTimeRangeIterator(groupByTimeParameter, ascending, outputPartialTimeWindow);
+    this.timeRangeIterator = timeRangeIterator;
 
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
+
+    this.maxRetainedSize = child.calculateMaxReturnSize();
+    this.maxReturnSize = maxReturnSize;
   }
 
   @Override
@@ -101,7 +103,6 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     long start = System.nanoTime();
 
     // reset operator state
-    resultTsBlockBuilder.reset();
     canCallNext = true;
 
     while (System.nanoTime() - start < maxRuntime
@@ -124,7 +125,9 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     }
 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
-      return resultTsBlockBuilder.build();
+      TsBlock resultTsBlock = resultTsBlockBuilder.build();
+      resultTsBlockBuilder.reset();
+      return resultTsBlock;
     } else {
       return null;
     }
@@ -145,5 +148,20 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
   protected void updateResultTsBlock() {
     curTimeRange = null;
     appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return maxReturnSize + maxRetainedSize + child.calculateRetainedSizeAfterCallingNext();
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return maxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return maxRetainedSize + child.calculateRetainedSizeAfterCallingNext();
   }
 }

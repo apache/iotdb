@@ -54,8 +54,8 @@ public class TsFileManager {
 
   private String writeLockHolder;
   // time partition -> double linked list of tsfiles
-  private Map<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
-  private Map<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
+  private TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
+  private TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
 
   private List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
   private List<TsFileResource> unsequenceRecoverTsFileResources = new ArrayList<>();
@@ -430,5 +430,15 @@ public class TsFileManager {
 
   public long getNextCompactionTaskId() {
     return currentCompactionTaskSerialId.getAndIncrement();
+  }
+
+  public boolean hasNextTimePartition(long timePartition, boolean sequence) {
+    try {
+      return sequence
+          ? sequenceFiles.higherKey(timePartition) != null
+          : unsequenceFiles.higherKey(timePartition) != null;
+    } catch (NullPointerException e) {
+      return false;
+    }
   }
 }

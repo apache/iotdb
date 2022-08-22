@@ -28,21 +28,26 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.TreeMap;
 
 /** Create regions for specific StorageGroups */
 public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
   // Map<StorageGroupName, List<TRegionReplicaSet>>
-  private final Map<String, List<TRegionReplicaSet>> regionGroupMap;
+  protected final Map<String, List<TRegionReplicaSet>> regionGroupMap;
 
   public CreateRegionGroupsPlan() {
     super(ConfigPhysicalPlanType.CreateRegionGroups);
-    this.regionGroupMap = new TreeMap<>();
+    this.regionGroupMap = new HashMap<>();
+  }
+
+  public CreateRegionGroupsPlan(ConfigPhysicalPlanType type) {
+    super(type);
+    this.regionGroupMap = new HashMap<>();
   }
 
   public Map<String, List<TRegionReplicaSet>> getRegionGroupMap() {

@@ -40,7 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
@@ -143,8 +143,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateRegionGroups:
           req = new CreateRegionGroupsPlan();
           break;
-        case DeleteRegions:
-          req = new DeleteRegionsPlan();
+        case DeleteRegionGroups:
+          req = new DeleteRegionGroupsPlan();
           break;
         case GetSchemaPartition:
           req = new GetSchemaPartitionPlan();

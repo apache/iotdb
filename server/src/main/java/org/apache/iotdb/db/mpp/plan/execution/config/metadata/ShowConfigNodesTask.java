@@ -21,18 +21,24 @@ package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ShowConfigNodesTask implements IConfigTask {
 
@@ -52,8 +58,11 @@ public class ShowConfigNodesTask implements IConfigTask {
 
   public static void buildTSBlock(
       TShowConfigNodesResp showConfigNodesResp, SettableFuture<ConfigTaskResult> future) {
-    TsBlockBuilder builder =
-        new TsBlockBuilder(HeaderConstant.showConfigNodesHeader.getRespDataTypes());
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showConfigNodesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     if (showConfigNodesResp.getConfigNodesInfoList() != null) {
       for (TConfigNodeInfo configNodeInfo : showConfigNodesResp.getConfigNodesInfoList()) {
         builder.getTimeColumnBuilder().writeLong(0L);
@@ -66,7 +75,7 @@ public class ShowConfigNodesTask implements IConfigTask {
         builder.declarePosition();
       }
     }
-    DatasetHeader datasetHeader = HeaderConstant.showConfigNodesHeader;
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowConfigNodesHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

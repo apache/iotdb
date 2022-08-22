@@ -39,5 +39,8 @@
   <allow pkg="org\.apache\.commons\.lang3.*" regex="true"/>
   <allow pkg="org\.apache\.thrift.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.commons\.client\.sync.*" regex="true"/>
-
+  <allow pkg="org\.apache\.iotdb\.commons\.auth\.entity.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.commons\.conf.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.db\.qp\.logical\.sys.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.db\.mpp\.common\.header.*" regex="true" />
 </import-control>

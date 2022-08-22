@@ -518,7 +518,7 @@ public class RatisConfig {
       private int queueElementLimit = 4096;
       private SizeInBytes queueByteLimit = SizeInBytes.valueOf("64MB");
       private int purgeGap = 1024;
-      private boolean purgeUptoSnapshotIndex = false;
+      private boolean purgeUptoSnapshotIndex = true;
       private SizeInBytes segmentSizeMax = SizeInBytes.valueOf("24MB");
       private int segmentCacheNumMax = 2;
       private SizeInBytes segmentCacheSizeMax = SizeInBytes.valueOf("200MB");

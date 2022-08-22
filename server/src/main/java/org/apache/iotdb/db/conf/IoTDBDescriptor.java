@@ -36,7 +36,7 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -200,12 +200,6 @@ public class IoTDBDescriptor {
                   "buffered_arrays_memory_proportion",
                   Double.toString(conf.getBufferedArraysMemoryProportion()))));
 
-      conf.setTimeIndexMemoryProportion(
-          Double.parseDouble(
-              properties.getProperty(
-                  "time_index_memory_proportion",
-                  Double.toString(conf.getTimeIndexMemoryProportion()))));
-
       conf.setFlushProportion(
           Double.parseDouble(
               properties.getProperty(
@@ -251,8 +245,6 @@ public class IoTDBDescriptor {
       conf.setTracingDir(properties.getProperty("tracing_dir", conf.getTracingDir()));
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
-
-      conf.setSyncDir(properties.getProperty("sync_dir", conf.getSyncDir()));
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
@@ -419,11 +411,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "session_timeout_threshold",
                   Integer.toString(conf.getSessionTimeoutThreshold()))));
-      conf.setPipeServerPort(
-          Integer.parseInt(
-              properties
-                  .getProperty("pipe_server_port", Integer.toString(conf.getPipeServerPort()))
-                  .trim()));
       conf.setMaxNumberOfSyncFileRetry(
           Integer.parseInt(
               properties
@@ -671,6 +658,12 @@ public class IoTDBDescriptor {
           properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
       conf.setKerberosPrincipal(
           properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
+
+      conf.setAllowReadOnlyWhenErrorsOccur(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "allow_read_only_when_errors_occur",
+                  String.valueOf(conf.isAllowReadOnlyWhenErrorsOccur()))));
 
       // the num of memtables in each storage group
       conf.setConcurrentWritingTimePartition(
@@ -1075,6 +1068,15 @@ public class IoTDBDescriptor {
     if (deleteWalFilesPeriod > 0) {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
+
+    long throttleDownThresholdInByte =
+        Long.parseLong(
+            properties.getProperty(
+                "multi_leader_throttle_threshold_in_byte",
+                Long.toString(conf.getThrottleThreshold())));
+    if (throttleDownThresholdInByte > 0) {
+      conf.setThrottleThreshold(throttleDownThresholdInByte);
+    }
   }
 
   private void loadAutoCreateSchemaProps(Properties properties) {
@@ -1215,6 +1217,16 @@ public class IoTDBDescriptor {
                     "max_tsblock_size_in_bytes",
                     Integer.toString(
                         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes()))));
+
+    // min(default_size, maxBytesForQuery)
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setMaxTsBlockSizeInBytes(
+            (int)
+                Math.min(
+                    TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+                    conf.getMaxBytesPerQuery()));
+
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxTsBlockLineNumber(
@@ -1325,11 +1337,12 @@ public class IoTDBDescriptor {
         conf.reloadDataDirs(dataDirs.split(","));
       }
 
-      // update dir strategy
+      // update dir strategy, must update after data dirs
       String multiDirStrategyClassName = properties.getProperty("multi_dir_strategy", null);
       if (multiDirStrategyClassName != null
           && !multiDirStrategyClassName.equals(conf.getMultiDirStrategyClassName())) {
         conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
+        conf.confirmMultiDirStrategy();
         DirectoryManager.getInstance().updateDirectoryStrategy();
       }
 
@@ -1403,10 +1416,6 @@ public class IoTDBDescriptor {
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
       // update sync config
-      conf.setPipeServerPort(
-          Integer.parseInt(
-              properties.getProperty(
-                  "pipe_server_port", String.valueOf(conf.getPipeServerPort()))));
       conf.setMaxNumberOfSyncFileRetry(
           Integer.parseInt(
               properties
@@ -1415,6 +1424,13 @@ public class IoTDBDescriptor {
                       Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
                   .trim()));
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
+
+      // update enable query memory estimation for memory control
+      conf.setEnableQueryMemoryEstimation(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_query_memory_estimation",
+                  Boolean.toString(conf.isEnableQueryMemoryEstimation()))));
 
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
@@ -1444,8 +1460,8 @@ public class IoTDBDescriptor {
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
-    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProperties();
-    MetricsService.getInstance().reloadProperties(reloadLevel);
+    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps();
+    MetricService.getInstance().reloadProperties(reloadLevel);
   }
 
   private void initMemoryAllocate(Properties properties) {
@@ -1480,9 +1496,11 @@ public class IoTDBDescriptor {
                 "max_deduplicated_path_num",
                 Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
 
-    if (!conf.isMetaDataCacheEnable()) {
-      return;
-    }
+    conf.setEnableQueryMemoryEstimation(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_query_memory_estimation",
+                Boolean.toString(conf.isEnableQueryMemoryEstimation()))));
 
     String queryMemoryAllocateProportion =
         properties.getProperty("chunk_timeseriesmeta_free_memory_proportion");
@@ -1501,8 +1519,14 @@ public class IoTDBDescriptor {
               maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
           conf.setAllocateMemoryForTimeSeriesMetaDataCache(
               maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
-          conf.setAllocateMemoryForReadWithoutCache(
+          conf.setAllocateMemoryForCoordinator(
               maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
+          conf.setAllocateMemoryForOperators(
+              maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
+          conf.setAllocateMemoryForDataExchange(
+              maxMemoryAvailable * Integer.parseInt(proportions[5].trim()) / proportionSum);
+          conf.setAllocateMemoryForTimeIndex(
+              maxMemoryAvailable * Integer.parseInt(proportions[6].trim()) / proportionSum);
         } catch (Exception e) {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
@@ -1510,6 +1534,22 @@ public class IoTDBDescriptor {
                   + queryMemoryAllocateProportion);
         }
       }
+    }
+
+    // metadata cache is disabled, we need to move all their allocated memory to other parts
+    if (!conf.isMetaDataCacheEnable()) {
+      long sum =
+          conf.getAllocateMemoryForBloomFilterCache()
+              + conf.getAllocateMemoryForChunkCache()
+              + conf.getAllocateMemoryForTimeSeriesMetaDataCache();
+      conf.setAllocateMemoryForBloomFilterCache(0);
+      conf.setAllocateMemoryForChunkCache(0);
+      conf.setAllocateMemoryForTimeSeriesMetaDataCache(0);
+      long partForDataExchange = sum / 2;
+      long partForOperators = sum - partForDataExchange;
+      conf.setAllocateMemoryForDataExchange(
+          conf.getAllocateMemoryForDataExchange() + partForDataExchange);
+      conf.setAllocateMemoryForOperators(conf.getAllocateMemoryForOperators() + partForOperators);
     }
   }
 
@@ -1769,6 +1809,7 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
+    conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
   private static class IoTDBDescriptorHolder {

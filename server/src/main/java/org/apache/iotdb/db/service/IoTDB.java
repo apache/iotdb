@@ -47,9 +47,8 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.sync.receiver.ReceiverService;
-import org.apache.iotdb.db.sync.sender.service.SenderService;
+import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.wal.WALManager;
 
 import org.slf4j.Logger;
@@ -68,7 +67,6 @@ public class IoTDB implements IoTDBMBean {
   public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
   public static LocalConfigNode configManager = LocalConfigNode.getInstance();
   public static ServiceProvider serviceProvider;
-  private static boolean clusterMode = false;
 
   public static IoTDB getInstance() {
     return IoTDBHolder.INSTANCE;
@@ -95,11 +93,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public static void setClusterMode() {
-    IoTDB.clusterMode = true;
-  }
-
-  public static boolean isClusterMode() {
-    return IoTDB.clusterMode;
+    config.setClusterMode(true);
   }
 
   public void active() {
@@ -142,7 +136,7 @@ public class IoTDB implements IoTDBMBean {
     setUncaughtExceptionHandler();
     initServiceProvider();
 
-    registerManager.register(MetricsService.getInstance());
+    registerManager.register(MetricService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
     registerManager.register(new JMXService());
@@ -150,7 +144,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
-    registerManager.register(SenderService.getInstance());
+    registerManager.register(SyncService.getInstance());
     registerManager.register(WALManager.getInstance());
 
     registerManager.register(StorageEngine.getInstance());
@@ -165,7 +159,6 @@ public class IoTDB implements IoTDBMBean {
                 + File.separator
                 + "udf"
                 + File.separator));
-    registerManager.register(ReceiverService.getInstance());
 
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
@@ -175,7 +168,7 @@ public class IoTDB implements IoTDBMBean {
     initProtocols();
     // in cluster mode, InfluxDBMManager has been initialized, so there is no need to init again to
     // avoid wasting time.
-    if (!isClusterMode()
+    if (!config.isClusterMode()
         && IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
       initInfluxDBMManager();
     }
@@ -199,8 +192,9 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(ContinuousQueryService.getInstance());
 
     // start reporter
-    MetricsService.getInstance().startAllReporter();
+    MetricService.getInstance().startAllReporter();
 
+    logger.info("IoTDB configuration: " + config.getConfigMessage());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
 
@@ -209,7 +203,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   private void initServiceProvider() throws QueryProcessException {
-    if (!clusterMode) {
+    if (!config.isClusterMode()) {
       serviceProvider = new StandaloneServiceProvider();
     }
   }

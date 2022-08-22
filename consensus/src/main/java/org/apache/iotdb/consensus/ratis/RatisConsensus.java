@@ -250,7 +250,7 @@ class RatisConsensus implements IConsensus {
    * register self to the RaftGroup
    */
   @Override
-  public ConsensusGenericResponse addConsensusGroup(ConsensusGroupId groupId, List<Peer> peers) {
+  public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
     RaftGroup group = buildRaftGroup(groupId, peers);
     // pre-conditions: myself in this new group
     if (!group.getPeers().contains(myself)) {
@@ -285,7 +285,7 @@ class RatisConsensus implements IConsensus {
    * clean up
    */
   @Override
-  public ConsensusGenericResponse removeConsensusGroup(ConsensusGroupId groupId) {
+  public ConsensusGenericResponse deletePeer(ConsensusGroupId groupId) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     RaftGroup raftGroup = getGroupInfo(raftGroupId);
 

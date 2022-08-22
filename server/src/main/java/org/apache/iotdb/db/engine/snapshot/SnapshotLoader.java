@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.snapshot;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -24,6 +25,7 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -31,17 +33,21 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 public class SnapshotLoader {
   private Logger LOGGER = LoggerFactory.getLogger(SnapshotLoader.class);
   private String storageGroupName;
   private String snapshotPath;
   private String dataRegionId;
+  private SnapshotLogAnalyzer logAnalyzer;
 
   public SnapshotLoader(String snapshotPath, String storageGroupName, String dataRegionId) {
     this.snapshotPath = snapshotPath;
@@ -66,6 +72,25 @@ public class SnapshotLoader {
     }
   }
 
+  private File getSnapshotLogFile() {
+    File sourceDataDir = new File(snapshotPath);
+
+    if (sourceDataDir.exists()) {
+      File[] files =
+          sourceDataDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
+      if (files == null || files.length == 0) {
+        LOGGER.warn("Failed to find snapshot log file, cannot recover it");
+      } else if (files.length > 1) {
+        LOGGER.warn(
+            "Found more than one snapshot log file, cannot recover it. {}", Arrays.toString(files));
+      } else {
+        LOGGER.info("Reading snapshot log file {}", files[0]);
+        return files[0];
+      }
+    }
+    return null;
+  }
+
   /**
    * 1. Clear origin data 2. Move snapshot data to data dir 3. Load data region
    *
@@ -77,27 +102,49 @@ public class SnapshotLoader {
         storageGroupName,
         dataRegionId,
         snapshotPath);
+
+    File snapshotLogFile = getSnapshotLogFile();
+
+    if (snapshotLogFile == null) {
+      return loadSnapshotWithoutLog();
+    } else {
+      return loadSnapshotWithLog(snapshotLogFile);
+    }
+  }
+
+  private DataRegion loadSnapshotWithoutLog() {
     try {
-      deleteAllFilesInDataDirs();
-      LOGGER.info("Remove all data files in original data dir");
-    } catch (IOException e) {
+      LOGGER.info("Moving snapshot file to data dirs");
+      createLinksFromSnapshotDirToDataDirWithoutLog(new File(snapshotPath));
+      return loadSnapshot();
+    } catch (IOException | DiskSpaceInsufficientException e) {
+      LOGGER.error(
+          "Exception occurs when loading snapshot for {}-{}", storageGroupName, dataRegionId, e);
+      return null;
+    }
+  }
+
+  private DataRegion loadSnapshotWithLog(File logFile) {
+    try {
+      logAnalyzer = new SnapshotLogAnalyzer(logFile);
+    } catch (Exception e) {
+      LOGGER.error("Exception occurs when reading snapshot file", e);
       return null;
     }
 
-    // move the snapshot data to data dir
-    File sourceDataDir = new File(snapshotPath);
-    if (sourceDataDir.exists()) {
+    try {
       try {
-        createLinksFromSnapshotDirToDataDir(sourceDataDir);
-        LOGGER.info("Move data files from snapshot to data directory");
-      } catch (IOException | DiskSpaceInsufficientException e) {
-        LOGGER.error(
-            "Exception occurs when creating links from snapshot directory to data directory", e);
+        deleteAllFilesInDataDirs();
+        LOGGER.info("Remove all data files in original data dir");
+      } catch (IOException e) {
         return null;
       }
-    }
 
-    return loadSnapshot();
+      createLinksFromSnapshotDirToDataDirWithLog();
+      return loadSnapshot();
+    } finally {
+      logAnalyzer.close();
+    }
   }
 
   private void deleteAllFilesInDataDirs() throws IOException {
@@ -154,7 +201,7 @@ public class SnapshotLoader {
     }
   }
 
-  private void createLinksFromSnapshotDirToDataDir(File sourceDir)
+  private void createLinksFromSnapshotDirToDataDirWithoutLog(File sourceDir)
       throws IOException, DiskSpaceInsufficientException {
     File seqFileDir = new File(sourceDir, "sequence" + File.separator + storageGroupName);
     File unseqFileDir = new File(sourceDir, "unsequence" + File.separator + storageGroupName);
@@ -202,7 +249,13 @@ public class SnapshotLoader {
                   throw new IOException(
                       String.format("Failed to create dir %s", targetFile.getParent()));
                 }
-                Files.createLink(targetFile.toPath(), file.toPath());
+                try {
+                  Files.createLink(targetFile.toPath(), file.toPath());
+                } catch (FileSystemException e) {
+                  // cannot create link between two directories in different fs
+                  // copy it
+                  Files.copy(file.toPath(), targetFile.toPath());
+                }
               }
             }
           }
@@ -247,12 +300,71 @@ public class SnapshotLoader {
                   throw new IOException(
                       String.format("Failed to create dir %s", targetFile.getParent()));
                 }
-                Files.createLink(targetFile.toPath(), file.toPath());
+                try {
+                  Files.createLink(targetFile.toPath(), file.toPath());
+                } catch (FileSystemException e) {
+                  Files.copy(file.toPath(), targetFile.toPath());
+                }
               }
             }
           }
         }
       }
     }
+  }
+
+  private void createLinksFromSnapshotDirToDataDirWithLog() {
+    while (logAnalyzer.hasNext()) {
+      Pair<String, String> filesPath = logAnalyzer.getNextPairs();
+      File sourceFile = new File(filesPath.left);
+      File linkedFile = new File(filesPath.right);
+      if (!linkedFile.exists()) {
+        LOGGER.warn("Snapshot file {} does not exist, skip it", linkedFile);
+        continue;
+      }
+      if (!sourceFile.getParentFile().exists() && !sourceFile.getParentFile().mkdirs()) {
+        LOGGER.error("Failed to create folder {}", sourceFile.getParentFile());
+        continue;
+      }
+      try {
+        Files.createLink(sourceFile.toPath(), linkedFile.toPath());
+      } catch (IOException e) {
+        LOGGER.error("Failed to create link from {} to {}", linkedFile, sourceFile, e);
+      }
+    }
+  }
+
+  public List<File> getSnapshotFileInfo() throws IOException {
+    File snapshotLogFile = getSnapshotLogFile();
+
+    if (snapshotLogFile == null) {
+      return getSnapshotFileWithoutLog();
+    } else {
+      return getSnapshotFileWithLog(snapshotLogFile);
+    }
+  }
+
+  private List<File> getSnapshotFileWithLog(File logFile) throws IOException {
+    SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(logFile);
+    try {
+
+      List<File> fileList = new LinkedList<>();
+
+      while (analyzer.hasNext()) {
+        fileList.add(new File(analyzer.getNextPairs().right));
+      }
+
+      return fileList;
+    } finally {
+      analyzer.close();
+    }
+  }
+
+  private List<File> getSnapshotFileWithoutLog() {
+    return new LinkedList<>(
+        Arrays.asList(
+            Objects.requireNonNull(
+                new File(snapshotPath)
+                    .listFiles((dir, name) -> SnapshotFileSet.isDataFile(new File(dir, name))))));
   }
 }

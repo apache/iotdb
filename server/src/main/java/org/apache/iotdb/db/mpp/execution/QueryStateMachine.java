@@ -92,6 +92,10 @@ public class QueryStateMachine {
     return queryState.get();
   }
 
+  public void transitionToQueued() {
+    queryState.set(QueryState.QUEUED);
+  }
+
   public void transitionToPlanned() {
     queryState.set(QueryState.PLANNED);
   }
@@ -100,12 +104,12 @@ public class QueryStateMachine {
     queryState.set(QueryState.DISPATCHING);
   }
 
-  public void transitionToRetrying(TSStatus failureStatus) {
+  public void transitionToPendingRetry(TSStatus failureStatus) {
     if (queryState.get().isDone()) {
       return;
     }
     this.failureStatus = failureStatus;
-    queryState.set(QueryState.RETRYING);
+    queryState.set(QueryState.PENDING_RETRY);
   }
 
   public void transitionToRunning() {

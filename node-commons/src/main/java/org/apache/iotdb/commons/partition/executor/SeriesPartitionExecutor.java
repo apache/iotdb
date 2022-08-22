@@ -26,6 +26,10 @@ import java.lang.reflect.InvocationTargetException;
 /** All SeriesPartitionExecutors must be subclasses of SeriesPartitionExecutor */
 public abstract class SeriesPartitionExecutor {
 
+  // The params, executorName and seriesPartitionSlotNum, are global unique during system running.
+  // Therefore, one executor instance is enough for usage.
+  protected static SeriesPartitionExecutor EXECUTOR;
+
   protected final int seriesPartitionSlotNum;
 
   public SeriesPartitionExecutor(int seriesPartitionSlotNum) {
@@ -36,17 +40,28 @@ public abstract class SeriesPartitionExecutor {
 
   public static SeriesPartitionExecutor getSeriesPartitionExecutor(
       String executorName, int seriesPartitionSlotNum) {
-    try {
-      Class<?> executor = Class.forName(executorName);
-      Constructor<?> executorConstructor = executor.getConstructor(int.class);
-      return (SeriesPartitionExecutor) executorConstructor.newInstance(seriesPartitionSlotNum);
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      throw new IllegalArgumentException(
-          String.format("Couldn't Constructor SeriesPartitionExecutor class: %s", executorName));
+    if (EXECUTOR == null) {
+      initStaticSeriesPartitionExecutor(executorName, seriesPartitionSlotNum);
+    }
+    return EXECUTOR;
+  }
+
+  private static synchronized void initStaticSeriesPartitionExecutor(
+      String executorName, int seriesPartitionSlotNum) {
+    if (EXECUTOR == null) {
+      try {
+        Class<?> executor = Class.forName(executorName);
+        Constructor<?> executorConstructor = executor.getConstructor(int.class);
+        EXECUTOR =
+            (SeriesPartitionExecutor) executorConstructor.newInstance(seriesPartitionSlotNum);
+      } catch (ClassNotFoundException
+          | NoSuchMethodException
+          | InstantiationException
+          | IllegalAccessException
+          | InvocationTargetException e) {
+        throw new IllegalArgumentException(
+            String.format("Couldn't Constructor SeriesPartitionExecutor class: %s", executorName));
+      }
     }
   }
 }

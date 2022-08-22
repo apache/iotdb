@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -33,10 +32,9 @@ import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -68,6 +66,9 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_REGISTER;
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_TAG_TOTAL;
+
 /**
  * The NodeInfo stores cluster node information. The cluster node information including: 1. DataNode
  * information 2. ConfigNode information
@@ -87,7 +88,7 @@ public class NodeInfo implements SnapshotProcessor {
 
   // Registered DataNodes
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
-  private final AtomicInteger nextNodeId = new AtomicInteger(0);
+  private final AtomicInteger nextNodeId = new AtomicInteger(-1);
   private final ConcurrentNavigableMap<Integer, TDataNodeConfiguration> registeredDataNodes =
       new ConcurrentSkipListMap<>();
 
@@ -103,30 +104,26 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   public void addMetrics() {
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.CONFIG_NODE.toString(),
-              MetricLevel.CORE,
-              registeredConfigNodes,
-              o -> getRegisteredConfigNodeCount(),
-              Tag.NAME.toString(),
-              "total",
-              Tag.STATUS.toString(),
-              NodeStatus.Registered.toString());
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.DATA_NODE.toString(),
-              MetricLevel.CORE,
-              registeredDataNodes,
-              Map::size,
-              Tag.NAME.toString(),
-              "total",
-              Tag.STATUS.toString(),
-              NodeStatus.Registered.toString());
-    }
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.CONFIG_NODE.toString(),
+            MetricLevel.CORE,
+            registeredConfigNodes,
+            o -> getRegisteredConfigNodeCount(),
+            Tag.NAME.toString(),
+            METRIC_TAG_TOTAL,
+            Tag.STATUS.toString(),
+            METRIC_STATUS_REGISTER);
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.DATA_NODE.toString(),
+            MetricLevel.CORE,
+            registeredDataNodes,
+            Map::size,
+            Tag.NAME.toString(),
+            METRIC_TAG_TOTAL,
+            Tag.STATUS.toString(),
+            METRIC_STATUS_REGISTER);
   }
 
   /**
@@ -297,22 +294,12 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /**
-   * Return the specific registered DataNode
-   *
-   * @param dataNodeId Specific DataNodeId
-   * @return All registered DataNodes if dataNodeId equals -1. And return the specific DataNode
-   *     otherwise.
-   */
-  public List<TDataNodeConfiguration> getRegisteredDataNodes(int dataNodeId) {
+  /** Return All registered DataNodes */
+  public List<TDataNodeConfiguration> getRegisteredDataNodes() {
     List<TDataNodeConfiguration> result;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
-      if (dataNodeId == -1) {
-        result = new ArrayList<>(registeredDataNodes.values());
-      } else {
-        result = Collections.singletonList(registeredDataNodes.get(dataNodeId));
-      }
+      result = new ArrayList<>(registeredDataNodes.values());
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
     }
@@ -396,7 +383,7 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   public int generateNextNodeId() {
-    return nextNodeId.getAndIncrement();
+    return nextNodeId.incrementAndGet();
   }
 
   @Override
@@ -559,7 +546,7 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   public void clear() {
-    nextNodeId.set(0);
+    nextNodeId.set(-1);
     registeredDataNodes.clear();
     drainingDataNodes.clear();
     registeredConfigNodes.clear();

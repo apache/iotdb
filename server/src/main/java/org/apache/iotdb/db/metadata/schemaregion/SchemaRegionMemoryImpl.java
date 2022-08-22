@@ -52,10 +52,12 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
-import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
+import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.MeasurementSchemaInfo;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -76,7 +78,6 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -85,6 +86,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -104,6 +106,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -165,7 +168,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private boolean usingMLog = true;
   private MLogWriter logWriter;
 
-  private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
+  private SchemaStatisticsManager schemaStatisticsManager = SchemaStatisticsManager.getInstance();
   private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
 
   private final IStorageGroupMNode storageGroupMNode;
@@ -451,7 +454,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // collect all the LeafMNode in this schema region
     List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
 
-    timeseriesStatistics.deleteTimeseries(leafMNodes.size());
+    schemaStatisticsManager.deleteTimeseries(leafMNodes.size());
 
     // drop triggers with no exceptions
     TriggerEngine.drop(leafMNodes);
@@ -598,7 +601,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       mNodeCache.invalidate(path.getDevicePath());
 
       // update statistics and schemaDataTypeNumMap
-      timeseriesStatistics.addTimeseries(1);
+      schemaStatisticsManager.addTimeseries(1);
 
       // update tag index
       if (offset != -1 && isRecovering) {
@@ -715,7 +718,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       mNodeCache.invalidate(prefixPath);
 
       // update statistics and schemaDataTypeNumMap
-      timeseriesStatistics.addTimeseries(plan.getMeasurements().size());
+      schemaStatisticsManager.addTimeseries(plan.getMeasurements().size());
 
       List<Long> tagOffsets = plan.getTagOffsets();
       for (int i = 0; i < measurements.size(); i++) {
@@ -857,7 +860,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     mNodeCache.invalidate(node.getPartialPath());
 
-    timeseriesStatistics.deleteTimeseries(1);
+    schemaStatisticsManager.deleteTimeseries(1);
     return storageGroupPath;
   }
   // endregion
@@ -1599,7 +1602,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           measurementList[i] = measurementMNode.getName();
         }
       } catch (MetadataException e) {
-        if (IoTDB.isClusterMode()) {
+        if (config.isClusterMode()) {
           logger.debug(
               "meet error when check {}.{}, message: {}",
               devicePath,
@@ -1742,6 +1745,52 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
     }
     createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
+  }
+
+  @Override
+  public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned)
+      throws MetadataException {
+    try {
+      List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>(measurements.length);
+      IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
+      IMeasurementMNode measurementMNode;
+      for (int i = 0; i < measurements.length; i++) {
+        measurementMNode = getMeasurementMNode(deviceMNode, measurements[i]);
+        if (measurementMNode == null) {
+          if (config.isAutoCreateSchemaEnabled()) {
+            if (aligned) {
+              internalAlignedCreateTimeseries(
+                  devicePath,
+                  Collections.singletonList(measurements[i]),
+                  Collections.singletonList(getDataType.apply(i)));
+
+            } else {
+              internalCreateTimeseries(
+                  devicePath.concatNode(measurements[i]), getDataType.apply(i));
+            }
+            // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
+            deviceMNode = mtree.getNodeByPath(devicePath);
+            measurementMNode = getMeasurementMNode(deviceMNode, measurements[i]);
+          } else {
+            throw new PathNotExistException(devicePath + PATH_SEPARATOR + measurements[i]);
+          }
+        }
+        measurementSchemaInfoList.add(
+            new MeasurementSchemaInfo(
+                measurementMNode.getName(),
+                (MeasurementSchema) measurementMNode.getSchema(),
+                measurementMNode.getAlias()));
+      }
+
+      return new DeviceSchemaInfo(
+          devicePath, deviceMNode.getAsEntityMNode().isAligned(), measurementSchemaInfoList);
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   // endregion

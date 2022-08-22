@@ -20,13 +20,16 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata.template;
 
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -36,6 +39,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class ShowSchemaTemplateTask implements IConfigTask {
 
@@ -53,17 +57,21 @@ public class ShowSchemaTemplateTask implements IConfigTask {
 
   public static void buildTSBlock(
       List<Template> templateList, SettableFuture<ConfigTaskResult> future) {
-    TsBlockBuilder builder =
-        new TsBlockBuilder(HeaderConstant.showSchemaTemplate.getRespDataTypes());
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showSchemaTemplateHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     Optional<List<Template>> optional = Optional.ofNullable(templateList);
-    optional.orElse(new ArrayList<>()).stream()
+    optional
+        .orElse(new ArrayList<>())
         .forEach(
             template -> {
               builder.getTimeColumnBuilder().writeLong(0L);
               builder.getColumnBuilder(0).writeBinary(new Binary(template.getName()));
               builder.declarePosition();
             });
-    DatasetHeader datasetHeader = HeaderConstant.showSchemaTemplate;
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowSchemaTemplateHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

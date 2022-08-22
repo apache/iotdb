@@ -102,7 +102,7 @@ struct TCountStorageGroupResp {
 
 struct TStorageGroupSchemaResp {
   1: required common.TSStatus status
-  // map<string, StorageGroupMessage>
+  // map<string, TStorageGroupSchema>
   2: optional map<string, TStorageGroupSchema> storageGroupSchemaMap
 }
 
@@ -119,13 +119,6 @@ struct TStorageGroupSchema {
 // Schema
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
-}
-
-// TODO: Replace this by TSchemaPartitionTableResp
-struct TSchemaPartitionResp {
-  1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
-  2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
 }
 
 struct TSchemaPartitionTableResp {
@@ -151,13 +144,6 @@ struct TSchemaNodeManagementResp {
 struct TDataPartitionReq {
   // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
   1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
-}
-
-// TODO: Replace this by TDataPartitionTableResp
-struct TDataPartitionResp {
-  1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
-  2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
 }
 
 struct TDataPartitionTableResp {
@@ -280,6 +266,23 @@ struct TShowConfigNodesResp {
   2: optional list<TConfigNodeInfo> configNodesInfoList
 }
 
+// Show storageGroup
+struct TStorageGroupInfo {
+  1: required string name
+  2: required i64 TTL
+  3: required i32 schemaReplicationFactor
+  4: required i32 dataReplicationFactor
+  5: required i64 timePartitionInterval
+  6: required i32 schemaRegionNum
+  7: required i32 dataRegionNum
+}
+
+struct TShowStorageGroupResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, TStorageGroupInfo>
+  2: optional map<string, TStorageGroupInfo> storageGroupInfoMap
+}
+
 // Show regions
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
@@ -295,6 +298,7 @@ struct TRegionInfo {
   6: required i64 seriesSlots
   7: required i64 timeSlots
   8: optional string status
+  9: optional string roleType
 }
 
 struct TShowRegionResp {
@@ -335,15 +339,6 @@ struct TSetSchemaTemplateReq {
 struct TGetPathsSetTemplatesResp {
   1: required common.TSStatus status
   2: optional list<string> pathList
-}
-
-// Maintenance Tools
-struct TMergeReq {
-  1: optional i32 dataNodeId
-}
-
-struct TClearCacheReq {
-   1: optional i32 dataNodeId
 }
 
 service IConfigNodeRPCService {
@@ -437,18 +432,12 @@ service IConfigNodeRPCService {
   // SchemaPartition
   // ======================================================
 
-  // TODO: Replace this by getSchemaPartitionTable
-  TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
-
   /**
    * Get SchemaPartitionTable by specific PathPatternTree,
    * the returned SchemaPartitionTable will not contain the unallocated SeriesPartitionSlots
    * See https://apache-iotdb.feishu.cn/docs/doccnqe3PLPEKwsCX1xadXQ2JOg for detailed matching rules
    */
   TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
-
-  // TODO: Replace this by getOrCreateSchemaPartitionTable
-  TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
 
   /**
    * Get or create SchemaPartitionTable by specific PathPatternTree,
@@ -471,17 +460,11 @@ service IConfigNodeRPCService {
   // DataPartition
   // ======================================================
 
-  // TODO: Replace this by getDataPartitionTable
-  TDataPartitionResp getDataPartition(TDataPartitionReq req)
-
   /**
    * Get DataPartitionTable by specific PartitionSlotsMap,
    * the returned DataPartitionTable will not contain the unallocated SeriesPartitionSlots and TimePartitionSlots
    */
   TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req)
-
-  // TODO: Replace this by getOrCreateDataPartitionTable
-  TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
   /**
    * Get or create DataPartitionTable by specific PartitionSlotsMap,
@@ -495,15 +478,45 @@ service IConfigNodeRPCService {
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
   // ======================================================
-  // Authorize TODO: @RYH61 add interface annotation
+  // Authorize
   // ======================================================
 
+  /**
+   * Execute permission write operations such as create user, create role, and grant permission.
+   * There is no need to update the cache information of the DataNode for creating users and roles
+   *
+   * @return SUCCESS_STATUS if the permission write operation is executed successfully
+   *         INVALIDATE_PERMISSION_CACHE_ERROR if the update cache of the permission information in the datanode fails
+   *         EXECUTE_PERMISSION_EXCEPTION_ERROR if the permission write operation fails, like the user doesn't exist
+   *         INTERNAL_SERVER_ERROR if the permission type does not exist
+   */
   common.TSStatus operatePermission(TAuthorizerReq req)
 
+  /**
+   * Execute permission read operations such as list user
+   *
+   * @return SUCCESS_STATUS if the permission read operation is executed successfully
+   *         ROLE_NOT_EXIST_ERROR if the role does not exist
+   *         USER_NOT_EXIST_ERROR if the user does not exist
+   *         INTERNAL_SERVER_ERROR if the permission type does not exist
+   */
   TAuthorizerResp queryPermission(TAuthorizerReq req)
 
+  /**
+   * Authenticate user login
+   *
+   * @return SUCCESS_STATUS if the user exists and the correct username and password are entered
+   *         WRONG_LOGIN_PASSWORD_ERROR if the user enters the wrong username or password
+   */
   TPermissionInfoResp login(TLoginReq req)
 
+  /**
+   * Permission checking for user operations
+   *
+   * @return SUCCESS_STATUS if the user has the permission
+   *         EXECUTE_PERMISSION_EXCEPTION_ERROR if the seriesPath or the privilege is illegal.
+   *         NO_PERMISSION_ERROR if the user does not have this permission
+   */
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
   // ======================================================
@@ -551,22 +564,40 @@ service IConfigNodeRPCService {
   i64 getConfigNodeHeartBeat(i64 timestamp)
 
   // ======================================================
-  // UDF TODO: @SteveYurongSu add interface annotation
+  // UDF
   // ======================================================
 
+  /**
+     * Create a function on all online ConfigNodes and DataNodes
+     *
+     * @return SUCCESS_STATUS if the function was created successfully
+     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     */
   common.TSStatus createFunction(TCreateFunctionReq req)
 
+  /**
+     * Remove a function on all online ConfigNodes and DataNodes
+     *
+     * @return SUCCESS_STATUS if the function was removed successfully
+     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     */
   common.TSStatus dropFunction(TDropFunctionReq req)
 
   // ======================================================
-  // Maintenance Tools TODO: @RYH61 add interface annotation
+  // Maintenance Tools
   // ======================================================
 
-  common.TSStatus merge(TMergeReq req)
+  /** Execute Level Compaction and unsequence Compaction task on all DataNodes */
+  common.TSStatus merge()
 
+  /** Persist all the data points in the memory table of the storage group to the disk, and seal the data file on all DataNodes */
   common.TSStatus flush(common.TFlushReq req)
 
-  common.TSStatus clearCache(TClearCacheReq req)
+  /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
+  common.TSStatus clearCache()
+
+  /** Load configuration on all DataNodes */
+  common.TSStatus loadConfiguration()
 
   // ======================================================
   // Cluster Tools
@@ -580,6 +611,9 @@ service IConfigNodeRPCService {
 
   /** Show cluster ConfigNodes' information */
   TShowConfigNodesResp showConfigNodes()
+
+  /** Show cluster StorageGroups' information */
+  TShowStorageGroupResp showStorageGroup(list<string> storageGroupPathPattern)
 
   /**
    * Show the matched cluster Regions' information
