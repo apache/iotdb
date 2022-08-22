@@ -69,10 +69,6 @@ public class PlanFragment {
     this.typeProvider = typeProvider;
   }
 
-  public void setId(PlanFragmentId id) {
-    this.id = id;
-  }
-
   public boolean isRoot() {
     return isRoot;
   }
