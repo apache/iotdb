@@ -16,41 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
+package org.apache.iotdb.db.mpp.plan.statement.sys;
+
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-public class StopPipeServerPlan extends PhysicalPlan {
+public class DropPipeStatement extends Statement implements IConfigStatement {
 
-  public StopPipeServerPlan() {
-    super(Operator.OperatorType.STOP_PIPE_SERVER);
-    canBeSplit = false;
+  private String pipeName;
+
+  public DropPipeStatement(StatementType dropPipeStatement) {
+    this.statementType = dropPipeStatement;
+  }
+
+  public String getPipeName() {
+    return pipeName;
+  }
+
+  public void setPipeName(String pipeName) {
+    this.pipeName = pipeName;
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public QueryType getQueryType() {
+    return QueryType.WRITE;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
-
-  @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.STOP_PIPE_SERVER.ordinal());
-  }
-
-  @Override
-  public void serializeImpl(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.STOP_PIPE_SERVER.ordinal());
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {}
 }

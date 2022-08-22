@@ -1398,4 +1398,94 @@ public class IoTDBAuthorizationIT {
       assertFalse(resultSet.next());
     }
   }
+
+  @Test
+  public void testCheckGrantRevokePrivileges() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection adminCon =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser 'temppw'");
+
+      adminStmt.execute("GRANT USER tempuser PRIVILEGES ALL on root.**");
+      adminStmt.execute("REVOKE USER tempuser PRIVILEGES ALL on root.**");
+      adminStmt.execute("GRANT USER tempuser PRIVILEGES ALL");
+      adminStmt.execute(
+          "GRANT USER tempuser PRIVILEGES INSERT_TIMESERIES, READ_TIMESERIES on root.ln.**");
+      adminStmt.execute(
+          "REVOKE USER tempuser PRIVILEGES INSERT_TIMESERIES, READ_TIMESERIES on root.ln.**");
+      boolean caught = false;
+      try {
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES ALL on root.ln.**");
+      } catch (Exception e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES ALL on root.ln.**");
+      } catch (Exception e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES INSERT_TIMESERIES, ALL on root.ln.**");
+      } catch (Exception e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES INSERT_TIMESERIES, ALL on root.ln.**");
+      } catch (Exception e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      adminStmt.execute("CREATE ROLE temprole");
+      adminStmt.execute("GRANT ROLE temprole PRIVILEGES ALL on root.**");
+      adminStmt.execute("REVOKE ROLE temprole PRIVILEGES ALL on root.**");
+      adminStmt.execute("GRANT ROLE temprole PRIVILEGES ALL");
+      adminStmt.execute(
+          "GRANT ROLE temprole PRIVILEGES INSERT_TIMESERIES, READ_TIMESERIES on root.ln.**");
+      adminStmt.execute(
+          "REVOKE ROLE temprole PRIVILEGES INSERT_TIMESERIES, READ_TIMESERIES on root.ln.**");
+      caught = false;
+      try {
+        adminStmt.execute("GRANT ROLE temprole PRIVILEGES ALL on root.ln.**");
+      } catch (Exception e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        adminStmt.execute("REVOKE ROLE temprole PRIVILEGES ALL on root.ln.**");
+      } catch (Exception e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        adminStmt.execute("GRANT ROLE temprole PRIVILEGES INSERT_TIMESERIES, ALL on root.ln.**");
+      } catch (Exception e) {
+        caught = true;
+      }
+      assertTrue(caught);
+
+      caught = false;
+      try {
+        adminStmt.execute("REVOKE ROLE temprole PRIVILEGES INSERT_TIMESERIES, ALL on root.ln.**");
+      } catch (Exception e) {
+        caught = true;
+      }
+      assertTrue(caught);
+    }
+  }
 }

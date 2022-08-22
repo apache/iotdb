@@ -15,20 +15,32 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.sync.transport.server;
 
-import org.apache.iotdb.commons.exception.StartupException;
+package org.apache.iotdb.db.mpp.statistics;
 
-public interface TransportServerManagerMBean {
-  String getRPCServiceStatus();
+import org.apache.iotdb.commons.path.PartialPath;
 
-  int getRPCPort();
+import com.google.common.collect.Maps;
 
-  void startService() throws StartupException;
+import java.util.Map;
 
-  void restartService() throws StartupException;
+public class StatisticsManager {
 
-  void stopService();
+  private final Map<PartialPath, TimeseriesStats> seriesToStatsMap = Maps.newConcurrentMap();
+
+  public long getMaxBinarySizeInBytes(PartialPath path) {
+    return 512 * Byte.BYTES;
+  }
+
+  public static StatisticsManager getInstance() {
+    return StatisticsManager.StatisticsManagerHelper.INSTANCE;
+  }
+
+  private static class StatisticsManagerHelper {
+
+    private static final StatisticsManager INSTANCE = new StatisticsManager();
+
+    private StatisticsManagerHelper() {}
+  }
 }

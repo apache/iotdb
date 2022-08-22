@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
@@ -61,7 +62,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -132,7 +132,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowNodesInTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPathsSetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPathsUsingTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
@@ -432,10 +431,6 @@ public class PlanExecutor implements IPlanExecutor {
       case DROP_PIPESINK:
         dropPipeSink((DropPipeSinkPlan) plan);
         return true;
-      case START_PIPE_SERVER:
-        return operateStartPipeServer();
-      case STOP_PIPE_SERVER:
-        return operateStopPipeServer();
       case CREATE_PIPE:
         createPipe((CreatePipePlan) plan);
         return true;
@@ -448,24 +443,6 @@ public class PlanExecutor implements IPlanExecutor {
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorName()));
     }
-  }
-
-  private boolean operateStopPipeServer() throws QueryProcessException {
-    try {
-      SyncService.getInstance().stopPipeServer();
-    } catch (PipeServerException e) {
-      throw new QueryProcessException(e);
-    }
-    return true;
-  }
-
-  private boolean operateStartPipeServer() throws QueryProcessException {
-    try {
-      SyncService.getInstance().startPipeServer(false);
-    } catch (PipeServerException e) {
-      throw new QueryProcessException(e);
-    }
-    return true;
   }
 
   private boolean createTemplate(CreateTemplatePlan createTemplatePlan)
@@ -600,7 +577,9 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateSetSystemMode(SetSystemModePlan plan) {
-    IoTDBDescriptor.getInstance().getConfig().setReadOnly(plan.isReadOnly());
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSystemStatus(plan.isReadOnly() ? SystemStatus.READ_ONLY : SystemStatus.NORMAL);
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
@@ -761,17 +740,11 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowPipeSink((ShowPipeSinkPlan) showPlan);
       case PIPESINKTYPE:
         return processShowPipeSinkType();
-      case PIPESERVER:
-        return processShowPipeServer((ShowPipeServerPlan) showPlan);
       case PIPE:
         return processShowPipes((ShowPipePlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
-  }
-
-  private QueryDataSet processShowPipeServer(ShowPipeServerPlan plan) {
-    return SyncService.getInstance().showPipeServer(plan);
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
@@ -1340,7 +1313,6 @@ public class PlanExecutor implements IPlanExecutor {
                 TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT));
-    SyncService.getInstance().showPipe(plan, listDataSet);
     SyncService.getInstance().showPipe(plan, listDataSet);
     // sort by create time
     listDataSet.sort(Comparator.comparing(o -> o.getFields().get(0).getStringValue()));

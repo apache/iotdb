@@ -51,7 +51,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -98,31 +97,18 @@ public class LoadManager {
   }
 
   /**
-   * Allocate and create Regions for each StorageGroup.
+   * Generate an optimal CreateRegionGroupsPlan
    *
    * @param allotmentMap Map<StorageGroupName, Region allotment>
-   * @param consensusGroupType TConsensusGroupType of Region to be allocated
+   * @param consensusGroupType TConsensusGroupType of RegionGroup to be allocated
+   * @return CreateRegionGroupsPlan
+   * @throws NotEnoughDataNodeException If there are not enough DataNodes
+   * @throws StorageGroupNotExistsException If some specific StorageGroups don't exist
    */
-  public void doRegionCreation(
+  public CreateRegionGroupsPlan allocateRegionGroups(
       Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, StorageGroupNotExistsException {
-    CreateRegionGroupsPlan createRegionGroupsPlan =
-        regionBalancer.genRegionsAllocationPlan(allotmentMap, consensusGroupType);
-
-    // TODO: Use procedure to protect the following process
-    // Create Regions on DataNodes
-    Map<String, Long> ttlMap = new HashMap<>();
-    for (String storageGroup : createRegionGroupsPlan.getRegionGroupMap().keySet()) {
-      ttlMap.put(
-          storageGroup,
-          getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL());
-    }
-    AsyncDataNodeClientPool.getInstance().createRegions(createRegionGroupsPlan, ttlMap);
-
-    // Persist the allocation result
-    getConsensusManager().write(createRegionGroupsPlan);
-    // Broadcast the latest RegionRouteMap
-    broadcastLatestRegionRouteMap();
+    return regionBalancer.genRegionsAllocationPlan(allotmentMap, consensusGroupType);
   }
 
   /**
@@ -229,7 +215,7 @@ public class LoadManager {
       isNeedBroadcast = true;
     }
 
-    if (RouteBalancer.leaderPolicy.equals(CONF.getRoutingPolicy())) {
+    if (RouteBalancer.LEADER_POLICY.equals(CONF.getRoutingPolicy())) {
       // Check the condition of leader routing policy
       if (existChangeLeaderSchemaRegionGroup.get()) {
         // Broadcast the RegionRouteMap if some SchemaRegionGroups change their leader

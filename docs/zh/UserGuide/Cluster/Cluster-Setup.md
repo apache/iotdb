@@ -176,6 +176,11 @@ Linux 移除方式：
 ./confignode/sbin/remove-confignode.sh -r <internal_address>:<internal_port>
 ```
 
+Windows 移除方式：
+```
+confignode\sbin\remove-confignode.bat -r <internal_address>:<internal_port>
+```
+
 ### 移除 DataNode
 
 需要在活跃的 DataNode 上执行 remove-datanode 脚本。

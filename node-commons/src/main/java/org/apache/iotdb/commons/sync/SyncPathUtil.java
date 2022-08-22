@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.sync;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.service.transport.thrift.IdentityInfo;
+import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 
 import java.io.File;
 import java.io.IOException;
@@ -105,12 +105,12 @@ public class SyncPathUtil {
         + SyncConstant.FILE_DATA_DIR_NAME;
   }
 
-  public static String getFileDataDirPath(IdentityInfo identityInfo) {
+  public static String getFileDataDirPath(TSyncIdentityInfo identityInfo) {
     return SyncPathUtil.getReceiverFileDataDir(
         identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
   }
 
-  public static String getPipeLogDirPath(IdentityInfo identityInfo) {
+  public static String getPipeLogDirPath(TSyncIdentityInfo identityInfo) {
     return SyncPathUtil.getReceiverPipeLogDir(
         identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
   }

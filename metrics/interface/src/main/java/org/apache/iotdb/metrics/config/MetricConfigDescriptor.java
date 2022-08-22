@@ -104,9 +104,23 @@ public class MetricConfigDescriptor {
   private String getPropsUrl() {
     // first, try to get conf folder of standalone iotdb or datanode
     String url = System.getProperty(MetricConstant.IOTDB_CONF, null);
+    if (url == null) {
+      // try to get conf folder from IOTDB_HOME
+      url = System.getProperty(MetricConstant.IOTDB_HOME, null);
+      if (url != null) {
+        url += File.separator + "conf";
+      }
+    }
     // second, try to get conf folder of datanode
     if (url == null) {
       url = System.getProperty(MetricConstant.CONFIGNODE_CONF, null);
+      if (url == null) {
+        // try to get conf folder from CONFIGNODE_HOME
+        url = System.getProperty(MetricConstant.CONFIGNODE_HOME, null);
+        if (url != null) {
+          url += File.separator + "conf";
+        }
+      }
     }
     // finally, return null when not find
     if (url == null) {

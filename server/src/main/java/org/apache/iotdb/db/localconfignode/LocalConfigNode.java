@@ -61,6 +61,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -976,8 +977,8 @@ public class LocalConfigNode {
         // use an empty dataPartitionMap to init DataPartition
         if (dataRegionId != null) {
           Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-              new HashMap<>();
-
+              deviceToRegionsMap.getOrDefault(
+                  executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
           timePartitionToRegionsMap.put(
               new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME),
               Collections.singletonList(
@@ -1030,7 +1031,8 @@ public class LocalConfigNode {
         DataRegionId dataRegionId =
             getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId));
         Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-            new HashMap<>();
+            deviceToRegionsMap.getOrDefault(
+                executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
         for (TTimePartitionSlot timePartitionSlot :
             dataPartitionQueryParam.getTimePartitionSlotList()) {
           // for each time partition
@@ -1312,6 +1314,15 @@ public class LocalConfigNode {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     BloomFilterCache.getInstance().clear();
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus executeLoadConfigurationOperation() {
+    try {
+      IoTDBDescriptor.getInstance().loadHotModifiedProps();
+    } catch (QueryProcessException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 }

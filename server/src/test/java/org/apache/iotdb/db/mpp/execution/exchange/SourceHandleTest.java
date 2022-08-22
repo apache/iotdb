@@ -237,14 +237,14 @@ public class SourceHandleTest {
                   req ->
                       remoteFragmentInstanceId.equals(req.getSourceFragmentInstanceId())
                           && 0 == req.getStartSequenceId()
-                          && 6 == req.getEndSequenceId()));
+                          && 5 == req.getEndSequenceId()));
       Mockito.verify(mockClient, Mockito.times(1))
           .onAcknowledgeDataBlockEvent(
               Mockito.argThat(
                   e ->
                       remoteFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && 0 == e.getStartSequenceId()
-                          && 6 == e.getEndSequenceId()));
+                          && 5 == e.getEndSequenceId()));
     } catch (InterruptedException | TException e) {
       e.printStackTrace();
       Assert.fail();
@@ -260,9 +260,11 @@ public class SourceHandleTest {
       sourceHandle.receive();
       try {
         Thread.sleep(100L);
-        if (i < 4) {
-          Assert.assertEquals(6 * mockTsBlockSize, sourceHandle.getBufferRetainedSizeInBytes());
-          final int startSequenceId = 6 + i;
+        if (i < 5) {
+          Assert.assertEquals(
+              i == 4 ? 5 * mockTsBlockSize : 6 * mockTsBlockSize,
+              sourceHandle.getBufferRetainedSizeInBytes());
+          final int startSequenceId = 5 + i;
           Mockito.verify(mockClient, Mockito.times(1))
               .getDataBlock(
                   Mockito.argThat(

@@ -16,23 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.mpp.exception;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.StartPipeServerPlan;
-import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.commons.exception.IoTDBException;
 
-public class StartPipeServerOperator extends Operator {
-  public StartPipeServerOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.START_PIPE_SERVER;
-  }
+public class MemoryNotEnoughException extends IoTDBException {
 
-  @Override
-  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    return new StartPipeServerPlan();
+  public MemoryNotEnoughException(String message, int errorCode) {
+    super(message, errorCode);
   }
 }

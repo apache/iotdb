@@ -176,13 +176,27 @@ public class WALRecoverManager {
     if (hasStarted) {
       logger.error("Cannot recover tsfile from wal because wal recovery has already started");
     } else {
-      absolutePath2RecoverPerformer.put(recoverPerformer.getTsFileAbsolutePath(), recoverPerformer);
+      try {
+        String canonicalPath = recoverPerformer.getTsFileResource().getTsFile().getCanonicalPath();
+        absolutePath2RecoverPerformer.put(canonicalPath, recoverPerformer);
+      } catch (IOException e) {
+        logger.error(
+            "Fail to add recover performer for file {}",
+            recoverPerformer.getTsFileAbsolutePath(),
+            e);
+      }
     }
     return recoverPerformer.getRecoverListener();
   }
 
-  UnsealedTsFileRecoverPerformer removeRecoverPerformer(String absolutePath) {
-    return absolutePath2RecoverPerformer.remove(absolutePath);
+  UnsealedTsFileRecoverPerformer removeRecoverPerformer(File file) {
+    try {
+      String canonicalPath = file.getCanonicalPath();
+      return absolutePath2RecoverPerformer.remove(canonicalPath);
+    } catch (IOException e) {
+      logger.error("Fail to remove recover performer for file {}", file, e);
+    }
+    return null;
   }
 
   public CountDownLatch getAllDataRegionScannedLatch() {

@@ -32,13 +32,18 @@ import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
+import java.io.UncheckedIOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class FileMetrics implements IMetricSet {
+  private static final Logger logger = LoggerFactory.getLogger(FileMetrics.class);
   private final String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
   private final String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
@@ -116,6 +121,8 @@ public class FileMetrics implements IMetricSet {
   }
 
   private void collect() {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
     walFileTotalSize = WALManager.getInstance().getTotalDiskUsage();
     sequenceFileTotalSize =
         Stream.of(dataDirs)
@@ -138,18 +145,30 @@ public class FileMetrics implements IMetricSet {
             .mapToLong(
                 dir -> {
                   File walFolder = new File(dir);
-                  File[] walNodeFolders = walFolder.listFiles(File::isDirectory);
-                  long result = 0L;
-                  if (null != walNodeFolders) {
-                    for (File walNodeFolder : walNodeFolders) {
-                      if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
-                        result +=
-                            org.apache.commons.io.FileUtils.listFiles(walNodeFolder, null, true)
-                                .size();
+                  if (walFolder.exists()) {
+                    File[] walNodeFolders = walFolder.listFiles(File::isDirectory);
+                    long result = 0L;
+                    if (null != walNodeFolders) {
+                      for (File walNodeFolder : walNodeFolders) {
+                        if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
+                          try {
+                            result +=
+                                org.apache.commons.io.FileUtils.listFiles(walFolder, null, true)
+                                    .size();
+                          } catch (UncheckedIOException exception) {
+                            // do nothing
+                            logger.debug(
+                                "Failed when count wal folder {}: ",
+                                walNodeFolder.getName(),
+                                exception);
+                          }
+                        }
                       }
                     }
+                    return result;
+                  } else {
+                    return 0L;
                   }
-                  return result;
                 })
             .sum();
     sequenceFileTotalCount =
@@ -159,12 +178,16 @@ public class FileMetrics implements IMetricSet {
                   dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
                   File folder = new File(dir);
                   if (folder.exists()) {
-                    return org.apache.commons.io.FileUtils.listFiles(
-                            new File(dir), new String[] {"tsfile"}, true)
-                        .size();
-                  } else {
-                    return 0L;
+                    try {
+                      return org.apache.commons.io.FileUtils.listFiles(
+                              new File(dir), new String[] {"tsfile"}, true)
+                          .size();
+                    } catch (UncheckedIOException exception) {
+                      // do nothing
+                      logger.debug("Failed when count sequence tsfile: ", exception);
+                    }
                   }
+                  return 0L;
                 })
             .sum();
     unsequenceFileTotalCount =
@@ -174,12 +197,16 @@ public class FileMetrics implements IMetricSet {
                   dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
                   File folder = new File(dir);
                   if (folder.exists()) {
-                    return org.apache.commons.io.FileUtils.listFiles(
-                            new File(dir), new String[] {"tsfile"}, true)
-                        .size();
-                  } else {
-                    return 0L;
+                    try {
+                      return org.apache.commons.io.FileUtils.listFiles(
+                              new File(dir), new String[] {"tsfile"}, true)
+                          .size();
+                    } catch (UncheckedIOException exception) {
+                      // do nothing
+                      logger.debug("Failed when count unsequence tsfile: ", exception);
+                    }
                   }
+                  return 0L;
                 })
             .sum();
   }

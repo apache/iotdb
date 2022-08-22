@@ -58,6 +58,11 @@ public class StandAloneServerImpl implements IStateMachine {
   }
 
   @Override
+  public boolean isReadOnly() {
+    return stateMachine.isReadOnly();
+  }
+
+  @Override
   public TSStatus write(IConsensusRequest request) {
     return stateMachine.write(request);
   }

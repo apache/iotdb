@@ -16,23 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.StopPipeServerPlan;
-import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-
-public class StopPipeServerOperator extends Operator {
-  public StopPipeServerOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.STOP_PIPE_SERVER;
-  }
-
-  @Override
-  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    return new StopPipeServerPlan();
-  }
+/** Status of current system */
+public enum SystemStatus {
+  /** System can read and write normally */
+  NORMAL,
+  /** Only query statements are permitted */
+  READ_ONLY,
+  /**
+   * Unrecoverable errors occur, system will be read-only or exit according to the param
+   * allow_read_only_when_errors_occur
+   */
+  ERROR,
 }

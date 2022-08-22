@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -47,10 +48,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -128,7 +131,7 @@ public interface IManager {
   /**
    * Remove DataNode
    *
-   * @param removeDataNodePlan
+   * @param removeDataNodePlan RemoveDataNodePlan
    * @return DataNodeToStatusResp
    */
   DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan);
@@ -190,20 +193,16 @@ public interface IManager {
   /**
    * Get SchemaPartition
    *
-   * @param isContainedReplicaSet The last map level of result will contain TRegionReplicaSet if
-   *     true, otherwise the last level will be TConsensusGroupId
    * @return TSchemaPartitionResp
    */
-  Object getSchemaPartition(PathPatternTree patternTree, boolean isContainedReplicaSet);
+  TSchemaPartitionTableResp getSchemaPartition(PathPatternTree patternTree);
 
   /**
    * Get or create SchemaPartition
    *
-   * @param isContainedReplicaSet The last map level of result will contain TRegionReplicaSet if
-   *     true, otherwise the last level will be TConsensusGroupId
    * @return TSchemaPartitionResp
    */
-  Object getOrCreateSchemaPartition(PathPatternTree patternTree, boolean isContainedReplicaSet);
+  TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
    * create SchemaNodeManagementPartition for child paths node management
@@ -215,21 +214,17 @@ public interface IManager {
   /**
    * Get DataPartition
    *
-   * @param isContainedReplicaSet The last map level of result will contain TRegionReplicaSet if
-   *     true, otherwise the last level will be TConsensusGroupId
    * @return TDataPartitionResp
    */
-  Object getDataPartition(GetDataPartitionPlan getDataPartitionPlan, boolean isContainedReplicaSet);
+  TDataPartitionTableResp getDataPartition(GetDataPartitionPlan getDataPartitionPlan);
 
   /**
    * Get or create DataPartition
    *
-   * @param isContainedReplicaSet The last map level of result will contain TRegionReplicaSet if
-   *     true, otherwise the last level will be TConsensusGroupId
    * @return TDataPartitionResp
    */
-  Object getOrCreateDataPartition(
-      GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan, boolean isContainedReplicaSet);
+  TDataPartitionTableResp getOrCreateDataPartition(
+      GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan);
 
   /**
    * Operate Permission
@@ -285,6 +280,9 @@ public interface IManager {
   /** Clear cache on all DataNodes */
   TSStatus clearCache();
 
+  /** Load configuration on all DataNodes */
+  TSStatus loadConfiguration();
+
   /**
    * Get the latest RegionRouteMap
    *
@@ -304,6 +302,14 @@ public interface IManager {
   TShowConfigNodesResp showConfigNodes();
 
   /**
+   * Show StorageGroup
+   *
+   * @param getStorageGroupPlan GetStorageGroupPlan, including path patterns about StorageGroups
+   * @return TShowStorageGroupResp
+   */
+  TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan);
+
+  /**
    * create schema template
    *
    * @param req TCreateSchemaTemplateReq
@@ -314,7 +320,7 @@ public interface IManager {
   /**
    * show schema templates
    *
-   * @return
+   * @return TGetAllTemplatesResp
    */
   TGetAllTemplatesResp getAllTemplates();
 
@@ -322,7 +328,7 @@ public interface IManager {
    * show nodes in schema template
    *
    * @param req String
-   * @return
+   * @return TGetTemplateResp
    */
   TGetTemplateResp getTemplate(String req);
 

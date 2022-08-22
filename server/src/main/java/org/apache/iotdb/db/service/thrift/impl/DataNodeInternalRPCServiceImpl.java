@@ -43,6 +43,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -51,6 +52,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -314,7 +316,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         peers.add(new Peer(schemaRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
-          SchemaRegionConsensusImpl.getInstance().addConsensusGroup(schemaRegionId, peers);
+          SchemaRegionConsensusImpl.getInstance().createPeer(schemaRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -352,7 +354,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         peers.add(new Peer(dataRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
-          DataRegionConsensusImpl.getInstance().addConsensusGroup(dataRegionId, peers);
+          DataRegionConsensusImpl.getInstance().createPeer(dataRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -504,6 +506,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus loadConfiguration() throws TException {
+    try {
+      IoTDBDescriptor.getInstance().loadHotModifiedProps();
+    } catch (QueryProcessException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
     return storageEngine.setTTL(req);
   }
@@ -541,7 +553,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         ConsensusGroupId.Factory.createFromTConsensusGroupId(tconsensusGroupId);
     if (consensusGroupId instanceof DataRegionId) {
       ConsensusGenericResponse response =
-          DataRegionConsensusImpl.getInstance().removeConsensusGroup(consensusGroupId);
+          DataRegionConsensusImpl.getInstance().deletePeer(consensusGroupId);
       if (!response.isSuccess()
           && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
         return RpcUtils.getStatus(
@@ -550,7 +562,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       StorageEngineV2.getInstance().deleteDataRegion((DataRegionId) consensusGroupId);
     } else {
       ConsensusGenericResponse response =
-          SchemaRegionConsensusImpl.getInstance().removeConsensusGroup(consensusGroupId);
+          SchemaRegionConsensusImpl.getInstance().deletePeer(consensusGroupId);
       if (!response.isSuccess()
           && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
         return RpcUtils.getStatus(
@@ -752,9 +764,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     ConsensusGenericResponse resp;
     if (regionId instanceof DataRegionId) {
-      resp = DataRegionConsensusImpl.getInstance().addConsensusGroup(regionId, peers);
+      resp = DataRegionConsensusImpl.getInstance().createPeer(regionId, peers);
     } else {
-      resp = SchemaRegionConsensusImpl.getInstance().addConsensusGroup(regionId, peers);
+      resp = SchemaRegionConsensusImpl.getInstance().createPeer(regionId, peers);
     }
     if (!resp.isSuccess()) {
       LOGGER.error(
