@@ -62,7 +62,13 @@ public class LastQueryTest {
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(1, distributedQueryPlan.getInstances().size());
     Assert.assertTrue(
-        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0)
+        distributedQueryPlan
+                .getInstances()
+                .get(0)
+                .getFragment()
+                .getPlanNodeTree()
+                .getChildren()
+                .get(0)
             instanceof LastQueryNode);
   }
 
@@ -80,7 +86,13 @@ public class LastQueryTest {
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(2, distributedQueryPlan.getInstances().size());
     PlanNode rootNode =
-        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0);
+        distributedQueryPlan
+            .getInstances()
+            .get(0)
+            .getFragment()
+            .getPlanNodeTree()
+            .getChildren()
+            .get(0);
     Assert.assertTrue(rootNode instanceof LastQueryMergeNode);
     rootNode
         .getChildren()
@@ -104,7 +116,13 @@ public class LastQueryTest {
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(3, distributedQueryPlan.getInstances().size());
     PlanNode rootNode =
-        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0);
+        distributedQueryPlan
+            .getInstances()
+            .get(0)
+            .getFragment()
+            .getPlanNodeTree()
+            .getChildren()
+            .get(0);
     Assert.assertTrue(rootNode instanceof LastQueryMergeNode);
     rootNode
         .getChildren()
@@ -128,7 +146,13 @@ public class LastQueryTest {
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(2, distributedQueryPlan.getInstances().size());
     PlanNode rootNode =
-        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0);
+        distributedQueryPlan
+            .getInstances()
+            .get(0)
+            .getFragment()
+            .getPlanNodeTree()
+            .getChildren()
+            .get(0);
     Assert.assertTrue(rootNode instanceof LastQueryMergeNode);
     rootNode
         .getChildren()
@@ -156,7 +180,13 @@ public class LastQueryTest {
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(2, distributedQueryPlan.getInstances().size());
     PlanNode rootNode =
-        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0);
+        distributedQueryPlan
+            .getInstances()
+            .get(0)
+            .getFragment()
+            .getPlanNodeTree()
+            .getChildren()
+            .get(0);
     Assert.assertTrue(rootNode instanceof LastQueryCollectNode);
     rootNode
         .getChildren()
