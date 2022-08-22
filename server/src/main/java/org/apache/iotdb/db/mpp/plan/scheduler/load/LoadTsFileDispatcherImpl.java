@@ -55,19 +55,21 @@ import static com.google.common.util.concurrent.Futures.immediateFuture;
 public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileDispatcherImpl.class);
 
-  private final String uuid;
+  private String uuid;
   private final String localhostIpAddr;
   private final int localhostInternalPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
 
   public LoadTsFileDispatcherImpl(
-      String uuid,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
-    this.uuid = uuid;
     this.internalServiceClientManager = internalServiceClientManager;
     this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
     this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+  }
+
+  public void setUuid(String uuid) {
+    this.uuid = uuid;
   }
 
   @Override
@@ -91,7 +93,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   private void dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
-    for (TDataNodeLocation dataNodeLocation : instance.getRegionReplicaSet().getDataNodeLocations()) {
+    for (TDataNodeLocation dataNodeLocation :
+        instance.getRegionReplicaSet().getDataNodeLocations()) {
       TEndPoint endPoint = dataNodeLocation.getInternalEndPoint();
       if (isDispatchedToLocal(endPoint)) {
         dispatchLocally(instance);

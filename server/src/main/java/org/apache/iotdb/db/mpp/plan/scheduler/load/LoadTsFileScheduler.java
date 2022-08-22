@@ -55,7 +55,6 @@ import java.util.concurrent.Future;
 public class LoadTsFileScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
 
-  private final String uuid;
   private final MPPQueryContext queryContext;
   private LoadTsFileDispatcherImpl dispatcher;
   private List<LoadSingleTsFileNode> tsFileNodeList;
@@ -67,11 +66,10 @@ public class LoadTsFileScheduler implements IScheduler {
       DistributedQueryPlan distributedQueryPlan,
       MPPQueryContext queryContext,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
-    this.uuid = UUID.randomUUID().toString();
     this.queryContext = queryContext;
     this.tsFileNodeList = new ArrayList<>();
     this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
-    this.dispatcher = new LoadTsFileDispatcherImpl(uuid, internalServiceClientManager);
+    this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager);
     this.allReplicaSets = new HashSet<>();
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
@@ -81,17 +79,21 @@ public class LoadTsFileScheduler implements IScheduler {
 
   @Override
   public void start() {
-    boolean isFirstPhaseSuccess = firstPhase();
-    boolean isSuccess = secondPhase(isFirstPhaseSuccess);
+    for (LoadSingleTsFileNode node : tsFileNodeList) {
+      String uuid = UUID.randomUUID().toString();
+      dispatcher.setUuid(uuid);
+      allReplicaSets.clear();
+
+      boolean isFirstPhaseSuccess = firstPhase(node);
+      boolean isSuccess = secondPhase(isFirstPhaseSuccess, uuid);
+    }
   }
 
-  private boolean firstPhase() {
-    for (LoadSingleTsFileNode node : tsFileNodeList) {
-      if (!dispatchOneTsFile(node)) {
-        logger.error(
-            String.format("Dispatch Single TsFile Node error, LoadSingleTsFileNode %s.", node));
-        return false;
-      }
+  private boolean firstPhase(LoadSingleTsFileNode node) {
+    if (!dispatchOneTsFile(node)) {
+      logger.error(
+          String.format("Dispatch Single TsFile Node error, LoadSingleTsFileNode %s.", node));
+      return false;
     }
     return true;
   }
@@ -146,7 +148,7 @@ public class LoadTsFileScheduler implements IScheduler {
     return true;
   }
 
-  private boolean secondPhase(boolean isFirstPhaseSuccess) {
+  private boolean secondPhase(boolean isFirstPhaseSuccess, String uuid) {
     TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
             (isFirstPhaseSuccess ? LoadCommand.EXECUTE : LoadCommand.ROLLBACK).ordinal(), uuid);

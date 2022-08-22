@@ -256,6 +256,15 @@ public class LoadSingleTsFileNode extends WritePlanNode {
           case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
             header = reader.readChunkHeader(marker);
             if (header.getDataSize() == 0) {
+              Set<ChunkData> allChunkData = new HashSet<>();
+              for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
+                for (AlignedChunkData alignedChunkData : entry.getValue()) {
+                  if (!allChunkData.contains(alignedChunkData)) {
+                    alignedChunkData.addValueChunk(-2, header);
+                    allChunkData.add(alignedChunkData);
+                  }
+                }
+              }
               break;
             }
 
