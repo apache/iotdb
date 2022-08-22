@@ -120,7 +120,7 @@ public class LocalConfigNode {
   private static final Logger logger = LoggerFactory.getLogger(LocalConfigNode.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final long STANDALONE_MOCK_TIME_SLOT_START_TIME = 0L;
+  public static final long STANDALONE_MOCK_TIME_SLOT_START_TIME = 0L;
   private volatile boolean initialized = false;
 
   private ScheduledExecutorService timedForceMLogThread;
@@ -134,7 +134,7 @@ public class LocalConfigNode {
 
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
-  private final LocalDataPartitionTable dataPartitionTable = LocalDataPartitionTable.getInstance();
+  private final LocalDataPartitionInfo dataPartitionTable = LocalDataPartitionInfo.getInstance();
 
   private final SeriesPartitionExecutor executor =
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
@@ -203,7 +203,7 @@ public class LocalConfigNode {
       if (config.isMppMode() && !config.isClusterMode()) {
         Map<String, List<DataRegionId>> recoveredLocalDataRegionInfo =
             storageEngine.getLocalDataRegionInfo();
-        dataPartitionTable.init(recoveredLocalDataRegionInfo);
+        dataPartitionTable.init(null);
       }
     } catch (MetadataException | IOException e) {
       logger.error(
@@ -857,10 +857,12 @@ public class LocalConfigNode {
    * root.sg1. If there's no storage group on the given path, StorageGroupNotSetException will be
    * thrown.
    */
-  public DataRegionId getBelongedDataRegionId(PartialPath path)
+  public DataRegionId getBelongedDataRegionId(
+      PartialPath path, TTimePartitionSlot timePartitionSlot)
       throws MetadataException, DataRegionException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
-    DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+    DataRegionId dataRegionId =
+        dataPartitionTable.getDataRegionId(storageGroup, path, timePartitionSlot);
     if (dataRegionId == null) {
       return null;
     }
@@ -875,13 +877,16 @@ public class LocalConfigNode {
   }
 
   // This interface involves storage group and data region auto creation
-  public DataRegionId getBelongedDataRegionIdWithAutoCreate(PartialPath path)
+  public DataRegionId getBelongedDataRegionIdWithAutoCreate(
+      PartialPath path, TTimePartitionSlot timePartitionSlot)
       throws MetadataException, DataRegionException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
-    DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+    DataRegionId dataRegionId =
+        dataPartitionTable.getDataRegionId(storageGroup, path, timePartitionSlot);
     if (dataRegionId == null) {
-      dataPartitionTable.setDataPartitionInfo(storageGroup);
-      dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+      dataPartitionTable.registerStorageGroup(storageGroup);
+      dataRegionId =
+          dataPartitionTable.allocateDataRegionForNewSlot(storageGroup, path, timePartitionSlot);
     }
     DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);
     if (dataRegion == null) {
@@ -889,14 +894,6 @@ public class LocalConfigNode {
     }
     return dataRegionId;
   }
-
-  public List<DataRegionId> getDataRegionIdsByStorageGroup(PartialPath storageGroup) {
-    return dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup);
-  }
-
-  // endregion
-
-  // region Interfaces for StandaloneSchemaFetcher
 
   public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getSchemaPartition(
       PathPatternTree patternTree) {
@@ -955,7 +952,9 @@ public class LocalConfigNode {
     return partitionSlotsMap;
   }
 
-  // endregion
+  private List<DataRegionId> getAllRegionForOneSg(PartialPath storageGroup) {
+    return dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup);
+  }
 
   // region Interfaces for StandalonePartitionFetcher
   public DataPartition getDataPartition(
@@ -972,20 +971,41 @@ public class LocalConfigNode {
           deviceToRegionsMap = new HashMap<>();
       for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
         String deviceId = dataPartitionQueryParam.getDevicePath();
-        DataRegionId dataRegionId = getBelongedDataRegionId(new PartialPath(deviceId));
-        // dataRegionId is null means the DataRegion is not created,
-        // use an empty dataPartitionMap to init DataPartition
-        if (dataRegionId != null) {
-          Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-              deviceToRegionsMap.getOrDefault(
-                  executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
-          timePartitionToRegionsMap.put(
-              new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME),
-              Collections.singletonList(
-                  genStandaloneRegionReplicaSet(
-                      TConsensusGroupType.DataRegion, dataRegionId.getId())));
-          deviceToRegionsMap.put(
-              executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
+        List<TTimePartitionSlot> timePartitionSlots =
+            dataPartitionQueryParam.getTimePartitionSlotList();
+        if (timePartitionSlots.size() == 0) {
+          // if there is no time slot for in the query params
+          // we return all the region id for this sg
+          PartialPath storageGroup =
+              storageGroupSchemaManager.getBelongedStorageGroup(new PartialPath(deviceId));
+          List<DataRegionId> regionIdForCurrSg = getAllRegionForOneSg(storageGroup);
+          List<TRegionReplicaSet> replicaSetList = new ArrayList<>();
+          regionIdForCurrSg.forEach(
+              x ->
+                  replicaSetList.add(
+                      genStandaloneRegionReplicaSet(TConsensusGroupType.DataRegion, x.getId())));
+          deviceToRegionsMap
+              .computeIfAbsent(executor.getSeriesPartitionSlot(deviceId), x -> new HashMap<>())
+              .put(new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME), replicaSetList);
+          continue;
+        }
+        for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
+          DataRegionId dataRegionId =
+              getBelongedDataRegionId(new PartialPath(deviceId), timePartitionSlot);
+          // dataRegionId is null means the DataRegion is not created,
+          // use an empty dataPartitionMap to init DataPartition
+          if (dataRegionId != null) {
+            Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
+                deviceToRegionsMap.getOrDefault(
+                    executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
+            timePartitionToRegionsMap.put(
+                timePartitionSlot,
+                Collections.singletonList(
+                    genStandaloneRegionReplicaSet(
+                        TConsensusGroupType.DataRegion, dataRegionId.getId())));
+            deviceToRegionsMap.put(
+                executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
+          }
         }
       }
       if (!deviceToRegionsMap.isEmpty()) {
@@ -1028,22 +1048,22 @@ public class LocalConfigNode {
       for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
         // for each device
         String deviceId = dataPartitionQueryParam.getDevicePath();
-        DataRegionId dataRegionId =
-            getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId));
-        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-            deviceToRegionsMap.getOrDefault(
-                executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
-        for (TTimePartitionSlot timePartitionSlot :
-            dataPartitionQueryParam.getTimePartitionSlotList()) {
-          // for each time partition
+        List<TTimePartitionSlot> timePartitionSlotList =
+            dataPartitionQueryParam.getTimePartitionSlotList();
+        for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
+          DataRegionId dataRegionId =
+              getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId), timePartitionSlot);
+          Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
+              deviceToRegionsMap.getOrDefault(
+                  executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
           timePartitionToRegionsMap.put(
               timePartitionSlot,
               Collections.singletonList(
                   genStandaloneRegionReplicaSet(
                       TConsensusGroupType.DataRegion, dataRegionId.getId())));
+          deviceToRegionsMap.put(
+              executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
         }
-        deviceToRegionsMap.put(
-            executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
       }
       dataPartitionMap.put(storageGroupName, deviceToRegionsMap);
     }

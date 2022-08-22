@@ -889,6 +889,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "coordinator_write_executor_size",
                   Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
+      conf.setSeriesPartitionSlotNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "series_partition_slot_num",
+                  Integer.toString(conf.getSeriesPartitionSlotNum()))));
 
       // commons
       commonDescriptor.loadCommonProps(properties);
