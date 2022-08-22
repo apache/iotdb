@@ -17,11 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.db.mpp.plan.statement.sys;
 
-public enum RemoveConfigNodeState {
-  REMOVE_CONSENSUS_GROUP,
-  REMOVE_PEER,
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
-  STOP_CONFIG_NODE
+public class ShowPipeSinkTypeStatement extends ShowStatement implements IConfigStatement {
+
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowPipeSinkType(this, context);
+  }
 }

@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -136,17 +137,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showStorageGroup(
       ShowStorageGroupStatement showStorageGroupStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    Map<String, TStorageGroupSchema> storageGroupSchemaMap;
     // Construct request using statement
     List<String> storageGroupPathPattern =
         Arrays.asList(showStorageGroupStatement.getPathPattern().getNodes());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
-      TStorageGroupSchemaResp resp = client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
-      storageGroupSchemaMap = resp.getStorageGroupSchemaMap();
+      TShowStorageGroupResp resp = client.showStorageGroup(storageGroupPathPattern);
       // build TSBlock
-      ShowStorageGroupTask.buildTSBlock(storageGroupSchemaMap, future);
+      ShowStorageGroupTask.buildTSBlock(resp.getStorageGroupInfoMap(), future);
     } catch (TException | IOException e) {
       future.setException(e);
     }

@@ -27,11 +27,8 @@ import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
 public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
-  private final ConfigNodeRPCServiceProcessor processor;
 
-  public ConfigNodeRPCServiceHandler(ConfigNodeRPCServiceProcessor processor) {
-    this.processor = processor;
-  }
+  public ConfigNodeRPCServiceHandler() {}
 
   @Override
   public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
@@ -47,8 +44,6 @@ public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
 
   @Override
   public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
-    // release query resources.
-    processor.handleClientExit();
     MetricService.getInstance()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(),

@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -128,7 +129,7 @@ public interface IManager {
   /**
    * Remove DataNode
    *
-   * @param removeDataNodePlan
+   * @param removeDataNodePlan RemoveDataNodePlan
    * @return DataNodeToStatusResp
    */
   DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan);
@@ -307,6 +308,14 @@ public interface IManager {
   TShowConfigNodesResp showConfigNodes();
 
   /**
+   * Show StorageGroup
+   *
+   * @param getStorageGroupPlan GetStorageGroupPlan, including path patterns about StorageGroups
+   * @return TShowStorageGroupResp
+   */
+  TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan);
+
+  /**
    * create schema template
    *
    * @param req TCreateSchemaTemplateReq
@@ -317,7 +326,7 @@ public interface IManager {
   /**
    * show schema templates
    *
-   * @return
+   * @return TGetAllTemplatesResp
    */
   TGetAllTemplatesResp getAllTemplates();
 
@@ -325,7 +334,7 @@ public interface IManager {
    * show nodes in schema template
    *
    * @param req String
-   * @return
+   * @return TGetTemplateResp
    */
   TGetTemplateResp getTemplate(String req);
 
