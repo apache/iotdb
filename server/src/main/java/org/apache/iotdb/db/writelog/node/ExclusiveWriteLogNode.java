@@ -46,6 +46,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.db.concurrent.ThreadName.WAL_FLUSH;
@@ -76,14 +78,16 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private final ReentrantLock lock = new ReentrantLock();
   private final ExecutorService FLUSH_BUFFER_THREAD_POOL;
 
-  private long fileId = 0;
-  private long lastFlushedId = 0;
+  private final AtomicLong fileId = new AtomicLong();
+  private final AtomicLong lastFlushedId = new AtomicLong();
 
-  private int bufferedLogNum = 0;
+  private AtomicInteger bufferedLogNum = new AtomicInteger();
 
   private final AtomicBoolean deleted = new AtomicBoolean(false);
 
-  private int bufferOverflowNum = 0;
+  private AtomicInteger bufferOverflowNum = new AtomicInteger();
+
+  private boolean init = false;
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -103,58 +107,63 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   @Override
-  public void initBuffer(ByteBuffer[] byteBuffers) {
+  public synchronized void initBuffer(ByteBuffer[] byteBuffers) {
+
     this.logBufferWorking = byteBuffers[0];
     this.logBufferIdle = byteBuffers[1];
     this.bufferArray = byteBuffers;
+    this.init = true;
   }
 
   @Override
-  public void write(PhysicalPlan plan) throws IOException {
+  public synchronized void write(PhysicalPlan plan) throws IOException {
     if (deleted.get()) {
       throw new IOException("WAL node deleted");
     }
-    lock.lock();
+
     try {
       putLog(plan);
-      if (bufferedLogNum >= config.getFlushWalThreshold()) {
+      if (bufferedLogNum.get() >= config.getFlushWalThreshold()) {
         sync();
       }
     } catch (BufferOverflowException e) {
       // if the size of a single plan bigger than logBufferWorking
       // we need to clear the buffer to drop something wrong that has written.
+
       logBufferWorking.clear();
+
       int neededSize = plan.getSerializedSize();
       throw new IOException(
           "Log cannot fit into the buffer, please increase wal_buffer_size to more than "
               + neededSize * 2,
           e);
-    } finally {
-      lock.unlock();
     }
   }
 
   private void putLog(PhysicalPlan plan) {
     try {
+
       plan.serialize(logBufferWorking);
+
     } catch (BufferOverflowException e) {
-      bufferOverflowNum++;
-      if (bufferOverflowNum > 200) {
+      bufferOverflowNum.getAndIncrement();
+      if (bufferOverflowNum.get() > 200) {
         logger.info(
             "WAL bytebuffer overflows too many times. If this occurs frequently, please increase wal_buffer_size.");
-        bufferOverflowNum = 0;
+        bufferOverflowNum = new AtomicInteger();
       }
       sync();
+
       plan.serialize(logBufferWorking);
     }
-    bufferedLogNum++;
+    bufferedLogNum.getAndIncrement();
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     sync();
     forceWal();
-    lock.lock();
+
     try {
       synchronized (switchBufferCondition) {
         while (logBufferFlushing != null && !deleted.get()) {
@@ -174,33 +183,27 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("Waiting for current buffer being flushed interrupted");
-    } finally {
-      lock.unlock();
     }
   }
 
   @Override
-  public void release() {
+  public synchronized void release() {
     ThreadUtils.stopThreadPool(FLUSH_BUFFER_THREAD_POOL, WAL_FLUSH);
-    lock.lock();
-    try {
-      if (this.logBufferWorking != null && this.logBufferWorking instanceof MappedByteBuffer) {
-        MmapUtil.clean((MappedByteBuffer) this.logBufferFlushing);
-      }
-      if (this.logBufferIdle != null && this.logBufferIdle instanceof MappedByteBuffer) {
-        MmapUtil.clean((MappedByteBuffer) this.logBufferIdle);
-      }
-      if (this.logBufferFlushing != null && this.logBufferFlushing instanceof MappedByteBuffer) {
-        MmapUtil.clean((MappedByteBuffer) this.logBufferFlushing);
-      }
-      logger.debug("ByteBuffers are freed successfully");
-    } finally {
-      lock.unlock();
+
+    if (this.logBufferWorking != null && this.logBufferWorking instanceof MappedByteBuffer) {
+      MmapUtil.clean((MappedByteBuffer) this.logBufferWorking);
     }
+    if (this.logBufferIdle != null && this.logBufferIdle instanceof MappedByteBuffer) {
+      MmapUtil.clean((MappedByteBuffer) this.logBufferIdle);
+    }
+    if (this.logBufferFlushing != null && this.logBufferFlushing instanceof MappedByteBuffer) {
+      MmapUtil.clean((MappedByteBuffer) this.logBufferFlushing);
+    }
+    logger.debug("ByteBuffers are freed successfully");
   }
 
   @Override
-  public void forceSync() {
+  public synchronized void forceSync() {
     if (deleted.get()) {
       return;
     }
@@ -209,26 +212,18 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   @Override
-  public void notifyStartFlush() throws FileNotFoundException {
-    lock.lock();
-    try {
-      close();
-      nextFileWriter();
-    } finally {
-      lock.unlock();
-    }
+  public synchronized void notifyStartFlush() throws FileNotFoundException {
+    close();
+    nextFileWriter();
   }
 
   @Override
-  public void notifyEndFlush() {
-    lock.lock();
-    try {
-      File logFile =
-          SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + ++lastFlushedId);
-      discard(logFile);
-    } finally {
-      lock.unlock();
-    }
+  public synchronized void notifyEndFlush() {
+
+    File logFile =
+        SystemFileFactory.INSTANCE.getFile(
+            logDirectory, WAL_FILE_NAME + lastFlushedId.incrementAndGet());
+    discard(logFile);
   }
 
   @Override
@@ -242,8 +237,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   @Override
-  public ByteBuffer[] delete() throws IOException {
-    lock.lock();
+  public synchronized ByteBuffer[] delete() throws IOException {
     try {
       close();
       FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(logDirectory));
@@ -251,7 +245,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       return this.bufferArray;
     } finally {
       FLUSH_BUFFER_THREAD_POOL.shutdown();
-      lock.unlock();
     }
   }
 
@@ -278,7 +271,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private void forceWal() {
-    lock.lock();
+    //    lock.lock();
     try {
       try {
         if (currentFileWriter != null) {
@@ -288,20 +281,20 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         logger.warn("Log node {} force failed.", identifier, e);
       }
     } finally {
-      lock.unlock();
+      //      lock.unlock();
     }
   }
 
   private void sync() {
-    lock.lock();
+    //    lock.lock();
     try {
-      if (bufferedLogNum == 0) {
+      if (bufferedLogNum.get() == 0) {
         return;
       }
       ILogWriter currWriter = getCurrentFileWriter();
       switchBufferWorkingToFlushing();
       FLUSH_BUFFER_THREAD_POOL.submit(() -> flushBuffer(currWriter));
-      bufferedLogNum = 0;
+      bufferedLogNum = new AtomicInteger();
       logger.debug("Log node {} ends sync.", identifier);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -309,13 +302,15 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     } catch (FileNotFoundException e) {
       logger.warn("can not found file {}", identifier, e);
     } finally {
-      lock.unlock();
+      //      lock.unlock();
     }
   }
 
   private void flushBuffer(ILogWriter writer) {
     try {
+
       writer.write(logBufferFlushing);
+
     } catch (Throwable e) {
       logger.error("Log node {} sync failed, change system mode to error", identifier, e);
       IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
@@ -349,7 +344,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private void nextFileWriter() throws FileNotFoundException {
-    fileId++;
+    fileId.getAndIncrement();
     File newFile = SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + fileId);
     if (newFile.getParentFile().mkdirs()) {
       logger.info("create WAL parent folder {}.", newFile.getParent());

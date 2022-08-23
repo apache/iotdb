@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class DeviceTimeIndex implements ITimeIndex {
 
@@ -62,7 +63,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   private long maxEndTime = Long.MIN_VALUE;
 
   /** device -> index of start times array and end times array */
-  protected Map<String, Integer> deviceToIndex;
+  protected ConcurrentMap<String, Integer> deviceToIndex;
 
   public DeviceTimeIndex() {
     this.deviceToIndex = new ConcurrentHashMap<>();
@@ -75,7 +76,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   public DeviceTimeIndex(Map<String, Integer> deviceToIndex, long[] startTimes, long[] endTimes) {
     this.startTimes = startTimes;
     this.endTimes = endTimes;
-    this.deviceToIndex = deviceToIndex;
+    this.deviceToIndex.putAll(deviceToIndex);
   }
 
   @Override

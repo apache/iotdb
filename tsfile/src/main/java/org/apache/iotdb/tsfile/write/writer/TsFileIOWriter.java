@@ -48,6 +48,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -78,9 +79,10 @@ public class TsFileIOWriter implements AutoCloseable {
   // current flushed Chunk
   private ChunkMetadata currentChunkMetadata;
   // current flushed ChunkGroup
-  protected List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
+  protected List<ChunkMetadata> chunkMetadataList = Collections.synchronizedList(new ArrayList<>());
   // all flushed ChunkGroups
-  protected List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
+  protected List<ChunkGroupMetadata> chunkGroupMetadataList =
+      Collections.synchronizedList(new ArrayList<>());
 
   private long markedPosition;
   private String currentChunkGroupDeviceId;
@@ -309,7 +311,7 @@ public class TsFileIOWriter implements AutoCloseable {
       throws IOException {
 
     // convert ChunkMetadataList to this field
-    deviceTimeseriesMetadataMap = new LinkedHashMap<>();
+    deviceTimeseriesMetadataMap = Collections.synchronizedMap(new LinkedHashMap<>());
     // create device -> TimeseriesMetaDataList Map
     for (Map.Entry<Path, List<IChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
       // for ordinary path

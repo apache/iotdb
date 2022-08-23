@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This writer is for opening and recover a TsFile
@@ -58,17 +59,17 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   private static final Logger logger = LoggerFactory.getLogger("FileMonitor");
   private long truncatedSize = -1;
-  private Map<Path, IMeasurementSchema> knownSchemas = new HashMap<>();
+  private Map<Path, IMeasurementSchema> knownSchemas = new ConcurrentHashMap<>();
 
+  private volatile boolean crashed;
   private int lastFlushedChunkGroupIndex = 0;
-
-  private boolean crashed;
 
   private long minPlanIndex = Long.MAX_VALUE;
   private long maxPlanIndex = Long.MIN_VALUE;
 
   /** all chunk group metadata which have been serialized on disk. */
-  private final Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = new HashMap<>();
+  private final Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery =
+      new ConcurrentHashMap<>();
 
   /**
    * @param file a given tsfile path you want to (continue to) write
