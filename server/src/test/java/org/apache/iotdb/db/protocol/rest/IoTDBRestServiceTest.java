@@ -336,7 +336,7 @@ public class IoTDBRestServiceTest {
           new ArrayList<Object>() {
             {
               add(null);
-              add(0);
+              add(false);
             }
           };
       List<Object> values6 =
