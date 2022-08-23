@@ -208,7 +208,55 @@ public class ChunkReader implements IChunkReader {
     return reader;
   }
 
-  public BatchData readPageData(PageHeader pageHeader, ByteBuffer pageData) throws IOException {
+  /**
+   * Read page data without uncompressing it.
+   *
+   * @return compressed page data
+   */
+  public ByteBuffer readPageDataWithoutUncompressing(PageHeader pageHeader) throws IOException {
+    int compressedPageBodyLength = pageHeader.getCompressedSize();
+    byte[] compressedPageBody = new byte[compressedPageBodyLength];
+
+    // doesn't has a complete page body
+    if (compressedPageBodyLength > chunkDataBuffer.remaining()) {
+      throw new IOException(
+          "do not has a complete page body. Expected:"
+              + compressedPageBodyLength
+              + ". Actual:"
+              + chunkDataBuffer.remaining());
+    }
+
+    chunkDataBuffer.get(compressedPageBody);
+    return ByteBuffer.wrap(compressedPageBody);
+  }
+
+  /**
+   * Read data from compressed page data. Uncompress the page and decode it to batch data.
+   *
+   * @param compressedPageData Compressed page data
+   */
+  public BatchData readPageData(PageHeader pageHeader, ByteBuffer compressedPageData)
+      throws IOException {
+    // uncompress page data
+    int compressedPageBodyLength = pageHeader.getCompressedSize();
+    byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
+    try {
+      unCompressor.uncompress(
+          compressedPageData.array(), 0, compressedPageBodyLength, uncompressedPageData, 0);
+    } catch (Exception e) {
+      throw new IOException(
+          "Uncompress error! uncompress size: "
+              + pageHeader.getUncompressedSize()
+              + "compressed size: "
+              + pageHeader.getCompressedSize()
+              + "page header: "
+              + pageHeader
+              + e.getMessage());
+    }
+
+    ByteBuffer pageData = ByteBuffer.wrap(uncompressedPageData);
+
+    // decode page data
     TSDataType dataType = chunkHeader.getDataType();
     Decoder valueDecoder = Decoder.getDecoderByType(chunkHeader.getEncodingType(), dataType);
     PageReader pageReader =

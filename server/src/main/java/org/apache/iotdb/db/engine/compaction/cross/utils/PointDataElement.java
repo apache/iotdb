@@ -17,12 +17,15 @@ public class PointDataElement {
 
   public boolean isFirstPage = false;
 
-  public PointDataElement(BatchData batchData, int priority) {
+  public PageElement pageElement;
+
+  public PointDataElement(BatchData batchData, PageElement pageElement, int priority) {
     this.batchData = batchData;
     this.priority = priority;
     this.dataIndex = 0;
     this.curTimeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(batchData);
     this.curTimestamp = curTimeValuePair.getTimestamp();
+    this.pageElement = pageElement;
   }
 
   public boolean hasNext() {

@@ -3,21 +3,17 @@ package org.apache.iotdb.db.engine.compaction.cross.utils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
 public class ChunkMetadataElement {
-  ChunkMetadata chunkMetadata;
+  public ChunkMetadata chunkMetadata;
+
   public int priority;
 
   public boolean isOverlaped = false;
 
+  public long startTime;
+
   public ChunkMetadataElement(ChunkMetadata chunkMetadata, int priority) {
     this.chunkMetadata = chunkMetadata;
     this.priority = priority;
-  }
-
-  public long getStartTime() {
-    return chunkMetadata.getStartTime();
-  }
-
-  public ChunkMetadata getChunkMetadata() {
-    return chunkMetadata;
+    this.startTime = chunkMetadata.getStartTime();
   }
 }
