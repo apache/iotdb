@@ -830,8 +830,10 @@ public class IoTDBConfig {
   private String secondaryUser = "root";
   private String secondaryPassword = "root";
 
+  private int secondarySessionPoolMaxSize = 10;
+
   // The transmitting concurrency size of operation sync SessionPool
-  private int OperationSyncSessionConcurrencySize = 8;
+  private int operationSyncSessionConcurrencySize = 8;
 
   // OperationSyncLog dir
   private String operationSyncLogDir =
@@ -845,8 +847,9 @@ public class IoTDBConfig {
 
   // OperationSyncProducer DML cache size
   private int operationSyncProducerCacheSize = 1024;
-  // OperationSyncConsumer concurrency size
-  private int operationSyncConsumerConcurrencySize = 4;
+
+  // OperationSyncProducer DML cache number
+  private int operationSyncProducerCacheNum = 8;
 
   // The max record num returned in one schema query.
   private int schemaQueryFetchSize = 10000000;
@@ -2662,12 +2665,20 @@ public class IoTDBConfig {
     this.secondaryPassword = secondaryPassword;
   }
 
+  public int getSecondarySessionPoolMaxSize() {
+    return secondarySessionPoolMaxSize;
+  }
+
+  public void setSecondarySessionPoolMaxSize(int secondarySessionPoolMaxSize) {
+    this.secondarySessionPoolMaxSize = secondarySessionPoolMaxSize;
+  }
+
   public int getOperationSyncSessionConcurrencySize() {
-    return OperationSyncSessionConcurrencySize;
+    return operationSyncSessionConcurrencySize;
   }
 
   public void setOperationSyncSessionConcurrencySize(int operationSyncSessionConcurrencySize) {
-    this.OperationSyncSessionConcurrencySize = operationSyncSessionConcurrencySize;
+    this.operationSyncSessionConcurrencySize = operationSyncSessionConcurrencySize;
   }
 
   public String getOperationSyncLogDir() {
@@ -2710,12 +2721,12 @@ public class IoTDBConfig {
     this.operationSyncProducerCacheSize = operationSyncProducerCacheSize;
   }
 
-  public int getOperationSyncConsumerConcurrencySize() {
-    return operationSyncConsumerConcurrencySize;
+  public int getOperationSyncProducerCacheNum() {
+    return operationSyncProducerCacheNum;
   }
 
-  public void setOperationSyncConsumerConcurrencySize(int operationSyncConsumerConcurrencySize) {
-    this.operationSyncConsumerConcurrencySize = operationSyncConsumerConcurrencySize;
+  public void setOperationSyncProducerCacheNum(int operationSyncProducerCacheNum) {
+    this.operationSyncProducerCacheNum = operationSyncProducerCacheNum;
   }
 
   public int getSchemaQueryFetchSize() {
