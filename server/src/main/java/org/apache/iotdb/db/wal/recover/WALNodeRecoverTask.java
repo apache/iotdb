@@ -226,6 +226,7 @@ public class WALNodeRecoverTask implements Runnable {
                 WALFileUtils.walFilenameFilter(dir, name)
                     && WALFileUtils.parseVersionId(name) >= firstValidVersionId);
     if (walFiles == null) {
+      endRecovery();
       return;
     }
     // asc sort by version id
@@ -254,6 +255,10 @@ public class WALNodeRecoverTask implements Runnable {
         logger.warn("Fail to read wal logs from {}, skip them", walFile, e);
       }
     }
+    endRecovery();
+  }
+
+  private void endRecovery() {
     // end recovering all recover performers
     for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
       try {
