@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -87,7 +87,7 @@ public abstract class Traverser {
    * overriding or implement concerned methods.
    */
   public void traverse() throws MetadataException {
-    traverse(startNode, 0, 0);
+    traverse(startNode, 0, 0, -1, -1);
   }
 
   /**
@@ -99,15 +99,16 @@ public abstract class Traverser {
    * @param level the level of current node in MTree
    * @throws MetadataException some result process may throw MetadataException
    */
-  protected void traverse(IMNode node, int idx, int level) throws MetadataException {
+  protected void traverse(IMNode node, int idx, int level, int minMatchLevel, int maxMatchLevel)
+      throws MetadataException {
 
-    if (processMatchedMNode(node, idx, level)) {
+    if (processMatchedMNode(node, idx, level, minMatchLevel, maxMatchLevel)) {
       return;
     }
 
     if (idx >= nodes.length - 1) {
-      if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD) || isPrefixMatch) {
-        processMultiLevelWildcard(node, idx, level);
+      if (maxMatchLevel > 0 || isPrefixMatch) {
+        processMultiLevelWildcard(node, idx, level, minMatchLevel, maxMatchLevel);
       }
       return;
     }
@@ -116,53 +117,98 @@ public abstract class Traverser {
       return;
     }
 
+    if (minMatchLevel > 0) {
+      traverseContext.push(node);
+      for (IMNode child : node.getChildren().values()) {
+        traverse(child, idx, level + 1, minMatchLevel - 1, maxMatchLevel - 1);
+      }
+      traverseContext.pop();
+      return;
+    }
+    if (maxMatchLevel > 0) {
+      String targetName = nodes[idx + 1];
+      IMNode next = node.getChild(targetName);
+      if (next != null) {
+        traverseContext.push(node);
+        traverse(next, idx + 1, level + 1, -1, -1);
+        traverseContext.pop();
+      }
+      traverseContext.push(node);
+      for (IMNode child : node.getChildren().values()) {
+        traverse(child, idx, level + 1, -1, maxMatchLevel - 1);
+      }
+      traverseContext.pop();
+      return;
+    }
+
     String targetName = nodes[idx + 1];
     Pair<Integer, Integer> matchLevelPair = processNodeName(targetName);
-    if (MULTI_LEVEL_PATH_WILDCARD.equals(targetName)) {
-      processMultiLevelWildcard(node, idx, level);
-    } else if (targetName.contains(ONE_LEVEL_PATH_WILDCARD)) {
-      processOneLevelWildcard(node, idx, level);
-    } else {
-      processNameMatch(node, idx, level);
+    if (matchLevelPair.left == 0) {
+      traverse(node, idx + 1, level, -1, matchLevelPair.right);
+      matchLevelPair.left = -1;
+      matchLevelPair.right--;
     }
+    if (matchLevelPair.left > 0 && matchLevelPair.right > 0) {
+      traverseContext.push(node);
+      for (IMNode child : node.getChildren().values()) {
+        traverse(child, idx + 1, level + 1, matchLevelPair.left - 1, matchLevelPair.right - 1);
+      }
+      traverseContext.pop();
+    } else {
+      IMNode next = node.getChild(targetName);
+      if (next != null) {
+        traverseContext.push(node);
+        traverse(next, idx + 1, level + 1, -1, -1);
+        traverseContext.pop();
+      }
+    }
+
+    //    if (MULTI_LEVEL_PATH_WILDCARD.equals(targetName)) {
+    //      processMultiLevelWildcard(node, idx, level, minMatchLevel, maxMatchLevel);
+    //    } else if (targetName.contains(ONE_LEVEL_PATH_WILDCARD)) {
+    //      processOneLevelWildcard(node, idx, level, minMatchLevel, maxMatchLevel);
+    //    } else {
+    //      processNameMatch(node, idx, level, minMatchLevel, maxMatchLevel);
+    //    }
   }
 
   /**
-   * 1.*(start, end) - start (included) to end (excluded) layers
-   * 2.*( , end) - 0 to end (excluded) layers
-   * 3.*(start, ) - start (included) or more layers, ** stands for *(1, )
-   * 4.*( , ) - 0 or more layers, maybe we can use a shortcut (such as ***)?
-   * 5.*( n ) - exactly n layers, * stands for *(1)
+   * 1.*(start, end) - start (included) to end (excluded) layers 2.*( , end) - 0 to end (excluded)
+   * layers 3.*(start, ) - start (included) or more layers, ** stands for *(1, ) 4.*( , ) - 0 or
+   * more layers, maybe we can use a shortcut (such as ***)? 5.*( n ) - exactly n layers, * stands
+   * for *(1)
+   *
    * @param nodeName given path
-   * @return left is min layers(included);right is max layers(excluded)
+   * @return left is min layers;right is max layers
    */
-  private Pair<Integer, Integer> processNodeName(String nodeName){
+  private Pair<Integer, Integer> processNodeName(String nodeName) {
     Pair<Integer, Integer> pair = new Pair<>(-1, -1);
     Matcher matcher = pattern.matcher(nodeName);
     if (matcher.find()) {
-      if (StringUtils.isBlank(matcher.group(2)) && StringUtils.isBlank(matcher.group(4))){
+      if (StringUtils.isBlank(matcher.group(2)) && StringUtils.isBlank(matcher.group(4))) {
         pair.left = 0;
         pair.right = Integer.MAX_VALUE;
         return pair;
-      } else if (StringUtils.isNotBlank(matcher.group(2)) && StringUtils.isBlank(matcher.group(3))){
+      } else if (StringUtils.isNotBlank(matcher.group(2))
+          && StringUtils.isBlank(matcher.group(3))) {
         pair.left = Integer.parseInt(matcher.group(2));
         pair.right = Integer.parseInt(matcher.group(2));
         return pair;
       }
-      if(StringUtils.isNotBlank(matcher.group(2))){
+      if (StringUtils.isNotBlank(matcher.group(2))) {
         pair.left = Integer.parseInt(matcher.group(2));
-      }else{
+      } else {
         pair.left = 0;
       }
-      if(StringUtils.isNotBlank(matcher.group(4))){
-        pair.right = Integer.parseInt(matcher.group(4));
-      }else{
+      if (StringUtils.isNotBlank(matcher.group(4))) {
+        pair.right = Integer.parseInt(matcher.group(4)) - 1;
+      } else {
         pair.right = Integer.MAX_VALUE;
       }
-    }else if (MULTI_LEVEL_PATH_WILDCARD.equals(nodeName)){
+    } else if (MULTI_LEVEL_PATH_WILDCARD.equals(nodeName)) {
       pair.left = 1;
       pair.right = Integer.MAX_VALUE;
-    }else if (ONE_LEVEL_PATH_WILDCARD.equals(nodeName)){
+    } else if (ONE_LEVEL_PATH_WILDCARD.equals(nodeName)) {
       pair.left = 1;
       pair.right = 1;
     }
@@ -177,8 +223,10 @@ public abstract class Traverser {
    *
    * @return whether this branch of recursive traversal should stop; if true, stop
    */
-  private boolean processMatchedMNode(IMNode node, int idx, int level) throws MetadataException {
-    if (idx < nodes.length - 1) {
+  private boolean processMatchedMNode(
+      IMNode node, int idx, int level, int minMatchLevel, int maxMatchLevel)
+      throws MetadataException {
+    if (idx < nodes.length - 1 || minMatchLevel > 0) {
       return processInternalMatchedMNode(node, idx, level);
     } else {
       return processFullMatchedMNode(node, idx, level);
@@ -201,11 +249,12 @@ public abstract class Traverser {
   protected abstract boolean processFullMatchedMNode(IMNode node, int idx, int level)
       throws MetadataException;
 
-  protected void processMultiLevelWildcard(IMNode node, int idx, int level)
+  protected void processMultiLevelWildcard(
+      IMNode node, int idx, int level, int minMatchLevel, int maxMatchLevel)
       throws MetadataException {
     traverseContext.push(node);
     for (IMNode child : node.getChildren().values()) {
-      traverse(child, idx + 1, level + 1);
+      traverse(child, idx + 1, level + 1, minMatchLevel, maxMatchLevel);
     }
     traverseContext.pop();
 
@@ -220,12 +269,14 @@ public abstract class Traverser {
     Template upperTemplate = node.getUpperTemplate();
     traverseContext.push(node);
     for (IMNode child : upperTemplate.getDirectNodes()) {
-      traverse(child, idx + 1, level + 1);
+      traverse(child, idx + 1, level + 1, minMatchLevel, maxMatchLevel);
     }
     traverseContext.pop();
   }
 
-  protected void processOneLevelWildcard(IMNode node, int idx, int level) throws MetadataException {
+  protected void processOneLevelWildcard(
+      IMNode node, int idx, int level, int minMatchLevel, int maxMatchLevel)
+      throws MetadataException {
     boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
     String targetNameRegex = nodes[idx + 1].replace("*", ".*");
     traverseContext.push(node);
@@ -241,14 +292,14 @@ public abstract class Traverser {
           continue;
         }
       }
-      traverse(child, idx + 1, level + 1);
+      traverse(child, idx + 1, level + 1, minMatchLevel, maxMatchLevel);
     }
     traverseContext.pop();
 
     if (multiLevelWildcard) {
       traverseContext.push(node);
       for (IMNode child : node.getChildren().values()) {
-        traverse(child, idx, level + 1);
+        traverse(child, idx, level + 1, minMatchLevel, maxMatchLevel);
       }
       traverseContext.pop();
     }
@@ -268,33 +319,35 @@ public abstract class Traverser {
       if (!Pattern.matches(targetNameRegex, child.getName())) {
         continue;
       }
-      traverse(child, idx + 1, level + 1);
+      traverse(child, idx + 1, level + 1, minMatchLevel, maxMatchLevel);
     }
     traverseContext.pop();
 
     if (multiLevelWildcard) {
       traverseContext.push(node);
       for (IMNode child : upperTemplate.getDirectNodes()) {
-        traverse(child, idx, level + 1);
+        traverse(child, idx, level + 1, minMatchLevel, maxMatchLevel);
       }
       traverseContext.pop();
     }
   }
 
   @SuppressWarnings("Duplicates")
-  protected void processNameMatch(IMNode node, int idx, int level) throws MetadataException {
+  protected void processNameMatch(
+      IMNode node, int idx, int level, int minMatchLevel, int maxMatchLevel)
+      throws MetadataException {
     boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
     String targetName = nodes[idx + 1];
     IMNode next = node.getChild(targetName);
     if (next != null) {
       traverseContext.push(node);
-      traverse(next, idx + 1, level + 1);
+      traverse(next, idx + 1, level + 1, minMatchLevel, maxMatchLevel);
       traverseContext.pop();
     }
     if (multiLevelWildcard) {
       traverseContext.push(node);
       for (IMNode child : node.getChildren().values()) {
-        traverse(child, idx, level + 1);
+        traverse(child, idx, level + 1, minMatchLevel, maxMatchLevel);
       }
       traverseContext.pop();
     }
@@ -312,14 +365,14 @@ public abstract class Traverser {
     IMNode targetNode = upperTemplate.getDirectNode(targetName);
     if (targetNode != null) {
       traverseContext.push(node);
-      traverse(targetNode, idx + 1, level + 1);
+      traverse(targetNode, idx + 1, level + 1, minMatchLevel, maxMatchLevel);
       traverseContext.pop();
     }
 
     if (multiLevelWildcard) {
       traverseContext.push(node);
       for (IMNode child : upperTemplate.getDirectNodes()) {
-        traverse(child, idx, level + 1);
+        traverse(child, idx, level + 1, minMatchLevel, maxMatchLevel);
       }
       traverseContext.pop();
     }

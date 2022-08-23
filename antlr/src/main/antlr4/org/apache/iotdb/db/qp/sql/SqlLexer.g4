@@ -914,6 +914,10 @@ fragment TIME_LITERAL
 
 // Number Literal
 
+MORE_LAYERS_WILDCARD
+    : '*(' INTEGER_LITERAL? COMMA? INTEGER_LITERAL? ')'
+    ;
+
 INTEGER_LITERAL
     : DEC_DIGIT+
     ;
@@ -925,6 +929,7 @@ EXPONENT_NUM_PART
 fragment DEC_DIGIT
     : [0-9]
     ;
+
 
 
 // Boolean Literal
@@ -973,9 +978,6 @@ fragment NAME_CHAR
     | '$'
     | '{'
     | '}'
-    | '('
-    | ','
-    | ')'
     | CN_CHAR
     ;
 
