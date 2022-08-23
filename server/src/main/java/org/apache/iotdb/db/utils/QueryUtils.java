@@ -99,7 +99,7 @@ public class QueryUtils {
   public static void fillOrderIndexes(
       QueryDataSource dataSource, String deviceId, boolean ascending) {
     List<TsFileResource> unseqResources = dataSource.getUnseqResources();
-    int[] orderIndex = new int[unseqResources.size() + 1];
+    int[] orderIndex = new int[unseqResources.size()];
     AtomicInteger index = new AtomicInteger();
     Map<Integer, Long> intToOrderTimeMap =
         unseqResources.stream()

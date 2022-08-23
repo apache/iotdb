@@ -42,6 +42,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.AggregateUtils;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -211,6 +212,7 @@ public class AggregationExecutor {
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
     if (ascAggregateResultList != null && !ascAggregateResultList.isEmpty()) {
+      QueryUtils.fillOrderIndexes(queryDataSource, seriesPath.getDevice(), true);
       IAggregateReader seriesReader =
           new SeriesAggregateReader(
               seriesPath,
@@ -225,6 +227,7 @@ public class AggregationExecutor {
       aggregateFromReader(seriesReader, ascAggregateResultList);
     }
     if (descAggregateResultList != null && !descAggregateResultList.isEmpty()) {
+      QueryUtils.fillOrderIndexes(queryDataSource, seriesPath.getDevice(), false);
       IAggregateReader seriesReader =
           new SeriesAggregateReader(
               seriesPath,
