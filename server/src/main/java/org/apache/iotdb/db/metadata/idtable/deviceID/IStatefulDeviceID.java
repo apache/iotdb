@@ -18,15 +18,17 @@
  */
 package org.apache.iotdb.db.metadata.idtable.deviceID;
 
-/**
- * 仅仅用来表示实现类需要被在初始化时恢复和并且在在退出时清理
-  */
+/** stateful device id interface */
+public interface IStatefulDeviceID extends IDeviceID {
 
-public interface StatefulIDeviceID extends IDeviceID {
   /**
+   * recover state using devicePath and device id
    *
-   * @param devicePath
-   * @param deviceID
+   * @param devicePath device path of the time series
+   * @param deviceID device id
    */
-  void recover(String devicePath,String deviceID);
+  void recover(String devicePath, String deviceID);
+
+  /** clean up the state of a device id, when deleting the device id */
+  void clean();
 }

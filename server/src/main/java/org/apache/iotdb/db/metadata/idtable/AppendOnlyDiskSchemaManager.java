@@ -21,8 +21,7 @@ package org.apache.iotdb.db.metadata.idtable;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.metadata.idtable.deviceID.IDeviceID;
-import org.apache.iotdb.db.metadata.idtable.deviceID.StatefulIDeviceID;
+import org.apache.iotdb.db.metadata.idtable.deviceID.IStatefulDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
@@ -41,7 +40,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -161,15 +159,30 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
                   TSEncoding.deserialize(cur.encoding),
                   CompressionType.deserialize(cur.compressor),
                   loc);
-          if (StatefulIDeviceID.class.isAssignableFrom(IDeviceID.getDeviceIDClass())) {
-            StatefulIDeviceID statefulIDeviceID = (StatefulIDeviceID) IDeviceID.getDeviceIDClass().getDeclaredConstructor().newInstance();
-            statefulIDeviceID.recover(cur.seriesKey.substring(0, cur.seriesKey.length() - cur.measurementName.length() - 1),cur.deviceID);
+          // if the system uses IStatefulDeviceID, need to recover the state of device id
+          if (IStatefulDeviceID.class.isAssignableFrom(
+              DeviceIDFactory.getInstance().getDeviceIDClass())) {
+            IStatefulDeviceID statefulIDeviceID =
+                (IStatefulDeviceID)
+                    DeviceIDFactory.getInstance()
+                        .getDeviceIDClass()
+                        .getDeclaredConstructor()
+                        .newInstance();
+            statefulIDeviceID.recover(
+                cur.seriesKey.substring(
+                    0, cur.seriesKey.length() - cur.measurementName.length() - 1),
+                cur.deviceID);
           }
           idTable.putSchemaEntry(cur.deviceID, cur.measurementName, schemaEntry, cur.isAligned);
         }
         loc += cur.entrySize;
       }
-    } catch (IOException | MetadataException | IllegalAccessException | InstantiationException | NoSuchMethodException | InvocationTargetException e) {
+    } catch (IOException
+        | MetadataException
+        | IllegalAccessException
+        | InstantiationException
+        | NoSuchMethodException
+        | InvocationTargetException e) {
       logger.info("Last entry is incomplete, we will recover as much as we can.");
       try {
         outputStream.getChannel().truncate(loc);

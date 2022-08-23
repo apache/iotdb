@@ -136,13 +136,6 @@ public interface IDTable {
   void clear() throws IOException;
 
   /**
-   * in a cluster environment, an int id is required to represent IdTableID
-   *
-   * @return IdTableID
-   */
-  int getIdTableID();
-
-  /**
    * get device entry from device path
    *
    * @param deviceName device name of the time series
@@ -151,12 +144,20 @@ public interface IDTable {
   DeviceEntry getDeviceEntry(String deviceName);
 
   /**
-   * 通过IDeviceID获取device entry
+   * get device entry from deviceID
    *
-   * @param deviceID
-   * @return
+   * @param deviceID device id of the device path
+   * @return device entry
    */
   DeviceEntry getDeviceEntry(IDeviceID deviceID);
+
+  /**
+   * save device id and deviceEntry to the idTable
+   *
+   * @param deviceID device id of the device path
+   * @param deviceEntry device entry
+   */
+  void putDeviceEntry(IDeviceID deviceID, DeviceEntry deviceEntry);
 
   /**
    * get schema from device and measurements

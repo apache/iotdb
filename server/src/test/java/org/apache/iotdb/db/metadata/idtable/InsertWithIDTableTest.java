@@ -81,11 +81,11 @@ public class InsertWithIDTableTest {
 
   @After
   public void clean() throws IOException, StorageEngineException {
+    EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(isEnableIDTable);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test

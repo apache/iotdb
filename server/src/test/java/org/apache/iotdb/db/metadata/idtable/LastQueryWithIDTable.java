@@ -88,12 +88,12 @@ public class LastQueryWithIDTable {
 
   @After
   public void clean() throws IOException, StorageEngineException {
+    EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(isEnableIDTable);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
     IoTDBDescriptor.getInstance().getConfig().setEnableLastCache(originalEnableCache);
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test

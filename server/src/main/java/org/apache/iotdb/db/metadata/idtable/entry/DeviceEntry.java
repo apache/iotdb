@@ -46,11 +46,20 @@ public class DeviceEntry {
 
   long globalFlushTime = Long.MIN_VALUE;
 
-  public DeviceEntry(IDeviceID deviceID) {
+  /**
+   * new a DeviceEntry instance
+   *
+   * @param deviceID device id
+   * @param usable whether the instance can be used to record device information, if usable is
+   *     false, then the instance is only used to record device id
+   */
+  public DeviceEntry(IDeviceID deviceID, boolean usable) {
     this.deviceID = deviceID;
-    measurementMap = new ConcurrentHashMap<>();
-    lastTimeMapOfEachPartition = new HashMap<>();
-    flushTimeMapOfEachPartition = new HashMap<>();
+    if (usable) {
+      measurementMap = new ConcurrentHashMap<>();
+      lastTimeMapOfEachPartition = new HashMap<>();
+      flushTimeMapOfEachPartition = new HashMap<>();
+    }
   }
 
   /**
@@ -181,5 +190,12 @@ public class DeviceEntry {
         lastTimeMapOfEachPartition,
         flushTimeMapOfEachPartition,
         globalFlushTime);
+  }
+
+  public Boolean isUseless() {
+    return !isAligned
+        && measurementMap == null
+        && lastTimeMapOfEachPartition == null
+        && flushTimeMapOfEachPartition == null;
   }
 }
