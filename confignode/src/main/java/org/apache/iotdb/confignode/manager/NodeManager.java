@@ -45,9 +45,9 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.INodeCache;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
@@ -63,6 +63,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -95,7 +96,7 @@ public class NodeManager {
   // Monitor for leadership change
   private final Object scheduleMonitor = new Object();
   // Map<NodeId, INodeCache>
-  private final Map<Integer, INodeCache> nodeCacheMap;
+  private final Map<Integer, BaseNodeCache> nodeCacheMap;
   private final AtomicInteger heartbeatCounter = new AtomicInteger(0);
   private Future<?> currentHeartbeatFuture;
   private final ScheduledExecutorService heartBeatExecutor =
@@ -399,6 +400,20 @@ public class NodeManager {
     return dataNodeResponseStatus;
   }
 
+  public List<TSStatus> loadConfiguration() {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            null,
+            dataNodeLocationMap,
+            DataNodeRequestType.LOAD_CONFIGURATION,
+            dataNodeResponseStatus);
+    return dataNodeResponseStatus;
+  }
+
   /** Start the heartbeat service */
   public void startHeartbeatService() {
     synchronized (scheduleMonitor) {
@@ -506,8 +521,12 @@ public class NodeManager {
     }
   }
 
-  public Map<Integer, INodeCache> getNodeCacheMap() {
+  public Map<Integer, BaseNodeCache> getNodeCacheMap() {
     return nodeCacheMap;
+  }
+
+  public void removeNodeCache(int nodeId) {
+    nodeCacheMap.remove(nodeId);
   }
 
   /**
@@ -517,7 +536,7 @@ public class NodeManager {
    * @return The specific Node's current status if the nodeCache contains it, Unknown otherwise
    */
   private String getNodeStatus(int nodeId) {
-    INodeCache nodeCache = nodeCacheMap.get(nodeId);
+    BaseNodeCache nodeCache = nodeCacheMap.get(nodeId);
     return nodeCache == null ? "Unknown" : nodeCache.getNodeStatus().getStatus();
   }
 
@@ -544,13 +563,14 @@ public class NodeManager {
    * @param status The specific NodeStatus
    * @return Filtered DataNodes with the specific NodeStatus
    */
-  public List<TDataNodeConfiguration> filterDataNodeThroughStatus(NodeStatus status) {
+  public List<TDataNodeConfiguration> filterDataNodeThroughStatus(NodeStatus... status) {
     return getRegisteredDataNodes().stream()
         .filter(
             registeredDataNode -> {
               int id = registeredDataNode.getLocation().getDataNodeId();
               return nodeCacheMap.containsKey(id)
-                  && status.equals(nodeCacheMap.get(id).getNodeStatus());
+                  && Arrays.stream(status)
+                      .anyMatch(s -> s.equals(nodeCacheMap.get(id).getNodeStatus()));
             })
         .collect(Collectors.toList());
   }
@@ -567,6 +587,23 @@ public class NodeManager {
         (dataNodeId, heartbeatCache) -> result.put(dataNodeId, heartbeatCache.getLoadScore()));
 
     return result;
+  }
+
+  public boolean isNodeRemoving(int dataNodeId) {
+    DataNodeHeartbeatCache cache =
+        (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeId);
+    if (cache != null) {
+      return cache.isRemoving();
+    }
+    return false;
+  }
+
+  public void setNodeRemovingStatus(int dataNodeId, boolean isRemoving) {
+    DataNodeHeartbeatCache cache =
+        (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeId);
+    if (cache != null) {
+      cache.setRemoving(isRemoving);
+    }
   }
 
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {

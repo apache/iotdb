@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.query;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -138,27 +139,48 @@ public class IoTDBResultSetIT {
 
   @Test
   public void emptyQueryTest1() {
-    String expectedHeader = "Time,";
+    String expectedHeader = ColumnHeaderConstant.COLUMN_TIME + ",";
     resultSetEqualTest("select * from root.sg1.d1", expectedHeader, emptyResultSet);
   }
 
   @Test
   public void emptyQueryTest2() {
     String expectedHeader =
-        "Time,root.t1.wf01.wt02.grade,root.t1.wf01.wt02.temperature,root.t1.wf01.wt02.type,root.t1.wf01.wt02.status,";
+        ColumnHeaderConstant.COLUMN_TIME
+            + ","
+            + "root.t1.wf01.wt02.grade,"
+            + "root.t1.wf01.wt02.temperature,"
+            + "root.t1.wf01.wt02.type,"
+            + "root.t1.wf01.wt02.status,";
     resultSetEqualTest("select * from root.t1.wf01.wt02", expectedHeader, emptyResultSet);
   }
 
   @Test
   public void emptyShowTimeseriesTest() {
     String expectedHeader =
-        "timeseries,alias,storage group,dataType,encoding,compression,tags,attributes,";
+        ColumnHeaderConstant.COLUMN_TIMESERIES
+            + ","
+            + ColumnHeaderConstant.COLUMN_TIMESERIES_ALIAS
+            + ","
+            + ColumnHeaderConstant.COLUMN_STORAGE_GROUP
+            + ","
+            + ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE
+            + ","
+            + ColumnHeaderConstant.COLUMN_TIMESERIES_ENCODING
+            + ","
+            + ColumnHeaderConstant.COLUMN_TIMESERIES_COMPRESSION
+            + ","
+            + ColumnHeaderConstant.COLUMN_TAGS
+            + ","
+            + ColumnHeaderConstant.COLUMN_ATTRIBUTES
+            + ",";
     resultSetEqualTest("show timeseries root.sg1.**", expectedHeader, emptyResultSet);
   }
 
   @Test
   public void emptyShowDeviceTest() {
-    String expectedHeader = "devices,isAligned,";
+    String expectedHeader =
+        ColumnHeaderConstant.COLUMN_DEVICES + "," + ColumnHeaderConstant.COLUMN_IS_ALIGNED + ",";
     resultSetEqualTest("show devices root.sg1.**", expectedHeader, emptyResultSet);
   }
 }

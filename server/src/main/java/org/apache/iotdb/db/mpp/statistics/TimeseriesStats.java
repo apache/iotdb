@@ -16,11 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.physical.sys;
 
-public class ShowPipeServerPlan extends ShowPlan {
+package org.apache.iotdb.db.mpp.statistics;
 
-  public ShowPipeServerPlan() {
-    super(ShowContentType.PIPESERVER);
-  }
+public class TimeseriesStats {
+  // TODO collect time series statistics
 }

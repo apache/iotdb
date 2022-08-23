@@ -351,6 +351,8 @@ service IDataNodeRPCService {
 
   common.TSStatus clearCache()
 
+  common.TSStatus loadConfiguration()
+
   /**
    * Config node will Set the TTL for the storage group on a list of data nodes.
    */

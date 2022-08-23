@@ -662,9 +662,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
     measurements = new String[measurementSize];
     measurementSchemas = new MeasurementSchema[measurementSize];
+    dataTypes = new TSDataType[measurementSize];
     deserializeMeasurementSchemas(stream);
 
-    dataTypes = new TSDataType[measurementSize];
     values = new Object[measurementSize];
     fillDataTypesAndValuesFromWAL(stream);
 

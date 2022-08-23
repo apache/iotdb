@@ -134,14 +134,21 @@ public class SyncDataNodeClientPool {
       List<TConsensusGroupId> regionIds,
       Set<TRegionReplicaSet> deletedRegionSet) {
     for (TConsensusGroupId regionId : regionIds) {
-      LOGGER.debug("Delete region {} ", regionId);
+      LOGGER.info("Try to delete RegionReplica: {} on DataNode: {}", regionId, endPoint);
       final TSStatus status =
           sendSyncRequestToDataNodeWithRetry(
               endPoint, regionId, DataNodeRequestType.DELETE_REGIONS);
+
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info("DELETE Region {} successfully", regionId);
-        deletedRegionSet.removeIf(k -> k.getRegionId().equals(regionId));
+        LOGGER.info("Delete RegionReplica: {} on DataNode: {} successfully", regionId, endPoint);
+      } else {
+        LOGGER.warn(
+            "Failed to delete RegionReplica: {} on DataNode: {}. You might need to delete it manually",
+            regionId,
+            endPoint);
       }
+
+      deletedRegionSet.removeIf(k -> k.getRegionId().equals(regionId));
     }
   }
 

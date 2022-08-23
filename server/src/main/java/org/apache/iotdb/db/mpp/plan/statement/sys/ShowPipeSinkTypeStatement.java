@@ -16,23 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.StartPipeServerPlan;
-import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+package org.apache.iotdb.db.mpp.plan.statement.sys;
 
-public class StartPipeServerOperator extends Operator {
-  public StartPipeServerOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.START_PIPE_SERVER;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
+
+public class ShowPipeSinkTypeStatement extends ShowStatement implements IConfigStatement {
+
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
   }
 
   @Override
-  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    return new StartPipeServerPlan();
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowPipeSinkType(this, context);
   }
 }

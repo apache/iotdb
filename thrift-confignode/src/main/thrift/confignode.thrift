@@ -102,7 +102,7 @@ struct TCountStorageGroupResp {
 
 struct TStorageGroupSchemaResp {
   1: required common.TSStatus status
-  // map<string, StorageGroupMessage>
+  // map<string, TStorageGroupSchema>
   2: optional map<string, TStorageGroupSchema> storageGroupSchemaMap
 }
 
@@ -119,13 +119,6 @@ struct TStorageGroupSchema {
 // Schema
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
-}
-
-// TODO: Replace this by TSchemaPartitionTableResp
-struct TSchemaPartitionResp {
-  1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
-  2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
 }
 
 struct TSchemaPartitionTableResp {
@@ -151,13 +144,6 @@ struct TSchemaNodeManagementResp {
 struct TDataPartitionReq {
   // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
   1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
-}
-
-// TODO: Replace this by TDataPartitionTableResp
-struct TDataPartitionResp {
-  1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
-  2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
 }
 
 struct TDataPartitionTableResp {
@@ -278,6 +264,23 @@ struct TConfigNodeInfo {
 struct TShowConfigNodesResp {
   1: required common.TSStatus status
   2: optional list<TConfigNodeInfo> configNodesInfoList
+}
+
+// Show storageGroup
+struct TStorageGroupInfo {
+  1: required string name
+  2: required i64 TTL
+  3: required i32 schemaReplicationFactor
+  4: required i32 dataReplicationFactor
+  5: required i64 timePartitionInterval
+  6: required i32 schemaRegionNum
+  7: required i32 dataRegionNum
+}
+
+struct TShowStorageGroupResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, TStorageGroupInfo>
+  2: optional map<string, TStorageGroupInfo> storageGroupInfoMap
 }
 
 // Show regions
@@ -429,18 +432,12 @@ service IConfigNodeRPCService {
   // SchemaPartition
   // ======================================================
 
-  // TODO: Replace this by getSchemaPartitionTable
-  TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
-
   /**
    * Get SchemaPartitionTable by specific PathPatternTree,
    * the returned SchemaPartitionTable will not contain the unallocated SeriesPartitionSlots
    * See https://apache-iotdb.feishu.cn/docs/doccnqe3PLPEKwsCX1xadXQ2JOg for detailed matching rules
    */
   TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
-
-  // TODO: Replace this by getOrCreateSchemaPartitionTable
-  TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
 
   /**
    * Get or create SchemaPartitionTable by specific PathPatternTree,
@@ -463,17 +460,11 @@ service IConfigNodeRPCService {
   // DataPartition
   // ======================================================
 
-  // TODO: Replace this by getDataPartitionTable
-  TDataPartitionResp getDataPartition(TDataPartitionReq req)
-
   /**
    * Get DataPartitionTable by specific PartitionSlotsMap,
    * the returned DataPartitionTable will not contain the unallocated SeriesPartitionSlots and TimePartitionSlots
    */
   TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req)
-
-  // TODO: Replace this by getOrCreateDataPartitionTable
-  TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
   /**
    * Get or create DataPartitionTable by specific PartitionSlotsMap,
@@ -605,6 +596,9 @@ service IConfigNodeRPCService {
   /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
   common.TSStatus clearCache()
 
+  /** Load configuration on all DataNodes */
+  common.TSStatus loadConfiguration()
+
   // ======================================================
   // Cluster Tools
   // ======================================================
@@ -617,6 +611,9 @@ service IConfigNodeRPCService {
 
   /** Show cluster ConfigNodes' information */
   TShowConfigNodesResp showConfigNodes()
+
+  /** Show cluster StorageGroups' information */
+  TShowStorageGroupResp showStorageGroup(list<string> storageGroupPathPattern)
 
   /**
    * Show the matched cluster Regions' information

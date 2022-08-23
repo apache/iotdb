@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -30,6 +31,7 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
@@ -43,11 +45,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -98,15 +102,15 @@ public class ProcedureManager {
   }
 
   public TSStatus deleteStorageGroups(ArrayList<TStorageGroupSchema> deleteSgSchemaList) {
-    List<Long> procIdList = new ArrayList<>();
+    List<Long> procedureIds = new ArrayList<>();
     for (TStorageGroupSchema storageGroupSchema : deleteSgSchemaList) {
       DeleteStorageGroupProcedure deleteStorageGroupProcedure =
           new DeleteStorageGroupProcedure(storageGroupSchema);
-      long procId = this.executor.submitProcedure(deleteStorageGroupProcedure);
-      procIdList.add(procId);
+      long procedureId = this.executor.submitProcedure(deleteStorageGroupProcedure);
+      procedureIds.add(procedureId);
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed = getProcedureStatus(this.executor, procIdList, procedureStatus);
+    boolean isSucceed = waitingProcedureFinished(procedureIds, procedureStatus);
     // clear the previously deleted regions
     final PartitionManager partitionManager = getConfigManager().getPartitionManager();
     partitionManager.getRegionCleaner().submit(partitionManager::clearDeletedRegions);
@@ -146,24 +150,51 @@ public class ProcedureManager {
     return true;
   }
 
-  private static boolean getProcedureStatus(
-      ProcedureExecutor executor, List<Long> procIds, List<TSStatus> statusList) {
+  /**
+   * Generate CreateRegionGroupsProcedure and wait for it finished
+   *
+   * @return SUCCESS_STATUS if all RegionGroups created successfully, CREATE_REGION_ERROR otherwise
+   */
+  public TSStatus createRegionGroups(CreateRegionGroupsPlan createRegionGroupsPlan) {
+    long procedureId =
+        executor.submitProcedure(new CreateRegionGroupsProcedure(createRegionGroupsPlan));
+    List<TSStatus> statusList = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+    if (isSucceed) {
+      return RpcUtils.SUCCESS_STATUS;
+    } else {
+      return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
+          .setMessage(statusList.get(0).getMessage());
+    }
+  }
+
+  /**
+   * Waiting until the specific procedures finished
+   *
+   * @param procedureIds The specific procedures' index
+   * @param statusList The corresponding running results of these procedures
+   * @return True if all Procedures finished successfully, false otherwise
+   */
+  private boolean waitingProcedureFinished(List<Long> procedureIds, List<TSStatus> statusList) {
     boolean isSucceed = true;
-    for (long procId : procIds) {
-      long startTimeForProcId = System.currentTimeMillis();
+    for (long procedureId : procedureIds) {
+      long startTimeForCurrentProcedure = System.currentTimeMillis();
       while (executor.isRunning()
-          && !executor.isFinished(procId)
-          && TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startTimeForProcId)
+          && !executor.isFinished(procedureId)
+          && TimeUnit.MILLISECONDS.toSeconds(
+                  System.currentTimeMillis() - startTimeForCurrentProcedure)
               < procedureWaitTimeOut) {
         sleepWithoutInterrupt(procedureWaitRetryTimeout);
       }
-      Procedure finishedProc = executor.getResultOrProcedure(procId);
-      if (finishedProc.isSuccess()) {
+      Procedure<ConfigNodeProcedureEnv> finishedProcedure =
+          executor.getResultOrProcedure(procedureId);
+      if (finishedProcedure.isSuccess()) {
         statusList.add(StatusUtils.OK);
       } else {
         statusList.add(
             StatusUtils.EXECUTE_STATEMENT_ERROR.setMessage(
-                finishedProc.getException().getMessage()));
+                finishedProcedure.getException().getMessage()));
         isSucceed = false;
       }
     }

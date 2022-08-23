@@ -15,24 +15,13 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.confignode.procedure.state;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
-import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-
-public class ShowPipeServerOperator extends ShowOperator {
-
-  public ShowPipeServerOperator(int tokenIntType) {
-    super(tokenIntType);
-  }
-
-  @Override
-  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    return new ShowPipeServerPlan();
-  }
+public enum CreateRegionGroupsState {
+  CREATE_REGION_GROUPS_PREPARE,
+  CREATE_REGION_GROUPS,
+  PERSIST_AND_BROADCAST,
+  DELETE_FAILED_REGION_GROUPS,
+  CREATE_REGION_GROUPS_FINISH
 }

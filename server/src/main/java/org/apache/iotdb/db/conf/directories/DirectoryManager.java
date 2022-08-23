@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf.directories;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
@@ -80,10 +81,19 @@ public class DirectoryManager {
     try {
       List<String> sequenceFileFolders =
           new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+      for (int i = 0; i < sequenceFileFolders.size(); i++) {
+        sequenceFileFolders.set(
+            i, sequenceFileFolders.get(i) + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME);
+      }
       mkDataDirs(sequenceFileFolders);
 
       List<String> unsequenceFileFolders =
           new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+      for (int i = 0; i < unsequenceFileFolders.size(); i++) {
+        unsequenceFileFolders.set(
+            i,
+            unsequenceFileFolders.get(i) + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME);
+      }
       mkDataDirs(unsequenceFileFolders);
       sequenceStrategy.setFolders(sequenceFileFolders);
       unsequenceStrategy.setFolders(unsequenceFileFolders);
@@ -164,6 +174,22 @@ public class DirectoryManager {
     List<String> folders = new ArrayList<>(sequenceFileFolders);
     folders.addAll(unsequenceFileFolders);
     return folders;
+  }
+
+  @TestOnly
+  public void resetFolders() {
+    sequenceFileFolders =
+        new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+    for (int i = 0; i < sequenceFileFolders.size(); i++) {
+      sequenceFileFolders.set(
+          i, sequenceFileFolders.get(i) + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME);
+    }
+    unsequenceFileFolders =
+        new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+    for (int i = 0; i < unsequenceFileFolders.size(); i++) {
+      unsequenceFileFolders.set(
+          i, unsequenceFileFolders.get(i) + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME);
+    }
   }
 
   private static class DirectoriesHolder {

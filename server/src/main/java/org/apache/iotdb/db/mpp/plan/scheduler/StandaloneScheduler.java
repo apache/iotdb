@@ -37,7 +37,6 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -116,10 +115,6 @@ public class StandaloneScheduler implements IScheduler {
         // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
         stateMachine.transitionToRunning();
         LOGGER.info("{} transit to RUNNING", getLogHeader());
-        instances.forEach(
-            instance ->
-                stateMachine.initialFragInstanceState(
-                    instance.getId(), FragmentInstanceState.RUNNING));
         this.stateTracker.start();
         LOGGER.info("{} state tracker starts", getLogHeader());
         break;
@@ -133,7 +128,7 @@ public class StandaloneScheduler implements IScheduler {
         }
         try {
           for (FragmentInstance fragmentInstance : instances) {
-            PlanNode planNode = fragmentInstance.getFragment().getRoot();
+            PlanNode planNode = fragmentInstance.getFragment().getPlanNodeTree();
             ConsensusGroupId groupId =
                 ConsensusGroupId.Factory.createFromTConsensusGroupId(
                     fragmentInstance.getRegionReplicaSet().getRegionId());

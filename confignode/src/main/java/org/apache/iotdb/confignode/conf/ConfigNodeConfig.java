@@ -127,7 +127,7 @@ public class ConfigNodeConfig {
   private long heartbeatInterval = 1000;
 
   /** The routing policy of read/write requests */
-  private String routingPolicy = RouteBalancer.leaderPolicy;
+  private String routingPolicy = RouteBalancer.LEADER_POLICY;
 
   private String readConsistencyLevel = "strong";
 
