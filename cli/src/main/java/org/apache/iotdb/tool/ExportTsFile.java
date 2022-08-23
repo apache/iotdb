@@ -53,11 +53,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Export tsFile.
- *
- * @version 1.0.0 20220816
- */
 public class ExportTsFile extends AbstractTsFileTool {
 
   private static final String TARGET_DIR_ARGS = "td";
@@ -276,32 +271,26 @@ public class ExportTsFile extends AbstractTsFileTool {
       f.delete();
     }
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-      Map<String, Tablet> tabletMap = new LinkedHashMap<>();
+      Map<String, List<MeasurementSchema>> schemaMap = new LinkedHashMap<>();
       for (int i = 0; i < columnNames.size(); i++) {
         String column = columnNames.get(i);
-        int lastIndex = column.lastIndexOf(".");
-        if (lastIndex == -1) {
+        if (!column.startsWith("root.")) {
           continue;
         }
         TSDataType tsDataType = getTsDataType(columnTypes.get(i));
-        String sensor = column.substring(lastIndex + 1);
-        MeasurementSchema measurementSchema = new MeasurementSchema(sensor, tsDataType);
-
-        String deviceId = column.substring(0, lastIndex);
-        List<MeasurementSchema> schemaList;
-        if (tabletMap.containsKey(deviceId)) {
-          schemaList = tabletMap.get(deviceId).getSchemas();
-          schemaList.add(measurementSchema);
-        } else {
-          schemaList = new ArrayList<>();
-          schemaList.add(measurementSchema);
-        }
+        Path path = new Path(column, true);
+        String deviceId = path.getDevice();
+        MeasurementSchema measurementSchema =
+            new MeasurementSchema(path.getMeasurement(), tsDataType);
+        schemaMap.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(measurementSchema);
+      }
+      List<Tablet> tabletList = new ArrayList<>();
+      for (String deviceId : schemaMap.keySet()) {
+        List<MeasurementSchema> schemaList = schemaMap.get(deviceId);
         Tablet tablet = new Tablet(deviceId, schemaList);
         tablet.initBitMaps();
-        tabletMap.put(deviceId, tablet);
-      }
-      for (Tablet tablet : tabletMap.values()) {
-        tsFileWriter.registerTimeseries(new Path(tablet.deviceId), tablet.getSchemas());
+        tsFileWriter.registerTimeseries(new Path(tablet.deviceId), schemaList);
+        tabletList.add(tablet);
       }
       while (sessionDataSet.hasNext()) {
         RowRecord rowRecord = sessionDataSet.next();
