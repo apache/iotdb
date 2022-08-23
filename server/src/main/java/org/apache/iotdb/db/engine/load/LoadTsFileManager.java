@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.PageException;
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class LoadTsFileManager {
@@ -79,15 +81,11 @@ public class LoadTsFileManager {
             uuid, o -> new TsFileWriterManager(SystemFileFactory.INSTANCE.getFile(loadDir, uuid)));
     for (ChunkData chunkData : pieceNode.getAllChunkData()) {
       writerManager.write(
-          getDataPartition(
-              dataRegion.getStorageGroupName(),
-              dataRegion.getDataRegionId(),
-              chunkData.getTimePartitionSlot()),
-          chunkData);
+          new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
     }
   }
 
-  public boolean loadAll(String uuid) throws IOException {
+  public boolean loadAll(String uuid) throws IOException, LoadFileException {
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
     }
@@ -101,15 +99,6 @@ public class LoadTsFileManager {
     }
     uuid2WriterManager.get(uuid).close();
     return true;
-  }
-
-  private String getDataPartition(
-      String logicalName, String dataRegionId, TTimePartitionSlot timePartitionSlot) {
-    return String.join(
-        IoTDBConstant.FILE_NAME_SEPARATOR,
-        logicalName,
-        dataRegionId,
-        Long.toString(timePartitionSlot.getStartTime()));
   }
 
   private String getNewTsFileName(String dataPartition) {
@@ -128,8 +117,8 @@ public class LoadTsFileManager {
 
   private class TsFileWriterManager {
     private final File taskDir;
-    private Map<String, TsFileIOWriter> dataPartition2Writer;
-    private Map<String, String> dataPartition2LastDevice;
+    private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
+    private Map<DataPartitionInfo, String> dataPartition2LastDevice;
 
     private TsFileWriterManager(File taskDir) {
       this.taskDir = taskDir;
@@ -139,36 +128,35 @@ public class LoadTsFileManager {
       clearDir(taskDir);
     }
 
-    private void write(String dataPartition, ChunkData chunkData)
-        throws IOException, PageException {
-      if (!dataPartition2Writer.containsKey(dataPartition)) {
+    private void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {
+      if (!dataPartition2Writer.containsKey(partitionInfo)) {
         File newTsFile =
-            SystemFileFactory.INSTANCE.getFile(taskDir, getNewTsFileName(dataPartition));
+            SystemFileFactory.INSTANCE.getFile(taskDir, getNewTsFileName(partitionInfo.toString()));
         if (!newTsFile.createNewFile()) {
           logger.error(String.format("Can not create TsFile %s for writing.", newTsFile.getPath()));
           return;
         }
 
-        dataPartition2Writer.put(dataPartition, new TsFileIOWriter(newTsFile));
+        dataPartition2Writer.put(partitionInfo, new TsFileIOWriter(newTsFile));
       }
-      TsFileIOWriter writer = dataPartition2Writer.get(dataPartition);
-      if (!chunkData.getDevice().equals(dataPartition2LastDevice.getOrDefault(dataPartition, ""))) {
-        if (dataPartition2LastDevice.containsKey(dataPartition)) {
+      TsFileIOWriter writer = dataPartition2Writer.get(partitionInfo);
+      if (!chunkData.getDevice().equals(dataPartition2LastDevice.getOrDefault(partitionInfo, ""))) {
+        if (dataPartition2LastDevice.containsKey(partitionInfo)) {
           writer.endChunkGroup();
         }
         writer.startChunkGroup(chunkData.getDevice());
       }
-      chunkData.getChunkWriter().writeToFileWriter(writer); // TODO: get writer
+      chunkData.getChunkWriter().writeToFileWriter(writer);
     }
 
-    private void loadAll() throws IOException {
-      for (Map.Entry<String, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
+    private void loadAll() throws IOException, LoadFileException {
+      for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
         TsFileIOWriter writer = entry.getValue();
         if (writer.isWritingChunkGroup()) {
           writer.endChunkGroup();
         }
         writer.endFile();
-        generateResource(writer); // TODO: load TsFileResource
+        entry.getKey().getDataRegion().loadNewTsFile(generateResource(writer), true);
       }
     }
 
@@ -190,12 +178,55 @@ public class LoadTsFileManager {
     }
 
     private void close() throws IOException {
-      for (Map.Entry<String, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
+      for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
         entry.getValue().close();
       }
       if (taskDir.delete()) {
         logger.warn(String.format("Can not delete load uuid dir %s.", taskDir.getPath()));
       }
+      dataPartition2Writer = null;
+      dataPartition2LastDevice = null;
+    }
+  }
+
+  private class DataPartitionInfo {
+    private final DataRegion dataRegion;
+    private final TTimePartitionSlot timePartitionSlot;
+
+    private DataPartitionInfo(DataRegion dataRegion, TTimePartitionSlot timePartitionSlot) {
+      this.dataRegion = dataRegion;
+      this.timePartitionSlot = timePartitionSlot;
+    }
+
+    public DataRegion getDataRegion() {
+      return dataRegion;
+    }
+
+    public TTimePartitionSlot getTimePartitionSlot() {
+      return timePartitionSlot;
+    }
+
+    @Override
+    public String toString() {
+      return String.join(
+          IoTDBConstant.FILE_NAME_SEPARATOR,
+          dataRegion.getStorageGroupName(),
+          dataRegion.getDataRegionId(),
+          Long.toString(timePartitionSlot.getStartTime()));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      DataPartitionInfo that = (DataPartitionInfo) o;
+      return Objects.equals(dataRegion, that.dataRegion)
+          && timePartitionSlot.getStartTime() == that.timePartitionSlot.getStartTime();
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(dataRegion, timePartitionSlot.getStartTime());
     }
   }
 }

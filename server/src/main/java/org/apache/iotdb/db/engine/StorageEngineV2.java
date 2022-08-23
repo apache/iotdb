@@ -44,6 +44,7 @@ import org.apache.iotdb.db.engine.load.LoadTsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -789,6 +790,9 @@ public class StorageEngineV2 implements IService {
       }
     } catch (IOException e) {
       status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    } catch (LoadFileException e) {
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
 
