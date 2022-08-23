@@ -236,20 +236,6 @@ public class IoTDBMigrationIT {
     }
   }
 
-  private String doQuery(Statement statement, String query) throws SQLException {
-    StringBuilder ret;
-    try (ResultSet resultSet = statement.executeQuery(query)) {
-      ret = new StringBuilder();
-      while (resultSet.next()) {
-        ret.append(resultSet.getString(1));
-        ret.append(",");
-        ret.append(resultSet.getString(2));
-        ret.append("\n");
-      }
-    }
-    return ret.toString();
-  }
-
   @Test
   @Category({ClusterTest.class})
   public void testShowMigration() throws SQLException {
@@ -271,14 +257,19 @@ public class IoTDBMigrationIT {
 
       ResultSet resultSet = statement.executeQuery("SHOW ALL MIGRATION");
 
-      assertTrue(resultSet.next());
+      boolean flag = false;
 
-      assertEquals(0, resultSet.getLong(1));
-      assertEquals("root.MIGRATION_SG2", resultSet.getString(2));
-      assertEquals("READY", resultSet.getString(3));
-      assertEquals(startTimeStr, resultSet.getString(4));
-      assertEquals(100, resultSet.getLong(5));
-      assertEquals(testTargetDir.getPath(), resultSet.getString(6));
+      while (resultSet.next()) {
+        if (resultSet.getString(2).equals("root.MIGRATION_SG2")) {
+          flag = true;
+          assertEquals("READY", resultSet.getString(3));
+          assertEquals(startTimeStr, resultSet.getString(4));
+          assertEquals(100, resultSet.getLong(5));
+          assertEquals(testTargetDir.getPath(), resultSet.getString(6));
+        }
+      }
+
+      assertTrue(flag);
     }
   }
 }
