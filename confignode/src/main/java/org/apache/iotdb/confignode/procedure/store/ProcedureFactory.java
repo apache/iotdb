@@ -20,7 +20,12 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -39,6 +44,18 @@ public class ProcedureFactory implements IProcedureFactory {
       case DELETE_STORAGE_GROUP_PROCEDURE:
         procedure = new DeleteStorageGroupProcedure();
         break;
+      case ADD_CONFIG_NODE_PROCEDURE:
+        procedure = new AddConfigNodeProcedure();
+        break;
+      case REMOVE_CONFIG_NODE_PROCEDURE:
+        procedure = new RemoveConfigNodeProcedure();
+        break;
+      case REMOVE_DATA_NODE_PROCEDURE:
+        procedure = new RemoveDataNodeProcedure();
+        break;
+      case REGION_MIGRATE_PROCEDURE:
+        procedure = new RegionMigrateProcedure();
+        break;
       default:
         throw new IOException("unknown Procedure type: " + typeNum);
     }
@@ -49,12 +66,27 @@ public class ProcedureFactory implements IProcedureFactory {
   public static ProcedureType getProcedureType(Procedure procedure) {
     if (procedure instanceof DeleteStorageGroupProcedure) {
       return ProcedureType.DELETE_STORAGE_GROUP_PROCEDURE;
+    } else if (procedure instanceof AddConfigNodeProcedure) {
+      return ProcedureType.ADD_CONFIG_NODE_PROCEDURE;
+    } else if (procedure instanceof RemoveConfigNodeProcedure) {
+      return ProcedureType.REMOVE_CONFIG_NODE_PROCEDURE;
+    } else if (procedure instanceof RemoveDataNodeProcedure) {
+      return ProcedureType.REMOVE_DATA_NODE_PROCEDURE;
+    } else if (procedure instanceof RegionMigrateProcedure) {
+      return ProcedureType.REGION_MIGRATE_PROCEDURE;
+    } else if (procedure instanceof CreateRegionGroupsProcedure) {
+      return ProcedureType.CREATE_REGION_GROUPS;
     }
     return null;
   }
 
   public enum ProcedureType {
-    DELETE_STORAGE_GROUP_PROCEDURE
+    DELETE_STORAGE_GROUP_PROCEDURE,
+    ADD_CONFIG_NODE_PROCEDURE,
+    REMOVE_CONFIG_NODE_PROCEDURE,
+    REMOVE_DATA_NODE_PROCEDURE,
+    REGION_MIGRATE_PROCEDURE,
+    CREATE_REGION_GROUPS
   }
 
   private static class ProcedureFactoryHolder {

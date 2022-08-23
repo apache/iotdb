@@ -66,6 +66,7 @@ public class RatisConsensusTest {
                   RatisConfig.Log.newBuilder()
                       .setPurgeUptoSnapshotIndex(true)
                       .setPurgeGap(10)
+                      .setUnsafeFlushEnabled(false)
                       .build())
               .setSnapshot(RatisConfig.Snapshot.newBuilder().setAutoTriggerThreshold(100).build())
               .build();
@@ -119,15 +120,11 @@ public class RatisConsensusTest {
     }
   }
 
-  private int getLeaderOrdinal() {
-    return servers.get(0).getLeader(gid).getEndpoint().port - 6000;
-  }
-
   @Test
   public void basicConsensus3Copy() throws Exception {
-    servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
-    servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
-    servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
 
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
   }
@@ -136,14 +133,14 @@ public class RatisConsensusTest {
   public void addMemberToGroup() throws Exception {
     List<Peer> original = peers.subList(0, 1);
 
-    servers.get(0).addConsensusGroup(group.getGroupId(), original);
+    servers.get(0).createPeer(group.getGroupId(), original);
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
     // add 2 members
-    servers.get(1).addConsensusGroup(group.getGroupId(), peers);
+    servers.get(1).createPeer(group.getGroupId(), peers);
     servers.get(0).addPeer(group.getGroupId(), peers.get(1));
 
-    servers.get(2).addConsensusGroup(group.getGroupId(), peers);
+    servers.get(2).createPeer(group.getGroupId(), peers);
     servers.get(0).changePeer(group.getGroupId(), peers);
 
     Assert.assertEquals(stateMachines.get(0).getConfiguration().size(), 3);
@@ -152,26 +149,26 @@ public class RatisConsensusTest {
 
   @Test
   public void removeMemberFromGroup() throws Exception {
-    servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
-    servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
-    servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
 
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
     servers.get(0).transferLeader(gid, peers.get(0));
     servers.get(0).removePeer(gid, peers.get(1));
-    servers.get(1).removeConsensusGroup(gid);
+    servers.get(1).deletePeer(gid);
     servers.get(0).removePeer(gid, peers.get(2));
-    servers.get(2).removeConsensusGroup(gid);
+    servers.get(2).deletePeer(gid);
 
     doConsensus(servers.get(0), group.getGroupId(), 10, 20);
   }
 
   @Test
   public void crashAndStart() throws Exception {
-    servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
-    servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
-    servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
 
     // 200 operation will trigger snapshot & purge
     doConsensus(servers.get(0), group.getGroupId(), 200, 200);
@@ -182,9 +179,9 @@ public class RatisConsensusTest {
     servers.clear();
 
     makeServers();
-    servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
-    servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
-    servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
     doConsensus(servers.get(0), gid, 10, 210);
   }
 

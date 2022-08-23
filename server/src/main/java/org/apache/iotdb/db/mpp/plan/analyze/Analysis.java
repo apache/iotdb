@@ -20,17 +20,20 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
@@ -53,7 +56,7 @@ public class Analysis {
 
   private SchemaPartition schemaPartition;
 
-  private SchemaTree schemaTree;
+  private ISchemaTree schemaTree;
 
   // map from output column name (for every node) to its datatype
   private TypeProvider typeProvider;
@@ -77,6 +80,8 @@ public class Analysis {
   private Set<Expression> transformExpressions;
 
   private Expression queryFilter;
+
+  private Expression havingExpression;
 
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
@@ -105,6 +110,9 @@ public class Analysis {
   // map from device name to query filter under this device
   private Map<String, Expression> deviceToQueryFilter;
 
+  // map from device name to havingExpression under this device
+  private Map<String, Expression> deviceToHavingExpression;
+
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
   private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
@@ -124,9 +132,6 @@ public class Analysis {
   // a global time filter used in `initQueryDataSource` and filter push down
   private Filter globalTimeFilter;
 
-  // parameter of `WITHOUT NULL` clause
-  private FilterNullParameter filterNullParameter;
-
   // parameter of `FILL` clause
   private FillDescriptor fillDescriptor;
 
@@ -136,12 +141,20 @@ public class Analysis {
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
+  private OrderByParameter mergeOrderParameter;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Schema Query Analysis
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   // extra mesaage from config node, used for node management
-  private Set<String> matchedNodes;
+  private Set<TSchemaNode> matchedNodes;
+
+  // template and paths set template
+  private Pair<Template, List<PartialPath>> templateSetInfo;
+
+  // potential template used in timeseries query or fetch
+  private Map<Integer, Template> relatedTemplateInfo;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -180,11 +193,11 @@ public class Analysis {
     this.schemaPartition = schemaPartition;
   }
 
-  public SchemaTree getSchemaTree() {
+  public ISchemaTree getSchemaTree() {
     return schemaTree;
   }
 
-  public void setSchemaTree(SchemaTree schemaTree) {
+  public void setSchemaTree(ISchemaTree schemaTree) {
     this.schemaTree = schemaTree;
   }
 
@@ -248,14 +261,6 @@ public class Analysis {
         String.format("GROUP BY LEVEL: Unknown input expression '%s'", expression));
   }
 
-  public FilterNullParameter getFilterNullParameter() {
-    return filterNullParameter;
-  }
-
-  public void setFilterNullParameter(FilterNullParameter filterNullParameter) {
-    this.filterNullParameter = filterNullParameter;
-  }
-
   public FillDescriptor getFillDescriptor() {
     return fillDescriptor;
   }
@@ -290,6 +295,22 @@ public class Analysis {
 
   public GroupByTimeParameter getGroupByTimeParameter() {
     return groupByTimeParameter;
+  }
+
+  public Expression getHavingExpression() {
+    return havingExpression;
+  }
+
+  public void setHavingExpression(Expression havingExpression) {
+    this.havingExpression = havingExpression;
+  }
+
+  public Map<String, Expression> getDeviceToHavingExpression() {
+    return deviceToHavingExpression;
+  }
+
+  public void setDeviceToHavingExpression(Map<String, Expression> deviceTohavingExpression) {
+    this.deviceToHavingExpression = deviceTohavingExpression;
   }
 
   public void setGroupByTimeParameter(GroupByTimeParameter groupByTimeParameter) {
@@ -396,11 +417,35 @@ public class Analysis {
     this.deviceToIsRawDataSource = deviceToIsRawDataSource;
   }
 
-  public Set<String> getMatchedNodes() {
+  public Set<TSchemaNode> getMatchedNodes() {
     return matchedNodes;
   }
 
-  public void setMatchedNodes(Set<String> matchedNodes) {
+  public void setMatchedNodes(Set<TSchemaNode> matchedNodes) {
     this.matchedNodes = matchedNodes;
+  }
+
+  public OrderByParameter getMergeOrderParameter() {
+    return mergeOrderParameter;
+  }
+
+  public void setMergeOrderParameter(OrderByParameter mergeOrderParameter) {
+    this.mergeOrderParameter = mergeOrderParameter;
+  }
+
+  public Pair<Template, List<PartialPath>> getTemplateSetInfo() {
+    return templateSetInfo;
+  }
+
+  public void setTemplateSetInfo(Pair<Template, List<PartialPath>> templateSetInfo) {
+    this.templateSetInfo = templateSetInfo;
+  }
+
+  public Map<Integer, Template> getRelatedTemplateInfo() {
+    return relatedTemplateInfo;
+  }
+
+  public void setRelatedTemplateInfo(Map<Integer, Template> relatedTemplateInfo) {
+    this.relatedTemplateInfo = relatedTemplateInfo;
   }
 }

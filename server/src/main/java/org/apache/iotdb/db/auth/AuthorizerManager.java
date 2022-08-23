@@ -63,9 +63,9 @@ public class AuthorizerManager implements IAuthorizer {
       iAuthorizer = BasicAuthorizer.getInstance();
       authReadWriteLock = new ReentrantReadWriteLock();
       if (conf.getConfig().isClusterMode()) {
-        authorityFetcher = ClusterAuthorityFetcher.getInstance();
+        authorityFetcher = new ClusterAuthorityFetcher(new BasicAuthorityCache());
       } else {
-        authorityFetcher = StandaloneAuthorityFetcher.getInstance();
+        authorityFetcher = new StandaloneAuthorityFetcher();
       }
     } catch (AuthException e) {
       logger.error(e.getMessage());
@@ -384,7 +384,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   public boolean invalidateCache(String username, String roleName) {
-    return ClusterAuthorityFetcher.getInstance().invalidateCache(username, roleName);
+    return authorityFetcher.getAuthorCache().invalidateCache(username, roleName);
   }
 
   public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {

@@ -25,8 +25,22 @@
   <allow pkg="java.util"/>
   <allow pkg="java.sql"/>
   <allow pkg="java.io"/>
+  <allow pkg="java.math"/>
+  <allow pkg="java.text"/>
   <allow pkg="org\.junit.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.itbase" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.it.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.db\.it\.utils\.TestUtils.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.db\.constant\.TestConstant.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.common\.rpc\.thrift.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.confignode\.rpc\.thrift.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.db\.client.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.rpc.*" regex="true"/>
+  <allow pkg="org\.apache\.commons\.lang3.*" regex="true"/>
+  <allow pkg="org\.apache\.thrift.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.commons\.client\.sync.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.commons\.auth\.entity.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.commons\.conf.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.db\.qp\.logical\.sys.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.db\.mpp\.common\.header.*" regex="true" />
 </import-control>

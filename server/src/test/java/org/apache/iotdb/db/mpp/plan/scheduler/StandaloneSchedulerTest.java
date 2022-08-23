@@ -134,13 +134,18 @@ public class StandaloneSchedulerTest {
             planFragment,
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
-            QueryType.WRITE);
+            QueryType.WRITE,
+            conf.getQueryTimeoutThreshold());
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.wf01.wt01.status"));
     MPPQueryContext context =
         new MPPQueryContext(
-            "", new QueryId("query1"), new SessionInfo(), new TEndPoint(), new TEndPoint());
+            "",
+            new QueryId("query1"),
+            new SessionInfo(1L, "fakeUsername", "fakeZoneId"),
+            new TEndPoint(),
+            new TEndPoint());
     ExecutorService executor = IoTDBThreadPoolFactory.newSingleThreadExecutor("Test");
     QueryStateMachine stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
@@ -152,7 +157,6 @@ public class StandaloneSchedulerTest {
             stateMachine,
             Collections.singletonList(fragmentInstance),
             QueryType.WRITE,
-            executor,
             null,
             null);
     try {
@@ -233,13 +237,18 @@ public class StandaloneSchedulerTest {
             planFragment,
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
-            QueryType.WRITE);
+            QueryType.WRITE,
+            conf.getQueryTimeoutThreshold());
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.wf01.GPS"));
     MPPQueryContext context =
         new MPPQueryContext(
-            "", new QueryId("query1"), new SessionInfo(), new TEndPoint(), new TEndPoint());
+            "",
+            new QueryId("query1"),
+            new SessionInfo(1L, "fakeUsername", "fakeZoneId"),
+            new TEndPoint(),
+            new TEndPoint());
     ExecutorService executor = IoTDBThreadPoolFactory.newSingleThreadExecutor("Test");
     QueryStateMachine stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
@@ -251,7 +260,6 @@ public class StandaloneSchedulerTest {
             stateMachine,
             Collections.singletonList(fragmentInstance),
             QueryType.WRITE,
-            executor,
             null,
             null);
     try {
@@ -342,13 +350,18 @@ public class StandaloneSchedulerTest {
             planFragment,
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
-            QueryType.WRITE);
+            QueryType.WRITE,
+            conf.getQueryTimeoutThreshold());
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.d3"));
     MPPQueryContext context =
         new MPPQueryContext(
-            "", new QueryId("query1"), new SessionInfo(), new TEndPoint(), new TEndPoint());
+            "",
+            new QueryId("query1"),
+            new SessionInfo(1L, "fakeUsername", "fakeZoneId"),
+            new TEndPoint(),
+            new TEndPoint());
     ExecutorService executor = IoTDBThreadPoolFactory.newSingleThreadExecutor("Test");
     QueryStateMachine stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
@@ -360,7 +373,6 @@ public class StandaloneSchedulerTest {
             stateMachine,
             Collections.singletonList(fragmentInstance),
             QueryType.WRITE,
-            executor,
             null,
             null);
     try {
@@ -389,14 +401,19 @@ public class StandaloneSchedulerTest {
             planFragment,
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
-            QueryType.WRITE);
+            QueryType.WRITE,
+            conf.getQueryTimeoutThreshold());
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath(deviceId));
     configNode.getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId));
     MPPQueryContext context =
         new MPPQueryContext(
-            "", new QueryId("query1"), new SessionInfo(), new TEndPoint(), new TEndPoint());
+            "",
+            new QueryId("query1"),
+            new SessionInfo(1L, "fakeUsername", "fakeZoneId"),
+            new TEndPoint(),
+            new TEndPoint());
     ExecutorService executor = IoTDBThreadPoolFactory.newSingleThreadExecutor("Test");
     QueryStateMachine stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
@@ -408,7 +425,6 @@ public class StandaloneSchedulerTest {
             stateMachine,
             Collections.singletonList(fragmentInstance),
             QueryType.WRITE,
-            executor,
             null,
             null);
     try {
@@ -466,14 +482,19 @@ public class StandaloneSchedulerTest {
             planFragment,
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
-            QueryType.WRITE);
+            QueryType.WRITE,
+            conf.getQueryTimeoutThreshold());
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(deviceId);
     configNode.getBelongedDataRegionIdWithAutoCreate(deviceId);
     MPPQueryContext context =
         new MPPQueryContext(
-            "", new QueryId("query1"), new SessionInfo(), new TEndPoint(), new TEndPoint());
+            "",
+            new QueryId("query1"),
+            new SessionInfo(1L, "fakeUsername", "fakeZoneId"),
+            new TEndPoint(),
+            new TEndPoint());
     ExecutorService executor = IoTDBThreadPoolFactory.newSingleThreadExecutor("Test");
     QueryStateMachine stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
@@ -485,7 +506,6 @@ public class StandaloneSchedulerTest {
             stateMachine,
             Collections.singletonList(fragmentInstance),
             QueryType.WRITE,
-            executor,
             null,
             null);
     try {
@@ -503,14 +523,14 @@ public class StandaloneSchedulerTest {
     List<TDataNodeLocation> dataNodeList = new ArrayList<>();
     dataNodeList.add(
         new TDataNodeLocation()
-            .setExternalEndPoint(new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()))
-            .setInternalEndPoint(new TEndPoint(conf.getInternalIp(), conf.getInternalPort()))
-            .setDataBlockManagerEndPoint(
-                new TEndPoint(conf.getInternalIp(), conf.getDataBlockManagerPort()))
+            .setClientRpcEndPoint(new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()))
+            .setInternalEndPoint(new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()))
+            .setMPPDataExchangeEndPoint(
+                new TEndPoint(conf.getInternalAddress(), conf.getMppDataExchangePort()))
             .setDataRegionConsensusEndPoint(
-                new TEndPoint(conf.getInternalIp(), conf.getDataRegionConsensusPort()))
+                new TEndPoint(conf.getInternalAddress(), conf.getDataRegionConsensusPort()))
             .setSchemaRegionConsensusEndPoint(
-                new TEndPoint(conf.getInternalIp(), conf.getSchemaRegionConsensusPort())));
+                new TEndPoint(conf.getInternalAddress(), conf.getSchemaRegionConsensusPort())));
 
     // construct fragmentInstance
     return new TRegionReplicaSet(new TConsensusGroupId(type, 0), dataNodeList);

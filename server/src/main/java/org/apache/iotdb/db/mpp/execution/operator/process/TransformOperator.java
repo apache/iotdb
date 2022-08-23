@@ -29,11 +29,13 @@ import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.db.mpp.transformation.dag.builder.EvaluationDAGBuilder;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.TsBlockInputDataSet;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -48,15 +50,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 public class TransformOperator implements ProcessOperator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TransformOperator.class);
-
-  // TODO: make it configurable
-  protected static final int FETCH_SIZE = 10000;
 
   protected final float udfReaderMemoryBudgetInMB =
       IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
@@ -69,13 +69,13 @@ public class TransformOperator implements ProcessOperator {
   protected final Operator inputOperator;
   protected final boolean keepNull;
 
-  protected boolean isFirstIteration;
-
   protected QueryDataSetInputLayer inputLayer;
   protected UDTFContext udtfContext;
   protected LayerPointReader[] transformers;
-  protected TimeSelector timeHeap;
   protected List<TSDataType> outputDataTypes;
+
+  protected TimeSelector timeHeap;
+  protected boolean[] shouldIterateReadersToNextValid;
 
   public TransformOperator(
       OperatorContext operatorContext,
@@ -85,17 +85,19 @@ public class TransformOperator implements ProcessOperator {
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
-      TypeProvider typeProvider)
+      TypeProvider typeProvider,
+      boolean isAscending)
       throws QueryProcessException, IOException {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.keepNull = keepNull;
 
-    isFirstIteration = true;
-
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);
     initTransformers(inputLocations, outputExpressions, typeProvider);
+    timeHeap = new TimeSelector(transformers.length << 1, isAscending);
+    shouldIterateReadersToNextValid = new boolean[outputExpressions.length];
+    Arrays.fill(shouldIterateReadersToNextValid, true);
   }
 
   private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
@@ -139,19 +141,27 @@ public class TransformOperator implements ProcessOperator {
     }
   }
 
-  protected void readyForFirstIteration() throws QueryProcessException, IOException {
-    timeHeap = new TimeSelector(transformers.length << 1, true);
-    for (LayerPointReader reader : transformers) {
-      iterateReaderToNextValid(reader);
+  protected YieldableState iterateAllColumnsToNextValid()
+      throws QueryProcessException, IOException {
+    for (int i = 0, n = shouldIterateReadersToNextValid.length; i < n; ++i) {
+      if (shouldIterateReadersToNextValid[i]) {
+        final YieldableState yieldableState = iterateReaderToNextValid(transformers[i]);
+        if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+          return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+        }
+        shouldIterateReadersToNextValid[i] = false;
+      }
     }
+    return YieldableState.YIELDABLE;
   }
 
-  protected void iterateReaderToNextValid(LayerPointReader reader)
+  protected YieldableState iterateReaderToNextValid(LayerPointReader reader)
       throws QueryProcessException, IOException {
     // Since a constant operand is not allowed to be a result column, the reader will not be
     // a ConstantLayerPointReader.
     // If keepNull is false, we must iterate the reader until a non-null row is returned.
-    while (reader.next()) {
+    YieldableState yieldableState;
+    while ((yieldableState = reader.yield()) == YieldableState.YIELDABLE) {
       if (reader.isCurrentNull() && !keepNull) {
         reader.readyForNext();
         continue;
@@ -159,42 +169,48 @@ public class TransformOperator implements ProcessOperator {
       timeHeap.add(reader.currentTime());
       break;
     }
+    return yieldableState;
   }
 
   @Override
   public final boolean hasNext() {
-    if (isFirstIteration) {
-      try {
-        readyForFirstIteration();
-      } catch (Exception e) {
-        LOGGER.error("TransformOperator#hasNext()", e);
-        throw new RuntimeException(e);
-      }
-      isFirstIteration = false;
+    if (!timeHeap.isEmpty()) {
+      return true;
     }
-
+    try {
+      if (iterateAllColumnsToNextValid() == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+        return true;
+      }
+    } catch (Exception e) {
+      LOGGER.error("TransformOperator#hasNext()", e);
+      throw new RuntimeException(e);
+    }
     return !timeHeap.isEmpty();
   }
 
   @Override
   public TsBlock next() {
-    final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
-
-    if (outputDataTypes == null) {
-      outputDataTypes = new ArrayList<>();
-      for (LayerPointReader reader : transformers) {
-        outputDataTypes.add(reader.getDataType());
-      }
-    }
-    tsBlockBuilder.buildValueColumnBuilders(outputDataTypes);
-
-    final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    final int columnCount = columnBuilders.length;
 
     try {
+      YieldableState yieldableState = iterateAllColumnsToNextValid();
+      if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+        return null;
+      }
+
+      final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
+      if (outputDataTypes == null) {
+        outputDataTypes = new ArrayList<>();
+        for (LayerPointReader reader : transformers) {
+          outputDataTypes.add(reader.getDataType());
+        }
+      }
+      tsBlockBuilder.buildValueColumnBuilders(outputDataTypes);
+      final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
+      final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+      final int columnCount = columnBuilders.length;
+
       int rowCount = 0;
-      while (rowCount < FETCH_SIZE && !timeHeap.isEmpty()) {
+      while (!timeHeap.isEmpty()) {
         final long currentTime = timeHeap.pollFirst();
 
         // time
@@ -202,29 +218,81 @@ public class TransformOperator implements ProcessOperator {
 
         // values
         for (int i = 0; i < columnCount; ++i) {
-          collectDataPointAndIterateToNextValid(transformers[i], columnBuilders[i], currentTime);
+          yieldableState = collectDataPoint(transformers[i], columnBuilders[i], currentTime, i);
+          if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+            for (int j = 0; j <= i; ++j) {
+              shouldIterateReadersToNextValid[j] = false;
+            }
+            timeHeap.add(currentTime);
+
+            tsBlockBuilder.declarePositions(rowCount);
+            return tsBlockBuilder.build();
+          }
+        }
+
+        for (int i = 0; i < columnCount; ++i) {
+          if (shouldIterateReadersToNextValid[i]) {
+            transformers[i].readyForNext();
+          }
         }
 
         ++rowCount;
+
+        yieldableState = iterateAllColumnsToNextValid();
+        if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+          tsBlockBuilder.declarePositions(rowCount);
+          return tsBlockBuilder.build();
+        }
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
 
       tsBlockBuilder.declarePositions(rowCount);
+      return tsBlockBuilder.build();
     } catch (Exception e) {
       LOGGER.error("TransformOperator#next()", e);
       throw new RuntimeException(e);
     }
-
-    return tsBlockBuilder.build();
   }
 
-  protected void collectDataPointAndIterateToNextValid(
-      LayerPointReader reader, ColumnBuilder writer, long currentTime)
+  protected boolean collectReaderAppendIsNull(LayerPointReader reader, long currentTime)
       throws QueryProcessException, IOException {
-    if (!reader.next() || reader.currentTime() != currentTime) {
+    final YieldableState yieldableState = reader.yield();
+
+    if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+      return true;
+    }
+
+    if (yieldableState != YieldableState.YIELDABLE) {
+      return false;
+    }
+
+    if (reader.currentTime() != currentTime) {
+      return true;
+    }
+
+    if (reader.isCurrentNull()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  protected YieldableState collectDataPoint(
+      LayerPointReader reader, ColumnBuilder writer, long currentTime, int readerIndex)
+      throws QueryProcessException, IOException {
+    final YieldableState yieldableState = reader.yield();
+    if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
       writer.appendNull();
-      return;
+      return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+    }
+    if (yieldableState != YieldableState.YIELDABLE) {
+      return yieldableState;
+    }
+
+    if (reader.currentTime() != currentTime) {
+      writer.appendNull();
+      return YieldableState.YIELDABLE;
     }
 
     if (reader.isCurrentNull()) {
@@ -256,29 +324,54 @@ public class TransformOperator implements ProcessOperator {
       }
     }
 
-    reader.readyForNext();
-    iterateReaderToNextValid(reader);
+    shouldIterateReadersToNextValid[readerIndex] = true;
+
+    return YieldableState.YIELDABLE;
   }
 
   @Override
   public void close() throws Exception {
     udtfContext.finalizeUDFExecutors(operatorContext.getOperatorId());
-
     inputOperator.close();
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     return inputOperator.isBlocked();
   }
 
   @Override
   public boolean isFinished() {
-    return !hasNext();
+    // call hasNext first, or data of inputOperator could be missing
+    boolean flag = !hasNext();
+    return timeHeap.isEmpty() && (flag || inputOperator.isFinished());
   }
 
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    // here we use maximum estimated memory usage
+    return (long)
+        (udfCollectorMemoryBudgetInMB
+            + udfTransformerMemoryBudgetInMB
+            + inputOperator.calculateMaxReturnSize());
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    // time + all value columns
+    return (long) (1 + transformers.length)
+        * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    // Collector may cache points, here we use maximum usage
+    return (long)
+        (inputOperator.calculateRetainedSizeAfterCallingNext() + udfCollectorMemoryBudgetInMB);
   }
 }

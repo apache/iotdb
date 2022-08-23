@@ -20,10 +20,14 @@ package org.apache.iotdb.commons.cluster;
 
 /** Node status for showing cluster */
 public enum NodeStatus {
-  // Node running properly
+  /** Node running properly */
   Running("Running"),
-  // Node connection failure
-  Unknown("Unknown");
+
+  /** Node connection failure */
+  Unknown("Unknown"),
+
+  /** Node is in removing */
+  Removing("Removing");
 
   private final String status;
 

@@ -22,27 +22,42 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 public class SchemaFetchMergeOperator implements ProcessOperator {
 
-  private final PlanNodeId planNodeId;
   private final OperatorContext operatorContext;
-  private final boolean[] noMoreTsBlocks;
-
   private final List<Operator> children;
+  private final int childrenCount;
+
+  private int currentIndex;
+
+  private boolean isReadingStorageGroupInfo;
+
+  private final List<String> storageGroupList;
 
   public SchemaFetchMergeOperator(
-      PlanNodeId planNodeId, OperatorContext operatorContext, List<Operator> children) {
-    this.planNodeId = planNodeId;
+      OperatorContext operatorContext, List<Operator> children, List<String> storageGroupList) {
     this.operatorContext = operatorContext;
     this.children = children;
-    noMoreTsBlocks = new boolean[children.size()];
+    this.childrenCount = children.size();
+
+    this.currentIndex = 0;
+
+    this.isReadingStorageGroupInfo = true;
+
+    this.storageGroupList = storageGroupList;
   }
 
   @Override
@@ -52,43 +67,88 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    for (int i = 0; i < children.size(); i++) {
-      if (!noMoreTsBlocks[i]) {
-        TsBlock tsBlock = children.get(i).next();
-        if (!children.get(i).hasNext()) {
-          noMoreTsBlocks[i] = true;
-        }
-        return tsBlock;
-      }
+    if (isReadingStorageGroupInfo) {
+      isReadingStorageGroupInfo = false;
+      return generateStorageGroupInfo();
     }
-    return null;
+
+    if (children.get(currentIndex).hasNext()) {
+      return children.get(currentIndex).next();
+    } else {
+      currentIndex++;
+      return null;
+    }
   }
 
   @Override
   public boolean hasNext() {
-    for (int i = 0; i < children.size(); i++) {
-      if (!noMoreTsBlocks[i] && children.get(i).hasNext()) {
-        return true;
-      }
-    }
-    return false;
+    return isReadingStorageGroupInfo || currentIndex < childrenCount;
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
-    for (int i = 0; i < children.size(); i++) {
-      if (!noMoreTsBlocks[i]) {
-        ListenableFuture<Void> blocked = children.get(i).isBlocked();
-        if (!blocked.isDone()) {
-          return blocked;
-        }
-      }
-    }
-    return NOT_BLOCKED;
+  public ListenableFuture<?> isBlocked() {
+    return isReadingStorageGroupInfo || currentIndex >= children.size()
+        ? NOT_BLOCKED
+        : children.get(currentIndex).isBlocked();
   }
 
   @Override
   public boolean isFinished() {
     return !hasNext();
+  }
+
+  @Override
+  public void close() throws Exception {
+    for (Operator child : children) {
+      child.close();
+    }
+  }
+
+  private TsBlock generateStorageGroupInfo() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      // to indicate this binary data is storage group info
+      ReadWriteIOUtils.write((byte) 0, outputStream);
+
+      ReadWriteIOUtils.write(storageGroupList.size(), outputStream);
+      for (String storageGroup : storageGroupList) {
+        ReadWriteIOUtils.write(storageGroup, outputStream);
+      }
+    } catch (IOException e) {
+      // Totally memory operation. This case won't happen.
+    }
+    return new TsBlock(
+        new TimeColumn(1, new long[] {0}),
+        new BinaryColumn(
+            1, Optional.empty(), new Binary[] {new Binary(outputStream.toByteArray())}));
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    long childrenMaxPeekMemory = 0;
+    for (Operator child : children) {
+      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
+    }
+
+    return childrenMaxPeekMemory;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    long childrenMaxReturnSize = 0;
+    for (Operator child : children) {
+      childrenMaxReturnSize = Math.max(childrenMaxReturnSize, child.calculateMaxReturnSize());
+    }
+
+    return childrenMaxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long retainedSize = 0L;
+    for (Operator child : children) {
+      retainedSize += child.calculateRetainedSizeAfterCallingNext();
+    }
+    return retainedSize;
   }
 }

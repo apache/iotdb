@@ -136,4 +136,21 @@ public class FileUtils {
     }
     return sum;
   }
+
+  public static void recursiveDeleteFolder(String path) throws IOException {
+    File file = new File(path);
+    if (file.isDirectory()) {
+      File[] files = file.listFiles();
+      if (files == null || files.length == 0) {
+        org.apache.commons.io.FileUtils.deleteDirectory(file);
+      } else {
+        for (File f : files) {
+          recursiveDeleteFolder(f.getAbsolutePath());
+        }
+        org.apache.commons.io.FileUtils.deleteDirectory(file);
+      }
+    } else {
+      org.apache.commons.io.FileUtils.delete(file);
+    }
+  }
 }

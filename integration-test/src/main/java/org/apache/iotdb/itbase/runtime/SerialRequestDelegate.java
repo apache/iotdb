@@ -35,13 +35,15 @@ public class SerialRequestDelegate<T> extends RequestDelegate<T> {
   @Override
   public List<T> requestAll() throws SQLException {
     List<T> results = new ArrayList<>(getEndpoints().size());
+    Exception[] exceptions = new Exception[getEndpoints().size()];
     for (int i = 0; i < getEndpoints().size(); i++) {
       try {
         results.add(getRequests().get(i).call());
       } catch (Exception e) {
-        throw new SQLException(String.format("Request %s error.", getEndpoints().get(i)), e);
+        exceptions[i] = e;
       }
     }
+    handleExceptions(exceptions);
     return results;
   }
 }

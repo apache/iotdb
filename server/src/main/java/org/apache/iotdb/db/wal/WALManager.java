@@ -44,6 +44,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to manage and allocate wal nodes */
 public class WALManager implements IService {
@@ -56,11 +57,14 @@ public class WALManager implements IService {
   private final NodeAllocationStrategy walNodesManager;
   /** single thread to delete old .wal files */
   private ScheduledExecutorService walDeleteThread;
+  /** total disk usage of wal files */
+  private final AtomicLong totalDiskUsage = new AtomicLong();
 
   private WALManager() {
-    if (config
-        .getDataRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+    if (config.isClusterMode()
+        && config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)) {
       walNodesManager = new FirstCreateStrategy();
     } else {
       walNodesManager = new RoundRobinStrategy(MAX_WAL_NODE_NUM);
@@ -76,10 +80,12 @@ public class WALManager implements IService {
     return walNodesManager.applyForWALNode(applicantUniqueId);
   }
 
+  /** WAL node will be registered only when using multi-leader consensus protocol */
   public void registerWALNode(
-      String applicantUniqueId, String logDirectory, int startFileVersion, long startSearchIndex) {
+      String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
     String s = config.getDataRegionConsensusProtocolClass();
     if (config.getWalMode() == WALMode.DISABLE
+        || !config.isClusterMode()
         || !config
             .getDataRegionConsensusProtocolClass()
             .equals(ConsensusFactory.MultiLeaderConsensus)) {
@@ -88,6 +94,19 @@ public class WALManager implements IService {
 
     ((FirstCreateStrategy) walNodesManager)
         .registerWALNode(applicantUniqueId, logDirectory, startFileVersion, startSearchIndex);
+  }
+
+  /** WAL node will be deleted only when using multi-leader consensus protocol */
+  public void deleteWALNode(String applicantUniqueId) {
+    if (config.getWalMode() == WALMode.DISABLE
+        || !config.isClusterMode()
+        || !config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)) {
+      return;
+    }
+
+    ((FirstCreateStrategy) walNodesManager).deleteWALNode(applicantUniqueId);
   }
 
   @Override
@@ -148,6 +167,18 @@ public class WALManager implements IService {
     }
   }
 
+  public long getTotalDiskUsage() {
+    return totalDiskUsage.get();
+  }
+
+  public void addTotalDiskUsage(long size) {
+    totalDiskUsage.accumulateAndGet(size, Long::sum);
+  }
+
+  public void subtractTotalDiskUsage(long size) {
+    totalDiskUsage.accumulateAndGet(size, (x, y) -> x - y);
+  }
+
   @Override
   public void stop() {
     if (config.getWalMode() == WALMode.DISABLE) {
@@ -182,6 +213,7 @@ public class WALManager implements IService {
 
   @TestOnly
   public void clear() {
+    totalDiskUsage.set(0);
     walNodesManager.clear();
   }
 

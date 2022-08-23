@@ -21,7 +21,7 @@ package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -190,7 +190,7 @@ public class IoTDBInsertAlignedValuesIT {
         assertFalse(resultSet.next());
       }
 
-      statement.execute(ConfigFactory.getConfig().getFlushCommand());
+      statement.execute("flush");
       try (ResultSet resultSet = statement.executeQuery("select status from root.t1.wf01.wt01")) {
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(2));
@@ -261,6 +261,7 @@ public class IoTDBInsertAlignedValuesIT {
           "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(latitude INT32 encoding=PLAIN compressor=SNAPPY, longitude INT32 encoding=PLAIN compressor=SNAPPY) ");
       statement.execute(
           "insert into root.lz.dev.GPS(time,latitude,longitude) aligned values(1,1.3,6.7)");
+      fail();
     }
   }
 
@@ -289,6 +290,18 @@ public class IoTDBInsertAlignedValuesIT {
       assertTrue(
           e.getMessage(),
           e.getMessage().contains("Insertion contains duplicated measurement: status"));
+    }
+  }
+
+  @Test
+  public void testInsertMultiRows() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "insert into root.sg1.d1(time, s1, s2) aligned values(10, 2, 2), (11, 3, '3'), (12,12.11,false);");
+      fail();
+    } catch (SQLException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("data type is not consistent"));
     }
   }
 }

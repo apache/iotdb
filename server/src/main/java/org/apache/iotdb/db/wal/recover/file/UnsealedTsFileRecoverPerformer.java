@@ -227,7 +227,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       }
       // flush memTable
       try {
-        if (!recoveryMemTable.isEmpty()) {
+        if (!recoveryMemTable.isEmpty() && recoveryMemTable.getSeriesNumber() != 0) {
           MemTableFlushTask tableFlushTask =
               new MemTableFlushTask(
                   recoveryMemTable,

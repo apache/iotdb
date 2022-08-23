@@ -72,8 +72,9 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Operation;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -122,6 +123,8 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
+import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -161,13 +164,13 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNonQueryException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 /** Thrift RPC implementation at server side. */
-public class TSServiceImpl implements TSIEventHandler {
+public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private class QueryTask implements Callable<TSExecuteStatementResp> {
 
-    private PhysicalPlan plan;
+    private final PhysicalPlan plan;
     private final long queryStartTime;
     private final long sessionId;
     private final String statement;
@@ -1119,6 +1122,7 @@ public class TSServiceImpl implements TSIEventHandler {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
       closeSession(req);
     }
+    SyncService.getInstance().handleClientExit();
   }
 
   @Override
@@ -2103,6 +2107,23 @@ public class TSServiceImpl implements TSIEventHandler {
     return status != null ? status : executeNonQueryPlan(plan);
   }
 
+  @Override
+  public TSStatus handshake(TSyncIdentityInfo info) throws TException {
+    return SyncService.getInstance().handshake(info);
+  }
+
+  @Override
+  public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
+      throws TException {
+    return SyncService.getInstance().transportData(metaInfo, buff, digest);
+  }
+
+  @Override
+  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
+      throws TException {
+    return SyncService.getInstance().checkFileDigest(metaInfo, digest);
+  }
+
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     try {
       return serviceProvider.executeNonQuery(plan)
@@ -2122,16 +2143,14 @@ public class TSServiceImpl implements TSIEventHandler {
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .histogram(
               System.currentTimeMillis() - startTime,
               "operation_histogram",
               MetricLevel.IMPORTANT,
               "name",
               operation.getName());
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
     }
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.idtable;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -36,8 +37,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /** store id table schema in append only file */
@@ -52,6 +55,8 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
 
   FileOutputStream outputStream;
 
+  RandomAccessFile randomAccessFile;
+
   long loc;
 
   private static final Logger logger = LoggerFactory.getLogger(AppendOnlyDiskSchemaManager.class);
@@ -60,6 +65,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     try {
       initFile(dir);
       outputStream = new FileOutputStream(dataFile, true);
+      randomAccessFile = new RandomAccessFile(dataFile, "rw");
       // we write file version to new file
       if (loc == 0) {
         ReadWriteIOUtils.write(FILE_VERSION, outputStream);
@@ -145,13 +151,15 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
 
       while (inputStream.available() > 0) {
         DiskSchemaEntry cur = DiskSchemaEntry.deserialize(inputStream);
-        SchemaEntry schemaEntry =
-            new SchemaEntry(
-                TSDataType.deserialize(cur.type),
-                TSEncoding.deserialize(cur.encoding),
-                CompressionType.deserialize(cur.compressor),
-                loc);
-        idTable.putSchemaEntry(cur.deviceID, cur.measurementName, schemaEntry, cur.isAligned);
+        if (!cur.deviceID.equals(DiskSchemaEntry.TOMBSTONE)) {
+          SchemaEntry schemaEntry =
+              new SchemaEntry(
+                  TSDataType.deserialize(cur.type),
+                  TSEncoding.deserialize(cur.encoding),
+                  CompressionType.deserialize(cur.compressor),
+                  loc);
+          idTable.putSchemaEntry(cur.deviceID, cur.measurementName, schemaEntry, cur.isAligned);
+        }
         loc += cur.entrySize;
       }
     } catch (IOException | MetadataException e) {
@@ -179,7 +187,9 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
         try {
           maxCount--;
           DiskSchemaEntry cur = DiskSchemaEntry.deserialize(inputStream);
-          res.add(cur);
+          if (!cur.deviceID.equals(DiskSchemaEntry.TOMBSTONE)) {
+            res.add(cur);
+          }
         } catch (IOException e) {
           logger.debug("read finished");
           break;
@@ -190,10 +200,78 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     return res;
   }
 
+  /**
+   * get DiskSchemaEntries from disk file
+   *
+   * @param offsets the offset of each record on the disk file
+   * @return DiskSchemaEntries
+   */
+  @Override
+  public List<DiskSchemaEntry> getDiskSchemaEntriesByOffset(List<Long> offsets) {
+    List<DiskSchemaEntry> diskSchemaEntries = new ArrayList<>(offsets.size());
+    Collections.sort(offsets);
+    try {
+      for (long offset : offsets) {
+        diskSchemaEntries.add(getDiskSchemaEntryByOffset(offset));
+      }
+    } catch (IOException e) {
+      logger.error(e.getMessage());
+    }
+    return diskSchemaEntries;
+  }
+
+  /**
+   * delete DiskSchemaEntry on disk
+   *
+   * @param offset the offset of a record on the disk file
+   * @throws MetadataException
+   */
+  @Override
+  public void deleteDiskSchemaEntryByOffset(long offset) throws MetadataException {
+    try {
+      randomAccessFile.seek(offset + FILE_VERSION.length() + Integer.BYTES);
+      int strLength = randomAccessFile.readInt();
+      byte[] bytes = new byte[strLength];
+      // change the deviceID of the DiskSchemaEntry to be deleted to a tombstone: bytes=[0,...,0]
+      randomAccessFile.write(bytes, 0, strLength);
+    } catch (IOException e) {
+      logger.error(e.getMessage());
+      throw new MetadataException(e.getMessage());
+    }
+  }
+
+  private DiskSchemaEntry getDiskSchemaEntryByOffset(long offset) throws IOException {
+    randomAccessFile.seek(offset + FILE_VERSION.length() + Integer.BYTES);
+    // skip reading deviceID
+    readString();
+    String seriesKey = readString();
+    String measurementName = readString();
+    String deviceID =
+        DeviceIDFactory.getInstance()
+            .getDeviceID(seriesKey.substring(0, seriesKey.length() - measurementName.length() - 1))
+            .toStringID();
+    return new DiskSchemaEntry(
+        deviceID,
+        seriesKey,
+        measurementName,
+        randomAccessFile.readByte(),
+        randomAccessFile.readByte(),
+        randomAccessFile.readByte(),
+        randomAccessFile.readBoolean());
+  }
+
+  private String readString() throws IOException {
+    int strLength = randomAccessFile.readInt();
+    byte[] bytes = new byte[strLength];
+    randomAccessFile.read(bytes, 0, strLength);
+    return new String(bytes, 0, strLength);
+  }
+
   @Override
   public void close() throws IOException {
     try {
       outputStream.close();
+      randomAccessFile.close();
     } catch (IOException e) {
       logger.error("close schema file failed");
       throw e;

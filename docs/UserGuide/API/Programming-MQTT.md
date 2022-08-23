@@ -59,7 +59,7 @@ or json array of the above two.
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
 
 ### MQTT Configurations
-The IoTDB MQTT service load configurations from `${IOTDB_HOME}/${IOTDB_CONF}/iotdb-engine.properties` by default.
+The IoTDB MQTT service load configurations from `${IOTDB_HOME}/${IOTDB_CONF}/iotdb-datanode.properties` by default.
 
 Configurations are as follows:
 
@@ -157,7 +157,7 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
     @Override
     public String getName() {
-        // set the value of mqtt_payload_formatter in iotdb-engine.properties as the following string:
+        // set the value of mqtt_payload_formatter in iotdb-datanode.properties as the following string:
         return "CustomizedJson";
     }
 }
@@ -170,8 +170,8 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
 Then, in your server:
 * Create ${IOTDB_HOME}/ext/mqtt/ folder, and put the jar into this folder.
-* Update configuration to enable MQTT service. (`enable_mqtt_service=true` in `conf/iotdb-engine.properties`)
-* Set the value of `mqtt_payload_formatter` in `conf/iotdb-engine.properties` as the value of getName() in your implementation
+* Update configuration to enable MQTT service. (`enable_mqtt_service=true` in `conf/iotdb-datanode.properties`)
+* Set the value of `mqtt_payload_formatter` in `conf/iotdb-datanode.properties` as the value of getName() in your implementation
   , in this example, the value is `CustomizedJson`
 * Launch the IoTDB server.
 * Now IoTDB will use your implementation to parse the MQTT message.

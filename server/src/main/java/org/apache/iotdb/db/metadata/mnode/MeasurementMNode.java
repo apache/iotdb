@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -153,6 +154,11 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
     logWriter.serializeMeasurementMNode(this);
   }
 
+  @Override
+  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
+    return visitor.visitMeasurementMNode(this, context);
+  }
+
   /** deserialize MeasurementMNode from MeasurementNodePlan */
   public static IMeasurementMNode deserializeFrom(MeasurementMNodePlan plan) {
     IMeasurementMNode node =
@@ -221,13 +227,24 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   @Override
   public Template getSchemaTemplate() {
     MeasurementMNode.logger.warn(
-        "current node {} is a MeasurementMNode, can not get Device Template", name);
+        "current node {} is a MeasurementMNode, can not get Schema Template", name);
     throw new RuntimeException(
-        String.format("current node %s is a MeasurementMNode, can not get Device Template", name));
+        String.format("current node %s is a MeasurementMNode, can not get Schema Template", name));
   }
 
   @Override
   public void setSchemaTemplate(Template schemaTemplate) {}
+
+  @Override
+  public int getSchemaTemplateId() {
+    MeasurementMNode.logger.warn(
+        "current node {} is a MeasurementMNode, can not get Schema Template", name);
+    throw new RuntimeException(
+        String.format("current node %s is a MeasurementMNode, can not get Schema Template", name));
+  }
+
+  @Override
+  public void setSchemaTemplateId(int schemaTemplateId) {}
 
   @Override
   public void setUseTemplate(boolean useTemplate) {}
@@ -235,5 +252,10 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   @Override
   public boolean isMeasurement() {
     return true;
+  }
+
+  @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return MNodeType.MEASUREMENT;
   }
 }

@@ -29,7 +29,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
@@ -67,15 +66,15 @@ public class DistributionPlanner {
 
   public DistributedQueryPlan planFragments() {
     PlanNode rootAfterRewrite = rewriteSource();
-    System.out.println(PlanNodeUtil.nodeToString(rootAfterRewrite));
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
-    System.out.println(PlanNodeUtil.nodeToString(rootWithExchange));
     if (analysis.getStatement() instanceof QueryStatement) {
       analysis
           .getRespDatasetHeader()
           .setColumnToTsBlockIndexMap(rootWithExchange.getOutputColumnNames());
     }
     SubPlan subPlan = splitFragment(rootWithExchange);
+    // Mark the root Fragment of root SubPlan as `root`
+    subPlan.getPlanFragment().setRoot(true);
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
     // Only execute this step for READ operation
     if (context.getQueryType() == QueryType.READ) {
@@ -114,14 +113,14 @@ public class DistributionPlanner {
         context.getLocalDataBlockEndpoint(),
         context.getResultNodeContext().getVirtualFragmentInstanceId(),
         context.getResultNodeContext().getVirtualResultNodeId());
-    sinkNode.setChild(rootInstance.getFragment().getRoot());
+    sinkNode.setChild(rootInstance.getFragment().getPlanNodeTree());
     context
         .getResultNodeContext()
         .setUpStream(
-            rootInstance.getHostDataNode().dataBlockManagerEndPoint,
+            rootInstance.getHostDataNode().mPPDataExchangeEndPoint,
             rootInstance.getId(),
             sinkNode.getPlanNodeId());
-    rootInstance.getFragment().setRoot(sinkNode);
+    rootInstance.getFragment().setPlanNodeTree(sinkNode);
   }
 
   private PlanFragmentId getNextFragmentId() {

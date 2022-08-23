@@ -28,7 +28,7 @@ identifier
      ;
 
 
-// List of keywords, new keywords should be added into this list.
+// List of keywords, new keywords that can be used as identifiers should be added into this list. For example, 'not' is an identifier but can not be used as an identifier in node name.
 
 keyWords
     : ADD
@@ -53,6 +53,7 @@ keyWords
     | CLEAR
     | CLUSTER
     | CONCAT
+    | CONFIGNODES
     | CONFIGURATION
     | CONTINUOUS
     | COUNT
@@ -61,6 +62,7 @@ keyWords
     | CQS
     | CREATE
     | DATA
+    | DATANODES
     | DEBUG
     | DELETE
     | DESC
@@ -82,6 +84,7 @@ keyWords
     | GLOBAL
     | GRANT
     | GROUP
+    | HAVING
     | INDEX
     | INFO
     | INSERT

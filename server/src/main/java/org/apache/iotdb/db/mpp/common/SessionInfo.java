@@ -18,9 +18,26 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
-import java.time.ZoneId;
-
 public class SessionInfo {
-  private String userName;
-  private ZoneId zoneId;
+  private final long sessionId;
+  private final String userName;
+  private final String zoneId;
+
+  public SessionInfo(long sessionId, String userName, String zoneId) {
+    this.sessionId = sessionId;
+    this.userName = userName;
+    this.zoneId = zoneId;
+  }
+
+  public long getSessionId() {
+    return sessionId;
+  }
+
+  public String getUserName() {
+    return userName;
+  }
+
+  public String getZoneId() {
+    return zoneId;
+  }
 }

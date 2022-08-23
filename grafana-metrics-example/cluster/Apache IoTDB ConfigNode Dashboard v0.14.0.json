@@ -60,7 +60,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1655363164080,
+  "iteration": 1656333428851,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -89,7 +89,7 @@
         "x": 0,
         "y": 0
       },
-      "id": 28,
+      "id": 38,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -169,6 +169,352 @@
       "title": "Overview",
       "type": "stat"
     },
+	{
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 36,
+      "panels": [],
+      "title": "Node Info",
+      "type": "row"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 9
+      },
+      "id": 34,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "vertical",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "config_node{status=\"Online\"}",
+          "legendFormat": "ConfigNode",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "data_node{status=\"Online\"}",
+          "hide": false,
+          "legendFormat": "DataNode",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Total number of online nodes",
+      "type": "stat"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "blue",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 9
+      },
+      "id": 32,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "vertical",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "config_node{status=\"Unknown\"}",
+          "hide": false,
+          "legendFormat": "ConfigNode",
+          "range": true,
+          "refId": "AA"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "data_node{status=\"Unknown\"}",
+          "hide": false,
+          "legendFormat": "DataNode",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Total number of offline nodes",
+      "type": "stat"
+    },
+	{
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 2,
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "index": 1,
+                  "text": "Unknown"
+                },
+                "1": {
+                  "index": 0,
+                  "text": "Online"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "id": 30,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "8.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "cluster_node_status{}",
+          "legendFormat": "{{instance}}  {{type}} {{name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "The status of cluster node",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "id": 28,
+      "panels": [],
+      "title": "Leadership Distribution",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "id": 26,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "cluster_node_leader_count{}",
+          "legendFormat": "{{name}} total leaders",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Leadership distribution",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "id": 24,
+      "panels": [],
+      "title": "Region",
+      "type": "row"
+    },
     {
       "fieldConfig": {
         "defaults": {
@@ -210,10 +556,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -224,9 +566,9 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 8
+        "y": 37
       },
-      "id": 38,
+      "id": 22,
       "options": {
         "legend": {
           "calcs": [],
@@ -251,7 +593,7 @@
           "refId": "A"
         }
       ],
-      "title": "Total Region on Node",
+      "title": "Total Region in Node",
       "type": "timeseries"
     },
     {
@@ -295,10 +637,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -309,9 +647,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 8
+        "y": 37
       },
-      "id": 32,
+      "id": 20,
       "options": {
         "legend": {
           "calcs": [],
@@ -336,7 +674,7 @@
           "refId": "A"
         }
       ],
-      "title": "Region on Node",
+      "title": "Region in Node",
       "type": "timeseries"
     },
     {
@@ -390,9 +728,9 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 16
+        "y": 45
       },
-      "id": 35,
+      "id": 20,
       "options": {
         "legend": {
           "calcs": [],
@@ -417,7 +755,7 @@
           "refId": "A"
         }
       ],
-      "title": "Region on StorageGroup",
+      "title": "Region in StorageGroup",
       "type": "timeseries"
     },
     {
@@ -461,10 +799,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -475,9 +809,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 16
+        "y": 45
       },
-      "id": 37,
+      "id": 18,
       "options": {
         "legend": {
           "calcs": [],
@@ -511,7 +845,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 53
       },
       "id": 16,
       "panels": [],
@@ -569,7 +903,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 25
+        "y": 54
       },
       "id": 10,
       "options": {
@@ -591,7 +925,7 @@
           },
           "exemplar": true,
           "expr": "sum(rate(jvm_gc_pause_seconds_count{instance=~\"$instance\", action=\"end of minor GC\"}[1m]))*60",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Young GC number",
           "refId": "A"
         },
@@ -603,7 +937,7 @@
           "exemplar": true,
           "expr": "sum(rate(jvm_gc_pause_seconds_count{instance=~\"$instance\", action=\"end of major GC\"}[1m]))*60",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Full GC number",
           "refId": "B"
         }
@@ -663,7 +997,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 25
+        "y": 54
       },
       "id": 8,
       "options": {
@@ -685,7 +1019,7 @@
           },
           "exemplar": true,
           "expr": "sum(rate(jvm_gc_pause_seconds_sum{instance=~\"$instance\", action=\"end of minor GC\"}[1m]))*60",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "The time of young GC",
           "refId": "A"
         },
@@ -697,7 +1031,7 @@
           "exemplar": true,
           "expr": "sum(rate(jvm_gc_pause_seconds_sum{instance=~\"$instance\", action=\"end of major GC\"}[1m]))*60",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "The time of full GC",
           "refId": "B"
         }
@@ -757,7 +1091,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 33
+        "y": 62
       },
       "id": 6,
       "options": {
@@ -779,7 +1113,7 @@
           },
           "exemplar": true,
           "expr": "sum(jvm_memory_max_bytes{instance=~\"$instance\",area=\"heap\"})",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Maximum heap memory",
           "refId": "A"
         },
@@ -791,7 +1125,7 @@
           "exemplar": true,
           "expr": "sum(jvm_memory_used_bytes{instance=~\"$instance\",area=\"heap\"})",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Used heap memory",
           "refId": "B"
         },
@@ -803,7 +1137,7 @@
           "exemplar": true,
           "expr": "jvm_memory_used_bytes{instance=~\"$instance\",area=\"heap\",id=\"PS Old Gen\"}",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Old area",
           "refId": "C"
         },
@@ -815,7 +1149,7 @@
           "exemplar": true,
           "expr": "jvm_memory_used_bytes{instance=~\"$instance\",area=\"heap\",id=\"PS Eden Space\"}",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Eden area",
           "refId": "D"
         },
@@ -827,7 +1161,7 @@
           "exemplar": true,
           "expr": "jvm_memory_used_bytes{instance=~\"$instance\",area=\"heap\",id=\"PS Survivor Space\"}",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Survivor area",
           "refId": "E"
         }
@@ -887,7 +1221,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 33
+        "y": 62
       },
       "id": 4,
       "options": {
@@ -909,7 +1243,7 @@
           },
           "exemplar": true,
           "expr": "sum(jvm_buffer_memory_used_bytes{instance=~\"$instance\"})",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "off-heap memory",
           "refId": "A"
         }
@@ -968,7 +1302,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 41
+        "y": 70
       },
       "id": 2,
       "options": {
@@ -990,7 +1324,7 @@
           },
           "exemplar": true,
           "expr": "jvm_threads_live_threads{instance=~\"$instance\"}",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "The total number of jvm thread",
           "refId": "A"
         },
@@ -1002,7 +1336,7 @@
           "exemplar": true,
           "expr": "jvm_threads_states_threads{instance=~\"$instance\"}",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "{{state}}",
           "refId": "B"
         }
@@ -1051,10 +1385,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -1066,7 +1396,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 41
+        "y": 70
       },
       "id": 26,
       "options": {
@@ -1088,12 +1418,285 @@
           },
           "exemplar": true,
           "expr": "avg(rate(entry_seconds_sum{}[1m])/rate(entry_seconds_count{}[1m])) by (name,instance)",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "{{instance}}-{{name}}",
           "refId": "A"
         }
       ],
       "title": "The time consumed of interface",
+      "type": "timeseries"
+    },
+	{
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 0,
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+		  "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 78
+      },
+      "id": 42,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "exemplar": true,
+          "expr": "sys_cpu_load{instance=\"$instance\",name=\"system\"}",
+          "interval": "",
+          "legendFormat": "System CPU Load",
+          "refId": "A"
+        }
+      ],
+      "title": "CPU-Load",
+      "type": "timeseries"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 78
+      },
+      "id": 44,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "exemplar": true,
+          "expr": "sys_total_physical_memory_size{instance=\"$instance\", name=\"system\"}-sys_free_physical_memory_size{instance=\"$instance\", name=\"system\"}",
+          "interval": "",
+          "legendFormat": "Used physical memory",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "exemplar": true,
+          "expr": "sys_total_physical_memory_size{instance=\"$instance\", name=\"system\"}",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "Total physical memory",
+          "refId": "B"
+        }
+      ],
+      "title": "Memory",
+      "type": "timeseries"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMin": -5,
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 86
+      },
+      "id": 46,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "exemplar": true,
+          "expr": "sys_disk_total_space{instance=\"$instance\", name=\"system\"}-sys_disk_free_space{instance=\"$instance\", name=\"system\"}",
+          "interval": "",
+          "legendFormat": "Used disk space",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "exemplar": true,
+          "expr": "sys_disk_total_space{instance=\"$instance\", name=\"system\"}",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "Total disk space",
+          "refId": "B"
+        }
+      ],
+      "title": "Disk-Space",
       "type": "timeseries"
     }
   ],
@@ -1154,7 +1757,7 @@
     ]
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {
@@ -1170,6 +1773,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB ConfigNode Dashboard",
   "uid": "TbEVYRw7g",
-  "version": 16,
+  "version": 19,
   "weekStart": ""
 }

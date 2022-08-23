@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -256,6 +257,16 @@ public abstract class Statistics<T extends Serializable> {
     count += batchSize;
   }
 
+  public void update(long[] time, int batchSize, int arrayOffset) {
+    if (time[arrayOffset] < startTime) {
+      startTime = time[arrayOffset];
+    }
+    if (time[arrayOffset + batchSize - 1] > this.endTime) {
+      endTime = time[arrayOffset + batchSize - 1];
+    }
+    count += batchSize;
+  }
+
   protected abstract void mergeStatisticsValue(Statistics<T> stats);
 
   public boolean isEmpty() {
@@ -372,6 +383,10 @@ public abstract class Statistics<T extends Serializable> {
   }
 
   public abstract long calculateRamSize();
+
+  public boolean containedByTimeFilter(Filter timeFilter) {
+    return timeFilter == null || timeFilter.containStartEndTime(getStartTime(), getEndTime());
+  }
 
   @Override
   public String toString() {

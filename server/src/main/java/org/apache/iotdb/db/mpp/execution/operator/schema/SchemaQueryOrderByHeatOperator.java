@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -34,6 +36,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -42,24 +45,33 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
   private boolean isFinished = false;
   private final List<Operator> operators;
-  private final boolean[] noMoreTsBlocks;
   private final List<TsBlock> showTimeSeriesResult;
   private final List<TsBlock> lastQueryResult;
+
+  private final List<TSDataType> outputDataTypes;
+  private final int columnCount;
+
+  private int currentIndex;
 
   public SchemaQueryOrderByHeatOperator(OperatorContext operatorContext, List<Operator> operators) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.operators = operators;
-    this.noMoreTsBlocks = new boolean[operators.size()];
     this.showTimeSeriesResult = new ArrayList<>();
     this.lastQueryResult = new ArrayList<>();
+    this.outputDataTypes =
+        ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    this.columnCount = outputDataTypes.size();
+
+    currentIndex = 0;
   }
 
   @Override
   public TsBlock next() {
     isFinished = true;
 
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showTimeSeriesHeader.getRespDataTypes());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
 
     // Step 1: get last point result
     Map<String, Long> timeseriesToLastTimestamp = new HashMap<>();
@@ -95,7 +107,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
       List<Object[]> rows = lastTimestampToTsSchema.get(time);
       for (Object[] row : rows) {
         tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-        for (int i = 0; i < HeaderConstant.showTimeSeriesHeader.getRespDataTypes().size(); i++) {
+        for (int i = 0; i < columnCount; i++) {
           Object value = row[i];
           if (null == value) {
             tsBlockBuilder.getColumnBuilder(i).appendNull();
@@ -116,34 +128,46 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
-    for (int i = 0; i < operators.size(); i++) {
-      if (!noMoreTsBlocks[i]) {
-        Operator operator = operators.get(i);
-        ListenableFuture<Void> blocked = operator.isBlocked();
-        while (operator.hasNext() && blocked.isDone()) {
-          TsBlock tsBlock = operator.next();
-          if (null != tsBlock && !tsBlock.isEmpty()) {
-            if (isShowTimeSeriesBlock(tsBlock)) {
-              showTimeSeriesResult.add(tsBlock);
-            } else {
-              lastQueryResult.add(tsBlock);
-            }
-          }
-          blocked = operator.isBlocked();
-        }
-        if (!blocked.isDone()) {
-          return blocked;
-        }
-        noMoreTsBlocks[i] = true;
+  public ListenableFuture<?> isBlocked() {
+    Operator operator;
+    ListenableFuture<?> blocked;
+    while (currentIndex < operators.size()) {
+      operator = operators.get(currentIndex);
+      blocked = readCurrentChild(operator);
+      if (blocked != null) {
+        // not null means blocked
+        return blocked;
+      } else {
+        // null means current operator is finished
+        currentIndex++;
       }
     }
+
     return NOT_BLOCKED;
   }
 
+  private ListenableFuture<?> readCurrentChild(Operator operator) {
+    while (!operator.isFinished()) {
+      ListenableFuture<?> blocked = operator.isBlocked();
+      if (!blocked.isDone()) {
+        return blocked;
+      }
+      if (operator.hasNext()) {
+        TsBlock tsBlock = operator.next();
+        if (null != tsBlock && !tsBlock.isEmpty()) {
+          if (isShowTimeSeriesBlock(tsBlock)) {
+            showTimeSeriesResult.add(tsBlock);
+          } else {
+            lastQueryResult.add(tsBlock);
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   private boolean isShowTimeSeriesBlock(TsBlock tsBlock) {
-    return tsBlock.getValueColumnCount()
-        == HeaderConstant.showTimeSeriesHeader.getOutputValueColumnCount();
+    return tsBlock.getValueColumnCount() == columnCount;
   }
 
   @Override
@@ -161,5 +185,45 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   @Override
   public boolean isFinished() {
     return isFinished;
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    long maxPeekMemory = 0;
+
+    for (Operator child : operators) {
+      maxPeekMemory += child.calculateMaxReturnSize();
+    }
+
+    for (Operator child : operators) {
+      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemory());
+    }
+
+    return maxPeekMemory;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    long maxReturnSize = 0;
+
+    for (Operator child : operators) {
+      maxReturnSize += child.calculateMaxReturnSize();
+    }
+
+    return maxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long retainedSize = 0L;
+
+    for (Operator child : operators) {
+      retainedSize += child.calculateMaxReturnSize();
+    }
+
+    for (Operator child : operators) {
+      retainedSize += child.calculateRetainedSizeAfterCallingNext();
+    }
+    return retainedSize;
   }
 }

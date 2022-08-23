@@ -66,23 +66,40 @@ public class MultiLeaderConfig {
   }
 
   public static class RPC {
+    private final int rpcSelectorThreadNum;
+    private final int rpcMinConcurrentClientNum;
     private final int rpcMaxConcurrentClientNum;
     private final int thriftServerAwaitTimeForStopService;
     private final boolean isRpcThriftCompressionEnabled;
     private final int selectorNumOfClientManager;
     private final int connectionTimeoutInMs;
+    private final int thriftMaxFrameSize;
 
     private RPC(
+        int rpcSelectorThreadNum,
+        int rpcMinConcurrentClientNum,
         int rpcMaxConcurrentClientNum,
         int thriftServerAwaitTimeForStopService,
         boolean isRpcThriftCompressionEnabled,
         int selectorNumOfClientManager,
-        int connectionTimeoutInMs) {
+        int connectionTimeoutInMs,
+        int thriftMaxFrameSize) {
+      this.rpcSelectorThreadNum = rpcSelectorThreadNum;
+      this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
       this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
       this.isRpcThriftCompressionEnabled = isRpcThriftCompressionEnabled;
       this.selectorNumOfClientManager = selectorNumOfClientManager;
       this.connectionTimeoutInMs = connectionTimeoutInMs;
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
+    }
+
+    public int getRpcSelectorThreadNum() {
+      return rpcSelectorThreadNum;
+    }
+
+    public int getRpcMinConcurrentClientNum() {
+      return rpcMinConcurrentClientNum;
     }
 
     public int getRpcMaxConcurrentClientNum() {
@@ -105,16 +122,33 @@ public class MultiLeaderConfig {
       return connectionTimeoutInMs;
     }
 
+    public int getThriftMaxFrameSize() {
+      return thriftMaxFrameSize;
+    }
+
     public static RPC.Builder newBuilder() {
       return new RPC.Builder();
     }
 
     public static class Builder {
+      private int rpcSelectorThreadNum = 1;
+      private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
       private int rpcMaxConcurrentClientNum = 65535;
       private int thriftServerAwaitTimeForStopService = 60;
       private boolean isRpcThriftCompressionEnabled = false;
       private int selectorNumOfClientManager = 1;
       private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(20);
+      private int thriftMaxFrameSize = 536870912;
+
+      public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
+        this.rpcSelectorThreadNum = rpcSelectorThreadNum;
+        return this;
+      }
+
+      public RPC.Builder setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
+        this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
+        return this;
+      }
 
       public RPC.Builder setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
         this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -142,13 +176,21 @@ public class MultiLeaderConfig {
         return this;
       }
 
+      public RPC.Builder setThriftMaxFrameSize(int thriftMaxFrameSize) {
+        this.thriftMaxFrameSize = thriftMaxFrameSize;
+        return this;
+      }
+
       public RPC build() {
         return new RPC(
+            rpcSelectorThreadNum,
+            rpcMinConcurrentClientNum,
             rpcMaxConcurrentClientNum,
             thriftServerAwaitTimeForStopService,
             isRpcThriftCompressionEnabled,
             selectorNumOfClientManager,
-            connectionTimeoutInMs);
+            connectionTimeoutInMs,
+            thriftMaxFrameSize);
       }
     }
   }
@@ -160,6 +202,8 @@ public class MultiLeaderConfig {
     private final int maxWaitingTimeForAccumulatingBatchInMs;
     private final long basicRetryWaitTimeMs;
     private final long maxRetryWaitTimeMs;
+    private final long walThrottleThreshold;
+    private final long throttleTimeOutMs;
 
     private Replication(
         int maxPendingRequestNumPerNode,
@@ -167,13 +211,17 @@ public class MultiLeaderConfig {
         int maxPendingBatch,
         int maxWaitingTimeForAccumulatingBatchInMs,
         long basicRetryWaitTimeMs,
-        long maxRetryWaitTimeMs) {
+        long maxRetryWaitTimeMs,
+        long walThrottleThreshold,
+        long throttleTimeOutMs) {
       this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
       this.maxRequestPerBatch = maxRequestPerBatch;
       this.maxPendingBatch = maxPendingBatch;
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
+      this.walThrottleThreshold = walThrottleThreshold;
+      this.throttleTimeOutMs = throttleTimeOutMs;
     }
 
     public int getMaxPendingRequestNumPerNode() {
@@ -200,17 +248,29 @@ public class MultiLeaderConfig {
       return maxRetryWaitTimeMs;
     }
 
+    public long getWalThrottleThreshold() {
+      return walThrottleThreshold;
+    }
+
+    public long getThrottleTimeOutMs() {
+      return throttleTimeOutMs;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
 
     public static class Builder {
-      private int maxPendingRequestNumPerNode = 1000;
-      private int maxRequestPerBatch = 100;
-      private int maxPendingBatch = 50;
-      private int maxWaitingTimeForAccumulatingBatchInMs = 10;
+      private int maxPendingRequestNumPerNode = 600;
+      private int maxRequestPerBatch = 30;
+      // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
+      // in DataRegionStateMachine
+      private int maxPendingBatch = 5;
+      private int maxWaitingTimeForAccumulatingBatchInMs = 500;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);
+      private long walThrottleThreshold = 50 * 1024 * 1024 * 1024L;
+      private long throttleTimeOutMs = TimeUnit.SECONDS.toMillis(30);
 
       public Replication.Builder setMaxPendingRequestNumPerNode(int maxPendingRequestNumPerNode) {
         this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
@@ -243,6 +303,16 @@ public class MultiLeaderConfig {
         return this;
       }
 
+      public Replication.Builder setWalThrottleThreshold(long walThrottleThreshold) {
+        this.walThrottleThreshold = walThrottleThreshold;
+        return this;
+      }
+
+      public Replication.Builder setThrottleTimeOutMs(long throttleTimeOutMs) {
+        this.throttleTimeOutMs = throttleTimeOutMs;
+        return this;
+      }
+
       public Replication build() {
         return new Replication(
             maxPendingRequestNumPerNode,
@@ -250,7 +320,9 @@ public class MultiLeaderConfig {
             maxPendingBatch,
             maxWaitingTimeForAccumulatingBatchInMs,
             basicRetryWaitTimeMs,
-            maxRetryWaitTimeMs);
+            maxRetryWaitTimeMs,
+            walThrottleThreshold,
+            throttleTimeOutMs);
       }
     }
   }

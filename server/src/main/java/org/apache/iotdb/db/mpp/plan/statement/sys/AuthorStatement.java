@@ -37,7 +37,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private String password;
   private String newPassword;
   private String[] privilegeList;
-  private PartialPath nodeName;
+  private List<PartialPath> nodeNameList;
 
   /**
    * AuthorOperator Constructor with AuthorType.
@@ -86,12 +86,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         break;
       case LIST_ROLE_PRIVILEGE:
         this.setType(StatementType.LIST_ROLE_PRIVILEGE);
-        break;
-      case LIST_USER_ROLES:
-        this.setType(StatementType.LIST_USER_ROLES);
-        break;
-      case LIST_ROLE_USERS:
-        this.setType(StatementType.LIST_ROLE_USERS);
         break;
       case LIST_USER:
         this.setType(StatementType.LIST_USER);
@@ -158,12 +152,12 @@ public class AuthorStatement extends Statement implements IConfigStatement {
     this.privilegeList = privilegeList;
   }
 
-  public PartialPath getNodeName() {
-    return nodeName;
+  public List<PartialPath> getNodeNameList() {
+    return nodeNameList != null ? nodeNameList : Collections.emptyList();
   }
 
-  public void setNodeNameList(PartialPath nodePath) {
-    this.nodeName = nodePath;
+  public void setNodeNameList(List<PartialPath> nodeNameList) {
+    this.nodeNameList = nodeNameList;
   }
 
   @Override
@@ -192,8 +186,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case LIST_ROLE:
       case LIST_USER_PRIVILEGE:
       case LIST_ROLE_PRIVILEGE:
-      case LIST_USER_ROLES:
-      case LIST_ROLE_USERS:
         queryType = QueryType.READ;
         break;
       default:
@@ -204,6 +196,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return nodeName != null ? Collections.singletonList(nodeName) : Collections.emptyList();
+    return nodeNameList != null ? nodeNameList : Collections.emptyList();
   }
 }

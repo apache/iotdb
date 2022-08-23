@@ -31,6 +31,9 @@ public interface AccessStrategy {
 
   enum AccessStrategyType {
 
+    /** @see MappableRowByRowAccessStrategy */
+    MAPPABLE_ROW_BY_ROW,
+
     /** @see RowByRowAccessStrategy */
     ROW_BY_ROW,
 
@@ -38,7 +41,10 @@ public interface AccessStrategy {
     SLIDING_TIME_WINDOW,
 
     /** @see SlidingSizeWindowAccessStrategy */
-    SLIDING_SIZE_WINDOW
+    SLIDING_SIZE_WINDOW,
+
+    /** @see SessionTimeWindowAccessStrategy */
+    SESSION_TIME_WINDOW
   }
 
   /**

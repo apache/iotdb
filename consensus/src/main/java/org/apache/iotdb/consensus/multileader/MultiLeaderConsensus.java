@@ -20,6 +20,8 @@
 package org.apache.iotdb.consensus.multileader;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -38,8 +40,11 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
+import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
+import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCService;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCServiceProcessor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +72,7 @@ public class MultiLeaderConsensus implements IConsensus {
   private final MultiLeaderRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
   private final MultiLeaderConfig config;
+  private final IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager;
 
   public MultiLeaderConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNode();
@@ -74,12 +80,16 @@ public class MultiLeaderConsensus implements IConsensus {
     this.config = config.getMultiLeaderConfig();
     this.registry = registry;
     this.service = new MultiLeaderRPCService(thisNode, config.getMultiLeaderConfig());
+    this.clientManager =
+        new IClientManager.Factory<TEndPoint, AsyncMultiLeaderServiceClient>()
+            .createClientManager(
+                new AsyncMultiLeaderServiceClientPoolFactory(config.getMultiLeaderConfig()));
   }
 
   @Override
   public void start() throws IOException {
     initAndRecover();
-    service.initSyncedServiceImpl(new MultiLeaderRPCServiceProcessor(this));
+    service.initAsyncedServiceImpl(new MultiLeaderRPCServiceProcessor(this));
     try {
       registerManager.register(service);
     } catch (StartupException e) {
@@ -105,6 +115,7 @@ public class MultiLeaderConsensus implements IConsensus {
                   new Peer(consensusGroupId, thisNode),
                   new ArrayList<>(),
                   registry.apply(consensusGroupId),
+                  clientManager,
                   config);
           stateMachineMap.put(consensusGroupId, consensus);
           consensus.start();
@@ -115,6 +126,7 @@ public class MultiLeaderConsensus implements IConsensus {
 
   @Override
   public void stop() {
+    clientManager.close();
     stateMachineMap.values().parallelStream().forEach(MultiLeaderServerImpl::stop);
     registerManager.deregisterAll();
   }
@@ -127,7 +139,15 @@ public class MultiLeaderConsensus implements IConsensus {
           .setException(new ConsensusGroupNotExistException(groupId))
           .build();
     }
-    return ConsensusWriteResponse.newBuilder().setStatus(impl.write(request)).build();
+
+    TSStatus status;
+    if (impl.isReadOnly()) {
+      status = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
+      status.setMessage("Fail to do non-query operations because system is read-only.");
+    } else {
+      status = impl.write(request);
+    }
+    return ConsensusWriteResponse.newBuilder().setStatus(status).build();
   }
 
   @Override
@@ -142,7 +162,7 @@ public class MultiLeaderConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusGenericResponse addConsensusGroup(ConsensusGroupId groupId, List<Peer> peers) {
+  public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
     int consensusGroupSize = peers.size();
     if (consensusGroupSize == 0) {
       return ConsensusGenericResponse.newBuilder()
@@ -166,7 +186,12 @@ public class MultiLeaderConsensus implements IConsensus {
           }
           MultiLeaderServerImpl impl =
               new MultiLeaderServerImpl(
-                  path, new Peer(groupId, thisNode), peers, registry.apply(groupId), config);
+                  path,
+                  new Peer(groupId, thisNode),
+                  peers,
+                  registry.apply(groupId),
+                  clientManager,
+                  config);
           impl.start();
           return impl;
         });
@@ -179,7 +204,7 @@ public class MultiLeaderConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusGenericResponse removeConsensusGroup(ConsensusGroupId groupId) {
+  public ConsensusGenericResponse deletePeer(ConsensusGroupId groupId) {
     AtomicBoolean exist = new AtomicBoolean(false);
     stateMachineMap.computeIfPresent(
         groupId,
@@ -234,6 +259,11 @@ public class MultiLeaderConsensus implements IConsensus {
       return null;
     }
     return new Peer(groupId, thisNode);
+  }
+
+  @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIds() {
+    return new ArrayList<>(stateMachineMap.keySet());
   }
 
   public MultiLeaderServerImpl getImpl(ConsensusGroupId groupId) {

@@ -90,6 +90,8 @@ public class AuthorityCheckerTest {
         user.getName(), nodeName, PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal());
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal());
+    authorizer.grantPrivilegeToUser(
+        user.getName(), nodeName, PrivilegeType.ALTER_TIMESERIES.ordinal());
 
     Assert.assertTrue(
         AuthorityChecker.check(
@@ -250,6 +252,13 @@ public class AuthorityCheckerTest {
             user.getName(),
             Collections.singletonList(new PartialPath(nodeName)),
             OperatorType.DROP_CONTINUOUS_QUERY,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.ALTER_TIMESERIES,
             user.getName()));
   }
 }

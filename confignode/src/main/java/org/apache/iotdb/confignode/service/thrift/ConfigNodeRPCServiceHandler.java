@@ -16,28 +16,41 @@
  */
 package org.apache.iotdb.confignode.service.thrift;
 
+import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
 public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
-  private final ConfigNodeRPCServiceProcessor processor;
 
-  public ConfigNodeRPCServiceHandler(ConfigNodeRPCServiceProcessor processor) {
-    this.processor = processor;
-  }
+  public ConfigNodeRPCServiceHandler() {}
 
   @Override
   public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
-    // nothing
+    MetricService.getInstance()
+        .getOrCreateGauge(
+            Metric.THRIFT_CONNECTIONS.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            "ConfigNodeRPC")
+        .incr(1L);
     return null;
   }
 
   @Override
   public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
-    // release query resources.
-    processor.handleClientExit();
+    MetricService.getInstance()
+        .getOrCreateGauge(
+            Metric.THRIFT_CONNECTIONS.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            "ConfigNodeRPC")
+        .decr(1L);
   }
 
   @Override

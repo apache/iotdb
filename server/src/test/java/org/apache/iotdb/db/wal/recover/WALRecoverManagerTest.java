@@ -34,6 +34,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.buffer.IWALBuffer;
 import org.apache.iotdb.db.wal.buffer.WALBuffer;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
+import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
@@ -157,6 +158,7 @@ public class WALRecoverManagerTest {
   @Test
   public void testNormalProcedure() throws Exception {
     prepareCheckpointAndWALFileForNormal();
+    WALRecoverManager.getInstance().clear();
     recoverAndCheck();
   }
 
@@ -166,10 +168,10 @@ public class WALRecoverManagerTest {
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    int firstWALVersionId = walBuffer.getCurrentWALFileVersion();
+    long firstWALVersionId = walBuffer.getCurrentWALFileVersion();
     for (int i = 0; i < threadsNum; ++i) {
       IMemTable fakeMemTable = new PrimitiveMemTable();
-      int memTableId = fakeMemTable.getMemTableId();
+      long memTableId = fakeMemTable.getMemTableId();
       Callable<Void> writeTask =
           () -> {
             checkpointManager.makeCreateMemTableCP(
@@ -177,7 +179,7 @@ public class WALRecoverManagerTest {
             try {
               while (walBuffer.getCurrentWALFileVersion() - firstWALVersionId < 2) {
                 WALEntry walEntry =
-                    new WALEntry(
+                    new WALInfoEntry(
                         memTableId, getInsertTabletPlan(SG_NAME.concat("test_d" + memTableId)));
                 walBuffer.write(walEntry);
               }
@@ -200,10 +202,10 @@ public class WALRecoverManagerTest {
     }
     Thread.sleep(1_000);
     // write normal .wal files
-    int firstValidVersionId = walBuffer.getCurrentWALFileVersion();
+    long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
     IMemTable targetMemTable = new PrimitiveMemTable();
     WALEntry walEntry =
-        new WALEntry(targetMemTable.getMemTableId(), getInsertRowPlan(DEVICE2_NAME, 4L), true);
+        new WALInfoEntry(targetMemTable.getMemTableId(), getInsertRowPlan(DEVICE2_NAME, 4L), true);
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
     // write .checkpoint file
@@ -214,6 +216,7 @@ public class WALRecoverManagerTest {
   @Test
   public void testMemTableSnapshot() throws Exception {
     prepareCheckpointAndWALFileForSnapshot();
+    WALRecoverManager.getInstance().clear();
     recoverAndCheck();
   }
 
@@ -223,10 +226,10 @@ public class WALRecoverManagerTest {
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    int firstWALVersionId = walBuffer.getCurrentWALFileVersion();
+    long firstWALVersionId = walBuffer.getCurrentWALFileVersion();
     for (int i = 0; i < threadsNum; ++i) {
       IMemTable fakeMemTable = new PrimitiveMemTable();
-      int memTableId = fakeMemTable.getMemTableId();
+      long memTableId = fakeMemTable.getMemTableId();
       Callable<Void> writeTask =
           () -> {
             checkpointManager.makeCreateMemTableCP(
@@ -234,7 +237,7 @@ public class WALRecoverManagerTest {
             try {
               while (walBuffer.getCurrentWALFileVersion() - firstWALVersionId < 2) {
                 WALEntry walEntry =
-                    new WALEntry(
+                    new WALInfoEntry(
                         memTableId, getInsertTabletPlan(SG_NAME.concat("test_d" + memTableId)));
                 walBuffer.write(walEntry);
               }
@@ -257,16 +260,16 @@ public class WALRecoverManagerTest {
     }
     Thread.sleep(1_000);
     // write normal .wal files
-    int firstValidVersionId = walBuffer.getCurrentWALFileVersion();
+    long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
     IMemTable targetMemTable = new PrimitiveMemTable();
     InsertRowPlan insertRowPlan = getInsertRowPlan(DEVICE2_NAME, 4L);
     targetMemTable.insert(insertRowPlan);
 
-    WALEntry walEntry = new WALEntry(targetMemTable.getMemTableId(), insertRowPlan, true);
+    WALEntry walEntry = new WALInfoEntry(targetMemTable.getMemTableId(), insertRowPlan, true);
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
 
-    walEntry = new WALEntry(targetMemTable.getMemTableId(), targetMemTable, true);
+    walEntry = new WALInfoEntry(targetMemTable.getMemTableId(), targetMemTable, true);
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
     // write .checkpoint file

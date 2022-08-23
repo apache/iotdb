@@ -20,136 +20,90 @@
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
-import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
-import com.google.common.util.concurrent.ListenableFuture;
-
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator.updateResultTsBlockFromAggregators;
-import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.satisfied;
-import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.skipOutOfTimeRangePoints;
-import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator.initTimeRangeIterator;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 
-public class SlidingWindowAggregationOperator implements ProcessOperator {
+public class SlidingWindowAggregationOperator extends SingleInputAggregationOperator {
 
-  private final OperatorContext operatorContext;
-  private final Operator child;
-
-  private TsBlock cachedTsBlock;
-
-  private final List<SlidingWindowAggregator> aggregators;
-
-  private final ITimeRangeIterator timeRangeIterator;
-  // current interval of aggregation window [curStartTime, curEndTime)
-  private TimeRange curTimeRange;
-
-  private final boolean ascending;
-
-  private final TsBlockBuilder tsBlockBuilder;
+  private final ITimeRangeIterator subTimeRangeIterator;
+  // current interval of pre-aggregation window [curStartTime, curEndTime)
+  private TimeRange curSubTimeRange;
 
   public SlidingWindowAggregationOperator(
       OperatorContext operatorContext,
-      List<SlidingWindowAggregator> aggregators,
+      List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
       Operator child,
       boolean ascending,
-      GroupByTimeParameter groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
+    super(operatorContext, aggregators, child, ascending, timeRangeIterator, maxReturnSize);
     checkArgument(
         groupByTimeParameter != null,
         "GroupByTimeParameter cannot be null in SlidingWindowAggregationOperator");
+    this.subTimeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+  }
 
-    this.operatorContext = operatorContext;
-    this.aggregators = aggregators;
-    this.child = child;
-    List<TSDataType> outputDataTypes = new ArrayList<>();
+  @Override
+  protected boolean calculateNextAggregationResult() {
+    while (!isCalculationDone()) {
+      if (inputTsBlock == null) {
+        // NOTE: child.next() can only be invoked once
+        if (child.hasNext() && canCallNext) {
+          inputTsBlock = child.next();
+          canCallNext = false;
+        } else if (child.hasNext()) {
+          // if child still has next but can't be invoked now
+          return false;
+        } else {
+          break;
+        }
+      }
+
+      calculateFromCachedData();
+    }
+
+    // update result using aggregators
+    updateResultTsBlock();
+
+    return true;
+  }
+
+  /** @return if already get the result */
+  private boolean isCalculationDone() {
+    if (curSubTimeRange == null && !subTimeRangeIterator.hasNextTimeRange()) {
+      return true;
+    }
+
+    if (curSubTimeRange == null && subTimeRangeIterator.hasNextTimeRange()) {
+      curSubTimeRange = subTimeRangeIterator.nextTimeRange();
+    }
+    return ascending
+        ? curSubTimeRange.getMin() > curTimeRange.getMax()
+        : curSubTimeRange.getMax() < curTimeRange.getMin();
+  }
+
+  private void calculateFromCachedData() {
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+      return;
+    }
+
     for (Aggregator aggregator : aggregators) {
-      outputDataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
-    }
-    this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, false);
-    this.ascending = ascending;
-  }
-
-  @Override
-  public boolean hasNext() {
-    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
-  }
-
-  @Override
-  public TsBlock next() {
-    // Move to next timeRange
-    if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
-      curTimeRange = timeRangeIterator.nextTimeRange();
-      for (Aggregator aggregator : aggregators) {
-        aggregator.updateTimeRange(curTimeRange);
-      }
+      aggregator.processTsBlock(inputTsBlock);
     }
 
-    // 1. Calculate aggregation result based on current time window
-    boolean canCallNext = true;
-    while (!calcFromTsBlock(cachedTsBlock, curTimeRange)) {
-      cachedTsBlock = null;
-      // child.next can only be invoked once
-      if (child.hasNext() && canCallNext) {
-        cachedTsBlock = child.next();
-        canCallNext = false;
-        // if child still has next but can't be invoked now
-      } else if (child.hasNext()) {
-        return null;
-      } else {
-        break;
-      }
+    inputTsBlock = inputTsBlock.skipFirst();
+    if (inputTsBlock.isEmpty()) {
+      inputTsBlock = null;
     }
-
-    // 2. Update result using aggregators
-    curTimeRange = null;
-    return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
-  }
-
-  private boolean calcFromTsBlock(TsBlock inputTsBlock, TimeRange timeRange) {
-    // check if the batchData does not contain points in current interval
-    if (inputTsBlock != null && satisfied(inputTsBlock, timeRange, ascending)) {
-      // skip points that cannot be calculated
-      inputTsBlock = skipOutOfTimeRangePoints(inputTsBlock, timeRange, ascending);
-      for (SlidingWindowAggregator aggregator : aggregators) {
-        aggregator.processTsBlock(inputTsBlock);
-      }
-    }
-    // The result is calculated from the cache
-    return inputTsBlock != null
-        && (ascending
-            ? inputTsBlock.getEndTime() > timeRange.getMax()
-            : inputTsBlock.getEndTime() < timeRange.getMin());
-  }
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
-  public ListenableFuture<Void> isBlocked() {
-    return child.isBlocked();
-  }
-
-  @Override
-  public boolean isFinished() {
-    return !this.hasNext();
-  }
-
-  @Override
-  public void close() throws Exception {
-    child.close();
+    curSubTimeRange = null;
   }
 }

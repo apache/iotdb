@@ -48,7 +48,11 @@ jobs:
       - name: Adjust network dynamic TCP ports range
         if: ${{ runner.os == 'Windows' }}
         shell: pwsh
-        run: netsh int ipv4 set dynamicport tcp start=32768 num=32768
+        run: |
+          netsh int ipv4 set dynamicport tcp start=32768 num=32768
+          netsh int ipv4 set dynamicport udp start=32768 num=32768
+          netsh int ipv6 set dynamicport tcp start=32768 num=32768
+          netsh int ipv6 set dynamicport udp start=32768 num=32768
       - name: Adjust Linux kernel somaxconn
         if: ${{ runner.os == 'Linux' }}
         shell: bash
@@ -63,15 +67,7 @@ jobs:
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
           mvn clean verify \
-          -Dsession.test.skip=true \
-          -Diotdb.test.skip=true \
-          -Dcluster.test.skip=true \
-          -Dtsfile.test.skip=true \
-          -Dcommons.test.skip=true \
-          -Dconfignode.test.skip=true \
-          -Dconsensus.test.skip=true \
-          -Djdbc.test.skip=true \
-          -Dmetrics.test.skip=true \
+          -DskipUTs \
           -pl integration-test \
           -am -PClusterIT
       - name: Upload Artifact

@@ -57,6 +57,11 @@ public class StringLiteral extends Literal {
   }
 
   @Override
+  public String getDataTypeString() {
+    return TSDataType.TEXT.toString();
+  }
+
+  @Override
   public Binary getBinary() {
     return new Binary(value);
   }

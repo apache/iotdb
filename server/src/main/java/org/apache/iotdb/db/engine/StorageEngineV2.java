@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
@@ -41,6 +43,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
@@ -79,6 +82,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+
 public class StorageEngineV2 implements IService {
   private static final Logger logger = LoggerFactory.getLogger(StorageEngineV2.class);
 
@@ -104,6 +109,10 @@ public class StorageEngineV2 implements IService {
 
   /** DataRegionId -> DataRegion */
   private final ConcurrentHashMap<DataRegionId, DataRegion> dataRegionMap =
+      new ConcurrentHashMap<>();
+
+  /** DataRegionId -> DataRegion which is being deleted */
+  private final ConcurrentHashMap<DataRegionId, DataRegion> deletingDataRegionMap =
       new ConcurrentHashMap<>();
 
   /** number of ready data region */
@@ -163,6 +172,9 @@ public class StorageEngineV2 implements IService {
   }
 
   public static long getTimePartition(long time) {
+    if (timePartitionInterval == -1) {
+      initTimePartition();
+    }
     return enablePartition ? time / timePartitionInterval : 0;
   }
 
@@ -198,6 +210,9 @@ public class StorageEngineV2 implements IService {
   public static TTimePartitionSlot getTimePartitionSlot(long time) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
     if (enablePartition) {
+      if (timePartitionInterval == -1) {
+        initTimePartition();
+      }
       timePartitionSlot.setStartTime(time - time % timePartitionInterval);
     } else {
       timePartitionSlot.setStartTime(0);
@@ -223,10 +238,13 @@ public class StorageEngineV2 implements IService {
     asyncRecover(recoveryThreadPool, futures);
 
     // wait until wal is recovered
-    try {
-      WALRecoverManager.getInstance().recover();
-    } catch (WALException e) {
-      logger.error("Fail to recover wal.", e);
+    if (!config.isClusterMode()
+        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      try {
+        WALRecoverManager.getInstance().recover();
+      } catch (WALException e) {
+        logger.error("Fail to recover wal.", e);
+      }
     }
 
     // operations after all virtual storage groups are recovered
@@ -491,8 +509,8 @@ public class StorageEngineV2 implements IService {
   }
 
   /** Write data into DataRegion. For standalone mode only. */
-  public void write(DataRegionId groupId, PlanNode planNode) {
-    planNode.accept(new DataExecutionVisitor(), dataRegionMap.get(groupId));
+  public TSStatus write(DataRegionId groupId, PlanNode planNode) {
+    return planNode.accept(new DataExecutionVisitor(), dataRegionMap.get(groupId));
   }
 
   /** This function is just for unit test. */
@@ -522,7 +540,7 @@ public class StorageEngineV2 implements IService {
 
   public void closeStorageGroupProcessor(String storageGroupPath, boolean isSeq) {
     for (DataRegion dataRegion : dataRegionMap.values()) {
-      if (dataRegion.getLogicalStorageGroupName().equals(storageGroupPath)) {
+      if (dataRegion.getStorageGroupName().equals(storageGroupPath)) {
         if (isSeq) {
           for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
             dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
@@ -534,6 +552,18 @@ public class StorageEngineV2 implements IService {
         }
       }
     }
+  }
+
+  /**
+   * merge all storage groups.
+   *
+   * @throws StorageEngineException StorageEngineException
+   */
+  public void mergeAll() throws StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException("Current system mode is read only, does not support merge");
+    }
+    dataRegionMap.values().forEach(DataRegion::compact);
   }
 
   public TSStatus operateFlush(TFlushReq req) {
@@ -583,10 +613,20 @@ public class StorageEngineV2 implements IService {
     customCloseFileListeners.add(listener);
   }
 
+  private void makeSureNoOldRegion(DataRegionId regionId) {
+    while (deletingDataRegionMap.containsKey(regionId)) {
+      DataRegion oldRegion = deletingDataRegionMap.get(regionId);
+      if (oldRegion != null) {
+        oldRegion.waitForDeleted();
+      }
+    }
+  }
+
   // When registering a new region, the coordinator needs to register the corresponding region with
   // the local engine before adding the corresponding consensusGroup to the consensus layer
   public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl)
       throws DataRegionException {
+    makeSureNoOldRegion(regionId);
     AtomicReference<DataRegionException> exceptionAtomicReference = new AtomicReference<>(null);
     DataRegion dataRegion =
         dataRegionMap.computeIfAbsent(
@@ -606,11 +646,34 @@ public class StorageEngineV2 implements IService {
   }
 
   public void deleteDataRegion(DataRegionId regionId) {
-    DataRegion region = dataRegionMap.remove(regionId);
+    if (!dataRegionMap.containsKey(regionId) || deletingDataRegionMap.containsKey(regionId)) {
+      return;
+    }
+    DataRegion region =
+        deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
-      region.abortCompaction();
-      region.syncDeleteDataFiles();
-      region.deleteFolder(systemDir);
+      try {
+        region.abortCompaction();
+        region.syncDeleteDataFiles();
+        region.deleteFolder(systemDir);
+        if (config.isClusterMode()
+            && config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.MultiLeaderConsensus)) {
+          WALManager.getInstance()
+              .deleteWALNode(
+                  region.getStorageGroupName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
+        }
+      } catch (Exception e) {
+        logger.error(
+            "Error occurs when deleting data region {}-{}",
+            region.getStorageGroupName(),
+            region.getDataRegionId(),
+            e);
+      } finally {
+        deletingDataRegionMap.remove(regionId);
+        region.markDeleted();
+      }
     }
   }
 
@@ -622,6 +685,7 @@ public class StorageEngineV2 implements IService {
     return new ArrayList<>(dataRegionMap.keySet());
   }
 
+  /** This method is not thread-safe */
   public void setDataRegion(DataRegionId regionId, DataRegion newRegion) {
     if (dataRegionMap.containsKey(regionId)) {
       DataRegion oldRegion = dataRegionMap.get(regionId);
@@ -629,6 +693,34 @@ public class StorageEngineV2 implements IService {
       oldRegion.abortCompaction();
     }
     dataRegionMap.put(regionId, newRegion);
+  }
+
+  //  public TSStatus setTTL(TSetTTLReq req) {
+  //    Map<String, List<DataRegionId>> localDataRegionInfo =
+  //        StorageEngineV2.getInstance().getLocalDataRegionInfo();
+  //    List<DataRegionId> dataRegionIdList = localDataRegionInfo.get(req.storageGroup);
+  //    for (DataRegionId dataRegionId : dataRegionIdList) {
+  //      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
+  //      if (dataRegion != null) {
+  //        dataRegion.setDataTTL(req.TTL);
+  //      }
+  //    }
+  //    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  //  }
+
+  public TSStatus setTTL(TSetTTLReq req) {
+    Map<String, List<DataRegionId>> localDataRegionInfo =
+        StorageEngineV2.getInstance().getLocalDataRegionInfo();
+    List<DataRegionId> dataRegionIdList = new ArrayList<>();
+    req.storageGroupPathPattern.forEach(
+        storageGroup -> dataRegionIdList.addAll(localDataRegionInfo.get(storageGroup)));
+    for (DataRegionId dataRegionId : dataRegionIdList) {
+      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
+      if (dataRegion != null) {
+        dataRegion.setDataTTL(req.TTL);
+      }
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public TsFileFlushPolicy getFileFlushPolicy() {

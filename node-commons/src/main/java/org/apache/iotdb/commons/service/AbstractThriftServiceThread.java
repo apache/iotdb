@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.service;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 
@@ -44,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public abstract class AbstractThriftServiceThread extends Thread {
@@ -52,6 +54,8 @@ public abstract class AbstractThriftServiceThread extends Thread {
   private TServerTransport serverTransport;
   private TServer poolServer;
   private CountDownLatch threadStopLatch;
+
+  private ExecutorService executorService;
 
   private String serviceName;
 
@@ -103,6 +107,8 @@ public abstract class AbstractThriftServiceThread extends Thread {
       String threadsName,
       String bindAddress,
       int port,
+      int selectorThreads,
+      int minWorkerThreads,
       int maxWorkerThreads,
       int timeoutSecond,
       TServerEventHandler serverEventHandler,
@@ -118,13 +124,24 @@ public abstract class AbstractThriftServiceThread extends Thread {
         case SELECTOR:
           TThreadedSelectorServer.Args poolArgs =
               initAsyncedSelectorPoolArgs(
-                  processor, threadsName, maxWorkerThreads, timeoutSecond, maxReadBufferBytes);
+                  processor,
+                  threadsName,
+                  selectorThreads,
+                  minWorkerThreads,
+                  maxWorkerThreads,
+                  timeoutSecond,
+                  maxReadBufferBytes);
           poolServer = new TThreadedSelectorServer(poolArgs);
           break;
         case HSHA:
           THsHaServer.Args poolArgs1 =
               initAsyncedHshaPoolArgs(
-                  processor, threadsName, maxWorkerThreads, timeoutSecond, maxReadBufferBytes);
+                  processor,
+                  threadsName,
+                  minWorkerThreads,
+                  maxWorkerThreads,
+                  timeoutSecond,
+                  maxReadBufferBytes);
           poolServer = new THsHaServer(poolArgs1);
           break;
         default:
@@ -169,8 +186,8 @@ public abstract class AbstractThriftServiceThread extends Thread {
         .maxWorkerThreads(maxWorkerThreads)
         .minWorkerThreads(Runtime.getRuntime().availableProcessors())
         .stopTimeoutVal(timeoutSecond);
-    poolArgs.executorService =
-        IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs, threadsName);
+    executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs, threadsName);
+    poolArgs.executorService = executorService;
     poolArgs.processor(processor);
     poolArgs.protocolFactory(protocolFactory);
     poolArgs.transportFactory(getTTransportFactory());
@@ -180,20 +197,19 @@ public abstract class AbstractThriftServiceThread extends Thread {
   private TThreadedSelectorServer.Args initAsyncedSelectorPoolArgs(
       TBaseAsyncProcessor processor,
       String threadsName,
+      int selectorThreads,
+      int minWorkerThreads,
       int maxWorkerThreads,
       int timeoutSecond,
       int maxReadBufferBytes) {
     TThreadedSelectorServer.Args poolArgs =
         new TThreadedSelectorServer.Args((TNonblockingServerTransport) serverTransport);
     poolArgs.maxReadBufferBytes = maxReadBufferBytes;
-    poolArgs.selectorThreads(Runtime.getRuntime().availableProcessors());
-    poolArgs.executorService(
+    poolArgs.selectorThreads(selectorThreads);
+    executorService =
         IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(
-            Runtime.getRuntime().availableProcessors(),
-            maxWorkerThreads,
-            timeoutSecond,
-            TimeUnit.SECONDS,
-            threadsName));
+            minWorkerThreads, maxWorkerThreads, timeoutSecond, TimeUnit.SECONDS, threadsName);
+    poolArgs.executorService(executorService);
     poolArgs.processor(processor);
     poolArgs.protocolFactory(protocolFactory);
     poolArgs.transportFactory(getTTransportFactory());
@@ -203,18 +219,16 @@ public abstract class AbstractThriftServiceThread extends Thread {
   private THsHaServer.Args initAsyncedHshaPoolArgs(
       TBaseAsyncProcessor processor,
       String threadsName,
+      int minWorkerThreads,
       int maxWorkerThreads,
       int timeoutSecond,
       int maxReadBufferBytes) {
     THsHaServer.Args poolArgs = new THsHaServer.Args((TNonblockingServerTransport) serverTransport);
     poolArgs.maxReadBufferBytes = maxReadBufferBytes;
-    poolArgs.executorService(
+    executorService =
         IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(
-            Runtime.getRuntime().availableProcessors(),
-            maxWorkerThreads,
-            timeoutSecond,
-            TimeUnit.SECONDS,
-            threadsName));
+            minWorkerThreads, maxWorkerThreads, timeoutSecond, TimeUnit.SECONDS, threadsName);
+    poolArgs.executorService(executorService);
     poolArgs.processor(processor);
     poolArgs.protocolFactory(protocolFactory);
     poolArgs.transportFactory(getTTransportFactory());
@@ -274,6 +288,10 @@ public abstract class AbstractThriftServiceThread extends Thread {
       serverTransport.close();
       serverTransport = null;
     }
+    // fix bug when DataNode.stop()
+    if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
+      threadStopLatch.countDown();
+    }
   }
 
   public boolean isServing() {
@@ -281,6 +299,13 @@ public abstract class AbstractThriftServiceThread extends Thread {
       return poolServer.isServing();
     }
     return false;
+  }
+
+  public long getActiveThreadCount() {
+    if (executorService != null) {
+      return ((WrappedThreadPoolExecutor) executorService).getActiveCount();
+    }
+    return -1;
   }
 
   public enum ServerType {

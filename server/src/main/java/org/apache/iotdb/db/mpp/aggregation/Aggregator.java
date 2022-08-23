@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
+import java.util.Collections;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -45,6 +46,8 @@ public class Aggregator {
   public Aggregator(Accumulator accumulator, AggregationStep step) {
     this.accumulator = accumulator;
     this.step = step;
+    this.inputLocationList =
+        Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)});
   }
 
   // Used for aggregateOperator
@@ -56,13 +59,14 @@ public class Aggregator {
   }
 
   // Used for SeriesAggregateScanOperator and RawDataAggregateOperator
-  public void processTsBlock(TsBlock tsBlock) {
+  public int processTsBlock(TsBlock tsBlock) {
     checkArgument(
         step.isInputRaw(),
         "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
     if (inputLocationList == null) {
-      accumulator.addInput(tsBlock.getTimeAndValueColumn(0), curTimeRange);
+      return accumulator.addInput(tsBlock.getTimeAndValueColumn(0), curTimeRange);
     } else {
+      int lastReadReadIndex = 0;
       for (InputLocation[] inputLocations : inputLocationList) {
         checkArgument(
             inputLocations[0].getTsBlockIndex() == 0,
@@ -70,8 +74,10 @@ public class Aggregator {
         Column[] timeValueColumn = new Column[2];
         timeValueColumn[0] = tsBlock.getTimeColumn();
         timeValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
-        accumulator.addInput(timeValueColumn, curTimeRange);
+        lastReadReadIndex =
+            Math.max(lastReadReadIndex, accumulator.addInput(timeValueColumn, curTimeRange));
       }
+      return lastReadReadIndex;
     }
   }
 
@@ -105,16 +111,9 @@ public class Aggregator {
     }
   }
 
-  public void processStatistics(Statistics statistics) {
-    accumulator.addStatistics(statistics);
-  }
-
-  /** Used for AlignedSeriesAggregateScanOperator. */
+  /** Used for SeriesAggregateScanOperator. */
   public void processStatistics(Statistics[] statistics) {
     for (InputLocation[] inputLocations : inputLocationList) {
-      checkArgument(
-          inputLocations[0].getTsBlockIndex() == 0,
-          "AlignedSeriesAggregateScanOperator can only process one tsBlock input.");
       int valueIndex = inputLocations[0].getValueColumnIndex();
       accumulator.addStatistics(statistics[valueIndex]);
     }
@@ -138,6 +137,7 @@ public class Aggregator {
   }
 
   public void updateTimeRange(TimeRange curTimeRange) {
+    reset();
     this.curTimeRange = curTimeRange;
   }
 
