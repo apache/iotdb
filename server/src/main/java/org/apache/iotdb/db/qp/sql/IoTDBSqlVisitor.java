@@ -791,19 +791,57 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitSetMigration(IoTDBSqlParser.SetMigrationContext ctx) {
     SetMigrationOperator operator = new SetMigrationOperator(SQLConstant.TOK_SET);
-    operator.setStorageGroup(parsePrefixPath(ctx.path));
-    operator.setTTL(Long.parseLong(ctx.ttl.getText()));
-    operator.setStartTime(parseDateFormat(ctx.startTime.getText()));
 
-    FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-    File targetDir = fsFactory.getFile(parseStringLiteral(ctx.targetDir.getText()));
-    if (!targetDir.exists()) {
-      throw new SQLParserException("unknown directory");
-    } else if (!targetDir.isDirectory()) {
-      throw new SQLParserException("not a directory");
+    if (ctx.storageGroup != null) {
+      operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
     }
-    operator.setTargetDir(targetDir);
+    if (ctx.ttl != null) {
+      operator.setTTL(Long.parseLong(ctx.ttl.getText()));
+    }
+    if (ctx.startTime != null) {
+      operator.setStartTime(parseDateFormat(ctx.startTime.getText()));
+    }
+    if (ctx.targetDir != null) {
+      FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+      File targetDir = fsFactory.getFile(parseStringLiteral(ctx.targetDir.getText()));
+      if (!targetDir.exists()) {
+        throw new SQLParserException("unknown directory");
+      } else if (!targetDir.isDirectory()) {
+        throw new SQLParserException("not a directory");
+      }
+      operator.setTargetDir(targetDir);
+    }
+
+    // parse the setMigrationClause
+    for (IoTDBSqlParser.SetMigrationClauseContext setMigrationClauseContext :
+        ctx.setMigrationClause()) {
+      parseSetMigrationClause(operator, setMigrationClauseContext);
+    }
+
     return operator;
+  }
+
+  private void parseSetMigrationClause(
+      SetMigrationOperator operator, IoTDBSqlParser.SetMigrationClauseContext ctx) {
+    if (ctx.storageGroup != null) {
+      operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
+    }
+    if (ctx.ttl != null) {
+      operator.setTTL(Long.parseLong(ctx.ttl.getText()));
+    }
+    if (ctx.startTime != null) {
+      operator.setStartTime(parseDateFormat(ctx.startTime.getText()));
+    }
+    if (ctx.targetDir != null) {
+      FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+      File targetDir = fsFactory.getFile(parseStringLiteral(ctx.targetDir.getText()));
+      if (!targetDir.exists()) {
+        throw new SQLParserException("unknown directory");
+      } else if (!targetDir.isDirectory()) {
+        throw new SQLParserException("not a directory");
+      }
+      operator.setTargetDir(targetDir);
+    }
   }
 
   // Unset Migration

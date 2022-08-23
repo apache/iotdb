@@ -474,8 +474,16 @@ SOFFSET
     : S O F F S E T
     ;
 
+START_TIME
+    : S T A R T '_' T I M E
+    ;
+
 STORAGE
     : S T O R A G E
+    ;
+
+STORAGE_GROUP
+    : S T O R A G E '_' G R O U P
     ;
 
 START
@@ -492,6 +500,10 @@ SYSTEM
 
 TAGS
     : T A G S
+    ;
+
+TARGET_DIR
+    : T A R G E T '_' D I R
     ;
 
 TASK

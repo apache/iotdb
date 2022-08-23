@@ -21,6 +21,7 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -31,10 +32,10 @@ import java.io.File;
 
 public class SetMigrationOperator extends Operator {
 
-  private PartialPath storageGroup;
-  private File targetDir;
-  private long ttl;
-  private long startTime;
+  private PartialPath storageGroup = null;
+  private File targetDir = null;
+  private Long ttl = null;
+  private Long startTime = null;
 
   public SetMigrationOperator(int tokenIntType) {
     super(tokenIntType);
@@ -76,6 +77,19 @@ public class SetMigrationOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
+    if (storageGroup == null) {
+      throw new SQLParserException("storage_group not specified");
+    }
+    if (startTime == null) {
+      throw new SQLParserException("start_time not specified");
+    }
+    if (ttl == null) {
+      throw new SQLParserException("ttl not specified");
+    }
+    if (targetDir == null) {
+      throw new SQLParserException("target_dir not specified");
+    }
+
     return new SetMigrationPlan(storageGroup, targetDir, ttl, startTime);
   }
 }

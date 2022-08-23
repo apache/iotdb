@@ -334,7 +334,15 @@ countNodes
 
 // Set Migration
 setMigration
-    : SET MIGRATION TO path=prefixPath startTime=DATETIME_LITERAL ttl=INTEGER_LITERAL targetDir=STRING_LITERAL
+    : SET MIGRATION TO storageGroup=prefixPath startTime=DATETIME_LITERAL ttl=INTEGER_LITERAL targetDir=STRING_LITERAL
+    | SET MIGRATION TO setMigrationClause*
+    ;
+
+setMigrationClause
+    : STORAGE_GROUP     OPERATOR_EQ storageGroup=prefixPath
+    | START_TIME        OPERATOR_EQ startTime=DATETIME_LITERAL
+    | TTL               OPERATOR_EQ ttl=INTEGER_LITERAL
+    | TARGET_DIR        OPERATOR_EQ targetDir=STRING_LITERAL
     ;
 
 // Unset Migration
