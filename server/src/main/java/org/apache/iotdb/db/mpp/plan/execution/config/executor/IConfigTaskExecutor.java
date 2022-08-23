@@ -92,4 +92,20 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> createPipe();
+
+  SettableFuture<ConfigTaskResult> createPipeSink();
+
+  SettableFuture<ConfigTaskResult> dropPipe();
+
+  SettableFuture<ConfigTaskResult> dropPipeSink();
+
+  SettableFuture<ConfigTaskResult> showPipe();
+
+  SettableFuture<ConfigTaskResult> showPipeSink();
+
+  SettableFuture<ConfigTaskResult> startPipe();
+
+  SettableFuture<ConfigTaskResult> stopPipe();
 }

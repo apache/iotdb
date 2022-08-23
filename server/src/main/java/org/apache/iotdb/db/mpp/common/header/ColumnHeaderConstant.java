@@ -53,6 +53,7 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_CHILDNODES = "child nodes";
   public static final String COLUMN_VERSION = "version";
   public static final String COLUMN_PATHS = "paths";
+  public static final String COLUMN_PIPESINK_TYPE = "type";
 
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
@@ -217,4 +218,7 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showSchemaTemplateHeaders =
       ImmutableList.of(new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showPipeSinkTypeColumnHeaders =
+      ImmutableList.of(new ColumnHeader(COLUMN_PIPESINK_TYPE, TSDataType.TEXT));
 }

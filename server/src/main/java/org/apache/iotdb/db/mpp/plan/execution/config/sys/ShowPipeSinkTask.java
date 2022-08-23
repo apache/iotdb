@@ -17,34 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.sys;
+package org.apache.iotdb.db.mpp.plan.execution.config.sys;
 
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeSinkStatement;
 
-public class ShowPipeStatement extends ShowStatement implements IConfigStatement {
+import com.google.common.util.concurrent.ListenableFuture;
 
-  private String pipeName;
+public class ShowPipeSinkTask implements IConfigTask {
 
-  public String getPipeName() {
-    return pipeName;
-  }
+  private ShowPipeSinkStatement showPipeSinkStatement;
 
-  public void setPipeName(String pipeName) {
-    this.pipeName = pipeName;
+  public ShowPipeSinkTask(ShowPipeSinkStatement showPipeSinkStatement) {
+    this.showPipeSinkStatement = showPipeSinkStatement;
   }
 
   @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
-  }
-
-  public ShowPipeStatement() {}
-
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowPipe(this, context);
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.showPipeSink();
   }
 }
