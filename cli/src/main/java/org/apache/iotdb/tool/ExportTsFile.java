@@ -300,8 +300,7 @@ public class ExportTsFile extends AbstractTsFileTool {
         tablet.initBitMaps();
         tabletMap.put(deviceId, tablet);
       }
-      ArrayList<Tablet> tabletList = new ArrayList<>(tabletMap.values());
-      for (Tablet tablet : tabletList) {
+      for (Tablet tablet : tabletMap.values()) {
         tsFileWriter.registerTimeseries(new Path(tablet.deviceId), tablet.getSchemas());
       }
       while (sessionDataSet.hasNext()) {
