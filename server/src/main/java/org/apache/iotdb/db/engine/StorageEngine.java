@@ -613,6 +613,7 @@ public class StorageEngine implements IService {
 
   /**
    * get storage group's virtual storage group num
+   *
    * @param pathList
    * @return virtual storage group num list
    */

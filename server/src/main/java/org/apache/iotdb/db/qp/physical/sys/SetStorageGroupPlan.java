@@ -35,8 +35,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
 
   private PartialPath path;
 
-  private int virtualStorageGroupNum =
-      IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+  private int virtualStorageGroupNum;
 
   public SetStorageGroupPlan() {
     super(Operator.OperatorType.SET_STORAGE_GROUP);
@@ -50,7 +49,10 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   public SetStorageGroupPlan(PartialPath path, int virtualStorageGroupNum) {
     super(Operator.OperatorType.SET_STORAGE_GROUP);
     this.path = path;
-    this.virtualStorageGroupNum = virtualStorageGroupNum;
+    this.virtualStorageGroupNum =
+        virtualStorageGroupNum == 0
+            ? IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum()
+            : virtualStorageGroupNum;
   }
 
   public PartialPath getPath() {

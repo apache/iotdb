@@ -181,7 +181,6 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -907,18 +906,20 @@ public class PlanExecutor implements IPlanExecutor {
       throws MetadataException {
     ListDataSet listDataSet =
         new ListDataSet(
-                Arrays.asList(
-                        new PartialPath(COLUMN_STORAGE_GROUP, false),
-                        new PartialPath(COLUMN_VIRTUAL_STORAGE_GROUP_NUM, false)),
-                Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
+            Arrays.asList(
+                new PartialPath(COLUMN_STORAGE_GROUP, false),
+                new PartialPath(COLUMN_VIRTUAL_STORAGE_GROUP_NUM, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     List<PartialPath> storageGroupList =
         getStorageGroupNames(showStorageGroupPlan.getPath(), showStorageGroupPlan.isPrefixMatch());
-    List<Integer> virtualStorageGroupNumList = StorageEngine.getInstance().getVirtualStorageGroupNumList(storageGroupList);
+    List<Integer> virtualStorageGroupNumList =
+        StorageEngine.getInstance().getVirtualStorageGroupNumList(storageGroupList);
     addStorageGroupInfoToDataSet(storageGroupList, virtualStorageGroupNumList, listDataSet);
     return listDataSet;
   }
 
-  private void addStorageGroupInfoToDataSet(List<PartialPath> paths, List<Integer> virtualStorageGroupNumList, ListDataSet dataSet) {
+  private void addStorageGroupInfoToDataSet(
+      List<PartialPath> paths, List<Integer> virtualStorageGroupNumList, ListDataSet dataSet) {
     for (int i = 0; i < paths.size(); i++) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
@@ -2041,11 +2042,7 @@ public class PlanExecutor implements IPlanExecutor {
     AUDIT_LOGGER.info("set storage group to {}", setStorageGroupPlan.getPaths());
     PartialPath path = setStorageGroupPlan.getPath();
     try {
-      if (setStorageGroupPlan.getVirtualStorageGroupNum() == 0) {
-        IoTDB.metaManager.setStorageGroup(path);
-      } else {
-        IoTDB.metaManager.setStorageGroup(path, setStorageGroupPlan.getVirtualStorageGroupNum());
-      }
+      IoTDB.metaManager.setStorageGroup(path, setStorageGroupPlan.getVirtualStorageGroupNum());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

@@ -869,8 +869,9 @@ public class MManager {
    * @param storageGroup root.node.(node)*
    */
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
-    int STORAGE_GROUP_NUM = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
-    setStorageGroup(storageGroup, STORAGE_GROUP_NUM);
+    int virtualStorageGroupNum =
+        IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+    setStorageGroup(storageGroup, virtualStorageGroupNum);
   }
 
   /**
