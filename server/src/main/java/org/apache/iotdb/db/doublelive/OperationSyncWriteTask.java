@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 
 /** OperationSyncWriteTask is used for transmit one E-Plan sending by a client */
 public class OperationSyncWriteTask implements Runnable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncWriteTask.class);;
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncWriteTask.class);
 
   private final ByteBuffer physicalPlanBuffer;
   private final SessionPool operationSyncSessionPool;
