@@ -27,6 +27,7 @@ public class IoTDBConstant {
 
   public static final String ENV_FILE_NAME = "datanode-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
+  public static final String IOTDB_EXTERNAL_CONF = "IOTDB_EXTERNAL_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
 
   public static final String RPC_ADDRESS = "rpc_address";
@@ -200,6 +201,10 @@ public class IoTDBConstant {
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";
   public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
+
+  public static final String EXT_PROPERTIES_LOADER_FOLDER_NAME = "propertiesLoader";
+
+  public static final String EXT_LIMITER = "limiter";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";

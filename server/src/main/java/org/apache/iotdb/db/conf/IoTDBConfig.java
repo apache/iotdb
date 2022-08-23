@@ -62,7 +62,8 @@ public class IoTDBConfig {
 
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
-  static final String CONFIG_NAME = "iotdb-datanode.properties";
+  public static final String CONFIG_NAME = "iotdb-datanode.properties";
+  public static final String EXTERNAL_CONFIG_NAME = "iotdb-datanode-external.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
@@ -271,6 +272,16 @@ public class IoTDBConfig {
   /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
+
+  /** External lib directory for properties loader, stores user-uploaded JAR files */
+  private String externalPropertiesLoaderDir =
+      IoTDBConstant.EXT_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.EXT_PROPERTIES_LOADER_FOLDER_NAME;
+
+  /** External lib directory for limiter, stores user uploaded JAR files */
+  private String externalLimiterDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_LIMITER;
 
   /** Data directories. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {
@@ -1077,6 +1088,8 @@ public class IoTDBConfig {
     temporaryLibDir = addHomeDir(temporaryLibDir);
     triggerDir = addHomeDir(triggerDir);
     mqttDir = addHomeDir(mqttDir);
+    externalPropertiesLoaderDir = addHomeDir(externalPropertiesLoaderDir);
+    externalLimiterDir = addHomeDir(externalLimiterDir);
     for (int i = 0; i < walDirs.length; i++) {
       walDirs[i] = addHomeDir(walDirs[i]);
     }
@@ -1312,6 +1325,22 @@ public class IoTDBConfig {
 
   public void setMqttDir(String mqttDir) {
     this.mqttDir = mqttDir;
+  }
+
+  public String getExternalPropertiesLoaderDir() {
+    return externalPropertiesLoaderDir;
+  }
+
+  public void setExternalPropertiesLoaderDir(String externalPropertiesLoaderDir) {
+    this.externalPropertiesLoaderDir = externalPropertiesLoaderDir;
+  }
+
+  public String getExternalLimiterDir() {
+    return externalLimiterDir;
+  }
+
+  public void setExternalLimiterDir(String externalLimiterDir) {
+    this.externalLimiterDir = externalLimiterDir;
   }
 
   public String getMultiDirStrategyClassName() {

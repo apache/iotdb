@@ -87,6 +87,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.RemovalCause;
+import org.apche.iotdb.external.api.ISeriesNumerLimiter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -172,9 +173,14 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private TagManager tagManager;
   private SchemaSyncManager syncManager = SchemaSyncManager.getInstance();
 
+  private final ISeriesNumerLimiter seriesNumerLimiter;
+
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegionSchemaFileImpl(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
+      PartialPath storageGroup,
+      SchemaRegionId schemaRegionId,
+      IStorageGroupMNode storageGroupMNode,
+      ISeriesNumerLimiter seriesNumerLimiter)
       throws MetadataException {
 
     storageGroupFullPath = storageGroup.getFullPath();
@@ -200,6 +206,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                   }
                 });
     this.storageGroupMNode = storageGroupMNode;
+    this.seriesNumerLimiter = seriesNumerLimiter;
     init();
   }
 
@@ -413,7 +420,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     // collect all the LeafMNode in this schema region
     List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
 
-    schemaStatisticsManager.deleteTimeseries(leafMNodes.size());
+    int seriesCount = leafMNodes.size();
+    schemaStatisticsManager.deleteTimeseries(seriesCount);
+    seriesNumerLimiter.deleteTimeSeries(seriesCount);
 
     // drop triggers with no exceptions
     TriggerEngine.drop(leafMNodes);
@@ -469,7 +478,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    if (!memoryStatistics.isAllowToCreateNewSeries()) {
+    if (!memoryStatistics.isAllowToCreateNewSeries() || !seriesNumerLimiter.addTimeSeries(1)) {
       logger.error(
           String.format("Series overflow when creating: [%s]", plan.getPath().getFullPath()));
       throw new SeriesOverflowException();
@@ -477,18 +486,25 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     try {
       PartialPath path = plan.getPath();
-      SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
+      IMeasurementMNode leafMNode;
+      // using try-catch to restore seriesNumerLimiter's state while create failed
+      try {
+        SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
 
-      TSDataType type = plan.getDataType();
-      // create time series in MTree
-      IMeasurementMNode leafMNode =
-          mtree.createTimeseriesWithPinnedReturn(
-              path,
-              type,
-              plan.getEncoding(),
-              plan.getCompressor(),
-              plan.getProps(),
-              plan.getAlias());
+        TSDataType type = plan.getDataType();
+        // create time series in MTree
+        leafMNode =
+            mtree.createTimeseriesWithPinnedReturn(
+                path,
+                type,
+                plan.getEncoding(),
+                plan.getCompressor(),
+                plan.getProps(),
+                plan.getAlias());
+      } catch (Throwable t) {
+        seriesNumerLimiter.deleteTimeSeries(1);
+        throw t;
+      }
 
       try {
         // the cached mNode may be replaced by new entityMNode in mtree
@@ -606,7 +622,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    * @param plan CreateAlignedTimeSeriesPlan
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    if (!memoryStatistics.isAllowToCreateNewSeries()) {
+    int seriesCount = plan.getMeasurements().size();
+    if (!memoryStatistics.isAllowToCreateNewSeries()
+        || !seriesNumerLimiter.addTimeSeries(seriesCount)) {
       throw new SeriesOverflowException();
     }
 
@@ -617,27 +635,33 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       List<TSEncoding> encodings = plan.getEncodings();
       List<Map<String, String>> tagsList = plan.getTagsList();
       List<Map<String, String>> attributesList = plan.getAttributesList();
+      List<IMeasurementMNode> measurementMNodeList;
+      // using try-catch to restore seriesNumerLimiter's state while create failed
+      try {
+        for (int i = 0; i < measurements.size(); i++) {
+          SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
+        }
 
-      for (int i = 0; i < measurements.size(); i++) {
-        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
+        // create time series in MTree
+        measurementMNodeList =
+            mtree.createAlignedTimeseries(
+                prefixPath,
+                measurements,
+                plan.getDataTypes(),
+                plan.getEncodings(),
+                plan.getCompressors(),
+                plan.getAliasList());
+      } catch (Throwable t) {
+        seriesNumerLimiter.deleteTimeSeries(seriesCount);
+        throw t;
       }
-
-      // create time series in MTree
-      List<IMeasurementMNode> measurementMNodeList =
-          mtree.createAlignedTimeseries(
-              prefixPath,
-              measurements,
-              plan.getDataTypes(),
-              plan.getEncodings(),
-              plan.getCompressors(),
-              plan.getAliasList());
 
       try {
         // the cached mNode may be replaced by new entityMNode in mtree
         mNodeCache.invalidate(prefixPath);
 
         // update statistics and schemaDataTypeNumMap
-        schemaStatisticsManager.addTimeseries(plan.getMeasurements().size());
+        schemaStatisticsManager.addTimeseries(seriesCount);
 
         List<Long> tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
@@ -786,6 +810,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     mNodeCache.invalidate(node.getPartialPath());
 
     schemaStatisticsManager.deleteTimeseries(1);
+    seriesNumerLimiter.deleteTimeSeries(1);
     return storageGroupPath;
   }
   // endregion
