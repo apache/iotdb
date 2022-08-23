@@ -19,11 +19,13 @@
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -35,19 +37,18 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 public class StandaloneScheduler implements IScheduler {
@@ -58,47 +59,35 @@ public class StandaloneScheduler implements IScheduler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneScheduler.class);
 
-  private MPPQueryContext queryContext;
+  private final MPPQueryContext queryContext;
   // The stateMachine of the QueryExecution owned by this QueryScheduler
-  private QueryStateMachine stateMachine;
-  private QueryType queryType;
+  private final QueryStateMachine stateMachine;
+  private final QueryType queryType;
   // The fragment instances which should be sent to corresponding Nodes.
-  private List<FragmentInstance> instances;
+  private final List<FragmentInstance> instances;
 
-  private ExecutorService executor;
-  private ScheduledExecutorService scheduledExecutor;
-
-  private IFragInstanceDispatcher dispatcher;
-  private IFragInstanceStateTracker stateTracker;
-  private IQueryTerminator queryTerminator;
+  private final IFragInstanceStateTracker stateTracker;
 
   public StandaloneScheduler(
       MPPQueryContext queryContext,
       QueryStateMachine stateMachine,
       List<FragmentInstance> instances,
       QueryType queryType,
-      ExecutorService executor,
       ScheduledExecutorService scheduledExecutor,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.queryContext = queryContext;
     this.instances = instances;
     this.queryType = queryType;
-    this.executor = executor;
-    this.scheduledExecutor = scheduledExecutor;
     this.stateMachine = stateMachine;
     this.stateTracker =
         new FixedRateFragInsStateTracker(
-            stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
-    this.queryTerminator =
-        new SimpleQueryTerminator(
-            executor, queryContext.getQueryId(), instances, internalServiceClientManager);
+            stateMachine, scheduledExecutor, instances, internalServiceClientManager);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void start() {
     stateMachine.transitionToDispatching();
-    LOGGER.info("{} transit to DISPATCHING", getLogHeader());
     // For the FragmentInstance of WRITE, it will be executed directly when dispatching.
     // TODO: Other QueryTypes
     switch (queryType) {
@@ -126,17 +115,20 @@ public class StandaloneScheduler implements IScheduler {
         // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
         stateMachine.transitionToRunning();
         LOGGER.info("{} transit to RUNNING", getLogHeader());
-        instances.forEach(
-            instance ->
-                stateMachine.initialFragInstanceState(
-                    instance.getId(), FragmentInstanceState.RUNNING));
         this.stateTracker.start();
         LOGGER.info("{} state tracker starts", getLogHeader());
         break;
       case WRITE:
+        // reject non-query operations when system is read-only
+        if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+          TSStatus failedStatus = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
+          failedStatus.setMessage("Fail to do non-query operations because system is read-only.");
+          stateMachine.transitionToFailed(failedStatus);
+          return;
+        }
         try {
           for (FragmentInstance fragmentInstance : instances) {
-            PlanNode planNode = fragmentInstance.getFragment().getRoot();
+            PlanNode planNode = fragmentInstance.getFragment().getPlanNodeTree();
             ConsensusGroupId groupId =
                 ConsensusGroupId.Factory.createFromTConsensusGroupId(
                     fragmentInstance.getRegionReplicaSet().getRegionId());
@@ -152,11 +144,16 @@ public class StandaloneScheduler implements IScheduler {
                     insertNode.getFailedMessages());
               }
             }
+
+            TSStatus executionResult;
+
             if (groupId instanceof DataRegionId) {
-              STORAGE_ENGINE.write((DataRegionId) groupId, planNode);
+              executionResult = STORAGE_ENGINE.write((DataRegionId) groupId, planNode);
             } else {
-              SCHEMA_ENGINE.write((SchemaRegionId) groupId, planNode);
+              executionResult = SCHEMA_ENGINE.write((SchemaRegionId) groupId, planNode);
             }
+
+            // partial insert
             if (hasFailedMeasurement) {
               InsertNode node = (InsertNode) planNode;
               List<Exception> exceptions = node.getFailedExceptions();
@@ -166,6 +163,12 @@ public class StandaloneScheduler implements IScheduler {
                       + (!exceptions.isEmpty()
                           ? (" caused by " + exceptions.get(0).getMessage())
                           : ""));
+            }
+
+            if (executionResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              LOGGER.error("Execute write operation error: {}", executionResult.getMessage());
+              stateMachine.transitionToFailed(executionResult);
+              return;
             }
           }
           stateMachine.transitionToFinished();

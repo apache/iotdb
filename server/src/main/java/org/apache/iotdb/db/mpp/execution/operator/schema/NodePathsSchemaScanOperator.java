@@ -19,19 +19,26 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class NodePathsSchemaScanOperator implements SourceOperator {
   private final PlanNodeId sourceId;
@@ -44,12 +51,18 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
 
   private boolean isFinished;
 
+  private final List<TSDataType> outputDataTypes;
+
   public NodePathsSchemaScanOperator(
       PlanNodeId sourceId, OperatorContext operatorContext, PartialPath partialPath, int level) {
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.partialPath = partialPath;
     this.level = level;
+    this.outputDataTypes =
+        ColumnHeaderConstant.showChildPathsColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -60,35 +73,46 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
-    Set<String> nodePaths;
-
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     try {
       if (-1 == level) {
-        // show child paths
-        nodePaths =
+        // show child paths and show child nodes
+        Set<TSchemaNode> nodePaths =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
                 .getSchemaRegion()
                 .getChildNodePathInNextLevel(partialPath);
+        nodePaths.forEach(
+            node -> {
+              tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+              tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(node.getNodeName()));
+              tsBlockBuilder
+                  .getColumnBuilder(1)
+                  .writeBinary(new Binary(String.valueOf(node.getNodeType())));
+              tsBlockBuilder.declarePosition();
+            });
       } else {
-        nodePaths =
+        // show nodes with level
+        Set<String> childNodes;
+        childNodes =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-                .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, true, null).stream()
+                .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, false, null)
+                    .stream()
                     .map(PartialPath::getFullPath)
                     .collect(Collectors.toSet());
-      }
 
+        childNodes.forEach(
+            (path) -> {
+              tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+              tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
+              tsBlockBuilder
+                  .getColumnBuilder(1)
+                  .writeBinary(new Binary(String.valueOf(MNodeType.UNIMPLEMENT.getNodeType())));
+              tsBlockBuilder.declarePosition();
+            });
+      }
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-
-    nodePaths.forEach(
-        (path) -> {
-          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
-          tsBlockBuilder.declarePosition();
-        });
     return tsBlockBuilder.build();
   }
 
@@ -105,5 +129,20 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
   @Override
   public PlanNodeId getSourceId() {
     return sourceId;
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0L;
   }
 }

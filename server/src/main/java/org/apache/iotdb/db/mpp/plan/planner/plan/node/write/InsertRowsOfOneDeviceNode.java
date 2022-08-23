@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -91,12 +91,6 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
     insertRowNodeList.forEach(plan -> plan.setSearchIndex(index));
   }
 
-  @Override
-  public void setSafelyDeletedSearchIndex(long index) {
-    safelyDeletedSearchIndex = index;
-    insertRowNodeList.forEach(plan -> plan.setSafelyDeletedSearchIndex(index));
-  }
-
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertRowNodeList.size());
   }
@@ -149,10 +143,13 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   }
 
   @Override
-  public boolean validateAndSetSchema(SchemaTree schemaTree) {
+  public boolean validateAndSetSchema(ISchemaTree schemaTree) {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
       if (!insertRowNode.validateAndSetSchema(schemaTree)) {
         return false;
+      }
+      if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
+        this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
       }
     }
     storeMeasurementsAndDataType();

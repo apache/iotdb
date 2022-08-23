@@ -205,7 +205,7 @@ public abstract class Operator {
     STOP_PIPE,
     START_PIPE,
     DROP_PIPE,
-    START_PIPE_SERVER,
-    STOP_PIPE_SERVER,
+
+    ACTIVATE_TEMPLATE_IN_CLUSTER
   }
 }

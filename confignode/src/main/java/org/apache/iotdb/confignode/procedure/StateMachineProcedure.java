@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 
@@ -88,7 +89,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
    * @throws IOException temporary failure, the rollback will retry later
    */
   protected abstract void rollbackState(Env env, TState state)
-      throws IOException, InterruptedException;
+      throws IOException, InterruptedException, ProcedureException;
 
   /**
    * Convert an ordinal (or state id) to an Enum (or more descriptive) state object.
@@ -198,7 +199,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   @Override
-  protected void rollback(final Env env) throws IOException, InterruptedException {
+  protected void rollback(final Env env)
+      throws IOException, InterruptedException, ProcedureException {
     if (isEofState()) {
       stateCount--;
     }

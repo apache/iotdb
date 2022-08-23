@@ -36,6 +36,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.google.common.util.concurrent.Futures.successfulAsList;
+
 public class CountMergeOperator implements ProcessOperator {
   private final PlanNodeId planNodeId;
   private final OperatorContext operatorContext;
@@ -56,14 +58,15 @@ public class CountMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
+    List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (Operator child : children) {
-      ListenableFuture<Void> blocked = child.isBlocked();
+      ListenableFuture<?> blocked = child.isBlocked();
       if (!blocked.isDone()) {
-        return blocked;
+        listenableFutures.add(blocked);
       }
     }
-    return NOT_BLOCKED;
+    return listenableFutures.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutures);
   }
 
   @Override
@@ -129,5 +132,34 @@ public class CountMergeOperator implements ProcessOperator {
   @Override
   public boolean isFinished() {
     return isFinished;
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    long childrenMaxPeekMemory = 0;
+    for (Operator child : children) {
+      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
+    }
+
+    return childrenMaxPeekMemory;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    long childrenMaxReturnSize = 0;
+    for (Operator child : children) {
+      childrenMaxReturnSize = Math.max(childrenMaxReturnSize, child.calculateMaxReturnSize());
+    }
+
+    return childrenMaxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long retainedSize = 0L;
+    for (Operator child : children) {
+      retainedSize += child.calculateRetainedSizeAfterCallingNext();
+    }
+    return retainedSize;
   }
 }

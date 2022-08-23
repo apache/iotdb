@@ -26,8 +26,12 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 public interface Accumulator {
 
-  /** Column should be like: | Time | Value | */
-  void addInput(Column[] column, TimeRange timeRange);
+  /**
+   * Column should be like: | Time | Value |
+   *
+   * <p>Return the last read row index of current timeColumn
+   */
+  int addInput(Column[] column, TimeRange timeRange);
 
   /**
    * For aggregation function like COUNT, SUM, partialResult should be single; But for AVG,

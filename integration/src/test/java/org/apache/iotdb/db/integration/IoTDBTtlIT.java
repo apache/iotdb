@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.itbase.category.RemoteTest;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
@@ -39,7 +40,7 @@ import java.sql.Statement;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@Category({LocalStandaloneTest.class})
+@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBTtlIT {
 
   @Before
@@ -72,6 +73,31 @@ public class IoTDBTtlIT {
       statement.execute("CREATE TIMESERIES root.TTL_SG1.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
       try {
         statement.execute("SET TTL TO root.TTL_SG1.s1 1000");
+      } catch (SQLException e) {
+        assertEquals(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode(), e.getErrorCode());
+      }
+
+      statement.execute("SET STORAGE GROUP TO root.TTL_SG2");
+      statement.execute("CREATE TIMESERIES root.TTL_SG2.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
+      try {
+        statement.execute("SET TTL TO root.TTL_SG2.s1 1000");
+      } catch (SQLException e) {
+        assertEquals(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode(), e.getErrorCode());
+      }
+
+      try {
+        statement.execute("SET TTL TO root.** 1000");
+      } catch (SQLException e) {
+        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
+      }
+      try {
+        statement.execute("UNSET TTL TO root.**");
+      } catch (SQLException e) {
+        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
+      }
+
+      try {
+        statement.execute("SET TTL TO root.**.s1 1000");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
@@ -139,6 +165,111 @@ public class IoTDBTtlIT {
           cnt++;
         }
         assertTrue(cnt >= 200);
+      }
+      statement.execute("SET STORAGE GROUP TO root.sg.TTL_SG3");
+      statement.execute("SET STORAGE GROUP TO root.sg.TTL_SG4");
+      // SG2
+      for (int i = 0; i < 100; i++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 100 + i, i));
+      }
+      for (int i = 100; i < 200; i++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 100000 + i, i));
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.TTL_SG3")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        assertEquals(200, cnt);
+      }
+      // SG1
+      for (int i = 200; i < 300; i++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 100 + i, i));
+      }
+      for (int i = 300; i < 400; i++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 100000 + i, i));
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.TTL_SG4")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        assertEquals(200, cnt);
+      }
+
+      statement.execute("SET TTL TO root.sg.** 10000");
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg.**")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        assertEquals(200, cnt);
+      }
+      for (int i = 0; i < 100; i++) {
+        boolean caught = false;
+        try {
+          statement.execute(
+              String.format(
+                  "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)",
+                  now - 500000 + i, i));
+        } catch (SQLException e) {
+          if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
+            caught = true;
+          }
+        }
+        assertTrue(caught);
+      }
+      for (int i = 100; i < 200; i++) {
+        boolean caught = false;
+        try {
+          statement.execute(
+              String.format(
+                  "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)",
+                  now - 500000 + i, i));
+        } catch (SQLException e) {
+          if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
+            caught = true;
+          }
+        }
+        assertTrue(caught);
+      }
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.**")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        assertEquals(200, cnt);
+      }
+
+      statement.execute("UNSET TTL TO root.sg.**");
+      // make sure other nodes have applied UNSET TTL
+      Thread.sleep(1000);
+      for (int i = 0; i < 100; i++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 30000 + i, i));
+      }
+      for (int i = 100; i < 200; i++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 30000 + i, i));
+      }
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.**")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        assertTrue(cnt >= 400);
       }
     }
   }

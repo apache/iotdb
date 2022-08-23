@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.transformation.dag.transformer.binary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -55,6 +56,76 @@ public abstract class BinaryTransformer extends Transformer {
   @Override
   public boolean isConstantPointReader() {
     return isCurrentConstant;
+  }
+
+  @Override
+  public YieldableState yieldValue() throws IOException, QueryProcessException {
+    final YieldableState leftYieldableState = leftPointReader.yield();
+    final YieldableState rightYieldableState = rightPointReader.yield();
+
+    if (YieldableState.NOT_YIELDABLE_NO_MORE_DATA.equals(leftYieldableState)
+        || YieldableState.NOT_YIELDABLE_NO_MORE_DATA.equals(rightYieldableState)) {
+      return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+    }
+
+    if (YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(leftYieldableState)
+        || YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(rightYieldableState)) {
+      return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+    }
+
+    final YieldableState timeYieldState = yieldTime();
+    if (!YieldableState.YIELDABLE.equals(timeYieldState)) {
+      return timeYieldState;
+    }
+
+    if (leftPointReader.isCurrentNull() || rightPointReader.isCurrentNull()) {
+      currentNull = true;
+    } else {
+      transformAndCache();
+    }
+
+    leftPointReader.readyForNext();
+    rightPointReader.readyForNext();
+    return YieldableState.YIELDABLE;
+  }
+
+  private YieldableState yieldTime() throws IOException, QueryProcessException {
+    if (isCurrentConstant) {
+      return YieldableState.YIELDABLE;
+    }
+    if (isLeftPointReaderConstant) {
+      cachedTime = rightPointReader.currentTime();
+      return YieldableState.YIELDABLE;
+    }
+    if (isRightPointReaderConstant) {
+      cachedTime = leftPointReader.currentTime();
+      return YieldableState.YIELDABLE;
+    }
+
+    long leftTime = leftPointReader.currentTime();
+    long rightTime = rightPointReader.currentTime();
+
+    while (leftTime != rightTime) {
+      if (leftTime < rightTime) {
+        leftPointReader.readyForNext();
+        final YieldableState leftYieldState = leftPointReader.yield();
+        if (!YieldableState.YIELDABLE.equals(leftYieldState)) {
+          return leftYieldState;
+        }
+        leftTime = leftPointReader.currentTime();
+      } else {
+        rightPointReader.readyForNext();
+        final YieldableState rightYieldState = rightPointReader.yield();
+        if (!YieldableState.YIELDABLE.equals(rightYieldState)) {
+          return rightYieldState;
+        }
+        rightTime = rightPointReader.currentTime();
+      }
+    }
+
+    // leftTime == rightTime
+    cachedTime = leftTime;
+    return YieldableState.YIELDABLE;
   }
 
   @Override

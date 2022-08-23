@@ -32,6 +32,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
@@ -69,9 +70,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.StartPipeServerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.StopPipeServerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
@@ -489,11 +488,8 @@ public abstract class PhysicalPlan implements IConsensusRequest {
         case SET_SYSTEM_MODE:
           plan = new SetSystemModePlan();
           break;
-        case START_PIPE_SERVER:
-          plan = new StartPipeServerPlan();
-          break;
-        case STOP_PIPE_SERVER:
-          plan = new StopPipeServerPlan();
+        case ACTIVATE_TEMPLATE_IN_CLUSTER:
+          plan = new ActivateTemplateInClusterPlan();
           break;
         default:
           throw new IOException("unrecognized log type " + type);
@@ -566,7 +562,8 @@ public abstract class PhysicalPlan implements IConsensusRequest {
     PRUNE_TEMPLATE,
     START_PIPE_SERVER,
     STOP_PIPE_SERVER,
-    DROP_TEMPLATE
+    DROP_TEMPLATE,
+    ACTIVATE_TEMPLATE_IN_CLUSTER
   }
 
   public long getIndex() {

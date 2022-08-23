@@ -46,7 +46,7 @@ public class OffsetOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     return child.isBlocked();
   }
 
@@ -78,5 +78,20 @@ public class OffsetOperator implements ProcessOperator {
   @Override
   public boolean isFinished() {
     return child.isFinished();
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return child.calculateMaxPeekMemory();
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return child.calculateMaxReturnSize();
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return child.calculateRetainedSizeAfterCallingNext();
   }
 }

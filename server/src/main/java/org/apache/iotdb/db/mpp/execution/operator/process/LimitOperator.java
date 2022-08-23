@@ -46,7 +46,7 @@ public class LimitOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     return child.isBlocked();
   }
 
@@ -79,5 +79,20 @@ public class LimitOperator implements ProcessOperator {
   @Override
   public boolean isFinished() {
     return remainingLimit == 0 || child.isFinished();
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return child.calculateMaxPeekMemory();
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return child.calculateMaxReturnSize();
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return child.calculateRetainedSizeAfterCallingNext();
   }
 }

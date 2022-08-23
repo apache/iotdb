@@ -971,10 +971,10 @@ var config = {
 						]
 					},
 					{
-						title: 'Cluster Setup',
+						title: 'Cluster',
 						children: [
-							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+							['Cluster/Cluster-Concept','Cluster Concept'],
+							['Cluster/Cluster-Setup','Cluster Setup']
 						]
 					},
 					{
@@ -989,6 +989,7 @@ var config = {
 					        ['UDF-Library/Data-Quality', 'Data Quality'],
 					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
 					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
+					        ['UDF-Library/Series-Processing', 'Series Processing'],
                             ['UDF-Library/String-Processing', 'String Processing'],
                             ['UDF-Library/M4', 'M4']
 					    ]
@@ -996,7 +997,8 @@ var config = {
 					{
 						title: 'Reference',
 						children: [
-							['Reference/Config-Manual','Config Manual'],
+							['Reference/ConfigNode-Config-Manual','ConfigNode Config Manual'],
+							['Reference/DataNode-Config-Manual','DataNode Config Manual'],
 							['Reference/Keywords','Keywords'],
 							['Reference/Frequently-asked-questions','Frequently asked questions'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
@@ -1894,10 +1896,10 @@ var config = {
 						]
 					},
 					{
-						title: '集群搭建',
+						title: '分布式',
 						children: [
-							['Cluster/Cluster-Setup','集群搭建'],
-							['Cluster/Cluster-Setup-Example','集群搭建示例']
+							['Cluster/Cluster-Concept','基本概念'],
+							['Cluster/Cluster-Setup','分布式部署']
 						]
 					},
 					{
@@ -1912,6 +1914,7 @@ var config = {
                             ['UDF-Library/Data-Quality', '数据质量'],
                             ['UDF-Library/Data-Repairing', '数据修复'],
                             ['UDF-Library/Series-Discovery', '序列发现'],
+                            ['UDF-Library/Series-Processing', '序列处理'],
                             ['UDF-Library/String-Processing', '字符串处理'],
                             ['UDF-Library/M4', 'M4']
                         ]
@@ -1919,7 +1922,8 @@ var config = {
 					{
 						title: '参考',
 						children: [
-							['Reference/Config-Manual','配置参数'],
+							['Reference/ConfigNode-Config-Manual','ConfigNode配置参数'],
+							['Reference/DataNode-Config-Manual','DataNode配置参数'],
 							['Reference/Keywords','关键字'],
 							['Reference/Frequently-asked-questions','常见问题'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']

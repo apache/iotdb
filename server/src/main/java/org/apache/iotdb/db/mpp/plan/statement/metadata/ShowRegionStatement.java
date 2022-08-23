@@ -20,11 +20,17 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
+import java.util.List;
+
 public class ShowRegionStatement extends ShowStatement implements IConfigStatement {
+
+  private TConsensusGroupType regionType;
+  private List<PartialPath> storageGroups;
 
   public ShowRegionStatement() {}
 
@@ -32,7 +38,18 @@ public class ShowRegionStatement extends ShowStatement implements IConfigStateme
     this.regionType = regionType;
   }
 
-  private TConsensusGroupType regionType;
+  public ShowRegionStatement(TConsensusGroupType regionType, List<PartialPath> storageGroups) {
+    this.regionType = regionType;
+    this.storageGroups = storageGroups;
+  }
+
+  public List<PartialPath> getStorageGroups() {
+    return storageGroups;
+  }
+
+  public void setStorageGroups(List<PartialPath> storageGroups) {
+    this.storageGroups = storageGroups;
+  }
 
   public TConsensusGroupType getRegionType() {
     return regionType;

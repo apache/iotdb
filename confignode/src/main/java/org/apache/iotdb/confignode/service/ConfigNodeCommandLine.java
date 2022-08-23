@@ -18,10 +18,16 @@
  */
 package org.apache.iotdb.confignode.service;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.ServerCommandLine;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 
 import org.slf4j.Logger;
@@ -66,16 +72,46 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
         // Startup environment check
         StartupChecks checks = new StartupChecks().withDefaultTest();
         checks.verify();
+        // Do ConfigNode startup checks
         ConfigNodeStartupCheck.getInstance().startUpCheck();
-      } catch (IOException | ConfigurationException | StartupException e) {
+      } catch (StartupException | ConfigurationException | IOException e) {
         LOGGER.error("Meet error when doing start checking", e);
         return -1;
       }
       ConfigNode.getInstance().active();
     } else if (MODE_REMOVE.equals(mode)) {
-      // TODO: remove node
+      // remove node
+      try {
+        doRemoveNode(args);
+      } catch (IOException e) {
+        LOGGER.error("Meet error when doing remove", e);
+        return -1;
+      }
     }
 
     return 0;
+  }
+
+  private void doRemoveNode(String[] args) throws IOException {
+    LOGGER.info("Starting to remove {}...", ConfigNodeConstant.GLOBAL_NAME);
+    if (args.length != 3) {
+      LOGGER.info("Usage: -r <internal_address>:<internal_port>");
+      return;
+    }
+
+    try {
+      TEndPoint endPoint = NodeUrlUtils.parseTEndPointUrl(args[2]);
+      TConfigNodeLocation removeConfigNodeLocation =
+          ConfigNodeRemoveCheck.getInstance().removeCheck(endPoint);
+      if (removeConfigNodeLocation == null) {
+        LOGGER.error("The ConfigNode not in the Cluster.");
+        return;
+      }
+
+      ConfigNodeRemoveCheck.getInstance().removeConfigNode(removeConfigNodeLocation);
+    } catch (BadNodeUrlException e) {
+      LOGGER.warn("No ConfigNodes need to be removed.", e);
+    }
+    LOGGER.info("{} is removed.", ConfigNodeConstant.GLOBAL_NAME);
   }
 }

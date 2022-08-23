@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.IInnerSeqSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.inner.IInnerUnseqSpaceSelector;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -55,18 +56,26 @@ public class SizeTieredCompactionSelector
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  protected String logicalStorageGroupName;
+  protected String storageGroupName;
   protected String dataRegionId;
   protected long timePartition;
   protected List<TsFileResource> tsFileResources;
   protected boolean sequence;
+  protected TsFileManager tsFileManager;
+  protected boolean hasNextTimePartition;
 
   public SizeTieredCompactionSelector(
-      String logicalStorageGroupName, String dataRegionId, long timePartition, boolean sequence) {
-    this.logicalStorageGroupName = logicalStorageGroupName;
+      String storageGroupName,
+      String dataRegionId,
+      long timePartition,
+      boolean sequence,
+      TsFileManager tsFileManager) {
+    this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.sequence = sequence;
+    this.tsFileManager = tsFileManager;
+    hasNextTimePartition = tsFileManager.hasNextTimePartition(timePartition, sequence);
   }
 
   /**
@@ -151,6 +160,13 @@ public class SizeTieredCompactionSelector
         selectedFileSize = 0L;
         shouldContinueToSearch = false;
       }
+    }
+
+    // if next time partition exists
+    // submit a merge task even it does not meet the requirement for file num or file size
+    if (hasNextTimePartition && selectedFileList.size() > 1) {
+      taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+      shouldContinueToSearch = false;
     }
     return shouldContinueToSearch;
   }

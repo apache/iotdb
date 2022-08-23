@@ -43,7 +43,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.commons.lang.StringUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -52,6 +51,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -203,7 +203,8 @@ public class SchemaQueryScanOperatorTest {
               null,
               false,
               false,
-              false);
+              false,
+              Collections.emptyMap());
       while (timeSeriesMetaScanOperator.hasNext()) {
         TsBlock tsBlock = timeSeriesMetaScanOperator.next();
         assertEquals(8, tsBlock.getValueColumnCount());
@@ -236,7 +237,7 @@ public class SchemaQueryScanOperatorTest {
                 break;
               case 6:
               case 7:
-                assertTrue(StringUtils.isBlank(value));
+                assertEquals("null", value);
               default:
                 break;
             }

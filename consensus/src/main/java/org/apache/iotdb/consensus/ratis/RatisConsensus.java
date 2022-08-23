@@ -250,7 +250,7 @@ class RatisConsensus implements IConsensus {
    * register self to the RaftGroup
    */
   @Override
-  public ConsensusGenericResponse addConsensusGroup(ConsensusGroupId groupId, List<Peer> peers) {
+  public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
     RaftGroup group = buildRaftGroup(groupId, peers);
     // pre-conditions: myself in this new group
     if (!group.getPeers().contains(myself)) {
@@ -285,7 +285,7 @@ class RatisConsensus implements IConsensus {
    * clean up
    */
   @Override
-  public ConsensusGenericResponse removeConsensusGroup(ConsensusGroupId groupId) {
+  public ConsensusGenericResponse deletePeer(ConsensusGroupId groupId) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     RaftGroup raftGroup = getGroupInfo(raftGroupId);
 
@@ -515,6 +515,12 @@ class RatisConsensus implements IConsensus {
     return divisionInfo.isLeader();
   }
 
+  /**
+   * returns the known leader to the given group. NOTICE: if the local peer isn't a member of given
+   * group, getLeader will return null.
+   *
+   * @return null if local peer isn't in group, otherwise group leader.
+   */
   @Override
   public Peer getLeader(ConsensusGroupId groupId) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
@@ -526,8 +532,23 @@ class RatisConsensus implements IConsensus {
       logger.warn("fetch division info for group " + groupId + " failed due to: ", e);
       return null;
     }
+    if (leaderId == null) {
+      return null;
+    }
     TEndPoint leaderEndpoint = Utils.formRaftPeerIdToTEndPoint(leaderId);
     return new Peer(groupId, leaderEndpoint);
+  }
+
+  @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIds() {
+    List<ConsensusGroupId> ids = new ArrayList<>();
+    server
+        .getGroupIds()
+        .forEach(
+            groupId -> {
+              ids.add(Utils.fromRaftGroupIdToConsensusGroupId(groupId));
+            });
+    return ids;
   }
 
   @Override
@@ -546,7 +567,7 @@ class RatisConsensus implements IConsensus {
 
     RaftClientReply reply;
     try {
-      reply = server.submitClientRequest(request);
+      reply = server.snapshotManagement(request);
     } catch (IOException ioException) {
       return failed(new RatisRequestFailedException(ioException));
     }

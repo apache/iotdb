@@ -129,7 +129,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     return compressors;
   }
 
-  public void setCompressors(List<CompressionType> compressor) {
+  public void setCompressors(List<CompressionType> compressors) {
     this.compressors = compressors;
   }
 

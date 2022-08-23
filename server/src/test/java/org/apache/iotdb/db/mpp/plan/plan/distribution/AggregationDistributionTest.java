@@ -48,7 +48,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -70,7 +70,7 @@ public class AggregationDistributionTest {
   @Test
   public void testTimeJoinAggregationSinglePerRegion() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
     String d1s1Path = "root.sg.d1.s1";
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT));
 
@@ -88,7 +88,8 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d2s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
   }
 
   private void verifyAggregationStep(Map<String, AggregationStep> expected, PlanNode root) {
@@ -109,7 +110,7 @@ public class AggregationDistributionTest {
   @Test
   public void testTimeJoinAggregationWithSlidingWindow() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_time_join_agg_with_sliding");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
     String d1s1Path = "root.sg.d1.s1";
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT));
 
@@ -138,13 +139,14 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d3s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
     AggregationNode aggregationNode =
         (AggregationNode)
             fragmentInstances
                 .get(0)
                 .getFragment()
-                .getRoot()
+                .getPlanNodeTree()
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -157,7 +159,7 @@ public class AggregationDistributionTest {
   @Test
   public void testTimeJoinAggregationMultiPerRegion() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
     String d1s1Path = "root.sg.d1.s1";
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT));
 
@@ -175,13 +177,14 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d3s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
   }
 
   @Test
   public void testTimeJoinAggregationMultiPerRegion2() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
     String d3s1Path = "root.sg.d333.s1";
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d3s1Path, AggregationType.COUNT));
 
@@ -198,7 +201,8 @@ public class AggregationDistributionTest {
     expectedStep.put(d3s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d4s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
   }
 
   @Test
@@ -223,7 +227,7 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPath)))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -235,7 +239,8 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d2s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
   }
 
   @Test
@@ -260,7 +265,7 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d4s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPath)))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -272,19 +277,22 @@ public class AggregationDistributionTest {
     expectedStep.put(d3s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d4s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPath, Arrays.asList(groupedPath, d3s1Path, d4s1Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
-        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPath, Arrays.asList(d3s1Path, d4s1Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue2,
-        (GroupByLevelNode) fragmentInstances.get(1).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(1).getFragment().getPlanNodeTree().getChildren().get(0));
   }
 
   @Test
@@ -301,7 +309,7 @@ public class AggregationDistributionTest {
             AggregationType.COUNT,
             AggregationStep.PARTIAL,
             null);
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d3s1Path, AggregationType.COUNT));
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d4s1Path, AggregationType.COUNT));
     slidingWindowAggregationNode.addChild(timeJoinNode);
@@ -319,7 +327,7 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d4s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPath)))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
 
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
@@ -332,19 +340,22 @@ public class AggregationDistributionTest {
     expectedStep.put(d3s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d4s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPath, Arrays.asList(groupedPath, d3s1Path, d4s1Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
-        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPath, Arrays.asList(d3s1Path, d4s1Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue2,
-        (GroupByLevelNode) fragmentInstances.get(1).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(1).getFragment().getPlanNodeTree().getChildren().get(0));
 
     verifySlidingWindowDescriptor(
         Arrays.asList(d3s1Path, d4s1Path),
@@ -352,7 +363,7 @@ public class AggregationDistributionTest {
             fragmentInstances
                 .get(0)
                 .getFragment()
-                .getRoot()
+                .getPlanNodeTree()
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -363,7 +374,7 @@ public class AggregationDistributionTest {
             fragmentInstances
                 .get(1)
                 .getFragment()
-                .getRoot()
+                .getPlanNodeTree()
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -396,7 +407,7 @@ public class AggregationDistributionTest {
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -408,21 +419,24 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d1s2Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPathS1, Arrays.asList(groupedPathS1, d1s1Path));
     expectedDescriptorValue.put(groupedPathS2, Arrays.asList(groupedPathS2, d1s2Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
-        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPathS1, Collections.singletonList(d1s1Path));
     expectedDescriptorValue2.put(groupedPathS2, Collections.singletonList(d1s2Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue2,
-        (GroupByLevelNode) fragmentInstances.get(1).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(1).getFragment().getPlanNodeTree().getChildren().get(0));
   }
 
   @Test
@@ -455,7 +469,7 @@ public class AggregationDistributionTest {
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -468,21 +482,24 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s2Path, AggregationStep.PARTIAL);
     expectedStep.put(d2s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPathS1, Arrays.asList(groupedPathS1, d1s1Path, d2s1Path));
     expectedDescriptorValue.put(groupedPathS2, Arrays.asList(groupedPathS2, d1s2Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
-        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPathS1, Collections.singletonList(d1s1Path));
     expectedDescriptorValue2.put(groupedPathS2, Collections.singletonList(d1s2Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue2,
-        (GroupByLevelNode) fragmentInstances.get(2).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(2).getFragment().getPlanNodeTree().getChildren().get(0));
   }
 
   @Test
@@ -494,7 +511,7 @@ public class AggregationDistributionTest {
     String groupedPathS1 = "root.sg.*.s1";
     String groupedPathS2 = "root.sg.*.s2";
 
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT));
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s2Path, AggregationType.COUNT));
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT));
@@ -527,7 +544,7 @@ public class AggregationDistributionTest {
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -540,27 +557,31 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s2Path, AggregationStep.PARTIAL);
     expectedStep.put(d2s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPathS1, Arrays.asList(groupedPathS1, d1s1Path));
     expectedDescriptorValue.put(groupedPathS2, Arrays.asList(groupedPathS2, d1s2Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
-        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPathS1, Collections.singletonList(d2s1Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue2,
-        (GroupByLevelNode) fragmentInstances.get(1).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(1).getFragment().getPlanNodeTree().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue3 = new HashMap<>();
     expectedDescriptorValue3.put(groupedPathS1, Collections.singletonList(d1s1Path));
     expectedDescriptorValue3.put(groupedPathS2, Collections.singletonList(d1s2Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue3,
-        (GroupByLevelNode) fragmentInstances.get(2).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(2).getFragment().getPlanNodeTree().getChildren().get(0));
 
     verifySlidingWindowDescriptor(
         Arrays.asList(d1s1Path, d1s2Path),
@@ -568,7 +589,7 @@ public class AggregationDistributionTest {
             fragmentInstances
                 .get(0)
                 .getFragment()
-                .getRoot()
+                .getPlanNodeTree()
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -579,7 +600,7 @@ public class AggregationDistributionTest {
             fragmentInstances
                 .get(1)
                 .getFragment()
-                .getRoot()
+                .getPlanNodeTree()
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -590,7 +611,7 @@ public class AggregationDistributionTest {
             fragmentInstances
                 .get(2)
                 .getFragment()
-                .getRoot()
+                .getPlanNodeTree()
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -610,7 +631,8 @@ public class AggregationDistributionTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
     assertEquals(1, plan.getInstances().size());
-    assertEquals(root, plan.getInstances().get(0).getFragment().getRoot().getChildren().get(0));
+    assertEquals(
+        root, plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0));
   }
 
   private void verifyGroupByLevelDescriptor(
@@ -654,7 +676,7 @@ public class AggregationDistributionTest {
                         Collections.singletonList(new TimeSeriesOperand(path))))
             .collect(Collectors.toList()),
         groupByTimeParameter,
-        OrderBy.TIMESTAMP_ASC);
+        Ordering.ASC);
   }
 
   private SeriesAggregationSourceNode genAggregationSourceNode(
@@ -673,18 +695,18 @@ public class AggregationDistributionTest {
   @Test
   public void testParallelPlanWithAlignedSeries() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_aligned");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
 
     timeJoinNode.addChild(
         new AlignedSeriesScanNode(
             queryId.genPlanNodeId(),
             new AlignedPath("root.sg.d1", Arrays.asList("s1", "s2")),
-            OrderBy.TIMESTAMP_ASC));
+            Ordering.ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d333.s1", TSDataType.INT32),
-            OrderBy.TIMESTAMP_ASC));
+            Ordering.ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
     Analysis analysis = Util.constructAnalysis();

@@ -245,19 +245,19 @@ IoTDB> exit
 Linux 系统与 MacOS 系统停止命令如下：
 
 ```
-> $sbin/stop-server.sh
+> sbin/stop-server.sh
 ```
 
 Windows 系统停止命令如下：
 
 ```
-> $sbin\stop-server.bat
+> sbin\stop-server.bat
 ```
 
 ## 基础配置
 
 配置文件在"conf"文件夹下，包括：
 
-  * 环境配置模块 (`iotdb-env.bat`, `iotdb-env.sh`), 
-  * 系统配置模块 (`iotdb-engine.properties`)
+  * 环境配置模块 (`datanode-env.bat`, `datanode-env.sh`), 
+  * 系统配置模块 (`iotdb-datanode.properties`)
   * 日志配置模块 (`logback.xml`). 

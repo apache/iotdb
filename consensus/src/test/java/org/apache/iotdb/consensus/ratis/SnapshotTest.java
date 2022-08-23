@@ -116,6 +116,12 @@ public class SnapshotTest {
     proxy.getStateMachineStorage().cleanupOldSnapshots(null);
     Assert.assertFalse(new File(snapshotFilename).exists());
     Assert.assertTrue(new File(snapshotFilenameLatest).exists());
+
+    // delete meta file, then the proxy will consider the latest snapshotInfo incomplete
+    Assert.assertTrue(new File(getSnapshotMetaFilename("616_4217")).delete());
+    info = proxy.getLatestSnapshot();
+    Assert.assertNull(info);
+    Assert.assertFalse(new File(snapshotFilenameLatest).exists());
   }
 
   private String getSnapshotMetaFilename(String termIndexMeta) {

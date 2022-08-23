@@ -20,6 +20,7 @@
 namespace java org.apache.iotdb.common.rpc.thrift
 namespace py iotdb.thrift.common
 
+// Define a set of ip:port address
 struct TEndPoint {
   1: required string ip
   2: required i32 port
@@ -57,6 +58,11 @@ struct TRegionReplicaSet {
   2: required list<TDataNodeLocation> dataNodeLocations
 }
 
+struct TNodeResource {
+  1: required i32 cpuCoreNum
+  2: required i64 maxMemory
+}
+
 struct TConfigNodeLocation {
   1: required i32 configNodeId
   2: required TEndPoint internalEndPoint
@@ -65,46 +71,43 @@ struct TConfigNodeLocation {
 
 struct TDataNodeLocation {
   1: required i32 dataNodeId
-  // TEndPoint for DataNode's external rpc
-  2: required TEndPoint externalEndPoint
-  // TEndPoint for DataNode's internal rpc
+  // TEndPoint for DataNode's client rpc
+  2: required TEndPoint clientRpcEndPoint
+  // TEndPoint for DataNode's cluster internal rpc
   3: required TEndPoint internalEndPoint
-  // TEndPoint for transfering data between DataNodes
-  4: required TEndPoint dataBlockManagerEndPoint
+  // TEndPoint for exchange data between DataNodes
+  4: required TEndPoint mPPDataExchangeEndPoint
   // TEndPoint for DataNode's dataRegion consensus protocol
   5: required TEndPoint dataRegionConsensusEndPoint
   // TEndPoint for DataNode's schemaRegion consensus protocol
   6: required TEndPoint schemaRegionConsensusEndPoint
 }
 
-struct TRegionLocation {
-  1: required TConsensusGroupId consensusGroupId
-  2: required string storageGroup
-  3: required i32 dataNodeId;
-  4: required string rpcAddresss;
-  5: required i32 rpcPort;
-  6: required i64 slots;
-  7: optional string status;
-}
-
-struct THeartbeatReq {
-  1: required i64 heartbeatTimestamp
-}
-
-struct THeartbeatResp {
-  1: required i64 heartbeatTimestamp
-  2: optional i16 cpu
-  3: optional i16 memory
-}
-
-struct TDataNodeInfo {
+struct TDataNodeConfiguration {
   1: required TDataNodeLocation location
-  2: required i32 cpuCoreNum
-  3: required i64 maxMemory
+  2: required TNodeResource resource
 }
 
-struct TFlushReq{
+enum TRegionMigrateFailedType {
+  AddPeerFailed,
+  RemovePeerFailed,
+  RemoveConsensusGroupFailed,
+  DeleteRegionFailed,
+  CreateRegionFailed
+}
+
+struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups
-   3: optional i32 dataNodeId
+}
+
+// for node management
+struct TSchemaNode {
+  1: required string nodeName
+  2: required byte nodeType
+}
+
+struct TSetTTLReq {
+  1: required list<string> storageGroupPathPattern
+  2: required i64 TTL
 }

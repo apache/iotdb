@@ -39,7 +39,7 @@ public class MicrometerTimer implements Timer {
   @Override
   public void update(long duration, TimeUnit unit) {
     timer.record(duration, unit);
-    micrometerRate.mark(duration);
+    micrometerRate.mark();
   }
 
   @Override

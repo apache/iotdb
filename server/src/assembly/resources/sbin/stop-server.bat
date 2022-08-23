@@ -23,12 +23,12 @@ set current_dir=%~dp0
 set superior_dir=%current_dir%\..\
 
 for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^rpc_port"
-%superior_dir%\conf\iotdb-engine.properties') do (
+%superior_dir%\conf\iotdb-datanode.properties') do (
   set rpc_port=%%i
 )
 
 for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "rpc_address"
-%superior_dir%\conf\iotdb-engine.properties') do (
+%superior_dir%\conf\iotdb-datanode.properties') do (
   set rpc_address=%%i
 )
 

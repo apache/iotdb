@@ -23,14 +23,15 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
+import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -39,20 +40,20 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
-/** Statemachine for PartitionRegion */
+/** StateMachine for PartitionRegion */
 public class PartitionRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
-  private final ConfigRequestExecutor executor;
+  private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
   private final TEndPoint currentNode;
 
-  public PartitionRegionStateMachine(ConfigManager configManager, ConfigRequestExecutor executor) {
+  public PartitionRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
     this.configManager = configManager;
     this.currentNode =
         new TEndPoint()
-            .setIp(ConfigNodeDescriptor.getInstance().getConf().getRpcAddress())
+            .setIp(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
             .setPort(ConfigNodeDescriptor.getInstance().getConf().getConsensusPort());
   }
 
@@ -66,16 +67,16 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
 
   @Override
   public TSStatus write(IConsensusRequest request) {
-    ConfigRequest plan;
+    ConfigPhysicalPlan plan;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
-        plan = ConfigRequest.Factory.create(request.serializeToByteBuffer());
+        plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
       } catch (IOException e) {
         LOGGER.error("Deserialization error for write plan : {}", request, e);
         return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
-    } else if (request instanceof ConfigRequest) {
-      plan = (ConfigRequest) request;
+    } else if (request instanceof ConfigPhysicalPlan) {
+      plan = (ConfigPhysicalPlan) request;
     } else {
       LOGGER.error("Unexpected write plan : {}", request);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -84,10 +85,10 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   }
 
   /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
-  protected TSStatus write(ConfigRequest plan) {
+  protected TSStatus write(ConfigPhysicalPlan plan) {
     TSStatus result;
     try {
-      result = executor.executorNonQueryPlan(plan);
+      result = executor.executeNonQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -97,16 +98,16 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
 
   @Override
   public DataSet read(IConsensusRequest request) {
-    ConfigRequest plan;
+    ConfigPhysicalPlan plan;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
-        plan = ConfigRequest.Factory.create(request.serializeToByteBuffer());
+        plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
       } catch (IOException e) {
         LOGGER.error("Deserialization error for write plan : {}", request);
         return null;
       }
-    } else if (request instanceof ConfigRequest) {
-      plan = (ConfigRequest) request;
+    } else if (request instanceof ConfigPhysicalPlan) {
+      plan = (ConfigPhysicalPlan) request;
     } else {
       LOGGER.error("Unexpected read plan : {}", request);
       return null;
@@ -125,10 +126,10 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   }
 
   /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
-  protected DataSet read(ConfigRequest plan) {
+  protected DataSet read(ConfigPhysicalPlan plan) {
     DataSet result;
     try {
-      result = executor.executorQueryPlan(plan);
+      result = executor.executeQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = null;
@@ -139,10 +140,18 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   @Override
   public void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {
     if (currentNode.equals(newLeader)) {
-      LOGGER.info("Current node {} is Leader, start procedure manager.", newLeader);
+      LOGGER.info("Current node {} becomes Leader", newLeader);
       configManager.getProcedureManager().shiftExecutor(true);
+      configManager.getLoadManager().startLoadBalancingService();
+      configManager.getNodeManager().startHeartbeatService();
+      configManager.getPartitionManager().startRegionCleaner();
     } else {
+      LOGGER.info(
+          "Current node {} is not longer the leader, the new leader is {}", currentNode, newLeader);
       configManager.getProcedureManager().shiftExecutor(false);
+      configManager.getLoadManager().stopLoadBalancingService();
+      configManager.getNodeManager().stopHeartbeatService();
+      configManager.getPartitionManager().stopRegionCleaner();
     }
   }
 
@@ -154,5 +163,10 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   @Override
   public void stop() {
     // do nothing
+  }
+
+  @Override
+  public boolean isReadOnly() {
+    return IoTDBDescriptor.getInstance().getConfig().isReadOnly();
   }
 }

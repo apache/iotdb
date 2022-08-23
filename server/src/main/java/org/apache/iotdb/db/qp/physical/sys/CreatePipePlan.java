@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;

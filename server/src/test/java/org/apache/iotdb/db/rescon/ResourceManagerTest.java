@@ -74,15 +74,14 @@ public class ResourceManagerTest {
   List<TsFileResource> unseqResources = new ArrayList<>();
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
-  private double prevTimeIndexMemoryProportion;
-  private double prevTimeIndexMemoryThreshold;
+  private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
+  private long prevTimeIndexMemoryThreshold;
   private TimeIndexLevel timeIndexLevel;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     IoTDB.configManager.init();
-    prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
+    prevTimeIndexMemoryThreshold = CONFIG.getAllocateMemoryForTimeIndex();
     timeIndexLevel = CONFIG.getTimeIndexLevel();
     prepareSeries();
   }
@@ -92,10 +91,7 @@ public class ResourceManagerTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    CONFIG.setTimeIndexMemoryProportion(prevTimeIndexMemoryProportion);
     CONFIG.setTimeIndexLevel(String.valueOf(timeIndexLevel));
-    prevTimeIndexMemoryThreshold =
-        prevTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();

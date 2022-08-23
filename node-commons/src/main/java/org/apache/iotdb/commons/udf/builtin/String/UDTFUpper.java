@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
+
+import java.io.IOException;
 
 /*Returns a string with all characters of target changed to uppercase, or NULL if target is NULL.*/
 public class UDTFUpper implements UDTF {
@@ -38,11 +41,21 @@ public class UDTFUpper implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.TEXT);
+    configurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.TEXT);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     collector.putString(row.getTime(), row.getString(0).toUpperCase());
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    if (row.isNull(0)) {
+      return null;
+    }
+    return Binary.valueOf(row.getString(0).toUpperCase());
   }
 }

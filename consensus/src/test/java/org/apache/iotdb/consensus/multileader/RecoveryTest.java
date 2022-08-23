@@ -23,11 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.EmptyStateMachine;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.multileader.util.TestStateMachine;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -52,7 +52,7 @@ public class RecoveryTest {
                     .setThisNode(new TEndPoint("0.0.0.0", 9000))
                     .setStorageDir("target" + java.io.File.separator + "recovery")
                     .build(),
-                gid -> new EmptyStateMachine())
+                gid -> new TestStateMachine())
             .orElseThrow(
                 () ->
                     new IllegalArgumentException(
@@ -75,11 +75,11 @@ public class RecoveryTest {
 
   @Test
   public void recoveryTest() throws Exception {
-    consensusImpl.addConsensusGroup(
+    consensusImpl.createPeer(
         schemaRegionId,
         Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 9000))));
 
-    consensusImpl.removeConsensusGroup(schemaRegionId);
+    consensusImpl.deletePeer(schemaRegionId);
 
     consensusImpl.stop();
     consensusImpl = null;
@@ -87,7 +87,7 @@ public class RecoveryTest {
     constructConsensus();
 
     ConsensusGenericResponse response =
-        consensusImpl.addConsensusGroup(
+        consensusImpl.createPeer(
             schemaRegionId,
             Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 9000))));
 

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -36,7 +37,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
+import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -465,7 +466,7 @@ public class LocalSchemaProcessor {
     // todo this is for test assistance, refactor this to support massive timeseries
     if (pathPattern.getFullPath().equals("root.**")
         && TemplateManager.getInstance().getAllTemplateName().isEmpty()) {
-      return (int) TimeseriesStatistics.getInstance().getTotalSeriesNumber();
+      return (int) SchemaStatisticsManager.getInstance().getTotalSeriesNumber();
     }
     int count = 0;
     for (ISchemaRegion schemaRegion : getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
@@ -607,10 +608,11 @@ public class LocalSchemaProcessor {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
-    Pair<Set<String>, Set<PartialPath>> pair =
+  public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
+    Pair<Set<TSchemaNode>, Set<PartialPath>> pair =
         configManager.getChildNodePathInNextLevel(pathPattern);
-    Set<String> result = pair.left;
+    Set<TSchemaNode> result = pair.left;
     for (PartialPath storageGroup : pair.right) {
       for (ISchemaRegion schemaRegion : getSchemaRegionsByStorageGroup(storageGroup)) {
         result.addAll(schemaRegion.getChildNodePathInNextLevel(pathPattern));
@@ -1378,7 +1380,7 @@ public class LocalSchemaProcessor {
 
   @TestOnly
   public long getTotalSeriesNumber() {
-    return TimeseriesStatistics.getInstance().getTotalSeriesNumber();
+    return SchemaStatisticsManager.getInstance().getTotalSeriesNumber();
   }
 
   /**

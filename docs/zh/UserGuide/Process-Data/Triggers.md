@@ -851,7 +851,7 @@ public class TriggerExample implements Trigger {
 
 您可以按照下面的步骤试用这个触发器：
 
-* 在`iotdb-engine.properties`中启用 MQTT 服务
+* 在`iotdb-datanode.properties`中启用 MQTT 服务
 
   ``` properties
   # whether to enable the mqtt service.

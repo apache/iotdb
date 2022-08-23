@@ -24,8 +24,10 @@ import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
+
+import java.io.IOException;
 
 /*This function returns if input series ends with the specified suffix.*/
 public class UDTFEndsWith implements UDTF {
@@ -41,11 +43,21 @@ public class UDTFEndsWith implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     target = parameters.getString("target");
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.BOOLEAN);
+    configurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.BOOLEAN);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     collector.putBoolean(row.getTime(), row.getString(0).endsWith(target));
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    if (row.isNull(0)) {
+      return null;
+    }
+    return row.getString(0).endsWith(target);
   }
 }

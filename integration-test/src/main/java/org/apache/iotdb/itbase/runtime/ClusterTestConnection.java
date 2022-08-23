@@ -28,6 +28,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.NClob;
 import java.sql.PreparedStatement;
+import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.SQLXML;
@@ -267,8 +268,11 @@ public class ClusterTestConnection implements Connection {
   }
 
   @Override
-  public void setClientInfo(String name, String value) {
-    throw new UnsupportedOperationException();
+  public void setClientInfo(String name, String value) throws SQLClientInfoException {
+    writeConnection.getUnderlyingConnecton().setClientInfo(name, value);
+    for (NodeConnection conn : readConnections) {
+      conn.getUnderlyingConnecton().setClientInfo(name, value);
+    }
   }
 
   @Override

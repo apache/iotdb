@@ -100,7 +100,13 @@ public class CountMergeOperatorTest {
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       TimeSeriesCountOperator timeSeriesCountOperator =
           new TimeSeriesCountOperator(
-              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), partialPath, true);
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              partialPath,
+              true,
+              null,
+              null,
+              false);
       TsBlock tsBlock = null;
       while (timeSeriesCountOperator.hasNext()) {
         tsBlock = timeSeriesCountOperator.next();
@@ -112,6 +118,9 @@ public class CountMergeOperatorTest {
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
               new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG + ".device1.*"),
+              false,
+              null,
+              null,
               false);
       tsBlock = timeSeriesCountOperator2.next();
       assertFalse(timeSeriesCountOperator2.hasNext());
@@ -155,14 +164,20 @@ public class CountMergeOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(0),
               new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG),
               true,
-              2);
+              2,
+              null,
+              null,
+              false);
       LevelTimeSeriesCountOperator timeSeriesCountOperator2 =
           new LevelTimeSeriesCountOperator(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
               new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG + ".device2"),
               true,
-              2);
+              2,
+              null,
+              null,
+              false);
       CountMergeOperator countMergeOperator =
           new CountMergeOperator(
               planNodeId,

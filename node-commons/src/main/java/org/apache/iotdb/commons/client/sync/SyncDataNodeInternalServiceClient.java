@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.BaseClientFactory;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
@@ -38,7 +38,7 @@ import org.apache.thrift.transport.TTransportException;
 import java.lang.reflect.Constructor;
 import java.net.SocketException;
 
-public class SyncDataNodeInternalServiceClient extends InternalService.Client
+public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Client
     implements SyncThriftClient, AutoCloseable {
 
   private final TEndPoint endPoint;

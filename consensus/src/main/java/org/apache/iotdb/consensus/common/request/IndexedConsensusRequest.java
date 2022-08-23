@@ -20,6 +20,8 @@
 package org.apache.iotdb.consensus.common.request;
 
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Objects;
 
 /** only used for multi-leader consensus. */
@@ -28,32 +30,54 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   /** we do not need to serialize these two fields as they are useless in other nodes. */
   private final long searchIndex;
 
-  private final long safelyDeletedSearchIndex;
+  private final long syncIndex;
+  private List<IConsensusRequest> requests;
+  private List<ByteBuffer> serializedRequests;
 
-  private final IConsensusRequest request;
+  public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
+    this.searchIndex = searchIndex;
+    this.requests = requests;
+    this.syncIndex = -1L;
+  }
+
+  public IndexedConsensusRequest(List<ByteBuffer> serializedRequests, long searchIndex) {
+    this.searchIndex = searchIndex;
+    this.serializedRequests = serializedRequests;
+    this.syncIndex = -1L;
+  }
 
   public IndexedConsensusRequest(
-      long searchIndex, long safelyDeletedSearchIndex, IConsensusRequest request) {
+      long searchIndex, long syncIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
-    this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
-    this.request = request;
+    this.requests = requests;
+    this.syncIndex = syncIndex;
   }
 
   @Override
   public ByteBuffer serializeToByteBuffer() {
-    return request.serializeToByteBuffer();
+    throw new UnsupportedOperationException();
   }
 
-  public IConsensusRequest getRequest() {
-    return request;
+  public List<IConsensusRequest> getRequests() {
+    return requests;
+  }
+
+  public List<ByteBuffer> getSerializedRequests() {
+    return serializedRequests;
+  }
+
+  public List<ByteBuffer> buildSerializedRequests() {
+    List<ByteBuffer> result = new LinkedList<>();
+    this.requests.forEach(r -> result.add(r.serializeToByteBuffer()));
+    return result;
   }
 
   public long getSearchIndex() {
     return searchIndex;
   }
 
-  public long getSafelyDeletedSearchIndex() {
-    return safelyDeletedSearchIndex;
+  public long getSyncIndex() {
+    return syncIndex;
   }
 
   @Override
@@ -65,13 +89,11 @@ public class IndexedConsensusRequest implements IConsensusRequest {
       return false;
     }
     IndexedConsensusRequest that = (IndexedConsensusRequest) o;
-    return searchIndex == that.searchIndex
-        && safelyDeletedSearchIndex == that.safelyDeletedSearchIndex
-        && Objects.equals(request, that.request);
+    return searchIndex == that.searchIndex && requests.equals(that.requests);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(searchIndex, safelyDeletedSearchIndex, request);
+    return Objects.hash(searchIndex, requests);
   }
 }

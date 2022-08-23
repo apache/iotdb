@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.mock.MockInternalRPCService;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -47,7 +47,7 @@ public class ClientManagerTest {
   @Before
   public void setUp() throws StartupException {
     service = new MockInternalRPCService(endPoint);
-    service.initSyncedServiceImpl(mock(InternalService.Iface.class));
+    service.initSyncedServiceImpl(mock(IDataNodeRPCService.Iface.class));
     service.start();
   }
 
@@ -447,7 +447,9 @@ public class ClientManagerTest {
         ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> manager) {
       return new GenericKeyedObjectPool<>(
           new AsyncDataNodeInternalServiceClient.Factory(
-              manager, new ClientFactoryProperty.Builder().build()),
+              manager,
+              new ClientFactoryProperty.Builder().build(),
+              "AsyncDataNodeInternalServiceClientPool"),
           new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>().build().getConfig());
     }
   }

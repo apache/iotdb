@@ -56,15 +56,15 @@ public class MemManagerTest {
   public void setUp() throws Exception {
     config = IoTDBDescriptor.getInstance().getConfig();
     config.setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
-    rawMemorySize = config.getAllocateMemoryForSchema();
-    config.setAllocateMemoryForSchema(1500);
+    rawMemorySize = config.getAllocateMemoryForSchemaRegion();
+    config.setAllocateMemoryForSchemaRegion(1500);
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    config.setAllocateMemoryForSchema(rawMemorySize);
+    config.setAllocateMemoryForSchemaRegion(rawMemorySize);
     config.setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
 

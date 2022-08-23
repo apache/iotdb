@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.itbase.runtime;
 
+import org.apache.iotdb.jdbc.Config;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -29,7 +31,7 @@ import java.util.List;
 /** The implementation of {@link ClusterTestStatement} in cluster test. */
 public class ClusterTestStatement implements Statement {
 
-  private static final int DEFAULT_QUERY_TIMEOUT = 10;
+  private static final int DEFAULT_QUERY_TIMEOUT = 60;
   private final Statement writeStatement;
   private final String writEndpoint;
   private final List<Statement> readStatements = new ArrayList<>();
@@ -37,6 +39,7 @@ public class ClusterTestStatement implements Statement {
   private boolean closed = false;
   private int maxRows = Integer.MAX_VALUE;
   private int queryTimeout = DEFAULT_QUERY_TIMEOUT;
+  private int fetchSize = Config.DEFAULT_FETCH_SIZE;
 
   public ClusterTestStatement(NodeConnection writeConnection, List<NodeConnection> readConnections)
       throws SQLException {
@@ -88,7 +91,7 @@ public class ClusterTestStatement implements Statement {
                     try {
                       r.close();
                     } catch (SQLException e) {
-                      throw new RuntimeException(e);
+                      // Ignore close exceptions
                     }
                   }
                   return null;
@@ -198,13 +201,17 @@ public class ClusterTestStatement implements Statement {
   }
 
   @Override
-  public void setFetchSize(int rows) {
-    throw new UnsupportedOperationException();
+  public void setFetchSize(int rows) throws SQLException {
+    this.fetchSize = rows;
+    writeStatement.setFetchSize(fetchSize);
+    for (Statement readStatement : readStatements) {
+      readStatement.setFetchSize(fetchSize);
+    }
   }
 
   @Override
   public int getFetchSize() {
-    throw new UnsupportedOperationException();
+    return fetchSize;
   }
 
   @Override

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanBuilder;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.SimplePlanNodeRewriter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
@@ -36,10 +37,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -52,6 +55,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -96,7 +100,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     DeviceMergeNode deviceMergeNode =
         new DeviceMergeNode(
             context.queryContext.getQueryId().genPlanNodeId(),
-            node.getMergeOrders(),
+            node.getMergeOrderParameter(),
             node.getDevices());
 
     // Step 2: Iterate all partition and create DeviceViewNode for each region
@@ -112,7 +116,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       DeviceViewNode regionDeviceViewNode =
           new DeviceViewNode(
               context.queryContext.getQueryId().genPlanNodeId(),
-              node.getMergeOrders(),
+              node.getMergeOrderParameter(),
               node.getOutputColumnNames(),
               node.getDeviceToMeasurementIndexesMap());
       for (int i = 0; i < devices.size(); i++) {
@@ -177,17 +181,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                   (deviceGroupId, schemaRegionReplicaSet) ->
                       schemaRegions.add(schemaRegionReplicaSet));
             });
-    int count = schemaRegions.size();
     schemaRegions.forEach(
         region -> {
           SchemaQueryScanNode schemaQueryScanNode = (SchemaQueryScanNode) seed.clone();
           schemaQueryScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
           schemaQueryScanNode.setRegionReplicaSet(region);
-          if (count > 1) {
-            schemaQueryScanNode.setLimit(
-                schemaQueryScanNode.getOffset() + schemaQueryScanNode.getLimit());
-            schemaQueryScanNode.setOffset(0);
-          }
           root.addChild(schemaQueryScanNode);
         });
     return root;
@@ -235,18 +233,22 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   @Override
   public PlanNode visitLastQueryScan(LastQueryScanNode node, DistributionPlanContext context) {
-    LastQueryMergeNode mergeNode =
-        new LastQueryMergeNode(
-            context.queryContext.getQueryId().genPlanNodeId(), node.getPartitionTimeFilter());
+    LastQueryNode mergeNode =
+        new LastQueryNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getPartitionTimeFilter(),
+            new OrderByParameter());
     return processRawSeriesScan(node, context, mergeNode);
   }
 
   @Override
   public PlanNode visitAlignedLastQueryScan(
       AlignedLastQueryScanNode node, DistributionPlanContext context) {
-    LastQueryMergeNode mergeNode =
-        new LastQueryMergeNode(
-            context.queryContext.getQueryId().genPlanNodeId(), node.getPartitionTimeFilter());
+    LastQueryNode mergeNode =
+        new LastQueryNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getPartitionTimeFilter(),
+            new OrderByParameter());
     return processRawSeriesScan(node, context, mergeNode);
   }
 
@@ -371,11 +373,26 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   @Override
-  public PlanNode visitLastQueryMerge(LastQueryMergeNode node, DistributionPlanContext context) {
+  public PlanNode visitLastQuery(LastQueryNode node, DistributionPlanContext context) {
     // For last query, we need to keep every FI's root node is LastQueryMergeNode. So we
     // force every region group have a parent node even if there is only 1 child for it.
     context.setForceAddParent(true);
-    return processRawMultiChildNode(node, context);
+    PlanNode root = processRawMultiChildNode(node, context);
+    if (context.queryMultiRegion) {
+      PlanNode newRoot = genLastQueryRootNode(node, context);
+      root.getChildren().forEach(newRoot::addChild);
+      return newRoot;
+    } else {
+      return root;
+    }
+  }
+
+  private PlanNode genLastQueryRootNode(LastQueryNode node, DistributionPlanContext context) {
+    PlanNodeId id = context.queryContext.getQueryId().genPlanNodeId();
+    if (context.oneSeriesInMultiRegion || !node.getMergeOrderParameter().isEmpty()) {
+      return new LastQueryMergeNode(id, node.getMergeOrderParameter());
+    }
+    return new LastQueryCollectNode(id);
   }
 
   @Override
@@ -401,6 +418,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         SeriesSourceNode handle = (SeriesSourceNode) child;
         List<TRegionReplicaSet> dataDistribution =
             analysis.getPartitionInfo(handle.getPartitionPath(), handle.getPartitionTimeFilter());
+        if (dataDistribution.size() > 1) {
+          // We mark this variable to `true` if there is some series which is distributed in multi
+          // DataRegions
+          context.setOneSeriesInMultiRegion(true);
+        }
         // If the size of dataDistribution is m, this SeriesScanNode should be seperated into m
         // SeriesScanNode.
         for (TRegionReplicaSet dataRegion : dataDistribution) {
@@ -415,6 +437,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     Map<TRegionReplicaSet, List<SourceNode>> sourceGroup =
         sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
 
+    if (sourceGroup.size() > 1) {
+      context.setQueryMultiRegion(true);
+    }
+
     // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
     // and make the
     // new TimeJoinNode as the child of current TimeJoinNode
@@ -425,7 +451,17 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           if (seriesScanNodes.size() == 1 && !context.forceAddParent) {
             root.addChild(seriesScanNodes.get(0));
           } else {
-            if (!addParent[0]) {
+            // If there is only one RegionGroup here, we should not create new MultiChildNode as the
+            // parent.
+            // If the size of RegionGroup is larger than 1, we need to consider the value of
+            // `forceAddParent`.
+            // If `forceAddParent` is true, we should not create new MultiChildNode as the parent,
+            // either.
+            // At last, we can use the parameter `addParent[0]` to judge whether to create new
+            // MultiChildNode.
+            boolean appendToRootDirectly =
+                sourceGroup.size() == 1 || (!addParent[0] && !context.forceAddParent);
+            if (appendToRootDirectly) {
               seriesScanNodes.forEach(root::addChild);
               addParent[0] = true;
             } else {
@@ -530,7 +566,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return aggregationNode;
   }
 
+  @Override
   public PlanNode visitGroupByLevel(GroupByLevelNode root, DistributionPlanContext context) {
+    if (shouldUseNaiveAggregation(root)) {
+      return defaultRewrite(root, context);
+    }
     // Firstly, we build the tree structure for GroupByLevelNode
     List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
     Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
@@ -552,6 +592,22 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // Then, we calculate the attributes for GroupByLevelNode in each level
     calculateGroupByLevelNodeAttributes(newRoot, 0);
     return newRoot;
+  }
+
+  // If the Aggregation Query contains value filter, we need to use the naive query plan
+  // for it. That is, do the raw data query and then do the aggregation operation.
+  // Currently, the method to judge whether the query should use naive query plan is whether
+  // AggregationNode is contained in the PlanNode tree of logical plan.
+  private boolean shouldUseNaiveAggregation(PlanNode root) {
+    if (root instanceof AggregationNode) {
+      return true;
+    }
+    for (PlanNode child : root.getChildren()) {
+      if (shouldUseNaiveAggregation(child)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private GroupByLevelNode groupSourcesForGroupByLevelWithSlidingWindow(
