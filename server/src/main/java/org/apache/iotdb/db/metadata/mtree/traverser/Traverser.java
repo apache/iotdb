@@ -18,16 +18,20 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -56,6 +60,9 @@ public abstract class Traverser {
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
+
+  // if matched, Support new path pattern: 0 or more layers
+  protected Pattern pattern = Pattern.compile("(\\*\\()(\\d*)(,?)(\\d*)(\\))");
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
@@ -110,6 +117,7 @@ public abstract class Traverser {
     }
 
     String targetName = nodes[idx + 1];
+    Pair<Integer, Integer> matchLevelPair = processNodeName(targetName);
     if (MULTI_LEVEL_PATH_WILDCARD.equals(targetName)) {
       processMultiLevelWildcard(node, idx, level);
     } else if (targetName.contains(ONE_LEVEL_PATH_WILDCARD)) {
@@ -117,6 +125,48 @@ public abstract class Traverser {
     } else {
       processNameMatch(node, idx, level);
     }
+  }
+
+  /**
+   * 1.*(start, end) - start (included) to end (excluded) layers
+   * 2.*( , end) - 0 to end (excluded) layers
+   * 3.*(start, ) - start (included) or more layers, ** stands for *(1, )
+   * 4.*( , ) - 0 or more layers, maybe we can use a shortcut (such as ***)?
+   * 5.*( n ) - exactly n layers, * stands for *(1)
+   * @param nodeName given path
+   * @return left is min layers(included);right is max layers(excluded)
+   */
+  private Pair<Integer, Integer> processNodeName(String nodeName){
+    Pair<Integer, Integer> pair = new Pair<>(-1, -1);
+    Matcher matcher = pattern.matcher(nodeName);
+    if (matcher.find()) {
+      if (StringUtils.isBlank(matcher.group(2)) && StringUtils.isBlank(matcher.group(4))){
+        pair.left = 0;
+        pair.right = Integer.MAX_VALUE;
+        return pair;
+      } else if (StringUtils.isNotBlank(matcher.group(2)) && StringUtils.isBlank(matcher.group(3))){
+        pair.left = Integer.parseInt(matcher.group(2));
+        pair.right = Integer.parseInt(matcher.group(2));
+        return pair;
+      }
+      if(StringUtils.isNotBlank(matcher.group(2))){
+        pair.left = Integer.parseInt(matcher.group(2));
+      }else{
+        pair.left = 0;
+      }
+      if(StringUtils.isNotBlank(matcher.group(4))){
+        pair.right = Integer.parseInt(matcher.group(4));
+      }else{
+        pair.right = Integer.MAX_VALUE;
+      }
+    }else if (MULTI_LEVEL_PATH_WILDCARD.equals(nodeName)){
+      pair.left = 1;
+      pair.right = Integer.MAX_VALUE;
+    }else if (ONE_LEVEL_PATH_WILDCARD.equals(nodeName)){
+      pair.left = 1;
+      pair.right = 1;
+    }
+    return pair;
   }
 
   /**
