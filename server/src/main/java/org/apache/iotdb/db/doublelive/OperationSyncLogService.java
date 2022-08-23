@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,11 +34,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static org.apache.iotdb.db.service.basic.ServiceProvider.DOUBLE_LIVE_LOGGER;
-
 public class OperationSyncLogService implements Runnable {
 
-  private static final Logger LOGGER = DOUBLE_LIVE_LOGGER;
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncLogService.class);
 
   private static final String LOG_FILE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogDir();

@@ -24,15 +24,14 @@ import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
 
-import static org.apache.iotdb.db.service.basic.ServiceProvider.DOUBLE_LIVE_LOGGER;
-
 public class OperationSyncConsumer implements Runnable {
-  private static final Logger LOGGER = DOUBLE_LIVE_LOGGER;
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncConsumer.class);
 
   private final BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
       operationSyncQueue;

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -37,11 +38,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static org.apache.iotdb.db.service.basic.ServiceProvider.DOUBLE_LIVE_LOGGER;
-
 public abstract class OperationSyncProtector implements Runnable {
 
-  protected static final Logger LOGGER = DOUBLE_LIVE_LOGGER;
+  protected static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncProtector.class);
   protected static final int LOG_FILE_VALIDITY =
       IoTDBDescriptor.getInstance().getConfig().getOperationSyncLogValidity();
 

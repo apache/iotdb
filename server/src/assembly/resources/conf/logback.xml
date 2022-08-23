@@ -231,23 +231,6 @@
             <level>INFO</level>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="DOUBLE_LIVE">
-        <file>${IOTDB_HOME}/logs/log_double_live.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-double-live-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>512MB</totalSizeCap>
-        </rollingPolicy>
-        <append>true</append>
-        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
-            <charset>utf-8</charset>
-        </encoder>
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
-        </filter>
-    </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY_FREQUENCY">
         <file>${IOTDB_HOME}/logs/log_query_frequency.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -308,9 +291,6 @@
     </logger>
     <logger level="info" name="SLOW_SQL">
         <appender-ref ref="SLOW_SQL"/>
-    </logger>
-    <logger level="info" name="DOUBLE_LIVE">
-        <appender-ref ref="DOUBLE_LIVE"/>
     </logger>
     <logger level="info" name="QUERY_FREQUENCY">
         <appender-ref ref="QUERY_FREQUENCY"/>
