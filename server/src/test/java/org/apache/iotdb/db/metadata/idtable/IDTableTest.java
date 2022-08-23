@@ -614,7 +614,7 @@ public class IDTableTest {
       String sgPath = "root.laptop";
       for (int i = 0; i < 10; i++) {
         String devicePath = sgPath + ".d" + i;
-        IDeviceID iDeviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
+        IDeviceID iDeviceID = DeviceIDFactory.getInstance().getDeviceIDWithAutoCreate(devicePath);
         String measurement = "s" + i;
         idTable.putSchemaEntry(
             devicePath,
@@ -633,7 +633,6 @@ public class IDTableTest {
         List<SchemaEntry> schemaEntries = new ArrayList<>();
         schemaEntries.add(schemaEntry);
         List<DiskSchemaEntry> diskSchemaEntries = idTable.getDiskSchemaEntries(schemaEntries);
-        System.out.println(diskSchemaEntries);
         assertNotNull(diskSchemaEntries);
         assertEquals(diskSchemaEntries.size(), 1);
         assertEquals(diskSchemaEntries.get(0).seriesKey, devicePath + "." + measurement);

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.idtable;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.service.IoTDB;
@@ -127,6 +128,7 @@ public class IDTableManager {
   }
 
   /** clear id table map */
+  @TestOnly
   public void clear() throws IOException {
     for (IDTable idTable : idTableMap.values()) {
       idTable.clear();

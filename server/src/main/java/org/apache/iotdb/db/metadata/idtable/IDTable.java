@@ -133,6 +133,7 @@ public interface IDTable {
       throws MetadataException;
 
   /** clear id table and close file */
+  @TestOnly
   void clear() throws IOException;
 
   /**
@@ -144,20 +145,12 @@ public interface IDTable {
   DeviceEntry getDeviceEntry(String deviceName);
 
   /**
-   * get device entry from deviceID
+   * get device entry from device id
    *
    * @param deviceID device id of the device path
    * @return device entry
    */
   DeviceEntry getDeviceEntry(IDeviceID deviceID);
-
-  /**
-   * save device id and deviceEntry to the idTable
-   *
-   * @param deviceID device id of the device path
-   * @param deviceEntry device entry
-   */
-  void putDeviceEntry(IDeviceID deviceID, DeviceEntry deviceEntry);
 
   /**
    * get schema from device and measurements
@@ -178,13 +171,13 @@ public interface IDTable {
   /**
    * put schema entry to id table, currently used in recover
    *
-   * @param devicePath device path (can be device id formed path)
+   * @param deviceID device id
    * @param measurement measurement name
    * @param schemaEntry schema entry to put
    * @param isAligned is the device aligned
    */
   void putSchemaEntry(
-      String devicePath, String measurement, SchemaEntry schemaEntry, boolean isAligned)
+      String deviceID, String measurement, SchemaEntry schemaEntry, boolean isAligned)
       throws MetadataException;
 
   /**

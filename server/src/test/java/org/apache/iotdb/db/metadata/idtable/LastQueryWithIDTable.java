@@ -65,12 +65,18 @@ public class LastQueryWithIDTable {
   Set<String> retSet =
       new HashSet<>(
           Arrays.asList(
-              "113\troot.isp.d1.s3\t100003\tINT64",
-              "113\troot.isp.d1.s4\t1003\tINT32",
-              "113\troot.isp.d1.s5\tfalse\tBOOLEAN",
-              "113\troot.isp.d1.s6\tmm3\tTEXT",
-              "113\troot.isp.d1.s1\t13.0\tDOUBLE",
-              "113\troot.isp.d1.s2\t23.0\tFLOAT"));
+              "113\troot.isp1.d1.s3\t100003\tINT64",
+              "113\troot.isp1.d1.s4\t1003\tINT32",
+              "113\troot.isp1.d1.s5\tfalse\tBOOLEAN",
+              "113\troot.isp1.d1.s6\tmm3\tTEXT",
+              "113\troot.isp1.d1.s1\t13.0\tDOUBLE",
+              "113\troot.isp1.d1.s2\t23.0\tFLOAT",
+              "113\troot.isp2.d1.s3\t100003\tINT64",
+              "113\troot.isp2.d1.s4\t1003\tINT32",
+              "113\troot.isp2.d1.s5\tfalse\tBOOLEAN",
+              "113\troot.isp2.d1.s6\tmm3\tTEXT",
+              "113\troot.isp2.d1.s1\t13.0\tDOUBLE",
+              "113\troot.isp2.d1.s2\t23.0\tFLOAT"));
 
   @Before
   public void before() {
@@ -101,11 +107,12 @@ public class LastQueryWithIDTable {
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
 
-    insertDataInMemory();
+    insertDataInMemory("root.isp1.d1");
+    insertDataInMemory("root.isp2.d1");
 
     PlanExecutor executor = new PlanExecutor();
     QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select last * from root.isp.d1");
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select last * from root.isp1.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(3, dataSet.getPaths().size());
     int count = 0;
@@ -115,12 +122,10 @@ public class LastQueryWithIDTable {
       count++;
     }
 
-    assertEquals(retSet.size(), count);
+    assertEquals(6, count);
 
-    // flush and test again
-    PhysicalPlan flushPlan = processor.parseSQLToPhysicalPlan("flush");
-    executor.processNonQuery(flushPlan);
-
+    executor = new PlanExecutor();
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select last * from root.isp2.d1");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(3, dataSet.getPaths().size());
     count = 0;
@@ -129,16 +134,53 @@ public class LastQueryWithIDTable {
       assertTrue(retSet.contains(record.toString()));
       count++;
     }
-    assertEquals(retSet.size(), count);
+
+    assertEquals(6, count);
+
+    // flush and test again
+    PhysicalPlan flushPlan = processor.parseSQLToPhysicalPlan("flush");
+    executor.processNonQuery(flushPlan);
+
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select last * from root.isp1.d1");
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(3, dataSet.getPaths().size());
+    count = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      assertTrue(retSet.contains(record.toString()));
+      count++;
+    }
+    assertEquals(6, count);
 
     // assert id table is not refresh
     assertNull(
         IDTableManager.getInstance()
-            .getIDTable(new PartialPath("root.isp.d1"))
-            .getLastCache(new TimeseriesID(new PartialPath("root.isp.d1.s1"))));
+            .getIDTable(new PartialPath("root.isp1.d1"))
+            .getLastCache(new TimeseriesID(new PartialPath("root.isp1.d1.s1"))));
+
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select last * from root.isp2.d1");
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(3, dataSet.getPaths().size());
+    count = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      assertTrue(retSet.contains(record.toString()));
+      count++;
+    }
+    assertEquals(6, count);
+
+    // assert id table is not refresh
+    assertNull(
+        IDTableManager.getInstance()
+            .getIDTable(new PartialPath("root.isp2.d1"))
+            .getLastCache(new TimeseriesID(new PartialPath("root.isp2.d1.s1"))));
+
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select last * from root.isp2.d2");
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(0, dataSet.getPaths().size());
   }
 
-  private void insertDataInMemory() throws IllegalPathException, QueryProcessException {
+  private void insertDataInMemory(String path) throws IllegalPathException, QueryProcessException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());
@@ -167,9 +209,7 @@ public class LastQueryWithIDTable {
 
     InsertTabletPlan tabletPlan =
         new InsertTabletPlan(
-            new PartialPath("root.isp.d1"),
-            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-            dataTypes);
+            new PartialPath(path), new String[] {"s1", "s2", "s3", "s4", "s5", "s6"}, dataTypes);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);

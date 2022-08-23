@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.idtable.deviceID;
 
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
-import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -31,78 +34,167 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-/** Using auto-incrementing id as device id */
+/**
+ * Using auto-incrementing id as device id,A complete auto-increment id consists of schemaRegionID
+ * and autoIncrementID, where the upper 32 bits are schemaRegionID and the lower 32 bits are
+ * autoIncrementID
+ */
 public class StandAloneAutoIncDeviceID extends SHA256DeviceID implements IStatefulDeviceID {
 
   /** logger */
   private static Logger logger = LoggerFactory.getLogger(IDTable.class);
 
-  // using list to find the corresponding deviceID according to the ID
-  private static final List<IDeviceID> deviceIDs;
+  // stand-alone auto-increment id uses LocalConfigNode to obtain schemaRegionId
+  private static LocalConfigNode configManager;
 
-  // auto-incrementing id starting with 0
+  // using map to maintain the mapping from schemaRegionId to list<deviceID>, each list<deviceID>
+  // maintains the auto-increment id of the schemaRegion
+  private static Map<Integer, List<IDeviceID>> deviceIDsMap;
+
+  // if the device represented by devicePath is not written to the metadata module, use this
+  // constant instead of devicePath to generate a sha266 value of StandAloneAutoIncDeviceID instance
+  private static final String INVALID_DEVICE_PATH = "invalid.device.path";
+
+  // if the schemaRegionId==-1 of a StandAloneAutoIncDeviceID instance, it means that the device
+  // corresponding to the StandAloneAutoIncDeviceID instance does not exist
+  private static StandAloneAutoIncDeviceID deviceIdOfNonExistentDevice;
+
+  // starting with 0,the maximum value is Integer.MAX_VALUE
+  int schemaRegionId;
+
+  // starting with 0,the maximum value is Integer.MAX_VALUE
   int autoIncrementID;
 
   static {
-    deviceIDs = new ArrayList<>();
+    deviceIDsMap = new ConcurrentHashMap<>();
+    configManager = LocalConfigNode.getInstance();
+    setDeviceIdOfNonExistentDevice();
+  }
+
+  /**
+   * for the query path of a non-existing device, a deviceID with schemaRegion = -1 and
+   * autoIncrementID = 0 will be generated, and then stored in the deviceIDsMap. although it seems
+   * that all non-existing devicePaths will be converted into StandAloneAutoIncDeviceID objects with
+   * the same member variable value(schemaRegion,autoIncrementID), but due to the equality of
+   * StandAloneAutoIncDeviceID objects is determined by the sha256 hash value, so there is no
+   * adverse effect
+   */
+  private static void setDeviceIdOfNonExistentDevice() {
+    deviceIdOfNonExistentDevice = new StandAloneAutoIncDeviceID(INVALID_DEVICE_PATH);
+    deviceIdOfNonExistentDevice.schemaRegionId = -1;
+    deviceIdOfNonExistentDevice.autoIncrementID = 0;
   }
 
   public StandAloneAutoIncDeviceID() {}
 
-  public static StandAloneAutoIncDeviceID generateDeviceID(String deviceID) {
+  public StandAloneAutoIncDeviceID(String devicePath) {
+    super(devicePath);
+  }
+
+  /**
+   * get a StandAloneAutoIncDeviceID instance, create it if it doesn't exist
+   *
+   * @param deviceID device path for insert/query, and device id for query
+   * @return a StandAloneAutoIncDeviceID instance
+   */
+  public static StandAloneAutoIncDeviceID getDeviceIDWithAutoCreate(String deviceID) {
     if (deviceID.startsWith("`") && deviceID.endsWith("`")) {
       return fromAutoIncDeviceID(deviceID);
     } else {
-      return buildAutoIncDeviceID(deviceID);
+      return buildDeviceID(deviceID);
     }
   }
 
   /**
-   * build device id from a standAloneAutoIncDeviceID
+   * get a StandAloneAutoIncDeviceID instance, only for query
+   *
+   * @param deviceID device path or device id for query
+   * @return if the device exists, return a StandAloneAutoIncDeviceID instance, if it does not
+   *     exist,return a StandAloneAutoIncDeviceID instance,the object is guaranteed to be different
+   *     from the deviceID object of any device managed by the system (equals==false).
+   */
+  public static StandAloneAutoIncDeviceID getDeviceID(String deviceID) {
+    if (deviceID.startsWith("`") && deviceID.endsWith("`")) {
+      return fromAutoIncDeviceID(deviceID);
+    } else {
+      return fromDevicePath(deviceID);
+    }
+  }
+
+  /**
+   * get device id from a standAloneAutoIncDeviceID
    *
    * @param deviceID StandAloneAutoIncDeviceID deviceID, like: "`1`"
-   * @return standAloneAutoIncDeviceID
+   * @return a standAloneAutoIncDeviceID instance
    */
   private static StandAloneAutoIncDeviceID fromAutoIncDeviceID(String deviceID) {
     deviceID = deviceID.substring(1, deviceID.length() - 1);
-    int id = Integer.parseInt(deviceID);
-    try {
-      synchronized (deviceIDs) {
-        return (StandAloneAutoIncDeviceID) deviceIDs.get(id);
-      }
-    } catch (IndexOutOfBoundsException e) {
-      logger.info(e.getMessage());
-      return null;
+    long id = Long.parseLong(deviceID);
+    int schemaRegionId = (int) (id >>> 32);
+    int autoIncrementID = (int) id;
+    if (schemaRegionId == -1) {
+      return deviceIdOfNonExistentDevice;
+    }
+    List<IDeviceID> deviceIDs = deviceIDsMap.get(schemaRegionId);
+    synchronized (deviceIDs) {
+      return (StandAloneAutoIncDeviceID) deviceIDs.get(autoIncrementID);
     }
   }
 
   /**
-   * build device id from a devicePath
+   * get device id from a device path
    *
    * @param devicePath device path, like: "root.sg.x.d1"
-   * @return standAloneAutoIncDeviceID
+   * @return a standAloneAutoIncDeviceID instance
    */
-  private static StandAloneAutoIncDeviceID buildAutoIncDeviceID(String devicePath) {
+  private static StandAloneAutoIncDeviceID fromDevicePath(String devicePath) {
     try {
-      // Use idtable to determine whether the device has been created
+      // use idTable to determine whether the device has been created
       IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath(devicePath));
-      StandAloneAutoIncDeviceID deviceID = new StandAloneAutoIncDeviceID();
-      deviceID.parseAutoIncrementDeviceID(new SHA256DeviceID(devicePath));
+      StandAloneAutoIncDeviceID deviceID = new StandAloneAutoIncDeviceID(devicePath);
+      if (idTable.getDeviceEntry(deviceID) != null) {
+        deviceID = (StandAloneAutoIncDeviceID) idTable.getDeviceEntry(deviceID).getDeviceID();
+        return deviceID;
+      } else {
+        return deviceIdOfNonExistentDevice;
+      }
+    } catch (IllegalPathException e) {
+      logger.info(e.getMessage());
+      return deviceIdOfNonExistentDevice;
+    }
+  }
+
+  /**
+   * get device id from a device path, if the device represented by the path does not exist, a
+   * StandAloneAutoIncDeviceID instance is generated for the path
+   *
+   * @param devicePath device path, like: "root.sg.x.d1"
+   * @return a standAloneAutoIncDeviceID instance
+   */
+  private static StandAloneAutoIncDeviceID buildDeviceID(String devicePath) {
+    try {
+      PartialPath path = new PartialPath(devicePath);
+      // use idTable to determine whether the device has been created
+      IDTable idTable = IDTableManager.getInstance().getIDTable(path);
+      StandAloneAutoIncDeviceID deviceID = new StandAloneAutoIncDeviceID(devicePath);
       // this device is added for the first time
       if (idTable.getDeviceEntry(deviceID) == null) {
+        SchemaRegionId schemaRegionId = configManager.getBelongedSchemaRegionId(path);
+        deviceID.schemaRegionId = schemaRegionId.getId();
+        List<IDeviceID> deviceIDs =
+            deviceIDsMap.computeIfAbsent(deviceID.schemaRegionId, integer -> new ArrayList<>());
         synchronized (deviceIDs) {
           deviceID.autoIncrementID = deviceIDs.size();
-          deviceIDs.add(deviceIDs.size(), deviceID);
+          deviceIDs.add(deviceID.autoIncrementID, deviceID);
         }
-        // write a useless deviceEntry to idTable to prevent repeated generation of different
-        // AutoIncrementDeviceID objects for the same devicePath
-        idTable.putDeviceEntry(deviceID, new DeviceEntry(deviceID, false));
       } else {
         deviceID = (StandAloneAutoIncDeviceID) idTable.getDeviceEntry(deviceID).getDeviceID();
       }
       return deviceID;
-    } catch (IllegalPathException e) {
+    } catch (MetadataException e) {
       logger.error(e.getMessage());
       return null;
     }
@@ -132,6 +224,8 @@ public class StandAloneAutoIncDeviceID extends SHA256DeviceID implements IStatef
         + l3
         + ", l4="
         + l4
+        + ", schemaRegionId="
+        + schemaRegionId
         + ", autoIncrementID="
         + autoIncrementID
         + '}';
@@ -139,12 +233,15 @@ public class StandAloneAutoIncDeviceID extends SHA256DeviceID implements IStatef
 
   @Override
   public String toStringID() {
-    return "`" + autoIncrementID + '`';
+    long stringID = (long) schemaRegionId << 32;
+    stringID |= autoIncrementID;
+    return "`" + stringID + '`';
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(schemaRegionId, byteBuffer);
     ReadWriteIOUtils.write(autoIncrementID, byteBuffer);
   }
 
@@ -154,45 +251,47 @@ public class StandAloneAutoIncDeviceID extends SHA256DeviceID implements IStatef
     autoIncrementDeviceID.l2 = ReadWriteIOUtils.readLong(byteBuffer);
     autoIncrementDeviceID.l3 = ReadWriteIOUtils.readLong(byteBuffer);
     autoIncrementDeviceID.l4 = ReadWriteIOUtils.readLong(byteBuffer);
+    autoIncrementDeviceID.schemaRegionId = ReadWriteIOUtils.readInt(byteBuffer);
     autoIncrementDeviceID.autoIncrementID = ReadWriteIOUtils.readInt(byteBuffer);
     return autoIncrementDeviceID;
   }
 
-  private void parseAutoIncrementDeviceID(SHA256DeviceID sha256DeviceID) {
-    this.l1 = sha256DeviceID.l1;
-    this.l2 = sha256DeviceID.l2;
-    this.l3 = sha256DeviceID.l3;
-    this.l4 = sha256DeviceID.l4;
-  }
-
   /**
-   * write device id to the static variable deviceIDs
+   * recover deviceIDsMap
    *
-   * @param devicePath device path of the time series
-   * @param deviceID device id
+   * @param devicePath device path of the time series, like: "root.sg.x.d1"
+   * @param deviceID device id, like: "`1`"
    */
   @Override
   public void recover(String devicePath, String deviceID) {
     buildSHA256(devicePath);
     deviceID = deviceID.substring(1, deviceID.length() - 1);
-    this.autoIncrementID = Integer.parseInt(deviceID);
+    long id = Long.parseLong(deviceID);
+    this.schemaRegionId = (int) (id >>> 32);
+    this.autoIncrementID = (int) id;
+    List<IDeviceID> deviceIDs =
+        deviceIDsMap.computeIfAbsent(schemaRegionId, integer -> new ArrayList<>());
     // if there is out-of-order data, write the deviceID to the correct index of the array
     synchronized (deviceIDs) {
-      if (autoIncrementID < deviceIDs.size()) {
-        deviceIDs.set(autoIncrementID, this);
-      } else {
-        for (int i = deviceIDs.size(); i < autoIncrementID; i++) {
-          deviceIDs.add(i, null);
-        }
-        deviceIDs.add(autoIncrementID, this);
+      if (autoIncrementID < deviceIDs.size() && deviceIDs.get(autoIncrementID) != null) return;
+      for (int i = deviceIDs.size(); i < autoIncrementID; i++) {
+        deviceIDs.add(i, null);
       }
+      deviceIDs.add(autoIncrementID, this);
     }
   }
 
-  @Override
-  public void clean() {
-    synchronized (deviceIDs) {
-      deviceIDs.clear();
-    }
+  @TestOnly
+  public static void reset() {
+    deviceIDsMap.clear();
+    configManager = LocalConfigNode.getInstance();
+    setDeviceIdOfNonExistentDevice();
+  }
+
+  @TestOnly
+  public static void clear() {
+    deviceIDsMap.clear();
+    configManager = null;
+    deviceIdOfNonExistentDevice = null;
   }
 }

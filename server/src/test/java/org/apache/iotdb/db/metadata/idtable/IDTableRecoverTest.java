@@ -80,14 +80,15 @@ public class IDTableRecoverTest {
 
   @Test
   public void testRecover() throws Exception {
-    insertDataInMemoryWithTablet(false);
-    insertDataInMemoryWithRecord(false);
-
+    insertDataInMemoryWithTablet("root.isp1.d2", false);
+    insertDataInMemoryWithRecord("root.isp1.d1", false);
+    insertDataInMemoryWithTablet("root.isp2.d2", false);
+    insertDataInMemoryWithRecord("root.isp2.d1", false);
     PlanExecutor executor = new PlanExecutor();
     PhysicalPlan flushPlan = processor.parseSQLToPhysicalPlan("flush");
     executor.processNonQuery(flushPlan);
 
-    IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.isp"));
+    IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.isp1"));
     List<DeviceEntry> memoryList = idTable.getAllDeviceEntry();
 
     // restart
@@ -99,22 +100,40 @@ public class IDTableRecoverTest {
 
     // check id table fields
 
-    idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.isp.d1"));
+    idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.isp1.d1"));
     List<DeviceEntry> recoverList = idTable.getAllDeviceEntry();
+
+    assertEquals(memoryList, recoverList);
+
+    idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.isp2"));
+    memoryList = idTable.getAllDeviceEntry();
+
+    // restart
+    try {
+      EnvironmentUtils.restartDaemon();
+    } catch (Exception e) {
+      Assert.fail();
+    }
+
+    // check id table fields
+
+    idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.isp2.d1"));
+    recoverList = idTable.getAllDeviceEntry();
 
     assertEquals(memoryList, recoverList);
   }
 
   @Test
   public void testRecoverAligned() throws Exception {
-    insertDataInMemoryWithTablet(true);
-    insertDataInMemoryWithRecord(false);
-
+    insertDataInMemoryWithTablet("root.isp1.d2", true);
+    insertDataInMemoryWithRecord("root.isp1.d1", true);
+    insertDataInMemoryWithTablet("root.isp2.d2", true);
+    insertDataInMemoryWithRecord("root.isp2.d1", true);
     PlanExecutor executor = new PlanExecutor();
     PhysicalPlan flushPlan = processor.parseSQLToPhysicalPlan("flush");
     executor.processNonQuery(flushPlan);
 
-    IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.isp"));
+    IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.isp1"));
     List<DeviceEntry> memoryList = idTable.getAllDeviceEntry();
 
     // restart
@@ -126,13 +145,30 @@ public class IDTableRecoverTest {
 
     // check id table fields
 
-    idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.isp.d1"));
+    idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.isp1.d1"));
     List<DeviceEntry> recoverList = idTable.getAllDeviceEntry();
+
+    assertEquals(memoryList, recoverList);
+
+    idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.isp2"));
+    memoryList = idTable.getAllDeviceEntry();
+
+    // restart
+    try {
+      EnvironmentUtils.restartDaemon();
+    } catch (Exception e) {
+      Assert.fail();
+    }
+
+    // check id table fields
+
+    idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.isp2.d1"));
+    recoverList = idTable.getAllDeviceEntry();
 
     assertEquals(memoryList, recoverList);
   }
 
-  private void insertDataInMemoryWithRecord(boolean isAligned)
+  private void insertDataInMemoryWithRecord(String storageGroupPath, boolean isAligned)
       throws IllegalPathException, QueryProcessException {
     long time = 100L;
     TSDataType[] dataTypes =
@@ -155,7 +191,7 @@ public class IDTableRecoverTest {
 
     InsertRowPlan insertRowPlan =
         new InsertRowPlan(
-            new PartialPath("root.isp.d1"),
+            new PartialPath(storageGroupPath),
             time,
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
             dataTypes,
@@ -166,7 +202,7 @@ public class IDTableRecoverTest {
     executor.insert(insertRowPlan);
   }
 
-  private void insertDataInMemoryWithTablet(boolean isAligned)
+  private void insertDataInMemoryWithTablet(String storageGroupPath, boolean isAligned)
       throws IllegalPathException, QueryProcessException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
@@ -196,7 +232,7 @@ public class IDTableRecoverTest {
 
     InsertTabletPlan tabletPlan =
         new InsertTabletPlan(
-            new PartialPath("root.isp.d2"),
+            new PartialPath(storageGroupPath),
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
             dataTypes);
     tabletPlan.setTimes(times);

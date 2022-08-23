@@ -83,8 +83,12 @@ public class IDTableRestartTest {
 
   @Test
   public void testRawDataQueryAfterRestart() throws Exception {
-    insertDataInMemoryWithTablet();
-    insertDataInMemoryWithRecord();
+    String sg1 = "root.isp1";
+    String sg2 = "root.isp2";
+    insertDataInMemoryWithTablet(sg1 + ".d1");
+    insertDataInMemoryWithRecord(sg1 + ".d1");
+    insertDataInMemoryWithTablet(sg2 + ".d1");
+    insertDataInMemoryWithRecord(sg2 + ".d1");
 
     // restart
     try {
@@ -94,10 +98,23 @@ public class IDTableRestartTest {
     }
 
     PlanExecutor executor = new PlanExecutor();
-    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
+    QueryPlan queryPlan =
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + sg1 + ".d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(6, dataSet.getPaths().size());
     int count = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      System.out.println(record);
+      count++;
+    }
+
+    assertEquals(5, count);
+
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + sg2 + ".d1");
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(6, dataSet.getPaths().size());
+    count = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       System.out.println(record);
@@ -117,7 +134,7 @@ public class IDTableRestartTest {
     }
 
     executor = new PlanExecutor();
-    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + sg1 + ".d1");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(6, dataSet.getPaths().size());
     count = 0;
@@ -128,9 +145,25 @@ public class IDTableRestartTest {
     }
 
     assertEquals(5, count);
+
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + sg2 + ".d1");
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(6, dataSet.getPaths().size());
+    count = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      System.out.println(record);
+      count++;
+    }
+
+    assertEquals(5, count);
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + sg2 + ".d2");
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(0, dataSet.getPaths().size());
   }
 
-  private void insertDataInMemoryWithRecord() throws IllegalPathException, QueryProcessException {
+  private void insertDataInMemoryWithRecord(String storageGroupPath)
+      throws IllegalPathException, QueryProcessException {
     long time = 100L;
     TSDataType[] dataTypes =
         new TSDataType[] {
@@ -152,7 +185,7 @@ public class IDTableRestartTest {
 
     InsertRowPlan insertRowPlan =
         new InsertRowPlan(
-            new PartialPath("root.isp.d1"),
+            new PartialPath(storageGroupPath),
             time,
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
             dataTypes,
@@ -162,7 +195,8 @@ public class IDTableRestartTest {
     executor.insert(insertRowPlan);
   }
 
-  private void insertDataInMemoryWithTablet() throws IllegalPathException, QueryProcessException {
+  private void insertDataInMemoryWithTablet(String storageGroupPath)
+      throws IllegalPathException, QueryProcessException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());
@@ -191,7 +225,7 @@ public class IDTableRestartTest {
 
     InsertTabletPlan tabletPlan =
         new InsertTabletPlan(
-            new PartialPath("root.isp.d1"),
+            new PartialPath(storageGroupPath),
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
             dataTypes);
     tabletPlan.setTimes(times);

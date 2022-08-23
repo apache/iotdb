@@ -28,7 +28,4 @@ public interface IStatefulDeviceID extends IDeviceID {
    * @param deviceID device id
    */
   void recover(String devicePath, String deviceID);
-
-  /** clean up the state of a device id, when deleting the device id */
-  void clean();
 }
