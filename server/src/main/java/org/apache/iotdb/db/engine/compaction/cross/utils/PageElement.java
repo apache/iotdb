@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 public class PageElement {
   public PageHeader pageHeader;
 
+  // compressed page data
   public ByteBuffer pageData;
 
   public ChunkReader chunkReader;
@@ -18,12 +19,23 @@ public class PageElement {
 
   public boolean isOverlaped = false;
 
+  public boolean isLastPage;
+
+  public ChunkMetadataElement chunkMetadataElement;
+
   public PageElement(
-      PageHeader pageHeader, ByteBuffer pageData, ChunkReader chunkReader, int priority) {
+      PageHeader pageHeader,
+      ByteBuffer pageData,
+      ChunkReader chunkReader,
+      ChunkMetadataElement chunkMetadataElement,
+      boolean isLastPage,
+      int priority) {
     this.pageHeader = pageHeader;
     this.pageData = pageData;
     this.priority = priority;
     this.chunkReader = chunkReader;
     this.startTime = pageHeader.getStartTime();
+    this.chunkMetadataElement = chunkMetadataElement;
+    this.isLastPage = isLastPage;
   }
 }

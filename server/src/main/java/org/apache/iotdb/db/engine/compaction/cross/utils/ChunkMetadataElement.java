@@ -11,6 +11,8 @@ public class ChunkMetadataElement {
 
   public long startTime;
 
+  public boolean isFirstChunk = false;
+
   public ChunkMetadataElement(ChunkMetadata chunkMetadata, int priority) {
     this.chunkMetadata = chunkMetadata;
     this.priority = priority;
