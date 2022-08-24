@@ -278,6 +278,10 @@ public class SinkHandle implements ISinkHandle {
     }
     Pair<TsBlock, Long> pair = sequenceIdToTsBlock.get(sequenceId);
     if (pair == null || pair.left == null) {
+      logger.error(
+          "The data block doesn't exist. Sequence ID is {}, remaining map is {}",
+          sequenceId,
+          sequenceIdToTsBlock.entrySet());
       throw new IllegalStateException("The data block doesn't exist. Sequence ID: " + sequenceId);
     }
     return serde.serialize(pair.left);
