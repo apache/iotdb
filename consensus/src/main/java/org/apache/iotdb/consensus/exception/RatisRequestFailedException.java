@@ -21,6 +21,6 @@ package org.apache.iotdb.consensus.exception;
 public class RatisRequestFailedException extends ConsensusException {
 
   public RatisRequestFailedException(Exception cause) {
-    super("Ratis request failed", cause);
+    super(cause);
   }
 }
