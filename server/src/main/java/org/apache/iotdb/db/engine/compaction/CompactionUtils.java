@@ -42,7 +42,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -251,7 +250,8 @@ public class CompactionUtils {
       // The tmp target file may does not have any data points written due to the existence of the
       // mods file, and it will be deleted after compaction. So skip the target file that has been
       // deleted.
-      if (!fileResource.getTsFile().exists()) {
+      if (!fileResource.getTsFile().exists()
+          || fileIOWriter.getDeviceTimeseriesMetadataMap() == null) {
         continue;
       }
       for (Map.Entry<String, List<TimeseriesMetadata>> entry :

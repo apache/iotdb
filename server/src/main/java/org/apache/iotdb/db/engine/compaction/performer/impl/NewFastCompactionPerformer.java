@@ -21,6 +21,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +57,6 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
   private List<TsFileResource> targetFiles;
 
   public Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
-
 
   private final Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
       measurementChunkMetadataListMapIteratorCache =

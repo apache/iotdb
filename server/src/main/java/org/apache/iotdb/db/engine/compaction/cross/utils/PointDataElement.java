@@ -5,7 +5,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class PointDataElement {
-  private BatchData batchData;
+  public BatchData batchData;
 
   private int dataIndex;
 
