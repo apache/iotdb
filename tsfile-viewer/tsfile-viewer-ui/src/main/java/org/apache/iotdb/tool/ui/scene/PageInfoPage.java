@@ -25,7 +25,6 @@ import org.apache.iotdb.tool.ui.config.TableAlign;
 import org.apache.iotdb.tool.ui.view.BaseTableView;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-import com.sun.org.apache.xpath.internal.operations.String;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
