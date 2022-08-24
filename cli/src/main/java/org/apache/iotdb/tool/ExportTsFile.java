@@ -152,16 +152,16 @@ public class ExportTsFile extends AbstractTsFileTool {
 
   private static void legalCheck(String sql) {
     String sqlLower = sql.toLowerCase();
-    if (sqlLower.contains("count")
-        || sqlLower.contains("sum")
-        || sqlLower.contains("avg")
-        || sqlLower.contains("extreme")
-        || sqlLower.contains("max_value")
-        || sqlLower.contains("min_value")
-        || sqlLower.contains("first_value")
-        || sqlLower.contains("last_value")
-        || sqlLower.contains("max_time")
-        || sqlLower.contains("min_time")) {
+    if (sqlLower.contains("count(")
+        || sqlLower.contains("sum(")
+        || sqlLower.contains("avg(")
+        || sqlLower.contains("extreme(")
+        || sqlLower.contains("max_value(")
+        || sqlLower.contains("min_value(")
+        || sqlLower.contains("first_value(")
+        || sqlLower.contains("last_value(")
+        || sqlLower.contains("max_time(")
+        || sqlLower.contains("min_time(")) {
       System.out.println("The sql you entered is invalid, please don't use aggregate query.");
       System.exit(CODE_ERROR);
     }
@@ -302,6 +302,10 @@ public class ExportTsFile extends AbstractTsFileTool {
         tablet.initBitMaps();
         tsFileWriter.registerTimeseries(new Path(tablet.deviceId), schemaList);
         tabletList.add(tablet);
+      }
+      if (tabletList.isEmpty()) {
+        System.out.println("!!!Warning:Tablet is empty,no data can be exported.");
+        System.exit(CODE_ERROR);
       }
       while (sessionDataSet.hasNext()) {
         RowRecord rowRecord = sessionDataSet.next();
