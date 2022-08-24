@@ -19,16 +19,16 @@
 package org.apache.iotdb.db.integration.sync;
 
 import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.transport.client.ITransportClient;
+import org.apache.iotdb.db.sync.transport.client.ISyncClient;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MockTransportClient implements ITransportClient {
+public class MockSyncClient implements ISyncClient {
 
   private final List<PipeData> pipeDataList;
 
-  public MockTransportClient() {
+  public MockSyncClient() {
     this.pipeDataList = new ArrayList<>();
   }
 
