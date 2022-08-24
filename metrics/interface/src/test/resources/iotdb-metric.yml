@@ -18,31 +18,43 @@
 #
 
 # whether enable the module
-enableMetric: false
+enableMetric: true
+
+# Is stat performance of operation latency
+enablePerformanceStat: true
 
 # Multiple reporter, options: [JMX, PROMETHEUS, IOTDB], IOTDB is off by default
 metricReporterList:
   - JMX
   - PROMETHEUS
+  - IOTDB
 
 # Type of monitor frame, options: [MICROMETER, DROPWIZARD]
-monitorType: MICROMETER
+monitorType: DROPWIZARD
 
 # Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
-metricLevel: IMPORTANT
+metricLevel: ALL
 
-# Predefined metric, options: [JVM, LOGBACK], LOGBACK are not supported in dropwizard
+# Predefined metric, options: [JVM, LOGBACK, FILE, PROCESS, SYSTEM]
 predefinedMetrics:
   - JVM
+  - LOGBACK
+  - FILE
+  - PROCESS
+  - SYSTEM
+
+# The period of the collection of some metrics in asynchronous way, such as tsfile size.
+asyncCollectPeriodInSecond: 10
 
 # The http server's port for prometheus exporter to get metric data.
-prometheusExporterPort: 9091
+prometheusExporterPort: 9090
 
 # The config of iotdb reporter
 ioTDBReporterConfig:
-  host: 127.0.0.1
-  port: 6667
-  username: root
-  password: root
-  database: _metric
-  pushPeriodInSecond: 15
+  host: 0.0.0.0
+  port: 6669
+  username: user
+  password: password
+  maxConnectionNumber: 1
+  database: metric
+  pushPeriodInSecond: 5

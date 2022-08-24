@@ -36,12 +36,12 @@
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-jvm</artifactId>
-            <version>${metrics.version}</version>
+            <version>${dropwizard.metrics.version}</version>
         </dependency>
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-jmx</artifactId>
-            <version>${metrics.version}</version>
+            <version>${dropwizard.metrics.version}</version>
         </dependency>
         <dependency>
             <groupId>com.sun.jersey</groupId>
