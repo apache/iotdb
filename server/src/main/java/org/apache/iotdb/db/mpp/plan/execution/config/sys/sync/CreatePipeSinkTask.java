@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config.sys;
+package org.apache.iotdb.db.mpp.plan.execution.config.sys.sync;
 
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.sys.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 

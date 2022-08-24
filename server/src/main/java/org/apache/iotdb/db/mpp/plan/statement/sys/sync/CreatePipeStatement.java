@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.sys;
+package org.apache.iotdb.db.mpp.plan.statement.sys.sync;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -28,21 +28,49 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
-public class DropPipeStatement extends Statement implements IConfigStatement {
+public class CreatePipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
+  private String pipeSinkName;
+  private long startTime;
+  private Map<String, String> pipeAttributes;
 
-  public DropPipeStatement(StatementType dropPipeStatement) {
-    this.statementType = dropPipeStatement;
+  public CreatePipeStatement(StatementType createPipeStatement) {
+    this.statementType = createPipeStatement;
   }
 
   public String getPipeName() {
     return pipeName;
   }
 
+  public String getPipeSinkName() {
+    return pipeSinkName;
+  }
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public Map<String, String> getPipeAttributes() {
+    return pipeAttributes;
+  }
+
   public void setPipeName(String pipeName) {
     this.pipeName = pipeName;
+  }
+
+  public void setPipeSinkName(String pipeSinkName) {
+    this.pipeSinkName = pipeSinkName;
+  }
+
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
+  }
+
+  public void setPipeAttributes(Map<String, String> pipeAttributes) {
+    this.pipeAttributes = pipeAttributes;
   }
 
   @Override
@@ -57,6 +85,6 @@ public class DropPipeStatement extends Statement implements IConfigStatement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitDropPipe(this, context);
+    return visitor.visitCreatePipe(this, context);
   }
 }

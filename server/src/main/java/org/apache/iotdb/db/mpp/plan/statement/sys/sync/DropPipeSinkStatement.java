@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.sys;
+package org.apache.iotdb.db.mpp.plan.statement.sys.sync;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -29,20 +29,20 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import java.util.Collections;
 import java.util.List;
 
-public class StartPipeStatement extends Statement implements IConfigStatement {
+public class DropPipeSinkStatement extends Statement implements IConfigStatement {
 
-  private String pipeName;
+  private String pipeSinkName;
 
-  public StartPipeStatement(StatementType startPipeStatement) {
-    this.statementType = startPipeStatement;
+  public DropPipeSinkStatement(StatementType dropPipeSinkStatement) {
+    this.statementType = dropPipeSinkStatement;
   }
 
-  public String getPipeName() {
-    return pipeName;
+  public String getPipeSinkName() {
+    return pipeSinkName;
   }
 
-  public void setPipeName(String pipeName) {
-    this.pipeName = pipeName;
+  public void setPipeSinkName(String pipeSinkName) {
+    this.pipeSinkName = pipeSinkName;
   }
 
   @Override
@@ -57,6 +57,6 @@ public class StartPipeStatement extends Statement implements IConfigStatement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitStartPipe(this, context);
+    return visitor.visitDropPipeSink(this, context);
   }
 }

@@ -17,26 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config.sys;
+package org.apache.iotdb.db.mpp.plan.statement.sys.sync;
 
-import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.sys.DropPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
-import com.google.common.util.concurrent.ListenableFuture;
+public class ShowPipeSinkStatement extends ShowStatement implements IConfigStatement {
 
-public class DropPipeSinkTask implements IConfigTask {
+  private String pipeSinkName;
 
-  private DropPipeSinkStatement dropPipeSinkStatement;
+  public String getPipeSinkName() {
+    return pipeSinkName;
+  }
 
-  public DropPipeSinkTask(DropPipeSinkStatement dropPipeSinkStatement) {
-    this.dropPipeSinkStatement = dropPipeSinkStatement;
+  public void setPipeSinkName(String pipeSinkName) {
+    this.pipeSinkName = pipeSinkName;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
-      throws InterruptedException {
-    return configTaskExecutor.dropPipeSink();
+  public QueryType getQueryType() {
+    return QueryType.READ;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowPipeSink(this, context);
   }
 }

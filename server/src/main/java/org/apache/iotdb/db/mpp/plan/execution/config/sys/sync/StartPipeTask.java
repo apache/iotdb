@@ -17,15 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.sys;
+package org.apache.iotdb.db.mpp.plan.execution.config.sys.sync;
 
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
 
-public class ShowPipeSinkTypeStatement extends ShowStatement {
+import com.google.common.util.concurrent.ListenableFuture;
+
+public class StartPipeTask implements IConfigTask {
+
+  private StartPipeStatement startPipeStatement;
+
+  public StartPipeTask(StartPipeStatement startPipeStatement) {
+    this.startPipeStatement = startPipeStatement;
+  }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowPipeSinkType(this, context);
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.startPipe();
   }
 }

@@ -40,16 +40,16 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathS
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.AuthorizerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.ClearCacheTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.CreatePipeSinkTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.CreatePipeTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.DropPipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.LoadConfigurationTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.MergeTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.ShowPipeSinkTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.ShowPipeTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.StartPipeTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.StopPipeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.CreatePipeSinkTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.CreatePipeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.DropPipeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.StartPipeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.StopPipeTask;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -74,16 +74,16 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.CreatePipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.DropPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.StartPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.StopPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 public class ConfigTaskVisitor
