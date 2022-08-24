@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -34,6 +35,11 @@ public class InsertRowsStatement extends InsertBaseStatement {
 
   /** the InsertRowsStatement list */
   private List<InsertRowStatement> insertRowStatementList;
+
+  public InsertRowsStatement() {
+    super();
+    statementType = StatementType.BATCH_INSERT_ROWS;
+  }
 
   public List<PartialPath> getDevicePaths() {
     List<PartialPath> partialPaths = new ArrayList<>();

@@ -271,7 +271,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TCancelResp cancelQuery(TCancelQueryReq req) {
     try (SetThreadName threadName = new SetThreadName(req.getQueryId())) {
-      LOGGER.info("start cancelling query.");
       List<FragmentInstanceId> taskIds =
           req.getFragmentInstanceIds().stream()
               .map(FragmentInstanceId::fromThrift)
@@ -279,7 +278,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       for (FragmentInstanceId taskId : taskIds) {
         FragmentInstanceManager.getInstance().cancelTask(taskId);
       }
-      LOGGER.info("finish cancelling query.");
       return new TCancelResp(true);
     }
   }

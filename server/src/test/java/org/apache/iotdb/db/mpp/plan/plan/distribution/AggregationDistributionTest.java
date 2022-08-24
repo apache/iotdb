@@ -88,7 +88,8 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d2s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
   }
 
   private void verifyAggregationStep(Map<String, AggregationStep> expected, PlanNode root) {
@@ -138,13 +139,14 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d3s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
     AggregationNode aggregationNode =
         (AggregationNode)
             fragmentInstances
                 .get(0)
                 .getFragment()
-                .getRoot()
+                .getPlanNodeTree()
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -175,7 +177,8 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d3s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
   }
 
   @Test
@@ -198,7 +201,8 @@ public class AggregationDistributionTest {
     expectedStep.put(d3s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d4s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
   }
 
   @Test
@@ -235,7 +239,8 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d2s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
   }
 
   @Test
@@ -272,19 +277,22 @@ public class AggregationDistributionTest {
     expectedStep.put(d3s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d4s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPath, Arrays.asList(groupedPath, d3s1Path, d4s1Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
-        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPath, Arrays.asList(d3s1Path, d4s1Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue2,
-        (GroupByLevelNode) fragmentInstances.get(1).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(1).getFragment().getPlanNodeTree().getChildren().get(0));
   }
 
   @Test
@@ -332,19 +340,22 @@ public class AggregationDistributionTest {
     expectedStep.put(d3s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d4s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPath, Arrays.asList(groupedPath, d3s1Path, d4s1Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
-        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPath, Arrays.asList(d3s1Path, d4s1Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue2,
-        (GroupByLevelNode) fragmentInstances.get(1).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(1).getFragment().getPlanNodeTree().getChildren().get(0));
 
     verifySlidingWindowDescriptor(
         Arrays.asList(d3s1Path, d4s1Path),
@@ -352,7 +363,7 @@ public class AggregationDistributionTest {
             fragmentInstances
                 .get(0)
                 .getFragment()
-                .getRoot()
+                .getPlanNodeTree()
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -363,7 +374,7 @@ public class AggregationDistributionTest {
             fragmentInstances
                 .get(1)
                 .getFragment()
-                .getRoot()
+                .getPlanNodeTree()
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -408,21 +419,24 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d1s2Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPathS1, Arrays.asList(groupedPathS1, d1s1Path));
     expectedDescriptorValue.put(groupedPathS2, Arrays.asList(groupedPathS2, d1s2Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
-        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPathS1, Collections.singletonList(d1s1Path));
     expectedDescriptorValue2.put(groupedPathS2, Collections.singletonList(d1s2Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue2,
-        (GroupByLevelNode) fragmentInstances.get(1).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(1).getFragment().getPlanNodeTree().getChildren().get(0));
   }
 
   @Test
@@ -468,21 +482,24 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s2Path, AggregationStep.PARTIAL);
     expectedStep.put(d2s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPathS1, Arrays.asList(groupedPathS1, d1s1Path, d2s1Path));
     expectedDescriptorValue.put(groupedPathS2, Arrays.asList(groupedPathS2, d1s2Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
-        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPathS1, Collections.singletonList(d1s1Path));
     expectedDescriptorValue2.put(groupedPathS2, Collections.singletonList(d1s2Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue2,
-        (GroupByLevelNode) fragmentInstances.get(2).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(2).getFragment().getPlanNodeTree().getChildren().get(0));
   }
 
   @Test
@@ -540,27 +557,31 @@ public class AggregationDistributionTest {
     expectedStep.put(d1s2Path, AggregationStep.PARTIAL);
     expectedStep.put(d2s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
-    fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
+    fragmentInstances.forEach(
+        f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPathS1, Arrays.asList(groupedPathS1, d1s1Path));
     expectedDescriptorValue.put(groupedPathS2, Arrays.asList(groupedPathS2, d1s2Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
-        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPathS1, Collections.singletonList(d2s1Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue2,
-        (GroupByLevelNode) fragmentInstances.get(1).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(1).getFragment().getPlanNodeTree().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue3 = new HashMap<>();
     expectedDescriptorValue3.put(groupedPathS1, Collections.singletonList(d1s1Path));
     expectedDescriptorValue3.put(groupedPathS2, Collections.singletonList(d1s2Path));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue3,
-        (GroupByLevelNode) fragmentInstances.get(2).getFragment().getRoot().getChildren().get(0));
+        (GroupByLevelNode)
+            fragmentInstances.get(2).getFragment().getPlanNodeTree().getChildren().get(0));
 
     verifySlidingWindowDescriptor(
         Arrays.asList(d1s1Path, d1s2Path),
@@ -568,7 +589,7 @@ public class AggregationDistributionTest {
             fragmentInstances
                 .get(0)
                 .getFragment()
-                .getRoot()
+                .getPlanNodeTree()
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -579,7 +600,7 @@ public class AggregationDistributionTest {
             fragmentInstances
                 .get(1)
                 .getFragment()
-                .getRoot()
+                .getPlanNodeTree()
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -590,7 +611,7 @@ public class AggregationDistributionTest {
             fragmentInstances
                 .get(2)
                 .getFragment()
-                .getRoot()
+                .getPlanNodeTree()
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -610,7 +631,8 @@ public class AggregationDistributionTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
     assertEquals(1, plan.getInstances().size());
-    assertEquals(root, plan.getInstances().get(0).getFragment().getRoot().getChildren().get(0));
+    assertEquals(
+        root, plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0));
   }
 
   private void verifyGroupByLevelDescriptor(
