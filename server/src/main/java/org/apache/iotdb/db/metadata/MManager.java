@@ -505,7 +505,6 @@ public class MManager {
         break;
       case SET_STORAGE_GROUP:
         SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
-        //        setStorageGroup(setStorageGroupPlan.getPath());
         setStorageGroup(
             setStorageGroupPlan.getPath(), setStorageGroupPlan.getVirtualStorageGroupNum());
         break;

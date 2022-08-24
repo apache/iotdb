@@ -110,13 +110,26 @@ public class PhysicalPlanSerializeTest {
   }
 
   @Test
-  public void setStorageGroupPlanTest() throws IllegalPathException, IOException {
+  public void setStorageGroupPlanTest1() throws IllegalPathException, IOException {
     SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(new PartialPath("root.sg"));
 
     PhysicalPlan result = testTwoSerializeMethodAndDeserialize(setStorageGroupPlan);
 
     Assert.assertEquals(OperatorType.SET_STORAGE_GROUP, result.getOperatorType());
     Assert.assertEquals("root.sg", ((SetStorageGroupPlan) result).getPath().getFullPath());
+    Assert.assertEquals(result, setStorageGroupPlan);
+  }
+
+  @Test
+  public void setStorageGroupPlanTest2() throws IllegalPathException, IOException {
+    SetStorageGroupPlan setStorageGroupPlan =
+        new SetStorageGroupPlan(new PartialPath("root.sg"), 8);
+
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(setStorageGroupPlan);
+
+    Assert.assertEquals(OperatorType.SET_STORAGE_GROUP, result.getOperatorType());
+    Assert.assertEquals("root.sg", ((SetStorageGroupPlan) result).getPath().getFullPath());
+    Assert.assertEquals(8, ((SetStorageGroupPlan) result).getVirtualStorageGroupNum());
     Assert.assertEquals(result, setStorageGroupPlan);
   }
 

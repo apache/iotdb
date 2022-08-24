@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
@@ -38,12 +39,16 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
+    virtualStorageGroupNum = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
   }
 
   public StorageGroupMNode(IMNode parent, String name, long dataTTL, int virtualStorageGroupNum) {
     super(parent, name);
     this.dataTTL = dataTTL;
-    this.virtualStorageGroupNum = virtualStorageGroupNum;
+    this.virtualStorageGroupNum =
+            virtualStorageGroupNum <= 0
+            ? IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum()
+            : virtualStorageGroupNum;
   }
 
   @Override

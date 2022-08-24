@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 
 import java.io.IOException;
@@ -34,6 +35,7 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   public StorageGroupEntityMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
+    virtualStorageGroupNum = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
   }
 
   public StorageGroupEntityMNode(

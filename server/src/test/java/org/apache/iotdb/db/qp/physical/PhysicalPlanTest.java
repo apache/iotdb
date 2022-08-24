@@ -1424,10 +1424,17 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testCreateStorageGroup() throws QueryProcessException {
+  public void testCreateStorageGroup1() throws QueryProcessException {
     String sqlStr = "CREATE STORAGE GROUP root.sg";
     SetStorageGroupPlan plan = (SetStorageGroupPlan) processor.parseSQLToPhysicalPlan(sqlStr);
-    assertEquals("SetStorageGroup{root.sg}", plan.toString());
+    assertEquals("SetStorageGroup{root.sg,1}", plan.toString());
+  }
+
+  @Test
+  public void testCreateStorageGroup2() throws QueryProcessException {
+    String sqlStr = "CREATE STORAGE GROUP root.sg virtualstoragegroupnum = 8";
+    SetStorageGroupPlan plan = (SetStorageGroupPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals("SetStorageGroup{root.sg,8}", plan.toString());
   }
 
   @Test

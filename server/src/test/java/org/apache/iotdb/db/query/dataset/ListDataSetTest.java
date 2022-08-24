@@ -75,11 +75,12 @@ public class ListDataSetTest {
       throws QueryProcessException, TException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           SQLException {
-    String[] results = new String[] {"0\troot.test", "0\troot.vehicle"};
+    String[] results = new String[] {"0\troot.test\t1", "0\troot.vehicle\t1"};
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show storage group");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ListDataSet);
-    Assert.assertEquals("[storage group]", dataSet.getPaths().toString());
+    Assert.assertEquals(
+        "[storage group, virtual storage group num]", dataSet.getPaths().toString());
     int i = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
