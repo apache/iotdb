@@ -386,11 +386,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       return false;
     }
     try {
-      // Merge is not allowed when rewrite operation is running
-      if (tsFileManager.isRewriteLocked()) {
-        releaseFileLocksAndResetMergingStatus();
-        return false;
-      }
       for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
         TsFileResource resource = selectedTsFileResourceList.get(i);
         resource.readLock();

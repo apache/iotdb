@@ -29,8 +29,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -40,131 +42,54 @@ public class AlteringLogAnalyzer {
   //  private static final Logger logger = LoggerFactory.getLogger(AlteringLogAnalyzer.class);
 
   private final File alterLogFile;
-
-  private String fullPath;
-
-  private TSEncoding encoding;
-
-  private CompressionType compressionType;
+  private final List<Pair<String, Pair<TSEncoding, CompressionType>>> alterList = new ArrayList<>(4);
+  private boolean clearBegin = false;
+  private final Set<TsFileIdentifier> doneFiles = new HashSet<>(32);
 
   public AlteringLogAnalyzer(File alterLogFile) {
     this.alterLogFile = alterLogFile;
   }
 
-  public Map<Pair<Long, Boolean>, Set<TsFileIdentifier>> analyzer() throws IOException {
+  public void analyzer() throws IOException {
 
-    final Map<Pair<Long, Boolean>, Set<TsFileIdentifier>> undoPartitionTsFiles = new HashMap<>();
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(alterLogFile))) {
-      // file header
-      fullPath = bufferedReader.readLine();
-      if (fullPath == null) {
-        throw new IOException("alter.log parse fail, fullPath is null");
-      }
-      encoding = TSEncoding.deserialize(Byte.parseByte(bufferedReader.readLine()));
-      if (encoding == null) {
-        throw new IOException("alter.log parse fail, encoding is null");
-      }
-      compressionType = CompressionType.deserialize(Byte.parseByte(bufferedReader.readLine()));
-      if (compressionType == null) {
-        throw new IOException("alter.log parse fail, compressionType is null");
-      }
-      // partition list
-      String curPartition;
-      while (true) {
-        curPartition = bufferedReader.readLine();
-        if (curPartition == null) {
-          return undoPartitionTsFiles;
-        }
-        if (curPartition.equals(AlteringLogger.FLAG_TIME_PARTITIONS_HEADER_DONE)) {
-          break;
-        }
-        Long partition = Long.parseLong(curPartition);
-        undoPartitionTsFiles.put(new Pair<>(partition, true), new HashSet<>());
-        undoPartitionTsFiles.put(new Pair<>(partition, false), new HashSet<>());
-      }
-      long readCurPartition;
-      while (!undoPartitionTsFiles.isEmpty()) {
-        // partition header
-        // ftps partition isSeq
-        String partitionHeaderStr = bufferedReader.readLine();
-        if (partitionHeaderStr == null
-            || !partitionHeaderStr.startsWith(AlteringLogger.FLAG_TIME_PARTITION_START)) {
-          throw new IOException(
-              "alter.log parse fail, line not start with FLAG_TIME_PARTITION_START");
-        }
-        String[] partitionHeaders = partitionHeaderStr.split(TsFileIdentifier.INFO_SEPARATOR);
-        if (partitionHeaders.length != 3) {
-          throw new IOException("alter.log parse fail, partitionHeaders error");
-        }
-        readCurPartition = Long.parseLong(partitionHeaders[1]);
-        if (!AlteringLogger.FLAG_SEQ.equals(partitionHeaders[2])
-            && !AlteringLogger.FLAG_UNSEQ.equals(partitionHeaders[2])) {
-          throw new IOException("alter.log parse fail, partitionHeaders error");
-        }
-        Pair<Long, Boolean> key =
-            new Pair<>(readCurPartition, AlteringLogger.FLAG_SEQ.equals(partitionHeaders[2]));
-        Set<TsFileIdentifier> tsFileIdentifiers = undoPartitionTsFiles.get(key);
-        String curLineStr;
-        while (true) {
-          // read tsfile list
-          curLineStr = bufferedReader.readLine();
-          if (curLineStr == null) {
-            return undoPartitionTsFiles;
+
+      String mark;
+      while ((mark = bufferedReader.readLine()) != null) {
+        if (AlteringLogger.FLAG_ALTER_PARAM_BEGIN.equals(mark)) {
+          String fullPath = bufferedReader.readLine();
+          if (fullPath == null) {
+            throw new IOException("alter.log parse fail, fullPath is null");
           }
-          if (curLineStr.equals(AlteringLogger.FLAG_TIME_PARTITION_DONE)) {
-            undoPartitionTsFiles.remove(key);
-            break;
+          TSEncoding encoding = TSEncoding.deserialize(Byte.parseByte(bufferedReader.readLine()));
+          if (encoding == null) {
+            throw new IOException("alter.log parse fail, encoding is null");
           }
-          if (curLineStr.startsWith(AlteringLogger.FLAG_INIT_SELECTED_FILE)) {
-            // add tsfile list
-            tsFileIdentifiers.add(
-                TsFileIdentifier.getFileIdentifierFromInfoString(
-                    curLineStr.substring(
-                        AlteringLogger.FLAG_INIT_SELECTED_FILE.length()
-                            + TsFileIdentifier.INFO_SEPARATOR.length())));
-          } else if (curLineStr.startsWith(AlteringLogger.FLAG_DONE)) {
-            // remove done file
-            remove(
-                tsFileIdentifiers,
-                TsFileIdentifier.getFileIdentifierFromInfoString(
-                    curLineStr.substring(
-                        AlteringLogger.FLAG_DONE.length()
-                            + TsFileIdentifier.INFO_SEPARATOR.length())));
-          } else {
-            throw new IOException("alter.log parse fail, unknown line");
+          CompressionType compressionType = CompressionType.deserialize(Byte.parseByte(bufferedReader.readLine()));
+          if (compressionType == null) {
+            throw new IOException("alter.log parse fail, compressionType is null");
           }
+          alterList.add(new Pair<>(fullPath, new Pair<>(encoding, compressionType)));
+        } else if (AlteringLogger.FLAG_CLEAR_BEGIN.equals(mark)) {
+          clearBegin = true;
+        } else if (AlteringLogger.FLAG_DONE.equals(mark)) {
+          String curLineStr = bufferedReader.readLine();
+          doneFiles.add(
+                  TsFileIdentifier.getFileIdentifierFromInfoString(curLineStr));
         }
       }
     }
-    return undoPartitionTsFiles;
   }
 
-  private void remove(
-      Set<TsFileIdentifier> tsFileIdentifiers, TsFileIdentifier endTsFileIdentifier) {
-
-    TsFileIdentifier moveObj = null;
-    for (TsFileIdentifier next : tsFileIdentifiers) {
-      String filename = endTsFileIdentifier.getFilename();
-      String oldFileName = next.getFilename();
-      String preName =
-          oldFileName.substring(0, oldFileName.length() - TsFileConstant.TSFILE_SUFFIX.length());
-      if (filename.startsWith(preName)) {
-        moveObj = next;
-        break;
-      }
-    }
-    tsFileIdentifiers.remove(moveObj);
+  public List<Pair<String, Pair<TSEncoding, CompressionType>>> getAlterList() {
+    return alterList;
   }
 
-  public String getFullPath() {
-    return fullPath;
+  public boolean isClearBegin() {
+    return clearBegin;
   }
 
-  public TSEncoding getEncoding() {
-    return encoding;
-  }
-
-  public CompressionType getCompressionType() {
-    return compressionType;
+  public Set<TsFileIdentifier> getDoneFiles() {
+    return doneFiles;
   }
 }

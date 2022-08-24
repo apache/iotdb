@@ -51,6 +51,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 /** Each storage group that set by users corresponds to a StorageGroupManager */
 public class StorageGroupManager {
@@ -77,6 +78,11 @@ public class StorageGroupManager {
 
   /** value of root.stats."root.sg".TOTAL_POINTS */
   private long monitorSeriesValue;
+
+  /**
+   * TsFile alter lock: Control the concurrency of alter timeseries and clear operations
+   */
+  private final ReentrantLock alterLock = new ReentrantLock(true);
 
   public StorageGroupManager() {
     this(false);
@@ -346,6 +352,14 @@ public class StorageGroupManager {
         dataRegion.alter(fullPath, curEncoding, curCompressionType);
       }
     }
+  }
+
+  public void alterLock() {
+    alterLock.lock();
+  }
+
+  public void alterUnlock() {
+    alterLock.unlock();
   }
 
   /** push countUpgradeFiles operation down to all virtual storage group processors */

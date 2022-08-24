@@ -64,12 +64,6 @@ public class TsFileManager {
   private boolean allowCompaction = true;
   private AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
-  /**
-   * TsFile rewrite lock: controls operations that need to rewrite TsFiles, such as merging,
-   * altering encoding and compression methods
-   */
-  private final ReentrantLock rewriteLock = new ReentrantLock(true);
-
   public TsFileManager(String storageGroupName, String dataRegionId, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
@@ -332,28 +326,6 @@ public class TsFileManager {
   public void writeUnlock() {
     resourceListLock.writeLock().unlock();
     writeLockHolder = "";
-  }
-
-  public boolean isRewriteLocked() {
-    return rewriteLock.isLocked();
-  }
-
-  public boolean rewriteLockWithTimeout(long timeout) {
-    try {
-      return rewriteLock.tryLock(timeout, TimeUnit.MILLISECONDS);
-    } catch (InterruptedException e) {
-      LOGGER.warn(e.getMessage(), e);
-      Thread.interrupted();
-      throw new WriteLockFailedException("thread is interrupted");
-    }
-  }
-
-  public void rewriteLock() {
-    rewriteLock.lock();
-  }
-
-  public void rewriteUnlock() {
-    rewriteLock.unlock();
   }
 
   public String getStorageGroupName() {

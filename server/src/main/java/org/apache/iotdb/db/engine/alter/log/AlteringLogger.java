@@ -29,44 +29,17 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.List;
-import java.util.Set;
 
 /**
  * Alteringlogger records the progress of modifying the encoding compression method in the form of
  * text lines in the file "alter.log".
- *
- * <p>fullPath curEncoding curCompressionType<br>
- * timePartition1<br>
- * timePartition2<br>
- * timePartitionn<br>
- * FLAG_TIME_PARTITIONS_HEADER_DONE<br>
- * FLAG_SEQ_START<br>
- * timePartition1<br>
- * FLAG_INIT_SELECTED_FILE filePath1<br>
- * FLAG_INIT_SELECTED_FILE filePath2<br>
- * FLAG_INIT_SELECTED_FILE filePathn<br>
- * FLAG_DONE filePath1<br>
- * FLAG_DONE filePath2<br>
- * FLAG_DONE filePathn<br>
- * FLAG_SEQ_END<br>
- * FLAG_USEQ_START<br>
- * timePartition1<br>
- * FLAG_INIT_SELECTED_FILE filePath1<br>
- * FLAG_INIT_SELECTED_FILE filePath2<br>
- * FLAG_INIT_SELECTED_FILE filePathn<br>
- * FLAG_USEQ_END<br>
  */
 public class AlteringLogger implements AutoCloseable {
 
   public static final String ALTERING_LOG_NAME = "alter.log";
-  public static final String FLAG_TIME_PARTITIONS_HEADER_DONE = "ftphd";
-  public static final String FLAG_TIME_PARTITION_START = "ftps";
-  public static final String FLAG_TIME_PARTITION_DONE = "ftpd";
-  public static final String FLAG_SEQ = "1";
-  public static final String FLAG_UNSEQ = "0";
-  public static final String FLAG_INIT_SELECTED_FILE = "fisf";
   public static final String FLAG_DONE = "done";
+  public static final String FLAG_ALTER_PARAM_BEGIN = "apb";
+  public static final String FLAG_CLEAR_BEGIN = "cb";
 
   private final BufferedWriter logStream;
 
@@ -79,72 +52,40 @@ public class AlteringLogger implements AutoCloseable {
     logStream.close();
   }
 
-  public void logHeader(
-      PartialPath fullPath,
-      TSEncoding curEncoding,
-      CompressionType curCompressionType,
-      Set<Long> timePartitions)
-      throws IOException {
-
-    if (fullPath == null || curEncoding == null || curCompressionType == null) {
-      throw new IOException("alter params is null");
-    }
-    logStream.write(fullPath.getFullPath());
-    logStream.newLine();
-    logStream.write(Byte.toString(curEncoding.serialize()));
-    logStream.newLine();
-    logStream.write(Byte.toString(curCompressionType.serialize()));
-    logStream.newLine();
-    for (long timePartition : timePartitions) {
-      logStream.write(Long.toString(timePartition));
+  public void addAlterParam(
+          PartialPath fullPath,
+          TSEncoding curEncoding,
+          CompressionType curCompressionType)
+          throws IOException {
+      if (fullPath == null || curEncoding == null || curCompressionType == null) {
+        throw new IOException("alter params is null");
+      }
+      logStream.write(FLAG_ALTER_PARAM_BEGIN);
       logStream.newLine();
-    }
-    logStream.write(FLAG_TIME_PARTITIONS_HEADER_DONE);
-    logStream.newLine();
-    logStream.flush();
+      logStream.write(fullPath.getFullPath());
+      logStream.newLine();
+      logStream.write(Byte.toString(curEncoding.serialize()));
+      logStream.newLine();
+      logStream.write(Byte.toString(curCompressionType.serialize()));
+      logStream.newLine();
+      logStream.flush();
   }
 
-  public void startTimePartition(
-      List<TsFileResource> selectedFiles, long timePartition, boolean isSeq) throws IOException {
-    if (selectedFiles == null || selectedFiles.isEmpty()) {
-      throw new IOException("selectedFiles is null or empty");
-    }
-    logStream.write(
-        FLAG_TIME_PARTITION_START
-            + TsFileIdentifier.INFO_SEPARATOR
-            + timePartition
-            + TsFileIdentifier.INFO_SEPARATOR
-            + (isSeq ? FLAG_SEQ : FLAG_UNSEQ));
-    logStream.newLine();
-    for (TsFileResource tsFileResource : selectedFiles) {
-      logStream.write(
-          FLAG_INIT_SELECTED_FILE
-              + TsFileIdentifier.INFO_SEPARATOR
-              + TsFileIdentifier.getFileIdentifierFromFilePath(
-                  tsFileResource.getTsFile().getAbsolutePath()));
+  public void clearBegin() throws IOException {
+      logStream.write(FLAG_CLEAR_BEGIN);
       logStream.newLine();
-    }
-    logStream.flush();
+      logStream.flush();
   }
 
   public void doneFile(TsFileResource file) throws IOException {
     if (file == null) {
       throw new IOException("file is null");
     }
-    logStream.write(
-        FLAG_DONE
-            + TsFileIdentifier.INFO_SEPARATOR
-            + TsFileIdentifier.getFileIdentifierFromFilePath(file.getTsFile().getAbsolutePath()));
+    logStream.write(FLAG_DONE);
+    logStream.newLine();
+    logStream.write(""+TsFileIdentifier.getFileIdentifierFromFilePath(file.getTsFile().getAbsolutePath()));
     logStream.newLine();
     logStream.flush();
   }
 
-  public void endTimePartition(long timePartition) throws IOException {
-
-    logStream.write(FLAG_TIME_PARTITION_DONE);
-    logStream.newLine();
-    logStream.write(Long.toString(timePartition));
-    logStream.newLine();
-    logStream.flush();
-  }
 }
