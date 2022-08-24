@@ -542,7 +542,7 @@ public class IoTDBRestServiceIT {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("storage group");
+            add("storage group, virtual storage group num");
           }
         };
     List<Object> values1 =
@@ -551,8 +551,15 @@ public class IoTDBRestServiceIT {
             add("root.sg25");
           }
         };
-    Assert.assertEquals(columnNames, columnNamesResult);
+    List<Object> values2 =
+        new ArrayList<Object>() {
+          {
+            add("1");
+          }
+        };
+    Assert.assertEquals(columnNames.toString(), columnNamesResult.toString());
     Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values2.toString(), valuesResult.get(1).toString());
   }
 
   public void showFunctions(CloseableHttpClient httpClient) {
