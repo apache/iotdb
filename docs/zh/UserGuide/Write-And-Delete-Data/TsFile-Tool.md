@@ -78,34 +78,3 @@ TsFile 工具可帮您 通过执行指定sql、命令行sql、sql文件的方式
 # Or
 > tools/export-tsfile.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s ./sql.txt -f ./myTsFile.tsfile
 ```
-
-### SQL 文件示例
-
-```sql
-select * from root.**;
-select * from root.** align by device;
-```
-
-`select * from root.**`的执行结果：
-
-```sql
-Time,root.ln.wf04.wt04.status(BOOLEAN),root.ln.wf03.wt03.hardware(TEXT),root.ln.wf02.wt02.status(BOOLEAN),root.ln.wf02.wt02.hardware(TEXT),root.ln.wf01.wt01.hardware(TEXT),root.ln.wf01.wt01.status(BOOLEAN)
-1970-01-01T08:00:00.001+08:00,true,"v1",true,"v1",v1,true
-1970-01-01T08:00:00.002+08:00,true,"v1",,,,true
-```
-
-`select * from root.** align by device`的执行结果：
-
-```sql
-Time,Device,hardware(TEXT),status(BOOLEAN)
-1970-01-01T08:00:00.001+08:00,root.ln.wf01.wt01,"v1",true
-1970-01-01T08:00:00.002+08:00,root.ln.wf01.wt01,,true
-1970-01-01T08:00:00.001+08:00,root.ln.wf02.wt02,"v1",true
-1970-01-01T08:00:00.001+08:00,root.ln.wf03.wt03,"v1",
-1970-01-01T08:00:00.002+08:00,root.ln.wf03.wt03,"v1",
-1970-01-01T08:00:00.001+08:00,root.ln.wf04.wt04,,true
-1970-01-01T08:00:00.002+08:00,root.ln.wf04.wt04,,true
-```
-
-布尔类型的数据用`true`或者`false`来表示，此处没有用双引号括起来。文本数据需要使用双引号括起来。
-

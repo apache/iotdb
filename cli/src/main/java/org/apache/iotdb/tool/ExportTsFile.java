@@ -49,6 +49,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -281,6 +282,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     if (f.exists()) {
       f.delete();
     }
+    HashSet<String> deviceFilterSet = new HashSet<>();
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       Map<String, List<MeasurementSchema>> schemaMap = new LinkedHashMap<>();
       for (int i = 0; i < columnNames.size(); i++) {
@@ -291,6 +293,11 @@ public class ExportTsFile extends AbstractTsFileTool {
         TSDataType tsDataType = getTsDataType(columnTypes.get(i));
         Path path = new Path(column, true);
         String deviceId = path.getDevice();
+        List<Field> deviceList =
+            session.executeQueryStatement("show devices " + deviceId, 10000).next().getFields();
+        if (deviceList.size() > 1 && "true".equals(deviceList.get(1).getStringValue())) {
+          deviceFilterSet.add(deviceId);
+        }
         MeasurementSchema measurementSchema =
             new MeasurementSchema(path.getMeasurement(), tsDataType);
         schemaMap.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(measurementSchema);
@@ -300,7 +307,12 @@ public class ExportTsFile extends AbstractTsFileTool {
         List<MeasurementSchema> schemaList = schemaMap.get(deviceId);
         Tablet tablet = new Tablet(deviceId, schemaList);
         tablet.initBitMaps();
-        tsFileWriter.registerTimeseries(new Path(tablet.deviceId), schemaList);
+        Path path = new Path(tablet.deviceId);
+        if (deviceFilterSet.contains(tablet.deviceId)) {
+          tsFileWriter.registerAlignedTimeseries(path, schemaList);
+        } else {
+          tsFileWriter.registerTimeseries(path, schemaList);
+        }
         tabletList.add(tablet);
       }
       if (tabletList.isEmpty()) {
@@ -325,7 +337,7 @@ public class ExportTsFile extends AbstractTsFileTool {
               i++;
             }
             if (tablet.rowSize == tablet.getMaxRowNumber()) {
-              tsFileWriter.write(tablet);
+              writeToTsfile(deviceFilterSet, tsFileWriter, tablet);
               tablet.initBitMaps();
               tablet.reset();
             }
@@ -334,10 +346,20 @@ public class ExportTsFile extends AbstractTsFileTool {
       }
       for (Tablet tablet : tabletList) {
         if (tablet.rowSize != 0) {
-          tsFileWriter.write(tablet);
+          writeToTsfile(deviceFilterSet, tsFileWriter, tablet);
         }
       }
       tsFileWriter.flushAllChunkGroups();
+    }
+  }
+
+  private static void writeToTsfile(
+      HashSet<String> deviceFilterSet, TsFileWriter tsFileWriter, Tablet tablet)
+      throws IOException, WriteProcessException {
+    if (deviceFilterSet.contains(tablet.deviceId)) {
+      tsFileWriter.writeAligned(tablet);
+    } else {
+      tsFileWriter.write(tablet);
     }
   }
 

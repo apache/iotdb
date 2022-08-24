@@ -77,33 +77,3 @@ In addition, if you do not use the `-s` and `-q` parameters, after the export sc
 # Or
 > tools/export-tsfile.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s ./sql.txt -f ./myTsFile.tsfile
 ```
-
-### Sample SQL file
-
-```sql
-select * from root.**;
-select * from root.** align by device;
-```
-
-The result of `select * from root.**`：
-
-```sql
-Time,root.ln.wf04.wt04.status(BOOLEAN),root.ln.wf03.wt03.hardware(TEXT),root.ln.wf02.wt02.status(BOOLEAN),root.ln.wf02.wt02.hardware(TEXT),root.ln.wf01.wt01.hardware(TEXT),root.ln.wf01.wt01.status(BOOLEAN)
-1970-01-01T08:00:00.001+08:00,true,"v1",true,"v1",v1,true
-1970-01-01T08:00:00.002+08:00,true,"v1",,,,true
-```
-
-The result of `select * from root.** align by device`：
-
-```sql
-Time,Device,hardware(TEXT),status(BOOLEAN)
-1970-01-01T08:00:00.001+08:00,root.ln.wf01.wt01,"v1",true
-1970-01-01T08:00:00.002+08:00,root.ln.wf01.wt01,,true
-1970-01-01T08:00:00.001+08:00,root.ln.wf02.wt02,"v1",true
-1970-01-01T08:00:00.001+08:00,root.ln.wf03.wt03,"v1",
-1970-01-01T08:00:00.002+08:00,root.ln.wf03.wt03,"v1",
-1970-01-01T08:00:00.001+08:00,root.ln.wf04.wt04,,true
-1970-01-01T08:00:00.002+08:00,root.ln.wf04.wt04,,true
-```
-
-Boolean data is represented by `true` or `false` without double quotes. Text data needs to be enclosed in double quotes.
