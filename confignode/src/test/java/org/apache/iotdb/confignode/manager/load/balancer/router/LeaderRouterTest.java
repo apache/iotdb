@@ -68,7 +68,7 @@ public class LeaderRouterTest {
           .cacheHeartbeatSample(
               new NodeHeartbeatSample(currentTimeMillis - i * 1000, currentTimeMillis - i * 1000));
     }
-    nodeCacheMap.values().forEach(BaseNodeCache::updateLoadStatistic);
+    nodeCacheMap.values().forEach(BaseNodeCache::updateNodeStatus);
 
     // Get the loadScoreMap
     Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();

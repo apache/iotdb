@@ -47,7 +47,7 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
   }
 
   @Override
-  public boolean updateLoadStatistic() {
+  public boolean updateNodeStatus() {
     if (configNodeLocation.getInternalEndPoint().equals(NodeManager.CURRENT_NODE)) {
       this.status = NodeStatus.Running;
       return false;
@@ -60,15 +60,7 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
       }
     }
 
-    NodeStatus originStatus;
-    switch (status) {
-      case Running:
-        originStatus = NodeStatus.Running;
-        break;
-      case Unknown:
-      default:
-        originStatus = NodeStatus.Unknown;
-    }
+    String originStatus = status.getStatus();
 
     // TODO: Optimize judge logic
     if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
@@ -76,7 +68,7 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     } else {
       status = NodeStatus.Running;
     }
-    return !status.getStatus().equals(originStatus.getStatus());
+    return !status.getStatus().equals(originStatus);
   }
 
   @Override
