@@ -711,7 +711,47 @@ public class MTreeTest {
 
   @Test
   public void testCountDevices() {
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup(new PartialPath("root.ln"));
+      root.createTimeseries(
+              new PartialPath("root.ln.a1.status"),
+              TSDataType.BOOLEAN,
+              TSEncoding.PLAIN,
+              CompressionType.SNAPPY,
+              Collections.emptyMap(),
+              null);
+      root.createTimeseries(
+              new PartialPath("root.ln.a1.b1.status"),
+              TSDataType.BOOLEAN,
+              TSEncoding.PLAIN,
+              CompressionType.SNAPPY,
+              Collections.emptyMap(),
+              null);
+      root.createTimeseries(
+              new PartialPath("root.ln.a1.b1.c1.status"),
+              TSDataType.BOOLEAN,
+              TSEncoding.PLAIN,
+              CompressionType.SNAPPY,
+              Collections.emptyMap(),
+              null);
+      root.createTimeseries(
+              new PartialPath("root.ln.a1.b1.c1.d1.status"),
+              TSDataType.BOOLEAN,
+              TSEncoding.PLAIN,
+              CompressionType.SNAPPY,
+              Collections.emptyMap(),
+              null);
 
+      assertEquals(1, root.getDevicesNum(new PartialPath("root.ln.a1.*(0)")));
+      assertEquals(1, root.getDevicesNum(new PartialPath("root.ln.a1.*(1)")));
+      assertEquals(3, root.getDevicesNum(new PartialPath("root.ln.a1.*(1,)")));
+      assertEquals(1, root.getDevicesNum(new PartialPath("root.ln.a1.*(2)")));
+      assertEquals(4, root.getDevicesNum(new PartialPath("root.ln.a1.*(0,)")));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   @Test
