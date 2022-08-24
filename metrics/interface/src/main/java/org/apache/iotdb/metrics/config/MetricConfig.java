@@ -36,7 +36,7 @@ public class MetricConfig {
   private Boolean enablePerformanceStat = false;
 
   /** The type of the implementation of metric service */
-  private MonitorType monitorType = MonitorType.DROPWIZARD;
+  private MonitorType monitorType = MonitorType.MICROMETER;
 
   /** The list of reporters provide data for external system */
   private List<ReporterType> metricReporterList =
