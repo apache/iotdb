@@ -57,7 +57,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
+import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -163,9 +164,6 @@ public class TsFileProcessor {
 
   /** flush file listener */
   private List<FlushListener> flushListeners = new ArrayList<>();
-
-  /** used to collct this TsFile for sync */
-  private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
 
   @SuppressWarnings("squid:S107")
   TsFileProcessor(
@@ -837,8 +835,11 @@ public class TsFileProcessor {
       if (!flushingMemTables.isEmpty()) {
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
       }
-      if (tsFileSyncManager.isEnableSync()) {
-        tsFileSyncManager.collectRealTimeDeletion(deletion);
+      for (ISyncManager syncManager :
+          SyncService.getInstance().getOrCreateSyncManager(storageGroupName)) {
+        if (syncManager.isEnabledSync()) {
+          syncManager.syncRealTimeDeletion(deletion);
+        }
       }
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -990,8 +991,11 @@ public class TsFileProcessor {
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         addAMemtableIntoFlushingList(tmpMemTable);
-        if (tsFileSyncManager.isEnableSync()) {
-          tsFileSyncManager.collectRealTimeTsFile(tsFileResource.getTsFile());
+        for (ISyncManager syncManager :
+            SyncService.getInstance().getOrCreateSyncManager(storageGroupName)) {
+          if (syncManager.isEnabledSync()) {
+            syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
+          }
         }
         logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
@@ -1420,8 +1424,11 @@ public class TsFileProcessor {
     long closeStartTime = System.currentTimeMillis();
     writer.endFile();
     tsFileResource.serialize();
-    if (tsFileSyncManager.isEnableSync()) {
-      tsFileSyncManager.collectRealTimeResource(tsFileResource.getTsFile());
+    for (ISyncManager syncManager :
+        SyncService.getInstance().getOrCreateSyncManager(storageGroupName)) {
+      if (syncManager.isEnabledSync()) {
+        syncManager.syncRealTimeResource(tsFileResource.getTsFile());
+      }
     }
     logger.info("Ended file {}", tsFileResource);
 

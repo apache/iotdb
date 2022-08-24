@@ -40,6 +40,7 @@ import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
 import org.apache.iotdb.db.sync.externalpipe.ExternalPipeStatus;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
+import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
@@ -513,5 +514,10 @@ public class SyncService implements IService {
       // == start ExternalPipeProcessor for send data to external pipe plugin
       startExternalPipeManager(runningPipe.getStatus() == Pipe.PipeStatus.RUNNING);
     }
+  }
+
+  public List<ISyncManager> getOrCreateSyncManager(String storageGroup) {
+    // TODO：1、从Pipe中获取 2、缓存
+    return null;
   }
 }

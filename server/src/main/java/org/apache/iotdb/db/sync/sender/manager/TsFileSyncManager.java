@@ -18,10 +18,7 @@
  */
 package org.apache.iotdb.db.sync.sender.manager;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.engine.storagegroup.dataregion.StorageGroupManager;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 
 import org.slf4j.Logger;
@@ -29,9 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 /**
  * TsFileSyncManager is designed for collect all history TsFiles(i.e. before the pipe start time,
@@ -90,12 +85,12 @@ public class TsFileSyncManager {
     registerSyncTask(syncPipe);
 
     List<File> historyTsFiles = new ArrayList<>();
-    Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
-        StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
-    while (sgIterator.hasNext()) {
-      historyTsFiles.addAll(
-          sgIterator.next().getValue().collectHistoryTsFileForSync(dataStartTime));
-    }
+    //    Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
+    //        StorageEngine.getInstance().getProcessorMap().entrySet().iterator();
+    //    while (sgIterator.hasNext()) {
+    //      historyTsFiles.addAll(
+    //          sgIterator.next().getValue().collectHistoryTsFileForSync(dataStartTime));
+    //    }
 
     return historyTsFiles;
   }

@@ -22,7 +22,9 @@ package org.apache.iotdb.db.sync.sender.pipe;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
@@ -30,8 +32,9 @@ import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.pipedata.queue.BufferedPipeDataQueue;
+import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
+import org.apache.iotdb.db.sync.sender.manager.LocalSyncManager;
 import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
-import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.sync.sender.recovery.TsFilePipeLogger;
 
 import org.slf4j.Logger;
@@ -47,7 +50,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class TsFilePipe implements Pipe {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipe.class);
   private final SchemaSyncManager schemaSyncManager = SchemaSyncManager.getInstance();
-  private final TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
+  private final List<ISyncManager> syncManagerList = new ArrayList<>();
 
   private final long createTime;
   private final String name;
@@ -95,6 +98,12 @@ public class TsFilePipe implements Pipe {
       return;
     }
 
+    // init sync manager
+    List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
+    for (DataRegion dataRegion : dataRegions) {
+      System.out.println("init syncManager " + dataRegions.size());
+      syncManagerList.add(new LocalSyncManager(dataRegion));
+    }
     try {
       if (!pipeLog.isCollectFinished()) {
         pipeLog.clear();
@@ -119,18 +128,19 @@ public class TsFilePipe implements Pipe {
 
   /** collect data * */
   private void collectData() {
-    registerMetadata();
-    List<PhysicalPlan> historyMetadata = collectHistoryMetadata();
-    List<File> historyTsFiles = registerAndCollectHistoryTsFile();
+    //    registerMetadata();
+    registerTsFile();
+    //    List<PhysicalPlan> historyMetadata = collectHistoryMetadata();
+    List<File> historyTsFiles = collectHistoryTsFile();
     isCollectingRealTimeData = true;
 
     // get all history data
-    int historyMetadataSize = historyMetadata.size();
+    //    int historyMetadataSize = historyMetadata.size();
     int historyTsFilesSize = historyTsFiles.size();
-    for (int i = 0; i < historyMetadataSize; i++) {
-      long serialNumber = 1 - historyTsFilesSize - historyMetadataSize + i;
-      historyQueue.offer(new SchemaPipeData(historyMetadata.get(i), serialNumber));
-    }
+    //    for (int i = 0; i < historyMetadataSize; i++) {
+    //      long serialNumber = 1 - historyTsFilesSize - historyMetadataSize + i;
+    //      historyQueue.offer(new SchemaPipeData(historyMetadata.get(i), serialNumber));
+    //    }
     for (int i = 0; i < historyTsFilesSize; i++) {
       long serialNumber = 1 - historyTsFilesSize + i;
       File tsFile = historyTsFiles.get(i);
@@ -162,15 +172,27 @@ public class TsFilePipe implements Pipe {
   }
 
   private void registerTsFile() {
-    tsFileSyncManager.registerSyncTask(this);
+    for (ISyncManager syncManager : syncManagerList) {
+      syncManager.registerSyncTask(this);
+    }
   }
 
   private void deregisterTsFile() {
-    tsFileSyncManager.deregisterSyncTask();
+    for (ISyncManager syncManager : syncManagerList) {
+      syncManager.deregisterSyncTask();
+    }
   }
 
-  private List<File> registerAndCollectHistoryTsFile() {
-    return tsFileSyncManager.registerAndCollectHistoryTsFile(this, dataStartTime);
+  private List<File> collectHistoryTsFile() {
+    List<File> historyFiles = new ArrayList<>();
+    for (ISyncManager syncManager : syncManagerList) {
+      historyFiles.addAll(syncManager.syncHistoryTsFile(dataStartTime));
+    }
+    System.out.println("history tsfile");
+    for (File f : historyFiles) {
+      System.out.println(f.getAbsolutePath());
+    }
+    return historyFiles;
   }
 
   public File createHistoryTsFileHardlink(File tsFile, long modsOffset) {
@@ -273,6 +295,11 @@ public class TsFilePipe implements Pipe {
       historyQueue.commit();
     }
     realTimeQueue.commit();
+  }
+
+  @Override
+  public ISyncManager getOrCreateSyncManager(String storageGroup) {
+    return null;
   }
 
   public void commit(long serialNumber) {

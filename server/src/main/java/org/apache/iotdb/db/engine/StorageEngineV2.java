@@ -683,6 +683,10 @@ public class StorageEngineV2 implements IService {
     return dataRegionMap.get(regionId);
   }
 
+  public List<DataRegion> getAllDataRegions() {
+    return new ArrayList<>(dataRegionMap.values());
+  }
+
   public List<DataRegionId> getAllDataRegionIds() {
     return new ArrayList<>(dataRegionMap.keySet());
   }
