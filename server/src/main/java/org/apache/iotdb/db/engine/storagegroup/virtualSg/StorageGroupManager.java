@@ -166,7 +166,7 @@ public class StorageGroupManager {
       // if finish recover
       if (isVsgReady[loc].get()) {
         // it's unsafe to synchronize MNode here because
-        // concurrent deletions and creates will create a new MNode
+        // concurrent deletions and creations will create a new MNode
         synchronized (isVsgReady[loc]) {
           processor = virtualStorageGroupProcessor[loc];
           if (processor == null) {
