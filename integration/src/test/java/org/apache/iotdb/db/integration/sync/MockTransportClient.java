@@ -15,31 +15,38 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.sync.transport.conf;
+package org.apache.iotdb.db.integration.sync;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.sync.pipedata.PipeData;
+import org.apache.iotdb.db.sync.transport.client.ITransportClient;
 
-import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
-public class TransportConfig {
-  private TransportConfig() {}
+public class MockTransportClient implements ITransportClient {
 
-  /** default base dir, stores all IoTDB runtime files */
-  private static final String DEFAULT_BASE_DIR = addHomeDir("data");
+  private final List<PipeData> pipeDataList;
 
-  private static String addHomeDir(String dir) {
-    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
-      } else {
-        dir = homeDir + dir;
-      }
-    }
-    return dir;
+  public MockTransportClient() {
+    this.pipeDataList = new ArrayList<>();
   }
 
-  public static boolean isCheckFileDegistAgain = false;
+  public List<PipeData> getPipeDataList() {
+    return pipeDataList;
+  }
+
+  @Override
+  public boolean handshake() {
+    return true;
+  }
+
+  @Override
+  public boolean send(PipeData pipeData) {
+    pipeDataList.add(pipeData);
+    return true;
+  }
+
+  @Override
+  public void close() {}
 }
