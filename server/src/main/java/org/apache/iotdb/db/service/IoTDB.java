@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
+import org.apache.iotdb.db.engine.migration.MigratingFileLogManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
@@ -140,6 +141,7 @@ public class IoTDB implements IoTDBMBean {
     logger.info("recover the schema...");
     initMManager();
     initServiceProvider();
+    initMigrationManager();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
@@ -226,6 +228,11 @@ public class IoTDB implements IoTDBMBean {
         IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
         IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize(),
         IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
+  }
+
+  private void initMigrationManager() {
+    // finished migrating the tsfiles that were in process
+    MigratingFileLogManager.getInstance().recover();
   }
 
   @Override

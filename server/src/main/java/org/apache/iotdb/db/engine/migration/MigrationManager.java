@@ -154,13 +154,6 @@ public class MigrationManager {
       logger.error("Cannot read log for migration.");
     }
 
-    // finished migrating the tsfiles that were in process
-    try {
-      MigratingFileLogManager.getInstance().recover();
-    } catch (IOException e) {
-      logger.error("migratingfile could not recover");
-    }
-
     migrationCheckThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Migration-Check");
     migrationCheckThread.scheduleAtFixedRate(

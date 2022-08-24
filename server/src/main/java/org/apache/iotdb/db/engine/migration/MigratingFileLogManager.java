@@ -99,29 +99,33 @@ public class MigratingFileLogManager {
   }
 
   /** finish the unfinished MigrationTasks using log files under MIGRATING_LOG_DIR */
-  public void recover() throws IOException {
+  public void recover() {
     for (File logFile : MIGRATING_LOG_DIR.listFiles()) {
-      FileInputStream logFileInput = new FileInputStream(logFile);
+      try {
+        FileInputStream logFileInput = new FileInputStream(logFile);
 
-      String tsfilePath = ReadWriteIOUtils.readString(logFileInput);
-      String targetDirPath = ReadWriteIOUtils.readString(logFileInput);
+        String tsfilePath = ReadWriteIOUtils.readString(logFileInput);
+        String targetDirPath = ReadWriteIOUtils.readString(logFileInput);
 
-      File tsfile = SystemFileFactory.INSTANCE.getFile(tsfilePath);
-      File targetDir = SystemFileFactory.INSTANCE.getFile(targetDirPath);
+        File tsfile = SystemFileFactory.INSTANCE.getFile(tsfilePath);
+        File targetDir = SystemFileFactory.INSTANCE.getFile(targetDirPath);
 
-      if (targetDir.exists()) {
-        if (!targetDir.isDirectory()) {
-          logger.error("target dir {} not a directory", targetDirPath);
+        if (targetDir.exists()) {
+          if (!targetDir.isDirectory()) {
+            logger.error("target dir {} not a directory", targetDirPath);
+            return;
+          }
+        } else if (!targetDir.mkdirs()) {
+          logger.error("create target dir {} failed", targetDirPath);
           return;
         }
-      } else if (!targetDir.mkdirs()) {
-        logger.error("create target dir {} failed", targetDirPath);
-        return;
-      }
 
-      TsFileResource resource = new TsFileResource(tsfile);
-      resource.migrate(targetDir);
-      finish(tsfile);
+        TsFileResource resource = new TsFileResource(tsfile);
+        resource.migrate(targetDir);
+        finish(tsfile);
+      } catch (IOException e) {
+        logger.error("MigratingFileLogManager: log file not found");
+      }
     }
   }
 }

@@ -28,6 +28,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.file.Paths;
 
 import static org.apache.iotdb.db.metadata.idtable.IDTable.config;
@@ -77,6 +78,24 @@ public class MigratingFileLogTest {
     assertFalse(logFile.exists());
 
     assertEquals(3, testTargetDir.listFiles().length);
+
+    FileUtils.deleteDirectory(testTargetDir);
+  }
+
+  @Test
+  public void testMissingFiles() throws IOException {
+    File testTargetDir = new File("testTargetDir");
+    testTargetDir.mkdirs();
+
+    // test missing .tsfile .resource .mods
+    File missingTsfile = new File("testMissing.tsfile");
+    assertFalse(missingTsfile.exists());
+
+    MigratingFileLogManager.getInstance().start(missingTsfile, testTargetDir);
+
+    MigratingFileLogManager.getInstance().recover();
+
+    assertEquals(0, testTargetDir.listFiles().length);
 
     FileUtils.deleteDirectory(testTargetDir);
   }
