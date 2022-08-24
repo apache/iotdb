@@ -17,24 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.sys;
+package org.apache.iotdb.db.mpp.plan.statement.sys.sync;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
-import java.util.Collections;
-import java.util.List;
-
-public class StopPipeStatement extends Statement implements IConfigStatement {
+public class ShowPipeStatement extends ShowStatement implements IConfigStatement {
 
   private String pipeName;
-
-  public StopPipeStatement(StatementType stopPipeStatement) {
-    this.statementType = stopPipeStatement;
-  }
 
   public String getPipeName() {
     return pipeName;
@@ -46,11 +38,13 @@ public class StopPipeStatement extends Statement implements IConfigStatement {
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.READ;
   }
 
+  public ShowPipeStatement() {}
+
   @Override
-  public List<PartialPath> getPaths() {
-    return Collections.emptyList();
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowPipe(this, context);
   }
 }

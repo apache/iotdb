@@ -17,32 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.sys;
+package org.apache.iotdb.db.mpp.plan.statement.sys.sync;
 
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
-public class ShowPipeSinkStatement extends ShowStatement implements IConfigStatement {
-
-  private String pipeSinkName;
-
-  public String getPipeSinkName() {
-    return pipeSinkName;
-  }
-
-  public void setPipeSinkName(String pipeSinkName) {
-    this.pipeSinkName = pipeSinkName;
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
-  }
+public class ShowPipeSinkTypeStatement extends ShowStatement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowPipeSink(this, context);
+    return visitor.visitShowPipeSinkType(this, context);
   }
 }
