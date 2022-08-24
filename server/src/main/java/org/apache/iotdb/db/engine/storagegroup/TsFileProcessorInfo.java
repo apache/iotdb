@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -43,8 +43,7 @@ public class TsFileProcessorInfo {
     memCost += cost;
     storageGroupInfo.addStorageGroupMemCost(cost);
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateGauge(
               Metric.MEM.toString(),
               MetricLevel.IMPORTANT,
@@ -60,8 +59,7 @@ public class TsFileProcessorInfo {
     storageGroupInfo.releaseStorageGroupMemCost(cost);
     memCost -= cost;
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateGauge(
               Metric.MEM.toString(),
               MetricLevel.IMPORTANT,
@@ -76,8 +74,7 @@ public class TsFileProcessorInfo {
   public void clear() {
     storageGroupInfo.releaseStorageGroupMemCost(memCost);
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateGauge(
               Metric.MEM.toString(),
               MetricLevel.IMPORTANT,
