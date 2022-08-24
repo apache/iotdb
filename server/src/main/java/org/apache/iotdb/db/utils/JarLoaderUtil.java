@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.apache.commons.io.FileUtils;
 import org.apche.iotdb.external.api.IPropertiesLoader;
@@ -81,7 +82,7 @@ public class JarLoaderUtil {
           logger.error("IPropertiesLoader(), loader is null.");
           continue;
         }
-        Properties properties = loader.loadProperties(externalPropertiesFile);
+        Properties properties = loader.loadProperties(externalPropertiesFile.toAbsolutePath());
         if (properties != null) {
           externalPropertiesList.add(properties);
         }
@@ -98,6 +99,8 @@ public class JarLoaderUtil {
     // overwrite the default properties;
     for (Properties properties : externalPropertiesList) {
       IoTDBDescriptor.getInstance().loadProperties(properties);
+      TSFileDescriptor.getInstance()
+          .overwriteConfigByCustomSettings(TSFileDescriptor.getInstance().getConfig(), properties);
     }
 
     String limiterDir = config.getExternalLimiterDir();
