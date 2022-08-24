@@ -33,6 +33,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
@@ -153,7 +155,7 @@ public class SnapshotTest {
     }
 
     @Override
-    public List<File> getSnapshotFiles(File latestSnapshotRootDir) {
+    public List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
       File log = new File(latestSnapshotRootDir.getAbsolutePath() + File.separator + "record");
       Assert.assertTrue(log.exists());
       Scanner scanner = null;
@@ -167,7 +169,7 @@ public class SnapshotTest {
       }
       Assert.assertNotNull(scanner);
 
-      return Collections.singletonList(new File(actualSnapshotPath));
+      return Collections.singletonList(Paths.get(actualSnapshotPath));
     }
   }
 

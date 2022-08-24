@@ -35,8 +35,8 @@ import java.util.List;
 public class Utils {
   private static final Logger logger = LoggerFactory.getLogger(Utils.class);
 
-  public static List<File> listAllRegularFilesRecursively(File rootDir) {
-    List<File> allFiles = new ArrayList<>();
+  public static List<Path> listAllRegularFilesRecursively(File rootDir) {
+    List<Path> allFiles = new ArrayList<>();
     try {
       Files.walkFileTree(
           rootDir.toPath(),
@@ -51,7 +51,7 @@ public class Utils {
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
                 throws IOException {
               if (attrs.isRegularFile()) {
-                allFiles.add(file.toFile());
+                allFiles.add(file);
               }
               return FileVisitResult.CONTINUE;
             }

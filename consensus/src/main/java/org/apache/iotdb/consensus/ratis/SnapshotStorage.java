@@ -97,17 +97,17 @@ public class SnapshotStorage implements StateMachineStorage {
     }
     TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
 
-    List<File> actualSnapshotFiles = applicationStateMachine.getSnapshotFiles(latestSnapshotDir);
+    List<Path> actualSnapshotFiles = applicationStateMachine.getSnapshotFiles(latestSnapshotDir);
     if (actualSnapshotFiles == null) {
       return null;
     }
 
     List<FileInfo> fileInfos = new ArrayList<>();
-    for (File file : actualSnapshotFiles) {
-      if (file.toPath().endsWith(".md5")) {
+    for (Path file : actualSnapshotFiles) {
+      if (file.endsWith(".md5")) {
         continue;
       }
-      FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file.toPath());
+      FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
       fileInfos.add(fileInfo);
     }
 

@@ -30,6 +30,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Function;
 
@@ -87,7 +88,7 @@ public interface IStateMachine {
    * @param latestSnapshotRootDir dir where the latest snapshot sits
    * @return List of real snapshot files.
    */
-  default List<File> getSnapshotFiles(File latestSnapshotRootDir) {
+  default List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
     return Utils.listAllRegularFilesRecursively(latestSnapshotRootDir);
   }
 
