@@ -257,8 +257,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               logger.warn(mne.getMessage());
               measurementNotExistDevices.add(device);
               continue;
-            } catch (SemanticException e) {
-              throw e;
             }
           }
           for (PartialPath measurementNotExistDevice : measurementNotExistDevices) {
