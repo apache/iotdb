@@ -166,16 +166,16 @@ public class IoTDBSyncReceiverIT {
               null));
       planList.add(new SetStorageGroupPlan(new PartialPath("root.sg1")));
       for (PhysicalPlan plan : planList) {
-        client.sendTransport(new SchemaPipeData(plan, serialNum++));
+        client.send(new SchemaPipeData(plan, serialNum++));
       }
       List<File> tsFiles = SyncTestUtil.getTsFilePaths(tmpDir);
       SyncTestUtil.renameTsFiles(tsFiles);
       for (File f : tsFiles) {
-        client.sendTransport(new TsFilePipeData(f.getPath(), serialNum++));
+        client.send(new TsFilePipeData(f.getPath(), serialNum++));
       }
       Deletion deletion = new Deletion(new PartialPath("root.vehicle.**"), 0, 33, 38);
       PipeData pipeData = new DeletionPipeData(deletion, serialNum++);
-      client.sendTransport(pipeData);
+      client.send(pipeData);
 
       // wait collector to load pipe data
       Thread.sleep(1000);

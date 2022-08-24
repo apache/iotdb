@@ -156,7 +156,7 @@ public class SyncTransportTest {
       try (RandomAccessFile randomAccessFile = new RandomAccessFile(tsfile, "rw")) {
         // no handshake, response TException
         try {
-          serviceClient.transportFile(
+          serviceClient.sendFile(
               new TSyncTransportMetaInfo(tsfile.getName(), 0), ByteBuffer.wrap(buffer));
           Assert.fail();
         } catch (TException e) {
@@ -166,23 +166,23 @@ public class SyncTransportTest {
         // response REBASE:0
         randomAccessFile.read(buffer, 0, 10);
         TSStatus tsStatus1 =
-            serviceClient.transportFile(
+            serviceClient.sendFile(
                 new TSyncTransportMetaInfo(tsfile.getName(), 1), ByteBuffer.wrap(buffer));
         Assert.assertEquals(tsStatus1.getCode(), TSStatusCode.SYNC_FILE_REBASE.getStatusCode());
         Assert.assertEquals(tsStatus1.getMessage(), "0");
         // response SUCCESS
         TSStatus tsStatus2 =
-            serviceClient.transportFile(
+            serviceClient.sendFile(
                 new TSyncTransportMetaInfo(tsfile.getName(), 0), ByteBuffer.wrap(buffer));
         Assert.assertEquals(tsStatus2.getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
         // response response REBASE:10
         TSStatus tsStatus3 =
-            serviceClient.transportFile(
+            serviceClient.sendFile(
                 new TSyncTransportMetaInfo(tsfile.getName(), 0), ByteBuffer.wrap(buffer));
         Assert.assertEquals(tsStatus3.getCode(), TSStatusCode.SYNC_FILE_REBASE.getStatusCode());
         Assert.assertEquals(tsStatus3.getMessage(), "10");
         TSStatus tsStatus4 =
-            serviceClient.transportFile(
+            serviceClient.sendFile(
                 new TSyncTransportMetaInfo(tsfile.getName(), 100), ByteBuffer.wrap(buffer));
         Assert.assertEquals(tsStatus4.getCode(), TSStatusCode.SYNC_FILE_REBASE.getStatusCode());
         Assert.assertEquals(tsStatus4.getMessage(), "10");
@@ -190,7 +190,7 @@ public class SyncTransportTest {
         byte[] remainBuffer = new byte[(int) (randomAccessFile.length() - 10)];
         randomAccessFile.read(remainBuffer, 0, (int) (randomAccessFile.length() - 10));
         TSStatus tsStatus5 =
-            serviceClient.transportFile(
+            serviceClient.sendFile(
                 new TSyncTransportMetaInfo(tsfile.getName(), 10), ByteBuffer.wrap(remainBuffer));
         Assert.assertEquals(tsStatus5.getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
       }
@@ -239,14 +239,14 @@ public class SyncTransportTest {
       byte[] buffer = pipeData.serialize();
       ByteBuffer buffToSend = ByteBuffer.wrap(buffer);
       try {
-        TSStatus tsStatus = serviceClient.transportPipeData(buffToSend);
+        TSStatus tsStatus = serviceClient.sendPipeData(buffToSend);
         Assert.fail();
       } catch (TException e) {
         // do nothing
       }
       serviceClient.handshake(
           new TSyncIdentityInfo("127.0.0.1", pipeName1, createdTime1, config.getIoTDBVersion()));
-      TSStatus tsStatus = serviceClient.transportPipeData(buffToSend);
+      TSStatus tsStatus = serviceClient.sendPipeData(buffToSend);
       Assert.assertEquals(tsStatus.getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
   }
@@ -281,7 +281,7 @@ public class SyncTransportTest {
             pipe, "127.0.0.1", IoTDBDescriptor.getInstance().getConfig().getRpcPort(), "127.0.0.1");
     client.handshake();
     for (PipeData pipeData : pipeDataList) {
-      client.sendTransport(pipeData);
+      client.send(pipeData);
     }
 
     // 4. check result

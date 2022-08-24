@@ -520,7 +520,7 @@ service IClientRPCService {
 
   common.TSStatus handshake(TSyncIdentityInfo info);
 
-  common.TSStatus transportPipeData(1:binary buff);
+  common.TSStatus sendPipeData(1:binary buff);
 
-  common.TSStatus transportFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
+  common.TSStatus sendFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
 }

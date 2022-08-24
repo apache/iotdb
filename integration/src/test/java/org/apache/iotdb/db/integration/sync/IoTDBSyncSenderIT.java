@@ -22,14 +22,13 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkTypePlan;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
-import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.transport.client.SenderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -63,7 +62,6 @@ public class IoTDBSyncSenderIT {
   private static final String pipeSinkName = "test_pipesink";
   private static final String pipeName = "test_pipe";
 
-  private SenderManager handler;
   private MockTransportClient transportClient;
 
   private final Map<String, List<PipeData>> resultMap = new HashMap<>();
@@ -89,11 +87,7 @@ public class IoTDBSyncSenderIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
     IoTDBPipeSink pipeSink = new IoTDBPipeSink(pipeSinkName);
-    TsFilePipe pipe = new TsFilePipe(0L, pipeName, pipeSink, 0L, true);
     transportClient = new MockTransportClient();
-    handler = SenderManager.getTransportHandler(pipe, pipeSink);
-    handler.setTransportClient(transportClient);
-    SenderManager.setDebugSenderManager(handler);
     LocalSyncInfoFetcher.getInstance().reset();
   }
 
@@ -256,6 +250,7 @@ public class IoTDBSyncSenderIT {
       statement.execute("create pipesink " + pipeSinkName + " as iotdb");
       statement.execute("create pipe " + pipeName + " to " + pipeSinkName);
     }
+    SyncService.getInstance().getSenderManager().setTransportClient(transportClient);
   }
 
   private void restart() throws Exception {
@@ -263,6 +258,7 @@ public class IoTDBSyncSenderIT {
     EnvironmentUtils.shutdownDaemon();
     WALRecoverManager.getInstance().clear();
     EnvironmentUtils.reactiveDaemon();
+    SyncService.getInstance().getSenderManager().setTransportClient(transportClient);
   }
 
   private void startPipe() throws Exception {

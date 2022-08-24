@@ -2113,13 +2113,12 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus transportPipeData(ByteBuffer buff) throws TException {
+  public TSStatus sendPipeData(ByteBuffer buff) throws TException {
     return SyncService.getInstance().transportPipeData(buff);
   }
 
   @Override
-  public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
-      throws TException {
+  public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
     return SyncService.getInstance().transportFile(metaInfo, buff);
   }
 

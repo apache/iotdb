@@ -42,7 +42,7 @@ public class MockTransportClient implements ITransportClient {
   }
 
   @Override
-  public boolean sendTransport(PipeData pipeData) {
+  public boolean send(PipeData pipeData) {
     pipeDataList.add(pipeData);
     return true;
   }

@@ -40,7 +40,6 @@ import java.util.concurrent.TimeUnit;
 
 public class SenderManager {
   private static final Logger logger = LoggerFactory.getLogger(SenderManager.class);
-  private static SenderManager DEBUG_SENDER_MANAGER = null; // test only
 
   protected ITransportClient transportClient;
   private Pipe pipe;
@@ -49,7 +48,7 @@ public class SenderManager {
   protected ExecutorService transportExecutorService;
   private Future transportFuture;
 
-  private SenderManager(Pipe pipe, IoTDBPipeSink pipeSink) {
+  public SenderManager(Pipe pipe, IoTDBPipeSink pipeSink) {
     this.pipe = pipe;
     this.pipeSink = pipeSink;
     this.transportExecutorService =
@@ -77,14 +76,6 @@ public class SenderManager {
     return isClosed;
   }
 
-  public static SenderManager getTransportHandler(Pipe pipe, IoTDBPipeSink pipeSink) {
-    if (DEBUG_SENDER_MANAGER == null) {
-      return new SenderManager(pipe, pipeSink);
-    }
-    DEBUG_SENDER_MANAGER.resetTransportClient(pipe); // test only
-    return DEBUG_SENDER_MANAGER;
-  }
-
   private void takePipeDataAndTransport() {
     try {
       while (!Thread.currentThread().isInterrupted()) {
@@ -97,7 +88,7 @@ public class SenderManager {
           }
           while (!Thread.currentThread().isInterrupted()) {
             PipeData pipeData = pipe.take();
-            if (!transportClient.sendTransport(pipeData)) {
+            if (!transportClient.send(pipeData)) {
               logger.error(String.format("Can not transfer pipedata %s, skip it.", pipeData));
               // can do something.
               SyncService.getInstance()
@@ -125,24 +116,5 @@ public class SenderManager {
   @TestOnly
   public void setTransportClient(ITransportClient transportClient) {
     this.transportClient = transportClient;
-  }
-
-  @TestOnly
-  public static void setDebugSenderManager(SenderManager senderManager) {
-    DEBUG_SENDER_MANAGER = senderManager;
-  }
-
-  @TestOnly
-  protected void resetTransportClient(Pipe pipe) {
-    this.pipe = pipe;
-    this.pipeSink = pipe.getPipeSink();
-    try {
-      close();
-    } catch (InterruptedException e) {
-      logger.error("Fail to close current SenderManager.");
-    }
-    this.transportExecutorService =
-        IoTDBThreadPoolFactory.newSingleThreadExecutor(
-            ThreadName.SYNC_SENDER_PIPE.getName() + "-" + pipe.getName());
   }
 }

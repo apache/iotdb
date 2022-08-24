@@ -37,7 +37,7 @@ public interface ITransportClient {
    * @return true if success; false if failed to send or load.
    * @throws SyncConnectionException cannot create connection to receiver
    */
-  boolean sendTransport(PipeData pipeData) throws SyncConnectionException;
+  boolean send(PipeData pipeData) throws SyncConnectionException;
 
   void close();
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
@@ -167,8 +168,7 @@ public class SyncService implements IService {
     runningPipe = SyncPipeUtil.parseCreatePipePlanAsPipe(plan, runningPipeSink, currentTime);
     if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
       try {
-        senderManager =
-            SenderManager.getTransportHandler(runningPipe, (IoTDBPipeSink) runningPipeSink);
+        senderManager = new SenderManager(runningPipe, (IoTDBPipeSink) runningPipeSink);
       } catch (ClassCastException e) {
         logger.error(
             String.format(
@@ -503,7 +503,7 @@ public class SyncService implements IService {
 
     if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
       this.senderManager =
-          SenderManager.getTransportHandler(runningPipe, (IoTDBPipeSink) runningPipe.getPipeSink());
+          new SenderManager(runningPipe, (IoTDBPipeSink) runningPipe.getPipeSink());
       if (Pipe.PipeStatus.RUNNING.equals(runningPipe.getStatus())) {
         senderManager.start();
       }
@@ -511,5 +511,10 @@ public class SyncService implements IService {
       // == start ExternalPipeProcessor for send data to external pipe plugin
       startExternalPipeManager(runningPipe.getStatus() == Pipe.PipeStatus.RUNNING);
     }
+  }
+
+  @TestOnly
+  public SenderManager getSenderManager() {
+    return senderManager;
   }
 }

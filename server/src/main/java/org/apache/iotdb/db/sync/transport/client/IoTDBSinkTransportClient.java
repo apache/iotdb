@@ -144,7 +144,7 @@ public class IoTDBSinkTransportClient implements ITransportClient {
    * @throws SyncConnectionException cannot create connection to receiver
    */
   @Override
-  public boolean sendTransport(PipeData pipeData) throws SyncConnectionException {
+  public boolean send(PipeData pipeData) throws SyncConnectionException {
     if (pipeData instanceof TsFilePipeData) {
       try {
         for (File file : ((TsFilePipeData) pipeData).getTsFiles(true)) {
@@ -195,7 +195,7 @@ public class IoTDBSinkTransportClient implements ITransportClient {
         ByteBuffer buffToSend = ByteBuffer.wrap(buffer, 0, dataLength);
         TSyncTransportMetaInfo metaInfo = new TSyncTransportMetaInfo(file.getName(), position);
 
-        TSStatus status = serviceClient.transportFile(metaInfo, buffToSend);
+        TSStatus status = serviceClient.sendFile(metaInfo, buffToSend);
 
         if ((status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
           // Success
@@ -241,7 +241,7 @@ public class IoTDBSinkTransportClient implements ITransportClient {
     try {
       byte[] buffer = pipeData.serialize();
       ByteBuffer buffToSend = ByteBuffer.wrap(buffer);
-      TSStatus status = serviceClient.transportPipeData(buffToSend);
+      TSStatus status = serviceClient.sendPipeData(buffToSend);
       if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logger.info("Transport PipeData {} Successfully", pipeData);
       } else if (status.code == TSStatusCode.PIPESERVER_ERROR.getStatusCode()) {

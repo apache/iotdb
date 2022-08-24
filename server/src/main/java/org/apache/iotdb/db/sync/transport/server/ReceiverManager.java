@@ -274,7 +274,6 @@ public class ReceiverManager {
     logger.debug("Invoke transportData method from client ip = {}", identityInfo.address);
 
     String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
-    //    TSyncTransportType type = metaInfo.type;
     String fileName = metaInfo.fileName;
     long startIndex = metaInfo.startIndex;
     File file = new File(fileDir, fileName + SyncConstant.PATCH_SUFFIX);
@@ -369,7 +368,7 @@ public class ReceiverManager {
   /**
    * Get current TSyncIdentityInfo
    *
-   * @return -1
+   * @return startIndex of file: -1 if file doesn't exist
    */
   private long getCurrentFileStartIndex(String absolutePath) {
     Long id = currentConnectionId.get();
