@@ -46,7 +46,7 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
     super(parent, name);
     this.dataTTL = dataTTL;
     this.virtualStorageGroupNum =
-            virtualStorageGroupNum <= 0
+        virtualStorageGroupNum <= 0
             ? IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum()
             : virtualStorageGroupNum;
   }
