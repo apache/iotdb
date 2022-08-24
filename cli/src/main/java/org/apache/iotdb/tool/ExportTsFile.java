@@ -151,9 +151,18 @@ public class ExportTsFile extends AbstractTsFileTool {
   }
 
   private static void legalCheck(String sql) {
-    if (!sql.contains("select *")) {
-      System.out.println(
-          "The sql you entered is invalid, please enter the sql beginning with 'select *'");
+    String sqlLower = sql.toLowerCase();
+    if (sqlLower.contains("count")
+        || sqlLower.contains("sum")
+        || sqlLower.contains("avg")
+        || sqlLower.contains("extreme")
+        || sqlLower.contains("max_value")
+        || sqlLower.contains("min_value")
+        || sqlLower.contains("first_value")
+        || sqlLower.contains("last_value")
+        || sqlLower.contains("max_time")
+        || sqlLower.contains("min_time")) {
+      System.out.println("The sql you entered is invalid, please don't use aggregate query.");
       System.exit(CODE_ERROR);
     }
   }
@@ -250,9 +259,11 @@ public class ExportTsFile extends AbstractTsFileTool {
     final String path = targetDirectory + targetFile + index + ".tsfile";
     try {
       SessionDataSet sessionDataSet = session.executeQueryStatement(sql, 10000);
+      long start = System.currentTimeMillis();
       writeTsFileFile(sessionDataSet, path);
+      long end = System.currentTimeMillis();
       sessionDataSet.closeOperationHandle();
-      System.out.println("Export completely!");
+      System.out.println("Export completely!cost:" + (end - start) + "ms.");
     } catch (StatementExecutionException
         | IoTDBConnectionException
         | IOException
