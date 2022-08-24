@@ -33,6 +33,7 @@ import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
+import org.apache.iotdb.db.exception.metadata.SeriesNumberOverflowException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.NoTemplateOnMNodeException;
@@ -478,10 +479,14 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    if (!memoryStatistics.isAllowToCreateNewSeries() || !seriesNumerLimiter.addTimeSeries(1)) {
+    if (!memoryStatistics.isAllowToCreateNewSeries()) {
       logger.error(
           String.format("Series overflow when creating: [%s]", plan.getPath().getFullPath()));
       throw new SeriesOverflowException();
+    }
+
+    if (!seriesNumerLimiter.addTimeSeries(1)) {
+      throw new SeriesNumberOverflowException();
     }
 
     try {
@@ -623,9 +628,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     int seriesCount = plan.getMeasurements().size();
-    if (!memoryStatistics.isAllowToCreateNewSeries()
-        || !seriesNumerLimiter.addTimeSeries(seriesCount)) {
+    if (!memoryStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException();
+    }
+
+    if (!seriesNumerLimiter.addTimeSeries(seriesCount)) {
+      throw new SeriesNumberOverflowException();
     }
 
     try {

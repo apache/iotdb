@@ -56,6 +56,10 @@ public class JarLoaderUtil {
     // load external properties
     String loaderDir = config.getExternalPropertiesLoaderDir();
 
+    if (!(new File(loaderDir).exists())) {
+      return;
+    }
+
     Path externalPropertiesFile = IoTDBDescriptor.getInstance().getExternalPropsPath();
     URL[] loaderJarURLs;
     List<Properties> externalPropertiesList = new ArrayList<>();
@@ -97,6 +101,11 @@ public class JarLoaderUtil {
     }
 
     String limiterDir = config.getExternalLimiterDir();
+
+    if (!(new File(loaderDir).exists())) {
+      return;
+    }
+
     URL[] limiterJarURLs;
 
     List<ISeriesNumerLimiter> limiterList = new ArrayList<>();

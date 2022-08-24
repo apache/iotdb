@@ -139,7 +139,7 @@ public class IoTDBDescriptor {
    */
   public Path getExternalPropsPath() {
     // Check if a config-directory was specified first.
-    String urlString = System.getProperty(IoTDBConstant.IOTDB_EXTERNAL_CONF, null);
+    String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     // If it wasn't, check if a home directory was provided (This usually contains a config)
     if (urlString == null) {
       urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
