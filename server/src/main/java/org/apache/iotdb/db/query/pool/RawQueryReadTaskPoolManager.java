@@ -23,7 +23,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.AbstractPoolManager;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -52,8 +52,7 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
         IoTDBThreadPoolFactory.newFixedThreadPool(
             threadCnt, ThreadName.SUB_RAW_QUERY_SERVICE.getName());
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateAutoGauge(
               Metric.QUEUE.toString(),
               MetricLevel.IMPORTANT,
@@ -63,8 +62,7 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
               ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
               Tag.STATUS.toString(),
               "running");
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateAutoGauge(
               Metric.QUEUE.toString(),
               MetricLevel.IMPORTANT,

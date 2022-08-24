@@ -66,7 +66,7 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -458,8 +458,7 @@ public class StorageEngine implements IService {
 
   private void secondaryMetric() {
     for (int i = 0; i < arrayListBlockQueue.size(); i++) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateGauge(
               Metric.QUEUE.toString(),
               MetricLevel.IMPORTANT,

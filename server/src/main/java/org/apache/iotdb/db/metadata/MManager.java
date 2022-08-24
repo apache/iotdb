@@ -84,7 +84,7 @@ import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -303,8 +303,7 @@ public class MManager {
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       startStatisticCounts();
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateAutoGauge(
               Metric.MEM.toString(),
               MetricLevel.IMPORTANT,
@@ -316,8 +315,7 @@ public class MManager {
   }
 
   private void startStatisticCounts() {
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
@@ -328,8 +326,7 @@ public class MManager {
             Tag.TYPE.toString(),
             "normal");
 
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
@@ -340,8 +337,7 @@ public class MManager {
             Tag.TYPE.toString(),
             "template");
 
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
@@ -359,8 +355,7 @@ public class MManager {
             Tag.TYPE.toString(),
             "total");
 
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
