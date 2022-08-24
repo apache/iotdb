@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,7 +47,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBUDTFNonAlignQueryIT {
 
-  protected static final int ITERATION_TIMES = 10;
+  protected static final int ITERATION_TIMES = 100;
 
   protected static final int ADDEND = 500_000_000;
 
@@ -119,7 +118,6 @@ public class IoTDBUDTFNonAlignQueryIT {
     }
   }
 
-  @Ignore
   @Test
   public void queryWithoutValueFilter1() {
     String sqlStr =
@@ -161,7 +159,6 @@ public class IoTDBUDTFNonAlignQueryIT {
     }
   }
 
-  @Ignore
   @Test
   public void queryWithoutValueFilter2() {
     String sqlStr = "select udf(d1.s1, d1.s2), udf(d2.s1, d2.s2) from root.vehicle disable align";
@@ -198,7 +195,6 @@ public class IoTDBUDTFNonAlignQueryIT {
     }
   }
 
-  @Ignore
   @Test
   public void queryWithValueFilter1() {
     String sqlStr =
@@ -241,7 +237,6 @@ public class IoTDBUDTFNonAlignQueryIT {
     }
   }
 
-  @Ignore
   @Test
   public void queryWithValueFilter2() {
     String sqlStr =
@@ -273,7 +268,6 @@ public class IoTDBUDTFNonAlignQueryIT {
     }
   }
 
-  @Ignore
   @Test
   public void queryWithValueFilter3() {
     String sqlStr =
@@ -316,7 +310,6 @@ public class IoTDBUDTFNonAlignQueryIT {
     }
   }
 
-  @Ignore
   @Test
   public void queryWithValueFilter4() {
     String sqlStr =

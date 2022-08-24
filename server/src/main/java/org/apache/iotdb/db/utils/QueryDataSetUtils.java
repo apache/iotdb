@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -32,12 +33,14 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -176,6 +179,35 @@ public class QueryDataSetUtils {
     tsQueryDataSet.setBitmapList(bitmapList);
     tsQueryDataSet.setValueList(valueList);
     return tsQueryDataSet;
+  }
+
+  public static TSQueryNonAlignDataSet convertNonAlignDataSet(TSQueryDataSet tsQueryDataSet) {
+    TSQueryNonAlignDataSet tsQueryNonAlignDataSet = new TSQueryNonAlignDataSet();
+    List<ByteBuffer> bitmapList = tsQueryDataSet.bitmapList;
+    ByteBuffer time = tsQueryDataSet.time;
+    List<ByteBuffer> timeList = new ArrayList<>();
+
+    int rowNum = time.capacity() / Long.BYTES;
+    for (int i = 0; i < bitmapList.size(); i++) {
+      byte bitmap = ReadWriteIOUtils.readByte(bitmapList.get(i));
+      List<Long> notNulTimeList = new ArrayList<>();
+      for (int j = 0; j < rowNum; j++) {
+        Long t = ReadWriteIOUtils.readLong(time);
+        int shift = j % 8;
+        if (((0x80 >>> shift) & (bitmap & 0xff)) != 0) {
+          // is not NULL
+          notNulTimeList.add(t);
+        }
+      }
+      time.flip();
+      ByteBuffer notNulTimeBuffer = ByteBuffer.allocate(Long.BYTES * notNulTimeList.size());
+      notNulTimeList.forEach(notNulTime -> notNulTimeBuffer.putLong(notNulTime));
+      notNulTimeBuffer.flip();
+      timeList.add(notNulTimeBuffer);
+    }
+    tsQueryNonAlignDataSet.setTimeList(timeList);
+    tsQueryNonAlignDataSet.setValueList(tsQueryDataSet.valueList);
+    return tsQueryNonAlignDataSet;
   }
 
   public static TSQueryDataSet convertTsBlockByFetchSize(

@@ -42,6 +42,9 @@ public class DatasetHeader {
   // indicate whether the result dataset contain timestamp column
   private final boolean isIgnoreTimestamp;
 
+  // indicate whether the result dataset disable align
+  private boolean isDisableAlign = false;
+
   // map from output column to output tsBlock index
   private Map<String, Integer> columnToTsBlockIndexMap;
 
@@ -112,5 +115,13 @@ public class DatasetHeader {
 
   public int getOutputValueColumnCount() {
     return (int) columnHeaders.stream().map(ColumnHeader::getColumnName).distinct().count();
+  }
+
+  public boolean isDisableAlign() {
+    return isDisableAlign;
+  }
+
+  public void setDisableAlign() {
+    isDisableAlign = true;
   }
 }

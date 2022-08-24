@@ -591,8 +591,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (queryExecution != null && queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          resp.setQueryDataSet(
-              QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
+          TSQueryDataSet tsQueryDataSet =
+              QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize);
+          if (queryExecution.getDatasetHeader().isDisableAlign()) {
+            resp.setNonAlignQueryDataSet(QueryDataSetUtils.convertNonAlignDataSet(tsQueryDataSet));
+          } else {
+            resp.setQueryDataSet(tsQueryDataSet);
+          }
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
