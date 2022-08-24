@@ -24,11 +24,11 @@ import java.io.File;
 
 /** Data class for each Migration Task */
 public class MigrationTask {
-  private volatile long taskId;
-  private volatile PartialPath storageGroup;
-  private volatile File targetDir;
-  private volatile long startTime;
-  private volatile long ttl;
+  private long taskId;
+  private PartialPath storageGroup;
+  private File targetDir;
+  private long startTime;
+  private long ttl;
   private volatile MigrationTaskStatus status = MigrationTaskStatus.READY;
 
   public MigrationTask(
