@@ -5,6 +5,7 @@ import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PointDataElement;
 import org.apache.iotdb.db.engine.compaction.writer.NewFastCrossCompactionWriter;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -25,6 +26,12 @@ import java.util.PriorityQueue;
 import java.util.concurrent.Callable;
 
 public class NewFastCompactionPerformerSubTask implements Callable<Void> {
+
+  @FunctionalInterface
+  public interface RemovePage {
+    void call(PageElement pageElement) throws WriteProcessException;
+  }
+
   private final PriorityQueue<ChunkMetadataElement> chunkMetadataQueue;
 
   private final PriorityQueue<PageElement> pageQueue;
@@ -398,5 +405,13 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       }
     }
     return false;
+  }
+
+  private void removePage(PageElement pageElement) {
+    if (pageQueue.peek().equals(pageElement)) {
+      // first page end
+
+    }
+    pageQueue.remove(pageElement);
   }
 }

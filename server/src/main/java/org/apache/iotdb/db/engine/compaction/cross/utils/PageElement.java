@@ -1,12 +1,15 @@
 package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.nio.ByteBuffer;
 
 public class PageElement {
   public PageHeader pageHeader;
+
+  public BatchData batchData;
 
   // compressed page data
   public ByteBuffer pageData;

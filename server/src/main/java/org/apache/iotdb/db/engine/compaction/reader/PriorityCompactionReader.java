@@ -1,76 +1,90 @@
 package org.apache.iotdb.db.engine.compaction.reader;
 
-import org.apache.iotdb.db.engine.compaction.cross.utils.PointDataElement;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.NewFastCompactionPerformerSubTask;
+import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 
 public class PriorityCompactionReader {
-    private final BatchData[] pageDatas;
+  private final List<PageElement> pageElements = new ArrayList<>();
 
-    private final int[] priority;
+  private final List<BatchData> pageDatas = new ArrayList<>();
 
-    private long lastTime;
+  private final List<Integer> priority = new ArrayList<>();
 
-    private long[] curTime;
+  private long lastTime;
 
+  private final List<Long> curTime = new ArrayList<>();
 
-    public PriorityCompactionReader(List<PointDataElement> pointDataElements){
-        pointDataElements.sort(Comparator.comparingLong(x -> x.batchData.currentTime()));
-        priority=new int[pointDataElements.size()];
-        pageDatas=new BatchData[pointDataElements.size()];
-        curTime=new long[pointDataElements.size()];
-        for(int i=0;i<pointDataElements.size();i++){
-            PointDataElement pointDataElement=pointDataElements.get(i);
-            pageDatas[i]=pointDataElement.batchData;
-            priority[i]=pointDataElement.priority;
-        }
-        // initial current timestamp
-        for(int i=0;i<pageDatas.length;i++){
-           curTime[i]=pageDatas[i].currentTime();
-        }
+  private NewFastCompactionPerformerSubTask.RemovePage removePage;
+
+  public PriorityCompactionReader(
+      List<PageElement> pageElements, NewFastCompactionPerformerSubTask.RemovePage removePage) {
+    addNewPages(pageElements);
+    this.removePage = removePage;
+  }
+
+  public PriorityCompactionReader(NewFastCompactionPerformerSubTask.RemovePage removePage) {
+    this.removePage = removePage;
     }
 
-    public TimeValuePair nextPoint(){
-        TimeValuePair timeValuePair;
-        // get the highest priority point
-        int highestPriorityPointIndex=0;
-        for(int i=highestPriorityPointIndex+1;i<curTime.length;i++){
-            if(curTime[i]<curTime[highestPriorityPointIndex]){
-                // small time has higher priority
-                highestPriorityPointIndex=i;
-            }else if(curTime[i]==curTime[highestPriorityPointIndex]&&priority[i]>priority[highestPriorityPointIndex]){
-                // if time equals, newer point has higher priority
-                highestPriorityPointIndex=i;
-            }
-        }
-        timeValuePair= TimeValuePairUtils.getCurrentTimeValuePair(pageDatas[highestPriorityPointIndex]);
-        lastTime=curTime[highestPriorityPointIndex];
-
-        // remove data points with the same timestamp as the last point
-        for(int i=0;i<pageDatas.length;i++){
-            if(curTime[i]>lastTime){
-                continue;
-            }
-            BatchData batchData=pageDatas[i];
-            if(i==highestPriorityPointIndex){
-                batchData.next();
-                curTime[i]=batchData.currentTime();
-                continue;
-            }
-            while (batchData.currentTime()<=lastTime){
-                batchData.next();
-            }
-            curTime[i]=batchData.currentTime();
-        }
-        return timeValuePair;
+  public TimeValuePair nextPoint() throws WriteProcessException {
+    TimeValuePair timeValuePair;
+    // get the highest priority point
+    int highestPriorityPointIndex = 0;
+    for (int i = highestPriorityPointIndex + 1; i < curTime.size(); i++) {
+      if (curTime.get(i) < curTime.get(highestPriorityPointIndex)) {
+        // small time has higher priority
+        highestPriorityPointIndex = i;
+      } else if (curTime.get(i) == curTime.get(highestPriorityPointIndex)
+          && priority.get(i) > priority.get(highestPriorityPointIndex)) {
+        // if time equals, newer point has higher priority
+        highestPriorityPointIndex = i;
+      }
     }
+    timeValuePair =
+        TimeValuePairUtils.getCurrentTimeValuePair(pageDatas.get(highestPriorityPointIndex));
+    lastTime = curTime.get(highestPriorityPointIndex);
 
+    // remove data points with the same timestamp as the last point
+    for (int i = 0; i < pageDatas.size(); i++) {
+      if (curTime.get(i) > lastTime) {
+        continue;
+      }
+      BatchData batchData = pageDatas.get(i);
+      while (batchData.hasCurrent() && batchData.currentTime() <= lastTime) {
+        batchData.next();
+      }
+      if (batchData.hasCurrent()) {
+        curTime.add(batchData.currentTime());
+      } else {
+        // end page
+        removePage.call(pageElements.get(i));
+        curTime.remove(i);
+        pageElements.remove(i);
+        priority.remove(i);
+        pageDatas.remove(i);
+      }
+    }
+    return timeValuePair;
+  }
 
-
-    public void addNewPage()
-
+  public void addNewPages(List<PageElement> pageElements) {
+    int index = pageElements.size();
+    for (PageElement pageElement : pageElements) {
+      pageDatas.add(pageElement.batchData);
+      priority.add(pageElement.priority);
+      this.pageElements.add(pageElement);
+    }
+    for (int i = index; i < pageDatas.size(); i++) {
+      if (pageDatas.get(i).hasCurrent()) {
+        curTime.add(pageDatas.get(i).currentTime());
+      }
+    }
+  }
 }
