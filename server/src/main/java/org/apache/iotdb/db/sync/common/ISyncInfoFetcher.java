@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.common;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
@@ -30,8 +31,10 @@ import java.util.List;
 public interface ISyncInfoFetcher {
 
   // region Interfaces of PipeSink
-  // TODO: use CreatePipeSinkNode as parameter
+  // TODO: delete this in new-standalone version
   TSStatus addPipeSink(CreatePipeSinkPlan plan);
+
+  TSStatus addPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
 
   TSStatus dropPipeSink(String name);
 

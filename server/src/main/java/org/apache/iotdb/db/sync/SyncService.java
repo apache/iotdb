@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
@@ -126,8 +127,17 @@ public class SyncService implements IService {
     return syncInfoFetcher.getPipeSink(name);
   }
 
+  // TODO: delete this in new-standalone version
   public void addPipeSink(CreatePipeSinkPlan plan) throws PipeSinkException {
     TSStatus status = syncInfoFetcher.addPipeSink(plan);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeSinkException(status.message);
+    }
+  }
+
+  public void addPipeSink(CreatePipeSinkStatement createPipeSinkStatement)
+      throws PipeSinkException {
+    TSStatus status = syncInfoFetcher.addPipeSink(createPipeSinkStatement);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeSinkException(status.message);
     }

@@ -111,6 +111,7 @@ public class SyncLogReader {
         parseStrings = readLine.split(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
         Operator.OperatorType type = Operator.OperatorType.valueOf(parseStrings[0]);
 
+        // TODO: CreatePipeSinkStatement
         switch (type) {
           case CREATE_PIPESINK:
             readLine = br.readLine();
