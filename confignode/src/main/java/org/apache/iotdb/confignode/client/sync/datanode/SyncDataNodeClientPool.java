@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.mpp.rpc.thrift.TAddConsensusGroup;
+import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
@@ -85,14 +85,14 @@ public class SyncDataNodeClientPool {
             return client.stopDataNode();
           case UPDATE_TEMPLATE:
             return client.updateTemplate((TUpdateTemplateReq) req);
-          case ADD_REGION_CONSENSUS_GROUP:
-            return client.addToRegionConsensusGroup((TAddConsensusGroup) req);
+          case CREATE_PEER:
+            return client.createPeerToConsensusGroup((TCreatePeerReq) req);
           case ADD_REGION_PEER:
             return client.addRegionPeer((TMigrateRegionReq) req);
           case REMOVE_REGION_PEER:
             return client.removeRegionPeer((TMigrateRegionReq) req);
-          case REMOVE_REGION_CONSENSUS_GROUP:
-            return client.removeToRegionConsensusGroup((TMigrateRegionReq) req);
+          case DELETE_PEER:
+            return client.deletePeerToConsensusGroup((TMigrateRegionReq) req);
           default:
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);

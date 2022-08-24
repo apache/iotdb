@@ -36,7 +36,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
-import org.apache.iotdb.mpp.rpc.thrift.TAddConsensusGroup;
+import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -216,14 +216,17 @@ public class DataNodeRemoveHandler {
   }
 
   /**
-   * Send to DataNode, remove region consensus group from originalDataNode node
+   * Send to DataNode, delete peer from originalDataNode node.
    *
-   * @param originalDataNode old location data node
-   * @param destDataNode dest data node
+   * <p>If the originalDataNode is down, we should delete local data and do other cleanup works
+   * manually.
+   *
+   * @param originalDataNode data node where the peer to be deleted locates
+   * @param destDataNode dest data node to be migrated
    * @param regionId region id
    * @return migrate status
    */
-  public TSStatus removeRegionConsensusGroup(
+  public TSStatus deletePeer(
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode,
       TConsensusGroupId regionId) {
@@ -236,9 +239,9 @@ public class DataNodeRemoveHandler {
             .sendSyncRequestToDataNodeWithRetry(
                 originalDataNode.getInternalEndPoint(),
                 migrateRegionReq,
-                DataNodeRequestType.REMOVE_REGION_CONSENSUS_GROUP);
+                DataNodeRequestType.DELETE_PEER);
     LOGGER.info(
-        "Send region {} remove consensus group action to {}, wait it finished",
+        "Send region {} delete peer action to {}, wait it finished",
         regionId,
         originalDataNode.getInternalEndPoint());
     return status;
@@ -301,43 +304,43 @@ public class DataNodeRemoveHandler {
   }
 
   /**
-   * add region Consensus group in new node
+   * Create a Peer and become a member of the given consensus group.
    *
-   * @param regionId region id
-   * @param destDataNode dest data node
+   * <p>CreatePeer should be called on a node that does not contain any peer of the consensus group,
+   * to avoid one node having more than one replica.
+   *
+   * @param regionId region id, means the given consensus group
+   * @param destDataNode dest data node where the peer creates
    * @return status
    */
-  public TSStatus addNewNodeToRegionConsensusGroup(
-      TConsensusGroupId regionId, TDataNodeLocation destDataNode) {
+  public TSStatus createPeer(TConsensusGroupId regionId, TDataNodeLocation destDataNode) {
     TSStatus status;
     List<TDataNodeLocation> regionReplicaNodes = findRegionReplicaNodes(regionId);
     if (regionReplicaNodes.isEmpty()) {
-      LOGGER.warn("Not find region replica nodes, region: {}", regionId);
+      LOGGER.warn("Not find region replica nodes in createPeer, regionId: {}", regionId);
       status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage("not find region replica nodes, region: " + regionId);
+      status.setMessage("Not find region replica nodes in createPeer, regionId: " + regionId);
       return status;
     }
 
     List<TDataNodeLocation> currentPeerNodes = new ArrayList<>(regionReplicaNodes);
     currentPeerNodes.add(destDataNode);
     String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
-    TAddConsensusGroup req = new TAddConsensusGroup(regionId, currentPeerNodes, storageGroup);
+    TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, storageGroup);
     // TODO replace with real ttl
     req.setTtl(Long.MAX_VALUE);
 
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
-                destDataNode.getInternalEndPoint(),
-                req,
-                DataNodeRequestType.ADD_REGION_CONSENSUS_GROUP);
+                destDataNode.getInternalEndPoint(), req, DataNodeRequestType.CREATE_PEER);
 
-    LOGGER.info("send add region {} consensus group to {}", regionId, destDataNode);
+    LOGGER.info("Send create peer for regionId {} on data node {}", regionId, destDataNode);
     if (isFailed(status)) {
       LOGGER.error(
-          "add new node {} to region {} consensus group failed,  result: {}",
-          destDataNode,
+          "Send create peer for regionId {} on data node {},  result: {}",
           regionId,
+          destDataNode,
           status);
     }
     return status;
