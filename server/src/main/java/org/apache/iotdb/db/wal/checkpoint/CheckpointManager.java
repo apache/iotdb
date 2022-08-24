@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.wal.checkpoint;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
@@ -174,7 +174,7 @@ public class CheckpointManager implements AutoCloseable {
             "Fail to fsync wal node-{}'s checkpoint writer, change system mode to error.",
             identifier,
             e);
-        config.setSystemStatus(SystemStatus.ERROR);
+        config.setSystemStatus(NodeStatus.Error);
       }
 
       try {
@@ -193,7 +193,7 @@ public class CheckpointManager implements AutoCloseable {
             "Fail to roll wal node-{}'s checkpoint writer, change system mode to error.",
             identifier,
             e);
-        config.setSystemStatus(SystemStatus.ERROR);
+        config.setSystemStatus(NodeStatus.Error);
       }
     } finally {
       infoLock.unlock();

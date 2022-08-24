@@ -27,7 +27,16 @@ public enum NodeStatus {
   Unknown("Unknown"),
 
   /** Node is in removing */
-  Removing("Removing");
+  Removing("Removing"),
+
+  /** Only query statements are permitted */
+  ReadOnly("Read-Only"),
+
+  /**
+   * Unrecoverable errors occur, system will be read-only or exit according to the param
+   * allow_read_only_when_errors_occur
+   */
+  Error("Error");
 
   private final String status;
 
