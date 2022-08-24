@@ -211,12 +211,23 @@ public abstract class Traverser {
 
   private void processNameLayers(IMNode node, int idx, int level, String targetName)
       throws MetadataException {
-    IMNode next = node.getChild(targetName);
-    if (next != null) {
-      traverseContext.push(node);
-      traverse(next, idx + 1, level + 1, -1, -1);
-      traverseContext.pop();
+    String targetNameRegex = nodes[idx + 1].replace("*", ".*");
+    traverseContext.push(node);
+    for (IMNode child : node.getChildren().values()) {
+      if (child.isMeasurement()) {
+        String alias = child.getAsMeasurementMNode().getAlias();
+        if (!Pattern.matches(targetNameRegex, child.getName())
+                && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
+          continue;
+        }
+      } else {
+        if (!Pattern.matches(targetNameRegex, child.getName())) {
+          continue;
+        }
+      }
+      traverse(child, idx + 1, level + 1, -1, -1);
     }
+    traverseContext.pop();
 
     if (!shouldTraverseTemplate) {
       return;
