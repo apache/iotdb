@@ -66,26 +66,6 @@ public class MigrationTask {
     return status;
   }
 
-  public void setTaskId(long taskId) {
-    this.taskId = taskId;
-  }
-
-  public void setStorageGroup(PartialPath storageGroup) {
-    this.storageGroup = storageGroup;
-  }
-
-  public void setTargetDir(File targetDir) {
-    this.targetDir = targetDir;
-  }
-
-  public void setTTL(long ttl) {
-    this.ttl = ttl;
-  }
-
-  public void setStartTime(long startTime) {
-    this.startTime = startTime;
-  }
-
   public void setStatus(MigrationTaskStatus status) {
     this.status = status;
   }
