@@ -81,6 +81,11 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     return alignedList;
   }
 
+  @Override
+  public boolean isEmpty() {
+    return insertTabletStatementList.isEmpty();
+  }
+
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertMultiTablets(this, context);
   }

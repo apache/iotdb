@@ -722,6 +722,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -773,6 +777,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -824,6 +832,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -873,6 +885,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       PathUtils.isLegalSingleMeasurements(req.getMeasurements());
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -915,6 +931,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement =
           (InsertMultiTabletsStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -957,6 +977,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement =
           (InsertTabletStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -1006,6 +1030,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
