@@ -87,6 +87,9 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
         LOGGER.error("Meet error when doing remove", e);
         return -1;
       }
+    } else {
+      LOGGER.error("Unsupported startup mode: {}", mode);
+      return -1;
     }
 
     return 0;
@@ -104,7 +107,7 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
       TConfigNodeLocation removeConfigNodeLocation =
           ConfigNodeRemoveCheck.getInstance().removeCheck(endPoint);
       if (removeConfigNodeLocation == null) {
-        LOGGER.error("The ConfigNode not in the Cluster.");
+        LOGGER.error("The ConfigNode to be removed is not in the Cluster.");
         return;
       }
 

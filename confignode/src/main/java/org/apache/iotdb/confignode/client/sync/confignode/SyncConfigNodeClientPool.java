@@ -101,11 +101,8 @@ public class SyncConfigNodeClientPool {
       }
     }
     LOGGER.error("{} failed on ConfigNode {}", requestType, endPoint, lastException);
-    switch (requestType) {
-      default:
-        return RpcUtils.getStatus(
-            TSStatusCode.ALL_RETRY_FAILED, "All retry failed due to" + lastException.getMessage());
-    }
+    return RpcUtils.getStatus(
+        TSStatusCode.ALL_RETRY_FAILED, "All retry failed due to " + lastException.getMessage());
   }
 
   /**
