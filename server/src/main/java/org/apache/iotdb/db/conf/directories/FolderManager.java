@@ -62,7 +62,7 @@ public class FolderManager {
       this.selectStrategy.setFolders(folders);
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All disks of wal folders are full, change system mode to read-only.", e);
-      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(NodeStatus.ReadOnly);
+      IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw e;
     }
   }
@@ -72,7 +72,7 @@ public class FolderManager {
       return folders.get(selectStrategy.nextFolderIndex());
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All disks of wal folders are full, change system mode to read-only.", e);
-      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(NodeStatus.ReadOnly);
+      IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw e;
     }
   }

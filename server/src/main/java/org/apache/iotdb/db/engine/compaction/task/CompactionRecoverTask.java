@@ -302,7 +302,7 @@ public class CompactionRecoverTask {
             "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files is lost, do nothing. Set allowCompaction to false",
             fullStorageGroupName,
             targetFileIdentifier.getFilePath());
-        IoTDBDescriptor.getInstance().getConfig().setSystemStatus(NodeStatus.ReadOnly);
+        IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
         return false;
       }
     }

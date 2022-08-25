@@ -1479,7 +1479,7 @@ public class DataRegion {
         logger.error(
             "disk space is insufficient when creating TsFile processor, change system mode to read-only",
             e);
-        IoTDBDescriptor.getInstance().getConfig().setSystemStatus(NodeStatus.ReadOnly);
+        IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
         break;
       } catch (IOException e) {
         if (retryCnt < 3) {
@@ -1488,7 +1488,7 @@ public class DataRegion {
         } else {
           logger.error(
               "meet IOException when creating TsFileProcessor, change system mode to error", e);
-          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(NodeStatus.Error);
+          IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
           break;
         }
       }

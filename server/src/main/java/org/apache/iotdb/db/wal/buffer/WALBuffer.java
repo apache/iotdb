@@ -420,7 +420,7 @@ public class WALBuffer extends AbstractWALBuffer {
       } catch (Throwable e) {
         logger.error(
             "Fail to sync wal node-{}'s buffer, change system mode to error.", identifier, e);
-        config.setSystemStatus(NodeStatus.Error);
+        config.setNodeStatus(NodeStatus.Error);
       } finally {
         switchSyncingBufferToIdle();
       }
@@ -441,7 +441,7 @@ public class WALBuffer extends AbstractWALBuffer {
           if (info.rollWALFileWriterListener != null) {
             info.rollWALFileWriterListener.fail(e);
           }
-          config.setSystemStatus(NodeStatus.Error);
+          config.setNodeStatus(NodeStatus.Error);
         }
       } else if (forceFlag) { // force os cache to the storage device, avoid force twice by judging
         // after rolling file
@@ -456,7 +456,7 @@ public class WALBuffer extends AbstractWALBuffer {
           for (WALFlushListener fsyncListener : info.fsyncListeners) {
             fsyncListener.fail(e);
           }
-          config.setSystemStatus(NodeStatus.Error);
+          config.setNodeStatus(NodeStatus.Error);
         }
       }
 
