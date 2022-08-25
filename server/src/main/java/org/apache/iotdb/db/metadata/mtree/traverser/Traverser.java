@@ -136,6 +136,8 @@ public abstract class Traverser {
     }
     if (matchLevelPair.left > 0 && matchLevelPair.right > 0) {
       processMinMaxLayers(node, idx, level, matchLevelPair);
+    } else if(targetName.contains("*")){
+      processNameWithWildcardLayers(node, idx, level, targetName);
     } else {
       processNameLayers(node, idx, level, targetName);
     }
@@ -209,15 +211,15 @@ public abstract class Traverser {
     traverseContext.pop();
   }
 
-  private void processNameLayers(IMNode node, int idx, int level, String targetName)
-      throws MetadataException {
+  private void processNameWithWildcardLayers(IMNode node, int idx, int level, String targetName)
+          throws MetadataException {
     String targetNameRegex = nodes[idx + 1].replace("*", ".*");
     traverseContext.push(node);
     for (IMNode child : node.getChildren().values()) {
       if (child.isMeasurement()) {
         String alias = child.getAsMeasurementMNode().getAlias();
         if (!Pattern.matches(targetNameRegex, child.getName())
-            && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
+                && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
           continue;
         }
       } else {
@@ -238,14 +240,35 @@ public abstract class Traverser {
     }
 
     Template upperTemplate = node.getUpperTemplate();
-    traverseContext.push(node);
     IMNode directNode = upperTemplate.getDirectNode(targetName);
     if (directNode != null) {
       traverseContext.push(node);
       traverse(directNode, idx + 1, level + 1, -1, -1);
       traverseContext.pop();
     }
-    traverseContext.pop();
+  }
+
+  private void processNameLayers(IMNode node, int idx, int level, String targetName)
+      throws MetadataException {
+    IMNode next = node.getChild(targetName);
+    if (next != null) {
+      traverseContext.push(node);
+      traverse(next, idx + 1, level + 1, -1, -1);
+      traverseContext.pop();
+    }
+    if (!shouldTraverseTemplate) {
+      return;
+    }
+    if (!node.isUseTemplate()) {
+      return;
+    }
+    Template upperTemplate = node.getUpperTemplate();
+    IMNode directNode = upperTemplate.getDirectNode(targetName);
+    if (directNode != null) {
+      traverseContext.push(node);
+      traverse(directNode, idx + 1, level + 1, -1, -1);
+      traverseContext.pop();
+    }
   }
 
   private void processZeroLayer(
