@@ -112,7 +112,7 @@ public class EnvironmentUtils {
       Assert.fail();
     }
     StorageEngine.getInstance().reset();
-    IoTDBDescriptor.getInstance().getConfig().setSystemStatus(NodeStatus.Running);
+    IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
 
     // clean wal
     WALManager.getInstance().stop();
