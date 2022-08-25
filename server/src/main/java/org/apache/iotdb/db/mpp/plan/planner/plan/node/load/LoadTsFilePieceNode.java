@@ -145,6 +145,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   public static PlanNode deserialize(ByteBuffer buffer) {
     InputStream stream = new ByteArrayInputStream(buffer.array());
     try {
+      ReadWriteIOUtils.readShort(stream); // read PlanNodeType
       File tsFile = new File(ReadWriteIOUtils.readString(stream));
       LoadTsFilePieceNode pieceNode = new LoadTsFilePieceNode(new PlanNodeId(""), tsFile);
       while (stream.available() > 0) {

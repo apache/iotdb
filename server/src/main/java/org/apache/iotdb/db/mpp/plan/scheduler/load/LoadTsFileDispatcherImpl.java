@@ -31,6 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.mpp.plan.scheduler.IFragInstanceDispatcher;
@@ -138,7 +139,9 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(
             instance.getRegionReplicaSet().getRegionId());
-    LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) instance.getFragment().getRoot();
+    LoadTsFilePieceNode pieceNode =
+        (LoadTsFilePieceNode)
+            PlanNodeType.deserialize(instance.getFragment().getRoot().serializeToByteBuffer());
     if (pieceNode == null) {
       throw new FragmentInstanceDispatchException(
           new TSStatus(TSStatusCode.NODE_DESERIALIZE_ERROR.getStatusCode()));

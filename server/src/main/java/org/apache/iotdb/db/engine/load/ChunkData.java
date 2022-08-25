@@ -22,8 +22,9 @@ package org.apache.iotdb.db.engine.load;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.DataOutputStream;
 import java.io.File;
@@ -39,6 +40,10 @@ public interface ChunkData {
 
   void addDataSize(long pageSize);
 
+  void setNotDecode(IChunkMetadata chunkMetadata);
+
+  boolean needDecodeChunk();
+
   void setHeadPageNeedDecode(boolean headPageNeedDecode);
 
   void setTailPageNeedDecode(boolean tailPageNeedDecode);
@@ -47,7 +52,7 @@ public interface ChunkData {
 
   boolean isAligned();
 
-  IChunkWriter getChunkWriter();
+  void writeToFileWriter(TsFileIOWriter writer) throws IOException;
 
   void serialize(DataOutputStream stream, File tsFile) throws IOException;
 

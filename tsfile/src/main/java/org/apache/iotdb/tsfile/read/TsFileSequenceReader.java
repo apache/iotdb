@@ -1071,7 +1071,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param position the offset of the chunk data
    * @return the pages of this chunk
    */
-  private ByteBuffer readChunk(long position, int dataSize) throws IOException {
+  public ByteBuffer readChunk(long position, int dataSize) throws IOException {
     try {
       return readData(position, dataSize);
     } catch (Throwable t) {

@@ -39,6 +39,8 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -145,14 +147,17 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     List<ChunkData> chunkDataList = new ArrayList<>();
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      if (checkMagic(reader)) {
+      if (!checkMagic(reader)) {
         throw new TsFileRuntimeException(
             String.format("Magic String check error when parsing TsFile %s.", tsFile.getPath()));
       }
 
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
       String curDevice = null;
+      boolean isTimeChunkNeedDecode = true;
       Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData = null;
+      Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
+      getChunkMetadata(reader, offset2ChunkMetadata);
       byte marker;
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -160,9 +165,36 @@ public class LoadSingleTsFileNode extends WritePlanNode {
           case MetaMarker.TIME_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
+            long chunkOffset = reader.position();
             ChunkHeader header = reader.readChunkHeader(marker);
             if (header.getDataSize() == 0) {
+              throw new TsFileRuntimeException(
+                  String.format("Chunk data error when parsing TsFile %s.", tsFile.getPath()));
+            }
+
+            boolean isAligned =
+                ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
+                    == TsFileConstant.TIME_COLUMN_MASK);
+            IChunkMetadata chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
+            TTimePartitionSlot timePartitionSlot =
+                StorageEngineV2.getTimePartitionSlot(chunkMetadata.getStartTime());
+            ChunkData chunkData =
+                ChunkData.createChunkData(isAligned, reader.position(), curDevice, header);
+            chunkData.setTimePartitionSlot(timePartitionSlot);
+            if (!needDecodeChunk(chunkMetadata)) {
+              if (isAligned) {
+                isTimeChunkNeedDecode = false;
+                pageIndex2ChunkData = new HashMap<>();
+                pageIndex2ChunkData
+                    .computeIfAbsent(1, o -> new ArrayList<>())
+                    .add((AlignedChunkData) chunkData);
+              }
+              chunkData.setNotDecode(chunkMetadata);
               break;
+            }
+            if (isAligned) {
+              isTimeChunkNeedDecode = true;
+              pageIndex2ChunkData = new HashMap<>();
             }
 
             Decoder defaultTimeDecoder =
@@ -173,17 +205,6 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                 Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
             int dataSize = header.getDataSize();
             int pageIndex = 0;
-
-            boolean isAligned =
-                ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
-                    == TsFileConstant.TIME_COLUMN_MASK);
-            TTimePartitionSlot timePartitionSlot = null;
-            ChunkData chunkData =
-                ChunkData.createChunkData(isAligned, reader.position(), curDevice, header);
-            if (isAligned) {
-              pageIndex2ChunkData = new HashMap<>();
-            }
-
             while (dataSize > 0) {
               long pageOffset = reader.position();
               PageHeader pageHeader =
@@ -191,13 +212,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                       header.getDataType(),
                       (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
               long pageDataSize = pageHeader.getSerializedPageSize();
-              if (timePartitionSlot == null) { // init time slot
-                timePartitionSlot = StorageEngineV2.getTimePartitionSlot(pageHeader.getStartTime());
-                chunkData.setTimePartitionSlot(timePartitionSlot);
-              }
-              if (!needDecodePage(pageHeader)) { // an entire page
+              if (!needDecodePage(pageHeader, chunkMetadata)) { // an entire page
+                long startTime =
+                    pageHeader.getStatistics() == null
+                        ? chunkMetadata.getStartTime()
+                        : pageHeader.getStartTime();
                 TTimePartitionSlot pageTimePartitionSlot =
-                    StorageEngineV2.getTimePartitionSlot(pageHeader.getStartTime());
+                    StorageEngineV2.getTimePartitionSlot(startTime);
                 if (!timePartitionSlot.equals(pageTimePartitionSlot)) {
                   chunkDataList.add(chunkData);
                   timePartitionSlot = pageTimePartitionSlot;
@@ -210,7 +231,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                       .add((AlignedChunkData) chunkData);
                 }
                 chunkData.addDataSize(pageDataSize);
-                reader.position(reader.position() + pageDataSize);
+                reader.position(pageOffset + pageDataSize);
               } else { // split page
                 ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
                 long[] timeBatch =
@@ -257,22 +278,21 @@ public class LoadSingleTsFileNode extends WritePlanNode {
             break;
           case MetaMarker.VALUE_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
+            chunkOffset = reader.position();
+            chunkMetadata = offset2ChunkMetadata.get(chunkOffset);
             header = reader.readChunkHeader(marker);
             if (header.getDataSize() == 0) {
-              Set<ChunkData> allChunkData = new HashSet<>();
-              for (Map.Entry<Integer, List<AlignedChunkData>> entry :
-                  pageIndex2ChunkData.entrySet()) {
-                for (AlignedChunkData alignedChunkData : entry.getValue()) {
-                  if (!allChunkData.contains(alignedChunkData)) {
-                    alignedChunkData.addValueChunk(-2, header);
-                    allChunkData.add(alignedChunkData);
-                  }
-                }
-              }
+              handleEmptyValueChunk(chunkOffset, header, chunkMetadata, pageIndex2ChunkData);
               break;
             }
 
             Set<ChunkData> allChunkData = new HashSet<>();
+            chunkMetadata = offset2ChunkMetadata.get(chunkOffset);
+            if (!isTimeChunkNeedDecode) {
+              pageIndex2ChunkData.get(1).get(0).addValueChunk(chunkOffset, header, chunkMetadata);
+              break;
+            }
+
             dataSize = header.getDataSize();
             pageIndex = 0;
 
@@ -285,12 +305,12 @@ public class LoadSingleTsFileNode extends WritePlanNode {
               long pageDataSize = pageHeader.getSerializedPageSize();
               for (AlignedChunkData alignedChunkData : pageIndex2ChunkData.get(pageIndex)) {
                 if (!allChunkData.contains(alignedChunkData)) {
-                  alignedChunkData.addValueChunk(pageOffset, header);
+                  alignedChunkData.addValueChunk(pageOffset, header, chunkMetadata);
                   allChunkData.add(alignedChunkData);
                 }
                 alignedChunkData.addValueChunkDataSize(pageDataSize);
               }
-              reader.position(reader.position() + pageDataSize);
+              reader.position(pageOffset + pageDataSize);
 
               pageIndex += 1;
               dataSize -= pageDataSize;
@@ -335,9 +355,28 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return true;
   }
 
-  private boolean needDecodePage(PageHeader pageHeader) {
+  private void getChunkMetadata(
+      TsFileSequenceReader reader, Map<Long, IChunkMetadata> offset2ChunkMetadata)
+      throws IOException {
+    Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
+    for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+      for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+        for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
+          offset2ChunkMetadata.put(chunkMetadata.getOffsetOfChunkHeader(), chunkMetadata);
+        }
+      }
+    }
+  }
+
+  private boolean needDecodeChunk(IChunkMetadata chunkMetadata) {
+    return !StorageEngineV2.getTimePartitionSlot(chunkMetadata.getStartTime())
+        .equals(StorageEngineV2.getTimePartitionSlot(chunkMetadata.getEndTime()));
+  }
+
+  private boolean needDecodePage(PageHeader pageHeader, IChunkMetadata chunkMetadata) {
     if (pageHeader.getStatistics() == null) {
-      return true;
+      return !StorageEngineV2.getTimePartitionSlot(chunkMetadata.getStartTime())
+          .equals(StorageEngineV2.getTimePartitionSlot(chunkMetadata.getEndTime()));
     }
     return !StorageEngineV2.getTimePartitionSlot(pageHeader.getStartTime())
         .equals(StorageEngineV2.getTimePartitionSlot(pageHeader.getEndTime()));
@@ -367,5 +406,21 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       batchData.next();
     }
     return timeBatch;
+  }
+
+  private void handleEmptyValueChunk(
+      long chunkOffset,
+      ChunkHeader header,
+      IChunkMetadata chunkMetadata,
+      Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData) {
+    Set<ChunkData> allChunkData = new HashSet<>();
+    for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
+      for (AlignedChunkData alignedChunkData : entry.getValue()) {
+        if (!allChunkData.contains(alignedChunkData)) {
+          alignedChunkData.addValueChunk(chunkOffset, header, chunkMetadata);
+          allChunkData.add(alignedChunkData);
+        }
+      }
+    }
   }
 }
