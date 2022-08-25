@@ -41,7 +41,7 @@ import java.util.concurrent.TimeUnit;
 public class SenderManager {
   private static final Logger logger = LoggerFactory.getLogger(SenderManager.class);
 
-  protected ITransportClient transportClient;
+  protected ISyncClient syncClient;
   private Pipe pipe;
   private PipeSink pipeSink;
 
@@ -54,7 +54,7 @@ public class SenderManager {
     this.transportExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             ThreadName.SYNC_SENDER_PIPE.getName() + "-" + pipe.getName());
-    this.transportClient = TransportClientFactory.createTransportClient(pipe, pipeSink);
+    this.syncClient = SyncClientFactory.createSyncClient(pipe, pipeSink);
   }
 
   public void start() {
@@ -80,7 +80,7 @@ public class SenderManager {
     try {
       while (!Thread.currentThread().isInterrupted()) {
         try {
-          if (!transportClient.handshake()) {
+          if (!syncClient.handshake()) {
             SyncService.getInstance()
                 .receiveMsg(
                     PipeMessage.MsgType.ERROR,
@@ -88,7 +88,7 @@ public class SenderManager {
           }
           while (!Thread.currentThread().isInterrupted()) {
             PipeData pipeData = pipe.take();
-            if (!transportClient.send(pipeData)) {
+            if (!syncClient.send(pipeData)) {
               logger.error(String.format("Can not transfer pipedata %s, skip it.", pipeData));
               // can do something.
               SyncService.getInstance()
@@ -108,13 +108,13 @@ public class SenderManager {
     } catch (InterruptedException e) {
       logger.info("Interrupted by pipe, exit transport.");
     } finally {
-      transportClient.close();
+      syncClient.close();
     }
   }
 
   /** test */
   @TestOnly
-  public void setTransportClient(ITransportClient transportClient) {
-    this.transportClient = transportClient;
+  public void setSyncClient(ISyncClient syncClient) {
+    this.syncClient = syncClient;
   }
 }
