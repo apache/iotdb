@@ -474,6 +474,13 @@ public class PartitionManager {
    * @return TSStatus
    */
   public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
+    // Remove heartbeat cache if exists
+    if (regionGroupCacheMap.containsKey(req.getRegionId())) {
+      regionGroupCacheMap
+          .get(req.getRegionId())
+          .removeCacheIfExists(req.getOldNode().getDataNodeId());
+    }
+
     return getConsensusManager().write(req).getStatus();
   }
 

@@ -398,7 +398,11 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @Override
   public int hashCode() {
-    return this.getFullPath().hashCode();
+    int h = 0;
+    for (String node : nodes) {
+      h += 31 * h + node.hashCode();
+    }
+    return h;
   }
 
   @Override

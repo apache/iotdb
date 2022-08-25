@@ -17,31 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.sys;
+package org.apache.iotdb.db.mpp.plan.statement.sys.sync;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.Collections;
 import java.util.List;
 
-public class DropPipeSinkStatement extends Statement implements IConfigStatement {
+public class StartPipeStatement extends Statement implements IConfigStatement {
 
-  private String pipeSinkName;
+  private String pipeName;
 
-  public DropPipeSinkStatement(StatementType dropPipeSinkStatement) {
-    this.statementType = dropPipeSinkStatement;
+  public StartPipeStatement(StatementType startPipeStatement) {
+    this.statementType = startPipeStatement;
   }
 
-  public String getPipeSinkName() {
-    return pipeSinkName;
+  public String getPipeName() {
+    return pipeName;
   }
 
-  public void setPipeSinkName(String pipeSinkName) {
-    this.pipeSinkName = pipeSinkName;
+  public void setPipeName(String pipeName) {
+    this.pipeName = pipeName;
   }
 
   @Override
@@ -52,5 +53,10 @@ public class DropPipeSinkStatement extends Statement implements IConfigStatement
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitStartPipe(this, context);
   }
 }

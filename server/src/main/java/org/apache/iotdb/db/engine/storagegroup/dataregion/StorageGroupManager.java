@@ -158,14 +158,15 @@ public class StorageGroupManager {
   }
 
   @SuppressWarnings("java:S2445")
-  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public DataRegion getProcessor(IStorageGroupMNode storageGroupMNode, int dataRegionId)
       throws DataRegionException, StorageEngineException {
     DataRegion processor = dataRegion[dataRegionId];
     if (processor == null) {
       // if finish recover
       if (isDataRegionReady[dataRegionId].get()) {
-        synchronized (storageGroupMNode) {
+        // it's unsafe to synchronize MNode here because
+        // concurrent deletions and creations will create a new MNode
+        synchronized (isDataRegionReady[dataRegionId]) {
           processor = dataRegion[dataRegionId];
           if (processor == null) {
             processor =

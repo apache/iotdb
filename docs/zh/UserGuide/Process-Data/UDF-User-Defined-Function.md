@@ -141,13 +141,18 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 下面是您可以设定的访问原始数据的策略：
 
-| 接口定义                          | 描述                                                         | 调用的`transform`方法                                        |
-| :-------------------------------- | :----------------------------------------------------------- | ------------------------------------------------------------ |
+| 接口定义                          | 描述                                                                                                                                                         | 调用的`transform`方法                                        |
+| :-------------------------------- |:-----------------------------------------------------------------------------------------------------------------------------------------------------------| ------------------------------------------------------------ |
 | `RowByRowAccessStrategy`          | 逐行地处理原始数据。框架会为每一行原始数据输入调用一次`transform`方法。当 UDF 只有一个输入序列时，一行输入就是该输入序列中的一个数据点。当 UDF 有多个输入序列时，一行输入序列对应的是这些输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(Row row, PointCollector collector) throws Exception` |
-| `SlidingTimeWindowAccessStrategy` | 以滑动时间窗口的方式处理原始数据。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
-| `SlidingSizeWindowAccessStrategy`    | 以固定行数的方式处理原始数据，即每个数据处理窗口都会包含固定行数的数据（最后一个窗口除外）。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
+| `SlidingTimeWindowAccessStrategy` | 以滑动时间窗口的方式处理原始数据。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。                                | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
+| `SlidingSizeWindowAccessStrategy`    | 以固定行数的方式处理原始数据，即每个数据处理窗口都会包含固定行数的数据（最后一个窗口除外）。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。   | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
+| `SessionTimeWindowAccessStrategy`    | 以会话窗口的方式处理原始数据，框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。                                  | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
+| `StateWindowAccessStrategy`    | 以状态窗口的方式处理原始数据，框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据。目前仅支持对一个物理量也就是一列数据进行开窗。                                                                       | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
 
 `RowByRowAccessStrategy`的构造不需要任何参数。
+
+如图是`SlidingTimeWindowAccessStrategy`的开窗示意图。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/timeWindow.png">
 
 `SlidingTimeWindowAccessStrategy`有多种构造方法，您可以向构造方法提供 3 类参数：
 
@@ -165,12 +170,31 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 注意，最后的一些时间窗口的实际时间间隔可能小于规定的时间间隔参数。另外，可能存在某些时间窗口内数据行数量为 0 的情况，这种情况框架也会为该窗口调用一次`transform`方法。
 
+如图是`SlidingSizeWindowAccessStrategy`的开窗示意图。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/countWindow.png">
+
 `SlidingSizeWindowAccessStrategy`有多种构造方法，您可以向构造方法提供 2 个参数：
 
 1. 窗口大小，即一个数据处理窗口包含的数据行数。注意，最后一些窗口的数据行数可能少于规定的数据行数。
 2. 滑动步长，即下一窗口第一个数据行与当前窗口第一个数据行间的数据行数（不要求大于等于窗口大小，但是必须为正数）
 
 滑动步长参数不是必须的。当您不提供滑动步长参数时，滑动步长会被设定为窗口大小。
+
+如图是`SessionTimeWindowAccessStrategy`的开窗示意图。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/sessionWindow.png">
+
+`SessionTimeWindowAccessStrategy`有多种构造方法，您可以向构造方法提供 2 类参数：
+1. 时间轴显示时间窗开始和结束时间。
+2. 会话窗口之间的最小时间间隔。
+   
+如图是`StateWindowAccessStrategy`的开窗示意图。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/stateWindow.png">
+
+`StateWindowAccessStrategy`有四种构造方法。
+1. 针对数值型数据，可以提供时间轴显示时间窗开始和结束时间以及对于单个窗口内部允许变化的阈值delta。
+2. 针对文本数据以及布尔数据，可以提供时间轴显示时间窗开始和结束时间。对于这两种数据类型，单个窗口内的数据是相同的，不需要提供变化阈值。
+3. 针对数值型数据，可以只提供单个窗口内部允许变化的阈值delta，时间轴显示时间窗开始时间会被定义为整个查询结果集中最小的时间戳，时间轴显示时间窗结束时间会被定义为整个查询结果集中最大的时间戳。
+4. 针对文本数据以及布尔数据，可以不提供任何参数，开始与结束时间戳见3中解释。
 
 策略的构造方法详见 Javadoc。
 

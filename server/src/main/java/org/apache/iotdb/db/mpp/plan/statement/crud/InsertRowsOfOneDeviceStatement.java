@@ -47,6 +47,11 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
   /** the InsertRowsStatement list */
   private List<InsertRowStatement> insertRowStatementList;
 
+  @Override
+  public boolean isEmpty() {
+    return insertRowStatementList.isEmpty();
+  }
+
   public List<InsertRowStatement> getInsertRowStatementList() {
     return insertRowStatementList;
   }
