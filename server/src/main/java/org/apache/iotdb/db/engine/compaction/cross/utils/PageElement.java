@@ -4,6 +4,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class PageElement {
@@ -40,5 +41,9 @@ public class PageElement {
     this.startTime = pageHeader.getStartTime();
     this.chunkMetadataElement = chunkMetadataElement;
     this.isLastPage = isLastPage;
+  }
+
+  public void deserializePage() throws IOException {
+    this.batchData = chunkReader.readPageData(pageHeader, pageData);
   }
 }
