@@ -75,7 +75,9 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     } else if (lastSample != null) {
       status = lastSample.getStatus();
     }
-    return !status.getStatus().equals(originStatus);
+
+    return NodeStatus.isNormalStatus(status)
+        != NodeStatus.isNormalStatus(NodeStatus.valueOf(originStatus));
   }
 
   @Override

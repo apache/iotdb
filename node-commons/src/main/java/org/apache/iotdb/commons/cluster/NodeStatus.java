@@ -47,4 +47,9 @@ public enum NodeStatus {
   public String getStatus() {
     return status;
   }
+
+  public static boolean isNormalStatus(NodeStatus status) {
+    // Currently, the only normal status is Running
+    return status.equals(NodeStatus.Running);
+  }
 }
