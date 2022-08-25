@@ -1,21 +1,3 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -24,6 +6,8 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -31,39 +15,45 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.engine.compaction.writer.CompactionWriterUtils.checkPoint;
+public abstract class AbstractCrossCompactionWriter implements ICompactionWriter {
+  // Each sub task has point count in current measurment, which is used to check size.
+  // The index of the array corresponds to subTaskId.
+  protected int[] measurementPointCountArray = new int[subTaskNum];
 
-public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   // target fileIOWriters
-  private List<TsFileIOWriter> fileWriterList = new ArrayList<>();
+  protected List<TsFileIOWriter> targetFileWriters = new ArrayList<>();
 
   // source tsfiles
   private List<TsFileResource> seqTsFileResources;
 
   // Each sub task has its corresponding seq file index.
   // The index of the array corresponds to subTaskId.
-  private int[] seqFileIndexArray = new int[subTaskNum];
+  protected int[] seqFileIndexArray = new int[subTaskNum];
 
   // device end time in each source seq file
   private final long[] currentDeviceEndTime;
 
+  protected boolean isAlign;
+
+  protected String deviceId;
+
   // whether each target file is empty or not
-  private final boolean[] isEmptyFile;
+  protected final boolean[] isEmptyFile;
 
   // whether each target file has device data or not
-  private final boolean[] isDeviceExistedInTargetFiles;
+  protected final boolean[] isDeviceExistedInTargetFiles;
 
   // current chunk group header size
   private int chunkGroupHeaderSize;
 
-  public CrossSpaceCompactionWriter(
+  public AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
     currentDeviceEndTime = new long[seqFileResources.size()];
     isEmptyFile = new boolean[seqFileResources.size()];
     isDeviceExistedInTargetFiles = new boolean[targetResources.size()];
     for (int i = 0; i < targetResources.size(); i++) {
-      this.fileWriterList.add(new TsFileIOWriter(targetResources.get(i).getTsFile()));
+      this.targetFileWriters.add(new TsFileIOWriter(targetResources.get(i).getTsFile()));
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
@@ -75,15 +65,15 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     this.isAlign = isAlign;
     this.seqFileIndexArray = new int[subTaskNum];
     checkIsDeviceExistAndGetDeviceEndTime();
-    for (int i = 0; i < fileWriterList.size(); i++) {
-      chunkGroupHeaderSize = fileWriterList.get(i).startChunkGroup(deviceId);
+    for (int i = 0; i < targetFileWriters.size(); i++) {
+      chunkGroupHeaderSize = targetFileWriters.get(i).startChunkGroup(deviceId);
     }
   }
 
   @Override
   public void endChunkGroup() throws IOException {
     for (int i = 0; i < seqTsFileResources.size(); i++) {
-      TsFileIOWriter targetFileWriter = fileWriterList.get(i);
+      TsFileIOWriter targetFileWriter = targetFileWriters.get(i);
       if (isDeviceExistedInTargetFiles[i]) {
         targetFileWriter.endChunkGroup();
       } else {
@@ -96,77 +86,59 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   }
 
   @Override
+  public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
+    measurementPointCountArray[subTaskId] = 0;
+    if (isAlign) {
+      chunkWriters[subTaskId] = new AlignedChunkWriterImpl(measurementSchemaList);
+    } else {
+      chunkWriters[subTaskId] = new ChunkWriterImpl(measurementSchemaList.get(0), true);
+    }
+  }
+
+  @Override
   public void endMeasurement(int subTaskId) throws IOException {
     CompactionWriterUtils.flushChunkToFileWriter(
-        fileWriterList.get(seqFileIndexArray[subTaskId]), chunkWriters[subTaskId]);
+        targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriters[subTaskId]);
     seqFileIndexArray[subTaskId] = 0;
   }
 
   @Override
-  public void write(long timestamp, Object value, int subTaskId) throws IOException {
-    checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
-    int seqFileIndex = seqFileIndexArray[subTaskId];
-    CompactionWriterUtils.writeDataPoint(
-        timestamp,
-        value,
-        isAlign,
-        chunkWriters[subTaskId],
-        ++measurementPointCountArray[subTaskId] % checkPoint == 0
-            ? fileWriterList.get(seqFileIndex)
-            : null,
-        true);
-    isDeviceExistedInTargetFiles[seqFileIndex] = true;
-    isEmptyFile[seqFileIndex] = false;
-  }
+  public abstract void write(long timestamp, Object value, int subTaskId) throws IOException;
 
   @Override
-  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
-      throws IOException {
-    // todo control time range of target tsfile
-    checkTimeAndMayFlushChunkToCurrentFile(timestamps.getStartTime(), subTaskId);
-    AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
-    chunkWriter.write(timestamps, columns, batchSize);
-    CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
-        fileWriterList.get(seqFileIndexArray[subTaskId]), chunkWriter, true);
-    isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
-    isEmptyFile[seqFileIndexArray[subTaskId]] = false;
-  }
+  public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+      throws IOException;
 
   @Override
   public void endFile() throws IOException {
     for (int i = 0; i < isEmptyFile.length; i++) {
-      fileWriterList.get(i).endFile();
+      targetFileWriters.get(i).endFile();
       // delete empty target file
       if (isEmptyFile[i]) {
-        fileWriterList.get(i).getFile().delete();
+        targetFileWriters.get(i).getFile().delete();
       }
     }
   }
 
   @Override
   public void close() throws IOException {
-    for (TsFileIOWriter targetWriter : fileWriterList) {
+    for (TsFileIOWriter targetWriter : targetFileWriters) {
       if (targetWriter != null && targetWriter.canWrite()) {
         targetWriter.close();
       }
     }
-    fileWriterList = null;
+    targetFileWriters = null;
     seqTsFileResources = null;
   }
 
-  @Override
-  public List<TsFileIOWriter> getFileIOWriter() {
-    return fileWriterList;
-  }
-
-  private void checkTimeAndMayFlushChunkToCurrentFile(long timestamp, int subTaskId)
+  protected void checkTimeAndMayFlushChunkToCurrentFile(long timestamp, int subTaskId)
       throws IOException {
     int fileIndex = seqFileIndexArray[subTaskId];
     // if timestamp is later than the current source seq tsfile, than flush chunk writer
     while (timestamp > currentDeviceEndTime[fileIndex]) {
       if (fileIndex != seqTsFileResources.size() - 1) {
         CompactionWriterUtils.flushChunkToFileWriter(
-            fileWriterList.get(fileIndex), chunkWriters[subTaskId]);
+            targetFileWriters.get(fileIndex), chunkWriters[subTaskId]);
         seqFileIndexArray[subTaskId] = ++fileIndex;
       } else {
         // If the seq file is deleted for various reasons, the following two situations may occur
@@ -176,6 +148,11 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
         return;
       }
     }
+  }
+
+  @Override
+  public List<TsFileIOWriter> getFileIOWriter() {
+    return targetFileWriters;
   }
 
   private void checkIsDeviceExistAndGetDeviceEndTime() throws IOException {

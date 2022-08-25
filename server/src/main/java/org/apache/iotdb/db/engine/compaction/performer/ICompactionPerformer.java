@@ -18,12 +18,9 @@
  */
 package org.apache.iotdb.db.engine.compaction.performer;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -34,8 +31,7 @@ import java.util.List;
  */
 public interface ICompactionPerformer {
 
-  void perform()
-      throws IOException, MetadataException, StorageEngineException, InterruptedException;
+  void perform() throws Exception;
 
   void setTargetFiles(List<TsFileResource> targetFiles);
 

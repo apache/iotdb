@@ -10,6 +10,8 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -22,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class NewFastCrossCompactionWriter implements AutoCloseable {
+public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   private static final int subTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
@@ -100,6 +102,13 @@ public class NewFastCrossCompactionWriter implements AutoCloseable {
         targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriters[subTaskId]);
     seqFileIndexArray[subTaskId] = 0;
   }
+
+  @Override
+  public void write(long timestamp, Object value, int subTaskId) throws IOException {}
+
+  @Override
+  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+      throws IOException {}
 
   public void writeTimeValue(TimeValuePair timeValuePair, int subTaskId) throws IOException {
     CompactionWriterUtils.writeTVPair(timeValuePair, chunkWriters[subTaskId], null, true);

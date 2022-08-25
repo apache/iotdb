@@ -32,12 +32,11 @@ import org.apache.iotdb.db.engine.compaction.performer.IUnseqCompactionPerformer
 import org.apache.iotdb.db.engine.compaction.reader.IDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
-import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
-import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
-import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.ICompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.ReadPointCrossCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.ReadPointInnerCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
@@ -50,7 +49,6 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,8 +95,7 @@ public class ReadPointCompactionPerformer
   public ReadPointCompactionPerformer() {}
 
   @Override
-  public void perform()
-      throws IOException, MetadataException, StorageEngineException, InterruptedException {
+  public void perform() throws Exception {
     long queryId = QueryResourceManager.getInstance().assignCompactionQueryId();
     FragmentInstanceContext fragmentInstanceContext =
         FragmentInstanceContext.createFragmentInstanceContextForCompaction(queryId);
@@ -107,7 +104,7 @@ public class ReadPointCompactionPerformer
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
     sortedSourceFiles = CompactionUtils.sortSourceFiles(seqFiles, unseqFiles);
-    try (AbstractCompactionWriter compactionWriter =
+    try (ICompactionWriter compactionWriter =
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
@@ -150,7 +147,7 @@ public class ReadPointCompactionPerformer
   private void compactAlignedSeries(
       String device,
       MultiTsFileDeviceIterator deviceIterator,
-      AbstractCompactionWriter compactionWriter,
+      ICompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource)
       throws IOException, MetadataException {
@@ -190,7 +187,7 @@ public class ReadPointCompactionPerformer
   private void compactNonAlignedSeries(
       String device,
       MultiTsFileDeviceIterator deviceIterator,
-      AbstractCompactionWriter compactionWriter,
+      ICompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource)
       throws IOException, InterruptedException, IllegalPathException {
@@ -268,7 +265,7 @@ public class ReadPointCompactionPerformer
   }
 
   public static void writeWithReader(
-      AbstractCompactionWriter writer, IDataBlockReader reader, int subTaskId, boolean isAligned)
+      ICompactionWriter writer, IDataBlockReader reader, int subTaskId, boolean isAligned)
       throws IOException {
     while (reader.hasNextBatch()) {
       TsBlock tsBlock = reader.nextBatch();
@@ -289,17 +286,17 @@ public class ReadPointCompactionPerformer
     }
   }
 
-  private AbstractCompactionWriter getCompactionWriter(
+  private ICompactionWriter getCompactionWriter(
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources)
       throws IOException {
     if (!seqFileResources.isEmpty() && !unseqFileResources.isEmpty()) {
       // cross space
-      return new CrossSpaceCompactionWriter(targetFileResources, seqFileResources);
+      return new ReadPointCrossCompactionWriter(targetFileResources, seqFileResources);
     } else {
       // inner space
-      return new InnerSpaceCompactionWriter(targetFileResources.get(0));
+      return new ReadPointInnerCompactionWriter(targetFileResources.get(0));
     }
   }
 
