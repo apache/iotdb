@@ -317,12 +317,12 @@ public class PlanExecutor implements IPlanExecutor {
       case CREATE_ROLE:
       case DELETE_ROLE:
       case CREATE_USER:
-      case REVOKE_ROLE_TO_USER:
+      case REVOKE_USER_ROLE:
       case REVOKE_ROLE_PRIVILEGE:
       case REVOKE_USER_PRIVILEGE:
       case GRANT_ROLE_PRIVILEGE:
       case GRANT_USER_PRIVILEGE:
-      case GRANT_ROLE_TO_USER:
+      case GRANT_USER_ROLE:
       case MODIFY_PASSWORD:
       case DELETE_USER:
         AuthorPlan author = (AuthorPlan) plan;
@@ -1936,7 +1936,7 @@ public class PlanExecutor implements IPlanExecutor {
             }
           }
           break;
-        case GRANT_ROLE_TO_USER:
+        case GRANT_USER_ROLE:
           authorizerManager.grantRoleToUser(roleName, userName);
           break;
         case REVOKE_USER:
@@ -1953,7 +1953,7 @@ public class PlanExecutor implements IPlanExecutor {
             }
           }
           break;
-        case REVOKE_ROLE_FROM_USER:
+        case REVOKE_USER_ROLE:
           authorizerManager.revokeRoleFromUser(roleName, userName);
           break;
         default:

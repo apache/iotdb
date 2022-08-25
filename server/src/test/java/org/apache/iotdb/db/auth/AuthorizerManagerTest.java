@@ -53,7 +53,7 @@ public class AuthorizerManagerTest {
     PathPrivilege privilege = new PathPrivilege();
     List<PathPrivilege> privilegeList = new ArrayList<>();
     privilegesIds.add(PrivilegeType.CREATE_ROLE.ordinal());
-    privilegesIds.add(PrivilegeType.REVOKE_ROLE_TO_USER.ordinal());
+    privilegesIds.add(PrivilegeType.REVOKE_USER_ROLE.ordinal());
     privilege.setPath("root.ln");
     privilege.setPrivileges(privilegesIds);
     privilegeList.add(privilege);
