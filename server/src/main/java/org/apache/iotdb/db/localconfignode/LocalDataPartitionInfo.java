@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.localconfignode;
 
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -62,18 +60,12 @@ public class LocalDataPartitionInfo {
     }
   }
 
-  public DataRegionId getDataRegionId(
-      PartialPath storageGroup, PartialPath path, TTimePartitionSlot timePartitionSlot) {
+  public DataRegionId getDataRegionId(PartialPath storageGroup, PartialPath path) {
     if (!partitionTableMap.containsKey(storageGroup)) {
       return null;
     }
     LocalDataPartitionTable table = partitionTableMap.get(storageGroup);
-    Map<TTimePartitionSlot, DataRegionId> slotRegionMap = new HashMap<>();
-    if (!table.getDataRegionId(path, Collections.singletonList(timePartitionSlot), slotRegionMap)) {
-      return null;
-    } else {
-      return slotRegionMap.get(timePartitionSlot);
-    }
+    return table.getDataRegionId(path);
   }
 
   /**
@@ -82,13 +74,11 @@ public class LocalDataPartitionInfo {
    *
    * @param storageGroup The path for the storage group.
    * @param path The full path for the series.
-   * @param timePartitionSlot The time partition slot to allocate.
    * @return The data region id for the time partition slot.
    */
-  public DataRegionId allocateDataRegionForNewSlot(
-      PartialPath storageGroup, PartialPath path, TTimePartitionSlot timePartitionSlot) {
+  public DataRegionId allocateDataRegionForNewSlot(PartialPath storageGroup, PartialPath path) {
     LocalDataPartitionTable table = partitionTableMap.get(storageGroup);
-    return table.getDataRegionWithAutoExtension(path, timePartitionSlot);
+    return table.getDataRegionWithAutoExtension(path);
   }
 
   public List<DataRegionId> getDataRegionIdsByStorageGroup(PartialPath storageGroup) {

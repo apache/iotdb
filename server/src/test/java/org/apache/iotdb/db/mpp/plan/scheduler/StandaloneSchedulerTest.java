@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -71,8 +70,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-
-import static org.apache.iotdb.db.localconfignode.LocalConfigNode.STANDALONE_MOCK_TIME_SLOT_START_TIME;
 
 public class StandaloneSchedulerTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
@@ -409,8 +406,7 @@ public class StandaloneSchedulerTest {
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath(deviceId));
-    configNode.getBelongedDataRegionIdWithAutoCreate(
-        new PartialPath(deviceId), new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME));
+    configNode.getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId));
     MPPQueryContext context =
         new MPPQueryContext(
             "",
@@ -491,8 +487,7 @@ public class StandaloneSchedulerTest {
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(deviceId);
-    configNode.getBelongedDataRegionIdWithAutoCreate(
-        deviceId, new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME));
+    configNode.getBelongedDataRegionIdWithAutoCreate(deviceId);
     MPPQueryContext context =
         new MPPQueryContext(
             "",

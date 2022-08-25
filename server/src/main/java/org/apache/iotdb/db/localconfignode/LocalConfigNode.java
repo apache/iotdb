@@ -857,12 +857,10 @@ public class LocalConfigNode {
    * root.sg1. If there's no storage group on the given path, StorageGroupNotSetException will be
    * thrown.
    */
-  public DataRegionId getBelongedDataRegionId(
-      PartialPath path, TTimePartitionSlot timePartitionSlot)
+  public DataRegionId getBelongedDataRegionId(PartialPath path)
       throws MetadataException, DataRegionException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
-    DataRegionId dataRegionId =
-        dataPartitionTable.getDataRegionId(storageGroup, path, timePartitionSlot);
+    DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
     if (dataRegionId == null) {
       return null;
     }
@@ -877,16 +875,13 @@ public class LocalConfigNode {
   }
 
   // This interface involves storage group and data region auto creation
-  public DataRegionId getBelongedDataRegionIdWithAutoCreate(
-      PartialPath path, TTimePartitionSlot timePartitionSlot)
+  public DataRegionId getBelongedDataRegionIdWithAutoCreate(PartialPath devicePath)
       throws MetadataException, DataRegionException {
-    PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
-    DataRegionId dataRegionId =
-        dataPartitionTable.getDataRegionId(storageGroup, path, timePartitionSlot);
+    PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(devicePath);
+    DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, devicePath);
     if (dataRegionId == null) {
       dataPartitionTable.registerStorageGroup(storageGroup);
-      dataRegionId =
-          dataPartitionTable.allocateDataRegionForNewSlot(storageGroup, path, timePartitionSlot);
+      dataRegionId = dataPartitionTable.allocateDataRegionForNewSlot(storageGroup, devicePath);
     }
     DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);
     if (dataRegion == null) {
@@ -990,8 +985,7 @@ public class LocalConfigNode {
           continue;
         }
         for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
-          DataRegionId dataRegionId =
-              getBelongedDataRegionId(new PartialPath(deviceId), timePartitionSlot);
+          DataRegionId dataRegionId = getBelongedDataRegionId(new PartialPath(deviceId));
           // dataRegionId is null means the DataRegion is not created,
           // use an empty dataPartitionMap to init DataPartition
           if (dataRegionId != null) {
@@ -1052,7 +1046,7 @@ public class LocalConfigNode {
             dataPartitionQueryParam.getTimePartitionSlotList();
         for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
           DataRegionId dataRegionId =
-              getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId), timePartitionSlot);
+              getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId));
           Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
               deviceToRegionsMap.getOrDefault(
                   executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
