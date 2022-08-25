@@ -2527,7 +2527,7 @@ public class MManager {
       }
 
       node.setUseTemplate(false);
-      int seriesCount = -node.getUpperTemplate().getMeasurementsCount();
+      int seriesCount = node.getUpperTemplate().getMeasurementsCount();
       totalTemplateSeriesNumber.addAndGet(-seriesCount);
       seriesNumerLimiter.deleteTimeSeries(seriesCount);
 
