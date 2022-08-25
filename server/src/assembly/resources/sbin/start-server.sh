@@ -37,8 +37,8 @@ if [ "x$IOTDB_INCLUDE" = "x" ]; then
         fi
     done
 # ...otherwise, source the specified include.
-elif [ -r "$CASSANDRA_INCLUDE" ]; then
-    . "$CASSANDRA_INCLUDE"
+elif [ -r "$IOTDB_INCLUDE" ]; then
+    . "$IOTDB_INCLUDE"
 fi
 
 
