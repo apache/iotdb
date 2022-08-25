@@ -385,17 +385,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      // if measurements.size() == 1, convert to create timeseries
-      if (req.measurements.size() == 1) {
-        return createTimeseries(
-            new TSCreateTimeseriesReq(
-                req.sessionId,
-                req.prefixPath + "." + req.measurements.get(0),
-                req.dataTypes.get(0),
-                req.encodings.get(0),
-                req.compressors.get(0)));
-      }
-
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create aligned timeseries {}.{}",
@@ -1473,15 +1462,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
-      throws TException {
-    return SyncService.getInstance().transportData(metaInfo, buff, digest);
+  public TSStatus sendPipeData(ByteBuffer buff) throws TException {
+    return SyncService.getInstance().transportPipeData(buff);
   }
 
   @Override
-  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
-      throws TException {
-    return SyncService.getInstance().checkFileDigest(metaInfo, digest);
+  public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
+    return SyncService.getInstance().transportFile(metaInfo, buff);
   }
 
   @Override

@@ -48,6 +48,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -56,6 +58,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -97,7 +100,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     } catch (Exception e) {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
-          region.getLogicalStorageGroupName(),
+          region.getStorageGroupName(),
           region.getDataRegionId(),
           snapshotDir,
           e);
@@ -110,7 +113,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     DataRegion newRegion =
         new SnapshotLoader(
                 latestSnapshotRootDir.getAbsolutePath(),
-                region.getLogicalStorageGroupName(),
+                region.getStorageGroupName(),
                 region.getDataRegionId())
             .loadSnapshotForStateMachine();
     if (newRegion == null) {
@@ -257,9 +260,21 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public List<File> getSnapshotFiles(File latestSnapshotRootDir) {
-    // TODO: implement this method
-    return super.getSnapshotFiles(latestSnapshotRootDir);
+  public List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
+    try {
+      return new SnapshotLoader(
+              latestSnapshotRootDir.getAbsolutePath(),
+              region.getStorageGroupName(),
+              region.getDataRegionId())
+          .getSnapshotFileInfo().stream().map(File::toPath).collect(Collectors.toList());
+    } catch (IOException e) {
+      logger.error(
+          "Meets error when getting snapshot files for {}-{}",
+          region.getStorageGroupName(),
+          region.getDataRegionId(),
+          e);
+      return null;
+    }
   }
 
   @Override

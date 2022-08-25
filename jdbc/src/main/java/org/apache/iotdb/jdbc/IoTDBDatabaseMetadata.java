@@ -739,12 +739,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     String sql = "SHOW STORAGE GROUP";
     if (catalog != null && catalog.length() > 0) {
       if (catalog.contains("%")) {
-        catalog = catalog.replaceAll("%", "*");
+        catalog = catalog.replace("%", "*");
       }
       sql = sql + " " + catalog;
     } else if (schemaPattern != null && schemaPattern.length() > 0) {
       if (schemaPattern.contains("%")) {
-        schemaPattern = schemaPattern.replaceAll("%", "*");
+        schemaPattern = schemaPattern.replace("%", "*");
       }
       sql = sql + " " + schemaPattern;
     }
@@ -753,7 +753,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         && tableNamePattern != null
         && tableNamePattern.length() > 0) {
       if (tableNamePattern.contains("%")) {
-        tableNamePattern = tableNamePattern.replaceAll("%", "*");
+        tableNamePattern = tableNamePattern.replace("%", "*");
       }
       sql = sql + "." + tableNamePattern;
     }
@@ -1890,12 +1890,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     String sql = "SHOW STORAGE GROUP";
     if (catalog != null && catalog.length() > 0) {
       if (catalog.contains("%")) {
-        catalog = catalog.replaceAll("%", "*");
+        catalog = catalog.replace("%", "*");
       }
       sql = sql + " " + catalog;
     } else if (schemaPattern != null && schemaPattern.length() > 0) {
       if (schemaPattern.contains("%")) {
-        schemaPattern = schemaPattern.replaceAll("%", "*");
+        schemaPattern = schemaPattern.replace("%", "*");
       }
       sql = sql + " " + schemaPattern;
     }
@@ -1904,7 +1904,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         && tableNamePattern != null
         && tableNamePattern.length() > 0) {
       if (tableNamePattern.contains("%")) {
-        tableNamePattern = tableNamePattern.replaceAll("%", "*");
+        tableNamePattern = tableNamePattern.replace("%", "*");
       }
       sql = sql + "." + tableNamePattern;
     }
@@ -2038,12 +2038,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     String sql = "SHOW STORAGE GROUP";
     if (catalog != null && catalog.length() > 0) {
       if (catalog.contains("%")) {
-        catalog = catalog.replaceAll("%", "*");
+        catalog = catalog.replace("%", "*");
       }
       sql = sql + " " + catalog;
     } else if (schemaPattern != null && schemaPattern.length() > 0) {
       if (schemaPattern.contains("%")) {
-        schemaPattern = schemaPattern.replaceAll("%", "*");
+        schemaPattern = schemaPattern.replace("%", "*");
       }
       sql = sql + " " + schemaPattern;
     }
@@ -2052,7 +2052,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         && tableNamePattern != null
         && tableNamePattern.length() > 0) {
       if (tableNamePattern.contains("%")) {
-        tableNamePattern = tableNamePattern.replaceAll("%", "*");
+        tableNamePattern = tableNamePattern.replace("%", "*");
       }
       sql = sql + "." + tableNamePattern;
     }
@@ -2292,12 +2292,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     String sql = "SHOW timeseries";
     if (catalog != null && catalog.length() > 0) {
       if (catalog.contains("%")) {
-        catalog = catalog.replaceAll("%", "*");
+        catalog = catalog.replace("%", "*");
       }
       sql = sql + " " + catalog;
     } else if (schemaPattern != null && schemaPattern.length() > 0) {
       if (schemaPattern.contains("%")) {
-        schemaPattern = schemaPattern.replaceAll("%", "*");
+        schemaPattern = schemaPattern.replace("%", "*");
       }
       sql = sql + " " + schemaPattern;
     }
@@ -2306,7 +2306,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         && tableNamePattern != null
         && tableNamePattern.length() > 0) {
       if (tableNamePattern.contains("%")) {
-        tableNamePattern = tableNamePattern.replaceAll("%", "*");
+        tableNamePattern = tableNamePattern.replace("%", "*");
       }
       sql = sql + "." + tableNamePattern;
     }

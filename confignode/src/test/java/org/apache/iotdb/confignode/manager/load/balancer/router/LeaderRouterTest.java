@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.INodeCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.heartbeat.RegionGroupCache;
@@ -59,7 +59,7 @@ public class LeaderRouterTest {
 
     // Build nodeCacheMap
     long currentTimeMillis = System.currentTimeMillis();
-    Map<Integer, INodeCache> nodeCacheMap = new HashMap<>();
+    Map<Integer, BaseNodeCache> nodeCacheMap = new HashMap<>();
     for (int i = 0; i < 6; i++) {
       nodeCacheMap.put(i, new DataNodeHeartbeatCache());
       // Simulate that the DataNode-i returned a heartbeat at (currentTime - i * 1000) ms
@@ -68,7 +68,7 @@ public class LeaderRouterTest {
           .cacheHeartbeatSample(
               new NodeHeartbeatSample(currentTimeMillis - i * 1000, currentTimeMillis - i * 1000));
     }
-    nodeCacheMap.values().forEach(INodeCache::updateLoadStatistic);
+    nodeCacheMap.values().forEach(BaseNodeCache::updateLoadStatistic);
 
     // Get the loadScoreMap
     Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();

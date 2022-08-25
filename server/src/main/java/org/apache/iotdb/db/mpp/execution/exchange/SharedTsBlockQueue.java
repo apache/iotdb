@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -33,6 +34,9 @@ import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.LinkedList;
 import java.util.Queue;
+
+import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 /** This is not thread safe class, the caller should ensure multi-threads safety. */
 @NotThreadSafe
@@ -94,7 +98,8 @@ public class SharedTsBlockQueue {
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
     logger.info("SharedTsBlockQueue receive no more TsBlocks signal.");
     if (closed) {
-      throw new IllegalStateException("queue has been destroyed");
+      logger.warn("queue has been destroyed");
+      return;
     }
     this.noMoreTsBlocks = noMoreTsBlocks;
     if (!blocked.isDone()) {
@@ -135,20 +140,38 @@ public class SharedTsBlockQueue {
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {
     if (closed) {
-      throw new IllegalStateException("queue has been destroyed");
+      logger.warn("queue has been destroyed");
+      return immediateVoidFuture();
     }
 
     Validate.notNull(tsBlock, "TsBlock cannot be null");
     Validate.isTrue(blockedOnMemory == null || blockedOnMemory.isDone(), "queue is full");
-    blockedOnMemory =
+    Pair<ListenableFuture<Void>, Boolean> pair =
         localMemoryManager
             .getQueryPool()
             .reserve(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
+    blockedOnMemory = pair.left;
     bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
-    queue.add(tsBlock);
-    if (!blocked.isDone()) {
-      blocked.set(null);
+
+    // reserve memory failed, we should wait until there is enough memory
+    if (!pair.right) {
+      blockedOnMemory.addListener(
+          () -> {
+            synchronized (this) {
+              queue.add(tsBlock);
+              if (!blocked.isDone()) {
+                blocked.set(null);
+              }
+            }
+          },
+          directExecutor());
+    } else { // reserve memory succeeded, add the TsBlock directly
+      queue.add(tsBlock);
+      if (!blocked.isDone()) {
+        blocked.set(null);
+      }
     }
+
     return blockedOnMemory;
   }
 

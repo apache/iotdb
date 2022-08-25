@@ -36,6 +36,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_ONLINE;
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_UNKNOWN;
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_TAG_TOTAL;
+
 /** This class collates metrics about loadManager */
 public class LoadManagerMetrics {
 
@@ -148,9 +152,9 @@ public class LoadManagerMetrics {
             this,
             o -> getRunningConfigNodesNum(),
             Tag.NAME.toString(),
-            "total",
+            METRIC_TAG_TOTAL,
             Tag.STATUS.toString(),
-            NodeStatus.Online.toString());
+            METRIC_STATUS_ONLINE);
 
     MetricService.getInstance()
         .getOrCreateAutoGauge(
@@ -159,9 +163,9 @@ public class LoadManagerMetrics {
             this,
             o -> getRunningDataNodesNum(),
             Tag.NAME.toString(),
-            "total",
+            METRIC_TAG_TOTAL,
             Tag.STATUS.toString(),
-            NodeStatus.Online.toString());
+            METRIC_STATUS_ONLINE);
 
     MetricService.getInstance()
         .getOrCreateAutoGauge(
@@ -170,9 +174,9 @@ public class LoadManagerMetrics {
             this,
             o -> getUnknownConfigNodesNum(),
             Tag.NAME.toString(),
-            "total",
+            METRIC_TAG_TOTAL,
             Tag.STATUS.toString(),
-            NodeStatus.Unknown.toString());
+            METRIC_STATUS_UNKNOWN);
 
     MetricService.getInstance()
         .getOrCreateAutoGauge(
@@ -181,9 +185,9 @@ public class LoadManagerMetrics {
             this,
             o -> getUnknownDataNodesNum(),
             Tag.NAME.toString(),
-            "total",
+            METRIC_TAG_TOTAL,
             Tag.STATUS.toString(),
-            NodeStatus.Unknown.toString());
+            METRIC_STATUS_UNKNOWN);
   }
 
   /**
@@ -227,33 +231,33 @@ public class LoadManagerMetrics {
             MetricType.GAUGE,
             Metric.CONFIG_NODE.toString(),
             Tag.NAME.toString(),
-            "total",
+            METRIC_TAG_TOTAL,
             Tag.STATUS.toString(),
-            NodeStatus.Online.toString());
+            METRIC_STATUS_ONLINE);
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
             Metric.DATA_NODE.toString(),
             Tag.NAME.toString(),
-            "total",
+            METRIC_TAG_TOTAL,
             Tag.STATUS.toString(),
-            NodeStatus.Online.toString());
+            METRIC_STATUS_ONLINE);
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
             Metric.CONFIG_NODE.toString(),
             Tag.NAME.toString(),
-            "total",
+            METRIC_TAG_TOTAL,
             Tag.STATUS.toString(),
-            NodeStatus.Unknown.toString());
+            METRIC_STATUS_UNKNOWN);
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
             Metric.DATA_NODE.toString(),
             Tag.NAME.toString(),
-            "total",
+            METRIC_TAG_TOTAL,
             Tag.STATUS.toString(),
-            NodeStatus.Unknown.toString());
+            METRIC_STATUS_UNKNOWN);
   }
 
   private NodeManager getNodeManager() {

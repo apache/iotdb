@@ -16,34 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat;
+package org.apche.iotdb.external.api;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
+import java.util.Properties;
 
-/** All the statistic interfaces that provided by HeartbeatCache */
-public interface INodeCache {
-
-  /**
-   * Cache the newest HeartbeatSample
-   *
-   * @param newHeartbeatSample The newest HeartbeatSample
-   */
-  void cacheHeartbeatSample(NodeHeartbeatSample newHeartbeatSample);
+/** An interface for series number limiting, users can implement their own limitation strategy */
+public interface ISeriesNumerLimiter {
 
   /**
-   * Invoking periodically to update Nodes' load statistics
+   * do the necessary initialization
    *
-   * @return true if some load statistic changed
+   * @param properties Properties containing all the parameters needed to init
    */
-  boolean updateLoadStatistic();
+  void init(Properties properties);
 
   /**
-   * TODO: The loadScore of each Node will be changed to Double
+   * add time series
    *
-   * @return The latest load score of a node, the higher the score the higher the load
+   * @param number time series number for current createTimeSeries operation
+   * @return true if totalTimeSeriesNumber doesn't exceed the limit and current createTimeSeries
+   *     operation is allowed, otherwise false
    */
-  long getLoadScore();
+  boolean addTimeSeries(int number);
 
-  /** @return The latest status of a node for showing cluster */
-  NodeStatus getNodeStatus();
+  /**
+   * delete time series
+   *
+   * @param number time series number for current deleteTimeSeries operation
+   */
+  void deleteTimeSeries(int number);
 }

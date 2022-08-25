@@ -199,9 +199,8 @@ public class WALNodeRecoverTask implements Runnable {
     for (MemTableInfo memTableInfo : memTableId2Info.values()) {
       firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
 
-      File tsFile = new File(memTableInfo.getTsFilePath());
       UnsealedTsFileRecoverPerformer recoverPerformer =
-          walRecoverManger.removeRecoverPerformer(tsFile.getAbsolutePath());
+          walRecoverManger.removeRecoverPerformer(new File(memTableInfo.getTsFilePath()));
       if (recoverPerformer != null) {
         memTableId2RecoverPerformer.put(memTableInfo.getMemTableId(), recoverPerformer);
       }
@@ -227,6 +226,7 @@ public class WALNodeRecoverTask implements Runnable {
                 WALFileUtils.walFilenameFilter(dir, name)
                     && WALFileUtils.parseVersionId(name) >= firstValidVersionId);
     if (walFiles == null) {
+      endRecovery();
       return;
     }
     // asc sort by version id
@@ -255,6 +255,10 @@ public class WALNodeRecoverTask implements Runnable {
         logger.warn("Fail to read wal logs from {}, skip them", walFile, e);
       }
     }
+    endRecovery();
+  }
+
+  private void endRecovery() {
     // end recovering all recover performers
     for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
       try {

@@ -20,13 +20,16 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata.template;
 
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -34,7 +37,9 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ShowNodesInSchemaTemplateTask implements IConfigTask {
 
@@ -52,8 +57,11 @@ public class ShowNodesInSchemaTemplateTask implements IConfigTask {
   }
 
   public static void buildTSBlock(Template template, SettableFuture<ConfigTaskResult> future) {
-    TsBlockBuilder builder =
-        new TsBlockBuilder(HeaderConstant.showNodesInSchemaTemplate.getRespDataTypes());
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showNodesInSchemaTemplateHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     try {
       if (template != null) {
         // template.get
@@ -73,9 +81,9 @@ public class ShowNodesInSchemaTemplateTask implements IConfigTask {
         }
       }
     } catch (Exception e) {
-
+      e.printStackTrace();
     }
-    DatasetHeader datasetHeader = HeaderConstant.showNodesInSchemaTemplate;
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowNodesInSchemaTemplateHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

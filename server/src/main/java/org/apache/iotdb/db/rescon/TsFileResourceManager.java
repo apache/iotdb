@@ -35,8 +35,7 @@ public class TsFileResourceManager {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   /** threshold total memory for all TimeIndex */
-  private double TIME_INDEX_MEMORY_THRESHOLD =
-      CONFIG.getAllocateMemoryForRead() * CONFIG.getTimeIndexMemoryProportion();
+  private double TIME_INDEX_MEMORY_THRESHOLD = CONFIG.getAllocateMemoryForTimeIndex();
 
   /** store the sealed TsFileResource, sorted by priority of TimeIndex */
   private final TreeSet<TsFileResource> sealedTsFileResources =

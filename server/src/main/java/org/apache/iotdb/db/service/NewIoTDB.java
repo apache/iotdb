@@ -57,6 +57,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
+import static org.apache.iotdb.db.utils.JarLoaderUtil.loadExternLib;
+
 public class NewIoTDB implements NewIoTDBMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(NewIoTDB.class);
@@ -81,6 +83,9 @@ public class NewIoTDB implements NewIoTDBMBean {
     }
     NewIoTDB daemon = NewIoTDB.getInstance();
     config.setMppMode(true);
+
+    loadExternLib(config);
+
     daemon.active();
   }
 

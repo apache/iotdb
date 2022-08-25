@@ -395,4 +395,21 @@ public class EnvironmentUtils {
     File file = new File(dir);
     file.mkdirs();
   }
+
+  public static void recursiveDeleteFolder(String path) throws IOException {
+    File file = new File(path);
+    if (file.isDirectory()) {
+      File[] files = file.listFiles();
+      if (files == null || files.length == 0) {
+        FileUtils.deleteDirectory(file);
+      } else {
+        for (File f : files) {
+          recursiveDeleteFolder(f.getAbsolutePath());
+        }
+        FileUtils.deleteDirectory(file);
+      }
+    } else {
+      FileUtils.delete(file);
+    }
+  }
 }

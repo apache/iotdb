@@ -537,7 +537,7 @@ grantUser
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=identifier PRIVILEGES privileges ON prefixPath (COMMA prefixPath)*
+    : GRANT ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Grant User Role
@@ -552,7 +552,7 @@ revokeUser
 
 // Revoke Role Privileges
 revokeRole
-    : REVOKE ROLE roleName=identifier PRIVILEGES privileges ON prefixPath (COMMA prefixPath)*
+    : REVOKE ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Revoke Role From User

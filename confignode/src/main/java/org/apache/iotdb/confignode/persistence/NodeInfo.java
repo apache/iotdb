@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -67,6 +66,9 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_REGISTER;
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_TAG_TOTAL;
+
 /**
  * The NodeInfo stores cluster node information. The cluster node information including: 1. DataNode
  * information 2. ConfigNode information
@@ -109,9 +111,9 @@ public class NodeInfo implements SnapshotProcessor {
             registeredConfigNodes,
             o -> getRegisteredConfigNodeCount(),
             Tag.NAME.toString(),
-            "total",
+            METRIC_TAG_TOTAL,
             Tag.STATUS.toString(),
-            NodeStatus.Registered.toString());
+            METRIC_STATUS_REGISTER);
     MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.DATA_NODE.toString(),
@@ -119,9 +121,9 @@ public class NodeInfo implements SnapshotProcessor {
             registeredDataNodes,
             Map::size,
             Tag.NAME.toString(),
-            "total",
+            METRIC_TAG_TOTAL,
             Tag.STATUS.toString(),
-            NodeStatus.Registered.toString());
+            METRIC_STATUS_REGISTER);
   }
 
   /**

@@ -15,8 +15,13 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.sync.transport.client;
+package org.apache.iotdb.confignode.procedure.state;
 
-public interface ITransportClient extends Runnable {}
+public enum CreateRegionGroupsState {
+  CREATE_REGION_GROUPS_PREPARE,
+  CREATE_REGION_GROUPS,
+  PERSIST_AND_BROADCAST,
+  DELETE_FAILED_REGION_GROUPS,
+  CREATE_REGION_GROUPS_FINISH
+}

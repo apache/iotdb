@@ -450,7 +450,16 @@ public class DatetimeUtils {
           .toFormatter();
 
   public static long convertDatetimeStrToLong(String str, ZoneId zoneId) {
-    return convertDatetimeStrToLong(str, toZoneOffset(zoneId), 0);
+    return convertDatetimeStrToLong(
+        str,
+        toZoneOffset(zoneId),
+        0,
+        IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  public static long convertDatetimeStrToLong(
+      String str, ZoneId zoneId, String timestampPrecision) {
+    return convertDatetimeStrToLong(str, toZoneOffset(zoneId), 0, timestampPrecision);
   }
 
   public static long getInstantWithPrecision(String str, String timestampPrecision) {
@@ -478,10 +487,8 @@ public class DatetimeUtils {
   }
 
   /** convert date time string to millisecond, microsecond or nanosecond. */
-  public static long convertDatetimeStrToLong(String str, ZoneOffset offset, int depth) {
-
-    String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-
+  public static long convertDatetimeStrToLong(
+      String str, ZoneOffset offset, int depth, String timestampPrecision) {
     if (depth >= 2) {
       throw new DateTimeException(
           String.format(
@@ -490,12 +497,13 @@ public class DatetimeUtils {
               str, offset));
     }
     if (str.contains("Z")) {
-      return convertDatetimeStrToLong(str.substring(0, str.indexOf('Z')) + "+00:00", offset, depth);
+      return convertDatetimeStrToLong(
+          str.substring(0, str.indexOf('Z')) + "+00:00", offset, depth, timestampPrecision);
     } else if (str.length() == 10) {
-      return convertDatetimeStrToLong(str + "T00:00:00", offset, depth);
+      return convertDatetimeStrToLong(str + "T00:00:00", offset, depth, timestampPrecision);
     } else if (str.length() - str.lastIndexOf('+') != 6
         && str.length() - str.lastIndexOf('-') != 6) {
-      return convertDatetimeStrToLong(str + offset, offset, depth + 1);
+      return convertDatetimeStrToLong(str + offset, offset, depth + 1, timestampPrecision);
     } else if (str.contains("[") || str.contains("]")) {
       throw new DateTimeException(
           String.format(

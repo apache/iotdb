@@ -540,7 +540,7 @@ public class StorageEngineV2 implements IService {
 
   public void closeStorageGroupProcessor(String storageGroupPath, boolean isSeq) {
     for (DataRegion dataRegion : dataRegionMap.values()) {
-      if (dataRegion.getLogicalStorageGroupName().equals(storageGroupPath)) {
+      if (dataRegion.getStorageGroupName().equals(storageGroupPath)) {
         if (isSeq) {
           for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
             dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
@@ -662,14 +662,12 @@ public class StorageEngineV2 implements IService {
                 .equals(ConsensusFactory.MultiLeaderConsensus)) {
           WALManager.getInstance()
               .deleteWALNode(
-                  region.getLogicalStorageGroupName()
-                      + FILE_NAME_SEPARATOR
-                      + region.getDataRegionId());
+                  region.getStorageGroupName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
         }
       } catch (Exception e) {
         logger.error(
             "Error occurs when deleting data region {}-{}",
-            region.getLogicalStorageGroupName(),
+            region.getStorageGroupName(),
             region.getDataRegionId(),
             e);
       } finally {

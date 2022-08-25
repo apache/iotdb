@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -98,7 +99,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showStorageGroup(
       ShowStorageGroupStatement showStorageGroupStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    Map<String, TStorageGroupSchema> storageGroupSchemaMap = new HashMap<>();
+    Map<String, TStorageGroupInfo> storageGroupInfoMap = new HashMap<>();
     try {
       LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
       List<PartialPath> partialPaths =
@@ -109,10 +110,20 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
             localConfigNode.getStorageGroupNodeByPath(storageGroupPath);
         String storageGroup = storageGroupMNode.getFullPath();
         TStorageGroupSchema storageGroupSchema = storageGroupMNode.getStorageGroupSchema();
-        storageGroupSchemaMap.put(storageGroup, storageGroupSchema);
+
+        TStorageGroupInfo storageGroupInfo = new TStorageGroupInfo();
+        storageGroupInfo.setName(storageGroup);
+        storageGroupInfo.setTTL(storageGroupSchema.getTTL());
+        storageGroupInfo.setSchemaReplicationFactor(
+            storageGroupSchema.getSchemaReplicationFactor());
+        storageGroupInfo.setDataReplicationFactor(storageGroupSchema.getDataReplicationFactor());
+        storageGroupInfo.setTimePartitionInterval(storageGroupSchema.getTimePartitionInterval());
+        storageGroupInfo.setSchemaRegionNum(1);
+        storageGroupInfo.setDataRegionNum(1);
+        storageGroupInfoMap.put(storageGroup, storageGroupInfo);
       }
       // build TSBlock
-      ShowStorageGroupTask.buildTSBlock(storageGroupSchemaMap, future);
+      ShowStorageGroupTask.buildTSBlock(storageGroupInfoMap, future);
     } catch (MetadataException e) {
       future.setException(e);
     }
@@ -392,6 +403,86 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     future.setException(
         new IoTDBException(
             "Executing show path set template is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createPipe() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing create pipe is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createPipeSink() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing create pipesink is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropPipe() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing drop pipe is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropPipeSink() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing drop pipesink is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showPipe() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing show pipe is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showPipeSink() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing show pipesink is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> startPipe() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing Start pipe is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> stopPipe() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing stop pipe is not supported",
             TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     return future;
   }

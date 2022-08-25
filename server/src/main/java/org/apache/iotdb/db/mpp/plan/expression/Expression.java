@@ -71,19 +71,16 @@ import java.util.Set;
 public abstract class Expression {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // Operations that Class Expression is not responsible for should be done through a visitor ////
+  // Operations that Class Expression is not responsible for should be done through a visitor
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  /**
-   * Accessible for {@link ExpressionVisitor}, use {@link ExpressionVisitor#process(Expression)}
-   * instead.
-   */
+  /** Accessible for {@link ExpressionVisitor}, use {@link ExpressionVisitor#process} instead. */
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitExpression(this, context);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // Expression type inferring for execution plan generation //////////////////////////////////////
+  // Expression type inferring for execution plan generation
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public abstract ExpressionType getExpressionType();

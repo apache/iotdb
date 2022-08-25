@@ -40,7 +40,7 @@ import java.util.List;
 /** remove data node procedure */
 public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNodeState> {
   private static final Logger LOG = LoggerFactory.getLogger(RemoveDataNodeProcedure.class);
-  private static final int retryThreshold = 5;
+  private static final int RETRY_THRESHOLD = 5;
 
   private TDataNodeLocation disableDataNodeLocation;
 
@@ -63,6 +63,8 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
     try {
       switch (state) {
         case REMOVE_DATA_NODE_PREPARE:
+          // mark the datanode as removing status and broadcast region route map
+          env.markDataNodeAsRemovingAndBroadCast(disableDataNodeLocation);
           execDataNodeRegionIds =
               env.getDataNodeRemoveHandler().getDataNodeRegionIds(disableDataNodeLocation);
           LOG.info("DataNode region id is {}", execDataNodeRegionIds);
@@ -90,7 +92,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
             disableDataNodeLocation,
             state,
             e);
-        if (getCycles() > retryThreshold) {
+        if (getCycles() > RETRY_THRESHOLD) {
           setFailure(new ProcedureException("State stuck at " + state));
         }
       }

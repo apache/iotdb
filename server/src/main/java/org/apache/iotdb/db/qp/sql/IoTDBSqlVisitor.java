@@ -184,6 +184,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
 
@@ -1967,24 +1968,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitGrantUser(IoTDBSqlParser.GrantUserContext ctx) {
+    String[] privileges = parsePrivilege(ctx.privileges());
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(this::parsePrefixPath)
+            .distinct()
+            .collect(Collectors.toList());
+    checkGrantRevokePrivileges(privileges, nodeNameList);
+
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_USER);
     authorOperator.setUserName(parseIdentifier(ctx.userName.getText()));
-    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    String privilege = parsePrivilege(ctx.privileges())[0];
-
-    List<PartialPath> prefixPath;
-    if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
-      String[] path = {"root"};
-      prefixPath = Collections.singletonList(new PartialPath(path));
-    } else {
-      if (ctx.prefixPath() == null) {
-        throw new SQLParserException("Invalid prefix path");
-      }
-      prefixPath =
-          ctx.prefixPath().stream().map(path -> parsePrefixPath(path)).collect(Collectors.toList());
-    }
-    authorOperator.setNodeNameList(prefixPath);
+    authorOperator.setPrivilegeList(privileges);
+    authorOperator.setNodeNameList(nodeNameList);
     return authorOperator;
   }
 
@@ -1992,14 +1988,18 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitGrantRole(IoTDBSqlParser.GrantRoleContext ctx) {
+    String[] privileges = parsePrivilege(ctx.privileges());
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(this::parsePrefixPath)
+            .distinct()
+            .collect(Collectors.toList());
+    checkGrantRevokePrivileges(privileges, nodeNameList);
+
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.GRANT_ROLE);
     authorOperator.setRoleName(parseIdentifier(ctx.roleName.getText()));
-    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    List<PartialPath> nodeNameList =
-        ctx.prefixPath().stream()
-            .map(prefixPath -> parsePrefixPath(prefixPath))
-            .collect(Collectors.toList());
+    authorOperator.setPrivilegeList(privileges);
     authorOperator.setNodeNameList(nodeNameList);
     return authorOperator;
   }
@@ -2020,25 +2020,18 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitRevokeUser(IoTDBSqlParser.RevokeUserContext ctx) {
+    String[] privileges = parsePrivilege(ctx.privileges());
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(this::parsePrefixPath)
+            .distinct()
+            .collect(Collectors.toList());
+    checkGrantRevokePrivileges(privileges, nodeNameList);
+
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_USER);
     authorOperator.setUserName(parseIdentifier(ctx.userName.getText()));
-    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    String privilege = parsePrivilege(ctx.privileges())[0];
-
-    List<PartialPath> nodeNameList;
-    if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
-      String[] path = {"root"};
-      nodeNameList = Collections.singletonList(new PartialPath(path));
-    } else {
-      if (ctx.prefixPath() == null) {
-        throw new SQLParserException("Invalid prefix path");
-      }
-      nodeNameList =
-          ctx.prefixPath().stream()
-              .map(prefixPath -> parsePrefixPath(prefixPath))
-              .collect(Collectors.toList());
-    }
+    authorOperator.setPrivilegeList(privileges);
     authorOperator.setNodeNameList(nodeNameList);
     return authorOperator;
   }
@@ -2047,16 +2040,44 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitRevokeRole(IoTDBSqlParser.RevokeRoleContext ctx) {
+    String[] privileges = parsePrivilege(ctx.privileges());
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(this::parsePrefixPath)
+            .distinct()
+            .collect(Collectors.toList());
+    checkGrantRevokePrivileges(privileges, nodeNameList);
+
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_ROLE);
     authorOperator.setRoleName(parseIdentifier(ctx.roleName.getText()));
-    authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    List<PartialPath> nodeNameList =
-        ctx.prefixPath().stream()
-            .map(prefixPath -> parsePrefixPath(prefixPath))
-            .collect(Collectors.toList());
+    authorOperator.setPrivilegeList(privileges);
     authorOperator.setNodeNameList(nodeNameList);
     return authorOperator;
+  }
+
+  private void checkGrantRevokePrivileges(String[] privileges, List<PartialPath> nodeNameList) {
+    if (nodeNameList.isEmpty()) {
+      nodeNameList.addAll(Collections.singletonList(new PartialPath(ALL_RESULT_NODES)));
+      return;
+    }
+    boolean pathRelevant = true;
+    String errorPrivilegeName = "";
+    for (String privilege : privileges) {
+      if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
+        pathRelevant = false;
+        errorPrivilegeName = privilege.toUpperCase();
+        break;
+      }
+    }
+    if (!(pathRelevant
+        || (nodeNameList.size() == 1
+            && nodeNameList.contains(new PartialPath(ALL_RESULT_NODES))))) {
+      throw new SQLParserException(
+          String.format(
+              "path independent privilege: [%s] can only be set on path: root.**",
+              errorPrivilegeName));
+    }
   }
 
   // Revoke Role From User
@@ -2511,10 +2532,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
       Expression left = ((BinaryExpression) predicate).getLeftExpression();
       Expression right = ((BinaryExpression) predicate).getRightExpression();
-      if (!(left instanceof TimeSeriesOperand)) {
-        throw new SQLParserException("Not support for this sql in pipe.");
-      }
-      if (!SQLConstant.isReservedPath(((TimeSeriesOperand) left).getPath())) {
+      if (!SQLConstant.isReservedPath(parsePathFromExpression(left))) {
         throw new SQLParserException("Not support for this sql in pipe.");
       }
       if (!(right instanceof ConstantOperand)) {

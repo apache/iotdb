@@ -1750,17 +1750,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      // if measurements.size() == 1, convert to create timeseries
-      if (req.measurements.size() == 1) {
-        return createTimeseries(
-            new TSCreateTimeseriesReq(
-                req.sessionId,
-                req.prefixPath + "." + req.measurements.get(0),
-                req.dataTypes.get(0),
-                req.encodings.get(0),
-                req.compressors.get(0)));
-      }
-
       // check whether measurement is legal according to syntax convention
 
       PathUtils.isLegalSingleMeasurements(req.getMeasurements());
@@ -2113,15 +2102,13 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
-      throws TException {
-    return SyncService.getInstance().transportData(metaInfo, buff, digest);
+  public TSStatus sendPipeData(ByteBuffer buff) throws TException {
+    return SyncService.getInstance().transportPipeData(buff);
   }
 
   @Override
-  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
-      throws TException {
-    return SyncService.getInstance().checkFileDigest(metaInfo, digest);
+  public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
+    return SyncService.getInstance().transportFile(metaInfo, buff);
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {

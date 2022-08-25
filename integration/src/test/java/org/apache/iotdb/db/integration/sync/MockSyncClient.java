@@ -19,48 +19,34 @@
 package org.apache.iotdb.db.integration.sync;
 
 import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe;
-import org.apache.iotdb.db.sync.transport.client.ITransportClient;
+import org.apache.iotdb.db.sync.transport.client.ISyncClient;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class TransportClientMock implements ITransportClient {
-  private Pipe pipe;
-  private String ipAddress;
-  private int port;
+public class MockSyncClient implements ISyncClient {
 
-  private List<PipeData> pipeDataList;
+  private final List<PipeData> pipeDataList;
 
-  public TransportClientMock(Pipe pipe, String ipAddress, int port) {
-    this.pipe = pipe;
-    this.ipAddress = ipAddress;
-    this.port = port;
-
+  public MockSyncClient() {
     this.pipeDataList = new ArrayList<>();
-  }
-
-  public void resetInfo(Pipe pipe, String ipAddress, int port) {
-    this.pipe = pipe;
-    this.ipAddress = ipAddress;
-    this.port = port;
-  }
-
-  @Override
-  public void run() {
-    try {
-      while (!Thread.currentThread().isInterrupted()) {
-        PipeData pipeData = pipe.take();
-        pipeDataList.add(pipeData);
-        pipe.commit();
-      }
-    } catch (InterruptedException e) {
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
   }
 
   public List<PipeData> getPipeDataList() {
     return pipeDataList;
   }
+
+  @Override
+  public boolean handshake() {
+    return true;
+  }
+
+  @Override
+  public boolean send(PipeData pipeData) {
+    pipeDataList.add(pipeData);
+    return true;
+  }
+
+  @Override
+  public void close() {}
 }
