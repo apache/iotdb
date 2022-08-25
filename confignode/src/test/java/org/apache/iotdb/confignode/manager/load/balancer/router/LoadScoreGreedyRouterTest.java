@@ -23,9 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.NodeHeartbeatSample;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -63,7 +65,9 @@ public class LoadScoreGreedyRouterTest {
       nodeCacheMap
           .get(i)
           .cacheHeartbeatSample(
-              new NodeHeartbeatSample(currentTimeMillis - i * 1000, currentTimeMillis - i * 1000));
+              new NodeHeartbeatSample(
+                  new THeartbeatResp(currentTimeMillis - i * 1000, NodeStatus.Running.getStatus()),
+                  currentTimeMillis - i * 1000));
     }
     nodeCacheMap.values().forEach(BaseNodeCache::updateNodeStatus);
 
