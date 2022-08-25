@@ -47,7 +47,7 @@ TsFile can help you export the result set in the format of TsFile file to the sp
   - Specify the output path for the exported TsFile file.
 * `-f <tsfile name>`:
   - For the file name of the exported TsFile file, just write the file name, and cannot include the file path and suffix. If the sql file or console input contains multiple sqls, multiple files will be generated in the order of sql.
-  - Example: There are three SQLs in the file or command line, and -f param is "dump", then three TsFile files, dump0.tsfile, dump1.tsfile, and dump2.tsfile, will be generated in the target path.
+  - Example: There are three SQLs in the file or command line, and -f param is "dump", then three TsFile files: dump0.tsfile、dump1.tsfile、dump2.tsfile will be generated in the target path.
 * `-q <query command>`:
   - Directly specify the query statement you want to execute in the command.
   - Example: `select * from root.** limit 100`
