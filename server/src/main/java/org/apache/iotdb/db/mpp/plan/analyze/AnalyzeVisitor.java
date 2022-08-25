@@ -796,7 +796,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       QueryStatement queryStatement,
       Set<Expression> transformExpressionsInHaving,
       List<Expression> aggregationExpressionsInHaving) {
-
+    Expression havingExpression;
     if (queryStatement.isGroupByLevel()) {
       Map<Expression, Expression> rawPathToGroupedPathMapInHaving =
           analyzeGroupByLevelInHaving(
@@ -809,12 +809,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             ExpressionAnalyzer.replaceRawPathWithGroupedPath(
                 expression, rawPathToGroupedPathMapInHaving));
       }
-      Expression havingExpression =
+      havingExpression =
           ExpressionUtils.constructQueryFilter(
               convertedPredicates.stream().distinct().collect(Collectors.toList()));
-      havingExpression.inferTypes(typeProvider);
-      analysis.setHavingExpression(havingExpression);
+    } else {
+      havingExpression =
+          ExpressionUtils.constructQueryFilter(
+              transformExpressionsInHaving.stream().distinct().collect(Collectors.toList()));
     }
+    havingExpression.inferTypes(typeProvider);
+    analysis.setHavingExpression(havingExpression);
   }
 
   private Expression analyzeHavingSplitByDevice(Set<Expression> transformExpressionsInHaving) {
