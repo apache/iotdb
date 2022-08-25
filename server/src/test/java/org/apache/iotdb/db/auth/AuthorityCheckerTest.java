@@ -65,9 +65,9 @@ public class AuthorityCheckerTest {
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.DELETE_TIMESERIES.ordinal());
     authorizer.grantPrivilegeToUser(
-        user.getName(), nodeName, PrivilegeType.REVOKE_USER_ROLE.ordinal());
+        user.getName(), nodeName, PrivilegeType.REVOKE_ROLE_TO_USER.ordinal());
     authorizer.grantPrivilegeToUser(
-        user.getName(), nodeName, PrivilegeType.GRANT_USER_ROLE.ordinal());
+        user.getName(), nodeName, PrivilegeType.GRANT_ROLE_TO_USER.ordinal());
     authorizer.grantPrivilegeToUser(user.getName(), nodeName, PrivilegeType.LIST_USER.ordinal());
     authorizer.grantPrivilegeToUser(user.getName(), nodeName, PrivilegeType.LIST_ROLE.ordinal());
     authorizer.grantPrivilegeToUser(
@@ -174,7 +174,7 @@ public class AuthorityCheckerTest {
         AuthorityChecker.check(
             user.getName(),
             Collections.singletonList(new PartialPath(nodeName)),
-            OperatorType.GRANT_USER_ROLE,
+            OperatorType.GRANT_ROLE_TO_USER,
             user.getName()));
 
     Assert.assertTrue(

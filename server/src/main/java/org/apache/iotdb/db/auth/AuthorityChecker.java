@@ -196,14 +196,14 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_ROLE_PRIVILEGE.ordinal();
       case REVOKE_USER_PRIVILEGE:
         return PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal();
-      case GRANT_USER_ROLE:
-        return PrivilegeType.GRANT_USER_ROLE.ordinal();
+      case GRANT_ROLE_TO_USER:
+        return PrivilegeType.GRANT_ROLE_TO_USER.ordinal();
       case DELETE_USER:
         return PrivilegeType.DELETE_USER.ordinal();
       case DELETE_ROLE:
         return PrivilegeType.DELETE_ROLE.ordinal();
-      case REVOKE_USER_ROLE:
-        return PrivilegeType.REVOKE_USER_ROLE.ordinal();
+      case REVOKE_ROLE_TO_USER:
+        return PrivilegeType.REVOKE_ROLE_TO_USER.ordinal();
       case SET_STORAGE_GROUP:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();
       case DELETE_STORAGE_GROUP:
@@ -287,10 +287,10 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal();
       case REVOKE_ROLE_PRIVILEGE:
         return PrivilegeType.REVOKE_ROLE_PRIVILEGE.ordinal();
-      case GRANT_USER_ROLE:
-        return PrivilegeType.GRANT_USER_ROLE.ordinal();
-      case REVOKE_USER_ROLE:
-        return PrivilegeType.REVOKE_USER_ROLE.ordinal();
+      case GRANT_ROLE_TO_USER:
+        return PrivilegeType.GRANT_ROLE_TO_USER.ordinal();
+      case REVOKE_ROLE_TO_USER:
+        return PrivilegeType.REVOKE_ROLE_TO_USER.ordinal();
       case SET_STORAGE_GROUP:
       case TTL:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();

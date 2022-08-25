@@ -79,7 +79,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         this.setType(StatementType.GRANT_ROLE_PRIVILEGE);
         break;
       case REVOKE_ROLE_FROM_USER:
-        this.setType(StatementType.REVOKE_USER_ROLE);
+        this.setType(StatementType.REVOKE_ROLE_TO_USER);
         break;
       case LIST_USER_PRIVILEGE:
         this.setType(StatementType.LIST_USER_PRIVILEGE);

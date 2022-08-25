@@ -359,8 +359,8 @@ public abstract class PhysicalPlan implements IConsensusRequest {
         case CREATE_USER:
           plan = new AuthorPlan(OperatorType.CREATE_USER);
           break;
-        case REVOKE_USER_ROLE:
-          plan = new AuthorPlan(OperatorType.REVOKE_USER_ROLE);
+        case REVOKE_ROLE_TO_USER:
+          plan = new AuthorPlan(OperatorType.REVOKE_ROLE_TO_USER);
           break;
         case REVOKE_ROLE_PRIVILEGE:
           plan = new AuthorPlan(OperatorType.REVOKE_ROLE_PRIVILEGE);
@@ -374,8 +374,8 @@ public abstract class PhysicalPlan implements IConsensusRequest {
         case GRANT_USER_PRIVILEGE:
           plan = new AuthorPlan(OperatorType.GRANT_USER_PRIVILEGE);
           break;
-        case GRANT_USER_ROLE:
-          plan = new AuthorPlan(OperatorType.GRANT_USER_ROLE);
+        case GRANT_ROLE_TO_USER:
+          plan = new AuthorPlan(OperatorType.GRANT_ROLE_TO_USER);
           break;
         case MODIFY_PASSWORD:
           plan = new AuthorPlan(OperatorType.MODIFY_PASSWORD);
@@ -511,12 +511,12 @@ public abstract class PhysicalPlan implements IConsensusRequest {
     CREATE_ROLE,
     DELETE_ROLE,
     CREATE_USER,
-    REVOKE_USER_ROLE,
+    REVOKE_ROLE_TO_USER,
     REVOKE_ROLE_PRIVILEGE,
     REVOKE_USER_PRIVILEGE,
     GRANT_ROLE_PRIVILEGE,
     GRANT_USER_PRIVILEGE,
-    GRANT_USER_ROLE,
+    GRANT_ROLE_TO_USER,
     MODIFY_PASSWORD,
     DELETE_USER,
     DELETE_STORAGE_GROUP,

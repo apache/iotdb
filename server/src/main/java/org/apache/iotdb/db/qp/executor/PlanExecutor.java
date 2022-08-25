@@ -317,12 +317,12 @@ public class PlanExecutor implements IPlanExecutor {
       case CREATE_ROLE:
       case DELETE_ROLE:
       case CREATE_USER:
-      case REVOKE_USER_ROLE:
+      case REVOKE_ROLE_TO_USER:
       case REVOKE_ROLE_PRIVILEGE:
       case REVOKE_USER_PRIVILEGE:
       case GRANT_ROLE_PRIVILEGE:
       case GRANT_USER_PRIVILEGE:
-      case GRANT_USER_ROLE:
+      case GRANT_ROLE_TO_USER:
       case MODIFY_PASSWORD:
       case DELETE_USER:
         AuthorPlan author = (AuthorPlan) plan;
