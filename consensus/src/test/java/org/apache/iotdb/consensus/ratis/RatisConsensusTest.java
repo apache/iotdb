@@ -26,10 +26,12 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -183,6 +185,18 @@ public class RatisConsensusTest {
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());
     servers.get(2).createPeer(group.getGroupId(), group.getPeers());
     doConsensus(servers.get(0), gid, 10, 210);
+  }
+
+  @Test
+  public void createPeerMultipleTimes() {
+    List<Peer> singleMemberGroup = peers.subList(0, 1);
+
+    ConsensusGenericResponse resp = servers.get(0).createPeer(gid, singleMemberGroup);
+    Assert.assertTrue(resp.isSuccess());
+
+    ConsensusGenericResponse addAgainResp = servers.get(0).createPeer(gid, singleMemberGroup);
+    Assert.assertFalse(addAgainResp.isSuccess());
+    Assert.assertTrue(addAgainResp.getException() instanceof ConsensusGroupAlreadyExistException);
   }
 
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)

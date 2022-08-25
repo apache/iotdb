@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
@@ -255,6 +256,12 @@ class RatisConsensus implements IConsensus {
     // pre-conditions: myself in this new group
     if (!group.getPeers().contains(myself)) {
       return failed(new ConsensusGroupNotExistException(groupId));
+    }
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    RaftGroup existGroup = getGroupInfo(raftGroupId);
+    // pre-conditions: the new group not exists
+    if (existGroup != null) {
+      return failed(new ConsensusGroupAlreadyExistException(groupId));
     }
 
     // add RaftPeer myself to this RaftGroup
