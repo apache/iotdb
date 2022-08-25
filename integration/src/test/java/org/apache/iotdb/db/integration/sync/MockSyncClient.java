@@ -16,41 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.integration.sync;
 
-package org.apache.iotdb.db.mpp.plan.statement.sys;
+import org.apache.iotdb.db.sync.pipedata.PipeData;
+import org.apache.iotdb.db.sync.transport.client.ISyncClient;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
-import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
-
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
-public class StopPipeStatement extends Statement implements IConfigStatement {
+public class MockSyncClient implements ISyncClient {
 
-  private String pipeName;
+  private final List<PipeData> pipeDataList;
 
-  public StopPipeStatement(StatementType stopPipeStatement) {
-    this.statementType = stopPipeStatement;
+  public MockSyncClient() {
+    this.pipeDataList = new ArrayList<>();
   }
 
-  public String getPipeName() {
-    return pipeName;
-  }
-
-  public void setPipeName(String pipeName) {
-    this.pipeName = pipeName;
+  public List<PipeData> getPipeDataList() {
+    return pipeDataList;
   }
 
   @Override
-  public QueryType getQueryType() {
-    return QueryType.WRITE;
+  public boolean handshake() {
+    return true;
   }
 
   @Override
-  public List<PartialPath> getPaths() {
-    return Collections.emptyList();
+  public boolean send(PipeData pipeData) {
+    pipeDataList.add(pipeData);
+    return true;
   }
+
+  @Override
+  public void close() {}
 }

@@ -16,33 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception.metadata;
 
-package org.apache.iotdb.db.mpp.plan.statement.sys;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
+public class SeriesNumberOverflowException extends MetadataException {
 
-public class ShowPipeStatement extends ShowStatement implements IConfigStatement {
-
-  private String pipeName;
-
-  public String getPipeName() {
-    return pipeName;
-  }
-
-  public void setPipeName(String pipeName) {
-    this.pipeName = pipeName;
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
-  }
-
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowPipe(this, context);
+  public SeriesNumberOverflowException() {
+    super("exceed max allowed series number.", TSStatusCode.SERIES_OVERFLOW.getStatusCode());
   }
 }

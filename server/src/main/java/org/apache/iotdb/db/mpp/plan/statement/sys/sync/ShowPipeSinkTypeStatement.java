@@ -15,8 +15,17 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.sync.transport.client;
 
-public interface ITransportClient extends Runnable {}
+package org.apache.iotdb.db.mpp.plan.statement.sys.sync;
+
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
+
+public class ShowPipeSinkTypeStatement extends ShowStatement {
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowPipeSinkType(this, context);
+  }
+}

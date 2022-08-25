@@ -17,22 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.sys;
+package org.apache.iotdb.db.mpp.plan.execution.config.sys.sync;
 
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 
-public class ShowPipeSinkTypeStatement extends ShowStatement implements IConfigStatement {
+import com.google.common.util.concurrent.ListenableFuture;
 
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
+public class StopPipeTask implements IConfigTask {
+
+  private StopPipeStatement stopPipeStatement;
+
+  public StopPipeTask(StopPipeStatement stopPipeStatement) {
+    this.stopPipeStatement = stopPipeStatement;
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowPipeSinkType(this, context);
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.stopPipe();
   }
 }

@@ -23,13 +23,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.transport.client.ITransportClient;
+import org.apache.iotdb.db.sync.transport.client.ISyncClient;
 
 /**
- * Pipe is the abstract of a sync task, and a data source for {@linkplain ITransportClient}. When
- * the pipe is started, it will collect history data and real time data from IoTDB continuously, and
- * record it. A {@linkplain ITransportClient} can take PipeData from a pipe, just like take data
- * from a BlockingQueue.
+ * Pipe is the abstract of a sync task, and a data source for {@linkplain ISyncClient}. When the
+ * pipe is started, it will collect history data and real time data from IoTDB continuously, and
+ * record it. A {@linkplain ISyncClient} can take PipeData from a pipe, just like take data from a
+ * BlockingQueue.
  */
 public interface Pipe {
   /**
@@ -93,8 +93,8 @@ public interface Pipe {
   PipeStatus getStatus();
 
   /**
-   * Used for {@linkplain ITransportClient} to take one {@linkplain PipeData} from this pipe. If
-   * there is no new data in this pipe, the method will block the thread until there is a new one.
+   * Used for {@linkplain ISyncClient} to take one {@linkplain PipeData} from this pipe. If there is
+   * no new data in this pipe, the method will block the thread until there is a new one.
    *
    * @return A {@linkplain PipeData}.
    * @throws InterruptedException Be Interrupted when waiting for new {@linkplain PipeData}.
@@ -102,8 +102,8 @@ public interface Pipe {
   PipeData take() throws InterruptedException;
 
   /**
-   * Used for {@linkplain ITransportClient} to commit all {@linkplain PipeData}s which are taken but
-   * not be committed yet.
+   * Used for {@linkplain ISyncClient} to commit all {@linkplain PipeData}s which are taken but not
+   * be committed yet.
    */
   void commit();
 
