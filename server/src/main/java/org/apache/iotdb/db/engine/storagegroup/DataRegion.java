@@ -745,9 +745,7 @@ public class DataRegion {
     if (!recoverPerformer.canWrite()) {
       // cannot write, just close it
       for (ISyncManager tsFileSyncManager :
-          SyncService.getInstance()
-              .getOrCreateSyncManager(
-                  logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId)) {
+          SyncService.getInstance().getOrCreateSyncManager(getDataRegionName())) {
         if (tsFileSyncManager.isEnabledSync()) {
           tsFileSyncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
         }
@@ -1545,7 +1543,7 @@ public class DataRegion {
     if (sequence) {
       tsFileProcessor =
           new TsFileProcessor(
-              logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId,
+              getDataRegionName(),
               fsFactory.getFileWithParent(filePath),
               storageGroupInfo,
               this::closeUnsealedTsFileProcessorCallBack,
@@ -1554,7 +1552,7 @@ public class DataRegion {
     } else {
       tsFileProcessor =
           new TsFileProcessor(
-              logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId,
+              getDataRegionName(),
               fsFactory.getFileWithParent(filePath),
               storageGroupInfo,
               this::closeUnsealedTsFileProcessorCallBack,
@@ -2382,9 +2380,7 @@ public class DataRegion {
       }
 
       for (ISyncManager tsFileSyncManager :
-          SyncService.getInstance()
-              .getOrCreateSyncManager(
-                  logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId)) {
+          SyncService.getInstance().getOrCreateSyncManager(getDataRegionName())) {
         if (tsFileSyncManager.isEnabledSync()) {
           tsFileSyncManager.syncRealTimeDeletion(deletion);
         }
@@ -3742,8 +3738,7 @@ public class DataRegion {
       throw new UnsupportedOperationException();
     }
     // identifier should be same with getTsFileProcessor method
-    return WALManager.getInstance()
-        .applyForWALNode(logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId);
+    return WALManager.getInstance().applyForWALNode(getDataRegionName());
   }
 
   /** Wait for this data region successfully deleted */
@@ -3770,6 +3765,10 @@ public class DataRegion {
     } finally {
       writeUnlock();
     }
+  }
+
+  public String getDataRegionName() {
+    return logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId;
   }
 
   @TestOnly
