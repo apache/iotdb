@@ -22,7 +22,7 @@ package org.apache.iotdb.db.sync.transport.client;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 
-public interface ITransportClient {
+public interface ISyncClient {
   /**
    * Create connection and handshake before sending messages
    *
