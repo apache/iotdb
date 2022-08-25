@@ -28,6 +28,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.db.metadata.idtable.IDTable.config;
 import static org.apache.iotdb.db.metadata.idtable.IDTable.logger;
@@ -37,7 +38,10 @@ import static org.apache.iotdb.db.metadata.idtable.IDTable.logger;
  * files to migratingFileDir when a tsFile (and its resource/mod files) are being migrated, then
  * deletes it after it has finished operation.
  */
-public class MigratingFileLogManager {
+public class MigratingFileLogManager implements AutoCloseable {
+
+  // taskId -> MigratingFileLog
+  ConcurrentHashMap<Long, FileOutputStream> logOutputMap = new ConcurrentHashMap<>();
 
   private static File MIGRATING_LOG_DIR =
       SystemFileFactory.INSTANCE.getFile(
@@ -63,6 +67,19 @@ public class MigratingFileLogManager {
     }
   }
 
+  @Override
+  public void close() {
+    for (FileOutputStream logFileStream : logOutputMap.values()) {
+      if (logFileStream != null) {
+        try {
+          logFileStream.close();
+        } catch (IOException e) {
+          logger.error("log file could not be closed");
+        }
+      }
+    }
+  }
+
   // singleton
   private static class MigratingFileLogManagerHolder {
     private MigratingFileLogManagerHolder() {}
@@ -74,27 +91,48 @@ public class MigratingFileLogManager {
     return MigratingFileLogManagerHolder.INSTANCE;
   }
 
-  /** started migrating tsfile and its resource/mod files */
-  public boolean start(File tsfile, File targetDir) throws IOException {
-    File logFile = SystemFileFactory.INSTANCE.getFile(MIGRATING_LOG_DIR, tsfile.getName() + ".log");
-    if (!logFile.createNewFile()) {
-      return false;
+  /**
+   * started migrating tsfile and its resource/mod files
+   *
+   * @return true if write log successful, false otherwise
+   */
+  public boolean start(long taskId, File tsfile, File targetDir) throws IOException {
+    FileOutputStream logFileOutput;
+    if (logOutputMap.containsKey(taskId) && logOutputMap.get(taskId) != null) {
+      logFileOutput = logOutputMap.get(taskId);
+    } else {
+      File logFile = SystemFileFactory.INSTANCE.getFile(MIGRATING_LOG_DIR, taskId + ".log");
+      if (!logFile.exists()) {
+        if (!logFile.createNewFile()) {
+          // log file doesn't exist but cannot be created
+          return false;
+        }
+      }
+
+      logFileOutput = new FileOutputStream(logFile);
+      logOutputMap.put(taskId, logFileOutput);
     }
 
-    FileOutputStream logFileOutput = new FileOutputStream(logFile);
     ReadWriteIOUtils.write(tsfile.getAbsolutePath(), logFileOutput);
     ReadWriteIOUtils.write(targetDir.getAbsolutePath(), logFileOutput);
     logFileOutput.flush();
-    logFileOutput.close();
 
     return true;
   }
 
   /** finished migrating tsfile and related files */
-  public void finish(File tsfile) {
-    File logFile = SystemFileFactory.INSTANCE.getFile(MIGRATING_LOG_DIR, tsfile.getName() + ".log");
+  public void finish(long taskId) {
+    File logFile = SystemFileFactory.INSTANCE.getFile(MIGRATING_LOG_DIR, taskId + ".log");
     if (logFile.exists()) {
       logFile.delete();
+    }
+    if (logOutputMap.containsKey(taskId)) {
+      try {
+        logOutputMap.get(taskId).close();
+      } catch (IOException e) {
+        logger.error("could not close fileoutputstream for task {}", taskId);
+      }
+      logOutputMap.remove(taskId);
     }
   }
 
@@ -104,25 +142,29 @@ public class MigratingFileLogManager {
       try {
         FileInputStream logFileInput = new FileInputStream(logFile);
 
-        String tsfilePath = ReadWriteIOUtils.readString(logFileInput);
-        String targetDirPath = ReadWriteIOUtils.readString(logFileInput);
+        while (logFileInput.available() > 0) {
+          String tsfilePath = ReadWriteIOUtils.readString(logFileInput);
+          String targetDirPath = ReadWriteIOUtils.readString(logFileInput);
 
-        File tsfile = SystemFileFactory.INSTANCE.getFile(tsfilePath);
-        File targetDir = SystemFileFactory.INSTANCE.getFile(targetDirPath);
+          File tsfile = SystemFileFactory.INSTANCE.getFile(tsfilePath);
+          File targetDir = SystemFileFactory.INSTANCE.getFile(targetDirPath);
 
-        if (targetDir.exists()) {
-          if (!targetDir.isDirectory()) {
-            logger.error("target dir {} not a directory", targetDirPath);
+          if (targetDir.exists()) {
+            if (!targetDir.isDirectory()) {
+              logger.error("target dir {} not a directory", targetDirPath);
+              return;
+            }
+          } else if (!targetDir.mkdirs()) {
+            logger.error("create target dir {} failed", targetDirPath);
             return;
           }
-        } else if (!targetDir.mkdirs()) {
-          logger.error("create target dir {} failed", targetDirPath);
-          return;
-        }
 
-        TsFileResource resource = new TsFileResource(tsfile);
-        resource.migrate(targetDir);
-        finish(tsfile);
+          TsFileResource resource = new TsFileResource(tsfile);
+          resource.migrate(targetDir);
+        }
+        String filename = logFile.getName();
+        long taskId = Long.parseLong(filename.substring(0, filename.lastIndexOf('.')));
+        finish(taskId);
       } catch (IOException e) {
         logger.error("MigratingFileLogManager: log file not found");
       }

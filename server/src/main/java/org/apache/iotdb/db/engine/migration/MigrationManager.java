@@ -439,6 +439,8 @@ public class MigrationManager {
                 logWriter.startMigration(task);
               } catch (IOException e) {
                 logger.error("write log error");
+                task.setStatus(MigrationTask.MigrationTaskStatus.ERROR);
+                return;
               }
 
               StorageEngine.getInstance()
@@ -450,8 +452,11 @@ public class MigrationManager {
               // set state and remove
               try {
                 logWriter.finishMigration(task);
+                MigratingFileLogManager.getInstance().finish(task.getTaskId());
               } catch (IOException e) {
                 logger.error("write log error");
+                task.setStatus(MigrationTask.MigrationTaskStatus.ERROR);
+                return;
               }
               task.setStatus(MigrationTask.MigrationTaskStatus.FINISHED);
             });

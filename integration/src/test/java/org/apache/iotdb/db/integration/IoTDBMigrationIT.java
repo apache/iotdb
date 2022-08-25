@@ -70,7 +70,8 @@ public class IoTDBMigrationIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
-        statement.execute("SET MIGRATION TO root.MIGRATION_SG1 1999-01-01 0 '/tmp'");
+        statement.execute(
+            "SET MIGRATION TO root.MIGRATION_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }

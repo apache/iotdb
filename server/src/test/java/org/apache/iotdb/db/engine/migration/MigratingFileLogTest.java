@@ -20,20 +20,31 @@
 package org.apache.iotdb.db.engine.migration;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.apache.iotdb.db.metadata.idtable.IDTable.config;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class MigratingFileLogTest {
 
@@ -41,62 +52,111 @@ public class MigratingFileLogTest {
       SystemFileFactory.INSTANCE.getFile(
           Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "migrating")
               .toString());
+  private long testTaskId = 99;
+  private File testLogFile;
+  private List<File> testFiles;
+  private File testTargetDir;
+
+  @Before
+  public void setUp()
+      throws MetadataException, StorageGroupProcessorException, LogicalOperatorException {
+    EnvironmentUtils.envSetUp();
+
+    testLogFile = SystemFileFactory.INSTANCE.getFile(MIGRATING_LOG_DIR, testTaskId + ".log");
+
+    testTargetDir = new File("testTargetDir");
+    testTargetDir.mkdirs();
+
+    testFiles = new ArrayList<>();
+    testFiles.add(new File("test.tsfile"));
+    testFiles.add(new File("test.tsfile.resource"));
+    testFiles.add(new File("test.tsfile.mods"));
+  }
+
+  @After
+  public void tearDown() throws IOException, StorageEngineException {
+    EnvironmentUtils.cleanEnv();
+
+    FileUtils.deleteDirectory(testTargetDir);
+    deleteTestFiles();
+  }
+
+  private void setupTestFiles() throws IOException {
+    for (File file : testFiles) {
+      if (!file.exists()) {
+        file.createNewFile();
+      }
+    }
+  }
+
+  private void deleteTestFiles() {
+    for (File file : testFiles) {
+      if (file.exists()) {
+        file.delete();
+      }
+    }
+  }
+
+  private void cleanupTargetDir() {
+    for (File file : testTargetDir.listFiles()) {
+      file.delete();
+    }
+  }
+
+  private File getTsFile() {
+    return testFiles.get(0);
+  }
 
   @Test
   public void testWriteAndRead() throws Exception {
     // create test files
-    File testTsfile = new File("test.tsfile");
-    File testTsfileResource = new File("test.tsfile.resource");
-    File testTsfileMods = new File("test.tsfile.mods");
-
-    File testTargetDir = new File("testTargetDir");
-
-    testTsfile.createNewFile();
-    testTsfileResource.createNewFile();
-    testTsfileMods.createNewFile();
-    testTargetDir.mkdirs();
+    setupTestFiles();
 
     // test write
-    MigratingFileLogManager.getInstance().start(testTsfile, testTargetDir);
+    MigratingFileLogManager.getInstance().start(testTaskId, getTsFile(), testTargetDir);
 
-    File logFile =
-        SystemFileFactory.INSTANCE.getFile(MIGRATING_LOG_DIR, testTsfile.getName() + ".log");
-    FileInputStream fileInputStream = new FileInputStream(logFile);
+    FileInputStream fileInputStream = new FileInputStream(testLogFile);
 
-    assertEquals(testTsfile.getAbsolutePath(), ReadWriteIOUtils.readString(fileInputStream));
+    assertTrue(testLogFile.exists());
+    assertEquals(getTsFile().getAbsolutePath(), ReadWriteIOUtils.readString(fileInputStream));
     assertEquals(testTargetDir.getAbsolutePath(), ReadWriteIOUtils.readString(fileInputStream));
+    assertEquals(0, fileInputStream.available());
 
     fileInputStream.close();
 
     // test read
     MigratingFileLogManager.getInstance().recover();
 
-    assertFalse(testTsfile.exists());
-    assertFalse(testTsfileResource.exists());
-    assertFalse(testTsfileMods.exists());
+    for (File file : testFiles) {
+      assertFalse(file.exists());
+    }
 
-    assertFalse(logFile.exists());
+    assertFalse(testLogFile.exists());
 
     assertEquals(3, testTargetDir.listFiles().length);
-
-    FileUtils.deleteDirectory(testTargetDir);
+    cleanupTargetDir();
   }
 
   @Test
   public void testMissingFiles() throws IOException {
-    File testTargetDir = new File("testTargetDir");
-    testTargetDir.mkdirs();
-
     // test missing .tsfile .resource .mods
-    File missingTsfile = new File("testMissing.tsfile");
-    assertFalse(missingTsfile.exists());
+    File missingTsFile = new File("testMissing.tsfile");
+    File missingTsFileRes = new File("testMissing.tsfile.resource");
+    File missingTsFileMods = new File("testMissing.tsfile.mods");
 
-    MigratingFileLogManager.getInstance().start(missingTsfile, testTargetDir);
+    assertFalse(missingTsFile.exists());
+    assertFalse(missingTsFileRes.exists());
+    assertFalse(missingTsFileMods.exists());
+
+    testLogFile.createNewFile();
+
+    FileOutputStream logOutput = new FileOutputStream(testLogFile);
+
+    ReadWriteIOUtils.write(missingTsFile.getAbsolutePath(), logOutput);
+    ReadWriteIOUtils.write(testTargetDir.getAbsolutePath(), logOutput);
 
     MigratingFileLogManager.getInstance().recover();
 
     assertEquals(0, testTargetDir.listFiles().length);
-
-    FileUtils.deleteDirectory(testTargetDir);
   }
 }

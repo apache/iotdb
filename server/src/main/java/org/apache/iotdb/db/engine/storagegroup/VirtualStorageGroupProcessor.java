@@ -1580,7 +1580,7 @@ public class VirtualStorageGroupProcessor {
         // task stopped running (eg. the task is paused), return
         return;
       }
-      checkMigrateFile(tsFileResource, task.getTargetDir(), ttlLowerBound, true);
+      checkMigrateFile(task.getTaskId(), tsFileResource, task.getTargetDir(), ttlLowerBound, true);
     }
 
     for (TsFileResource tsFileResource : unseqFiles) {
@@ -1588,13 +1588,13 @@ public class VirtualStorageGroupProcessor {
         // task stopped running, return
         return;
       }
-      checkMigrateFile(tsFileResource, task.getTargetDir(), ttlLowerBound, false);
+      checkMigrateFile(task.getTaskId(), tsFileResource, task.getTargetDir(), ttlLowerBound, false);
     }
   }
 
   /** migrate the file to targetDir */
   public void checkMigrateFile(
-      TsFileResource resource, File targetDir, long ttlLowerBound, boolean isSeq) {
+      long taskId, TsFileResource resource, File targetDir, long ttlLowerBound, boolean isSeq) {
     writeLock("checkMigrationLock");
     try {
       if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
@@ -1610,9 +1610,9 @@ public class VirtualStorageGroupProcessor {
           tsFileManager.remove(resource, isSeq);
 
           // start the migration
-          if (MigratingFileLogManager.getInstance().start(resource.getTsFile(), targetDir)) {
+          if (MigratingFileLogManager.getInstance()
+              .start(taskId, resource.getTsFile(), targetDir)) {
             File migratedFile = resource.migrate(targetDir);
-            MigratingFileLogManager.getInstance().finish(resource.getTsFile());
 
             logger.info(
                 "Migrated a file {} to {} before {}",
