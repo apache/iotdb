@@ -73,26 +73,13 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
 
   @Override
   public long getLoadScore() {
-    // Return a copy of loadScore
-    switch (status) {
-      case Running:
-        return 0;
-      case Unknown:
-      default:
-        // The Unknown Node will get the highest loadScore
-        return Long.MAX_VALUE;
-    }
+    // The ConfigNode whose status isn't Running will get the highest loadScore
+    return status == NodeStatus.Running ? 0 : Long.MAX_VALUE;
   }
 
   @Override
   public NodeStatus getNodeStatus() {
     // Return a copy of status
-    switch (status) {
-      case Running:
-        return NodeStatus.Running;
-      case Unknown:
-      default:
-        return NodeStatus.Unknown;
-    }
+    return NodeStatus.valueOf(status.getStatus());
   }
 }

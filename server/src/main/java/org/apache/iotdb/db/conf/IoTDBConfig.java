@@ -1530,7 +1530,7 @@ public class IoTDBConfig {
         || (status == NodeStatus.Error && allowReadOnlyWhenErrorsOccur);
   }
 
-  public NodeStatus getSystemStatus() {
+  public NodeStatus getNodeStatus() {
     return status;
   }
 

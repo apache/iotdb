@@ -384,7 +384,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req) throws TException {
     THeartbeatResp resp = new THeartbeatResp();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
-    resp.setStatus(IoTDBDescriptor.getInstance().getConfig().getSystemStatus().getStatus());
+    resp.setStatus(IoTDBDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
 
     // Judging leader if necessary
     if (req.isNeedJudgeLeader()) {
