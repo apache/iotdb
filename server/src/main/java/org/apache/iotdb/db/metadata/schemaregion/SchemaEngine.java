@@ -37,8 +37,8 @@ import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.external.api.ISeriesNumerLimiter;
 
-import org.apche.iotdb.external.api.ISeriesNumerLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
