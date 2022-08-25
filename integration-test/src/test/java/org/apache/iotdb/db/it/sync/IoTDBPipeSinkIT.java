@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.it.sync;
 
-import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -35,6 +33,8 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+
+import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqual;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
@@ -55,13 +55,9 @@ public class IoTDBPipeSinkIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String expectedHeader = ColumnHeaderConstant.COLUMN_PIPESINK_TYPE + ",";
-      String[] expectedRetSet =
-          new String[] {
-            PipeSink.PipeSinkType.IoTDB.name() + ",",
-            PipeSink.PipeSinkType.ExternalPipe.name() + ","
-          };
+      String[] expectedRetSet = new String[] {"IoTDB,", "ExternalPipe,"};
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPESINKTYPE")) {
-        TestUtils.assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
+        assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -89,11 +85,11 @@ public class IoTDBPipeSinkIT {
             new String[] {
               "demo3,IoTDB,ip='127.0.0.1',port=6670,", "demo1,IoTDB,ip='192.168.0.1',port=6677,"
             };
-        TestUtils.assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
+        assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPESINK demo3")) {
         String[] expectedRetSet = new String[] {"demo3,IoTDB,ip='127.0.0.1',port=6670,"};
-        TestUtils.assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
+        assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
     } catch (Exception e) {
       e.printStackTrace();

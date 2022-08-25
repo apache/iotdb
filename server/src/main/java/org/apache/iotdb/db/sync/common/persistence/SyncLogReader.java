@@ -22,10 +22,9 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
@@ -110,9 +109,9 @@ public class SyncLogReader {
       while ((readLine = br.readLine()) != null) {
         lineNumber += 1;
         parseStrings = readLine.split(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
-        Operator.OperatorType type = Operator.OperatorType.valueOf(parseStrings[0]);
 
-        // TODO: CreatePipeSinkStatement
+        StatementType type = StatementType.valueOf(parseStrings[0]);
+
         switch (type) {
           case CREATE_PIPESINK:
             readLine = br.readLine();

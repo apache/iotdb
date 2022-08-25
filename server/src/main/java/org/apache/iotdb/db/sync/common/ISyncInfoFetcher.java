@@ -31,7 +31,7 @@ import java.util.List;
 public interface ISyncInfoFetcher {
 
   // region Interfaces of PipeSink
-  // TODO: delete this in new-standalone version
+  // TODO(sync): delete this in new-standalone version
   TSStatus addPipeSink(CreatePipeSinkPlan plan);
 
   TSStatus addPipeSink(CreatePipeSinkStatement createPipeSinkStatement);

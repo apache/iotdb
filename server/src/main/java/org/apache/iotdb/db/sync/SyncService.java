@@ -127,7 +127,7 @@ public class SyncService implements IService {
     return syncInfoFetcher.getPipeSink(name);
   }
 
-  // TODO: delete this in new-standalone version
+  // TODO(sync): delete this in new-standalone version
   public void addPipeSink(CreatePipeSinkPlan plan) throws PipeSinkException {
     TSStatus status = syncInfoFetcher.addPipeSink(plan);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

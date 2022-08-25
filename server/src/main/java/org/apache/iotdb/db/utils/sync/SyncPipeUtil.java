@@ -32,7 +32,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class SyncPipeUtil {
 
-  // TODO: delete this in new-standalone version
+  // TODO(sync): delete this in new-standalone version
   public static PipeSink parseCreatePipeSinkPlan(CreatePipeSinkPlan plan) throws PipeSinkException {
     PipeSink pipeSink;
     try {
