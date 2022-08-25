@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.SeriesNumberOverflowException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
@@ -104,6 +105,7 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import org.apche.iotdb.external.api.ISeriesNumerLimiter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -120,6 +122,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -186,8 +189,8 @@ public class MManager {
   private boolean initialized;
   private boolean allowToCreateNewSeries = true;
 
-  private AtomicLong totalNormalSeriesNumber = new AtomicLong();
-  private AtomicLong totalTemplateSeriesNumber = new AtomicLong();
+  private final AtomicLong totalNormalSeriesNumber = new AtomicLong();
+  private final AtomicLong totalTemplateSeriesNumber = new AtomicLong();
 
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
@@ -205,6 +208,23 @@ public class MManager {
   private TagManager tagManager = TagManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
 
+  private ISeriesNumerLimiter seriesNumerLimiter =
+      new ISeriesNumerLimiter() {
+        @Override
+        public void init(Properties properties) {}
+
+        @Override
+        public boolean addTimeSeries(int number) {
+          // always return true, don't limit the number of series
+          return true;
+        }
+
+        @Override
+        public void deleteTimeSeries(int number) {
+          // do nothing
+        }
+      };
+
   // region MManager Singleton
   private static class MManagerHolder {
 
@@ -213,6 +233,10 @@ public class MManager {
     }
 
     private static final MManager INSTANCE = new MManager();
+  }
+
+  public void setSeriesNumerLimiter(ISeriesNumerLimiter seriesNumerLimiter) {
+    this.seriesNumerLimiter = seriesNumerLimiter;
   }
 
   /** we should not use this function in other place, but only in IoTDB class */
@@ -580,35 +604,47 @@ public class MManager {
           "IoTDB system load is too large to create timeseries, "
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
+
+    if (!seriesNumerLimiter.addTimeSeries(1)) {
+      throw new SeriesNumberOverflowException();
+    }
     try {
-      PartialPath path = plan.getPath();
-      SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
+      IMeasurementMNode leafMNode;
+      try {
+        PartialPath path = plan.getPath();
+        SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
 
-      ensureStorageGroup(path);
+        ensureStorageGroup(path);
 
-      TSDataType type = plan.getDataType();
-      // create time series in MTree
-      IMeasurementMNode leafMNode =
-          mtree.createTimeseries(
-              path,
-              type,
-              plan.getEncoding(),
-              plan.getCompressor(),
-              plan.getProps(),
-              plan.getAlias());
+        TSDataType type = plan.getDataType();
+        // create time series in MTree
+        leafMNode =
+            mtree.createTimeseries(
+                path,
+                type,
+                plan.getEncoding(),
+                plan.getCompressor(),
+                plan.getProps(),
+                plan.getAlias());
 
-      // the cached mNode may be replaced by new entityMNode in mtree
-      mNodeCache.invalidate(path.getDevicePath());
+        // the cached mNode may be replaced by new entityMNode in mtree
+        mNodeCache.invalidate(path.getDevicePath());
 
-      // update tag index
+        // update tag index
 
-      if (offset != -1 && isRecovering) {
-        // the timeseries has already been created and now system is recovering, using the tag info
-        // in tagFile to recover index directly
-        tagManager.recoverIndex(offset, leafMNode);
-      } else if (plan.getTags() != null) {
-        // tag key, tag value
-        tagManager.addIndex(plan.getTags(), leafMNode);
+        if (offset != -1 && isRecovering) {
+          // the timeseries has already been created and now system is recovering, using the tag
+          // info
+          // in tagFile to recover index directly
+          tagManager.recoverIndex(offset, leafMNode);
+        } else if (plan.getTags() != null) {
+          // tag key, tag value
+          tagManager.addIndex(plan.getTags(), leafMNode);
+        }
+      } catch (Throwable t) {
+        // roll back
+        seriesNumerLimiter.deleteTimeSeries(1);
+        throw t;
       }
 
       // update statistics and schemaDataTypeNumMap
@@ -692,31 +728,43 @@ public class MManager {
           "IoTDB system load is too large to create timeseries, "
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
+    int seriesCount = plan.getMeasurements().size();
+
+    if (!seriesNumerLimiter.addTimeSeries(seriesCount)) {
+      throw new SeriesNumberOverflowException();
+    }
+
     try {
       PartialPath prefixPath = plan.getPrefixPath();
       List<String> measurements = plan.getMeasurements();
       List<TSDataType> dataTypes = plan.getDataTypes();
       List<TSEncoding> encodings = plan.getEncodings();
 
-      for (int i = 0; i < measurements.size(); i++) {
-        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
+      try {
+        for (int i = 0; i < measurements.size(); i++) {
+          SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
+        }
+
+        ensureStorageGroup(prefixPath);
+
+        // create time series in MTree
+        mtree.createAlignedTimeseries(
+            prefixPath,
+            measurements,
+            plan.getDataTypes(),
+            plan.getEncodings(),
+            plan.getCompressors());
+
+        // the cached mNode may be replaced by new entityMNode in mtree
+        mNodeCache.invalidate(prefixPath);
+      } catch (Throwable t) {
+        // roll back
+        seriesNumerLimiter.deleteTimeSeries(seriesCount);
+        throw t;
       }
 
-      ensureStorageGroup(prefixPath);
-
-      // create time series in MTree
-      mtree.createAlignedTimeseries(
-          prefixPath,
-          measurements,
-          plan.getDataTypes(),
-          plan.getEncodings(),
-          plan.getCompressors());
-
-      // the cached mNode may be replaced by new entityMNode in mtree
-      mNodeCache.invalidate(prefixPath);
-
       // update statistics and schemaDataTypeNumMap
-      totalNormalSeriesNumber.addAndGet(measurements.size());
+      totalNormalSeriesNumber.addAndGet(seriesCount);
       if (totalNormalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
         logger.warn("Current series number {} is too large...", totalNormalSeriesNumber);
         allowToCreateNewSeries = false;
@@ -844,6 +892,7 @@ public class MManager {
       node = node.getParent();
     }
     totalNormalSeriesNumber.addAndGet(-1);
+    seriesNumerLimiter.deleteTimeSeries(1);
     if (!allowToCreateNewSeries
         && totalNormalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
       logger.info("Current series number {} come back to normal level", totalNormalSeriesNumber);
@@ -883,9 +932,11 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
-        totalNormalSeriesNumber.addAndGet(
-            -mtree.getAllTimeseriesCount(
-                storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD), false, false));
+        int timeSeriesCount =
+            mtree.getAllTimeseriesCount(
+                storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD), false, false);
+        totalNormalSeriesNumber.addAndGet(-timeSeriesCount);
+        seriesNumerLimiter.deleteTimeSeries(timeSeriesCount);
         // clear cached MNode
         if (!allowToCreateNewSeries
             && totalNormalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
@@ -2476,7 +2527,9 @@ public class MManager {
       }
 
       node.setUseTemplate(false);
-      totalTemplateSeriesNumber.addAndGet(-node.getUpperTemplate().getMeasurementsCount());
+      int seriesCount = node.getUpperTemplate().getMeasurementsCount();
+      totalTemplateSeriesNumber.addAndGet(-seriesCount);
+      seriesNumerLimiter.deleteTimeSeries(seriesCount);
 
       // clear caches within MManger
       mNodeCache.invalidate(node);
@@ -2502,24 +2555,36 @@ public class MManager {
           String.format("Path [%s] has not been set any template.", node.getFullPath()));
     }
 
-    // this operation may change mtree structure and node type
-    // invoke mnode.setUseTemplate is invalid
-
-    // check alignment of template and mounted node
-    // if direct measurement exists, node will be replaced
-    IMNode mountedMNode = mtree.checkTemplateAlignmentWithMountedNode(node, template);
-
-    // if has direct measurement (be a EntityNode), to ensure alignment adapt with former node or
-    // template
-    if (mountedMNode.isEntity()) {
-      mountedMNode
-          .getAsEntityMNode()
-          .setAligned(
-              node.isEntity()
-                  ? node.getAsEntityMNode().isAligned()
-                  : node.getUpperTemplate().isDirectAligned());
+    if (!seriesNumerLimiter.addTimeSeries(template.getMeasurementsCount())) {
+      throw new SeriesNumberOverflowException();
     }
-    mountedMNode.setUseTemplate(true);
+
+    IMNode mountedMNode;
+    try {
+      // this operation may change mtree structure and node type
+      // invoke mnode.setUseTemplate is invalid
+
+      // check alignment of template and mounted node
+      // if direct measurement exists, node will be replaced
+      mountedMNode = mtree.checkTemplateAlignmentWithMountedNode(node, template);
+
+      // if has direct measurement (be a EntityNode), to ensure alignment adapt with former node or
+      // template
+      if (mountedMNode.isEntity()) {
+        mountedMNode
+            .getAsEntityMNode()
+            .setAligned(
+                node.isEntity()
+                    ? node.getAsEntityMNode().isAligned()
+                    : node.getUpperTemplate().isDirectAligned());
+      }
+      mountedMNode.setUseTemplate(true);
+    } catch (Throwable t) {
+      // roll back
+      seriesNumerLimiter.deleteTimeSeries(template.getMeasurementsCount());
+      throw t;
+    }
+
     totalTemplateSeriesNumber.addAndGet(template.getMeasurementsCount());
 
     if (node != mountedMNode) {
