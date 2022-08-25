@@ -47,7 +47,8 @@ TsFile 工具可帮您 通过执行指定sql、命令行sql、sql文件的方式
 * `-td <directory>`:
   - 为导出的TsFile文件指定输出路径。
 * `-f <tsfile name>`:
-  - 为导出的TsFile文件的文件名。
+  - 为导出的TsFile文件的文件名，只需写文件名称，不能包含文件路径和后缀。如果sql文件或控制台输入时包含多个sql，会按照sql顺序生成多个TsFile文件。
+  - 例如：文件中或命令行共有3个SQL，-f 为"dump"，那么会在目标路径下生成 dump0.tsfile、dump1.tsfile、dump2.tsfile三个TsFile文件。
 * `-q <query command>`:
   - 在命令中直接指定想要执行的查询语句。
   - 例如: `select * from root.** limit 100`
@@ -67,7 +68,7 @@ TsFile 工具可帮您 通过执行指定sql、命令行sql、sql文件的方式
 # Or
 > tools/export-tsfile.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s ./sql.txt
 # Or
-> tools/export-tsfile.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s ./sql.txt -f ./myTsFile.tsfile
+> tools/export-tsfile.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s ./sql.txt -f myTsFile
 
 # Windows
 > tools/export-tsfile.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./
@@ -76,5 +77,5 @@ TsFile 工具可帮您 通过执行指定sql、命令行sql、sql文件的方式
 # Or
 > tools/export-tsfile.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s ./sql.txt
 # Or
-> tools/export-tsfile.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s ./sql.txt -f ./myTsFile.tsfile
+> tools/export-tsfile.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s ./sql.txt -f myTsFile
 ```
