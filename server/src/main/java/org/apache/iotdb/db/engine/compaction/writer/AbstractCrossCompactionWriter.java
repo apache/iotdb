@@ -31,7 +31,7 @@ public abstract class AbstractCrossCompactionWriter implements ICompactionWriter
   protected int[] seqFileIndexArray = new int[subTaskNum];
 
   // device end time in each source seq file
-  private final long[] currentDeviceEndTime;
+  protected final long[] currentDeviceEndTime;
 
   protected boolean isAlign;
 

@@ -137,8 +137,15 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
           findOverlapChunkMetadatas(firstChunkMetadataElement);
       if (overlappedChunkMetadatas.isEmpty()) {
         // has none overlap chunks, flush it directly to tsfile writer
-        compactionWriter.flushChunkToFileWriter(firstChunkMetadataElement.chunkMetadata, subTaskId);
-        removeChunk(chunkMetadataQueue.peek());
+        if (compactionWriter.flushChunkToFileWriter(
+            firstChunkMetadataElement.chunkMetadata, subTaskId)) {
+          // flush chunk successfully
+          removeChunk(chunkMetadataQueue.peek());
+        } else {
+          // chunk.endTime > file.endTime, then deserialize chunk
+          deserializeChunkIntoQueue(firstChunkMetadataElement);
+          compactWithPages();
+        }
       } else {
         // deserialize chunks
         deserializeChunkIntoQueue(firstChunkMetadataElement);
@@ -217,9 +224,15 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       List<PageElement> overlappedPages = findOverlapPages(firstPageElement);
       if (overlappedPages.isEmpty()) {
         // has none overlap pages, flush it directly to chunk writer
-        compactionWriter.flushPageToChunkWriter(
-            firstPageElement.pageData, firstPageElement.pageHeader, subTaskId);
-        removePage(firstPageElement, null);
+        if (compactionWriter.flushPageToChunkWriter(
+            firstPageElement.pageData, firstPageElement.pageHeader, subTaskId)) {
+          // flush the page successfully
+          removePage(firstPageElement, null);
+        } else {
+          // page.endTime > file.endTime, then deserialze it
+          priorityCompactionReader.addNewPages(Collections.singletonList(firstPageElement));
+          compactWithOverlapPages(overlappedPages);
+        }
       } else {
         // deserialize pages
         priorityCompactionReader.addNewPages(Collections.singletonList(firstPageElement));

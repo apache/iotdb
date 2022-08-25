@@ -72,9 +72,7 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
    * 10400 ~ 10449.
    */
   @Test
-  public void testCrossSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testCrossSpaceCompactionWithSameTimeseries() throws Exception {
     registerTimeseriesInMManger(2, 3, false);
     createFiles(5, 2, 3, 100, 0, 0, 0, 0, false, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
@@ -163,9 +161,7 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
    * 20450 ~ 20549 and 20550 ~ 20649.
    */
   @Test
-  public void testCrossSpaceCompactionWithDifferentTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testCrossSpaceCompactionWithDifferentTimeseries() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -349,9 +345,7 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
    * <p>The data of d0.s0, d0.s1, d2.s4 and d3.s4 is deleted in each file.
    */
   @Test
-  public void testCrossSpaceCompactionWithAllDataDeletedInTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testCrossSpaceCompactionWithAllDataDeletedInTimeseries() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -547,9 +541,7 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
    * <p>The data of d0 and d2 is deleted in each file.
    */
   @Test
-  public void testCrossSpaceCompactionWithAllDataDeletedInDevice()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testCrossSpaceCompactionWithAllDataDeletedInDevice() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -736,9 +728,7 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
    * is all deleted.
    */
   @Test
-  public void testCrossSpaceCompactionWithAllDataDeletedInOneTargetFile()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testCrossSpaceCompactionWithAllDataDeletedInOneTargetFile() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -904,8 +894,7 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
    */
   @Test
   public void testCrossSpaceCompactionWithAllDataDeletedInDeviceInSeqFiles()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+      throws IOException, WriteProcessException, MetadataException, Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -1169,11 +1158,13 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
         | InterruptedException e) {
       e.printStackTrace();
       Assert.fail();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 
   @Test
-  public void testCrossSpaceCompactionWithDeviceMaxTimeLaterInUnseqFile() {
+  public void testCrossSpaceCompactionWithDeviceMaxTimeLaterInUnseqFile() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     try {
       registerTimeseriesInMManger(6, 6, false);

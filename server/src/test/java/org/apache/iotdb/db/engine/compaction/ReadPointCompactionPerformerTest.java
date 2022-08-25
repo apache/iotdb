@@ -34,7 +34,6 @@ import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -44,16 +43,13 @@ import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -93,9 +89,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
   /* Total 5 seq files, each file has the same 6 nonAligned timeseries, each timeseries has the same 100 data point.*/
   @Test
-  public void testSeqInnerSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testSeqInnerSpaceCompactionWithSameTimeseries() throws Exception {
     registerTimeseriesInMManger(2, 3, false);
     createFiles(5, 2, 3, 100, 0, 0, 50, 50, false, true);
 
@@ -168,9 +162,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   Timeseries d[0-4].s5 are deleted before compaction.
   */
   @Test
-  public void testSeqInnerSpaceCompactionWithDifferentTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testSeqInnerSpaceCompactionWithDifferentTimeseries() throws Exception {
     registerTimeseriesInMManger(5, 5, false);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
@@ -287,9 +279,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
   /* Total 5 unseq files, each file has the same 6 nonAligned timeseries, each timeseries has the same 100 data point.*/
   @Test
-  public void testUnSeqInnerSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testUnSeqInnerSpaceCompactionWithSameTimeseries() throws Exception {
     registerTimeseriesInMManger(2, 3, false);
     createFiles(5, 2, 3, 100, 0, 0, 50, 50, false, false);
 
@@ -373,9 +363,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   Ninth and Tenth file: d0 ~ d8 and s0 ~ s8, time range is 100 ~ 169 and 270 ~ 339, value range is 300 ~ 369 and 470 ~ 539.
   */
   @Test
-  public void testUnSeqInnerSpaceCompactionWithDifferentTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testUnSeqInnerSpaceCompactionWithDifferentTimeseries() throws Exception {
     registerTimeseriesInMManger(9, 9, false);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, false);
     createFiles(2, 3, 5, 50, 150, 150, 50, 50, false, false);
@@ -499,9 +487,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   The data of d0.s0, d0.s1, d2.s4 and d3.s5 is deleted in each file.
   */
   @Test
-  public void testUnSeqInnerSpaceCompactionWithAllDataDeletedInTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testUnSeqInnerSpaceCompactionWithAllDataDeletedInTimeseries() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(5, 7, false);
     createFiles(2, 2, 3, 300, 0, 0, 0, 0, false, false);
@@ -634,9 +620,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   The data of device d0 is deleted in each file.
   */
   @Test
-  public void testUnSeqInnerSpaceCompactionWithAllDataDeletedInDevice()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testUnSeqInnerSpaceCompactionWithAllDataDeletedInDevice() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(5, 7, false);
     createFiles(2, 2, 3, 300, 0, 0, 0, 0, false, false);
@@ -762,9 +746,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   The data of device d0 ~ d4 is deleted in each file.
   */
   @Test
-  public void testUnSeqInnerSpaceCompactionWithAllDataDeletedInTargetFile()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testUnSeqInnerSpaceCompactionWithAllDataDeletedInTargetFile() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(5, 7, false);
     createFiles(2, 2, 3, 300, 0, 0, 0, 0, false, false);
@@ -854,9 +836,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
   /* Total 5 seq files, each file has the same 6 aligned timeseries, each timeseries has the same 100 data point.*/
   @Test
-  public void testAlignedSeqInnerSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testAlignedSeqInnerSpaceCompactionWithSameTimeseries() throws Exception {
     registerTimeseriesInMManger(2, 3, true);
     createFiles(5, 2, 3, 100, 0, 0, 50, 50, true, true);
 
@@ -952,8 +932,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   */
   @Test
   public void testAlignedSeqInnerSpaceCompactionWithDifferentTimeseriesAndEmptyPage()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+      throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(50);
     registerTimeseriesInMManger(5, 7, true);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, true, true);
@@ -1074,8 +1053,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   */
   @Test
   public void testAlignedSeqInnerSpaceCompactionWithDifferentTimeseriesAndEmptyChunk()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+      throws Exception {
     registerTimeseriesInMManger(5, 7, true);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, true, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, true, true);
@@ -1194,9 +1172,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   Fifth and Sixth file: d0 ~ d4 and s0 ~ s6, time range is 900 ~ 1199 and 1250 ~ 1549, value range is 1100 ~ 1399 and 1450 ~ 1749.
   */
   @Test
-  public void testAlignedUnSeqInnerSpaceCompactionWithEmptyChunkAndEmptyPage()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testAlignedUnSeqInnerSpaceCompactionWithEmptyChunkAndEmptyPage() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(5, 7, true);
     createFiles(2, 2, 3, 300, 0, 0, 0, 0, true, false);
@@ -1328,8 +1304,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   */
   @Test
   public void testAlignedUnSeqInnerSpaceCompactionWithAllDataDeletedInTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+      throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(5, 7, true);
     createFiles(2, 2, 3, 300, 0, 0, 0, 0, true, false);
@@ -1508,9 +1483,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   The data of device d0 is deleted in each file.
   */
   @Test
-  public void testAlignedUnSeqInnerSpaceCompactionWithAllDataDeletedInDevice()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testAlignedUnSeqInnerSpaceCompactionWithAllDataDeletedInDevice() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(5, 7, true);
     createFiles(2, 2, 3, 300, 0, 0, 0, 0, true, false);
@@ -1656,9 +1629,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
   /* Total 5 files, each file has the same 6 aligned timeseries, each timeseries has the same 100 data point.*/
   @Test
-  public void testAlignedUnSeqInnerSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testAlignedUnSeqInnerSpaceCompactionWithSameTimeseries() throws Exception {
     registerTimeseriesInMManger(2, 3, true);
     createFiles(5, 2, 3, 100, 0, 0, 50, 50, true, false);
 
@@ -1755,9 +1726,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
    * 10400 ~ 10449.
    */
   @Test
-  public void testCrossSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testCrossSpaceCompactionWithSameTimeseries() throws Exception {
     registerTimeseriesInMManger(2, 3, false);
     createFiles(5, 2, 3, 100, 0, 0, 0, 0, false, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
@@ -1846,9 +1815,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
    * 20450 ~ 20549 and 20550 ~ 20649.
    */
   @Test
-  public void testCrossSpaceCompactionWithDifferentTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testCrossSpaceCompactionWithDifferentTimeseries() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -2032,9 +1999,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
    * <p>The data of d0.s0, d0.s1, d2.s4 and d3.s4 is deleted in each file.
    */
   @Test
-  public void testCrossSpaceCompactionWithAllDataDeletedInTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testCrossSpaceCompactionWithAllDataDeletedInTimeseries() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -2230,9 +2195,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
    * <p>The data of d0 and d2 is deleted in each file.
    */
   @Test
-  public void testCrossSpaceCompactionWithAllDataDeletedInDevice()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testCrossSpaceCompactionWithAllDataDeletedInDevice() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -2419,9 +2382,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
    * is all deleted.
    */
   @Test
-  public void testCrossSpaceCompactionWithAllDataDeletedInOneTargetFile()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testCrossSpaceCompactionWithAllDataDeletedInOneTargetFile() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -2594,9 +2555,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
    * <p>The data of d0, d1 and d2 is deleted in each seq file.
    */
   @Test
-  public void testCrossSpaceCompactionWithAllDataDeletedInDeviceInSeqFiles()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testCrossSpaceCompactionWithAllDataDeletedInDeviceInSeqFiles() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, false);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
@@ -2799,9 +2758,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
    * 10400 ~ 10449.
    */
   @Test
-  public void testAlignedCrossSpaceCompactionWithSameTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testAlignedCrossSpaceCompactionWithSameTimeseries() throws Exception {
     registerTimeseriesInMManger(2, 3, true);
     createFiles(5, 2, 3, 100, 0, 0, 0, 0, true, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, true, false);
@@ -2899,9 +2856,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
    * 20450 ~ 20549 and 20550 ~ 20649.
    */
   @Test
-  public void testAlignedCrossSpaceCompactionWithDifferentTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testAlignedCrossSpaceCompactionWithDifferentTimeseries() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, true);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, true, true);
@@ -3064,9 +3019,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
    * <p>The data of d0.s0, d0.s1, d2.s4 and d3.s4 is deleted in each file.
    */
   @Test
-  public void testAlignedCrossSpaceCompactionWithAllDataDeletedInTimeseries()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testAlignedCrossSpaceCompactionWithAllDataDeletedInTimeseries() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, true);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, true, true);
@@ -3301,9 +3254,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
    * <p>The data of d0, d1 and d2 is deleted in each file. The first target file is empty.
    */
   @Test
-  public void testAlignedCrossSpaceCompactionWithAllDataDeletedInOneTargetFile()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testAlignedCrossSpaceCompactionWithAllDataDeletedInOneTargetFile() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, true);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, true, true);
@@ -3510,9 +3461,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
    * <p>The data of d0, d1 and d2 is deleted in each file. The first target file is empty.
    */
   @Test
-  public void testAlignedCrossSpaceCompactionWithFileTimeIndexResource()
-      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
-          InterruptedException {
+  public void testAlignedCrossSpaceCompactionWithFileTimeIndexResource() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     registerTimeseriesInMManger(4, 5, true);
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, true, true);
@@ -3706,7 +3655,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testCrossSpaceCompactionWithNewDeviceInUnseqFile() {
+  public void testCrossSpaceCompactionWithNewDeviceInUnseqFile() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     try {
       registerTimeseriesInMManger(6, 6, false);
@@ -3781,7 +3730,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testCrossSpaceCompactionWithDeviceMaxTimeLaterInUnseqFile() {
+  public void testCrossSpaceCompactionWithDeviceMaxTimeLaterInUnseqFile() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     try {
       registerTimeseriesInMManger(6, 6, false);
@@ -3924,38 +3873,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
             // the disk file is corrupted, using this file may be dangerous
             throw new IOException("Unexpected marker " + marker);
         }
-      }
-    }
-  }
-
-  @Test
-  public void Tests() throws MetadataException, IOException, WriteProcessException {
-    registerTimeseriesInMManger(4, 5, true);
-    createFiles(1, 1, 1, 1000, 0, 0, 50, 50, false, true);
-    createFiles(1, 1, 1, 300, 50, 10050, 50, 50, false, false);
-    createFiles(1, 1, 1, 300, 400, 20400, 50, 50, false, false);
-    createFiles(1, 1, 1, 800, 200, 30200, 50, 50, false, false);
-    PartialPath path =
-        new MeasurementPath(
-            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + 0,
-            "s0",
-            new MeasurementSchema("s0", TSDataType.INT64));
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
-            path,
-            TSDataType.INT64,
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
-            seqResources,
-            unseqResources,
-            null,
-            null,
-            true);
-
-    while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      while (batchData.hasCurrent()) {
-        System.out.println(batchData.currentTime() + "," + batchData.currentValue());
-        batchData.next();
       }
     }
   }

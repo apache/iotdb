@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -49,7 +48,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -352,6 +350,8 @@ public class InnerSeqCompactionTest {
       }
     } catch (InterruptedException | StorageEngineException e) {
       e.printStackTrace();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     } finally {
       IoTDBDescriptor.getInstance()
           .getConfig()
@@ -363,9 +363,7 @@ public class InnerSeqCompactionTest {
   }
 
   @Test
-  public void testAppendPage()
-      throws IOException, MetadataException, InterruptedException, StorageEngineException,
-          WriteProcessException {
+  public void testAppendPage() throws Exception {
 
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
@@ -630,9 +628,7 @@ public class InnerSeqCompactionTest {
   }
 
   @Test
-  public void testAppendChunk()
-      throws IOException, IllegalPathException, MetadataException, StorageEngineException,
-          WriteProcessException {
+  public void testAppendChunk() throws Exception {
     long prevChunkPointNumLowerBoundInCompaction =
         IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
     IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);

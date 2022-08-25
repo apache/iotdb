@@ -80,7 +80,7 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
     sortedSourceFiles = CompactionUtils.sortSourceFiles(seqFiles, unseqFiles);
     try (NewFastCrossCompactionWriter compactionWriter =
-        new NewFastCrossCompactionWriter(targetFiles)) {
+        new NewFastCrossCompactionWriter(targetFiles, seqFiles)) {
       MultiTsFileDeviceIterator deviceIterator =
           new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
 
