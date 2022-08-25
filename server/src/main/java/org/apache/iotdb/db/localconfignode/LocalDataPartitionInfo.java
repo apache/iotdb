@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -48,9 +47,15 @@ public class LocalDataPartitionInfo {
     return LocalDataPartitionTableHolder.INSTANCE;
   }
 
-  public synchronized void init(ByteBuffer byteBuffer) throws IllegalPathException {
+  public synchronized void init(Map<String, List<DataRegionId>> regionInfos)
+      throws IllegalPathException {
     partitionTableMap = new ConcurrentHashMap<>();
-    // TODO: recover partition table from input stream
+    for (Map.Entry<String, List<DataRegionId>> entry : regionInfos.entrySet()) {
+      String storageGroupName = entry.getKey();
+      List<DataRegionId> regionIds = entry.getValue();
+      LocalDataPartitionTable table = new LocalDataPartitionTable(storageGroupName, regionIds);
+      partitionTableMap.put(new PartialPath(storageGroupName), table);
+    }
   }
 
   public synchronized void clear() {

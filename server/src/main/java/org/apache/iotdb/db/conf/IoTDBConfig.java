@@ -813,7 +813,7 @@ public class IoTDBConfig {
   private int ioTaskQueueSizeForFlushing = 10;
 
   /** the number of data regions per user-defined storage group */
-  private int dataRegionNum = 3;
+  private int dataRegionNum = 1;
 
   /** the interval to log recover progress of each vsg when starting iotdb */
   private long recoveryLogIntervalInMs = 5_000L;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.localconfignode;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -26,29 +27,31 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 public class LocalDataPartitionTable {
   private static final Logger LOG = LoggerFactory.getLogger(LocalDataPartitionTable.class);
 
   private String storageGroupName;
-  private final int regionNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
+  private final int regionNum;
   private DataRegionId[] regionIds;
+
+  public LocalDataPartitionTable(String storageGroupName, List<DataRegionId> regions) {
+    this.storageGroupName = storageGroupName;
+    this.regionNum = regions.size();
+    regions.sort(Comparator.comparingInt(ConsensusGroupId::getId));
+    this.regionIds = new DataRegionId[regions.size()];
+    for (int i = 0; i < regions.size(); ++i) {
+      regionIds[i] = regions.get(i);
+    }
+  }
 
   public LocalDataPartitionTable(String storageGroupName) {
     this.storageGroupName = storageGroupName;
+    this.regionNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
     this.regionIds = new DataRegionId[regionNum];
-  }
-
-  public void init(ByteBuffer buffer) {
-    // TODO: init from byte buffer
-  }
-
-  public void serialize(OutputStream outputStream) {
-    // TODO: serialize the table to output stream
   }
 
   /**

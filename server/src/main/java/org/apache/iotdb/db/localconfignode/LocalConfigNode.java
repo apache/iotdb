@@ -203,7 +203,7 @@ public class LocalConfigNode {
       if (config.isMppMode() && !config.isClusterMode()) {
         Map<String, List<DataRegionId>> recoveredLocalDataRegionInfo =
             storageEngine.getLocalDataRegionInfo();
-        dataPartitionTable.init(null);
+        dataPartitionTable.init(recoveredLocalDataRegionInfo);
       }
     } catch (MetadataException | IOException e) {
       logger.error(
@@ -966,40 +966,20 @@ public class LocalConfigNode {
           deviceToRegionsMap = new HashMap<>();
       for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
         String deviceId = dataPartitionQueryParam.getDevicePath();
-        List<TTimePartitionSlot> timePartitionSlots =
-            dataPartitionQueryParam.getTimePartitionSlotList();
-        if (timePartitionSlots.size() == 0) {
-          // if there is no time slot for in the query params
-          // we return all the region id for this sg
-          PartialPath storageGroup =
-              storageGroupSchemaManager.getBelongedStorageGroup(new PartialPath(deviceId));
-          List<DataRegionId> regionIdForCurrSg = getAllRegionForOneSg(storageGroup);
-          List<TRegionReplicaSet> replicaSetList = new ArrayList<>();
-          regionIdForCurrSg.forEach(
-              x ->
-                  replicaSetList.add(
-                      genStandaloneRegionReplicaSet(TConsensusGroupType.DataRegion, x.getId())));
-          deviceToRegionsMap
-              .computeIfAbsent(executor.getSeriesPartitionSlot(deviceId), x -> new HashMap<>())
-              .put(new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME), replicaSetList);
-          continue;
-        }
-        for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
-          DataRegionId dataRegionId = getBelongedDataRegionId(new PartialPath(deviceId));
-          // dataRegionId is null means the DataRegion is not created,
-          // use an empty dataPartitionMap to init DataPartition
-          if (dataRegionId != null) {
-            Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-                deviceToRegionsMap.getOrDefault(
-                    executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
-            timePartitionToRegionsMap.put(
-                timePartitionSlot,
-                Collections.singletonList(
-                    genStandaloneRegionReplicaSet(
-                        TConsensusGroupType.DataRegion, dataRegionId.getId())));
-            deviceToRegionsMap.put(
-                executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
-          }
+        DataRegionId dataRegionId = getBelongedDataRegionId(new PartialPath(deviceId));
+        // dataRegionId is null means the DataRegion is not created,
+        // use an empty dataPartitionMap to init DataPartition
+        if (dataRegionId != null) {
+          Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
+              deviceToRegionsMap.getOrDefault(
+                  executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
+          timePartitionToRegionsMap.put(
+              new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME),
+              Collections.singletonList(
+                  genStandaloneRegionReplicaSet(
+                      TConsensusGroupType.DataRegion, dataRegionId.getId())));
+          deviceToRegionsMap.put(
+              executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
         }
       }
       if (!deviceToRegionsMap.isEmpty()) {
