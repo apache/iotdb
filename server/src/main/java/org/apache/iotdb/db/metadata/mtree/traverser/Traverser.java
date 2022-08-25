@@ -217,7 +217,7 @@ public abstract class Traverser {
       if (child.isMeasurement()) {
         String alias = child.getAsMeasurementMNode().getAlias();
         if (!Pattern.matches(targetNameRegex, child.getName())
-                && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
+            && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
           continue;
         }
       } else {
