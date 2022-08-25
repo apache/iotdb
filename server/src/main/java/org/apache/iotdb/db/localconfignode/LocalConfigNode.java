@@ -90,11 +90,13 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
+import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1347,5 +1349,14 @@ public class LocalConfigNode {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public List<PipeSink> showPipeSink(String pipeSinkName) {
+    boolean showAll = StringUtils.isEmpty(pipeSinkName);
+    if (showAll) {
+      return syncService.getAllPipeSink();
+    } else {
+      return Collections.singletonList(syncService.getPipeSink(pipeSinkName));
+    }
   }
 }

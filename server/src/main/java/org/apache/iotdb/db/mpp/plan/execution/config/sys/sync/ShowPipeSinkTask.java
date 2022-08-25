@@ -19,16 +19,29 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.sys.sync;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
+import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ShowPipeSinkTask implements IConfigTask {
 
-  private ShowPipeSinkStatement showPipeSinkStatement;
+  private final ShowPipeSinkStatement showPipeSinkStatement;
 
   public ShowPipeSinkTask(ShowPipeSinkStatement showPipeSinkStatement) {
     this.showPipeSinkStatement = showPipeSinkStatement;
@@ -37,6 +50,24 @@ public class ShowPipeSinkTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showPipeSink();
+    return configTaskExecutor.showPipeSink(showPipeSinkStatement);
+  }
+
+  public static void buildTSBlock(
+      List<PipeSink> pipeSinkList, SettableFuture<ConfigTaskResult> future) {
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showPipeSinkColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    for (PipeSink pipeSink : pipeSinkList) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder.getColumnBuilder(0).writeBinary(new Binary(pipeSink.getPipeSinkName()));
+      builder.getColumnBuilder(1).writeBinary(new Binary(pipeSink.getType().name()));
+      builder.getColumnBuilder(2).writeBinary(new Binary(pipeSink.showAllAttributes()));
+      builder.declarePosition();
+    }
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeSinkHeader();
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }
