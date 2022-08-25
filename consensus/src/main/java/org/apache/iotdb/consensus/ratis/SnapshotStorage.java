@@ -117,13 +117,20 @@ public class SnapshotStorage implements StateMachineStorage {
     }
 
     List<FileInfo> fileInfos = new ArrayList<>();
+    FileInfo metafileInfo = null;
     for (Path file : actualSnapshotFiles) {
       if (file.endsWith(".md5")) {
         continue;
       }
       FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
-      fileInfos.add(fileInfo);
+      if (file.toFile().getName().matches(getMetafileMatcherRegex())) {
+        metafileInfo = fileInfo;
+      } else {
+        fileInfos.add(fileInfo);
+      }
     }
+    // metafile should be sent last for atomicity considerations
+    fileInfos.add(metafileInfo);
 
     return new FileListSnapshotInfo(
         fileInfos, snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());
