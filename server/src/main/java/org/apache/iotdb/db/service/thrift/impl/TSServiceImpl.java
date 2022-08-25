@@ -778,6 +778,11 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private TSExecuteStatementResp submitQueryTask(
       PhysicalPlan physicalPlan, long startTime, TSExecuteStatementReq req) throws Exception {
+    TSStatus status = serviceProvider.checkAuthority(physicalPlan, req.getSessionId());
+    if (status != null) {
+      return new TSExecuteStatementResp(status);
+    }
+
     QueryTask queryTask =
         new QueryTask(
             physicalPlan,
