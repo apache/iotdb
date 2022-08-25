@@ -87,7 +87,6 @@ import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
-import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -3764,7 +3763,7 @@ public class DataRegion {
   }
 
   public String getDataRegionName() {
-    return logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId;
+    return storageGroupName + FILE_NAME_SEPARATOR + dataRegionId;
   }
 
   @TestOnly
