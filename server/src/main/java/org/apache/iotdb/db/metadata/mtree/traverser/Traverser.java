@@ -136,7 +136,7 @@ public abstract class Traverser {
     }
     if (matchLevelPair.left > 0 && matchLevelPair.right > 0) {
       processMinMaxLayers(node, idx, level, matchLevelPair);
-    } else if(targetName.contains("*")){
+    } else if (targetName.contains("*")) {
       processNameWithWildcardLayers(node, idx, level, targetName);
     } else {
       processNameLayers(node, idx, level, targetName);
@@ -212,14 +212,14 @@ public abstract class Traverser {
   }
 
   private void processNameWithWildcardLayers(IMNode node, int idx, int level, String targetName)
-          throws MetadataException {
+      throws MetadataException {
     String targetNameRegex = nodes[idx + 1].replace("*", ".*");
     traverseContext.push(node);
     for (IMNode child : node.getChildren().values()) {
       if (child.isMeasurement()) {
         String alias = child.getAsMeasurementMNode().getAlias();
         if (!Pattern.matches(targetNameRegex, child.getName())
-                && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
+            && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
           continue;
         }
       } else {
