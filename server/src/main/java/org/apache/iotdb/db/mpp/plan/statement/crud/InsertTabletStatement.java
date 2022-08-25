@@ -77,6 +77,15 @@ public class InsertTabletStatement extends InsertBaseStatement {
     this.times = times;
   }
 
+  @Override
+  public boolean isEmpty() {
+    return rowCount == 0
+        || times.length == 0
+        || measurements.length == 0
+        || dataTypes.length == 0
+        || columns.length == 0;
+  }
+
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     List<TTimePartitionSlot> result = new ArrayList<>();
     long startTime =
