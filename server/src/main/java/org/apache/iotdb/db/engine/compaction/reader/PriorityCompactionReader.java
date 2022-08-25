@@ -28,6 +28,8 @@ public class PriorityCompactionReader {
 
   private boolean isNewPoint = true;
 
+  private List<PageElement> newOverlappedPages;
+
   public PriorityCompactionReader(
       List<PageElement> pageElements, NewFastCompactionPerformerSubTask.RemovePage removePage)
       throws IOException {
@@ -47,7 +49,7 @@ public class PriorityCompactionReader {
         if (curTime.get(i) < curTime.get(highestPriorityPointIndex)) {
           // small time has higher priority
           highestPriorityPointIndex = i;
-        } else if (curTime.get(i) == curTime.get(highestPriorityPointIndex)
+        } else if (curTime.get(i).equals(curTime.get(highestPriorityPointIndex))
             && priority.get(i) > priority.get(highestPriorityPointIndex)) {
           // if time equals, newer point has higher priority
           highestPriorityPointIndex = i;
@@ -76,11 +78,11 @@ public class PriorityCompactionReader {
         curTime.add(i, batchData.currentTime());
       } else {
         // end page
-        removePage.call(pageElements.get(i));
         curTime.remove(i);
-        pageElements.remove(i);
         priority.remove(i);
-        pageDatas.remove(i--);
+        pageDatas.remove(i);
+        removePage.call(pageElements.get(i), newOverlappedPages);
+        pageElements.remove(i--);
       }
     }
     isNewPoint = true;
@@ -104,5 +106,13 @@ public class PriorityCompactionReader {
       }
     }
     isNewPoint = true;
+  }
+
+  public List<BatchData> getPageDatas() {
+    return pageDatas;
+  }
+
+  public void setNewOverlappedPages(List<PageElement> newOverlappedPages) {
+    this.newOverlappedPages = newOverlappedPages;
   }
 }

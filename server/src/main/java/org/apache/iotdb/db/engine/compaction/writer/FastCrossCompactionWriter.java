@@ -238,11 +238,11 @@ public class FastCrossCompactionWriter implements AutoCloseable {
   private void flushChunkToFileWriter(Chunk seqChunk, ChunkMetadata seqChunkMetadata, int subTaskId)
       throws IOException {
     TsFileIOWriter tsFileIOWriter = targetFileWriters.get(targetFileIndex);
-    // seal last chunk to file writer
-    // Todo: may cause small chunk
-    chunkWriters[subTaskId].writeToFileWriter(tsFileIOWriter);
 
     synchronized (tsFileIOWriter) {
+      // seal last chunk to file writer
+      // Todo: may cause small chunk
+      chunkWriters[subTaskId].writeToFileWriter(tsFileIOWriter);
       tsFileIOWriter.writeChunk(seqChunk, seqChunkMetadata);
     }
   }
