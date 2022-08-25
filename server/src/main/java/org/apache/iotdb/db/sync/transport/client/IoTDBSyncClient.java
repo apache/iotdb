@@ -52,9 +52,9 @@ import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
 
-public class IoTDBSinkSyncClient implements ISyncClient {
+public class IoTDBSyncClient implements ISyncClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBSinkSyncClient.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBSyncClient.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -78,7 +78,7 @@ public class IoTDBSinkSyncClient implements ISyncClient {
    * @param port remote port
    * @param localIP local ip address
    */
-  public IoTDBSinkSyncClient(Pipe pipe, String ipAddress, int port, String localIP) {
+  public IoTDBSyncClient(Pipe pipe, String ipAddress, int port, String localIP) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
     this.pipe = pipe;
     this.ipAddress = ipAddress;

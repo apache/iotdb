@@ -34,7 +34,7 @@ import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.transport.client.IoTDBSinkSyncClient;
+import org.apache.iotdb.db.sync.transport.client.IoTDBSyncClient;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
@@ -276,8 +276,8 @@ public class SyncTransportTest {
 
     // 3. start client
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
-    IoTDBSinkSyncClient client =
-        new IoTDBSinkSyncClient(
+    IoTDBSyncClient client =
+        new IoTDBSyncClient(
             pipe, "127.0.0.1", IoTDBDescriptor.getInstance().getConfig().getRpcPort(), "127.0.0.1");
     client.handshake();
     for (PipeData pipeData : pipeDataList) {

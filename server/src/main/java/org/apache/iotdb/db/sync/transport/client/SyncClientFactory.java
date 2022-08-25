@@ -39,7 +39,7 @@ public class SyncClientFactory {
     switch (pipeSink.getType()) {
       case IoTDB:
         IoTDBPipeSink ioTDBPipeSink = (IoTDBPipeSink) pipeSink;
-        return new IoTDBSinkSyncClient(
+        return new IoTDBSyncClient(
             pipe, ioTDBPipeSink.getIp(), ioTDBPipeSink.getPort(), getLocalIP(ioTDBPipeSink));
       case ExternalPipe:
       default:
