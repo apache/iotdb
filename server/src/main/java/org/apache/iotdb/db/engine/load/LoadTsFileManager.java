@@ -90,6 +90,8 @@ public class LoadTsFileManager {
       return false;
     }
     uuid2WriterManager.get(uuid).loadAll();
+    uuid2WriterManager.get(uuid).close();
+    uuid2WriterManager.remove(uuid);
     return true;
   }
 
@@ -98,6 +100,7 @@ public class LoadTsFileManager {
       return false;
     }
     uuid2WriterManager.get(uuid).close();
+    uuid2WriterManager.remove(uuid);
     return true;
   }
 
@@ -145,6 +148,7 @@ public class LoadTsFileManager {
           writer.endChunkGroup();
         }
         writer.startChunkGroup(chunkData.getDevice());
+        dataPartition2LastDevice.put(partitionInfo, chunkData.getDevice());
       }
       chunkData.writeToFileWriter(writer);
     }
@@ -179,7 +183,10 @@ public class LoadTsFileManager {
 
     private void close() throws IOException {
       for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
-        entry.getValue().close();
+        TsFileIOWriter writer = entry.getValue();
+        if (writer.canWrite()) {
+          entry.getValue().close();
+        }
       }
       if (taskDir.delete()) {
         logger.warn(String.format("Can not delete load uuid dir %s.", taskDir.getPath()));

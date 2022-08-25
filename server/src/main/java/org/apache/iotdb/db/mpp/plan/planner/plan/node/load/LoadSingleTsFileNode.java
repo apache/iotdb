@@ -190,6 +190,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                     .add((AlignedChunkData) chunkData);
               }
               chunkData.setNotDecode(chunkMetadata);
+              chunkDataList.add(chunkData);
+              reader.position(reader.position() + header.getDataSize());
               break;
             }
             if (isAligned) {
@@ -279,7 +281,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
           case MetaMarker.VALUE_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
             chunkOffset = reader.position();
-            chunkMetadata = offset2ChunkMetadata.get(chunkOffset);
+            chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
             header = reader.readChunkHeader(marker);
             if (header.getDataSize() == 0) {
               handleEmptyValueChunk(chunkOffset, header, chunkMetadata, pageIndex2ChunkData);
@@ -287,9 +289,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
             }
 
             Set<ChunkData> allChunkData = new HashSet<>();
-            chunkMetadata = offset2ChunkMetadata.get(chunkOffset);
             if (!isTimeChunkNeedDecode) {
               pageIndex2ChunkData.get(1).get(0).addValueChunk(chunkOffset, header, chunkMetadata);
+              reader.position(reader.position() + header.getDataSize());
               break;
             }
 

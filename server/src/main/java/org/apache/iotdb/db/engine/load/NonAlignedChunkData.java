@@ -207,10 +207,25 @@ public class NonAlignedChunkData implements ChunkData {
         new PageReader(pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, null);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
 
-    ReadWriteIOUtils.write(batchData.length(), stream); // TODO: check if correct
+    int length = 0;
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
       if (time < timePartitionSlot.getStartTime()) {
+        batchData.next();
+        continue;
+      } else if (!timePartitionSlot.equals(StorageEngineV2.getTimePartitionSlot(time))) {
+        break;
+      }
+      length += 1;
+      batchData.next();
+    }
+
+    ReadWriteIOUtils.write(length, stream);
+    batchData.resetBatchData();
+    while (batchData.hasCurrent()) {
+      long time = batchData.currentTime();
+      if (time < timePartitionSlot.getStartTime()) {
+        batchData.next();
         continue;
       } else if (!timePartitionSlot.equals(StorageEngineV2.getTimePartitionSlot(time))) {
         break;

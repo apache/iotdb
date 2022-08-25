@@ -126,6 +126,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.LOAD_TSFILE.serialize(stream);
     ReadWriteIOUtils.write(tsFile.getPath(), stream); // TODO: can save this space
+    ReadWriteIOUtils.write(chunkDataList.size(), stream);
     for (ChunkData chunkData : chunkDataList) {
       try {
         chunkData.serialize(stream, tsFile);
@@ -148,7 +149,8 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       ReadWriteIOUtils.readShort(stream); // read PlanNodeType
       File tsFile = new File(ReadWriteIOUtils.readString(stream));
       LoadTsFilePieceNode pieceNode = new LoadTsFilePieceNode(new PlanNodeId(""), tsFile);
-      while (stream.available() > 0) {
+      int chunkDataSize = ReadWriteIOUtils.readInt(stream);
+      for (int i = 0; i < chunkDataSize; i++) {
         ChunkData chunkData = ChunkData.deserialize(stream);
         pieceNode.addChunkData(chunkData);
       }

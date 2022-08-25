@@ -72,6 +72,7 @@ public class AlignedChunkData implements ChunkData {
   private List<IChunkMetadata> chunkMetadataList;
 
   private List<long[]> timeBatch;
+  private int satisfiedLength;
 
   private AlignedChunkWriterImpl chunkWriter;
   private List<Chunk> chunkList;
@@ -177,8 +178,7 @@ public class AlignedChunkData implements ChunkData {
     ReadWriteIOUtils.write(device, stream);
     ReadWriteIOUtils.write(chunkHeaderList.size(), stream);
     for (ChunkHeader chunkHeader : chunkHeaderList) {
-      ReadWriteIOUtils.write(chunkHeader.getChunkType(), stream);
-      chunkHeader.serializeTo(stream);
+      chunkHeader.serializeTo(stream); // chunk header already serialize chunk type
     }
   }
 
@@ -262,15 +262,20 @@ public class AlignedChunkData implements ChunkData {
     valueDecoder.reset();
     ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
     TimePageReader timePageReader = new TimePageReader(pageHeader, pageData, timeDecoder);
-    long[] time = timePageReader.getNextTimeBatch();
-    timeBatch.add(time);
-    ReadWriteIOUtils.write(time.length, stream);
-    for (int i = 0; i < time.length; i++) {
-      if (time[i] < timePartitionSlot.getStartTime()) {
+    long[] decodeTime = timePageReader.getNextTimeBatch();
+    satisfiedLength = 0;
+    long[] time = new long[decodeTime.length];
+    for (int i = 0; i < decodeTime.length; i++) {
+      if (decodeTime[i] < timePartitionSlot.getStartTime()) {
         continue;
-      } else if (!timePartitionSlot.equals(StorageEngineV2.getTimePartitionSlot(time[i]))) {
+      } else if (!timePartitionSlot.equals(StorageEngineV2.getTimePartitionSlot(decodeTime[i]))) {
         break;
       }
+      time[satisfiedLength++] = decodeTime[i];
+    }
+    timeBatch.add(decodeTime);
+    ReadWriteIOUtils.write(satisfiedLength, stream);
+    for (int i = 0; i < satisfiedLength; i++) {
       ReadWriteIOUtils.write(time[i], stream);
     }
   }
@@ -287,9 +292,15 @@ public class AlignedChunkData implements ChunkData {
     ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
     ValuePageReader valuePageReader =
         new ValuePageReader(pageHeader, pageData, chunkHeader.getDataType(), valueDecoder);
-    TsPrimitiveType[] valueBatch = valuePageReader.nextValueBatch(timeBatch.get(pageIndex));
-    ReadWriteIOUtils.write(valueBatch.length, stream);
+    long[] time = timeBatch.get(pageIndex);
+    TsPrimitiveType[] valueBatch = valuePageReader.nextValueBatch(time);
+    ReadWriteIOUtils.write(satisfiedLength, stream);
     for (int i = 0; i < valueBatch.length; i++) {
+      if (time[i] < timePartitionSlot.getStartTime()) {
+        continue;
+      } else if (!timePartitionSlot.equals(StorageEngineV2.getTimePartitionSlot(time[i]))) {
+        break;
+      }
       if (valueBatch[i] == null) {
         ReadWriteIOUtils.write(true, stream);
         continue;
@@ -446,7 +457,7 @@ public class AlignedChunkData implements ChunkData {
     ChunkHeader[] chunkHeaderList = new ChunkHeader[chunkHeaderListSize];
     for (int i = 0; i < chunkHeaderListSize; i++) {
       byte chunkType = ReadWriteIOUtils.readByte(stream);
-      ChunkHeader chunkHeader = ChunkHeader.deserializeFrom(stream, chunkType);
+      chunkHeaderList[i] = ChunkHeader.deserializeFrom(stream, chunkType);
     }
 
     AlignedChunkData chunkData = new AlignedChunkData(-1, device, chunkHeaderList[0]);
