@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
@@ -40,14 +41,14 @@ import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
 import org.apache.iotdb.db.sync.externalpipe.ExternalPipeStatus;
-import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
+import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.sender.service.TransportHandler;
+import org.apache.iotdb.db.sync.transport.client.SenderManager;
 import org.apache.iotdb.db.sync.transport.server.ReceiverManager;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
@@ -73,15 +74,16 @@ public class SyncService implements IService {
 
   private Pipe runningPipe;
 
-  private TransportHandler transportHandler;
-
   /* handle external Pipe */
   private ExtPipePluginManager extPipePluginManager;
 
   private ISyncInfoFetcher syncInfoFetcher = LocalSyncInfoFetcher.getInstance();
 
+  /* handle rpc send logic in sender-side*/
+  private SenderManager senderManager;
+
   /* handle rpc in receiver-side*/
-  private ReceiverManager receiverManager;
+  private final ReceiverManager receiverManager;
 
   private SyncService() {
     receiverManager = new ReceiverManager();
@@ -103,15 +105,13 @@ public class SyncService implements IService {
     return receiverManager.handshake(identityInfo);
   }
 
-  public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
+  public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
       throws TException {
-    return receiverManager.transportData(metaInfo, buff, digest);
+    return receiverManager.transportFile(metaInfo, buff);
   }
 
-  // TODO: this will be deleted later
-  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
-      throws TException {
-    return receiverManager.checkFileDigest(metaInfo, digest);
+  public TSStatus transportPipeData(ByteBuffer buff) throws TException {
+    return receiverManager.transportPipeData(buff);
   }
 
   public void handleClientExit() {
@@ -178,8 +178,7 @@ public class SyncService implements IService {
     runningPipe = SyncPipeUtil.parseCreatePipePlanAsPipe(plan, runningPipeSink, currentTime);
     if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
       try {
-        transportHandler =
-            TransportHandler.getNewTransportHandler(runningPipe, (IoTDBPipeSink) runningPipeSink);
+        senderManager = new SenderManager(runningPipe, (IoTDBPipeSink) runningPipeSink);
       } catch (ClassCastException e) {
         logger.error(
             String.format(
@@ -203,7 +202,7 @@ public class SyncService implements IService {
     if (runningPipe.getStatus() == Pipe.PipeStatus.RUNNING) {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
         runningPipe.stop();
-        transportHandler.stop();
+        senderManager.stop();
       } else { // for external PIPE
         // == pause externalPipeProcessor's task
         if (extPipePluginManager != null) {
@@ -227,7 +226,7 @@ public class SyncService implements IService {
     if (runningPipe.getStatus() == Pipe.PipeStatus.STOP) {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
         runningPipe.start();
-        transportHandler.start();
+        senderManager.start();
       } else { // for external PIPE
         runningPipe.start();
         startExternalPipeManager(true);
@@ -240,7 +239,7 @@ public class SyncService implements IService {
     checkRunningPipeExistAndName(pipeName);
     try {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
-        if (!transportHandler.close()) {
+        if (!senderManager.close()) {
           throw new PipeException(
               String.format(
                   "Close pipe %s transport error after %s %s, please try again.",
@@ -400,7 +399,7 @@ public class SyncService implements IService {
     if (externalPipeSinkWriterFactory == null) {
       logger.error(
           String.format(
-              "startExternalPipeManager(), can not found ExternalPipe plugin for {}.",
+              "startExternalPipeManager(), can not found ExternalPipe plugin for %s.",
               extPipeSinkTypeName));
       throw new PipeException("Can not found ExternalPipe plugin for " + extPipeSinkTypeName + ".");
     }
@@ -456,7 +455,7 @@ public class SyncService implements IService {
     if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       try {
         runningPipe.stop();
-        transportHandler.stop();
+        senderManager.stop();
       } catch (PipeException e) {
         logger.warn(
             String.format("Stop pipe %s error when stop Sender Service.", runningPipe.getName()),
@@ -470,7 +469,7 @@ public class SyncService implements IService {
     if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       try {
         runningPipe.stop();
-        transportHandler.close();
+        senderManager.close();
         runningPipe.close();
       } catch (PipeException | InterruptedException e) {
         logger.warn(
@@ -513,15 +512,19 @@ public class SyncService implements IService {
     }
 
     if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
-      this.transportHandler =
-          TransportHandler.getNewTransportHandler(
-              runningPipe, (IoTDBPipeSink) runningPipe.getPipeSink());
+      this.senderManager =
+          new SenderManager(runningPipe, (IoTDBPipeSink) runningPipe.getPipeSink());
       if (Pipe.PipeStatus.RUNNING.equals(runningPipe.getStatus())) {
-        transportHandler.start();
+        senderManager.start();
       }
     } else { // for external pipe
       // == start ExternalPipeProcessor for send data to external pipe plugin
       startExternalPipeManager(runningPipe.getStatus() == Pipe.PipeStatus.RUNNING);
     }
+  }
+
+  @TestOnly
+  public SenderManager getSenderManager() {
+    return senderManager;
   }
 }

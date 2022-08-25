@@ -15,31 +15,23 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.sync.transport.conf;
+package org.apche.iotdb.external.api;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
+import java.nio.file.Path;
+import java.util.Properties;
 
-import java.io.File;
+/**
+ * An interface to load properties from external properties file to override the default
+ * configurations
+ */
+public interface IPropertiesLoader {
 
-public class TransportConfig {
-  private TransportConfig() {}
-
-  /** default base dir, stores all IoTDB runtime files */
-  private static final String DEFAULT_BASE_DIR = addHomeDir("data");
-
-  private static String addHomeDir(String dir) {
-    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
-      } else {
-        dir = homeDir + dir;
-      }
-    }
-    return dir;
-  }
-
-  public static boolean isCheckFileDegistAgain = false;
+  /**
+   * Load Properties from specific file
+   *
+   * @param file The path of the properties file to open
+   * @return a property list with values in file.
+   */
+  Properties loadProperties(Path file);
 }

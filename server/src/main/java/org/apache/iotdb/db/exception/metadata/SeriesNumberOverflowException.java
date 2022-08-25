@@ -15,29 +15,15 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.sync.transport.client;
+package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.db.exception.SyncConnectionException;
-import org.apache.iotdb.db.sync.pipedata.PipeData;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public interface ITransportClient {
-  /**
-   * Create connection and handshake before sending messages
-   *
-   * @return true if success; false if failed to check IoTDB version.
-   * @throws SyncConnectionException cannot create connection to receiver
-   */
-  boolean handshake() throws SyncConnectionException;
+public class SeriesNumberOverflowException extends MetadataException {
 
-  /**
-   * Send {@link PipeData} to receiver and load.
-   *
-   * @return true if success; false if failed to send or load.
-   * @throws SyncConnectionException cannot create connection to receiver
-   */
-  boolean send(PipeData pipeData) throws SyncConnectionException;
-
-  void close();
+  public SeriesNumberOverflowException() {
+    super("exceed max allowed series number.", TSStatusCode.SERIES_OVERFLOW.getStatusCode());
+  }
 }
