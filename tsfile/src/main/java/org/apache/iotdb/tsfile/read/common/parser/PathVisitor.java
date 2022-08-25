@@ -93,8 +93,4 @@ public class PathVisitor extends PathParserBaseVisitor<String[]> {
     }
     return NumberUtils.isCreatable(str.substring(index));
   }
-
-  public static void main(String[] args) {
-    System.out.println(isRealNumber("+-1"));
-  }
 }
