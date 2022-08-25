@@ -497,6 +497,7 @@ public class PartitionManager {
 
   /** Called by {@link PartitionManager#regionCleaner} Delete RegionGroups periodically. */
   public void clearDeletedRegions() {
+    // the consensusManager of configManager may not be fully initialized at this time
     Optional.ofNullable(getConsensusManager())
         .ifPresent(
             consensusManager -> {
