@@ -2138,5 +2138,6 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     }
     TsFileValidationTool.findUncorrectFiles(files);
     Assert.assertEquals(0, TsFileValidationTool.badFileNum);
+    TsFileValidationTool.clearMap();
   }
 }
