@@ -189,6 +189,10 @@ public class QueryDataSetUtils {
 
     int rowNum = time.capacity() / Long.BYTES;
     for (int i = 0; i < bitmapList.size(); i++) {
+      if (bitmapList.get(i).capacity() == 0) {
+        timeList.add(ByteBuffer.allocate(0));
+        continue;
+      }
       byte bitmap = ReadWriteIOUtils.readByte(bitmapList.get(i));
       List<Long> notNulTimeList = new ArrayList<>();
       for (int j = 0; j < rowNum; j++) {

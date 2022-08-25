@@ -949,6 +949,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     DatasetHeader datasetHeader = new DatasetHeader(columnHeaders, isIgnoreTimestamp);
     if (queryStatement.disableAlign()) {
       datasetHeader.setDisableAlign();
+      datasetHeader.setColumnToTsBlockIndexMap(
+          columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList()));
     }
     analysis.setRespDatasetHeader(datasetHeader);
     analysis.setTypeProvider(typeProvider);
