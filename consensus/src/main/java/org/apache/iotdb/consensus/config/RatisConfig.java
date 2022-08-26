@@ -515,8 +515,8 @@ public class RatisConfig {
 
     public static class Builder {
       private boolean useMemory = false;
-      private int queueElementLimit = 4096;
-      private SizeInBytes queueByteLimit = SizeInBytes.valueOf("64MB");
+      private int queueElementLimit = 8192;
+      private SizeInBytes queueByteLimit = SizeInBytes.valueOf("96MB");
       private int purgeGap = 1024;
       private boolean purgeUptoSnapshotIndex = true;
       private SizeInBytes segmentSizeMax = SizeInBytes.valueOf("24MB");
