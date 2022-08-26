@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
+import org.apache.iotdb.db.engine.cache.AlteringRecordsCache;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
@@ -788,25 +789,34 @@ public class StorageEngine implements IService {
    */
   public void alterTimeseries(
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
-      throws StorageEngineException {
-
+          throws StorageEngineException, StorageGroupNotSetException {
+    // The alterLock is mutually exclusive with the clear operation
+    StorageGroupManager storageGroupManager = processorMap.get(IoTDB.schemaProcessor.getBelongedStorageGroup(fullPath));
+    if (storageGroupManager == null) {
+      throw new StorageEngineException("system error, StorageGroup not found");
+    }
+    storageGroupManager.alterLock();
+    // Update the ALTER state in memory
+    AlteringRecordsCache.getInstance().startAlter();
     try {
-      if (curEncoding == null || curCompressionType == null) {
-        throw new MetadataException("system error, curEncoding or curCompressionType is null");
+      // Change the encoding compression type in the schema first. After that, the newly inserted data
+      // will use the new encoding compression type
+      Pair<TSEncoding, CompressionType> oldPair =
+              IoTDB.schemaProcessor.alterTimeseries(fullPath, curEncoding, curCompressionType);
+      if (oldPair == null || oldPair.left == null || oldPair.right == null) {
+        throw new MetadataException("system error, old type is null");
       }
-      List<PartialPath> sgPaths = IoTDB.schemaProcessor.getBelongedStorageGroups(fullPath);
-      for (PartialPath storageGroupPath : sgPaths) {
-        // storage group has no data
-        if (!processorMap.containsKey(storageGroupPath)) {
-          continue;
-        }
-        // process alter
-        processorMap
-            .get(storageGroupPath)
-            .alterTimeseries(fullPath, curEncoding, curCompressionType);
-      }
+      curEncoding = curEncoding == null ? oldPair.left : curEncoding;
+      curCompressionType = curCompressionType == null ? oldPair.right : curCompressionType;
+
+      // process alter
+      storageGroupManager.alterTimeseries(fullPath, curEncoding, curCompressionType);
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
+    } finally {
+      if(storageGroupManager != null) {
+        storageGroupManager.alterUnlock();
+      }
     }
   }
 

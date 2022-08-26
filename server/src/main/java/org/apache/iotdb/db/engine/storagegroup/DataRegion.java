@@ -37,6 +37,7 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.alter.TsFileRewriteExcutor;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogAnalyzer;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogger;
+import org.apache.iotdb.db.engine.cache.AlteringRecordsCache;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -144,8 +145,12 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_OLD_TMP_FILE_RESOURCE_SUFFIX;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_TMP_FILE_RESOURCE_SUFFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_TMP_FILE_SUFFIX;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.db.qp.executor.PlanExecutor.operateClearCache;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -284,6 +289,9 @@ public class DataRegion {
 
   /** used to collect TsFiles in this virtual storage group */
   private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
+
+  /** used to cache Altering Timeseries */
+  private AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
 
   /**
    * constrcut a storage group processor
@@ -445,12 +453,12 @@ public class DataRegion {
     try {
       // collect candidate TsFiles from sequential and unsequential data directory
       Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilesPair =
-          getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
+          getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders(), true);
       List<TsFileResource> tmpSeqTsFiles = seqTsFilesPair.left;
       List<TsFileResource> oldSeqTsFiles = seqTsFilesPair.right;
       upgradeSeqFileList.addAll(oldSeqTsFiles);
       Pair<List<TsFileResource>, List<TsFileResource>> unseqTsFilesPair =
-          getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+          getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders(), false);
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
@@ -554,6 +562,8 @@ public class DataRegion {
       lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
 
+    // recover alter records cache
+    recoverAlter();
     // recover and start timed compaction thread
     initCompaction();
 
@@ -570,93 +580,29 @@ public class DataRegion {
     }
   }
 
-  /**
-   * Find incomplete partition list <br>
-   * find list of incomplete tsfiles <br>
-   * Incomplete tsfile status: <br>
-   * 1. There is no .tsfile <br>
-   * 1.1, .alter.old exists and .alter exists - wait for completion <br>
-   * 1.2, only .alter.old exists - system exception <br>
-   * 1.3, only exists .alter - system exception <br>
-   * 2. There is .tsfile <br>
-   * 2.1, exists.alter - writing <br>
-   * 2.2, exist.alter.old - wait for delete <br>
-   * 2.3, does exist - not started <br>
-   */
-  private void checkTsFileAlteringStatusAndFix(
-      Set<TsFileIdentifier> tsFileIdentifiers, AlteringLogger alteringLog, String logKey) {
+  private void recoverAlter() throws DataRegionException {
 
-    if (tsFileIdentifiers == null || tsFileIdentifiers.isEmpty()) {
-      // all undone
+    final String logKey = this.getStorageGroupPath();
+    // alter.log analyzer
+    File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlteringLogger.ALTERING_LOG_NAME);
+    if (!logFile.exists()) {
       return;
     }
-    Set<TsFileIdentifier> removeList = new HashSet<>();
-    tsFileIdentifiers.forEach(
-        tsFileIdentifier -> {
-          try {
-            String filename = tsFileIdentifier.getFilename();
-            if (filename == null || !filename.endsWith(TSFILE_SUFFIX)) {
-              logger.error(
-                  "[checkTsFileAlteringStatusAndFix] filename-{} not endWith .tsfile", filename);
-            }
-            File alterTsFile = tsFileIdentifier.getAlterFileFromDataDirs();
-            File alterOldTsFile = tsFileIdentifier.getAlterOldFileFromDataDirs();
-            File tsFile = tsFileIdentifier.getFileFromDataDirs();
-            if (tsFile != null) {
-              // 2. There is .tsfile
-              if (alterTsFile != null && alterTsFile.exists()) {
-                // 2.1, exists.alter - writing
-                logger.debug(
-                    "[recoverAlter] {} status:writing delete:{}",
-                    logicalStorageGroupName + "-" + dataRegionId,
-                    alterTsFile.getAbsolutePath());
-                FileUtils.delete(alterTsFile);
-              } else if (alterOldTsFile != null && alterOldTsFile.exists()) {
-                // 2.2, exist.alter.old - wait for delete
-                logger.debug(
-                    "[recoverAlter] {} status:wait for delete delete:{}",
-                    logicalStorageGroupName + "-" + dataRegionId,
-                    alterOldTsFile.getAbsolutePath());
-                TsFileResource tsFileResource = new TsFileResource(alterOldTsFile);
-                tsFileResource.close();
-                deleteTsFile(tsFileResource, logicalStorageGroupName + "-" + dataRegionId);
-                removeList.add(tsFileIdentifier);
-              }
-            } else {
-              // 1. There is no .tsfile
-              if (alterTsFile.exists() && alterOldTsFile.exists()) {
-                // 1.1, .alter.old exists and .alter exists - wait for completion
-                logger.debug(
-                    "[recoverAlter] {} status:wait for completion for delete {}",
-                    logicalStorageGroupName + "-" + dataRegionId,
-                    alterTsFile.getName());
-                TsFileResource targetTsFileResource = new TsFileResource(alterTsFile);
-                TsFileResource tsFileResource = new TsFileResource(alterOldTsFile);
-                tsFileResource.close();
-                // rename
-                targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
-                // register .tsfile
-                TsFileResourceManager.getInstance()
-                    .registerSealedTsFileResource(targetTsFileResource);
-                tsFileManager.keepOrderInsert(targetTsFileResource, tsFileIdentifier.isSequence());
-                // check target & delete old tsfile from disk
-                checkAndDeleteOldTsFile(tsFileResource, targetTsFileResource, logKey);
-                alteringLog.doneFile(tsFileResource);
-                removeList.add(tsFileIdentifier);
-              } else {
-                /**
-                 * 1.2, only .alter.old exists - system exception <br>
-                 * 1.3, only exists .alter - system exception <br>
-                 */
-                logger.error("!!! altering recover fail, Lost {}", tsFileIdentifier.getFilePath());
-                removeList.add(tsFileIdentifier);
-              }
-            }
-          } catch (Exception e) {
-            logger.error("checkTsFileAlteringStatusAndFix-{} error", e);
-          }
-        });
-    tsFileIdentifiers.removeAll(removeList);
+    AlteringLogAnalyzer analyzer = new AlteringLogAnalyzer(logFile);
+    List<Pair<String, Pair<TSEncoding, CompressionType>>> alterList = analyzer.getAlterList();
+    if(alterList == null || alterList.size() <= 0) {
+      try {
+        logger.warn("recoverAlter-{}: An empty alter.log exists", logKey);
+        fsFactory.deleteIfExists(logFile);
+        return;
+      } catch (IOException e) {
+        throw new DataRegionException(e);
+      }
+    }
+    // recover alter records cache
+    alteringRecordsCache.startAlter();
+    alterList.forEach(record -> alteringRecordsCache.putRecord(record.left, record.right.left, record.right.right));
+    logger.info("recoverAlter-{}: record count is {}", logKey, alterList.size());
   }
 
   private void initCompaction() {
@@ -739,7 +685,7 @@ public class DataRegion {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
+  private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders, boolean isSeq)
       throws IOException, DataRegionException {
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
@@ -754,6 +700,11 @@ public class DataRegion {
       // some TsFileResource may be being persisted when the system crashed, try recovering such
       // resources
       continueFailedRenames(fileFolder, TEMP_SUFFIX);
+      // only sequence dir
+      if(isSeq) {
+        // altering tsfile repaired
+        alteringFailRenames(fileFolder);
+      }
 
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
@@ -799,6 +750,36 @@ public class DataRegion {
       upgradeRet.add(fileResource);
     }
     return new Pair<>(ret, upgradeRet);
+  }
+
+  /**
+   * tsfile repaired<br/>
+   * 1、.tfile .alter -> del:.alter<br/>
+   * 2、.alter .alter.old -> rename:.alter.old to .tsfile del:.alter<br/>
+   */
+  private void alteringFailRenames(File fileFolder) {
+    File[] files = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), ALTER_TMP_FILE_SUFFIX);
+    if (files != null) {
+      for (File tempResource : files) {
+        File tsFile = fsFactory.getFile(tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX));
+        File resource = fsFactory.getFile(tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, RESOURCE_SUFFIX));
+        File alterResouce = fsFactory.getFile(tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, ALTER_TMP_FILE_RESOURCE_SUFFIX));
+        File alterOldTsFile = fsFactory.getFile(tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, ALTER_OLD_TMP_FILE_SUFFIX));
+        File alterOldResource = fsFactory.getFile(tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, ALTER_OLD_TMP_FILE_RESOURCE_SUFFIX));
+        if(tsFile.exists()) {
+          tempResource.deleteOnExit();
+          alterResouce.deleteOnExit();
+          continue;
+        }
+        if(alterOldTsFile.exists()) {
+          alterOldTsFile.renameTo(tsFile);
+          alterOldResource.renameTo(resource);
+          tempResource.deleteOnExit();
+          alterResouce.deleteOnExit();
+          continue;
+        }
+      }
+    }
   }
 
   private void continueFailedRenames(File fileFolder, String suffix) {
@@ -2189,10 +2170,23 @@ public class DataRegion {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException("Alter failed. Please do not delete until the old files settled.");
     }
-    logger.info("[alter timeseries] {} syncCloseAllWorkingTsFileProcessors", logKey);
-    // flush & close
-    syncCloseAllWorkingTsFileProcessors();
+    // log and cache altering record
+    File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlteringLogger.ALTERING_LOG_NAME);
+    if (!logFile.exists()) {
+      logFile.createNewFile();
+    }
+    try (AlteringLogger alteringLogger = new AlteringLogger(logFile)) {
+      alteringLogger.addAlterParam(fullPath, curEncoding, curCompressionType);
+      alteringRecordsCache.putRecord(fullPath.getFullPath(), curEncoding, curCompressionType);
+    }
+    // flush & close TODO Both merge and clear will be rewritten using the new code(TSEncoding & CompressionType), so there is no need to waste time forcing disk flushing to modify Schema operations
+//    logger.info("[alter timeseries] {} syncCloseAllWorkingTsFileProcessors", logKey);
+    //    syncCloseAllWorkingTsFileProcessors();
     // !! Split into alter and clear operations
+
+
+
+
 //    logger.info("[alter timeseries] writeLock");
 //    // wait lock
 //    if (!tsFileManager.rewriteLockWithTimeout(

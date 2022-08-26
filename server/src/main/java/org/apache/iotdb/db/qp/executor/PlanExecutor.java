@@ -2130,20 +2130,13 @@ public class PlanExecutor implements IPlanExecutor {
     if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new QueryProcessException("This command is not supported in cluster mode");
     }
-    // Change the encoding compression type in the schema first. After that, the newly inserted data
-    // will use the new encoding compression type
-    Pair<TSEncoding, CompressionType> oldPair =
-        IoTDB.schemaProcessor.alterTimeseries(fullPath, curEncoding, curCompressionType);
-    if (oldPair == null || oldPair.left == null || oldPair.right == null) {
-      throw new QueryProcessException("system error, old type is null");
-    }
     // storage alter
     try {
       StorageEngine.getInstance()
           .alterTimeseries(
               fullPath,
-              curEncoding == null ? oldPair.left : curEncoding,
-              curCompressionType == null ? oldPair.right : curCompressionType);
+              curEncoding,
+              curCompressionType);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }
