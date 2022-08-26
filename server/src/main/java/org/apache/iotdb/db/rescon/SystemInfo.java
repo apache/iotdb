@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SystemInfo {
 
@@ -43,10 +44,15 @@ public class SystemInfo {
   private long totalStorageGroupMemCost = 0L;
   private volatile boolean rejected = false;
 
-  private static long memorySizeForWrite = config.getAllocateMemoryForWrite();
+  private static long memorySizeForWrite =
+      (long) (config.getAllocateMemoryForWrite() * config.getMemtableProportion());
+  private static long memorySizeForCompaction =
+      (long) (config.getAllocateMemoryForWrite() * config.getCompactionProportion());
+
   private Map<StorageGroupInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
+  private AtomicLong compactionMemoryCost = new AtomicLong(0L);
 
   private ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor("FlushTask-Submit-Pool");
@@ -170,12 +176,21 @@ public class SystemInfo {
     this.flushingMemTablesCost -= flushingMemTableCost;
   }
 
-  public synchronized void addCompactionMemoryCost(long compactionMemoryCost) {
-    this.totalStorageGroupMemCost += compactionMemoryCost;
+  public void addCompactionMemoryCost(long memoryCost) throws InterruptedException {
+    long originSize = this.compactionMemoryCost.get();
+    while (originSize + memoryCost > memorySizeForCompaction
+        || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
+      Thread.sleep(100);
+      originSize = this.compactionMemoryCost.get();
+    }
   }
 
   public synchronized void resetCompactionMemoryCost(long compactionMemoryCost) {
-    this.totalStorageGroupMemCost -= compactionMemoryCost;
+    this.compactionMemoryCost.addAndGet(-compactionMemoryCost);
+  }
+
+  public long getMemorySizeForCompaction() {
+    return memorySizeForCompaction;
   }
 
   private void logCurrentTotalSGMemory() {

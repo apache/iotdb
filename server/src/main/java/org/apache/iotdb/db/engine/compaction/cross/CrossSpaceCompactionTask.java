@@ -59,6 +59,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResource> holdWriteLockList = new ArrayList<>();
   protected long selectedFileSize = 0;
   protected long memoryCost = 0L;
+  private boolean allocateMemory = false;
 
   public CrossSpaceCompactionTask(
       long timePartition,
@@ -89,6 +90,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected void doCompaction() {
     try {
       SystemInfo.getInstance().addCompactionMemoryCost(memoryCost);
+      allocateMemory = true;
       if (!tsFileManager.isAllowCompaction()) {
         return;
       }
@@ -197,7 +199,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           false,
           true);
     } finally {
-      SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
+      if (allocateMemory) {
+        SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
+      }
       releaseAllLock();
     }
   }
