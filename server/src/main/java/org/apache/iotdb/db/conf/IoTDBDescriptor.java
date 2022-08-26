@@ -935,7 +935,6 @@ public class IoTDBDescriptor {
             properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
     TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
 
-
     conf.setCoordinatorReadExecutorSize(
         Integer.parseInt(
             properties.getProperty(
