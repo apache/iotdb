@@ -22,13 +22,13 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkTypePlan;
+import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
-import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.sender.service.TransportHandler;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -62,8 +62,7 @@ public class IoTDBSyncSenderIT {
   private static final String pipeSinkName = "test_pipesink";
   private static final String pipeName = "test_pipe";
 
-  private TransportHandlerMock handler;
-  private TransportClientMock transportClient;
+  private MockSyncClient syncClient;
 
   private final Map<String, List<PipeData>> resultMap = new HashMap<>();
   private static final TsFilePipeData simpleTsFilePipeData =
@@ -88,10 +87,8 @@ public class IoTDBSyncSenderIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
     IoTDBPipeSink pipeSink = new IoTDBPipeSink(pipeSinkName);
-    TsFilePipe pipe = new TsFilePipe(0L, pipeName, pipeSink, 0L, true);
-    transportClient = new TransportClientMock(pipe, pipeSink.getIp(), pipeSink.getPort());
-    handler = new TransportHandlerMock(pipe, pipeSink, transportClient);
-    TransportHandler.setDebugTransportHandler(handler);
+    syncClient = new MockSyncClient();
+    LocalSyncInfoFetcher.getInstance().reset();
   }
 
   @After
@@ -253,6 +250,7 @@ public class IoTDBSyncSenderIT {
       statement.execute("create pipesink " + pipeSinkName + " as iotdb");
       statement.execute("create pipe " + pipeName + " to " + pipeSinkName);
     }
+    SyncService.getInstance().getSenderManager().setSyncClient(syncClient);
   }
 
   private void restart() throws Exception {
@@ -260,6 +258,7 @@ public class IoTDBSyncSenderIT {
     EnvironmentUtils.shutdownDaemon();
     WALRecoverManager.getInstance().clear();
     EnvironmentUtils.reactiveDaemon();
+    SyncService.getInstance().getSenderManager().setSyncClient(syncClient);
   }
 
   private void startPipe() throws Exception {
@@ -322,7 +321,7 @@ public class IoTDBSyncSenderIT {
       startPipe();
 
       Thread.sleep(waitTime); // check
-      checkInsOnlyResult(transportClient.getPipeDataList());
+      checkInsOnlyResult(syncClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -350,7 +349,7 @@ public class IoTDBSyncSenderIT {
       prepareIns3();
 
       Thread.sleep(1000L); // check
-      checkInsOnlyResult(transportClient.getPipeDataList());
+      checkInsOnlyResult(syncClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -379,7 +378,7 @@ public class IoTDBSyncSenderIT {
       startPipe();
 
       Thread.sleep(waitTime); // check
-      checkInsOnlyResult(transportClient.getPipeDataList());
+      checkInsOnlyResult(syncClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -408,7 +407,7 @@ public class IoTDBSyncSenderIT {
       stopPipe();
 
       Thread.sleep(waitTime); // check
-      checkInsOnlyResult(transportClient.getPipeDataList());
+      checkInsOnlyResult(syncClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -440,7 +439,7 @@ public class IoTDBSyncSenderIT {
       Thread.sleep(waitTime); // check
       checkResult(
           Arrays.asList("schemaWithDel3InHistory", "ins1", "ins2", "ins3WithDel3InHistory"),
-          transportClient.getPipeDataList());
+          syncClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -476,7 +475,7 @@ public class IoTDBSyncSenderIT {
       Thread.sleep(waitTime); // check
       checkResult(
           Arrays.asList("schema", "ins1", "ins2", "del1", "ins3", "del2", "del3"),
-          transportClient.getPipeDataList());
+          syncClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -504,7 +503,7 @@ public class IoTDBSyncSenderIT {
       prepareIns3();
 
       Thread.sleep(waitTime); // check
-      checkInsOnlyResult(transportClient.getPipeDataList());
+      checkInsOnlyResult(syncClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -534,7 +533,7 @@ public class IoTDBSyncSenderIT {
       startPipe();
 
       Thread.sleep(waitTime); // check
-      checkInsOnlyResult(transportClient.getPipeDataList());
+      checkInsOnlyResult(syncClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -571,7 +570,7 @@ public class IoTDBSyncSenderIT {
       Thread.sleep(waitTime); // check
       checkResult(
           Arrays.asList("schema", "ins1", "ins2", "del2WithoutIns3", "ins3", "del3"),
-          transportClient.getPipeDataList());
+          syncClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -610,7 +609,7 @@ public class IoTDBSyncSenderIT {
       Thread.sleep(waitTime); // check
       checkResult(
           Arrays.asList("schema", "ins1", "ins2", "del2WithoutIns3", "ins3", "del3", "ins4"),
-          transportClient.getPipeDataList());
+          syncClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();

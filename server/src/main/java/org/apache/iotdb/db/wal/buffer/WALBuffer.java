@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -418,8 +419,8 @@ public class WALBuffer extends AbstractWALBuffer {
         currentWALFileWriter.write(syncingBuffer, info.metaData);
       } catch (Throwable e) {
         logger.error(
-            "Fail to sync wal node-{}'s buffer, change system mode to read-only.", identifier, e);
-        config.setReadOnly(true);
+            "Fail to sync wal node-{}'s buffer, change system mode to error.", identifier, e);
+        config.setNodeStatus(NodeStatus.Error);
       } finally {
         switchSyncingBufferToIdle();
       }
@@ -436,13 +437,11 @@ public class WALBuffer extends AbstractWALBuffer {
           }
         } catch (IOException e) {
           logger.error(
-              "Fail to roll wal node-{}'s log writer, change system mode to read-only.",
-              identifier,
-              e);
+              "Fail to roll wal node-{}'s log writer, change system mode to error.", identifier, e);
           if (info.rollWALFileWriterListener != null) {
             info.rollWALFileWriterListener.fail(e);
           }
-          config.setReadOnly(true);
+          config.setNodeStatus(NodeStatus.Error);
         }
       } else if (forceFlag) { // force os cache to the storage device, avoid force twice by judging
         // after rolling file
@@ -451,13 +450,13 @@ public class WALBuffer extends AbstractWALBuffer {
           forceSuccess = true;
         } catch (IOException e) {
           logger.error(
-              "Fail to fsync wal node-{}'s log writer, change system mode to read-only.",
+              "Fail to fsync wal node-{}'s log writer, change system mode to error.",
               identifier,
               e);
           for (WALFlushListener fsyncListener : info.fsyncListeners) {
             fsyncListener.fail(e);
           }
-          config.setReadOnly(true);
+          config.setNodeStatus(NodeStatus.Error);
         }
       }
 

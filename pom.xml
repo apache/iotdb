@@ -85,7 +85,6 @@
         <module>thrift-commons</module>
         <module>thrift-confignode</module>
         <module>thrift-multi-leader-consensus</module>
-        <module>thrift-sync</module>
         <module>thrift-influxdb</module>
         <module>service-rpc</module>
         <module>jdbc</module>
@@ -120,6 +119,7 @@
         <module>schema-engine-rocksdb</module>
         <module>udf-api</module>
         <module>rewrite-tsfile-tool</module>
+        <module>external-api</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -153,7 +153,8 @@
         <guava.version>24.1.1</guava.version>
         <jline.version>3.21.0</jline.version>
         <jetty.version>9.4.48.v20220622</jetty.version>
-        <metrics.version>4.2.7</metrics.version>
+        <dropwizard.metrics.version>4.2.7</dropwizard.metrics.version>
+        <micrometer.metrics.version>1.6.2</micrometer.metrics.version>
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
         <felix.version>5.1.7</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
@@ -1344,6 +1345,7 @@
                                     <generator>py</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
+                                    <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
                                 </configuration>
                             </execution>
@@ -1357,6 +1359,7 @@
                                     <generator>go</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
+                                    <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>

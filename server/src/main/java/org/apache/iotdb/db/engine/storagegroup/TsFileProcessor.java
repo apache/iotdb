@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -837,7 +838,7 @@ public class TsFileProcessor {
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
       }
       if (tsFileSyncManager.isEnableSync()) {
-        tsFileSyncManager.collectRealTimeDeletion(deletion);
+        tsFileSyncManager.collectRealTimeDeletion(deletion, storageGroupName);
       }
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -1233,11 +1234,11 @@ public class TsFileProcessor {
           }
         } else {
           logger.error(
-              "{}: {} meet error when flushing a memtable, change system mode to read-only",
+              "{}: {} meet error when flushing a memtable, change system mode to error",
               storageGroupName,
               tsFileResource.getTsFile().getName(),
               e);
-          IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+          IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
           try {
             logger.error(
                 "{}: {} IOTask meets error, truncate the corrupted data",
@@ -1320,7 +1321,9 @@ public class TsFileProcessor {
     // for sync flush
     syncReleaseFlushedMemTable(memTableToFlush);
 
-    if (shouldClose && flushingMemTables.isEmpty() && writer != null) {
+    // retry to avoid unnecessary read-only mode
+    int retryCnt = 0;
+    while (shouldClose && flushingMemTables.isEmpty() && writer != null) {
       try {
         writer.mark();
         updateCompressionRatio(memTableToFlush);
@@ -1328,7 +1331,7 @@ public class TsFileProcessor {
           logger.debug(
               "{}: {} flushingMemtables is empty and will close the file",
               storageGroupName,
-              tsFileResource.getTsFile().getName());
+              tsFileResource.getTsFile().getAbsolutePath());
         }
         endFile();
         if (logger.isDebugEnabled()) {
@@ -1336,32 +1339,45 @@ public class TsFileProcessor {
         }
       } catch (Exception e) {
         logger.error(
-            "{} meet error when flush FileMetadata to {}, change system mode to read-only",
+            "{}: {} marking or ending file meet error",
             storageGroupName,
             tsFileResource.getTsFile().getAbsolutePath(),
             e);
-        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+        // truncate broken metadata
         try {
           writer.reset();
         } catch (IOException e1) {
           logger.error(
               "{}: {} truncate corrupted data meets error",
               storageGroupName,
-              tsFileResource.getTsFile().getName(),
+              tsFileResource.getTsFile().getAbsolutePath(),
               e1);
         }
-        logger.error(
-            "{}: {} marking or ending file meet error",
-            storageGroupName,
-            tsFileResource.getTsFile().getName(),
-            e);
+        // retry or set read-only
+        if (retryCnt < 3) {
+          logger.warn(
+              "{} meet error when flush FileMetadata to {}, retry it again",
+              storageGroupName,
+              tsFileResource.getTsFile().getAbsolutePath(),
+              e);
+          retryCnt++;
+          continue;
+        } else {
+          logger.error(
+              "{} meet error when flush FileMetadata to {}, change system mode to error",
+              storageGroupName,
+              tsFileResource.getTsFile().getAbsolutePath(),
+              e);
+          IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
+          break;
+        }
       }
       // for sync close
       if (logger.isDebugEnabled()) {
         logger.debug(
             "{}: {} try to get flushingMemtables lock.",
             storageGroupName,
-            tsFileResource.getTsFile().getName());
+            tsFileResource.getTsFile().getAbsolutePath());
       }
       synchronized (flushingMemTables) {
         flushingMemTables.notifyAll();

@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final Logger logger = LoggerFactory.getLogger(ApplicationStateMachineProxy.class);
@@ -117,15 +118,34 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
 
     Message ret;
-    try {
-      TSStatus result = applicationStateMachine.write(applicationRequest);
-      ret = new ResponseMessage(result);
-    } catch (Exception rte) {
-      logger.error("application statemachine throws a runtime exception: ", rte);
-      ret = Message.valueOf("internal error. statemachine throws a runtime exception: " + rte);
-    }
+    waitUntilSystemNotReadOnly();
+    do {
+      try {
+        TSStatus result = applicationStateMachine.write(applicationRequest);
+        ret = new ResponseMessage(result);
+        break;
+      } catch (Exception rte) {
+        logger.error("application statemachine throws a runtime exception: ", rte);
+        ret = Message.valueOf("internal error. statemachine throws a runtime exception: " + rte);
+        if (applicationStateMachine.isReadOnly()) {
+          waitUntilSystemNotReadOnly();
+        } else {
+          break;
+        }
+      }
+    } while (!applicationStateMachine.isReadOnly());
 
     return CompletableFuture.completedFuture(ret);
+  }
+
+  private void waitUntilSystemNotReadOnly() {
+    while (applicationStateMachine.isReadOnly()) {
+      try {
+        TimeUnit.SECONDS.sleep(60);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   @Override
@@ -154,7 +174,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     // delete snapshotDir fully in case of last takeSnapshot() crashed
     FileUtils.deleteFully(snapshotDir);
 
-    snapshotDir.mkdir();
+    snapshotDir.mkdirs();
     if (!snapshotDir.isDirectory()) {
       logger.error("Unable to create snapshotDir at {}", snapshotDir);
       return RaftLog.INVALID_LOG_INDEX;

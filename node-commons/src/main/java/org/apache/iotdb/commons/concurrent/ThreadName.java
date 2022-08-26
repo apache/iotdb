@@ -78,11 +78,17 @@ public enum ThreadName {
   MULTI_LEADER_CONSENSUS_RPC_SERVER("MultiLeaderConsensusRPC-Server"),
   DATA_NODE_MANAGEMENT_RPC_SERVER("DataNodeManagementRPC"),
   DATA_NODE_MANAGEMENT_RPC_CLIENT("DataNodeManagementRPC-Client"),
-  Cluster_Monitor("ClusterMonitor"),
   MPP_DATA_EXCHANGE_RPC_SERVER("MPPDataExchangeRPC"),
   MPP_DATA_EXCHANGE_RPC_CLIENT("MPPDataExchangeRPC-Client"),
   INTERNAL_SERVICE_RPC_SERVER("InternalServiceRPC"),
-  INTERNAL_SERVICE_RPC_CLIENT("InternalServiceRPC-Client");
+  INTERNAL_SERVICE_RPC_CLIENT("InternalServiceRPC-Client"),
+  EXT_PIPE_PLUGIN_WORKER("ExtPipePlugin-Worker"),
+  DATA_NODE_CLIENT_POOL_THREAD_NAME("AsyncDataNodeInternalServiceClientPool"),
+  CONFIG_NODE_HEARTBEAT_CLIENT_POOL_THREAD_NAME("AsyncConfigNodeHeartbeatServiceClientPool"),
+  DATA_NODE_HEARTBEAT_CLIENT_POOL_THREAD_NAME("AsyncDataNodeHeartbeatServiceClientPool"),
+  CONFIG_NODE_CLIENT_POOL_THREAD_NAME("AsyncConfigNodeIServiceClientPool"),
+  DATA_NODE_MPP_DATA_EXCHANGE_CLIENT_POOL_THREAD_NAME(
+      "AsyncDataNodeMPPDataExchangeServiceClientPool");
 
   private final String name;
 

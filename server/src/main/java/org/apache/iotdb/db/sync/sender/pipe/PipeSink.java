@@ -24,11 +24,14 @@ import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
+import java.util.Map;
 
 public interface PipeSink {
 
-  // void setAttribute(String attr, String value) throws PipeSinkException;
+  // TODO: delete this in new-standalone version
   void setAttribute(List<Pair<String, String>> params) throws PipeSinkException;
+
+  void setAttribute(Map<String, String> params) throws PipeSinkException;
 
   String getPipeSinkName();
 

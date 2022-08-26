@@ -32,6 +32,7 @@ import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClie
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -46,7 +47,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class MultiLeaderServerImpl {
 
@@ -56,11 +61,14 @@ public class MultiLeaderServerImpl {
 
   private final Peer thisNode;
   private final IStateMachine stateMachine;
+  private final Lock stateMachineLock = new ReentrantLock();
+  private final Condition stateMachineCondition = stateMachineLock.newCondition();
   private final String storageDir;
   private final List<Peer> configuration;
   private final AtomicLong index;
   private final LogDispatcher logDispatcher;
   private final MultiLeaderConfig config;
+  private final ConsensusReqReader reader;
 
   public MultiLeaderServerImpl(
       String storageDir,
@@ -80,9 +88,7 @@ public class MultiLeaderServerImpl {
     }
     this.config = config;
     this.logDispatcher = new LogDispatcher(this, clientManager);
-    // restart
-    ConsensusReqReader reader =
-        (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
+    reader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
     long currentSearchIndex = reader.getCurrentSearchIndex();
     if (1 == configuration.size()) {
       // only one configuration means single replica.
@@ -109,7 +115,25 @@ public class MultiLeaderServerImpl {
    * records the index of the log and writes locally, and then asynchronous replication is performed
    */
   public TSStatus write(IConsensusRequest request) {
-    synchronized (stateMachine) {
+    stateMachineLock.lock();
+    try {
+      if (needBlockWrite()) {
+        logger.info(
+            "[Throttle Down] index:{}, safeIndex:{}",
+            getIndex(),
+            getCurrentSafelyDeletedSearchIndex());
+        try {
+          boolean timeout =
+              !stateMachineCondition.await(
+                  config.getReplication().getThrottleTimeOutMs(), TimeUnit.MILLISECONDS);
+          if (timeout) {
+            return RpcUtils.getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR);
+          }
+        } catch (InterruptedException e) {
+          logger.error("Failed to throttle down because ", e);
+          Thread.currentThread().interrupt();
+        }
+      }
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
       if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
@@ -122,17 +146,26 @@ public class MultiLeaderServerImpl {
       // TODO wal and memtable
       TSStatus result = stateMachine.write(indexedConsensusRequest);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        logDispatcher.offer(indexedConsensusRequest);
+        // The index is used when constructing batch in LogDispatcher. If its value
+        // increases but the corresponding request does not exist or is not put into
+        // the queue, the dispatcher will try to find the request in WAL. This behavior
+        // is not expected and will slow down the preparation speed for batch.
+        // So we need to use the lock to ensure the `offer()` and `incrementAndGet()` are
+        // in one transaction.
+        synchronized (index) {
+          logDispatcher.offer(indexedConsensusRequest);
+          index.incrementAndGet();
+        }
       } else {
         logger.debug(
             "{}: write operation failed. searchIndex: {}. Code: {}",
             thisNode.getGroupId(),
             indexedConsensusRequest.getSearchIndex(),
             result.getCode());
-        index.decrementAndGet();
       }
-
       return result;
+    } finally {
+      stateMachineLock.unlock();
     }
   }
 
@@ -182,12 +215,13 @@ public class MultiLeaderServerImpl {
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
-    return new IndexedConsensusRequest(index.incrementAndGet(), Collections.singletonList(request));
+    return new IndexedConsensusRequest(index.get() + 1, Collections.singletonList(request));
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
-      List<IConsensusRequest> requests) {
-    return new IndexedConsensusRequest(ConsensusReqReader.DEFAULT_SEARCH_INDEX, requests);
+      long syncIndex, List<IConsensusRequest> requests) {
+    return new IndexedConsensusRequest(
+        ConsensusReqReader.DEFAULT_SEARCH_INDEX, syncIndex, requests);
   }
 
   /**
@@ -216,5 +250,30 @@ public class MultiLeaderServerImpl {
 
   public MultiLeaderConfig getConfig() {
     return config;
+  }
+
+  public boolean needBlockWrite() {
+    return reader.getTotalSize() > config.getReplication().getWalThrottleThreshold();
+  }
+
+  public boolean unblockWrite() {
+    return reader.getTotalSize() < config.getReplication().getWalThrottleThreshold();
+  }
+
+  public void signal() {
+    stateMachineLock.lock();
+    try {
+      stateMachineCondition.signalAll();
+    } finally {
+      stateMachineLock.unlock();
+    }
+  }
+
+  public AtomicLong getIndexObject() {
+    return index;
+  }
+
+  public boolean isReadOnly() {
+    return stateMachine.isReadOnly();
   }
 }

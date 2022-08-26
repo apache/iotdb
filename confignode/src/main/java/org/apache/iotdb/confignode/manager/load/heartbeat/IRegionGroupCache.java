@@ -30,6 +30,13 @@ public interface IRegionGroupCache {
   void cacheHeartbeatSample(RegionHeartbeatSample newHeartbeatSample);
 
   /**
+   * Remove the specific sample cache if exists
+   *
+   * @param dataNodeId DataNodeId
+   */
+  void removeCacheIfExists(Integer dataNodeId);
+
+  /**
    * Invoking periodically to update RegionGroups' load statistics
    *
    * @return true if some load statistic changed

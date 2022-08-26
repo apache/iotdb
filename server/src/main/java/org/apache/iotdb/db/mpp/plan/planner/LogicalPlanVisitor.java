@@ -118,6 +118,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     analysis.getDeviceToQueryFilter() != null
                         ? analysis.getDeviceToQueryFilter().get(deviceName)
                         : null,
+                    analysis.getDeviceToHavingExpression() != null
+                        ? analysis.getDeviceToHavingExpression().get(deviceName)
+                        : null,
                     analysis.getDeviceToMeasurementIndexesMap().get(deviceName),
                     context));
         deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
@@ -142,6 +145,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   analysis.getAggregationTransformExpressions(),
                   analysis.getTransformExpressions(),
                   analysis.getQueryFilter(),
+                  analysis.getHavingExpression(),
                   null,
                   context));
     }
@@ -164,6 +168,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       Set<Expression> aggregationTransformExpressions,
       Set<Expression> transformExpressions,
       Expression queryFilter,
+      Expression havingExpression,
       List<Integer> measurementIndexes, // only used in ALIGN BY DEVICE
       MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
@@ -232,12 +237,32 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
           }
         }
 
-        planBuilder =
-            planBuilder.planTransform(
-                transformExpressions,
-                queryStatement.isGroupByTime(),
-                queryStatement.getSelectComponent().getZoneId(),
-                queryStatement.getResultTimeOrder());
+        if (queryStatement.isGroupByLevel()) {
+          planBuilder = // plan Having with GroupByLevel
+              planBuilder.planFilterAndTransform(
+                  havingExpression,
+                  analysis.getGroupByLevelExpressions().keySet(),
+                  queryStatement.isGroupByTime(),
+                  queryStatement.getSelectComponent().getZoneId(),
+                  queryStatement.getResultTimeOrder());
+        } else {
+          if (havingExpression != null) {
+            planBuilder = // plan Having without GroupByLevel
+                planBuilder.planFilterAndTransform(
+                    havingExpression,
+                    transformExpressions,
+                    queryStatement.isGroupByTime(),
+                    queryStatement.getSelectComponent().getZoneId(),
+                    queryStatement.getResultTimeOrder());
+          } else {
+            planBuilder = // no Having
+                planBuilder.planTransform(
+                    transformExpressions,
+                    queryStatement.isGroupByTime(),
+                    queryStatement.getSelectComponent().getZoneId(),
+                    queryStatement.getResultTimeOrder());
+          }
+        }
       } else {
         if (analysis.hasValueFilter()) {
           planBuilder =
@@ -284,23 +309,61 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 measurementIndexes,
                 analysis.getGroupByLevelExpressions(),
                 analysis.getTypeProvider());
+        if (queryStatement.isGroupByLevel()) {
+          planBuilder = // plan Having with GroupByLevel
+              planBuilder.planFilterAndTransform(
+                  havingExpression,
+                  analysis.getGroupByLevelExpressions().keySet(),
+                  queryStatement.isGroupByTime(),
+                  queryStatement.getSelectComponent().getZoneId(),
+                  queryStatement.getResultTimeOrder());
+        } else {
+          planBuilder = // plan Having without GroupByLevel
+              planBuilder.planFilterAndTransform(
+                  havingExpression,
+                  transformExpressions,
+                  queryStatement.isGroupByTime(),
+                  queryStatement.getSelectComponent().getZoneId(),
+                  queryStatement.getResultTimeOrder());
+        }
       } else {
         planBuilder =
-            planBuilder
-                .planAggregationSource(
-                    sourceExpressions,
-                    curStep,
-                    queryStatement.getResultTimeOrder(),
-                    analysis.getGlobalTimeFilter(),
-                    analysis.getGroupByTimeParameter(),
-                    aggregationExpressions,
-                    analysis.getGroupByLevelExpressions(),
-                    analysis.getTypeProvider())
-                .planTransform(
+            planBuilder.planAggregationSource(
+                sourceExpressions,
+                curStep,
+                queryStatement.getResultTimeOrder(),
+                analysis.getGlobalTimeFilter(),
+                analysis.getGroupByTimeParameter(),
+                aggregationExpressions,
+                analysis.getGroupByLevelExpressions(),
+                analysis.getTypeProvider());
+
+        if (queryStatement.isGroupByLevel()) {
+          planBuilder = // plan Having with GroupByLevel
+              planBuilder.planFilterAndTransform(
+                  havingExpression,
+                  analysis.getGroupByLevelExpressions().keySet(),
+                  queryStatement.isGroupByTime(),
+                  queryStatement.getSelectComponent().getZoneId(),
+                  queryStatement.getResultTimeOrder());
+        } else {
+          if (havingExpression != null) {
+            planBuilder = // plan Having without GroupByLevel
+                planBuilder.planFilterAndTransform(
+                    havingExpression,
                     transformExpressions,
                     queryStatement.isGroupByTime(),
                     queryStatement.getSelectComponent().getZoneId(),
                     queryStatement.getResultTimeOrder());
+          } else {
+            planBuilder = // no Having
+                planBuilder.planTransform(
+                    transformExpressions,
+                    queryStatement.isGroupByTime(),
+                    queryStatement.getSelectComponent().getZoneId(),
+                    queryStatement.getResultTimeOrder());
+          }
+        }
       }
     }
 

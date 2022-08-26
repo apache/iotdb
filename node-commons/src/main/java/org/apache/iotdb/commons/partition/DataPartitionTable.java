@@ -95,6 +95,27 @@ public class DataPartitionTable {
   }
 
   /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does
+   *
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @param timePartitionInterval Time partition interval
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPrecededDataPartition(
+      TSeriesPartitionSlot seriesPartitionSlot,
+      TTimePartitionSlot timePartitionSlot,
+      long timePartitionInterval) {
+    if (dataPartitionMap.containsKey(seriesPartitionSlot)) {
+      return dataPartitionMap
+          .get(seriesPartitionSlot)
+          .getPrecededDataPartition(timePartitionSlot, timePartitionInterval);
+    } else {
+      return null;
+    }
+  }
+
+  /**
    * Create DataPartition within the specific StorageGroup
    *
    * @param assignedDataPartition Assigned result

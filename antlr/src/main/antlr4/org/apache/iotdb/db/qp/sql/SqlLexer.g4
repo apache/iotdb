@@ -251,6 +251,10 @@ GROUP
     : G R O U P
     ;
 
+HAVING
+    : H A V I N G
+    ;
+
 INDEX
     : I N D E X
     ;
@@ -373,10 +377,6 @@ PIPE
 
 PIPES
     : P I P E S
-    ;
-
-PIPESERVER
-    : P I P E S E R V E R
     ;
 
 PIPESINK

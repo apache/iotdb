@@ -20,18 +20,30 @@
 package org.apache.iotdb.confignode.procedure.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
+import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.ConsensusManager;
+import org.apache.iotdb.confignode.manager.NodeManager;
+import org.apache.iotdb.confignode.manager.PartitionManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -46,7 +58,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ConfigNodeProcedureEnv {
@@ -68,6 +82,8 @@ public class ConfigNodeProcedureEnv {
 
   private static boolean invalidCacheResult = true;
 
+  private final ReentrantLock removeConfigNodeLock;
+
   public static void setSkipForTest(boolean skipForTest) {
     ConfigNodeProcedureEnv.skipForTest = skipForTest;
   }
@@ -80,6 +96,7 @@ public class ConfigNodeProcedureEnv {
     this.configManager = configManager;
     this.scheduler = scheduler;
     this.dataNodeRemoveHandler = new DataNodeRemoveHandler(configManager);
+    this.removeConfigNodeLock = new ReentrantLock();
   }
 
   public ConfigManager getConfigManager() {
@@ -94,7 +111,7 @@ public class ConfigNodeProcedureEnv {
    */
   public TSStatus deleteConfig(String name) {
     DeleteStorageGroupPlan deleteStorageGroupPlan = new DeleteStorageGroupPlan(name);
-    return configManager.getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupPlan);
+    return getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupPlan);
   }
 
   /**
@@ -105,7 +122,7 @@ public class ConfigNodeProcedureEnv {
    */
   public void preDelete(
       PreDeleteStorageGroupPlan.PreDeleteType preDeleteType, String deleteSgName) {
-    configManager.getPartitionManager().preDeleteStorageGroup(deleteSgName, preDeleteType);
+    getPartitionManager().preDeleteStorageGroup(deleteSgName, preDeleteType);
   }
 
   /**
@@ -120,7 +137,7 @@ public class ConfigNodeProcedureEnv {
       return invalidCacheResult;
     }
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+        configManager.getNodeManager().getRegisteredDataNodes();
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(storageGroupName);
@@ -193,9 +210,24 @@ public class ConfigNodeProcedureEnv {
    */
   public void removeConfigNodePeer(TConfigNodeLocation tConfigNodeLocation)
       throws ProcedureException {
-    TSStatus tsStatus = configManager.getNodeManager().removeConfigNodePeer(tConfigNodeLocation);
-    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new ProcedureException(tsStatus.getMessage());
+    removeConfigNodeLock.tryLock();
+    TSStatus tsStatus;
+    try {
+      // Execute removePeer
+      if (getConsensusManager().removeConfigNodePeer(tConfigNodeLocation)) {
+        tsStatus =
+            getConsensusManager().write(new RemoveConfigNodePlan(tConfigNodeLocation)).getStatus();
+      } else {
+        tsStatus =
+            new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+                .setMessage(
+                    "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
+      }
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new ProcedureException(tsStatus.getMessage());
+      }
+    } finally {
+      removeConfigNodeLock.unlock();
     }
   }
 
@@ -233,6 +265,7 @@ public class ConfigNodeProcedureEnv {
                     tConfigNodeLocation.getInternalEndPoint(),
                     tConfigNodeLocation,
                     ConfigNodeRequestType.STOP_CONFIG_NODE);
+    getNodeManager().removeNodeCache(tConfigNodeLocation.getConfigNodeId());
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(tsStatus.getMessage());
     }
@@ -264,8 +297,53 @@ public class ConfigNodeProcedureEnv {
   public void broadCastTheLatestConfigNodeGroup() {
     AsyncDataNodeClientPool.getInstance()
         .broadCastTheLatestConfigNodeGroup(
-            configManager.getNodeManager().getRegisteredDataNodeLocations(-1),
+            configManager.getNodeManager().getRegisteredDataNodeLocations(),
             configManager.getNodeManager().getRegisteredConfigNodes());
+  }
+
+  /**
+   * Mark the given datanode as removing status, and broadcast the region map, to avoid read or
+   * write request routing to this node.
+   *
+   * @param dataNodeLocation the datanode to be marked as removing status
+   */
+  public void markDataNodeAsRemovingAndBroadCast(TDataNodeLocation dataNodeLocation) {
+    int dataNodeId = dataNodeLocation.getDataNodeId();
+    configManager.getNodeManager().setNodeRemovingStatus(dataNodeId, true);
+    configManager.getLoadManager().broadcastLatestRegionRouteMap();
+  }
+
+  /**
+   * Do region creations and broadcast the CreateRegionGroupsPlan
+   *
+   * @return Those RegionGroups that failed to create
+   */
+  public Map<TConsensusGroupId, TRegionReplicaSet> doRegionCreation(
+      CreateRegionGroupsPlan createRegionGroupsPlan) {
+    Map<String, Long> ttlMap = new HashMap<>();
+    for (String storageGroup : createRegionGroupsPlan.getRegionGroupMap().keySet()) {
+      try {
+        ttlMap.put(
+            storageGroup,
+            getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL());
+      } catch (StorageGroupNotExistsException e) {
+        // Notice: This line will never
+        LOG.error("StorageGroup doesn't exist", e);
+      }
+    }
+    return AsyncDataNodeClientPool.getInstance().createRegionGroups(createRegionGroupsPlan, ttlMap);
+  }
+
+  public void persistAndBroadcastRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
+    // Persist the allocation result
+    getConsensusManager().write(createRegionGroupsPlan);
+    // Broadcast the latest RegionRouteMap
+    getLoadManager().broadcastLatestRegionRouteMap();
+  }
+
+  /** Submit the RegionReplicas to the RegionCleaner when there are creation failures */
+  public void submitFailedRegionReplicas(DeleteRegionGroupsPlan deleteRegionGroupsPlan) {
+    getConsensusManager().write(deleteRegionGroupsPlan);
   }
 
   public LockQueue getNodeLock() {
@@ -286,5 +364,25 @@ public class ConfigNodeProcedureEnv {
 
   public DataNodeRemoveHandler getDataNodeRemoveHandler() {
     return dataNodeRemoveHandler;
+  }
+
+  private ConsensusManager getConsensusManager() {
+    return configManager.getConsensusManager();
+  }
+
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
+  }
+
+  private ClusterSchemaManager getClusterSchemaManager() {
+    return configManager.getClusterSchemaManager();
+  }
+
+  private PartitionManager getPartitionManager() {
+    return configManager.getPartitionManager();
+  }
+
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 }

@@ -61,7 +61,9 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -74,6 +76,7 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
@@ -85,12 +88,15 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
+import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,6 +144,8 @@ public class LocalConfigNode {
   private final SeriesPartitionExecutor executor =
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
           config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
+
+  private final SyncService syncService = SyncService.getInstance();
 
   private IAuthorizer iAuthorizer;
 
@@ -976,8 +984,8 @@ public class LocalConfigNode {
         // use an empty dataPartitionMap to init DataPartition
         if (dataRegionId != null) {
           Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-              new HashMap<>();
-
+              deviceToRegionsMap.getOrDefault(
+                  executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
           timePartitionToRegionsMap.put(
               new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME),
               Collections.singletonList(
@@ -1030,7 +1038,8 @@ public class LocalConfigNode {
         DataRegionId dataRegionId =
             getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId));
         Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-            new HashMap<>();
+            deviceToRegionsMap.getOrDefault(
+                executor.getSeriesPartitionSlot(deviceId), new HashMap<>());
         for (TTimePartitionSlot timePartitionSlot :
             dataPartitionQueryParam.getTimePartitionSlotList()) {
           // for each time partition
@@ -1313,5 +1322,41 @@ public class LocalConfigNode {
     TimeSeriesMetadataCache.getInstance().clear();
     BloomFilterCache.getInstance().clear();
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus executeLoadConfigurationOperation() {
+    try {
+      IoTDBDescriptor.getInstance().loadHotModifiedProps();
+    } catch (QueryProcessException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus createPipeSink(CreatePipeSinkStatement createPipeSinkStatement) {
+    try {
+      syncService.addPipeSink(createPipeSinkStatement);
+    } catch (PipeSinkException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus dropPipeSink(String pipeSinkName) {
+    try {
+      syncService.dropPipeSink(pipeSinkName);
+    } catch (PipeSinkException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public List<PipeSink> showPipeSink(String pipeSinkName) {
+    boolean showAll = StringUtils.isEmpty(pipeSinkName);
+    if (showAll) {
+      return syncService.getAllPipeSink();
+    } else {
+      return Collections.singletonList(syncService.getPipeSink(pipeSinkName));
+    }
   }
 }

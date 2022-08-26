@@ -65,6 +65,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    TsFileValidationTool.badFileNum = 0;
   }
 
   /**
@@ -2213,5 +2214,6 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     }
     TsFileValidationTool.findUncorrectFiles(files);
     Assert.assertEquals(0, TsFileValidationTool.badFileNum);
+    TsFileValidationTool.clearMap();
   }
 }

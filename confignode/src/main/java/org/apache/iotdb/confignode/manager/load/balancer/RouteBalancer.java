@@ -21,9 +21,11 @@ package org.apache.iotdb.confignode.manager.load.balancer;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.NodeManager;
+import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.confignode.manager.load.balancer.router.IRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LazyGreedyRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LeaderRouter;
@@ -40,8 +42,8 @@ import java.util.Map;
  */
 public class RouteBalancer {
 
-  public static final String leaderPolicy = "leader";
-  public static final String greedyPolicy = "greedy";
+  public static final String LEADER_POLICY = "leader";
+  public static final String GREEDY_POLICY = "greedy";
 
   private final IManager configManager;
 
@@ -82,11 +84,11 @@ public class RouteBalancer {
     String policy = ConfigNodeDescriptor.getInstance().getConf().getRoutingPolicy();
     switch (groupType) {
       case SchemaRegion:
-        if (policy.equals(leaderPolicy)) {
+        if (LEADER_POLICY.equals(policy)) {
           return new LeaderRouter(
-              getLoadManager().getAllLeadership(), getLoadManager().getAllLoadScores());
+              getPartitionManager().getAllLeadership(), getNodeManager().getAllLoadScores());
         } else {
-          return new LoadScoreGreedyRouter(getLoadManager().getAllLoadScores());
+          return new LoadScoreGreedyRouter(getNodeManager().getAllLoadScores());
         }
       case DataRegion:
       default:
@@ -95,18 +97,32 @@ public class RouteBalancer {
             .getDataRegionConsensusProtocolClass()
             .equals(ConsensusFactory.MultiLeaderConsensus)) {
           // Latent router for MultiLeader consensus protocol
-          lazyGreedyRouter.updateUnknownDataNodes(getLoadManager().getUnknownDataNodes(-1));
+          lazyGreedyRouter.updateDisabledDataNodes(
+              getNodeManager()
+                  .filterDataNodeThroughStatus(
+                      NodeStatus.Unknown,
+                      NodeStatus.Removing,
+                      NodeStatus.Error,
+                      NodeStatus.ReadOnly));
           return lazyGreedyRouter;
-        } else if (policy.equals(leaderPolicy)) {
+        } else if (LEADER_POLICY.equals(policy)) {
           return new LeaderRouter(
-              getLoadManager().getAllLeadership(), getLoadManager().getAllLoadScores());
+              getPartitionManager().getAllLeadership(), getNodeManager().getAllLoadScores());
         } else {
-          return new LoadScoreGreedyRouter(getLoadManager().getAllLoadScores());
+          return new LoadScoreGreedyRouter(getNodeManager().getAllLoadScores());
         }
     }
   }
 
-  private LoadManager getLoadManager() {
-    return configManager.getLoadManager();
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
+  }
+
+  private PartitionManager getPartitionManager() {
+    return configManager.getPartitionManager();
+  }
+
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRouteMap() {
+    return lazyGreedyRouter.getRouteMap();
   }
 }

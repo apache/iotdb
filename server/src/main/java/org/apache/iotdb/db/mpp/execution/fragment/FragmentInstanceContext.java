@@ -179,4 +179,8 @@ public class FragmentInstanceContext extends QueryContext {
   public long getEndTime() {
     return executionEndTime.get();
   }
+
+  public FragmentInstanceStateMachine getStateMachine() {
+    return stateMachine;
+  }
 }
