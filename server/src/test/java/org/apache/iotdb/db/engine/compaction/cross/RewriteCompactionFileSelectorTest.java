@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -303,9 +304,10 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
       // the budget is enough to select unseq0 and unseq2, but not unseq1
       // the first selection should only contain seq0 and unseq0
-      long originMemoryBudget =
-          IoTDBDescriptor.getInstance().getConfig().getCrossCompactionMemoryBudget();
-      IoTDBDescriptor.getInstance().getConfig().setCrossCompactionMemoryBudget(29000);
+      long originMemoryBudget = SystemInfo.getInstance().getMemorySizeForCompaction();
+      SystemInfo.getInstance()
+          .setMemorySizeForCompaction(
+              29000L * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
       try {
         RewriteCrossSpaceCompactionSelector selector =
             new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -321,9 +323,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                 seqList.subList(1, seqList.size()), unseqList.subList(1, unseqList.size()));
         assertEquals(1, selected.size());
       } finally {
-        IoTDBDescriptor.getInstance()
-            .getConfig()
-            .setCrossCompactionMemoryBudget(originMemoryBudget);
+        SystemInfo.getInstance().setMemorySizeForCompaction(originMemoryBudget);
       }
 
     } finally {
@@ -386,8 +386,13 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
     Assert.assertEquals(5, resource.getSeqFiles().size());
     Assert.assertEquals(10, resource.getUnseqFiles().size());
-    long origin = IoTDBDescriptor.getInstance().getConfig().getCrossCompactionMemoryBudget();
-    IoTDBDescriptor.getInstance().getConfig().setCrossCompactionMemoryBudget(500 * 1024 * 1024);
+    long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            500L
+                * 1024
+                * 1024
+                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -397,7 +402,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       Assert.assertEquals(1, selected.get(0).left.size());
       Assert.assertEquals(10, selected.get(0).right.size());
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setCrossCompactionMemoryBudget(origin);
+      SystemInfo.getInstance().setMemorySizeForCompaction(origin);
     }
   }
 
@@ -456,8 +461,13 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
     Assert.assertEquals(5, resource.getSeqFiles().size());
     Assert.assertEquals(1, resource.getUnseqFiles().size());
-    long origin = IoTDBDescriptor.getInstance().getConfig().getCrossCompactionMemoryBudget();
-    IoTDBDescriptor.getInstance().getConfig().setCrossCompactionMemoryBudget(500 * 1024 * 1024);
+    long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            500L
+                * 1024
+                * 1024
+                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -467,7 +477,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       Assert.assertEquals(1, selected.get(0).left.size());
       Assert.assertEquals(1, selected.get(0).right.size());
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setUdfMemoryBudgetInMB(origin);
+      SystemInfo.getInstance().setMemorySizeForCompaction(origin);
     }
   }
 
@@ -526,8 +536,13 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
     Assert.assertEquals(5, resource.getSeqFiles().size());
     Assert.assertEquals(2, resource.getUnseqFiles().size());
-    long origin = IoTDBDescriptor.getInstance().getConfig().getCrossCompactionMemoryBudget();
-    IoTDBDescriptor.getInstance().getConfig().setCrossCompactionMemoryBudget(500 * 1024 * 1024);
+    long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            500L
+                * 1024
+                * 1024
+                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -537,7 +552,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       Assert.assertEquals(3, selected.get(0).left.size());
       Assert.assertEquals(2, selected.get(0).right.size());
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setUdfMemoryBudgetInMB(origin);
+      SystemInfo.getInstance().setMemorySizeForCompaction(origin);
     }
   }
 
@@ -599,8 +614,13 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
     Assert.assertEquals(5, resource.getSeqFiles().size());
     Assert.assertEquals(4, resource.getUnseqFiles().size());
-    long origin = IoTDBDescriptor.getInstance().getConfig().getCrossCompactionMemoryBudget();
-    IoTDBDescriptor.getInstance().getConfig().setCrossCompactionMemoryBudget(500 * 1024 * 1024);
+    long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            500L
+                * 1024
+                * 1024
+                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -610,7 +630,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       Assert.assertEquals(5, selected.get(0).left.size());
       Assert.assertEquals(4, selected.get(0).right.size());
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setUdfMemoryBudgetInMB(origin);
+      SystemInfo.getInstance().setMemorySizeForCompaction(origin);
     }
   }
 
@@ -675,8 +695,13 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
     Assert.assertEquals(5, resource.getSeqFiles().size());
     Assert.assertEquals(4, resource.getUnseqFiles().size());
-    long origin = IoTDBDescriptor.getInstance().getConfig().getCrossCompactionMemoryBudget();
-    IoTDBDescriptor.getInstance().getConfig().setCrossCompactionMemoryBudget(500 * 1024 * 1024);
+    long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            500L
+                * 1024
+                * 1024
+                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -686,7 +711,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       Assert.assertEquals(3, selected.get(0).left.size());
       Assert.assertEquals(2, selected.get(0).right.size());
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setUdfMemoryBudgetInMB(origin);
+      SystemInfo.getInstance().setMemorySizeForCompaction(origin);
     }
   }
 
@@ -902,8 +927,13 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     fileWriter.flushAllChunkGroups();
     fileWriter.close();
 
-    long origin = IoTDBDescriptor.getInstance().getConfig().getCrossCompactionMemoryBudget();
-    IoTDBDescriptor.getInstance().getConfig().setCrossCompactionMemoryBudget(500 * 1024 * 1024);
+    long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            500L
+                * 1024
+                * 1024
+                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -913,7 +943,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       Assert.assertEquals(2, selected.get(0).left.size());
       Assert.assertEquals(2, selected.get(0).right.size());
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setUdfMemoryBudgetInMB(origin);
+      SystemInfo.getInstance().setMemorySizeForCompaction(origin);
     }
   }
 

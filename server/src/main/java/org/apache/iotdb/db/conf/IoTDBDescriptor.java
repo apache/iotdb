@@ -589,11 +589,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "upgrade_thread_num", Integer.toString(conf.getUpgradeThreadNum()))));
-    conf.setCrossCompactionMemoryBudget(
-        Long.parseLong(
-            properties.getProperty(
-                "cross_compaction_memory_budget",
-                Long.toString(conf.getCrossCompactionMemoryBudget()))));
     conf.setCrossCompactionFileSelectionTimeBudget(
         Long.parseLong(
             properties.getProperty(
@@ -1527,7 +1522,7 @@ public class IoTDBDescriptor {
       }
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
       if (proportionSum != 0) {
-        conf.setAllocateMemoryForWrite(
+        conf.setAllocateMemoryForStorageEngine(
             maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setAllocateMemoryForRead(
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
@@ -1537,7 +1532,7 @@ public class IoTDBDescriptor {
     }
 
     logger.info("allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
-    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
+    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
     initSchemaMemoryAllocate(properties);
@@ -1611,7 +1606,7 @@ public class IoTDBDescriptor {
     String[] proportions = allocationRatio.split(":");
     int proportionForMemTable = Integer.parseInt(proportions[0].trim());
     int proportionForCompaction = Integer.parseInt(proportions[1].trim());
-    conf.setMemtableProportion(
+    conf.setWriteProportion(
         ((double) (proportionForMemTable)
             / (double) (proportionForCompaction + proportionForMemTable)));
     conf.setCompactionProportion(

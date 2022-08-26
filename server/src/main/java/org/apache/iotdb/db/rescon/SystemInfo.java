@@ -45,9 +45,9 @@ public class SystemInfo {
   private volatile boolean rejected = false;
 
   private static long memorySizeForWrite =
-      (long) (config.getAllocateMemoryForWrite() * config.getMemtableProportion());
+      (long) (config.getAllocateMemoryForStorageEngine() * config.getWriteProportion());
   private static long memorySizeForCompaction =
-      (long) (config.getAllocateMemoryForWrite() * config.getCompactionProportion());
+      (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
 
   private Map<StorageGroupInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
@@ -191,6 +191,10 @@ public class SystemInfo {
 
   public long getMemorySizeForCompaction() {
     return memorySizeForCompaction;
+  }
+
+  public void setMemorySizeForCompaction(long size) {
+    memorySizeForCompaction = size;
   }
 
   private void logCurrentTotalSGMemory() {

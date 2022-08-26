@@ -325,7 +325,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     if (seqFileList.isEmpty() || unSeqFileList.isEmpty()) {
       return Collections.emptyList();
     }
-    long budget = config.getCrossCompactionMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
     this.resource = new CrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
 
