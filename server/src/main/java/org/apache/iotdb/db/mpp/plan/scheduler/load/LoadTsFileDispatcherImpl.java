@@ -116,7 +116,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         internalServiceClientManager.borrowClient(endPoint)) {
       TLoadTsFileReq loadTsFileReq =
           new TLoadTsFileReq(
-              instance.getFragment().getRoot().serializeToByteBuffer(),
+              instance.getFragment().getPlanNodeTree().serializeToByteBuffer(),
               uuid,
               instance.getRegionReplicaSet().getRegionId());
       TLoadResp loadResp = client.sendLoadNode(loadTsFileReq);
@@ -141,7 +141,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
             instance.getRegionReplicaSet().getRegionId());
     LoadTsFilePieceNode pieceNode =
         (LoadTsFilePieceNode)
-            PlanNodeType.deserialize(instance.getFragment().getRoot().serializeToByteBuffer());
+            PlanNodeType.deserialize(
+                instance.getFragment().getPlanNodeTree().serializeToByteBuffer());
     if (pieceNode == null) {
       throw new FragmentInstanceDispatchException(
           new TSStatus(TSStatusCode.NODE_DESERIALIZE_ERROR.getStatusCode()));

@@ -77,7 +77,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.allReplicaSets = new HashSet<>();
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
-      tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getRoot());
+      tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getPlanNodeTree());
     }
   }
 
