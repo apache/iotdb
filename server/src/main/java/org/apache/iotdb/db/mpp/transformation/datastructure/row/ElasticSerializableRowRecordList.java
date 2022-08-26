@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.transformation.datastructure.row;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.dag.util.InputRowUtils;
-import org.apache.iotdb.db.mpp.transformation.datastructure.Cache;
+import org.apache.iotdb.db.mpp.transformation.datastructure.NewCache;
 import org.apache.iotdb.db.mpp.transformation.datastructure.SerializableList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -280,16 +280,16 @@ public class ElasticSerializableRowRecordList {
     this.evictionUpperBound = evictionUpperBound;
   }
 
-  private class LRUCache extends Cache {
+  private class LRUCache extends NewCache {
 
     LRUCache(int capacity) {
       super(capacity);
     }
 
     SerializableRowRecordList get(int targetIndex) throws IOException {
-      if (!removeFirstOccurrence(targetIndex)) {
-        if (cacheCapacity <= cacheSize) {
-          int lastIndex = removeLast();
+      if (!containsKey(targetIndex)) {
+        if (cacheCapacity <= size()) {
+          int lastIndex = getLast();
           if (lastIndex < evictionUpperBound / internalRowRecordListCapacity) {
             rowRecordLists.set(lastIndex, null);
             bitMaps.set(lastIndex, null);
@@ -299,7 +299,7 @@ public class ElasticSerializableRowRecordList {
         }
         rowRecordLists.get(targetIndex).deserialize();
       }
-      addFirst(targetIndex);
+      putKey(targetIndex);
       return rowRecordLists.get(targetIndex);
     }
   }

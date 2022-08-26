@@ -40,4 +40,8 @@ public abstract class NewCache extends LinkedHashMap<Integer, Integer> {
   public int getLast() {
     return this.entrySet().iterator().next().getKey();
   }
+
+  protected Integer putKey(Integer index) {
+    return put(index, index);
+  }
 }

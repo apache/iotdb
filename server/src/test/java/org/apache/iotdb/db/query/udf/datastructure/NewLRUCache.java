@@ -56,6 +56,6 @@ public class NewLRUCache extends NewCache {
       inMemory[targetIndex] = outMemory[targetIndex];
       outMemory[targetIndex] = Integer.MIN_VALUE;
     }
-    put(targetIndex, targetIndex);
+    putKey(targetIndex);
   }
 }

@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
-import org.apache.iotdb.db.mpp.transformation.datastructure.Cache;
+import org.apache.iotdb.db.mpp.transformation.datastructure.NewCache;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -359,16 +359,16 @@ public class ElasticSerializableTVList implements PointCollector {
     this.evictionUpperBound = evictionUpperBound;
   }
 
-  private class LRUCache extends Cache {
+  private class LRUCache extends NewCache {
 
     LRUCache(int capacity) {
       super(capacity);
     }
 
     BatchData get(int targetIndex) throws IOException {
-      if (!removeFirstOccurrence(targetIndex)) {
-        if (cacheCapacity <= cacheSize) {
-          int lastIndex = removeLast();
+      if (!containsKey(targetIndex)) {
+        if (cacheCapacity <= size()) {
+          int lastIndex = getLast();
           if (lastIndex < evictionUpperBound / internalTVListCapacity) {
             tvLists.set(lastIndex, null);
             bitMaps.set(lastIndex, null);
@@ -378,7 +378,7 @@ public class ElasticSerializableTVList implements PointCollector {
         }
         tvLists.get(targetIndex).deserialize();
       }
-      addFirst(targetIndex);
+      putKey(targetIndex);
       return tvLists.get(targetIndex);
     }
   }
