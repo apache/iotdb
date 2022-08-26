@@ -185,7 +185,7 @@ public class QueryDataSetUtils {
     TSQueryNonAlignDataSet tsQueryNonAlignDataSet = new TSQueryNonAlignDataSet();
     List<ByteBuffer> bitmapList = tsQueryDataSet.bitmapList;
     ByteBuffer time = tsQueryDataSet.time;
-    List<ByteBuffer> timeList = new ArrayList<>();
+    List<ByteBuffer> timeList = new ArrayList<>(bitmapList.size());
 
     int rowNum = time.capacity() / Long.BYTES;
     for (int i = 0; i < bitmapList.size(); i++) {
@@ -193,9 +193,14 @@ public class QueryDataSetUtils {
         timeList.add(ByteBuffer.allocate(0));
         continue;
       }
-      byte bitmap = ReadWriteIOUtils.readByte(bitmapList.get(i));
+      ByteBuffer bitmapBuffer = bitmapList.get(i);
+      byte bitmap = 0;
       List<Long> notNulTimeList = new ArrayList<>();
       for (int j = 0; j < rowNum; j++) {
+        // another new 8 row, should move the bitmap buffer position to next byte
+        if (j % 8 == 0) {
+          bitmap = bitmapBuffer.get();
+        }
         Long t = ReadWriteIOUtils.readLong(time);
         int shift = j % 8;
         if (((0x80 >>> shift) & (bitmap & 0xff)) != 0) {
