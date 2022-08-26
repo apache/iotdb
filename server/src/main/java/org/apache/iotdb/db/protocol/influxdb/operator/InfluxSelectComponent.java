@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.operator;
 
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import java.time.ZoneId;
 
@@ -36,6 +36,7 @@ public final class InfluxSelectComponent
   private boolean hasMoreFunction = false;
   private boolean hasFunction = false;
   private boolean hasCommonQuery = false;
+  private boolean hasOnlyTraverseFunction = false;
 
   public InfluxSelectComponent() {
     super((ZoneId) null);
@@ -61,6 +62,9 @@ public final class InfluxSelectComponent
       } else {
         hasAggregationFunction = true;
       }
+      if (InfluxSQLConstant.getOnlyTraverseFunctionNames().contains(functionName.toLowerCase())) {
+        hasOnlyTraverseFunction = true;
+      }
     }
     if (expression instanceof TimeSeriesOperand) {
       hasCommonQuery = true;
@@ -80,8 +84,8 @@ public final class InfluxSelectComponent
     return hasCommonQuery;
   }
 
-  public boolean isHasSelectorFunction() {
-    return hasSelectorFunction;
+  public boolean isHasOnlyTraverseFunction() {
+    return hasOnlyTraverseFunction;
   }
 
   public boolean isHasMoreSelectorFunction() {

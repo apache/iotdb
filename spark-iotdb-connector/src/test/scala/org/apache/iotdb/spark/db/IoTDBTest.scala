@@ -20,7 +20,6 @@
 package org.apache.iotdb.spark.db
 
 import java.io.ByteArrayOutputStream
-import org.apache.iotdb.db.conf.IoTDBConstant
 import org.apache.iotdb.db.service.IoTDB
 import org.apache.iotdb.jdbc.Config
 import org.apache.spark.sql.{SQLContext, SparkSession}
@@ -39,7 +38,7 @@ class IoTDBTest extends FunSuite with BeforeAndAfterAll {
 
   @Before
   override protected def beforeAll(): Unit = {
-    System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/")
+    System.setProperty("IOTDB_CONF", "src/test/resources/")
     super.beforeAll()
 
     daemon = IoTDB.getInstance

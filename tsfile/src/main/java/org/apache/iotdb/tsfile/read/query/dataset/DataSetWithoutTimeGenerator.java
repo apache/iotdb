@@ -27,7 +27,11 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Set;
 
 /** multi-way merging data set, no need to use TimeGenerator. */
 public class DataSetWithoutTimeGenerator extends QueryDataSet {

@@ -28,7 +28,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
-![](https://img.shields.io/badge/platform-win%20%7C%20macox%20%7C%20linux-yellow.svg)
+![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8%20%7C%2011%20%7C%2017-blue.svg)
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
@@ -124,7 +124,7 @@ IoTDB提供了三种安装方法，您可以参考以下建议，选择最适合
 同时我们预先编译了一个Thrift编译器，并将其上传到了GitHub ，借助一个Maven插件，在编译时可以自动将其下载。
 该预编译的Thrift编译器在gcc8，Ubuntu, CentOS, MacOS下可以工作，但是在更低的gcc
 版本以及其他操作系统上尚未确认。
-如果您发现因为网络问题总是提示下载不到thrift文件，那么您需要手动下载，并并将编译器放置到目录`{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`。
+如果您发现因为网络问题总是提示下载不到thrift文件，那么您需要手动下载，并将编译器放置到目录`{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`。
 如果您放到其他地方，就需要在运行maven的命令中添加：`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<你的thrift可执行文件路径>`。
 
 如果您对Maven足够熟悉，您也可以直接修改我们的根pom文件来避免每次编译都使用上述参数。
@@ -157,15 +157,15 @@ git checkout vx.x.x
 
 执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-all-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
 
-**注意："`thrift/target/generated-sources/thrift`"， "`thrift-sync/target/generated-sources/thrift`"，"`thrift-cluster/target/generated-sources/thrift`" 和 "`antlr/target/generated-sources/antlr4`" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。**
+**注意："`thrift/target/generated-sources/thrift`"， "`thrift-sync/target/generated-sources/thrift`"，"`thrift-cluster/target/generated-sources/thrift`"，"`thrift-influxdb/target/generated-sources/thrift`" 和  "`antlr/target/generated-sources/antlr4`" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。**
 
 **IDEA的操作方法：在上述maven命令编译好后，右键项目名称，选择"`Maven->Reload project`"，即可。**
 
 ### 配置
 
 配置文件在"conf"文件夹下
-* 环境配置模块(`iotdb-env.bat`, `iotdb-env.sh`),
-* 系统配置模块(`iotdb-engine.properties`)
+* 环境配置模块(`datanode-env.bat`, `datanode-env.sh`),
+* 系统配置模块(`iotdb-datanode.properties`)
 * 日志配置模块(`logback.xml`)。
 
 有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/Config-Manual.html)。

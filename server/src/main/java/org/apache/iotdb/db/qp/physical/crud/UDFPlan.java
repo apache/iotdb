@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 
 import java.util.List;
 

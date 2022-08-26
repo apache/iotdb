@@ -45,8 +45,8 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
-  public BaseConfig setVirtualStorageGroupNum(int virtualStorageGroupNum) {
-    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(virtualStorageGroupNum);
+  public BaseConfig setDataRegionNum(int dataRegionNum) {
+    IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(dataRegionNum);
     return this;
   }
 

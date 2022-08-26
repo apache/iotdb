@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 import React, { FunctionComponent } from 'react';
 import { HorizontalGroup, Icon, SegmentInput, VerticalGroup } from '@grafana/ui';
 import { QueryInlineField } from './Form';
@@ -30,7 +31,7 @@ export const SelectValue: FunctionComponent<Props> = ({ expressions, onChange })
         <>
           {index === 0 && (
             <SegmentInput
-              onChange={value => {
+              onChange={(value) => {
                 onChange(expressions.map((v, i) => (i === index ? value.toString() : v)));
               }}
               value={value}
@@ -52,7 +53,7 @@ export const SelectValue: FunctionComponent<Props> = ({ expressions, onChange })
             <a
               itemID={index.toString()}
               className="gf-form-label query-part"
-              onClick={_ => {
+              onClick={(_) => {
                 expressions.splice(index, 1);
                 onChange(expressions);
               }}
@@ -70,7 +71,7 @@ export const SelectValue: FunctionComponent<Props> = ({ expressions, onChange })
               <HorizontalGroup spacing="xs">
                 <QueryInlineField label={''}>
                   <SegmentInput
-                    onChange={value => {
+                    onChange={(value) => {
                       onChange(expressions.map((v, i) => (i === index ? value.toString() : v)));
                     }}
                     value={value}
@@ -80,7 +81,7 @@ export const SelectValue: FunctionComponent<Props> = ({ expressions, onChange })
                     <a
                       itemID={index.toString()}
                       className="gf-form-label query-part"
-                      onClick={_ => {
+                      onClick={(_) => {
                         expressions.splice(index, 1);
                         onChange(expressions);
                       }}

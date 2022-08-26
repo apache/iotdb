@@ -18,27 +18,29 @@
  */
 package org.apache.iotdb.db.metadata.tag;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -64,36 +66,74 @@ public class TagManager {
   private static final Logger logger = LoggerFactory.getLogger(TagManager.class);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  private String sgSchemaDirPath;
   private TagLogFile tagLogFile;
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<IMeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
-  private static class TagManagerHolder {
+  public TagManager(String sgSchemaDirPath) throws IOException {
+    this.sgSchemaDirPath = sgSchemaDirPath;
+    tagLogFile = new TagLogFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
+  }
 
-    private TagManagerHolder() {
-      // allowed to do nothing
+  public synchronized boolean createSnapshot(File targetDir) {
+    File tagLogSnapshot =
+        SystemFileFactory.INSTANCE.getFile(targetDir, MetadataConstant.TAG_LOG_SNAPSHOT);
+    File tagLogSnapshotTmp =
+        SystemFileFactory.INSTANCE.getFile(targetDir, MetadataConstant.TAG_LOG_SNAPSHOT_TMP);
+    try {
+      tagLogFile.copyTo(tagLogSnapshotTmp);
+      if (tagLogSnapshot.exists() && !tagLogSnapshot.delete()) {
+        logger.error(
+            "Failed to delete old snapshot {} while creating tagManager snapshot.",
+            tagLogSnapshot.getName());
+        return false;
+      }
+      if (!tagLogSnapshotTmp.renameTo(tagLogSnapshot)) {
+        logger.error(
+            "Failed to rename {} to {} while creating tagManager snapshot.",
+            tagLogSnapshotTmp.getName(),
+            tagLogSnapshot.getName());
+        tagLogSnapshot.delete();
+        return false;
+      }
+
+      return true;
+    } catch (IOException e) {
+      logger.error("Failed to create tagManager snapshot due to {}", e.getMessage(), e);
+      tagLogSnapshot.delete();
+      return false;
+    } finally {
+      tagLogSnapshotTmp.delete();
+    }
+  }
+
+  public static TagManager loadFromSnapshot(File snapshotDir, String sgSchemaDirPath)
+      throws IOException {
+    File tagSnapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.TAG_LOG_SNAPSHOT);
+    File tagFile = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
+    if (tagFile.exists()) {
+      tagFile.delete();
     }
 
-    private static final TagManager INSTANCE = new TagManager();
+    try {
+      FileUtils.copyFile(tagSnapshot, tagFile);
+      return new TagManager(sgSchemaDirPath);
+    } catch (IOException e) {
+      tagFile.delete();
+      throw e;
+    }
   }
 
-  public static TagManager getInstance() {
-    return TagManagerHolder.INSTANCE;
-  }
-
-  @TestOnly
-  public static TagManager getNewInstanceForTest() {
-    return new TagManager();
-  }
-
-  private TagManager() {}
-
-  public void init() throws IOException {
-    tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
-  }
-
-  public void recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
-    addIndex(tagLogFile.readTag(config.getTagAttributeTotalSize(), offset), measurementMNode);
+  public boolean recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
+    Map<String, String> tags = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
+    if (tags == null || tags.isEmpty()) {
+      return false;
+    } else {
+      addIndex(tags, measurementMNode);
+      return true;
+    }
   }
 
   public void addIndex(String tagKey, String tagValue, IMeasurementMNode measurementMNode) {
@@ -119,6 +159,45 @@ public class TagManager {
     if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
       tagIndex.get(tagKey).remove(tagValue);
     }
+  }
+
+  public List<String> getMatchedTimeseriesInIndex(String key, String value, boolean isContains) {
+    if (!tagIndex.containsKey(key)) {
+      return Collections.emptyList();
+    }
+    Map<String, Set<IMeasurementMNode>> value2Node = tagIndex.get(key);
+    if (value2Node.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<String> timeseries = new ArrayList<>();
+    List<IMeasurementMNode> allMatchedNodes = new ArrayList<>();
+    if (isContains) {
+      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
+        String tagValue = entry.getKey();
+        if (tagValue.contains(value)) {
+          allMatchedNodes.addAll(entry.getValue());
+        }
+      }
+    } else {
+      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
+        String tagValue = entry.getKey();
+        if (value.equals(tagValue)) {
+          allMatchedNodes.addAll(entry.getValue());
+        }
+      }
+    }
+    allMatchedNodes =
+        allMatchedNodes.stream()
+            .sorted(Comparator.comparing(IMNode::getFullPath))
+            .collect(toList());
+    allMatchedNodes.forEach(measurementMNode -> timeseries.add(measurementMNode.getFullPath()));
+    return timeseries;
   }
 
   public List<IMeasurementMNode> getMatchedTimeseriesInIndex(
@@ -157,11 +236,9 @@ public class TagManager {
     // if ordered by heat, we sort all the timeseries by the descending order of the last insert
     // timestamp
     if (plan.isOrderByHeat()) {
-      List<VirtualStorageGroupProcessor> list;
+      List<DataRegion> list;
       try {
-        Pair<
-                List<VirtualStorageGroupProcessor>,
-                Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>>
             lockListAndProcessorToSeriesMapPair =
                 StorageEngine.getInstance()
                     .mergeLock(
@@ -169,7 +246,7 @@ public class TagManager {
                             .map(IMeasurementMNode::getMeasurementPath)
                             .collect(toList()));
         list = lockListAndProcessorToSeriesMapPair.left;
-        Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        Map<DataRegion, List<PartialPath>> processorToSeriesMap =
             lockListAndProcessorToSeriesMapPair.right;
 
         try {

@@ -121,7 +121,8 @@ public abstract class Decoder {
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
-
+      case FREQ:
+        return new FreqDecoder();
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

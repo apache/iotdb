@@ -28,7 +28,10 @@ import org.antlr.v4.runtime.TokenStream;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Point;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 

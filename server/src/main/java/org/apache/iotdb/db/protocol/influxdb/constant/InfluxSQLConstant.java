@@ -27,6 +27,7 @@ import java.util.Set;
 
 /** this class contains several constants used in SQL. */
 public class InfluxSQLConstant extends SQLConstant {
+  public static final String STAR = "*";
 
   public static final String MAX = "max";
   public static final String MIN = "min";
@@ -41,6 +42,8 @@ public class InfluxSQLConstant extends SQLConstant {
           Arrays.asList(MIN, MAX, FIRST, LAST, MEAN, COUNT, MEDIAN, MODE, SPREAD, STDDEV, SUM));
   private static final Set<String> NATIVE_SELECTOR_FUNCTION_NAMES =
       new HashSet<>(Arrays.asList(MIN, MAX, FIRST, LAST));
+  private static final Set<String> ONLY_TRAVERSE_FUNCTION_NAMES =
+      new HashSet<>(Arrays.asList(MEDIAN, MODE, SPREAD, STDDEV));
 
   public InfluxSQLConstant() throws InstantiationException {
     // forbidding instantiation
@@ -53,5 +56,9 @@ public class InfluxSQLConstant extends SQLConstant {
 
   public static Set<String> getNativeSelectorFunctionNames() {
     return NATIVE_SELECTOR_FUNCTION_NAMES;
+  }
+
+  public static Set<String> getOnlyTraverseFunctionNames() {
+    return ONLY_TRAVERSE_FUNCTION_NAMES;
   }
 }

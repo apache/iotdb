@@ -40,6 +40,7 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 *.gz
 *.tar.gz
 *.tar
+*.tokens
 #src/test/resources/logback.xml
 
 ### CSV ###

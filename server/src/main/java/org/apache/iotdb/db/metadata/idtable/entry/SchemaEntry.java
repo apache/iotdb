@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.metadata.idtable.entry;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.idtable.IDiskSchemaManager;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -107,6 +107,15 @@ public class SchemaEntry implements ILastCacheContainer {
               isAligned);
       schema |= (IDiskSchemaManager.serialize(diskSchemaEntry) << 25);
     }
+  }
+
+  /**
+   * get disk pointer of ts from long value of schema
+   *
+   * @return disk pointer
+   */
+  public long getDiskPointer() {
+    return schema >> 25;
   }
 
   /**

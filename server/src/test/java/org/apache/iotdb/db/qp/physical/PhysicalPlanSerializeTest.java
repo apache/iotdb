@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.qp.physical;
 
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -258,13 +258,9 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void createMuSerializeTest3() throws IOException, IllegalPathException {
-    // same as:
-    // create timeseries root.sg.d1.s0 with datatype=DOUBLE, encoding=GORILLA, compression=SNAPPY
-    // create aligned timeseries root.sg.d1.(s1 INT64, s2 DOUBLE, s3 INT64)
-    // with encoding=(GORILLA, GORILLA, GORILLA), compression=SNAPPY
     CreateMultiTimeSeriesPlan plan = new CreateMultiTimeSeriesPlan();
     plan.setPaths(
-        Arrays.asList(new PartialPath("root.sg.d1.s0"), new PartialPath("root.sg.d1.(s1,s2,s3)")));
+        Arrays.asList(new PartialPath("root.sg.d1.s0"), new PartialPath("root.sg.d1.s1")));
     plan.setDataTypes(
         Arrays.asList(TSDataType.DOUBLE, TSDataType.INT64, TSDataType.DOUBLE, TSDataType.INT64));
     plan.setEncodings(

@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
@@ -294,8 +294,8 @@ public class InsertTabletPlanTest {
           QueryFilterOptimizationException, StorageEngineException, IOException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    IoTDB.metaManager.createSchemaTemplate(plan);
-    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.schemaProcessor.createSchemaTemplate(plan);
+    IoTDB.schemaProcessor.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
     InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();
@@ -312,7 +312,7 @@ public class InsertTabletPlanTest {
 
     // test recover
     EnvironmentUtils.stopDaemon();
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
     // wait for close
     try {
       Thread.sleep(1000);
@@ -337,8 +337,8 @@ public class InsertTabletPlanTest {
           QueryFilterOptimizationException, StorageEngineException, IOException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    IoTDB.metaManager.createSchemaTemplate(plan);
-    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.schemaProcessor.createSchemaTemplate(plan);
+    IoTDB.schemaProcessor.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
 
     InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 

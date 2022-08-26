@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.query.context;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +49,7 @@ public class QueryContext {
    */
   private final Map<String, List<Modification>> fileModCache = new HashMap<>();
 
-  private long queryId;
+  protected long queryId;
 
   private long queryTimeLowerBound = Long.MIN_VALUE;
 
@@ -90,6 +91,10 @@ public class QueryContext {
    * them from 'modFile' and put then into the cache.
    */
   public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
+    // if the mods file does not exist, do not add it to the cache
+    if (!modFile.exists()) {
+      return Collections.emptyList();
+    }
     Map<String, List<Modification>> fileModifications =
         filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
     return fileModifications.computeIfAbsent(

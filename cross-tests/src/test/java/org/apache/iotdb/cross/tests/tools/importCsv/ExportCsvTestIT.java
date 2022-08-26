@@ -123,19 +123,26 @@ public class ExportCsvTestIT extends AbstractScript {
   }
 
   private void prepareData() throws IoTDBConnectionException, StatementExecutionException {
-    Session session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
+    Session session = null;
+    try {
+      session = new Session("127.0.0.1", 6667, "root", "root");
+      session.open();
 
-    String deviceId = "root.test.t1";
-    List<String> measurements = new ArrayList<>();
-    measurements.add("c1");
-    measurements.add("c2");
-    measurements.add("c3");
+      String deviceId = "root.test.t1";
+      List<String> measurements = new ArrayList<>();
+      measurements.add("c1");
+      measurements.add("c2");
+      measurements.add("c3");
 
-    List<String> values = new ArrayList<>();
-    values.add("1.0");
-    values.add("\"abc\",aa");
-    values.add("abbe's");
-    session.insertRecord(deviceId, 1L, measurements, values);
+      List<String> values = new ArrayList<>();
+      values.add("1.0");
+      values.add("\"abc\",aa");
+      values.add("abbe's");
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } finally {
+      if (session != null) {
+        session.close();
+      }
+    }
   }
 }

@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.example.Accumulator;
 import org.apache.iotdb.db.engine.trigger.example.Counter;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationInformation;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.TriggerManagementException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -56,25 +56,25 @@ public class IoTDBTriggerManagementIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s2"),
         TSDataType.DOUBLE,
         TSEncoding.GORILLA,
         CompressionType.LZ4,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s3"),
         TSDataType.INT32,
         TSEncoding.RLE,
         CompressionType.LZ4,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s4"),
         TSDataType.INT64,
         TSEncoding.RLE,

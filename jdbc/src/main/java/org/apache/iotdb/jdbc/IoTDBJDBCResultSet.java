@@ -21,7 +21,7 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
@@ -42,7 +42,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       boolean ignoreTimeStamp,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       String sql,
       long queryId,
       long sessionId,
@@ -83,7 +83,7 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       boolean ignoreTimeStamp,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       String sql,
       long queryId,
       long sessionId,

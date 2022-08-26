@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.db.engine.cache;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.service.metrics.Metric;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
-import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -108,48 +107,42 @@ public class TimeSeriesMetadataCache {
             .recordStats()
             .build();
 
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      // add metrics
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.CACHE_HIT.toString(),
-              MetricLevel.IMPORTANT,
-              lruCache,
-              l -> (long) (l.stats().hitRate() * 100),
-              Tag.NAME.toString(),
-              "timeSeriesMeta");
-      // add metrics
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.CACHE_HIT.toString(),
-              MetricLevel.IMPORTANT,
-              bloomFilterPreventCount,
-              prevent -> {
-                if (bloomFilterRequestCount.get() == 0L) {
-                  return 1L;
-                }
-                return (long)
-                    ((double) prevent.get() / (double) bloomFilterRequestCount.get() * 100L);
-              },
-              Tag.NAME.toString(),
-              "bloomFilter");
-    }
+    // add metrics
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.CACHE_HIT.toString(),
+            MetricLevel.IMPORTANT,
+            lruCache,
+            l -> (long) (l.stats().hitRate() * 100),
+            Tag.NAME.toString(),
+            "timeSeriesMeta");
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.CACHE_HIT.toString(),
+            MetricLevel.IMPORTANT,
+            bloomFilterPreventCount,
+            prevent -> {
+              if (bloomFilterRequestCount.get() == 0L) {
+                return 1L;
+              }
+              return (long)
+                  ((double) prevent.get() / (double) bloomFilterRequestCount.get() * 100L);
+            },
+            Tag.NAME.toString(),
+            "bloomFilter");
   }
 
   public static TimeSeriesMetadataCache getInstance() {
     return TimeSeriesMetadataCache.TimeSeriesMetadataCacheHolder.INSTANCE;
   }
 
-  public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key, Set<String> allSensors)
-      throws IOException {
-    return get(key, allSensors, false);
-  }
-
   @SuppressWarnings("squid:S1860") // Suppress synchronize warning
   public TimeseriesMetadata get(
-      TimeSeriesMetadataCacheKey key, Set<String> allSensors, boolean debug) throws IOException {
+      TimeSeriesMetadataCacheKey key,
+      Set<String> allSensors,
+      boolean ignoreNotExists,
+      boolean debug)
+      throws IOException {
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
@@ -159,7 +152,7 @@ public class TimeSeriesMetadataCache {
         return null;
       }
       TimeseriesMetadata timeseriesMetadata =
-          reader.readTimeseriesMetadata(new Path(key.device, key.measurement), false);
+          reader.readTimeseriesMetadata(new Path(key.device, key.measurement), ignoreNotExists);
       return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
           ? null
           : timeseriesMetadata;

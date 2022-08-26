@@ -70,7 +70,11 @@ public class TSFileConfigUtilCompletenessTest {
       "setTimeSeriesDataType",
       "setTSFileStorageFs",
       "setUseKerberos",
-      "setValueEncoder"
+      "setValueEncoder",
+      "setFreqEncodingSNR",
+      "setFreqEncodingBlockSize",
+      "setMaxTsBlockLineNumber",
+      "setMaxTsBlockSizeInBytes"
     };
     Set<String> newSetters =
         Arrays.stream(TSFileConfig.class.getMethods())

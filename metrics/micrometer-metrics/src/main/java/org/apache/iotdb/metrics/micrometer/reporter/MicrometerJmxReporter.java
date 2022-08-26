@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.micrometer.reporter;
 
-import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 
 public class MicrometerJmxReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(MicrometerJmxReporter.class);
-  private MetricManager metricManager;
+  private AbstractMetricManager metricManager;
 
   @Override
   public boolean start() {
@@ -45,7 +45,7 @@ public class MicrometerJmxReporter implements Reporter {
               .filter(reporter -> reporter instanceof JmxMeterRegistry)
               .collect(Collectors.toSet());
       if (meterRegistrySet.size() == 0) {
-        Metrics.addRegistry(new JmxMeterRegistry(IoTDBJmxConfig.DEFAULT, Clock.SYSTEM));
+        Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
       }
     } catch (Exception e) {
       LOGGER.error("Failed to start Micrometer JmxReporter, because {}", e.getMessage());
@@ -81,7 +81,7 @@ public class MicrometerJmxReporter implements Reporter {
   }
 
   @Override
-  public void setMetricManager(MetricManager metricManager) {
+  public void setMetricManager(AbstractMetricManager metricManager) {
     this.metricManager = metricManager;
   }
 }

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.engine.cq;
 
-import org.apache.iotdb.db.concurrent.IoTThreadFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.AbstractPoolManager;
 

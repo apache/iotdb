@@ -278,7 +278,7 @@ public class PrimitiveArrayManager {
    * @return an array of primitive data arrays
    */
   public static Object createDataListsByType(TSDataType dataType, int size) {
-    int arrayNumber = (int) Math.ceil((float) size / (float) ARRAY_SIZE);
+    int arrayNumber = getArrayRowCount(size);
     switch (dataType) {
       case BOOLEAN:
         boolean[][] booleans = new boolean[arrayNumber][];
@@ -319,5 +319,9 @@ public class PrimitiveArrayManager {
       default:
         throw new UnSupportedDataTypeException(dataType.name());
     }
+  }
+
+  public static int getArrayRowCount(int size) {
+    return size / ARRAY_SIZE + (size % ARRAY_SIZE == 0 ? 0 : 1);
   }
 }

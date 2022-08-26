@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.Between;
 import org.apache.iotdb.tsfile.read.filter.operator.Eq;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
@@ -80,6 +81,9 @@ public class FilterFactory {
         break;
       case LTEQ:
         filter = new LtEq<>();
+        break;
+      case BETWEEN:
+        filter = new Between<>();
         break;
       case IN:
         filter = new In<>();

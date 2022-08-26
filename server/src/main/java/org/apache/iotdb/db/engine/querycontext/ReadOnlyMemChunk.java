@@ -28,8 +28,8 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import org.slf4j.Logger;
@@ -45,28 +45,17 @@ import java.util.Map;
  */
 public class ReadOnlyMemChunk {
 
-  // deletion list for this chunk
-  private final List<TimeRange> deletionList;
-
   private String measurementUid;
+
   private TSDataType dataType;
-  private TSEncoding encoding;
 
   private static final Logger logger = LoggerFactory.getLogger(ReadOnlyMemChunk.class);
 
-  private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
-
   protected IChunkMetadata cachedMetaData;
 
-  private TVList chunkData;
+  protected TsBlock tsBlock;
 
-  protected IPointReader chunkPointReader;
-
-  private int chunkDataSize;
-
-  public ReadOnlyMemChunk() {
-    this.deletionList = null;
-  }
+  protected ReadOnlyMemChunk() {}
 
   public ReadOnlyMemChunk(
       String measurementUid,
@@ -74,15 +63,14 @@ public class ReadOnlyMemChunk {
       TSEncoding encoding,
       TVList tvList,
       Map<String, String> props,
-      int size,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
     this.measurementUid = measurementUid;
     this.dataType = dataType;
-    this.encoding = encoding;
+    int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
     if (props != null && props.containsKey(Encoder.MAX_POINT_NUMBER)) {
       try {
-        this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
+        floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
       } catch (NumberFormatException e) {
         logger.warn(
             "The format of MAX_POINT_NUMBER {}  is not correct."
@@ -96,46 +84,47 @@ public class ReadOnlyMemChunk {
         floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       }
     }
-
-    this.chunkData = tvList;
-    this.chunkDataSize = size;
-    this.deletionList = deletionList;
-
-    this.chunkPointReader =
-        tvList.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
-    initChunkMeta();
+    this.tsBlock = tvList.buildTsBlock(floatPrecision, encoding, deletionList);
+    initChunkMetaFromTsBlock();
   }
 
-  private void initChunkMeta() throws IOException, QueryProcessException {
+  private void initChunkMetaFromTsBlock() throws IOException, QueryProcessException {
     Statistics statsByType = Statistics.getStatsByType(dataType);
     IChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
-      IPointReader iterator =
-          chunkData.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
-      while (iterator.hasNextTimeValuePair()) {
-        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
-        switch (dataType) {
-          case BOOLEAN:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-            break;
-          case TEXT:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-            break;
-          case FLOAT:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-            break;
-          case INT32:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-            break;
-          case INT64:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-            break;
-          case DOUBLE:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-            break;
-          default:
-            throw new QueryProcessException("Unsupported data type:" + dataType);
-        }
+      switch (dataType) {
+        case BOOLEAN:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBoolean(i));
+          }
+          break;
+        case TEXT:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBinary(i));
+          }
+          break;
+        case FLOAT:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getFloat(i));
+          }
+          break;
+        case INT32:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getInt(i));
+          }
+          break;
+        case INT64:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getLong(i));
+          }
+          break;
+        case DOUBLE:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getDouble(i));
+          }
+          break;
+        default:
+          throw new QueryProcessException("Unsupported data type:" + dataType);
       }
     }
     statsByType.setEmpty(isEmpty());
@@ -149,7 +138,7 @@ public class ReadOnlyMemChunk {
   }
 
   public boolean isEmpty() throws IOException {
-    return !chunkPointReader.hasNextTimeValuePair();
+    return tsBlock.isEmpty();
   }
 
   public IChunkMetadata getChunkMetaData() {
@@ -157,11 +146,10 @@ public class ReadOnlyMemChunk {
   }
 
   public IPointReader getPointReader() {
-    chunkPointReader = chunkData.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
-    return chunkPointReader;
+    return tsBlock.getTsBlockSingleColumnIterator();
   }
 
-  public String getMeasurementUid() {
-    return measurementUid;
+  public TsBlock getTsBlock() {
+    return tsBlock;
   }
 }

@@ -142,6 +142,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/VariablesResult'
 
+  /grafana/v1/node:
+    post:
+      summary: node
+      description: node
+      operationId: node
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              description: node name (e.g., "root.a.b.c")
+              items:
+                type: string
+      responses:
+        "200":
+          description: NodesResult
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
 components:
   schemas:
     SQL:

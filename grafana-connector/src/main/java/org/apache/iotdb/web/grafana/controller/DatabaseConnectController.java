@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -92,7 +93,7 @@ public class DatabaseConnectController {
    *
    * @return data in JSON format
    */
-  @RequestMapping(value = "/query")
+  @RequestMapping(value = "/query", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
   @ResponseBody
   public String query(@RequestBody String json) {
     String targetStr = "target";
@@ -110,6 +111,9 @@ public class DatabaseConnectController {
           continue;
         }
         String target = object.get(targetStr).getAsString();
+        if (target.contains(";")) {
+          throw new Exception("Only one SQL statement is supported");
+        }
         JsonObject obj = new JsonObject();
         obj.addProperty("target", target);
         String type = getJsonType(object);
@@ -123,7 +127,7 @@ public class DatabaseConnectController {
       logger.info("query finished");
       return result.toString();
     } catch (Exception e) {
-      logger.error("/query failed, request body is {}", json, e);
+      logger.error("/query failed, request body is {}", json.replaceAll("[\n\r\t]", "_"), e);
     }
     return null;
   }

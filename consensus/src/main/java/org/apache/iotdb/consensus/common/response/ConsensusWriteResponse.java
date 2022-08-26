@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.consensus.common.response;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 public class ConsensusWriteResponse extends ConsensusResponse {
 
@@ -40,12 +41,28 @@ public class ConsensusWriteResponse extends ConsensusResponse {
     return "ConsensusWriteResponse{" + "status=" + status + "} " + super.toString();
   }
 
+  public boolean isSuccessful() {
+    return status != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  public String getErrorMessage() {
+    if (status != null && status.message != null && status.message.length() > 0) {
+      return status.message;
+    }
+    if (exception != null
+        && exception.getMessage() != null
+        && exception.getMessage().length() > 0) {
+      return exception.getMessage();
+    }
+    return "unknown error message";
+  }
+
   public static ConsensusWriteResponse.Builder newBuilder() {
     return new ConsensusWriteResponse.Builder();
   }
 
   public static class Builder {
-    private org.apache.iotdb.service.rpc.thrift.TSStatus status;
+    private TSStatus status;
     private ConsensusException exception;
 
     public ConsensusWriteResponse build() {
@@ -57,7 +74,7 @@ public class ConsensusWriteResponse extends ConsensusResponse {
       return this;
     }
 
-    public Builder setStatus(org.apache.iotdb.service.rpc.thrift.TSStatus status) {
+    public Builder setStatus(TSStatus status) {
       this.status = status;
       return this;
     }

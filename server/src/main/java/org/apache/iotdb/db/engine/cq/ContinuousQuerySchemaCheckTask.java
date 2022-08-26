@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.engine.cq;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
@@ -73,7 +73,7 @@ public class ContinuousQuerySchemaCheckTask extends ContinuousQueryTask {
             queryPlan.getAggregations().get(0), queryPlan.getDataTypes().get(0));
     for (PartialPath targetPath : targetPaths) {
       try {
-        TSDataType targetPathDataType = IoTDB.metaManager.getSeriesSchema(targetPath).getType();
+        TSDataType targetPathDataType = IoTDB.schemaProcessor.getSeriesSchema(targetPath).getType();
         if (!sourceDataType.equals(targetPathDataType)) {
           throw new ContinuousQueryException(
               String.format(

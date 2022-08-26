@@ -19,12 +19,18 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -97,11 +103,13 @@ public class IntTVList extends TVList {
 
   @Override
   public void sort() {
-    if (sortedTimestamps == null || sortedTimestamps.length < rowCount) {
+    if (sortedTimestamps == null
+        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
       sortedTimestamps =
           (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
     }
-    if (sortedValues == null || sortedValues.length < rowCount) {
+    if (sortedValues == null
+        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
       sortedValues =
           (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
     }
@@ -191,6 +199,23 @@ public class IntTVList extends TVList {
   }
 
   @Override
+  protected void writeValidValuesIntoTsBlock(
+      TsBlockBuilder builder,
+      int floatPrecision,
+      TSEncoding encoding,
+      List<TimeRange> deletionList) {
+    Integer deleteCursor = 0;
+    for (int i = 0; i < rowCount; i++) {
+      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
+          && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
+        builder.getTimeColumnBuilder().writeLong(getTime(i));
+        builder.getColumnBuilder(0).writeInt(getInt(i));
+        builder.declarePosition();
+      }
+    }
+  }
+
+  @Override
   protected void releaseLastValueArray() {
     PrimitiveArrayManager.release(values.remove(values.size() - 1));
   }
@@ -274,5 +299,33 @@ public class IntTVList extends TVList {
   @Override
   public TSDataType getDataType() {
     return TSDataType.INT32;
+  }
+
+  @Override
+  public int serializedSize() {
+    return Byte.BYTES + Integer.BYTES + rowCount * (Long.BYTES + Integer.BYTES);
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    WALWriteUtils.write(TSDataType.INT32, buffer);
+    buffer.putInt(rowCount);
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      buffer.putLong(getTime(rowIdx));
+      buffer.putInt(getInt(rowIdx));
+    }
+  }
+
+  public static IntTVList deserialize(DataInputStream stream) throws IOException {
+    IntTVList tvList = new IntTVList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    int[] values = new int[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readInt();
+    }
+    tvList.putInts(times, values, null, 0, rowCount);
+    return tvList;
   }
 }

@@ -18,10 +18,18 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
-import org.apache.iotdb.db.conf.IoTDBConfigCheck;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.ConfigurationException;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -30,37 +38,37 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
-import org.apache.iotdb.db.exception.ConfigurationException;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
-import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
-import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.sync.receiver.SyncServerManager;
-import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
+import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.wal.WALManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+
+import static org.apache.iotdb.db.utils.JarLoaderUtil.loadExternLib;
 
 public class IoTDB implements IoTDBMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final RegisterManager registerManager = new RegisterManager();
-  public static MManager metaManager = MManager.getInstance();
+  public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
+  public static LocalConfigNode configManager = LocalConfigNode.getInstance();
   public static ServiceProvider serviceProvider;
-  private static boolean clusterMode = false;
 
   public static IoTDB getInstance() {
     return IoTDBHolder.INSTANCE;
@@ -68,18 +76,21 @@ public class IoTDB implements IoTDBMBean {
 
   public static void main(String[] args) {
     try {
-      IoTDBConfigCheck.getInstance().checkConfig();
+      IoTDBStartCheck.getInstance().checkConfig();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
       System.exit(1);
     }
     IoTDB daemon = IoTDB.getInstance();
+
+    loadExternLib(config);
+
     daemon.active();
   }
 
-  public static void setMetaManager(MManager metaManager) {
-    IoTDB.metaManager = metaManager;
+  public static void setSchemaProcessor(LocalSchemaProcessor schemaProcessor) {
+    IoTDB.schemaProcessor = schemaProcessor;
   }
 
   public static void setServiceProvider(ServiceProvider serviceProvider) {
@@ -87,11 +98,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public static void setClusterMode() {
-    IoTDB.clusterMode = true;
-  }
-
-  public static boolean isClusterMode() {
-    return IoTDB.clusterMode;
+    config.setClusterMode(true);
   }
 
   public void active() {
@@ -104,6 +111,13 @@ public class IoTDB implements IoTDBMBean {
           "{}: failed to start because some checks failed. ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return;
     }
+
+    // set recover config, avoid creating deleted time series when recovering wal
+    boolean prevIsAutoCreateSchemaEnabled = config.isAutoCreateSchemaEnabled();
+    config.setAutoCreateSchemaEnabled(false);
+    boolean prevIsEnablePartialInsert = config.isEnablePartialInsert();
+    config.setEnablePartialInsert(true);
+
     try {
       setUp();
     } catch (StartupException | QueryProcessException e) {
@@ -112,6 +126,11 @@ public class IoTDB implements IoTDBMBean {
       logger.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
       return;
     }
+
+    // reset config
+    config.setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
+    config.setEnablePartialInsert(prevIsEnablePartialInsert);
+
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
 
@@ -120,20 +139,31 @@ public class IoTDB implements IoTDBMBean {
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
-    registerManager.register(MetricsService.getInstance());
-    logger.info("recover the schema...");
-    initMManager();
     initServiceProvider();
-    registerManager.register(JMXService.getInstance());
+
+    registerManager.register(MetricService.getInstance());
+    logger.info("recover the schema...");
+    initConfigManager();
+    registerManager.register(new JMXService());
     registerManager.register(FlushManager.getInstance());
-    registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
+    registerManager.register(SyncService.getInstance());
+    registerManager.register(WALManager.getInstance());
+
     registerManager.register(StorageEngine.getInstance());
+
     registerManager.register(TemporaryQueryDataFileService.getInstance());
-    registerManager.register(UDFClassLoaderManager.getInstance());
-    registerManager.register(UDFRegistrationService.getInstance());
+    registerManager.register(
+        UDFClassLoaderManager.setupAndGetInstance(
+            IoTDBDescriptor.getInstance().getConfig().getUdfDir()));
+    registerManager.register(
+        UDFRegistrationService.setupAndGetInstance(
+            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+                + File.separator
+                + "udf"
+                + File.separator));
 
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
@@ -143,12 +173,13 @@ public class IoTDB implements IoTDBMBean {
     initProtocols();
     // in cluster mode, InfluxDBMManager has been initialized, so there is no need to init again to
     // avoid wasting time.
-    if (!isClusterMode()
+    if (!config.isClusterMode()
         && IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
       initInfluxDBMManager();
     }
 
-    logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");
+    logger.info(
+        "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
 
     while (!StorageEngine.getInstance().isAllSgReady()) {
       try {
@@ -160,12 +191,15 @@ public class IoTDB implements IoTDBMBean {
       }
     }
 
-    registerManager.register(SyncServerManager.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
 
+    // start reporter
+    MetricService.getInstance().startAllReporter();
+
+    logger.info("IoTDB configuration: " + config.getConfigMessage());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
 
@@ -174,7 +208,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   private void initServiceProvider() throws QueryProcessException {
-    if (!clusterMode) {
+    if (!config.isClusterMode()) {
       serviceProvider = new StandaloneServiceProvider();
     }
   }
@@ -198,16 +232,15 @@ public class IoTDB implements IoTDBMBean {
     logger.info("IoTDB is deactivated.");
   }
 
-  private void initMManager() {
+  private void initConfigManager() {
     long time = System.currentTimeMillis();
-    IoTDB.metaManager.init();
+    IoTDB.configManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
     logger.info(
-        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}, memtableSize is {}",
+        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
         IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
+        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize());
   }
 
   @Override

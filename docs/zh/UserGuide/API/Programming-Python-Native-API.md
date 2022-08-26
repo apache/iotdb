@@ -42,8 +42,8 @@ from iotdb.Session import Session
 
 ip = "127.0.0.1"
 port_ = "6667"
-username_ = 'root'
-password_ = 'root'
+username_ = "root"
+password_ = "root"
 session = Session(ip, port_, username_, password_)
 session.open(False)
 zone = session.get_time_zone()
@@ -97,20 +97,20 @@ session.delete_storage_groups(group_name_lst)
 
 ```python
 session.create_time_series(ts_path, data_type, encoding, compressor,
-        props=None, tags=None, attributes=None, alias=None)
+    props=None, tags=None, attributes=None, alias=None)
       
 session.create_multi_time_series(
-            ts_path_lst, data_type_lst, encoding_lst, compressor_lst,
-            props_lst=None, tags_lst=None, attributes_lst=None, alias_lst=None
-    )
+    ts_path_lst, data_type_lst, encoding_lst, compressor_lst,
+    props_lst=None, tags_lst=None, attributes_lst=None, alias_lst=None
+)
 ```
 
 * 创建对齐时间序列
 
 ```python
 session.create_aligned_time_series(
-            device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
-    )
+    device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
+)
 ```
 
 注意：目前**暂不支持**使用传感器别名。
@@ -156,15 +156,15 @@ session.insert_tablet(tablet_)
 ```
 * Numpy Tablet
 
-相较于普通 Tablet，Numpy Tablet 使用 [numpy ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 来记录数值型数据。
+相较于普通 Tablet，Numpy Tablet 使用 [numpy.ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 来记录数值型数据。
 内存占用和序列化耗时会降低很多，写入效率也会有很大提升。
 
 **注意**
-1. Tablet 中的每一列值记录为一个 ndarray
-2. ndarray 需要为大端类型的数据类型，具体可参考下面的例子
-3. TEXT 类型数据不支持 ndarray
+1. Tablet 中的每一列时间戳和值记录为一个 ndarray
+2. Numpy Tablet 只支持大端类型数据，ndarray 构建时如果不指定数据类型会使用小端，因此推荐在构建 ndarray 时指定下面例子中类型使用大端。如果不指定，IoTDB Python客户端也会进行大小端转换，不影响使用正确性。
 
 ```python
+import numpy as np
 data_types_ = [
     TSDataType.BOOLEAN,
     TSDataType.INT32,
@@ -174,16 +174,16 @@ data_types_ = [
     TSDataType.TEXT,
 ]
 np_values_ = [
-    np.array([False, True, False, True], np.dtype('>?')),
-    np.array([10, 100, 100, 0], np.dtype('>i4')),
-    np.array([11, 11111, 1, 0], np.dtype('>i8')),
-    np.array([1.1, 1.25, 188.1, 0], np.dtype('>f4')),
-    np.array([10011.1, 101.0, 688.25, 6.25], np.dtype('>f8')),
-    ["test01", "test02", "test03", "test04"],
+    np.array([False, True, False, True], TSDataType.BOOLEAN.np_dtype()),
+    np.array([10, 100, 100, 0], TSDataType.INT32.np_dtype()),
+    np.array([11, 11111, 1, 0], TSDataType.INT64.np_dtype()),
+    np.array([1.1, 1.25, 188.1, 0], TSDataType.FLOAT.np_dtype()),
+    np.array([10011.1, 101.0, 688.25, 6.25], TSDataType.DOUBLE.np_dtype()),
+    np.array(["test01", "test02", "test03", "test04"]),
 ]
-np_timestamps_ = np.array([1, 2, 3, 4], np.dtype('>i8'))
+np_timestamps_ = np.array([1, 2, 3, 4], TSDataType.INT64.np_dtype())
 np_tablet_ = NumpyTablet(
-    "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
+  "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
 )
 session.insert_tablet(np_tablet_)
 ```
@@ -247,6 +247,99 @@ session.execute_query_statement(sql)
 session.execute_non_query_statement(sql)
 ```
 
+* 执行语句
+
+```python
+session.execute_statement(sql)
+```
+
+
+### 元数据模版接口
+#### 构建元数据模版
+1. 首先构建Template类
+2. 添加子节点，可以选择InternalNode或MeasurementNode
+3. 调用创建元数据模版接口
+
+```python
+template = Template(name=template_name, share_time=True)
+
+i_node_gps = InternalNode(name="GPS", share_time=False)
+i_node_v = InternalNode(name="vehicle", share_time=True)
+m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
+
+i_node_gps.add_child(m_node_x)
+i_node_v.add_child(m_node_x)
+
+template.add_template(i_node_gps)
+template.add_template(i_node_v)
+template.add_template(m_node_x)
+
+session.create_schema_template(template)
+```
+#### 修改模版节点信息
+修改模版节点，其中修改的模版必须已经被创建。以下函数能够在已经存在的模版中增加或者删除物理量
+* 在模版中增加实体
+```python
+session.add_measurements_in_template(template_name, measurements_path, data_types, encodings, compressors, is_aligned)
+```
+
+* 在模版中删除物理量
+```python
+session.delete_node_in_template(template_name, path)
+```
+
+#### 挂载元数据模板
+```python
+session.set_schema_template(template_name, prefix_path)
+```
+
+#### 卸载元数据模版
+```python
+session.unset_schema_template(template_name, prefix_path)
+```
+
+#### 查看元数据模版
+* 查看所有的元数据模版
+```python
+session.show_all_templates()
+```
+* 查看元数据模版中的物理量个数
+```python
+session.count_measurements_in_template(template_name)
+```
+
+* 判断某个节点是否为物理量，该节点必须已经在元数据模版中
+```python
+session.count_measurements_in_template(template_name, path)
+```
+
+* 判断某个路径是否在元数据模版中，这个路径有可能不在元数据模版中
+```python
+session.is_path_exist_in_template(template_name, path)
+```
+
+* 查看某个元数据模板下的物理量
+```python
+session.show_measurements_in_template(template_name)
+```
+
+* 查看挂载了某个元数据模板的路径前缀
+```python
+session.show_paths_template_set_on(template_name)
+```
+
+* 查看使用了某个元数据模板（即序列已创建）的路径前缀
+```python
+session.show_paths_template_using_on(template_name)
+```
+
+#### 删除元数据模版
+删除已经存在的元数据模版，不支持删除已经挂载的模版
+```python
+session.drop_schema_template("template_python")
+```
+
+
 ### 对 Pandas 的支持
 
 我们支持将查询结果轻松地转换为 [Pandas Dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)。
@@ -260,8 +353,8 @@ from iotdb.Session import Session
 
 ip = "127.0.0.1"
 port_ = "6667"
-username_ = 'root'
-password_ = 'root'
+username_ = "root"
+password_ = "root"
 session = Session(ip, port_, username_, password_)
 session.open(False)
 result = session.execute_query_statement("SELECT ** FROM root")
@@ -286,7 +379,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_something(self):
         with IoTDBContainer() as c:
-            session = Session('localhost', c.get_exposed_port(6667), 'root', 'root')
+            session = Session("localhost", c.get_exposed_port(6667), "root", "root")
             session.open(False)
             result = session.execute_query_statement("SHOW TIMESERIES")
             print(result)
@@ -295,6 +388,145 @@ class MyTestCase(unittest.TestCase):
 
 默认情况下，它会拉取最新的 IoTDB 镜像 `apache/iotdb:latest`进行测试，如果您想指定待测 IoTDB 的版本，您只需要将版本信息像这样声明：`IoTDBContainer("apache/iotdb:0.12.0")`，此时，您就会得到一个`0.12.0`版本的 IoTDB 实例。
 
+### IoTDB DBAPI
+
+IoTDB DBAPI 遵循 Python DB API 2.0 规范 (https://peps.python.org/pep-0249/)，实现了通过Python语言访问数据库的通用接口。
+
+#### 例子
++ 初始化
+
+初始化的参数与Session部分保持一致（sqlalchemy_mode参数除外，该参数仅在SQLAlchemy方言中使用）
+```python
+from iotdb.dbapi import connect
+
+ip = "127.0.0.1"
+port_ = "6667"
+username_ = "root"
+password_ = "root"
+conn = connect(ip, port_, username_, password_,fetch_size=1024,zone_id="UTC+8",sqlalchemy_mode=False)
+cursor = conn.cursor()
+```
++ 执行简单的SQL语句
+```python
+cursor.execute("SELECT ** FROM root")
+for row in cursor.fetchall():
+    print(row)
+```
+
++ 执行带有参数的SQL语句
+
+IoTDB DBAPI 支持pyformat风格的参数
+```python
+cursor.execute("SELECT ** FROM root WHERE time < %(time)s",{"time":"2017-11-01T00:08:00.000"})
+for row in cursor.fetchall():
+    print(row)
+```
+
++ 批量执行带有参数的SQL语句
+```python
+seq_of_parameters = [
+    {"timestamp": 1, "temperature": 1},
+    {"timestamp": 2, "temperature": 2},
+    {"timestamp": 3, "temperature": 3},
+    {"timestamp": 4, "temperature": 4},
+    {"timestamp": 5, "temperature": 5},
+]
+sql = "insert into root.cursor(timestamp,temperature) values(%(timestamp)s,%(temperature)s)"
+cursor.executemany(sql,seq_of_parameters)
+```
+
++ 关闭连接
+```python
+cursor.close()
+conn.close()
+```
+
+### IoTDB SQLAlchemy Dialect（实验性）
+IoTDB的SQLAlchemy方言主要是为了适配Apache superset而编写的，该部分仍在完善中，请勿在生产环境中使用！
+#### 元数据模型映射
+SQLAlchemy 所使用的数据模型为关系数据模型，这种数据模型通过表格来描述不同实体之间的关系。
+而 IoTDB 的数据模型为层次数据模型，通过树状结构来对数据进行组织。
+为了使 IoTDB 能够适配 SQLAlchemy 的方言，需要对 IoTDB 中原有的数据模型进行重新组织，
+把 IoTDB 的数据模型转换成 SQLAlchemy 的数据模型。
+
+IoTDB 中的元数据有：
+
+1. Storage Group：存储组
+2. Path：存储路径
+3. Entity：实体
+4. Measurement：物理量
+
+SQLAlchemy 中的元数据有：
+1. Schema：数据模式
+2. Table：数据表
+3. Column：数据列
+
+它们之间的映射关系为：
+
+| SQLAlchemy中的元数据 | IoTDB中对应的元数据                            |
+| -------------------- | ---------------------------------------------- |
+| Schema               | Storage Group                                  |
+| Table                | Path ( from storage group to entity ) + Entity |
+| Column               | Measurement                                    |
+
+下图更加清晰的展示了二者的映射关系：
+
+![sqlalchemy-to-iotdb](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
+
+#### 数据类型映射
+| IoTDB 中的数据类型 | SQLAlchemy 中的数据类型 |
+|--------------|-------------------|
+| BOOLEAN      | Boolean           |
+| INT32        | Integer           |
+| INT64        | BigInteger        |
+| FLOAT        | Float             |
+| DOUBLE       | Float             |
+| TEXT         | Text              |
+| LONG         | BigInteger        |
+#### Example
+
++ 执行语句
+
+```python
+from sqlalchemy import create_engine
+
+engine = create_engine("iotdb://root:root@127.0.0.1:6667")
+connect = engine.connect()
+result = connect.execute("SELECT ** FROM root")
+for row in result.fetchall():
+    print(row)
+```
+
++ ORM (目前只支持简单的查询)
+
+```python
+from sqlalchemy import create_engine, Column, Float, BigInteger, MetaData
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+metadata = MetaData(
+    schema='root.factory'
+)
+Base = declarative_base(metadata=metadata)
+
+
+class Device(Base):
+    __tablename__ = "room2.device1"
+    Time = Column(BigInteger, primary_key=True)
+    temperature = Column(Float)
+    status = Column(Float)
+
+
+engine = create_engine("iotdb://root:root@127.0.0.1:6667")
+
+DbSession = sessionmaker(bind=engine)
+session = DbSession()
+
+res = session.query(Device.status).filter(Device.temperature > 1)
+
+for row in res:
+    print(row)
+```
 
 ## 给开发人员
 
@@ -338,8 +570,8 @@ from iotdb.Session import Session
 
 ip = "127.0.0.1"
 port_ = "6667"
-username_ = 'root'
-password_ = 'root'
+username_ = "root"
+password_ = "root"
 session = Session(ip, port_, username_, password_)
 session.open(False)
 zone = session.get_time_zone()

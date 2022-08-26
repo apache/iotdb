@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -42,6 +44,7 @@ import java.util.Objects;
 public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(CreateAlignedTimeSeriesPlan.class);
+  private static final int PLAN_SINCE_0_14 = -1;
 
   private PartialPath prefixPath;
   private List<String> measurements;
@@ -76,6 +79,17 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     this.aliasList = aliasList;
     this.tagsList = tagsList;
     this.attributesList = attributesList;
+    this.canBeSplit = false;
+  }
+
+  public CreateAlignedTimeSeriesPlan(
+      PartialPath prefixPath, String measurement, MeasurementSchema schema) {
+    super(Operator.OperatorType.CREATE_ALIGNED_TIMESERIES);
+    this.prefixPath = prefixPath;
+    this.measurements = Collections.singletonList(measurement);
+    this.dataTypes = Collections.singletonList(schema.getType());
+    this.encodings = Collections.singletonList(schema.getEncodingType());
+    this.compressors = Collections.singletonList(schema.getCompressor());
     this.canBeSplit = false;
   }
 
@@ -115,7 +129,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     return compressors;
   }
 
-  public void setCompressors(List<CompressionType> compressor) {
+  public void setCompressors(List<CompressionType> compressors) {
     this.compressors = compressors;
   }
 
@@ -180,6 +194,10 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeByte((byte) PhysicalPlanType.CREATE_ALIGNED_TIMESERIES.ordinal());
+
+    // distinguish the plan from that of old versions
+    stream.writeInt(PLAN_SINCE_0_14);
+
     byte[] bytes = prefixPath.getFullPath().getBytes();
     stream.writeInt(bytes.length);
     stream.write(bytes);
@@ -243,6 +261,10 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
   @Override
   public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_ALIGNED_TIMESERIES.ordinal());
+
+    // distinguish the plan from that of old versions
+    buffer.putInt(PLAN_SINCE_0_14);
+
     byte[] bytes = prefixPath.getFullPath().getBytes();
     buffer.putInt(bytes.length);
     buffer.put(bytes);
@@ -260,7 +282,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     for (CompressionType compressor : compressors) {
       buffer.put((byte) compressor.ordinal());
     }
-    for (Long tagOffset : tagOffsets) {
+    for (Long tagOffset : getTagOffsets()) {
       buffer.putLong(tagOffset);
     }
 
@@ -297,9 +319,49 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     buffer.putLong(index);
   }
 
+  public void formerSerialize(ByteBuffer buffer) {
+    buffer.put((byte) PhysicalPlanType.CREATE_ALIGNED_TIMESERIES.ordinal());
+
+    byte[] bytes = prefixPath.getFullPath().getBytes();
+    buffer.putInt(bytes.length);
+    buffer.put(bytes);
+
+    ReadWriteIOUtils.write(measurements.size(), buffer);
+    for (String measurement : measurements) {
+      ReadWriteIOUtils.write(measurement, buffer);
+    }
+    for (TSDataType dataType : dataTypes) {
+      buffer.put((byte) dataType.ordinal());
+    }
+    for (TSEncoding encoding : encodings) {
+      buffer.put((byte) encoding.ordinal());
+    }
+    for (CompressionType compressor : compressors) {
+      buffer.put((byte) compressor.ordinal());
+    }
+
+    // alias
+    if (aliasList != null && !aliasList.isEmpty()) {
+      buffer.put((byte) 1);
+      for (String alias : aliasList) {
+        ReadWriteIOUtils.write(alias, buffer);
+      }
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    buffer.putLong(index);
+  }
+
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+    // adapt to old version based on version mark
     int length = buffer.getInt();
+    boolean isOldVersion = true;
+    if (length == PLAN_SINCE_0_14) {
+      length = buffer.getInt();
+      isOldVersion = false;
+    }
     byte[] bytes = new byte[length];
     buffer.get(bytes);
 
@@ -321,9 +383,11 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     for (int i = 0; i < size; i++) {
       compressors.add(CompressionType.values()[buffer.get()]);
     }
-    tagOffsets = new ArrayList<>();
-    for (int i = 0; i < size; i++) {
-      tagOffsets.add(buffer.getLong());
+    if (!isOldVersion) {
+      tagOffsets = new ArrayList<>();
+      for (int i = 0; i < size; i++) {
+        tagOffsets.add(buffer.getLong());
+      }
     }
 
     // alias
@@ -333,19 +397,22 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
         aliasList.add(ReadWriteIOUtils.readString(buffer));
       }
     }
-    // tags
-    if (buffer.get() == 1) {
-      tagsList = new ArrayList<>();
-      for (int i = 0; i < size; i++) {
-        tagsList.add(ReadWriteIOUtils.readMap(buffer));
-      }
-    }
 
-    // attributes
-    if (buffer.get() == 1) {
-      attributesList = new ArrayList<>();
-      for (int i = 0; i < size; i++) {
-        attributesList.add(ReadWriteIOUtils.readMap(buffer));
+    if (!isOldVersion) {
+      // tags
+      if (buffer.get() == 1) {
+        tagsList = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+          tagsList.add(ReadWriteIOUtils.readMap(buffer));
+        }
+      }
+
+      // attributes
+      if (buffer.get() == 1) {
+        attributesList = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+          attributesList.add(ReadWriteIOUtils.readMap(buffer));
+        }
       }
     }
 

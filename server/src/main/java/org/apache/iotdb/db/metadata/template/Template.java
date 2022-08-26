@@ -18,18 +18,19 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,8 +43,9 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -56,8 +58,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class Template {
+public class Template implements Serializable {
+
+  private int id;
   private String name;
   private Map<String, IMNode> directNodes;
   private boolean isDirectAligned;
@@ -65,7 +70,11 @@ public class Template {
   private Map<String, IMeasurementSchema> schemaMap;
 
   // accelerate template query and check
-  private Set<PartialPath> relatedStorageGroup;
+  private Map<String, Set<SchemaRegionId>> relatedSchemaRegion;
+
+  // transient variable to be recorded in schema file
+  // since order of CreateTemplatePlan is fixed, this code shall be fixed as well
+  private int rehashCode;
 
   public Template() {}
 
@@ -80,7 +89,8 @@ public class Template {
     name = plan.getName();
     isDirectAligned = false;
     directNodes = new HashMap<>();
-    relatedStorageGroup = new HashSet<>();
+    relatedSchemaRegion = new ConcurrentHashMap<>();
+    rehashCode = 0;
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       IMeasurementSchema curSchema;
@@ -91,7 +101,7 @@ public class Template {
         // If sublist of measurements has only one item,
         // but it share prefix with other aligned sublist, it will be aligned too
         String[] thisMeasurement =
-            MetaUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
+            PathUtils.splitPathToDetachedNodes(plan.getMeasurements().get(i).get(0));
         String thisPrefix =
             joinBySeparator(Arrays.copyOf(thisMeasurement, thisMeasurement.length - 1));
         isAlign =
@@ -128,6 +138,29 @@ public class Template {
         constructTemplateTree(plan.getMeasurements().get(i).get(0), curSchema);
       }
     }
+  }
+
+  /**
+   * build a template from a CreateSchemaTemplateStatement
+   *
+   * @param statement CreateSchemaTemplateStatement
+   */
+  public Template(CreateSchemaTemplateStatement statement) throws IllegalPathException {
+    this(
+        new CreateTemplatePlan(
+            statement.getName(),
+            statement.getMeasurements(),
+            statement.getDataTypes(),
+            statement.getEncodings(),
+            statement.getCompressors()));
+  }
+
+  public int getId() {
+    return id;
+  }
+
+  public void setId(int id) {
+    this.id = id;
   }
 
   public String getName() {
@@ -177,7 +210,7 @@ public class Template {
       if (getPathNodeInTemplate(path) != null) {
         throw new IllegalPathException("Path duplicated: " + path);
       }
-      pathNodes = MetaUtils.splitPathToDetachedPath(path);
+      pathNodes = PathUtils.splitPathToDetachedNodes(path);
 
       if (pathNodes.length == 1) {
         prefix = "";
@@ -226,7 +259,7 @@ public class Template {
     if (getPathNodeInTemplate(path) != null) {
       throw new IllegalPathException("Path duplicated: " + path);
     }
-    String[] pathNode = MetaUtils.splitPathToDetachedPath(path);
+    String[] pathNode = PathUtils.splitPathToDetachedNodes(path);
     IMNode cur = constructEntityPath(path);
 
     synchronized (this) {
@@ -346,8 +379,15 @@ public class Template {
     return measurementsCount;
   }
 
+  public IMNode getPathNodeInTemplate(PartialPath path) {
+    return getPathNodeInTemplate(path.getNodes());
+  }
+
   public IMNode getPathNodeInTemplate(String path) throws IllegalPathException {
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    return getPathNodeInTemplate(PathUtils.splitPathToDetachedNodes(path));
+  }
+
+  private IMNode getPathNodeInTemplate(String[] pathNodes) {
     if (pathNodes.length == 0) {
       return null;
     }
@@ -366,7 +406,7 @@ public class Template {
   }
 
   public boolean isPathExistInTemplate(String path) throws IllegalPathException {
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    String[] pathNodes = PathUtils.splitPathToDetachedNodes(path);
     if (!directNodes.containsKey(pathNodes[0])) {
       return false;
     }
@@ -386,7 +426,7 @@ public class Template {
   }
 
   public boolean isPathMeasurement(String path) throws MetadataException {
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    String[] pathNodes = PathUtils.splitPathToDetachedNodes(path);
     if (!directNodes.containsKey(pathNodes[0])) {
       throw new PathNotExistException(path);
     }
@@ -409,16 +449,35 @@ public class Template {
     return directNodes.values();
   }
 
-  public Set<PartialPath> getRelatedStorageGroup() {
-    return relatedStorageGroup;
+  public Set<SchemaRegionId> getRelatedSchemaRegion() {
+    Set<SchemaRegionId> result = new HashSet<>();
+    for (Set<SchemaRegionId> schemaRegionIds : relatedSchemaRegion.values()) {
+      result.addAll(schemaRegionIds);
+    }
+    return result;
   }
 
-  public boolean markStorageGroup(IMNode setNode) {
-    return relatedStorageGroup.addAll(getSGPaths(setNode));
+  public Set<SchemaRegionId> getRelatedSchemaRegionInStorageGroup(String storageGroup) {
+    return relatedSchemaRegion.get(storageGroup);
   }
 
-  public boolean unmarkStorageGroup(IMNode unsetNode) {
-    return relatedStorageGroup.removeAll(getSGPaths(unsetNode));
+  public void markSchemaRegion(String storageGroup, SchemaRegionId schemaRegionId) {
+    if (!relatedSchemaRegion.containsKey(storageGroup)) {
+      relatedSchemaRegion.putIfAbsent(storageGroup, new HashSet<>());
+    }
+    relatedSchemaRegion.get(storageGroup).add(schemaRegionId);
+  }
+
+  public void unmarkSchemaRegion(String storageGroup, SchemaRegionId schemaRegionId) {
+    Set<SchemaRegionId> schemaRegionIds = relatedSchemaRegion.get(storageGroup);
+    schemaRegionIds.remove(schemaRegionId);
+    if (schemaRegionIds.isEmpty()) {
+      relatedSchemaRegion.remove(storageGroup);
+    }
+  }
+
+  public void unmarkStorageGroup(String storageGroup) {
+    relatedSchemaRegion.remove(storageGroup);
   }
 
   // endregion
@@ -443,7 +502,7 @@ public class Template {
    * @return null if need to add direct node, will never return a measurement.
    */
   private IMNode constructEntityPath(String path) throws IllegalPathException {
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    String[] pathNodes = PathUtils.splitPathToDetachedNodes(path);
     if (pathNodes.length == 1) {
       return null;
     }
@@ -482,29 +541,6 @@ public class Template {
     }
     return builder.toString();
   }
-
-  private static Collection<PartialPath> getSGPaths(IMNode cur) {
-    // get all sg paths above or below to the cur
-    IMNode oriNode = cur;
-    while (cur != null && !cur.isStorageGroup()) {
-      cur = cur.getParent();
-    }
-    if (cur == null) {
-      Deque<IMNode> nodeQueue = new ArrayDeque<>();
-      Set<PartialPath> childSGPath = new HashSet<>();
-      nodeQueue.add(oriNode);
-      while (nodeQueue.size() != 0) {
-        IMNode node = nodeQueue.pop();
-        if (node.isStorageGroup()) {
-          childSGPath.add(node.getPartialPath());
-        } else {
-          nodeQueue.addAll(node.getChildren().values());
-        }
-      }
-      return childSGPath;
-    }
-    return Collections.singleton(cur.getPartialPath());
-  }
   // endregion
 
   // region append of template
@@ -522,7 +558,7 @@ public class Template {
 
     // If prefix exists and not aligned, it will throw exception
     // Prefix equality will be checked in constructTemplateTree
-    pathNode = MetaUtils.splitPathToDetachedPath(measurements[0]);
+    pathNode = PathUtils.splitPathToDetachedNodes(measurements[0]);
     prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
     IMNode targetNode = getPathNodeInTemplate(prefix);
     if ((targetNode != null && !targetNode.getAsEntityMNode().isAligned())
@@ -531,7 +567,7 @@ public class Template {
     }
 
     for (int i = 0; i <= measurements.length - 1; i++) {
-      pathNode = MetaUtils.splitPathToDetachedPath(measurements[i]);
+      pathNode = PathUtils.splitPathToDetachedNodes(measurements[i]);
       leafNodes[i] = pathNode[pathNode.length - 1];
     }
     schema = constructSchemas(leafNodes, dataTypes, encodings, compressors);
@@ -554,7 +590,7 @@ public class Template {
     }
 
     for (int i = 0; i <= measurements.length - 1; i++) {
-      pathNode = MetaUtils.splitPathToDetachedPath(measurements[i]);
+      pathNode = PathUtils.splitPathToDetachedNodes(measurements[i]);
 
       // If prefix exists and aligned, it will throw exception
       prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
@@ -641,29 +677,47 @@ public class Template {
   }
   // endregion
 
-  public ByteBuffer serialize() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-
-    SerializeUtils.serialize(name, dataOutputStream);
-    try {
-      dataOutputStream.writeInt(schemaMap.size());
-      for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
-        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        entry.getValue().partialSerializeTo(dataOutputStream);
-      }
-    } catch (IOException e) {
-      // unreachable
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(id, buffer);
+    ReadWriteIOUtils.write(name, buffer);
+    ReadWriteIOUtils.write(isDirectAligned, buffer);
+    ReadWriteIOUtils.write(schemaMap.size(), buffer);
+    for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), buffer);
+      entry.getValue().partialSerializeTo(buffer);
     }
-    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(id, outputStream);
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(isDirectAligned, outputStream);
+    ReadWriteIOUtils.write(schemaMap.size(), outputStream);
+    for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      entry.getValue().partialSerializeTo(outputStream);
+    }
+  }
+
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      serialize(outputStream);
+    } catch (IOException ignored) {
+
+    }
+    return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
   public void deserialize(ByteBuffer buffer) {
-    name = SerializeUtils.deserializeString(buffer);
-    int schemaSize = buffer.getInt();
+    id = ReadWriteIOUtils.readInt(buffer);
+    name = ReadWriteIOUtils.readString(buffer);
+    isDirectAligned = ReadWriteIOUtils.readBool(buffer);
+    int schemaSize = ReadWriteIOUtils.readInt(buffer);
     schemaMap = new HashMap<>(schemaSize);
+    directNodes = new HashMap<>(schemaSize);
     for (int i = 0; i < schemaSize; i++) {
-      String schemaName = SerializeUtils.deserializeString(buffer);
+      String schemaName = ReadWriteIOUtils.readString(buffer);
       byte flag = ReadWriteIOUtils.readByte(buffer);
       IMeasurementSchema measurementSchema = null;
       if (flag == (byte) 0) {
@@ -672,6 +726,7 @@ public class Template {
         measurementSchema = VectorMeasurementSchema.partialDeserializeFrom(buffer);
       }
       schemaMap.put(schemaName, measurementSchema);
+      directNodes.put(schemaName, new MeasurementMNode(null, schemaName, measurementSchema, null));
     }
   }
 
@@ -689,6 +744,18 @@ public class Template {
 
   @Override
   public int hashCode() {
-    return new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+    return rehashCode != 0
+        ? rehashCode
+        : new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+  }
+
+  /**
+   * If the original hash code above clashes with existed template inside TemplateManager, needs to
+   * be rehashed
+   *
+   * @param code solve the hash collision by increment, and 0 to be exceptional value
+   */
+  public void setRehash(int code) {
+    rehashCode = code;
   }
 }

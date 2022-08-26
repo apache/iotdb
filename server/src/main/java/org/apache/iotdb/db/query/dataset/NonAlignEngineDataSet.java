@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.pool.RawQueryReadTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;

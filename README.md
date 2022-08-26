@@ -28,7 +28,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
-![](https://img.shields.io/badge/platform-win%20%7C%20macox%20%7C%20linux-yellow.svg)
+![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8%20%7C%2011%20%7C%2017-blue.svg)
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
@@ -38,7 +38,7 @@
 
 # Overview
 
-IoTDB (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
+IoTDB (Internet of Things Database) is a data management system for time series data, which provides users with specific services including data collection, storage and analysis. Due to its light weight structure, high performance and usable features, together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
 
 # Main Features
 
@@ -46,7 +46,7 @@ Main features of IoTDB are as follows:
 
 1. Flexible deployment strategy. IoTDB provides users a one-click installation tool on either the cloud platform or the terminal devices, and a data synchronization tool bridging the data on cloud platform and terminals.
 2. Low cost on hardware. IoTDB can reach a high compression ratio of disk storage.
-3. Efficient directory structure. IoTDB supports efficient organization for complex time series data structure from intelligent networking devices, organization for time series data from devices of the same type, fuzzy searching strategy for massive and complex directory of time series data.
+3. Efficient directory structure. IoTDB supports efficient organization for complex time series data structures from intelligent networking devices, organization for time series data from devices of the same type, and fuzzy searching strategy for massive and complex directory of time series data.
 4. High-throughput read and write. IoTDB supports millions of low-power devices' strong connection data access, high-speed data read and write for intelligent networking devices and mixed devices mentioned above.
 5. Rich query semantics. IoTDB supports time alignment for time series data across devices and measurements, computation in time series field (frequency domain transformation) and rich aggregation function support in time dimension.
 6. Easy to get started. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
@@ -169,7 +169,7 @@ Using `-P compile-cpp` for compiling cpp client (For more details, read client-c
 Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-all-bin.zip**
 
 **NOTE: Directories "`thrift/target/generated-sources/thrift`", "`thrift-sync/target/generated-sources/thrift`",
-"`thrift-cluster/target/generated-sources/thrift`"
+"`thrift-cluster/target/generated-sources/thrift`", "`thrift-influxdb/target/generated-sources/thrift`" 
 and "`antlr/target/generated-sources/antlr4`" need to be added to sources roots to avoid compilation errors in the IDE.**
 
 **In IDEA, you just need to right click on the root project name and choose "`Maven->Reload Project`" after 
@@ -179,15 +179,15 @@ you run `mvn package` successfully.**
 
 configuration files are under "conf" folder
 
-  * environment config module (`iotdb-env.bat`, `iotdb-env.sh`),
-  * system config module (`iotdb-engine.properties`)
+  * environment config module (`datanode-env.bat`, `datanode-env.sh`),
+  * system config module (`iotdb-datanode.properties`)
   * log config module (`logback.xml`).
 
 For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/Master/Reference/Config-Manual.html).
 
 ## Start
 
-You can go through the following steps to test the installation, if there is no error returned after execution, the installation is completed.
+You can go through the following steps to test the installation. If there is no error returned after execution, the installation is completed.
 
 ### Start IoTDB
 

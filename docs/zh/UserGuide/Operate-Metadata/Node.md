@@ -27,19 +27,23 @@
 SHOW CHILD PATHS pathPattern
 ```
 
-可以查看此路径模式所匹配的所有路径的下一层的所有路径，即pathPattern.*所匹配的路径。
+可以查看此路径模式所匹配的所有路径的下一层的所有路径和它对应的节点类型，即pathPattern.*所匹配的路径及其节点类型。
+
+节点类型：ROOT -> SG INTERNAL -> STORAGE GROUP -> INTERNAL -> DEVICE -> TIMESERIES
 
 示例：
 
 * 查询 root.ln 的下一层：show child paths root.ln
 
 ```
-+------------+
-| child paths|
-+------------+
-|root.ln.wf01|
-|root.ln.wf02|
-+------------+
++------------+----------+
+| child paths|node types|
++------------+----------+
+|root.ln.wf01|  INTERNAL|
+|root.ln.wf02|  INTERNAL|
++------------+----------+
+Total line number = 2
+It costs 0.002s
 ```
 
 * 查询形如 root.xx.xx.xx 的路径：show child paths root.\*.\*
@@ -99,35 +103,35 @@ IoTDB > COUNT NODES root.**.temperature LEVEL=3
 对于上面提到的例子和 Metadata Tree，你可以获得如下结果：
 
 ```
-+-----+
-|count|
-+-----+
-|    4|
-+-----+
++------------+
+|count(nodes)|
++------------+
+|           4|
++------------+
 Total line number = 1
 It costs 0.003s
 
-+-----+
-|count|
-+-----+
-|    2|
-+-----+
++------------+
+|count(nodes)|
++------------+
+|           2|
++------------+
 Total line number = 1
 It costs 0.002s
 
-+-----+
-|count|
-+-----+
-|    1|
-+-----+
++------------+
+|count(nodes)|
++------------+
+|           1|
++------------+
 Total line number = 1
 It costs 0.002s
 
-+-----+
-|count|
-+-----+
-|    2|
-+-----+
++------------+
+|count(nodes)|
++------------+
+|           2|
++------------+
 Total line number = 1
 It costs 0.002s
 ```
@@ -210,4 +214,49 @@ It costs 0.003s
 +-----------------+-------------+---------+
 Total line number = 2
 It costs 0.001s
+```
+
+## 统计设备数量
+
+* COUNT DEVICES <PathPattern>
+
+上述语句用于统计设备的数量，同时允许指定`PathPattern` 用于统计匹配该`PathPattern` 的设备数量
+
+SQL 语句如下所示：
+
+```
+IoTDB> show devices
+IoTDB> count devices
+IoTDB> count devices root.ln.**
+```
+
+你可以获得如下数据：
+
+```
++-------------------+---------+
+|            devices|isAligned|
++-------------------+---------+
+|root.sgcc.wf03.wt03|    false|
+|    root.turbine.d1|    false|
+|  root.ln.wf02.wt02|    false|
+|  root.ln.wf01.wt01|    false|
++-------------------+---------+
+Total line number = 4
+It costs 0.024s
+
++--------------+
+|count(devices)|
++--------------+
+|             4|
++--------------+
+Total line number = 1
+It costs 0.004s
+
++--------------+
+|count(devices)|
++--------------+
+|             2|
++--------------+
+Total line number = 1
+It costs 0.004s
 ```

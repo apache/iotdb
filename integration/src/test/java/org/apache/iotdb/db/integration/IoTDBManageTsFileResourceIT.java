@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -54,8 +54,7 @@ import static org.junit.Assert.assertTrue;
 public class IoTDBManageTsFileResourceIT {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
-  private double prevTimeIndexMemoryProportion;
-  private double prevTimeIndexMemoryThreshold;
+  private long prevTimeIndexMemoryThreshold;
   private int prevCompactionThreadNum;
 
   private static String[] unSeqSQLs =
@@ -89,7 +88,7 @@ public class IoTDBManageTsFileResourceIT {
   @Before
   public void setUp() throws ClassNotFoundException {
     EnvironmentUtils.envSetUp();
-    prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
+    prevTimeIndexMemoryThreshold = CONFIG.getAllocateMemoryForTimeIndex();
     prevCompactionThreadNum = CONFIG.getConcurrentCompactionThread();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
@@ -97,8 +96,6 @@ public class IoTDBManageTsFileResourceIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    prevTimeIndexMemoryThreshold =
-        prevTimeIndexMemoryProportion * CONFIG.getAllocateMemoryForRead();
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
     CONFIG.setConcurrentCompactionThread(prevCompactionThreadNum);
   }
@@ -120,7 +117,7 @@ public class IoTDBManageTsFileResourceIT {
           new ArrayList<>(
               StorageEngine.getInstance()
                   .getProcessor(new PartialPath("root.sg1"))
-                  .getSequenceFileTreeSet());
+                  .getSequenceFileList());
       assertEquals(5, seqResources.size());
       // five tsFileResource are degraded in total, 2 are in seqResources and 3 are in
       // unSeqResources
@@ -184,7 +181,7 @@ public class IoTDBManageTsFileResourceIT {
           new ArrayList<>(
               StorageEngine.getInstance()
                   .getProcessor(new PartialPath("root.sg1"))
-                  .getSequenceFileTreeSet());
+                  .getSequenceFileList());
       assertEquals(1, resources.size());
       for (TsFileResource resource : resources) {
         assertEquals(
@@ -213,7 +210,7 @@ public class IoTDBManageTsFileResourceIT {
           new ArrayList<>(
               StorageEngine.getInstance()
                   .getProcessor(new PartialPath("root.sg1"))
-                  .getSequenceFileTreeSet());
+                  .getSequenceFileList());
       assertEquals(5, seqResources.size());
 
       // Four tsFileResource are degraded in total, 1 are in seqResources and 3 are in
@@ -257,7 +254,7 @@ public class IoTDBManageTsFileResourceIT {
         new ArrayList<>(
             StorageEngine.getInstance()
                 .getProcessor(new PartialPath("root.sg1"))
-                .getSequenceFileTreeSet());
+                .getSequenceFileList());
     assertEquals(5, seqResources.size());
     for (int i = 0; i < seqResources.size(); i++) {
       assertTrue(seqResources.get(i).isClosed());

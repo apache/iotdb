@@ -26,8 +26,9 @@ In IoTDB query statements, two filter conditions, **time filter** and **value fi
 The supported operators are as follows:
 
 - Comparison operators: greater than (`>`), greater than or equal ( `>=`), equal ( `=` or `==`), not equal ( `!=` or `<>`), less than or equal ( `<=`), less than ( `<`).
-- Range contains operator: contains ( `IN` ).
 - Logical operators: and ( `AND` or `&` or `&&`), or ( `OR` or `|` or `||`), not ( `NOT` or `!`).
+- Range contains operator: contains ( `IN` ).
+- String matches operator: `LIKE`, `REGEXP`.
 
 ## Time Filter
 
@@ -73,10 +74,13 @@ An example is as follows:
     select status from root.sg1.d1 where status = true;
     ````
 
-3. Select data for the interval (36.5,40]:
+3. Select data for the interval [36.5,40] or not:
 
     ```sql
-    select temperature from root.sg1.d1 where temperature > 36.5 and temperature < 40;
+    select temperature from root.sg1.d1 where temperature between 36.5 and 40;
+    ````
+    ```sql
+    select temperature from root.sg1.d1 where temperature not between 36.5 and 40;
     ````
 
 4. Select data with values within a specific range:
@@ -89,6 +93,21 @@ An example is as follows:
 
     ```sql
     select code from root.sg1.d1 where code not in ('200', '300', '400', '500');
+    ````
+
+## Null Filter
+Use null filters to filter data whose data value is null or not.
+
+1. Select data with values is null:
+
+    ```sql
+    select code from root.sg1.d1 where temperature is null;
+    ````
+
+2. Select data with values is not null:
+
+    ```sql
+    select code from root.sg1.d1 where temperature is not null;
     ````
 
 ## Fuzzy Query

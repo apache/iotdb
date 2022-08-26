@@ -30,8 +30,14 @@ IOTDB_CLI_CONF=${IOTDB_HOME}/conf
 MAIN_CLASS=org.apache.iotdb.cli.Cli
 
 
+if [ -d ${IOTDB_HOME}/lib ]; then
+LIB_PATH=${IOTDB_HOME}/lib
+else
+LIB_PATH=${IOTDB_HOME}/../lib
+fi
+
 CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
+for f in ${LIB_PATH}/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 

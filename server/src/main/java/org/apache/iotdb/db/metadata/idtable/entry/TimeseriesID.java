@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.idtable.entry;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 
 /** A po class contains device id and measurement, represents a timeseries */
 public class TimeseriesID {

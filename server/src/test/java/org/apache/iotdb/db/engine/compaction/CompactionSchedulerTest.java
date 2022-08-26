@@ -19,18 +19,19 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -57,7 +58,7 @@ import static org.junit.Assert.fail;
 
 public class CompactionSchedulerTest {
   private static final Logger logger = LoggerFactory.getLogger(CompactionSchedulerTest.class);
-  static final String COMPACTION_TEST_SG = "root.compactionSchedulerTest-";
+  static final String COMPACTION_TEST_SG = "root.compactionSchedulerTest_";
   private static final boolean oldEnableInnerSeqCompaction =
       IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
   private static final boolean oldEnableInnerUnseqCompaction =
@@ -89,7 +90,7 @@ public class CompactionSchedulerTest {
   public void setUp() throws MetadataException, IOException {
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
-    IoTDB.metaManager.init();
+    IoTDB.configManager.init();
     File basicOutputDir = new File(TestConstant.BASE_OUTPUT_PATH);
     IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
     if (!basicOutputDir.exists()) {
@@ -113,7 +114,7 @@ public class CompactionSchedulerTest {
     new CompactionConfigRestorer().restoreCompactionConfig();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
     CompactionClearUtils.deleteEmptyDir(new File("target"));
@@ -154,7 +155,7 @@ public class CompactionSchedulerTest {
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
     String sgName = COMPACTION_TEST_SG + "test1";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -165,7 +166,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -202,7 +203,6 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
@@ -219,7 +219,6 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -229,7 +228,6 @@ public class CompactionSchedulerTest {
         }
       }
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
       totalWaitingTime = 0;
 
       while (tsFileManager.getTsFileList(false).size() > 0) {
@@ -237,7 +235,6 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -289,7 +286,7 @@ public class CompactionSchedulerTest {
         .setCrossCompactionMemoryBudget(2 * 1024 * 1024L * 1024L);
     String sgName = COMPACTION_TEST_SG + "test2";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -300,7 +297,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -337,7 +334,6 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -347,7 +343,6 @@ public class CompactionSchedulerTest {
         }
       }
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 0) {
         try {
@@ -411,7 +406,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test3";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -422,7 +417,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -458,7 +453,7 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -474,7 +469,7 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
@@ -522,7 +517,7 @@ public class CompactionSchedulerTest {
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
     String sgName = COMPACTION_TEST_SG + "test4";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -533,7 +528,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -568,7 +563,7 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -617,7 +612,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test5";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -628,7 +623,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -664,7 +659,7 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -679,7 +674,7 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -695,7 +690,7 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -744,7 +739,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test6";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -755,7 +750,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -787,7 +782,7 @@ public class CompactionSchedulerTest {
 
       assertEquals(100, tsFileManager.getTsFileList(true).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 1) {
         assertEquals(100, tsFileManager.getTsFileList(true).size());
@@ -795,7 +790,7 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -805,7 +800,7 @@ public class CompactionSchedulerTest {
         }
       }
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 0) {
         assertEquals(100, tsFileManager.getTsFileList(true).size());
@@ -813,7 +808,7 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -861,7 +856,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test7";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -872,7 +867,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -903,14 +898,14 @@ public class CompactionSchedulerTest {
       }
 
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(true).size() > 1) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -920,14 +915,14 @@ public class CompactionSchedulerTest {
         }
       }
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 0) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -974,7 +969,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test8";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -985,7 +980,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1018,14 +1013,14 @@ public class CompactionSchedulerTest {
       }
 
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 0) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1073,7 +1068,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test9";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1084,7 +1079,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1117,14 +1112,14 @@ public class CompactionSchedulerTest {
       }
 
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(true).size() > 50) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1134,13 +1129,13 @@ public class CompactionSchedulerTest {
         }
       }
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(true).size() > 25) {
         Thread.sleep(100);
         totalWaitingTime += 100;
         CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
         }
@@ -1188,7 +1183,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test10";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1199,7 +1194,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1232,14 +1227,14 @@ public class CompactionSchedulerTest {
       }
 
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 50) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1250,14 +1245,14 @@ public class CompactionSchedulerTest {
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 25) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1307,7 +1302,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test11";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1318,7 +1313,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1351,14 +1346,14 @@ public class CompactionSchedulerTest {
       }
 
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(true).size() > 50) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1368,14 +1363,14 @@ public class CompactionSchedulerTest {
         }
       }
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(true).size() > 25) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1423,7 +1418,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test12";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1434,7 +1429,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1467,7 +1462,6 @@ public class CompactionSchedulerTest {
       }
 
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
 
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 98) {
@@ -1475,7 +1469,7 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1486,14 +1480,14 @@ public class CompactionSchedulerTest {
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 96) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1542,7 +1536,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test13";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1553,7 +1547,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1587,7 +1581,7 @@ public class CompactionSchedulerTest {
 
       assertEquals(100, tsFileManager.getTsFileList(true).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       assertEquals(100, tsFileManager.getTsFileList(true).size());
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 99) {
@@ -1596,7 +1590,7 @@ public class CompactionSchedulerTest {
           totalWaitingTime += 100;
           assertEquals(100, tsFileManager.getTsFileList(true).size());
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1607,7 +1601,7 @@ public class CompactionSchedulerTest {
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 98) {
         try {
@@ -1615,7 +1609,7 @@ public class CompactionSchedulerTest {
           assertEquals(100, tsFileManager.getTsFileList(true).size());
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1663,7 +1657,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test14";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1674,7 +1668,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1707,14 +1701,14 @@ public class CompactionSchedulerTest {
       }
 
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(true).size() > 99) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1724,14 +1718,14 @@ public class CompactionSchedulerTest {
         }
       }
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(true).size() > 98) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1745,7 +1739,7 @@ public class CompactionSchedulerTest {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1792,7 +1786,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test16";
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
     } catch (Exception e) {
       logger.error("exception occurs", e);
     }
@@ -1803,7 +1797,7 @@ public class CompactionSchedulerTest {
       for (String device : fullPaths) {
         fullPath.add(sgName + device);
         PartialPath path = new PartialPath(sgName + device);
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             TSDataType.INT64,
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -1836,14 +1830,14 @@ public class CompactionSchedulerTest {
       }
 
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       long totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 98) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;
@@ -1854,14 +1848,14 @@ public class CompactionSchedulerTest {
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
       totalWaitingTime = 0;
       while (tsFileManager.getTsFileList(false).size() > 96) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-          CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
           if (totalWaitingTime > MAX_WAITING_TIME) {
             fail();
             break;

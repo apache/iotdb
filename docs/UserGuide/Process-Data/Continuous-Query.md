@@ -48,8 +48,8 @@ END
   * `<execution_boundary_time>` can be earlier than, equals to, later than **current time**.
   * This parameter is optional. If not specified, it is equivalent to `BOUNDARY now()`.
   * **The end time of the first window** is `<execution_boundary_time> + <for_interval>`.
-  * The **start time** of the `i (1 <= i)`th window is `<execution_boundary_time> + <for_interval> + (i - 1) * <every_interval>`.
-  * The **end time** of the `i (1 <= i)`th window is`<execution_boundary_time> + <for_interval> + i * <every_interval>`.
+  * The **start time** of the `i (1 <= i)`th window is `<execution_boundary_time> + (i - 1) * <every_interval>`.
+  * The **end time** of the `i (1 <= i)`th window is`<execution_boundary_time> + <for_interval> + (i - 1) * <every_interval>`.
   * If **current time** is earlier than or equal to **the end time of the first window**, then the first execution moment of the continuous query is **the end time of the first window**.
   * If **current time** is later than **the end time of the first window**, then the first execution moment of the continuous query is the **end time of the first window whose end time is later than or equal to the current time** .
   * The **query time range**  at each execution moment is `[now() - <for_interval>, now())`.

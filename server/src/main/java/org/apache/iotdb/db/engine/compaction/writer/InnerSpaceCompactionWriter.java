@@ -19,22 +19,23 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 
 public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   private TsFileIOWriter fileWriter;
 
   private boolean isEmptyFile;
 
-  private final TsFileResource targetTsFileResource;
-
   public InnerSpaceCompactionWriter(TsFileResource targetFileResource) throws IOException {
-    fileWriter = new RestorableTsFileIOWriter(targetFileResource.getTsFile());
+    this.fileWriter = new TsFileIOWriter(targetFileResource.getTsFile());
     isEmptyFile = true;
-    this.targetTsFileResource = targetFileResource;
   }
 
   @Override
@@ -50,22 +51,27 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   }
 
   @Override
-  public void endMeasurement() throws IOException {
-    writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-    chunkWriter.writeToFileWriter(fileWriter);
-    chunkWriter = null;
+  public void endMeasurement(int subTaskId) throws IOException {
+    flushChunkToFileWriter(fileWriter, subTaskId);
   }
 
   @Override
-  public void write(long timestamp, Object value) throws IOException {
-    writeDataPoint(timestamp, value);
-    updateDeviceStartAndEndTime(targetTsFileResource, timestamp);
-    checkChunkSizeAndMayOpenANewChunk(fileWriter);
+  public void write(long timestamp, Object value, int subTaskId) throws IOException {
+    writeDataPoint(timestamp, value, subTaskId);
+    if (measurementPointCountArray[subTaskId] % 10 == 0) {
+      checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
+    }
     isEmptyFile = false;
   }
 
   @Override
-  public void write(long[] timestamps, Object values) {}
+  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+      throws IOException {
+    AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
+    chunkWriter.write(timestamps, columns, batchSize);
+    checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
+    isEmptyFile = false;
+  }
 
   @Override
   public void endFile() throws IOException {
@@ -80,7 +86,11 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
     if (fileWriter != null && fileWriter.canWrite()) {
       fileWriter.close();
     }
-    chunkWriter = null;
     fileWriter = null;
+  }
+
+  @Override
+  public List<TsFileIOWriter> getFileIOWriter() {
+    return Collections.singletonList(fileWriter);
   }
 }

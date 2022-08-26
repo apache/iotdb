@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -69,50 +69,50 @@ public class IoTDBArithmeticIT {
   }
 
   private static void createTimeSeries() throws MetadataException {
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.sg"));
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s1"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s2"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s3"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s4"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s5"),
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s6"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s7"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.sg.d1.s8"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
@@ -268,8 +268,8 @@ public class IoTDBArithmeticIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.executeQuery("select s1 + s5 from root.sg.d1");
-    } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Unsupported data type: BOOLEAN"));
+    } catch (Exception throwable) {
+      assertTrue(throwable.getMessage().contains("Unsupported dataType: BOOLEAN"));
     }
   }
 
@@ -281,7 +281,7 @@ public class IoTDBArithmeticIT {
         Statement statement = connection.createStatement()) {
       statement.executeQuery("select s1 + s6 from root.sg.d1");
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Unsupported data type: TEXT"));
+      assertTrue(throwable.getMessage().contains("Unsupported dataType: TEXT"));
     }
   }
 }

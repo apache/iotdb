@@ -82,12 +82,13 @@
         <module>tsfile</module>
         <module>antlr</module>
         <module>thrift</module>
+        <module>thrift-commons</module>
         <module>thrift-confignode</module>
-        <module>thrift-cluster</module>
-        <module>thrift-sync</module>
+        <module>thrift-multi-leader-consensus</module>
         <module>thrift-influxdb</module>
         <module>service-rpc</module>
         <module>jdbc</module>
+        <module>influxdb-protocol</module>
         <module>session</module>
         <module>cli</module>
         <module>openapi</module>
@@ -102,9 +103,8 @@
         <module>flink-iotdb-connector</module>
         <module>distribution</module>
         <module>hive-connector</module>
-        <module>iotdb-commons</module>
+        <module>node-commons</module>
         <module>confignode</module>
-        <module>cluster</module>
         <module>cross-tests</module>
         <module>zeppelin-interpreter</module>
         <module>client-py</module>
@@ -112,8 +112,14 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
+        <module>integration-test</module>
         <module>consensus</module>
-        <!--        <module>library-udf</module>-->
+        <module>external-pipe-api</module>
+        <module>library-udf</module>
+        <module>schema-engine-rocksdb</module>
+        <module>udf-api</module>
+        <module>rewrite-tsfile-tool</module>
+        <module>external-api</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -140,16 +146,17 @@
         <common.cli.version>1.3.1</common.cli.version>
         <common.codec.version>1.13</common.codec.version>
         <common.collections.version>3.2.2</common.collections.version>
-        <common.lang3.version>3.8.1</common.lang3.version>
+        <common.lang3.version>3.9</common.lang3.version>
         <common.logging.version>1.1.3</common.logging.version>
         <common.pool2.version>2.11.1</common.pool2.version>
         <org.slf4j.version>1.7.36</org.slf4j.version>
         <guava.version>24.1.1</guava.version>
         <jline.version>3.21.0</jline.version>
-        <jetty.version>9.4.35.v20201120</jetty.version>
-        <metrics.version>4.2.7</metrics.version>
+        <jetty.version>9.4.48.v20220622</jetty.version>
+        <dropwizard.metrics.version>4.2.7</dropwizard.metrics.version>
+        <micrometer.metrics.version>1.6.2</micrometer.metrics.version>
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
-        <felix.version>5.1.4</felix.version>
+        <felix.version>5.1.7</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
         <netty.version>4.1.53.Final</netty.version>
         <!-- URL of the ASF SonarQube server -->
@@ -161,19 +168,60 @@
         <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.junit.reportPaths>target/surefire-reports,target/failsafe-reports</sonar.junit.reportPaths>
         <!-- By default, the argLine is empty-->
-        <gson.version>2.8.8</gson.version>
+        <gson.version>2.8.9</gson.version>
         <argLine/>
         <!-- whether enable compiling the cpp client-->
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
-        <spotless.version>2.4.2</spotless.version>
+        <spotless.version>2.22.8</spotless.version>
         <httpclient.version>4.5.13</httpclient.version>
-        <httpcore.version>4.4.13</httpcore.version>
+        <httpcore.version>4.4.15</httpcore.version>
         <!-- for REST service -->
         <swagger.core.version>1.5.18</swagger.core.version>
         <servlet.api.version>2.5</servlet.api.version>
         <openapi.generator.version>5.0.0</openapi.generator.version>
+        <!-- cli -->
+        <progressbar.version>0.9.3</progressbar.version>
+        <!-- for java 11-->
+        <javax.annotation-api.version>1.3.2</javax.annotation-api.version>
+        <log4j.version>1.2.19</log4j.version>
+        <lz4-java.version>1.8.0</lz4-java.version>
+        <jackson-mapper-asl.version>1.9.13</jackson-mapper-asl.version>
+        <jaxb-runtime.version>3.0.2</jaxb-runtime.version>
+        <mockito-core.version>2.23.0</mockito-core.version>
+        <objenesis.version>3.2</objenesis.version>
+        <powermock-core.version>2.0.9</powermock-core.version>
+        <scalatest_2.11.version>3.0.5</scalatest_2.11.version>
+        <io.airlift.units.version>1.6</io.airlift.units.version>
+        <io.airlift.slice.version>0.41</io.airlift.slice.version>
+        <dep.airlift.version>200</dep.airlift.version>
+        <!-- do not upgrade this package unless we have to...
+        Some experiments(https://github.com/jixuan1989/DependencyTest/blob/main/src/main/java/timecho/exp/JolTimeCost.java):
+        jol v0.2, scan tsfile package and calculate the classes size, time cost: 600ms
+        jol v0.4: time cost is 980ms,
+        jol v0.14, time cost is 1600ms
+        -->
+        <jol-core.version>0.2</jol-core.version>
+        <jackson-core-asl.version>1.9.13</jackson-core-asl.version>
+        <mqtt-client.version>1.12</mqtt-client.version>
+        <google.code.findbugs.jsr305.version>3.0.2</google.code.findbugs.jsr305.version>
+        <jna.version>5.8.0</jna.version>
+        <zookeeper.version>3.4.14</zookeeper.version>
+        <commons-beanutils.version>1.9.4</commons-beanutils.version>
+        <commons-compress.version>1.21</commons-compress.version>
+        <error_prone_annotations.version>2.7.1</error_prone_annotations.version>
+        <testcontainers.version>1.15.3</testcontainers.version>
+        <eclipse-collections.version>10.4.0</eclipse-collections.version>
+        <awaitility.version>4.0.3</awaitility.version>
+        <!-- JDK1.8 only support google java format 1.7-->
+        <google.java.format.version>1.7</google.java.format.version>
+        <!-- caffeine cache -->
+        <caffeine>2.9.1</caffeine>
+        <commons-csv.version>1.9.0</commons-csv.version>
+        <commons-lang.version>2.6</commons-lang.version>
+        <influxdb-java.version>2.21</influxdb-java.version>
+        <JTransforms.version>3.1</JTransforms.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -248,11 +296,6 @@
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
-                <artifactId>netty</artifactId>
-                <version>3.9.9.Final</version>
-            </dependency>
-            <dependency>
-                <groupId>io.netty</groupId>
                 <artifactId>netty-all</artifactId>
                 <version>${netty.version}</version>
             </dependency>
@@ -269,7 +312,7 @@
             <dependency>
                 <groupId>javax.annotation</groupId>
                 <artifactId>javax.annotation-api</artifactId>
-                <version>1.3.2</version>
+                <version>${javax.annotation-api.version}</version>
             </dependency>
             <dependency>
                 <groupId>javax.xml.bind</groupId>
@@ -287,14 +330,14 @@
                 <version>${junit.version}</version>
             </dependency>
             <dependency>
-                <groupId>log4j</groupId>
-                <artifactId>log4j</artifactId>
-                <version>1.2.17</version>
+                <groupId>ch.qos.reload4j</groupId>
+                <artifactId>reload4j</artifactId>
+                <version>${log4j.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.lz4</groupId>
                 <artifactId>lz4-java</artifactId>
-                <version>1.8.0</version>
+                <version>${lz4-java.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
@@ -307,24 +350,9 @@
                 <version>${jetty.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-core</artifactId>
-                <version>${metrics.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-jvm</artifactId>
-                <version>${metrics.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-json</artifactId>
-                <version>${metrics.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>me.tongfei</groupId>
                 <artifactId>progressbar</artifactId>
-                <version>0.9.2</version>
+                <version>${progressbar.version}</version>
                 <exclusions>
                     <!-- This transitive dependency duplicates classes from jline:jline:jar:2.14.5:compile -->
                     <exclusion>
@@ -387,17 +415,17 @@
             <dependency>
                 <groupId>org.codehaus.jackson</groupId>
                 <artifactId>jackson-core-asl</artifactId>
-                <version>1.9.13</version>
+                <version>${jackson-core-asl.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.codehaus.jackson</groupId>
                 <artifactId>jackson-mapper-asl</artifactId>
-                <version>1.9.13</version>
+                <version>${jackson-mapper-asl.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.glassfish.jaxb</groupId>
                 <artifactId>jaxb-runtime</artifactId>
-                <version>3.0.2</version>
+                <version>${jaxb-runtime.version}</version>
                 <exclusions>
                     <exclusion>
                         <groupId>jakarta.activation</groupId>
@@ -405,35 +433,36 @@
                     </exclusion>
                 </exclusions>
             </dependency>
-            <dependency>
+            <!--            <dependency>
                 <groupId>org.javassist</groupId>
                 <artifactId>javassist</artifactId>
                 <version>3.24.1-GA</version>
-            </dependency>
+            </dependency>-->
             <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
-                <version>2.23.0</version>
+                <version>${mockito-core.version}</version>
             </dependency>
-            <dependency>
-                <groupId>org.objenesis</groupId>
-                <artifactId>objenesis</artifactId>
-                <version>3.0.1</version>
-            </dependency>
+            <!-- for generate a class instance. (where to use it ?)-->
+            <!--            <dependency>-->
+            <!--                <groupId>org.objenesis</groupId>-->
+            <!--                <artifactId>objenesis</artifactId>-->
+            <!--                <version>${objenesis.version}</version>-->
+            <!--            </dependency>-->
             <dependency>
                 <groupId>org.powermock</groupId>
                 <artifactId>powermock-core</artifactId>
-                <version>2.0.2</version>
+                <version>${powermock-core.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.powermock</groupId>
                 <artifactId>powermock-api-mockito2</artifactId>
-                <version>2.0.9</version>
+                <version>${powermock-core.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.powermock</groupId>
                 <artifactId>powermock-module-junit4</artifactId>
-                <version>2.0.2</version>
+                <version>${powermock-core.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.scala-lang</groupId>
@@ -448,7 +477,7 @@
             <dependency>
                 <groupId>org.scalatest</groupId>
                 <artifactId>scalatest_2.11</artifactId>
-                <version>3.0.5</version>
+                <version>${scalatest_2.11.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
@@ -467,7 +496,7 @@
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-log4j12</artifactId>
+                <artifactId>slf4j-reload4j</artifactId>
                 <version>${org.slf4j.version}</version>
             </dependency>
             <dependency>
@@ -497,7 +526,7 @@
             <dependency>
                 <groupId>io.airlift</groupId>
                 <artifactId>units</artifactId>
-                <version>1.6</version>
+                <version>${io.airlift.units.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.airlift</groupId>
@@ -505,16 +534,36 @@
                 <version>${airline.version}</version>
             </dependency>
             <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>slice</artifactId>
+                <version>${io.airlift.slice.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>stats</artifactId>
+                <version>${dep.airlift.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>concurrent</artifactId>
+                <version>${dep.airlift.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openjdk.jol</groupId>
+                <artifactId>jol-core</artifactId>
+                <version>${jol-core.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.fusesource.mqtt-client</groupId>
                 <artifactId>mqtt-client</artifactId>
-                <version>1.12</version>
+                <version>${mqtt-client.version}</version>
             </dependency>
             <!-- many dependencies (hadoop, spark, hive, flink) use findbugs but with different version...-->
             <dependency>
                 <groupId>com.google.code.findbugs</groupId>
                 <artifactId>jsr305</artifactId>
                 <!-- spark uses the lastest version than hive, flink and hadoop-->
-                <version>3.0.2</version>
+                <version>${google.code.findbugs.jsr305.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.google.code.gson</groupId>
@@ -525,24 +574,24 @@
             <dependency>
                 <groupId>net.java.dev.jna</groupId>
                 <artifactId>jna</artifactId>
-                <version>5.5.0</version>
+                <version>${jna.version}</version>
             </dependency>
             <!-- for hadoop connector -->
             <dependency>
                 <groupId>org.apache.zookeeper</groupId>
                 <artifactId>zookeeper</artifactId>
-                <version>3.4.9</version>
+                <version>${zookeeper.version}</version>
             </dependency>
             <dependency>
                 <groupId>commons-beanutils</groupId>
                 <artifactId>commons-beanutils</artifactId>
-                <version>1.9.4</version>
+                <version>${commons-beanutils.version}</version>
             </dependency>
             <!-- for test-container and hadoop conflict-->
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-compress</artifactId>
-                <version>1.21</version>
+                <version>${commons-compress.version}</version>
             </dependency>
             <!-- for spark-iotdb-connector and hadoop connector conflict -->
             <dependency>
@@ -554,7 +603,7 @@
             <dependency>
                 <groupId>com.google.errorprone</groupId>
                 <artifactId>error_prone_annotations</artifactId>
-                <version>2.7.1</version>
+                <version>${error_prone_annotations.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
@@ -563,9 +612,34 @@
             </dependency>
             <!-- for hive connector-->
             <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-server</artifactId>
-                <version>11.0.6</version>
+                <groupId>com.github.ben-manes.caffeine</groupId>
+                <artifactId>caffeine</artifactId>
+                <version>${caffeine}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.awaitility</groupId>
+                <artifactId>awaitility</artifactId>
+                <version>${awaitility.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-csv</artifactId>
+                <version>${commons-csv.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-lang</groupId>
+                <artifactId>commons-lang</artifactId>
+                <version>${commons-lang.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.influxdb</groupId>
+                <artifactId>influxdb-java</artifactId>
+                <version>${influxdb-java.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.wendykierp</groupId>
+                <artifactId>JTransforms</artifactId>
+                <version>${JTransforms.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -586,8 +660,13 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>1.15.2</version>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-jexl3</artifactId>
+            <version>3.2.1</version>
         </dependency>
     </dependencies>
     <build>
@@ -692,6 +771,9 @@
                             <exclude>.pytest_cache/**</exclude>
                             <exclude>venv/**</exclude>
                             <exclude>apache_iotdb.egg-info/**</exclude>
+                            <exclude>**/iotdb/thrift/__init__.py</exclude>
+                            <exclude>**/iotdb/thrift/rpc/__init__.py</exclude>
+                            <exclude>**/iotdb/thrift/common/__init__.py</exclude>
                             <!-- Java SPI uses files in resources/META-INF/services-->
                             <exclude>**/resources/META-INF/services/**</exclude>
                             <!-- grafana plugin -->
@@ -708,7 +790,7 @@
                     <configuration>
                         <java>
                             <googleJavaFormat>
-                                <version>1.7</version>
+                                <version>${google.java.format.version}</version>
                                 <style>GOOGLE</style>
                             </googleJavaFormat>
                             <importOrder>
@@ -744,7 +826,9 @@
                         <!-- put all source folders not in src/main/java here-->
                         <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-commons/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-confignode/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-multi-leader-consensus/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-influxdb/target/generated-sources/thrift</sourceDirectory>
@@ -888,12 +972,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>3.1.2</version>
                 <dependencies>
                     <dependency>
                         <groupId>com.puppycrawl.tools</groupId>
                         <artifactId>checkstyle</artifactId>
-                        <version>8.18</version>
+                        <version>8.45.1</version>
                     </dependency>
                 </dependencies>
                 <executions>
@@ -911,6 +995,7 @@
                 </executions>
                 <configuration>
                     <configLocation>checkstyle.xml</configLocation>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
                 </configuration>
             </plugin>
             <!--
@@ -944,7 +1029,11 @@
                         <configuration>
                             <!-- configure your formatting preferences here (see link below) -->
                             <indentSize>4</indentSize>
-                            <excludes>**/target/**</excludes>
+                            <excludes>
+                                <exclude>**/target/**</exclude>
+                                <exclude>**/checkstyle.xml</exclude>
+                                <exclude>**/import-control.xml</exclude>
+                            </excludes>
                         </configuration>
                     </execution>
                 </executions>
@@ -1064,7 +1153,7 @@
             </activation>
             <properties>
                 <os.classifier>windows-x86_64</os.classifier>
-                <thrift.download-url>http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
+                <thrift.download-url>http://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
                 <thrift.executable>thrift-${thrift.version}-win-x86_64.exe</thrift.executable>
                 <thrift.skip-making-executable>true</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>echo</thrift.exec-cmd.executable>
@@ -1137,6 +1226,9 @@
             </activation>
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
+                <!-- change to 1.15.0 will modify many codes (all are javadocs), we change it to 1.15.0
+                until: 1. spotless + jdk16 is fixed; and 2. iotdb decides to do not support jdk8-->
+                <google.java.format.version>1.7</google.java.format.version>
             </properties>
             <dependencies>
                 <!-- for jdk-11 -->
@@ -1253,6 +1345,7 @@
                                     <generator>py</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
+                                    <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
                                 </configuration>
                             </execution>
@@ -1266,6 +1359,7 @@
                                     <generator>go</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
+                                    <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>
@@ -1366,7 +1460,6 @@
                             <excludes>
                                 <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/service/rpc/thrift/*</exclude>
-                                <exclude>org/apache/iotdb/cluster/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/protocol/influxdb/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/db/qp/sql/*</exclude>
                             </excludes>
@@ -1484,7 +1577,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <argLine>@{surefire.jacoco.args} -Xmx1024m</argLine>
+                            <argLine>${argLine} @{surefire.jacoco.args} -Xmx1024m</argLine>
                         </configuration>
                     </plugin>
                     <!-- for IT-->
@@ -1492,7 +1585,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
-                            <argLine>@{failsafe.jacoco.args} -Xmx1024m</argLine>
+                            <argLine>${argLine} @{failsafe.jacoco.args} -Xmx1024m</argLine>
                         </configuration>
                         <executions>
                             <execution>

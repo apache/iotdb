@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.trigger.service;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
