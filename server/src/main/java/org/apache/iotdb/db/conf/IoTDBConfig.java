@@ -852,7 +852,7 @@ public class IoTDBConfig {
   private int schemaQueryFetchSize = 10000000;
 
   /** number of threads given to migration tasks */
-  private int migrationThread = 1;
+  private int migrationThread = 2;
 
   public IoTDBConfig() {
     // empty constructor

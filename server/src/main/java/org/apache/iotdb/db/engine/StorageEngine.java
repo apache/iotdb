@@ -35,6 +35,7 @@ import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
+import org.apache.iotdb.db.engine.migration.MigratingFileLogManager;
 import org.apache.iotdb.db.engine.migration.MigrationManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -514,6 +515,7 @@ public class StorageEngine implements IService {
     recoveryThreadPool.shutdownNow();
     processorMap.clear();
     migrationManager.shutdown();
+    MigratingFileLogManager.getInstance().close();
   }
 
   private void shutdownTimedService(ScheduledExecutorService pool, String poolName) {

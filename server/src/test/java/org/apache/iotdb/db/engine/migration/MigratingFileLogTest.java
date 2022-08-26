@@ -153,8 +153,8 @@ public class MigratingFileLogTest {
 
     FileOutputStream logOutput = new FileOutputStream(testLogFile);
 
-    ReadWriteIOUtils.write(missingTsFile.getAbsolutePath(), logOutput);
     ReadWriteIOUtils.write(testTargetDir.getAbsolutePath(), logOutput);
+    ReadWriteIOUtils.write(missingTsFile.getAbsolutePath(), logOutput);
 
     MigratingFileLogManager.getInstance().recover();
 
