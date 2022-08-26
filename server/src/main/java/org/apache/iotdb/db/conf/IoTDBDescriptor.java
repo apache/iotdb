@@ -1541,6 +1541,7 @@ public class IoTDBDescriptor {
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
     initSchemaMemoryAllocate(properties);
+    initStorageEngineAllocate(properties);
 
     conf.setMaxQueryDeduplicatedPathNum(
         Integer.parseInt(
@@ -1603,6 +1604,19 @@ public class IoTDBDescriptor {
           conf.getAllocateMemoryForDataExchange() + partForDataExchange);
       conf.setAllocateMemoryForOperators(conf.getAllocateMemoryForOperators() + partForOperators);
     }
+  }
+
+  private void initStorageEngineAllocate(Properties properties) {
+    String allocationRatio = properties.getProperty("storage_engine_memory_proportion", "8:2");
+    String[] proportions = allocationRatio.split(":");
+    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
+    int proportionForCompaction = Integer.parseInt(proportions[1].trim());
+    conf.setMemtableProportion(
+        ((double) (proportionForMemTable)
+            / (double) (proportionForCompaction + proportionForMemTable)));
+    conf.setCompactionProportion(
+        ((double) (proportionForCompaction)
+            / (double) (proportionForCompaction + proportionForMemTable)));
   }
 
   private void initSchemaMemoryAllocate(Properties properties) {
