@@ -16,7 +16,6 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -131,17 +130,19 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
         case -1:
           // no data on this chunk has been deleted
           if (isChunkOverlap) {
+            // has overlap chunks, deserialize it
             compactWithOverlapChunks(overlappedChunkMetadatas);
           } else {
+            // has none overlap chunk, flush it to file writer directly
             compactWithNonOverlapChunks(firstChunkMetadataElement);
           }
           break;
         case 0:
-          // there is data on this page been deleted
+          // there is data on this chunk been deleted, deserialize it
           compactWithOverlapChunks(overlappedChunkMetadatas);
           break;
         case 1:
-          // all data on this page has been deleted
+          // all data on this chunk has been deleted, remove it
           removeChunk(firstChunkMetadataElement);
           break;
       }
@@ -217,7 +218,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
           firstPageElement.pageHeader.getEndTime(),
           firstPageElement.chunkMetadataElement.chunkMetadata.getDeleteIntervalList())) {
         case -1:
-          // no data on this page has been deleted
+          // no data on this page has been deleted, flush it to chunk writer directly
           if (isPageOverlap) {
             compactWithOverlapPages(overlappedPages);
           } else {
@@ -225,11 +226,11 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
           }
           break;
         case 0:
-          // there is data on this page been deleted
+          // there is data on this page been deleted, deserialize it
           compactWithOverlapPages(overlappedPages);
           break;
         case 1:
-          // all data on this page has been deleted
+          // all data on this page has been deleted, remove it
           removePage(firstPageElement, null);
           break;
       }
@@ -262,23 +263,41 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     while (priorityCompactionReader.hasNext()) {
       for (int pageIndex = 0; pageIndex < overlappedPages.size(); pageIndex++) {
         PageElement nextPageElement = overlappedPages.get(pageIndex);
-        // write current page point.time < next page point.time
+
+        // write currentPage.point.time < nextPage.startTime to chunk writer
         while (priorityCompactionReader.currentPoint().getTimestamp() < nextPageElement.startTime) {
           // write data point to chunk writer
           compactionWriter.writeTimeValue(priorityCompactionReader.currentPoint(), subTaskId);
           priorityCompactionReader.next();
         }
 
-        if (priorityCompactionReader.currentPoint().getTimestamp()
-                > nextPageElement.pageHeader.getEndTime()
-            && !isPageOverlap(nextPageElement)) {
-          // has none overlap data, flush next page to chunk writer directly
-          compactionWriter.flushPageToChunkWriter(
-              nextPageElement.pageData, nextPageElement.pageHeader, subTaskId);
-          removePage(nextPageElement, null);
-        } else {
-          // has overlap data, then deserialize next page to dataPointQueue
-          priorityCompactionReader.addNewPages(Collections.singletonList(nextPageElement));
+        boolean isNextPageOverlap =
+            !(priorityCompactionReader.currentPoint().getTimestamp()
+                    > nextPageElement.pageHeader.getEndTime()
+                && !isPageOverlap(nextPageElement));
+
+        switch (isPageOrChunkModified(
+            nextPageElement.startTime,
+            nextPageElement.pageHeader.getEndTime(),
+            nextPageElement.chunkMetadataElement.chunkMetadata.getDeleteIntervalList())) {
+          case -1:
+            // no data on this page has been deleted
+            if (isNextPageOverlap) {
+              // has overlap with other pages, deserialize it
+              priorityCompactionReader.addNewPages(Collections.singletonList(nextPageElement));
+            } else {
+              // has none overlap, flush it to chunk writer directly
+              compactWithNonOverlapPage(nextPageElement);
+            }
+            break;
+          case 0:
+            // there is data on this page been deleted, deserialize it
+            priorityCompactionReader.addNewPages(Collections.singletonList(nextPageElement));
+            break;
+          case 1:
+            // all data on this page has been deleted, remove it
+            removePage(nextPageElement, null);
+            break;
         }
       }
 
@@ -328,9 +347,6 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     Iterator<ChunkMetadataElement> it = chunks.iterator();
     while (it.hasNext()) {
       ChunkMetadataElement element = it.next();
-      //      if (element.equals(chunkMetadata)) {
-      //        continue;
-      //      }
       if (element.chunkMetadata.getStartTime() <= endTime) {
         if (!element.isOverlaped) {
           elements.add(element);
@@ -347,6 +363,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     return false;
   }
 
+  /** Check is the page overlap with other pages in page queue or not. */
   private boolean isPageOverlap(PageElement pageElement) {
     long endTime = pageElement.pageHeader.getEndTime();
     Stream<PageElement> pages =
@@ -367,9 +384,9 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
   }
 
   /**
-   * -1 means that no data on this page has been deleted. <br>
-   * 0 means that there is data on this page been deleted. <br>
-   * 1 means that all data on this page has been deleted.
+   * -1 means that no data on this page or chunk has been deleted. <br>
+   * 0 means that there is data on this page or chunk been deleted. <br>
+   * 1 means that all data on this page or chunk has been deleted.
    */
   private int isPageOrChunkModified(
       long startTime, long endTime, List<TimeRange> deleteIntervalList) {
