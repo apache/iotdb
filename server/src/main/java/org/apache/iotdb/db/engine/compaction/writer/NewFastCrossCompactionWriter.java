@@ -42,15 +42,11 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
 
   public boolean flushChunkToFileWriter(ChunkMetadata chunkMetadata, int subTaskId)
       throws IOException {
+    checkTimeAndMayFlushChunkToCurrentFile(chunkMetadata.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
-    while (chunkMetadata.getStartTime() > currentDeviceEndTime[fileIndex]
-        && fileIndex != targetFileWriters.size() - 1) {
-      // jump to next file
-      seqFileIndexArray[subTaskId] = ++fileIndex;
-    }
     if (chunkMetadata.getEndTime() > currentDeviceEndTime[fileIndex]
         && fileIndex != targetFileWriters.size() - 1) {
-      // deserialize the chunk
+      // chunk.endTime > file.endTime, then deserialize the chunk
       return false;
     }
 
@@ -71,15 +67,11 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
   public boolean flushPageToChunkWriter(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
       throws IOException, PageException {
+    checkTimeAndMayFlushChunkToCurrentFile(pageHeader.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
-    while (pageHeader.getStartTime() > currentDeviceEndTime[fileIndex]
-        && fileIndex != targetFileWriters.size() - 1) {
-      // jump to next file
-      seqFileIndexArray[subTaskId] = ++fileIndex;
-    }
     if (pageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
         && fileIndex != targetFileWriters.size() - 1) {
-      // deserialize the page
+      // page.endTime > file.endTime, then deserialize the page
       return false;
     }
 
@@ -97,24 +89,5 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     return true;
-  }
-
-  protected void checkTimeAndMayFlushChunkToCurrentFile(long timestamp, int subTaskId)
-      throws IOException {
-    int fileIndex = seqFileIndexArray[subTaskId];
-    // if timestamp is later than the current source seq tsfile, than flush chunk writer
-    while (timestamp > currentDeviceEndTime[fileIndex]) {
-      if (fileIndex != targetFileWriters.size() - 1) {
-        CompactionWriterUtils.flushChunkToFileWriter(
-            targetFileWriters.get(fileIndex), chunkWriters[subTaskId]);
-        seqFileIndexArray[subTaskId] = ++fileIndex;
-      } else {
-        // If the seq file is deleted for various reasons, the following two situations may occur
-        // when selecting the source files: (1) unseq files may have some devices or measurements
-        // which are not exist in seq files. (2) timestamp of one timeseries in unseq files may
-        // later than any seq files. Then write these data into the last target file.
-        return;
-      }
-    }
   }
 }

@@ -34,7 +34,6 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -1438,12 +1437,12 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
       throws MetadataException, IOException, WriteProcessException, MergeException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
-    createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
-    createFiles(1, 10, 10, 1500, 3200, 3200, 100, 100, false, false);
     createFiles(1, 5, 5, 1000, 4200, 4200, 100, 100, false, true);
     createFiles(1, 5, 10, 1000, 5300, 5300, 100, 100, false, true);
     createFiles(1, 10, 7, 1000, 6400, 6400, 100, 100, false, true);
     createFiles(1, 10, 10, 1000, 7500, 7500, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
+    createFiles(1, 10, 10, 1500, 3200, 3200, 100, 100, false, false);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 

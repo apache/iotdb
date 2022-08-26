@@ -131,22 +131,29 @@ public abstract class AbstractCrossCompactionWriter implements ICompactionWriter
     seqTsFileResources = null;
   }
 
+  /**
+   * Find the index of the target file to be inserted according to the data time. Notice: unsealed
+   * chunk should be flushed to current file before moving target file index.<br>
+   * If the seq file is deleted for various reasons, the following two situations may occur when
+   * selecting the source files: (1) unseq files may have some devices or measurements which are not
+   * exist in seq files. (2) timestamp of one timeseries in unseq files may later than any seq
+   * files. Then write these data into the last target file.
+   */
   protected void checkTimeAndMayFlushChunkToCurrentFile(long timestamp, int subTaskId)
       throws IOException {
     int fileIndex = seqFileIndexArray[subTaskId];
-    // if timestamp is later than the current source seq tsfile, than flush chunk writer
-    while (timestamp > currentDeviceEndTime[fileIndex]) {
-      if (fileIndex != seqTsFileResources.size() - 1) {
+    boolean hasFlushedCurrentChunk = false;
+    // if timestamp is later than the current source seq tsfile, then flush chunk writer and move to
+    // next file
+    while (timestamp > currentDeviceEndTime[fileIndex]
+        && fileIndex != seqTsFileResources.size() - 1) {
+      if (!hasFlushedCurrentChunk) {
+        // flush chunk to current file before moving target file index
         CompactionWriterUtils.flushChunkToFileWriter(
             targetFileWriters.get(fileIndex), chunkWriters[subTaskId]);
-        seqFileIndexArray[subTaskId] = ++fileIndex;
-      } else {
-        // If the seq file is deleted for various reasons, the following two situations may occur
-        // when selecting the source files: (1) unseq files may have some devices or measurements
-        // which are not exist in seq files. (2) timestamp of one timeseries in unseq files may
-        // later than any seq files. Then write these data into the last target file.
-        return;
+        hasFlushedCurrentChunk = true;
       }
+        seqFileIndexArray[subTaskId] = ++fileIndex;
     }
   }
 

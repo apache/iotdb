@@ -459,7 +459,7 @@ public class IoTDBConfig {
    * The number of sub compaction threads to be set up to perform compaction. Currently only works
    * for nonAligned data in cross space compaction and unseq inner space compaction.
    */
-  private int subCompactionTaskNum = 4;
+  private int subCompactionTaskNum = 1;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
