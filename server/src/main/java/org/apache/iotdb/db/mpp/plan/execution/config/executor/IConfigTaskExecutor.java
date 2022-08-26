@@ -34,6 +34,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -93,19 +98,19 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement);
 
-  SettableFuture<ConfigTaskResult> createPipe();
+  SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement);
 
   SettableFuture<ConfigTaskResult> createPipeSink();
 
-  SettableFuture<ConfigTaskResult> dropPipe();
+  SettableFuture<ConfigTaskResult> dropPipe(DropPipeStatement dropPipeStatement);
 
   SettableFuture<ConfigTaskResult> dropPipeSink();
 
-  SettableFuture<ConfigTaskResult> showPipe();
+  SettableFuture<ConfigTaskResult> showPipe(ShowPipeStatement showPipeStatement);
 
   SettableFuture<ConfigTaskResult> showPipeSink();
 
-  SettableFuture<ConfigTaskResult> startPipe();
+  SettableFuture<ConfigTaskResult> startPipe(StartPipeStatement startPipeStatement);
 
-  SettableFuture<ConfigTaskResult> stopPipe();
+  SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement);
 }

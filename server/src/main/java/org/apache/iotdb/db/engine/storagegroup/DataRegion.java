@@ -747,7 +747,7 @@ public class DataRegion {
     if (!recoverPerformer.canWrite()) {
       // cannot write, just close it
       for (ISyncManager tsFileSyncManager :
-          SyncService.getInstance().getOrCreateSyncManager(getDataRegionName())) {
+          SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
         if (tsFileSyncManager.isEnabledSync()) {
           tsFileSyncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
         }
@@ -2377,7 +2377,7 @@ public class DataRegion {
       }
 
       for (ISyncManager tsFileSyncManager :
-          SyncService.getInstance().getOrCreateSyncManager(getDataRegionName())) {
+          SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
         if (tsFileSyncManager.isEnabledSync()) {
           tsFileSyncManager.syncRealTimeDeletion(deletion);
         }

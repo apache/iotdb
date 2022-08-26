@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
@@ -149,6 +150,7 @@ public class SyncService implements IService {
 
   // region Interfaces and Implementation of Pipe
 
+  // TODO(sync): delete this in new-standalone version
   public synchronized void addPipe(CreatePipePlan plan) throws PipeException {
     // check plan
     long currentTime = DatetimeUtils.currentTime();
@@ -175,6 +177,45 @@ public class SyncService implements IService {
             String.format(
                 "Cast Class to %s error when create pipe %s.",
                 IoTDBPipeSink.class.getName(), plan.getPipeName()),
+            e);
+        runningPipe = null;
+        throw new PipeException(
+            String.format(
+                "Wrong pipeSink type %s for create pipe %s",
+                runningPipeSink.getType(), runningPipeSink.getPipeSinkName()));
+      }
+    } else { // for external pipe
+      // == start ExternalPipeProcessor for send data to external pipe plugin
+      startExternalPipeManager(false);
+    }
+  }
+
+  public synchronized void addPipe(CreatePipeStatement statement) throws PipeException {
+    // check plan
+    long currentTime = DatetimeUtils.currentTime();
+    if (statement.getStartTime() > currentTime) {
+      throw new PipeException(
+          String.format(
+              "Start time %s is later than current time %s, this is not supported yet.",
+              DatetimeUtils.convertLongToDate(statement.getStartTime()),
+              DatetimeUtils.convertLongToDate(currentTime)));
+    }
+    // add pipe
+    TSStatus status = syncInfoFetcher.addPipe(statement, currentTime);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(status.message);
+    }
+
+    PipeSink runningPipeSink = getPipeSink(statement.getPipeSinkName());
+    runningPipe = SyncPipeUtil.parseCreatePipePlanAsPipe(statement, runningPipeSink, currentTime);
+    if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
+      try {
+        senderManager = new SenderManager(runningPipe, (IoTDBPipeSink) runningPipeSink);
+      } catch (ClassCastException e) {
+        logger.error(
+            String.format(
+                "Cast Class to %s error when create pipe %s.",
+                IoTDBPipeSink.class.getName(), statement.getPipeName()),
             e);
         runningPipe = null;
         throw new PipeException(
@@ -514,7 +555,7 @@ public class SyncService implements IService {
     }
   }
 
-  public List<ISyncManager> getOrCreateSyncManager(String storageGroup) {
+  public List<ISyncManager> getOrCreateSyncManager(String dataRegionId) {
     // TODO：1、从Pipe中获取 2、缓存
     return null;
   }

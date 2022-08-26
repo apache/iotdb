@@ -836,7 +836,8 @@ public class TsFileProcessor {
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
       }
       for (ISyncManager syncManager :
-          SyncService.getInstance().getOrCreateSyncManager(storageGroupName)) {
+          SyncService.getInstance()
+              .getOrCreateSyncManager(storageGroupInfo.getDataRegion().getDataRegionId())) {
         if (syncManager.isEnabledSync()) {
           syncManager.syncRealTimeDeletion(deletion);
         }
@@ -992,7 +993,8 @@ public class TsFileProcessor {
         // flushing memTable in System module.
         addAMemtableIntoFlushingList(tmpMemTable);
         for (ISyncManager syncManager :
-            SyncService.getInstance().getOrCreateSyncManager(storageGroupName)) {
+            SyncService.getInstance()
+                .getOrCreateSyncManager(storageGroupInfo.getDataRegion().getDataRegionId())) {
           if (syncManager.isEnabledSync()) {
             syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
           }
@@ -1425,7 +1427,8 @@ public class TsFileProcessor {
     writer.endFile();
     tsFileResource.serialize();
     for (ISyncManager syncManager :
-        SyncService.getInstance().getOrCreateSyncManager(storageGroupName)) {
+        SyncService.getInstance()
+            .getOrCreateSyncManager(storageGroupInfo.getDataRegion().getDataRegionId())) {
       if (syncManager.isEnabledSync()) {
         syncManager.syncRealTimeResource(tsFileResource.getTsFile());
       }
