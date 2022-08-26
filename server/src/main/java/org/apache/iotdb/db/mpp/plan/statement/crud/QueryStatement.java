@@ -100,23 +100,12 @@ public class QueryStatement extends Statement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return fromComponent.getPrefixPaths();
-  }
-
-  @Override
-  public List<PartialPath> getAuthPaths() {
     Set<PartialPath> authPaths = new HashSet<>();
-    Set<PartialPath> measurementPaths = new HashSet<>();
     List<PartialPath> prefixPaths = fromComponent.getPrefixPaths();
     List<ResultColumn> resultColumns = selectComponent.getResultColumns();
     for (ResultColumn resultColumn : resultColumns) {
-      resultColumn.getExpression().collectPaths(measurementPaths);
-    }
-    for (PartialPath prefixPath : prefixPaths) {
-      for (PartialPath measurementPath : measurementPaths) {
-        PartialPath authPath = prefixPath.concatPath(measurementPath);
-        authPaths.add(authPath);
-      }
+      Expression expression = resultColumn.getExpression();
+      authPaths.addAll(ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths));
     }
     return new ArrayList<>(authPaths);
   }
