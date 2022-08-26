@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.auth.entity;
 
-import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
@@ -83,11 +82,11 @@ public class Role {
     }
   }
 
-  public Set<Integer> getPrivileges(String path) throws AuthException {
+  public Set<Integer> getPrivileges(String path) {
     return AuthUtils.getPrivileges(path, privilegeList);
   }
 
-  public boolean checkPrivilege(String path, int privilegeId) throws AuthException {
+  public boolean checkPrivilege(String path, int privilegeId) {
     return AuthUtils.checkPrivilege(path, privilegeId, privilegeList);
   }
 

@@ -49,6 +49,7 @@ public class IoTDBConfig {
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
   static final String CONFIG_NAME = "iotdb-engine.properties";
+  public static final String EXTERNAL_CONFIG_NAME = "iotdb-engine-external.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
@@ -244,6 +245,16 @@ public class IoTDBConfig {
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
+
+  /** External lib directory for properties loader, stores user-uploaded JAR files */
+  private String externalPropertiesLoaderDir =
+      IoTDBConstant.EXT_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.EXT_PROPERTIES_LOADER_FOLDER_NAME;
+
+  /** External lib directory for limiter, stores user uploaded JAR files */
+  private String externalLimiterDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_LIMITER;
 
   /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {"data" + File.separator + "data"};
@@ -830,8 +841,10 @@ public class IoTDBConfig {
   private String secondaryUser = "root";
   private String secondaryPassword = "root";
 
+  private int secondarySessionPoolMaxSize = 10;
+
   // The transmitting concurrency size of operation sync SessionPool
-  private int OperationSyncSessionConcurrencySize = 8;
+  private int operationSyncSessionConcurrencySize = 8;
 
   // OperationSyncLog dir
   private String operationSyncLogDir =
@@ -845,8 +858,9 @@ public class IoTDBConfig {
 
   // OperationSyncProducer DML cache size
   private int operationSyncProducerCacheSize = 1024;
-  // OperationSyncConsumer concurrency size
-  private int operationSyncConsumerConcurrencySize = 4;
+
+  // OperationSyncProducer DML cache number
+  private int operationSyncProducerCacheNum = 8;
 
   // The max record num returned in one schema query.
   private int schemaQueryFetchSize = 10000000;
@@ -988,6 +1002,8 @@ public class IoTDBConfig {
     udfDir = addHomeDir(udfDir);
     triggerDir = addHomeDir(triggerDir);
     operationSyncLogDir = addHomeDir(operationSyncLogDir);
+    externalPropertiesLoaderDir = addHomeDir(externalPropertiesLoaderDir);
+    externalLimiterDir = addHomeDir(externalLimiterDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1210,6 +1226,22 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
+  }
+
+  public String getExternalPropertiesLoaderDir() {
+    return externalPropertiesLoaderDir;
+  }
+
+  public void setExternalPropertiesLoaderDir(String externalPropertiesLoaderDir) {
+    this.externalPropertiesLoaderDir = externalPropertiesLoaderDir;
+  }
+
+  public String getExternalLimiterDir() {
+    return externalLimiterDir;
+  }
+
+  public void setExternalLimiterDir(String externalLimiterDir) {
+    this.externalLimiterDir = externalLimiterDir;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -2665,12 +2697,20 @@ public class IoTDBConfig {
     this.secondaryPassword = secondaryPassword;
   }
 
+  public int getSecondarySessionPoolMaxSize() {
+    return secondarySessionPoolMaxSize;
+  }
+
+  public void setSecondarySessionPoolMaxSize(int secondarySessionPoolMaxSize) {
+    this.secondarySessionPoolMaxSize = secondarySessionPoolMaxSize;
+  }
+
   public int getOperationSyncSessionConcurrencySize() {
-    return OperationSyncSessionConcurrencySize;
+    return operationSyncSessionConcurrencySize;
   }
 
   public void setOperationSyncSessionConcurrencySize(int operationSyncSessionConcurrencySize) {
-    this.OperationSyncSessionConcurrencySize = operationSyncSessionConcurrencySize;
+    this.operationSyncSessionConcurrencySize = operationSyncSessionConcurrencySize;
   }
 
   public String getOperationSyncLogDir() {
@@ -2713,12 +2753,12 @@ public class IoTDBConfig {
     this.operationSyncProducerCacheSize = operationSyncProducerCacheSize;
   }
 
-  public int getOperationSyncConsumerConcurrencySize() {
-    return operationSyncConsumerConcurrencySize;
+  public int getOperationSyncProducerCacheNum() {
+    return operationSyncProducerCacheNum;
   }
 
-  public void setOperationSyncConsumerConcurrencySize(int operationSyncConsumerConcurrencySize) {
-    this.operationSyncConsumerConcurrencySize = operationSyncConsumerConcurrencySize;
+  public void setOperationSyncProducerCacheNum(int operationSyncProducerCacheNum) {
+    this.operationSyncProducerCacheNum = operationSyncProducerCacheNum;
   }
 
   public int getSchemaQueryFetchSize() {

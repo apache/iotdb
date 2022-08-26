@@ -104,6 +104,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipTests>${tsfile.ut.skip}</skipTests>
+                    <forkMode>once</forkMode>
                 </configuration>
             </plugin>
             <plugin>

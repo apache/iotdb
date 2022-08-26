@@ -72,7 +72,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Operation;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
@@ -778,6 +778,11 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private TSExecuteStatementResp submitQueryTask(
       PhysicalPlan physicalPlan, long startTime, TSExecuteStatementReq req) throws Exception {
+    TSStatus status = serviceProvider.checkAuthority(physicalPlan, req.getSessionId());
+    if (status != null) {
+      return new TSExecuteStatementResp(status);
+    }
+
     QueryTask queryTask =
         new QueryTask(
             physicalPlan,
@@ -1774,17 +1779,6 @@ public class TSServiceImpl implements TSIService.Iface {
         return loginStatus;
       }
 
-      // if measurements.size() == 1, convert to create timeseries
-      if (req.measurements.size() == 1) {
-        return createTimeseries(
-            new TSCreateTimeseriesReq(
-                req.sessionId,
-                req.prefixPath + "." + req.measurements.get(0),
-                req.dataTypes.get(0),
-                req.encodings.get(0),
-                req.compressors.get(0)));
-      }
-
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create aligned timeseries {}.{}",
@@ -2219,16 +2213,14 @@ public class TSServiceImpl implements TSIService.Iface {
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .histogram(
               System.currentTimeMillis() - startTime,
               "operation_histogram",
               MetricLevel.IMPORTANT,
               "name",
               operation.getName());
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
     }
   }

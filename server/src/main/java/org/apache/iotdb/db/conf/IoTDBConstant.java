@@ -39,6 +39,7 @@ public class IoTDBConstant {
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
   public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
+  public static final String DOUBLE_LIVE_LOGGER_NAME = "DOUBLE_LIVE";
 
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
@@ -195,6 +196,10 @@ public class IoTDBConstant {
 
   // compaction mods of previous version (<0.13)
   public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
+
+  public static final String EXT_PROPERTIES_LOADER_FOLDER_NAME = "loader";
+
+  public static final String EXT_LIMITER = "limiter";
 
   // client version number
   public enum ClientVersion {

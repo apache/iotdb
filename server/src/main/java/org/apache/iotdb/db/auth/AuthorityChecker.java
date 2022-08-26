@@ -21,10 +21,10 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.utils.AuthUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +83,7 @@ public class AuthorityChecker {
       throws AuthException {
     IAuthorizer authorizer = BasicAuthorizer.getInstance();
     try {
-      String fullPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path.getFullPath();
+      String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
       if (authorizer.checkUserPrivileges(username, fullPath, permission)) {
         return true;
       }
@@ -109,13 +109,13 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_ROLE_PRIVILEGE.ordinal();
       case REVOKE_USER_PRIVILEGE:
         return PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal();
-      case GRANT_USER_ROLE:
+      case GRANT_ROLE_TO_USER:
         return PrivilegeType.GRANT_USER_ROLE.ordinal();
       case DELETE_USER:
         return PrivilegeType.DELETE_USER.ordinal();
       case DELETE_ROLE:
         return PrivilegeType.DELETE_ROLE.ordinal();
-      case REVOKE_USER_ROLE:
+      case REVOKE_ROLE_TO_USER:
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();

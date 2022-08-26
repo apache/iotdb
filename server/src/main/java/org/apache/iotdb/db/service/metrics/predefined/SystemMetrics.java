@@ -21,10 +21,10 @@ package org.apache.iotdb.db.service.metrics.predefined;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
+import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import com.sun.management.OperatingSystemMXBean;
 
@@ -39,7 +39,7 @@ public class SystemMetrics implements IMetricSet {
   }
 
   @Override
-  public void bindTo(MetricManager metricManager) {
+  public void bindTo(AbstractMetricManager metricManager) {
     collectSystemCpuInfo(metricManager);
     collectSystemDiskInfo(metricManager);
     collectSystemMEMInfo(metricManager);
@@ -50,7 +50,7 @@ public class SystemMetrics implements IMetricSet {
     return PredefinedMetric.SYSTEM;
   }
 
-  private void collectSystemCpuInfo(MetricManager metricManager) {
+  private void collectSystemCpuInfo(AbstractMetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_CPU_LOAD.toString(),
         MetricLevel.CORE,
@@ -65,7 +65,7 @@ public class SystemMetrics implements IMetricSet {
         .set(osMXBean.getAvailableProcessors());
   }
 
-  private void collectSystemMEMInfo(MetricManager metricManager) {
+  private void collectSystemMEMInfo(AbstractMetricManager metricManager) {
     metricManager
         .getOrCreateGauge(
             Metric.SYS_TOTAL_PHYSICAL_MEMORY_SIZE.toString(),
@@ -103,7 +103,7 @@ public class SystemMetrics implements IMetricSet {
         "system");
   }
 
-  private void collectSystemDiskInfo(MetricManager metricManager) {
+  private void collectSystemDiskInfo(AbstractMetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,

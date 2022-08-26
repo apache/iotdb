@@ -16,15 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service.metrics;
+package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public interface MetricsServiceMBean {
+public class SeriesNumberOverflowException extends MetadataException {
 
-  void startService() throws StartupException;
-
-  void restartService() throws StartupException;
-
-  void stopService();
+  public SeriesNumberOverflowException() {
+    super("exceed max allowed series number.", TSStatusCode.SERIES_OVERFLOW.getStatusCode());
+  }
 }
