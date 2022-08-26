@@ -15,8 +15,23 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.sync.transport.client;
+package org.apache.iotdb.external.api;
 
-public interface ITransportClient extends Runnable {}
+import java.nio.file.Path;
+import java.util.Properties;
+
+/**
+ * An interface to load properties from external properties file to override the default
+ * configurations
+ */
+public interface IPropertiesLoader {
+
+  /**
+   * Load Properties from specific file
+   *
+   * @param file The path of the properties file to open
+   * @return a property list with values in file.
+   */
+  Properties loadProperties(Path file);
+}
