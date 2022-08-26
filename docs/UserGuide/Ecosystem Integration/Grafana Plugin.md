@@ -296,6 +296,7 @@ In addition to the examples above, the following statements are supported:
 *  `show devices`
 *  `select xx from root.xxx limit xx 等sql 查询`
 
+Tip: If the query field contains Boolean data, the result value will be converted to 1 by true and 0 by false.
 
 #### Grafana alert function
 

@@ -70,10 +70,16 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeSinkTypeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 
 /**
  * This class provides a visitor of {@link StatementNode}, which can be extended to create a visitor
@@ -331,15 +337,39 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showPathsUsingTemplateStatement, context);
   }
 
-  public R visitShowPipeSink(ShowPipeSinkStatement visitShowPipeSink, C context) {
-    return visitStatement(visitShowPipeSink, context);
+  public R visitShowPipeSink(ShowPipeSinkStatement showPipeSinkStatement, C context) {
+    return visitStatement(showPipeSinkStatement, context);
   }
 
-  public R visitShowPipeSinkType(ShowPipeSinkTypeStatement visitShowPipeSinkType, C context) {
-    return visitStatement(visitShowPipeSinkType, context);
+  public R visitShowPipeSinkType(ShowPipeSinkTypeStatement showPipeSinkTypeStatement, C context) {
+    return visitStatement(showPipeSinkTypeStatement, context);
   }
 
-  public R visitShowPipe(ShowPipeStatement visitShowPipe, C context) {
-    return visitStatement(visitShowPipe, context);
+  public R visitShowPipe(ShowPipeStatement showPipeStatement, C context) {
+    return visitStatement(showPipeStatement, context);
+  }
+
+  public R visitCreatePipe(CreatePipeStatement createPipeStatement, C context) {
+    return visitStatement(createPipeStatement, context);
+  }
+
+  public R visitCreatePipeSink(CreatePipeSinkStatement createPipeSinkStatement, C context) {
+    return visitStatement(createPipeSinkStatement, context);
+  }
+
+  public R visitDropPipeSink(DropPipeSinkStatement dropPipeSinkStatement, C context) {
+    return visitStatement(dropPipeSinkStatement, context);
+  }
+
+  public R visitDropPipe(DropPipeStatement dropPipeStatement, C context) {
+    return visitStatement(dropPipeStatement, context);
+  }
+
+  public R visitStartPipe(StartPipeStatement startPipeStatement, C context) {
+    return visitStatement(startPipeStatement, context);
+  }
+
+  public R visitStopPipe(StopPipeStatement stopPipeStatement, C context) {
+    return visitStatement(stopPipeStatement, context);
   }
 }

@@ -475,7 +475,9 @@ public class DataRegion {
             value.remove(value.size() - 1);
             WALRecoverListener recoverListener =
                 recoverUnsealedTsFile(tsFileResource, DataRegionRecoveryContext, true);
-            recoverListeners.add(recoverListener);
+            if (recoverListener != null) {
+              recoverListeners.add(recoverListener);
+            }
           }
         }
       }
@@ -489,7 +491,9 @@ public class DataRegion {
             value.remove(value.size() - 1);
             WALRecoverListener recoverListener =
                 recoverUnsealedTsFile(tsFileResource, DataRegionRecoveryContext, false);
-            recoverListeners.add(recoverListener);
+            if (recoverListener != null) {
+              recoverListeners.add(recoverListener);
+            }
           }
         }
       }
@@ -2372,7 +2376,7 @@ public class DataRegion {
       }
 
       if (tsFileSyncManager.isEnableSync()) {
-        tsFileSyncManager.collectRealTimeDeletion(deletion);
+        tsFileSyncManager.collectRealTimeDeletion(deletion, storageGroupName);
       }
 
       // add a record in case of rollback

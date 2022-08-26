@@ -172,7 +172,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         case WRITE:
           TSendPlanNodeReq sendPlanNodeReq =
               new TSendPlanNodeReq(
-                  new TPlanNode(instance.getFragment().getRoot().serializeToByteBuffer()),
+                  new TPlanNode(instance.getFragment().getPlanNodeTree().serializeToByteBuffer()),
                   instance.getRegionReplicaSet().getRegionId());
           TSendPlanNodeResp sendPlanNodeResp = client.sendPlanNode(sendPlanNodeReq);
           if (!sendPlanNodeResp.accepted) {
@@ -256,7 +256,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         }
         break;
       case WRITE:
-        PlanNode planNode = instance.getFragment().getRoot();
+        PlanNode planNode = instance.getFragment().getPlanNodeTree();
         boolean hasFailedMeasurement = false;
         String partialInsertMessage = null;
         if (planNode instanceof InsertNode) {

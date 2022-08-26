@@ -100,7 +100,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   protected long fileMetadataPos;
   protected int fileMetadataSize;
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
-  protected TsFileMetadata tsFileMetaData;
+  protected volatile TsFileMetadata tsFileMetaData;
   // device -> measurement -> TimeseriesMetadata
   private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata =
       new ConcurrentHashMap<>();
@@ -277,8 +277,12 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileMetadata readFileMetadata() throws IOException {
     try {
       if (tsFileMetaData == null) {
-        tsFileMetaData =
-            TsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+        synchronized (this) {
+          if (tsFileMetaData == null) {
+            tsFileMetaData =
+                TsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+          }
+        }
       }
     } catch (Exception e) {
       logger.error("Something error happened while reading file metadata of file {}", file);

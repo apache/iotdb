@@ -377,6 +377,9 @@ public class QueryExecution implements IQueryExecution {
         stateMachine.transitionToFailed(e);
         Thread.currentThread().interrupt();
         throw new IoTDBException(e, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+      } catch (Throwable t) {
+        stateMachine.transitionToFailed(t);
+        throw t;
       }
     }
   }

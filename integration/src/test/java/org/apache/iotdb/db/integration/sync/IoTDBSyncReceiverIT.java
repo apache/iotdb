@@ -31,7 +31,7 @@ import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.transport.client.IoTDBSinkTransportClient;
+import org.apache.iotdb.db.sync.transport.client.IoTDBSyncClient;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -68,7 +68,7 @@ public class IoTDBSyncReceiverIT {
   String remoteIp1;
   long createdTime1 = System.currentTimeMillis();
   String showPipeSql = "SHOW PIPE";
-  IoTDBSinkTransportClient client;
+  IoTDBSyncClient client;
 
   @Before
   public void setUp() throws Exception {
@@ -93,7 +93,7 @@ public class IoTDBSyncReceiverIT {
     EnvironmentUtils.envSetUp();
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
     remoteIp1 = "127.0.0.1";
-    client = new IoTDBSinkTransportClient(pipe, remoteIp1, 6667, "127.0.0.1");
+    client = new IoTDBSyncClient(pipe, remoteIp1, 6667, "127.0.0.1");
     client.handshake();
   }
 
@@ -166,16 +166,16 @@ public class IoTDBSyncReceiverIT {
               null));
       planList.add(new SetStorageGroupPlan(new PartialPath("root.sg1")));
       for (PhysicalPlan plan : planList) {
-        client.senderTransport(new SchemaPipeData(plan, serialNum++));
+        client.send(new SchemaPipeData(plan, serialNum++));
       }
       List<File> tsFiles = SyncTestUtil.getTsFilePaths(tmpDir);
       SyncTestUtil.renameTsFiles(tsFiles);
       for (File f : tsFiles) {
-        client.senderTransport(new TsFilePipeData(f.getPath(), serialNum++));
+        client.send(new TsFilePipeData(f.getPath(), serialNum++));
       }
       Deletion deletion = new Deletion(new PartialPath("root.vehicle.**"), 0, 33, 38);
       PipeData pipeData = new DeletionPipeData(deletion, serialNum++);
-      client.senderTransport(pipeData);
+      client.send(pipeData);
 
       // wait collector to load pipe data
       Thread.sleep(1000);
