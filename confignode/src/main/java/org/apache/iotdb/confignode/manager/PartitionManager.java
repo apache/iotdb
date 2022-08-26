@@ -64,6 +64,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -496,19 +497,24 @@ public class PartitionManager {
 
   /** Called by {@link PartitionManager#regionCleaner} Delete RegionGroups periodically. */
   public void clearDeletedRegions() {
-    if (getConsensusManager().isLeader()) {
-      final Set<TRegionReplicaSet> deletedRegionSet = partitionInfo.getDeletedRegionSet();
-      if (!deletedRegionSet.isEmpty()) {
-        LOGGER.info(
-            "DELETE REGIONS {} START",
-            deletedRegionSet.stream()
-                .map(TRegionReplicaSet::getRegionId)
-                .collect(Collectors.toList()));
-        deletedRegionSet.forEach(
-            regionReplicaSet -> removeRegionGroupCache(regionReplicaSet.regionId));
-        SyncDataNodeClientPool.getInstance().deleteRegions(deletedRegionSet);
-      }
-    }
+    // the consensusManager of configManager may not be fully initialized at this time
+    Optional.ofNullable(getConsensusManager())
+        .ifPresent(
+            consensusManager -> {
+              if (getConsensusManager().isLeader()) {
+                final Set<TRegionReplicaSet> deletedRegionSet = partitionInfo.getDeletedRegionSet();
+                if (!deletedRegionSet.isEmpty()) {
+                  LOGGER.info(
+                      "DELETE REGIONS {} START",
+                      deletedRegionSet.stream()
+                          .map(TRegionReplicaSet::getRegionId)
+                          .collect(Collectors.toList()));
+                  deletedRegionSet.forEach(
+                      regionReplicaSet -> removeRegionGroupCache(regionReplicaSet.regionId));
+                  SyncDataNodeClientPool.getInstance().deleteRegions(deletedRegionSet);
+                }
+              }
+            });
   }
 
   public void startRegionCleaner() {

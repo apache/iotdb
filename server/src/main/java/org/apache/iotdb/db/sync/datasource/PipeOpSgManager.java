@@ -95,6 +95,41 @@ public class PipeOpSgManager {
   }
 
   /**
+   * Check whether this data commit-index will cause committing some opBlocks
+   *
+   * @param commitIndex
+   * @return
+   * @throws IOException
+   */
+  public synchronized boolean opBlockNeedCommit(long commitIndex) throws IOException {
+    if ((commitIndex < this.beginIndex) || (commitIndex >= (this.beginIndex + dataCount))) {
+      logger.error("opBlockNeedCommit(), invalid commitIndex={}", commitIndex);
+      throw new IOException("opBlockNeedCommit(), invalid commitIndex=" + commitIndex);
+    }
+
+    if (commitIndex <= this.committedIndex) {
+      return false;
+    }
+
+    Long opBlockBeginIndex = opBlockMap.floorKey(commitIndex);
+    if (opBlockBeginIndex == null) {
+      logger.error("opBlockNeedCommit(), invalid commitIndex={}", commitIndex);
+      throw new IOException("opBlockNeedCommit(), invalid commitIndex=" + commitIndex);
+    }
+
+    Long currentOpBlockBeginIndex = opBlockMap.floorKey(this.committedIndex);
+    if (currentOpBlockBeginIndex == null) {
+      return true;
+    }
+
+    if (opBlockBeginIndex > currentOpBlockBeginIndex) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Get the first available data. Note: Even if those committed data may still be available as long
    * as it is not deleted.
    *
@@ -152,7 +187,7 @@ public class PipeOpSgManager {
       if (nextIndex <= (committedIndex + 1)) {
         AbstractOpBlock dataSrcEntry = entry.getValue();
         dataSrcEntry.close(); // release resource
-        filePipeSerialNumberList.add(dataSrcEntry.getFilePipeSerialNumber());
+        filePipeSerialNumberList.add(dataSrcEntry.getPipeDataSerialNumber());
         beginIndex = nextIndex;
         dataCount -= entry.getValue().getDataCount();
         iter.remove();

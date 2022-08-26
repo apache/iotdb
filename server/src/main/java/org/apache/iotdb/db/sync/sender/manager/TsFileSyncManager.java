@@ -69,8 +69,8 @@ public class TsFileSyncManager {
   }
 
   /** tsfile */
-  public void collectRealTimeDeletion(Deletion deletion) {
-    syncPipe.collectRealTimeDeletion(deletion);
+  public void collectRealTimeDeletion(Deletion deletion, String sgName) {
+    syncPipe.collectRealTimeDeletion(deletion, sgName);
   }
 
   public void collectRealTimeTsFile(File tsFile) {

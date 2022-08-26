@@ -212,7 +212,7 @@ public class TsFilePipe implements Pipe {
     }
   }
 
-  public void collectRealTimeDeletion(Deletion deletion) {
+  public void collectRealTimeDeletion(Deletion deletion, String sgName) {
     collectRealTimeDataLock.lock();
     try {
       if (!syncDelOp) {
@@ -228,7 +228,7 @@ public class TsFilePipe implements Pipe {
                 deletion.getStartTime(),
                 deletion.getEndTime());
         maxSerialNumber += 1L;
-        PipeData deletionData = new DeletionPipeData(splitDeletion, maxSerialNumber);
+        PipeData deletionData = new DeletionPipeData(sgName, splitDeletion, maxSerialNumber);
         realTimeQueue.offer(deletionData);
       }
     } catch (MetadataException e) {

@@ -16,17 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf;
+package org.apache.iotdb.external.api;
 
-/** Status of current system */
-public enum SystemStatus {
-  /** System can read and write normally */
-  NORMAL,
-  /** Only query statements are permitted */
-  READ_ONLY,
+import java.nio.file.Path;
+import java.util.Properties;
+
+/**
+ * An interface to load properties from external properties file to override the default
+ * configurations
+ */
+public interface IPropertiesLoader {
+
   /**
-   * Unrecoverable errors occur, system will be read-only or exit according to the param
-   * allow_read_only_when_errors_occur
+   * Load Properties from specific file
+   *
+   * @param file The path of the properties file to open
+   * @return a property list with values in file.
    */
-  ERROR,
+  Properties loadProperties(Path file);
 }

@@ -149,6 +149,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
 
   // sync module
+  // TODO(sync): delete this in new-standalone version
   public static final String COLUMN_PIPESERVER_STATUS = "enable";
   public static final String COLUMN_PIPESINK_NAME = "name";
   public static final String COLUMN_PIPESINK_TYPE = "type";
