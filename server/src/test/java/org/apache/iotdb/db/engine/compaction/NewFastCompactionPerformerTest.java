@@ -232,33 +232,33 @@ public class NewFastCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    //    List<String> deviceIdList = new ArrayList<>();
-    //    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
-    //    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
-    //    for (int i = 0; i < 2; i++) {
-    //      Assert.assertTrue(
-    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-    //      Assert.assertTrue(
-    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
-    //      Assert.assertFalse(
-    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-    //      Assert.assertFalse(
-    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
-    //      check(targetResources.get(i), deviceIdList);
-    //    }
-    //    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-    //    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
-    //    for (int i = 2; i < 4; i++) {
-    //      Assert.assertTrue(
-    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-    //      Assert.assertTrue(
-    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
-    //      Assert.assertTrue(
-    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-    //      Assert.assertTrue(
-    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
-    //      check(targetResources.get(i), deviceIdList);
-    //    }
+    List<String> deviceIdList = new ArrayList<>();
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    for (int i = 0; i < 2; i++) {
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    for (int i = 2; i < 4; i++) {
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
 
     Map<String, Long> measurementMaxTime = new HashMap<>();
 

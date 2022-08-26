@@ -30,13 +30,6 @@ public class PriorityCompactionReader {
 
   private List<PageElement> newOverlappedPages;
 
-  public PriorityCompactionReader(
-      List<PageElement> pageElements, NewFastCompactionPerformerSubTask.RemovePage removePage)
-      throws IOException {
-    addNewPages(pageElements);
-    this.removePage = removePage;
-  }
-
   public PriorityCompactionReader(NewFastCompactionPerformerSubTask.RemovePage removePage) {
     this.removePage = removePage;
   }
