@@ -66,7 +66,7 @@ public class IDTableRestartTest {
     isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement_INT");
+    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement");
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
     EnvironmentUtils.envSetUp();
   }

@@ -27,8 +27,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.metadata.idtable.deviceID.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.deviceID.IDeviceID;
-import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
@@ -88,7 +88,7 @@ public class IDTableTest {
     isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement_INT");
+    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement");
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
     EnvironmentUtils.envSetUp();
   }

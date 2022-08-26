@@ -142,7 +142,7 @@ public class QueryAlignedTimeseriesWithIDTableTest {
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement_INT");
+    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement");
     EnvironmentUtils.envSetUp();
   }
 

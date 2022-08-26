@@ -39,7 +39,7 @@ import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
-import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.idtable.deviceID.DeviceIDFactory;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;

@@ -17,15 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.idtable.entry;
+package org.apache.iotdb.db.metadata.idtable.deviceID;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.idtable.deviceID.IDeviceID;
-import org.apache.iotdb.db.metadata.idtable.deviceID.PlainDeviceID;
-import org.apache.iotdb.db.metadata.idtable.deviceID.SHA256DeviceID;
-import org.apache.iotdb.db.metadata.idtable.deviceID.StandAloneAutoIncDeviceID;
 
 import java.util.function.Function;
 
@@ -66,7 +62,7 @@ public class DeviceIDFactory {
       } else if (IoTDBDescriptor.getInstance()
           .getConfig()
           .getDeviceIDTransformationMethod()
-          .equals("AutoIncrement_INT")) {
+          .equals("AutoIncrement")) {
         getDeviceIDFunction = StandAloneAutoIncDeviceID::getDeviceID;
         getDeviceIDWithAutoCreateFunction = StandAloneAutoIncDeviceID::getDeviceIDWithAutoCreate;
         return;
@@ -131,7 +127,7 @@ public class DeviceIDFactory {
       } else if (IoTDBDescriptor.getInstance()
           .getConfig()
           .getDeviceIDTransformationMethod()
-          .equals("AutoIncrement_INT")) {
+          .equals("AutoIncrement")) {
         getDeviceIDFunction = StandAloneAutoIncDeviceID::getDeviceID;
         getDeviceIDWithAutoCreateFunction = StandAloneAutoIncDeviceID::getDeviceIDWithAutoCreate;
         StandAloneAutoIncDeviceID.reset();
@@ -152,7 +148,7 @@ public class DeviceIDFactory {
       } else if (IoTDBDescriptor.getInstance()
           .getConfig()
           .getDeviceIDTransformationMethod()
-          .equals("AutoIncrement_INT")) {
+          .equals("AutoIncrement")) {
         return StandAloneAutoIncDeviceID.class;
       }
     }

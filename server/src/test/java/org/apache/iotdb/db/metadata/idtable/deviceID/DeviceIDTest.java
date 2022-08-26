@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -47,7 +46,7 @@ public class DeviceIDTest {
     originalDeviceIDTransformationMethod =
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement_INT");
+    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement");
     EnvironmentUtils.envSetUp();
   }
 

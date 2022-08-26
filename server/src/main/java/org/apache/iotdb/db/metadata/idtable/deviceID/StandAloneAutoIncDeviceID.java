@@ -60,6 +60,8 @@ public class StandAloneAutoIncDeviceID extends SHA256DeviceID implements IStatef
 
   // if the schemaRegionId==-1 of a StandAloneAutoIncDeviceID instance, it means that the device
   // corresponding to the StandAloneAutoIncDeviceID instance does not exist
+  // return the deviceIdOfNonExistentDevice object for all devicePaths of unmanaged devices in the
+  // metadata module, which can avoid unnecessary object creation while ensuring correctness
   private static StandAloneAutoIncDeviceID deviceIdOfNonExistentDevice;
 
   // starting with 0,the maximum value is Integer.MAX_VALUE
@@ -75,12 +77,10 @@ public class StandAloneAutoIncDeviceID extends SHA256DeviceID implements IStatef
   }
 
   /**
-   * for the query path of a non-existing device, a deviceID with schemaRegion = -1 and
-   * autoIncrementID = 0 will be generated, and then stored in the deviceIDsMap. although it seems
-   * that all non-existing devicePaths will be converted into StandAloneAutoIncDeviceID objects with
-   * the same member variable value(schemaRegion,autoIncrementID), but due to the equality of
-   * StandAloneAutoIncDeviceID objects is determined by the sha256 hash value, so there is no
-   * adverse effect
+   * use the sha256 value of INVALID_DEVICE_PATH and schemaRegionId=-1, autoIncrementID=1 to
+   * generate a deviceID of the devicePath of the device that is not managed by the metadata
+   * management module, which can ensure that the deviceID is used, and no information can be found
+   * as expected.
    */
   private static void setDeviceIdOfNonExistentDevice() {
     deviceIdOfNonExistentDevice = new StandAloneAutoIncDeviceID(INVALID_DEVICE_PATH);
