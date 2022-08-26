@@ -177,7 +177,7 @@ public class AuthorityChecker {
       targetUser = ((AuthorStatement) statement).getUserName();
     }
     return AuthorityChecker.checkPermission(
-        username, statement.getPaths(), statement.getType(), targetUser);
+        username, statement.getAuthPaths(), statement.getType(), targetUser);
   }
 
   private static int translateToPermissionId(Operator.OperatorType type) {

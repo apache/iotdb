@@ -64,4 +64,8 @@ public abstract class Statement extends StatementNode {
   }
 
   public abstract List<? extends PartialPath> getPaths();
+
+  public List<? extends PartialPath> getAuthPaths() {
+    return getPaths();
+  }
 }
