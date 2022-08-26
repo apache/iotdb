@@ -543,7 +543,9 @@ public class NodeManager {
    */
   private String getNodeStatus(int nodeId) {
     BaseNodeCache nodeCache = nodeCacheMap.get(nodeId);
-    return nodeCache == null ? "Unknown" : nodeCache.getNodeStatus().getStatus();
+    return nodeCache == null
+        ? NodeStatus.Unknown.getStatus()
+        : nodeCache.getNodeStatus().getStatus();
   }
 
   /**

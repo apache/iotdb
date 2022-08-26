@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -39,7 +40,6 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
@@ -579,7 +579,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void operateSetSystemMode(SetSystemModePlan plan) {
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setSystemStatus(plan.isReadOnly() ? SystemStatus.READ_ONLY : SystemStatus.NORMAL);
+        .setNodeStatus(plan.isReadOnly() ? NodeStatus.ReadOnly : NodeStatus.Running);
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {

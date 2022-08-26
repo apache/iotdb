@@ -47,7 +47,7 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
   }
 
   @Override
-  public boolean updateLoadStatistic() {
+  public boolean updateNodeStatus() {
     if (configNodeLocation.getInternalEndPoint().equals(NodeManager.CURRENT_NODE)) {
       this.status = NodeStatus.Running;
       return false;
@@ -60,15 +60,7 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
       }
     }
 
-    NodeStatus originStatus;
-    switch (status) {
-      case Running:
-        originStatus = NodeStatus.Running;
-        break;
-      case Unknown:
-      default:
-        originStatus = NodeStatus.Unknown;
-    }
+    String originStatus = status.getStatus();
 
     // TODO: Optimize judge logic
     if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
@@ -76,31 +68,18 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     } else {
       status = NodeStatus.Running;
     }
-    return !status.getStatus().equals(originStatus.getStatus());
+    return !status.getStatus().equals(originStatus);
   }
 
   @Override
   public long getLoadScore() {
-    // Return a copy of loadScore
-    switch (status) {
-      case Running:
-        return 0;
-      case Unknown:
-      default:
-        // The Unknown Node will get the highest loadScore
-        return Long.MAX_VALUE;
-    }
+    // The ConfigNode whose status isn't Running will get the highest loadScore
+    return status == NodeStatus.Running ? 0 : Long.MAX_VALUE;
   }
 
   @Override
   public NodeStatus getNodeStatus() {
     // Return a copy of status
-    switch (status) {
-      case Running:
-        return NodeStatus.Running;
-      case Unknown:
-      default:
-        return NodeStatus.Unknown;
-    }
+    return NodeStatus.valueOf(status.getStatus());
   }
 }
