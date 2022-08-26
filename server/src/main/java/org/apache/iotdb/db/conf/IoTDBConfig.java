@@ -84,44 +84,28 @@ public class IoTDBConfig {
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
-  /**
-   * Shutdown system or set it to read-only mode when unrecoverable error occurs.
-   */
+  /** Shutdown system or set it to read-only mode when unrecoverable error occurs. */
   private boolean allowReadOnlyWhenErrorsOccur = true;
 
-  /**
-   * Status of current system.
-   */
+  /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
 
-  /**
-   * whether to enable the mqtt service.
-   */
+  /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
 
-  /**
-   * the mqtt service binding host.
-   */
+  /** the mqtt service binding host. */
   private String mqttHost = "0.0.0.0";
 
-  /**
-   * the mqtt service binding port.
-   */
+  /** the mqtt service binding port. */
   private int mqttPort = 1883;
 
-  /**
-   * the handler pool size for handing the mqtt messages.
-   */
+  /** the handler pool size for handing the mqtt messages. */
   private int mqttHandlerPoolSize = 1;
 
-  /**
-   * the mqtt message payload formatter.
-   */
+  /** the mqtt message payload formatter. */
   private String mqttPayloadFormatter = "json";
 
-  /**
-   * max mqtt message size. Unit: byte
-   */
+  /** max mqtt message size. Unit: byte */
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
@@ -145,36 +129,24 @@ public class IoTDBConfig {
   /** Min concurrent client number */
   private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
 
-  /**
-   * Max concurrent client number
-   */
+  /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
 
-  /**
-   * Memory allocated for the write process
-   */
+  /** Memory allocated for the write process */
   private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 4 / 10;
 
-  /**
-   * Memory allocated for the read process
-   */
+  /** Memory allocated for the read process */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
-  /**
-   * Memory allocated for the mtree
-   */
+  /** Memory allocated for the mtree */
   private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() / 10;
 
   private volatile int maxQueryDeduplicatedPathNum = 1000;
 
-  /**
-   * Ratio of memory allocated for buffered arrays
-   */
+  /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
 
-  /**
-   * Flush proportion for system
-   */
+  /** Flush proportion for system */
   private double flushProportion = 0.4;
 
   /** Reject proportion for system */
@@ -292,59 +264,41 @@ public class IoTDBConfig {
   private String udfDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
-  /**
-   * External temporary lib directory for storing downloaded JAR files
-   */
+  /** External temporary lib directory for storing downloaded JAR files */
   private String temporaryLibDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
-  /**
-   * External lib directory for trigger, stores user-uploaded JAR files
-   */
+  /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
 
-  /**
-   * External lib directory for ext Pipe plugins, stores user-defined JAR files
-   */
+  /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
 
-  /**
-   * External lib directory for MQTT, stores user-uploaded JAR files
-   */
+  /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
 
-  /**
-   * External lib directory for properties loader, stores user-uploaded JAR files
-   */
+  /** External lib directory for properties loader, stores user-uploaded JAR files */
   private String externalPropertiesLoaderDir =
       IoTDBConstant.EXT_FOLDER_NAME
           + File.separator
           + IoTDBConstant.EXT_PROPERTIES_LOADER_FOLDER_NAME;
 
-  /**
-   * External lib directory for limiter, stores user uploaded JAR files
-   */
+  /** External lib directory for limiter, stores user uploaded JAR files */
   private String externalLimiterDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_LIMITER;
 
-  /**
-   * Data directories. It can be settled as dataDirs = {"data1", "data2", "data3"};
-   */
+  /** Data directories. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME
+    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME
   };
 
-  /**
-   * Strategy of multiple directories.
-   */
+  /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
 
-  /**
-   * Consensus directory.
-   */
+  /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
 
   private String dataRegionConsensusDir = consensusDir + File.separator + "data_region";
@@ -523,44 +477,28 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
-  /**
-   * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
-   */
+  /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
-  /**
-   * Memory allocated for bloomFilter cache in read process
-   */
+  /** Memory allocated for bloomFilter cache in read process */
   private long allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
 
-  /**
-   * Memory allocated for timeSeriesMetaData cache in read process
-   */
+  /** Memory allocated for timeSeriesMetaData cache in read process */
   private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 200 / 1001;
 
-  /**
-   * Memory allocated for chunk cache in read process
-   */
+  /** Memory allocated for chunk cache in read process */
   private long allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
 
-  /**
-   * Memory allocated for operators
-   */
+  /** Memory allocated for operators */
   private long allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
 
-  /**
-   * Memory allocated for operators
-   */
+  /** Memory allocated for operators */
   private long allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
 
-  /**
-   * Memory allocated for operators
-   */
+  /** Memory allocated for operators */
   private long allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
 
-  /**
-   * Memory allocated proportion for timeIndex
-   */
+  /** Memory allocated proportion for timeIndex */
   private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
 
   /**
@@ -569,24 +507,16 @@ public class IoTDBConfig {
    */
   private boolean enableQueryMemoryEstimation = true;
 
-  /**
-   * Whether to enable Last cache
-   */
+  /** Whether to enable Last cache */
   private boolean lastCacheEnable = true;
 
-  /**
-   * Set true to enable statistics monitor service, false to disable statistics service.
-   */
+  /** Set true to enable statistics monitor service, false to disable statistics service. */
   private boolean enableStatMonitor = false;
 
-  /**
-   * Set true to enable writing monitor time series.
-   */
+  /** Set true to enable writing monitor time series. */
   private boolean enableMonitorSeriesWrite = false;
 
-  /**
-   * Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}.
-   */
+  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
   private int schemaRegionDeviceNodeCacheSize = 10000;
 
   /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
@@ -805,29 +735,19 @@ public class IoTDBConfig {
   /** full path of kerberos keytab file */
   private String kerberosKeytabFilePath = "/path";
 
-  /**
-   * kerberos principal
-   */
+  /** kerberos principal */
   private String kerberosPrincipal = "your principal";
 
-  /**
-   * the num of memtable in each storage group
-   */
+  /** the num of memtable in each storage group */
   private int concurrentWritingTimePartition = 1;
 
-  /**
-   * the default fill interval in LinearFill and PreviousFill, -1 means infinite past time
-   */
+  /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
 
-  /**
-   * The default value of primitive array size in array pool
-   */
+  /** The default value of primitive array size in array pool */
   private int primitiveArraySize = 32;
 
-  /**
-   * whether enable data partition. If disabled, all data belongs to partition 0
-   */
+  /** whether enable data partition. If disabled, all data belongs to partition 0 */
   private boolean enablePartition = true;
 
   /**
@@ -1038,51 +958,34 @@ public class IoTDBConfig {
   /** Trigger MQTT forward pool size */
   private int triggerForwardMQTTPoolSize = 4;
 
-  /**
-   * ThreadPool size for read operation in coordinator
-   */
+  /** ThreadPool size for read operation in coordinator */
   private int coordinatorReadExecutorSize = 20;
 
-  /**
-   * ThreadPool size for write operation in coordinator
-   */
+  /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
 
-  /**
-   * Memory allocated for schemaRegion
-   */
+  /** Memory allocated for schemaRegion */
   private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
 
-  /**
-   * Memory allocated for SchemaCache
-   */
+  /** Memory allocated for SchemaCache */
   private long allocateMemoryForSchemaCache = allocateMemoryForSchema / 10;
 
-  /**
-   * Memory allocated for PartitionCache
-   */
+  /** Memory allocated for PartitionCache */
   private long allocateMemoryForPartitionCache = 0;
 
-  /**
-   * Memory allocated for LastCache
-   */
+  /** Memory allocated for LastCache */
   private long allocateMemoryForLastCache = allocateMemoryForSchema / 10;
 
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
-  /**
-   * Maximum execution time of a DriverTask
-   */
+  /** Maximum execution time of a DriverTask */
   private int driverTaskExecutionTimeSliceInMs = 100;
 
-  /**
-   * Maximum size of wal buffer used in MultiLeader consensus. Unit: byte
-   */
+  /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
-  IoTDBConfig() {
-  }
+  IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
@@ -1178,9 +1081,7 @@ public class IoTDBConfig {
     confirmMultiDirStrategy();
   }
 
-  /**
-   * if the folders are relative paths, add IOTDB_HOME as the path prefix
-   */
+  /** if the folders are relative paths, add IOTDB_HOME as the path prefix */
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
@@ -3262,12 +3163,12 @@ public class IoTDBConfig {
     String configMessage = "";
     String configContent;
     String[] notShowArray = {
-        "NODE_NAME_MATCHER",
-        "PARTIAL_NODE_MATCHER",
-        "STORAGE_GROUP_MATCHER",
-        "STORAGE_GROUP_PATTERN",
-        "NODE_MATCHER",
-        "NODE_PATTERN"
+      "NODE_NAME_MATCHER",
+      "PARTIAL_NODE_MATCHER",
+      "STORAGE_GROUP_MATCHER",
+      "STORAGE_GROUP_PATTERN",
+      "NODE_MATCHER",
+      "NODE_PATTERN"
     };
     List<String> notShowStrings = Arrays.asList(notShowArray);
     for (Field configField : IoTDBConfig.class.getDeclaredFields()) {
