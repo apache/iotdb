@@ -113,13 +113,14 @@ public class MigratingFileLogTest {
     setupTestFiles();
 
     // test write
-    MigratingFileLogManager.getInstance().start(testTaskId, getTsFile(), testTargetDir);
+    MigratingFileLogManager.getInstance().startTask(testTaskId, testTargetDir);
+    MigratingFileLogManager.getInstance().start(testTaskId, getTsFile());
 
     FileInputStream fileInputStream = new FileInputStream(testLogFile);
 
     assertTrue(testLogFile.exists());
-    assertEquals(getTsFile().getAbsolutePath(), ReadWriteIOUtils.readString(fileInputStream));
     assertEquals(testTargetDir.getAbsolutePath(), ReadWriteIOUtils.readString(fileInputStream));
+    assertEquals(getTsFile().getAbsolutePath(), ReadWriteIOUtils.readString(fileInputStream));
     assertEquals(0, fileInputStream.available());
 
     fileInputStream.close();

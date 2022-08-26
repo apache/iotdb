@@ -437,6 +437,8 @@ public class MigrationManager {
             () -> {
               try {
                 logWriter.startMigration(task);
+                MigratingFileLogManager.getInstance()
+                    .startTask(task.getTaskId(), task.getTargetDir());
               } catch (IOException e) {
                 logger.error("write log error");
                 task.setStatus(MigrationTask.MigrationTaskStatus.ERROR);

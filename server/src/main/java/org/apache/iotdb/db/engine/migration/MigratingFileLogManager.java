@@ -35,8 +35,8 @@ import static org.apache.iotdb.db.metadata.idtable.IDTable.logger;
 
 /**
  * To assure that migration of tsFiles is pesudo-atomic operator, MigratingFileLogManager writes
- * files to migratingFileDir when a tsFile (and its resource/mod files) are being migrated, then
- * deletes it after it has finished operation.
+ * files to migratingFileDir when a migration task migrates a tsFile (and its resource/mod files) ,
+ * then deletes it after the task has finished operation.
  */
 public class MigratingFileLogManager implements AutoCloseable {
 
@@ -92,11 +92,41 @@ public class MigratingFileLogManager implements AutoCloseable {
   }
 
   /**
+   * started the migration task, write to
+   *
+   * @return true if write log successful, false otherwise
+   */
+  public boolean startTask(long taskId, File targetDir) throws IOException {
+    FileOutputStream logFileOutput;
+    if (logOutputMap.containsKey(taskId) && logOutputMap.get(taskId) != null) {
+      logOutputMap.get(taskId).close();
+      logOutputMap.remove(taskId);
+    }
+    File logFile = SystemFileFactory.INSTANCE.getFile(MIGRATING_LOG_DIR, taskId + ".log");
+    if (logFile.exists()) {
+      // want an empty log file
+      logFile.delete();
+    }
+    if (!logFile.createNewFile()) {
+      // log file doesn't exist but cannot be created
+      return false;
+    }
+
+    logFileOutput = new FileOutputStream(logFile);
+    logOutputMap.put(taskId, logFileOutput);
+
+    ReadWriteIOUtils.write(targetDir.getAbsolutePath(), logFileOutput);
+    logFileOutput.flush();
+
+    return true;
+  }
+
+  /**
    * started migrating tsfile and its resource/mod files
    *
    * @return true if write log successful, false otherwise
    */
-  public boolean start(long taskId, File tsfile, File targetDir) throws IOException {
+  public boolean start(long taskId, File tsfile) throws IOException {
     FileOutputStream logFileOutput;
     if (logOutputMap.containsKey(taskId) && logOutputMap.get(taskId) != null) {
       logFileOutput = logOutputMap.get(taskId);
@@ -114,7 +144,6 @@ public class MigratingFileLogManager implements AutoCloseable {
     }
 
     ReadWriteIOUtils.write(tsfile.getAbsolutePath(), logFileOutput);
-    ReadWriteIOUtils.write(targetDir.getAbsolutePath(), logFileOutput);
     logFileOutput.flush();
 
     return true;
@@ -141,13 +170,12 @@ public class MigratingFileLogManager implements AutoCloseable {
     for (File logFile : MIGRATING_LOG_DIR.listFiles()) {
       try {
         FileInputStream logFileInput = new FileInputStream(logFile);
+        String targetDirPath = ReadWriteIOUtils.readString(logFileInput);
 
+        File targetDir = SystemFileFactory.INSTANCE.getFile(targetDirPath);
         while (logFileInput.available() > 0) {
           String tsfilePath = ReadWriteIOUtils.readString(logFileInput);
-          String targetDirPath = ReadWriteIOUtils.readString(logFileInput);
-
           File tsfile = SystemFileFactory.INSTANCE.getFile(tsfilePath);
-          File targetDir = SystemFileFactory.INSTANCE.getFile(targetDirPath);
 
           if (targetDir.exists()) {
             if (!targetDir.isDirectory()) {

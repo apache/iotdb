@@ -1610,8 +1610,7 @@ public class VirtualStorageGroupProcessor {
           tsFileManager.remove(resource, isSeq);
 
           // start the migration
-          if (MigratingFileLogManager.getInstance()
-              .start(taskId, resource.getTsFile(), targetDir)) {
+          if (MigratingFileLogManager.getInstance().start(taskId, resource.getTsFile())) {
             File migratedFile = resource.migrate(targetDir);
 
             logger.info(
