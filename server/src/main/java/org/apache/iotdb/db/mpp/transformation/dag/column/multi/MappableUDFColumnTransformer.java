@@ -94,7 +94,7 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  protected void close() {
+  public void close() {
     // finalize executor
     executor.beforeDestroy();
   }
