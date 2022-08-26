@@ -32,16 +32,16 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 /** MigrationLog writes the binary logs of MigrationTask into file using FileOutputStream */
-public class MigrationLogWriter implements AutoCloseable {
+public class MigrationTaskLogWriter implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(MLogTxtWriter.class);
   private final File logFile;
   private FileOutputStream logFileOutStream;
 
-  public MigrationLogWriter(String logFileName) throws FileNotFoundException {
+  public MigrationTaskLogWriter(String logFileName) throws FileNotFoundException {
     this(SystemFileFactory.INSTANCE.getFile(logFileName));
   }
 
-  public MigrationLogWriter(File logFile) throws FileNotFoundException {
+  public MigrationTaskLogWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
     if (!logFile.exists()) {
       if (logFile.getParentFile() != null) {

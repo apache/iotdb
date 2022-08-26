@@ -34,11 +34,11 @@ import static org.apache.iotdb.db.metadata.idtable.IDTable.config;
 import static org.apache.iotdb.db.metadata.idtable.IDTable.logger;
 
 /**
- * To assure that migration of tsFiles is pesudo-atomic operator, MigratingFileLogManager writes
- * files to migratingFileDir when a migration task migrates a tsFile (and its resource/mod files) ,
- * then deletes it after the task has finished operation.
+ * To assure that migration of tsFiles is pesudo-atomic operator, TsFileMigrationLogger writes files
+ * to migratingFileDir when a migration task migrates a tsFile (and its resource/mod files) , then
+ * deletes it after the task has finished operation.
  */
-public class MigratingFileLogManager implements AutoCloseable {
+public class TsFileMigrationLogger implements AutoCloseable {
 
   // taskId -> MigratingFileLog
   ConcurrentHashMap<Long, FileOutputStream> logOutputMap = new ConcurrentHashMap<>();
@@ -48,7 +48,7 @@ public class MigratingFileLogManager implements AutoCloseable {
           Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "migrating")
               .toString());
 
-  protected MigratingFileLogManager() {
+  protected TsFileMigrationLogger() {
     if (MIGRATING_LOG_DIR == null) {
       logger.error("MIGRATING_LOG_DIR is null");
     }
@@ -84,10 +84,10 @@ public class MigratingFileLogManager implements AutoCloseable {
   private static class MigratingFileLogManagerHolder {
     private MigratingFileLogManagerHolder() {}
 
-    private static final MigratingFileLogManager INSTANCE = new MigratingFileLogManager();
+    private static final TsFileMigrationLogger INSTANCE = new TsFileMigrationLogger();
   }
 
-  public static MigratingFileLogManager getInstance() {
+  public static TsFileMigrationLogger getInstance() {
     return MigratingFileLogManagerHolder.INSTANCE;
   }
 

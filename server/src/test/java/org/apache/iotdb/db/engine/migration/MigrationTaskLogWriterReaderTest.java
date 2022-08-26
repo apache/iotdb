@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.migration;
 
-import org.apache.iotdb.db.engine.migration.MigrationLogWriter.MigrationLog;
+import org.apache.iotdb.db.engine.migration.MigrationTaskLogWriter.MigrationLog;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -41,7 +41,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class MigrationLogWriterReaderTest {
+public class MigrationTaskLogWriterReaderTest {
 
   private static final String filePath = "logtest.test";
   private final String sg1 = "root.MIGRATE_SG1";
@@ -70,7 +70,7 @@ public class MigrationLogWriterReaderTest {
     startTime = DatetimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
   }
 
-  public void writeLog(MigrationLogWriter writer) throws IOException {
+  public void writeLog(MigrationTaskLogWriter writer) throws IOException {
     writer.startMigration(task1);
     writer.setMigration(task1);
     writer.unsetMigration(task2);
@@ -108,11 +108,11 @@ public class MigrationLogWriterReaderTest {
 
   @Test
   public void testWriteAndRead() throws Exception {
-    MigrationLogWriter writer = new MigrationLogWriter(filePath);
+    MigrationTaskLogWriter writer = new MigrationTaskLogWriter(filePath);
     writeLog(writer);
     try {
       writer.close();
-      MigrationLogReader reader = new MigrationLogReader(new File(filePath));
+      MigrationTaskLogReader reader = new MigrationTaskLogReader(new File(filePath));
       List<MigrationLog> res = new ArrayList<>();
       while (reader.hasNext()) {
         res.add(reader.next());
@@ -130,7 +130,7 @@ public class MigrationLogWriterReaderTest {
   public void testTruncateBrokenLogs() throws Exception {
     try {
       // write normal data
-      MigrationLogWriter writer = new MigrationLogWriter(filePath);
+      MigrationTaskLogWriter writer = new MigrationTaskLogWriter(filePath);
       try {
         writeLog(writer);
       } finally {
@@ -156,7 +156,7 @@ public class MigrationLogWriterReaderTest {
       }
 
       // read & check
-      MigrationLogReader reader = new MigrationLogReader(new File(filePath));
+      MigrationTaskLogReader reader = new MigrationTaskLogReader(new File(filePath));
       try {
         List<MigrationLog> res = new ArrayList<>();
         while (reader.hasNext()) {

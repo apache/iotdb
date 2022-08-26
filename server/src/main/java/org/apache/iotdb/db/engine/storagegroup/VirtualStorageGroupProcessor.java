@@ -33,8 +33,8 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
-import org.apache.iotdb.db.engine.migration.MigratingFileLogManager;
 import org.apache.iotdb.db.engine.migration.MigrationTask;
+import org.apache.iotdb.db.engine.migration.TsFileMigrationLogger;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -1610,7 +1610,7 @@ public class VirtualStorageGroupProcessor {
           tsFileManager.remove(resource, isSeq);
 
           // start the migration
-          if (MigratingFileLogManager.getInstance().start(taskId, resource.getTsFile())) {
+          if (TsFileMigrationLogger.getInstance().start(taskId, resource.getTsFile())) {
             File migratedFile = resource.migrate(targetDir);
 
             logger.info(

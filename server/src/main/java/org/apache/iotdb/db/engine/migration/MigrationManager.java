@@ -22,7 +22,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.migration.MigrationLogWriter.MigrationLog;
+import org.apache.iotdb.db.engine.migration.MigrationTaskLogWriter.MigrationLog;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 public class MigrationManager {
   private static final Logger logger = LoggerFactory.getLogger(MigrationManager.class);
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private MigrationLogWriter logWriter;
+  private MigrationTaskLogWriter logWriter;
 
   // taskId -> MigrationTask
   private ConcurrentHashMap<Long, MigrationTask> migrationTasks = new ConcurrentHashMap<>();
@@ -87,14 +87,14 @@ public class MigrationManager {
     }
 
     try {
-      logWriter = new MigrationLogWriter(LOG_FILE_NAME);
+      logWriter = new MigrationTaskLogWriter(LOG_FILE_NAME);
     } catch (FileNotFoundException e) {
       logger.error("Cannot find/create log for migration.");
     }
 
     // read from logReader
     try {
-      MigrationLogReader logReader = new MigrationLogReader(LOG_FILE_NAME);
+      MigrationTaskLogReader logReader = new MigrationTaskLogReader(LOG_FILE_NAME);
       Set<Long> errorSet = new HashSet<>();
 
       while (logReader.hasNext()) {
@@ -437,7 +437,7 @@ public class MigrationManager {
             () -> {
               try {
                 logWriter.startMigration(task);
-                MigratingFileLogManager.getInstance()
+                TsFileMigrationLogger.getInstance()
                     .startTask(task.getTaskId(), task.getTargetDir());
               } catch (IOException e) {
                 logger.error("write log error");
@@ -454,7 +454,7 @@ public class MigrationManager {
               // set state and remove
               try {
                 logWriter.finishMigration(task);
-                MigratingFileLogManager.getInstance().finish(task.getTaskId());
+                TsFileMigrationLogger.getInstance().finish(task.getTaskId());
               } catch (IOException e) {
                 logger.error("write log error");
                 task.setStatus(MigrationTask.MigrationTaskStatus.ERROR);
