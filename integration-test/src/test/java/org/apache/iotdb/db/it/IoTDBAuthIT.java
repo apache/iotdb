@@ -345,14 +345,14 @@ public class IoTDBAuthIT {
         // grant privilege to query
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("SELECT * from root.a"));
 
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES READ_TIMESERIES on root.*");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES READ_TIMESERIES on root.**");
         ResultSet resultSet = userStmt.executeQuery("SELECT * from root.a");
         resultSet.close();
         resultSet = userStmt.executeQuery("SELECT LAST b from root.a");
         resultSet.close();
 
         // revoke privilege to query
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES READ_TIMESERIES on root.*");
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES READ_TIMESERIES on root.**");
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("SELECT * from root.a"));
       }
     }
@@ -813,7 +813,7 @@ public class IoTDBAuthIT {
         Statement adminStatement = adminConnection.createStatement()) {
       adminStatement.execute("CREATE USER a_application 'a_application'");
       adminStatement.execute("CREATE ROLE application_role");
-      adminStatement.execute("GRANT ROLE application_role PRIVILEGES READ_TIMESERIES ON root.test");
+      adminStatement.execute("GRANT ROLE application_role PRIVILEGES READ_TIMESERIES ON root.**");
       adminStatement.execute("GRANT application_role TO a_application");
 
       adminStatement.execute("INSERT INTO root.test(time, s1, s2, s3) VALUES(1, 2, 3, 4)");
