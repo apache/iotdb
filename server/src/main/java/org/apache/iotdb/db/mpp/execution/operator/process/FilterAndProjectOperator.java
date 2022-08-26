@@ -212,7 +212,9 @@ public class FilterAndProjectOperator implements ProcessOperator {
     for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
       columnTransformer.close();
     }
-    filterOutputTransformer.close();
+    if (filterOutputTransformer != null) {
+      filterOutputTransformer.close();
+    }
     inputOperator.close();
   }
 
