@@ -16,6 +16,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -248,10 +249,9 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
    */
   private void compactWithOverlapPages(List<PageElement> overlappedPages)
       throws IOException, PageException, WriteProcessException {
-    int pageIndex = 0;
     priorityCompactionReader.setNewOverlappedPages(overlappedPages);
     while (priorityCompactionReader.hasNext()) {
-      for (; pageIndex < overlappedPages.size(); pageIndex++) {
+      for (int pageIndex = 0; pageIndex < overlappedPages.size(); pageIndex++) {
         PageElement nextPageElement = overlappedPages.get(pageIndex);
         // write current page point.time < next page point.time
         while (priorityCompactionReader.currentPoint().getTimestamp() < nextPageElement.startTime) {
@@ -273,39 +273,21 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
         }
       }
 
+      overlappedPages.clear();
+
       // write remaining data points
       while (priorityCompactionReader.hasNext()) {
         // write data point to chunk writer
         compactionWriter.writeTimeValue(priorityCompactionReader.currentPoint(), subTaskId);
         priorityCompactionReader.next();
-        if (overlappedPages.size() > pageIndex) {
+        if (overlappedPages.size() > 0) {
           // finish compacting the first page and find the new overlapped pages, then start
           // compacting them with new first page
           break;
         }
-        //
-        //        // if finishing writing the first page, then start compacting the next page with
-        // its
-        //        // overlapped pages
-        //        if (isFirstPageEnd && !pageQueue.isEmpty()) {
-        //          isFirstPageEnd = false;
-        //          if (!overlappedPages.contains(pageQueue.peek())) {
-        //            // all overlapped pages has been compacted, return
-        //            return;
-        //          }
-        //          // get the new overlapped pages of the top page
-        //          List<PageElement> newOverlappedPages = findOverlapPages(pageQueue.peek());
-        //          if (!newOverlappedPages.isEmpty()) {
-        //            // If there are new pages that overlap with the current first page, then exit
-        // the loop
-        //            overlappedPages.addAll(newOverlappedPages);
-        //            break;
-        //          }
-        //        }
       }
     }
   }
-
 
   /**
    * Find overlaped pages which is not been selected with the specific page.

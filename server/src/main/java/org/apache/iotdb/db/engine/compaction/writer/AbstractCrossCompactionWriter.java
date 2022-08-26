@@ -153,7 +153,7 @@ public abstract class AbstractCrossCompactionWriter implements ICompactionWriter
             targetFileWriters.get(fileIndex), chunkWriters[subTaskId]);
         hasFlushedCurrentChunk = true;
       }
-        seqFileIndexArray[subTaskId] = ++fileIndex;
+      seqFileIndexArray[subTaskId] = ++fileIndex;
     }
   }
 

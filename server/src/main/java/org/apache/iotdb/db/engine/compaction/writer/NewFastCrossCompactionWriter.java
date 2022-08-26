@@ -24,8 +24,6 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
     super(targetResources, seqSourceResources);
   }
 
-
-
   @Override
   public void write(long timestamp, Object value, int subTaskId) throws IOException {}
 
@@ -81,7 +79,6 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
     // flush new page to chunk writer directly
     // Todo: may cause small page
     chunkWriter.writePageHeaderAndDataIntoBuff(compressedPageData, pageHeader);
-
 
     // check chunk size and may open a new chunk
     CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
