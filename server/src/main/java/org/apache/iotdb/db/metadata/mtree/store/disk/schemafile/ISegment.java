@@ -41,6 +41,8 @@ public interface ISegment<T, R> {
   int insertRecord(String key, T rec) throws RecordDuplicatedException;
 
   /**
+   * todo switch definition of throw and negative return for better perf
+   *
    * @param key name of the record, not the alias
    * @param buffer content of the updated record
    * @return index of keyAddressList, -1 for not found, exception for space run out

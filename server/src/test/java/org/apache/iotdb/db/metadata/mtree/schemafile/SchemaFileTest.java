@@ -50,10 +50,12 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
@@ -499,6 +501,83 @@ public class SchemaFileTest {
         getSegAddr(sf, getSegAddrInContainer(ent1), "nc0"));
 
     sf.close();
+  }
+
+  @Test
+  public void test200KAlias() throws Exception {
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+    IMNode sgNode = new StorageGroupMNode(null, "mma", 111111111L);
+    // 5 devices, each for 200k measurements
+    int factor20K = 20000;
+    List<IMNode> devs = new ArrayList<>();
+    List<List> senList = new ArrayList<>();
+    Map<String, String> aliasAns = new HashMap<>();
+
+    try {
+      for (int i = 0; i < 5; i++) {
+        devs.add(new EntityMNode(sgNode, "d_" + i));
+        sgNode.addChild(devs.get(i));
+      }
+
+      for (IMNode dev : devs) {
+        List<IMNode> sens = new ArrayList<>();
+        for (int i = 0; i < factor20K; i++) {
+          sens.add(getMeasurementNode(dev, "s_" + i, null));
+          dev.addChild(sens.get(i));
+
+          if (dev.getName().equals("d_0")) {
+            aliasAns.put("s_" + i, "als_" + i);
+          }
+        }
+        senList.add(sens);
+      }
+
+      Iterator<IMNode> ite = getTreeBFT(sgNode);
+
+      IMNode curNode;
+      while (ite.hasNext()) {
+        curNode = ite.next();
+        if (!curNode.isMeasurement()) {
+          sf.writeMNode(curNode);
+        }
+      }
+    } finally {
+      sf.sync();
+      sf.close();
+    }
+
+    sf = SchemaFile.loadSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+    try {
+      IMNode dev2 = devs.get(2);
+      for (IMNode child : dev2.getChildren().values()) {
+        child.getAsMeasurementMNode().setAlias(aliasAns.get(child.getName()));
+      }
+
+      for (String name : aliasAns.keySet()) {
+        moveToUpdateBuffer(dev2, name);
+      }
+
+      sf.writeMNode(dev2);
+      sf.sync();
+      sf.close();
+
+      sf = SchemaFile.loadSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+
+      for (Map.Entry<String, String> entry : aliasAns.entrySet()) {
+        Assert.assertEquals(entry.getKey(), sf.getChildNode(dev2, entry.getValue()).getName());
+      }
+
+      Iterator<IMNode> children = sf.getChildren(dev2);
+      int cnt = 0;
+      while (children.hasNext()) {
+        cnt++;
+        children.next();
+      }
+      Assert.assertEquals(factor20K, cnt);
+
+    } finally {
+      sf.close();
+    }
   }
 
   @Test

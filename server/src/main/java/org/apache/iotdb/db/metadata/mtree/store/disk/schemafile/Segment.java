@@ -387,7 +387,7 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
   /** Assuming that buffer has been set position well, record length depends on implementation. */
   protected abstract short getRecordLength();
 
-  protected <T> int binarySearchPairList(List<Pair<String, T>> list, String key) {
+  protected static <T> int binarySearchPairList(List<Pair<String, T>> list, String key) {
     int head = 0;
     int tail = list.size() - 1;
     if (tail < 0
@@ -420,7 +420,7 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
    * @return target index the record with passing in key should be inserted
    * @throws RecordDuplicatedException
    */
-  protected <T> int binaryInsertPairList(List<Pair<String, T>> list, String key)
+  protected static <T> int binaryInsertPairList(List<Pair<String, T>> list, String key)
       throws RecordDuplicatedException {
     if (list.size() == 0) {
       return 0;

@@ -113,18 +113,20 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   public void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException {
     ISegment<ByteBuffer, IMNode> seg = getSegment(segIdx);
     try {
-      seg.updateRecord(key, buffer);
+      if (seg.updateRecord(key, buffer) < 0) {
+        throw new MetadataException("Record to update not found.");
+      }
     } catch (SegmentOverflowException e) {
       // relocate large enough to include buffer, throw up if page overflow
       seg =
           relocateSegment(
               seg, segIdx, SchemaFile.reEstimateSegSize(seg.size() + buffer.capacity()));
-    }
 
-    // retry and throw if failed again
-    if (seg.updateRecord(key, buffer) < 0) {
-      throw new MetadataException(
-          String.format("Unknown reason for key [%s] not found in page [%d].", key, pageIndex));
+      // retry and throw if failed again
+      if (seg.updateRecord(key, buffer) < 0) {
+        throw new MetadataException(
+            String.format("Unknown reason for key [%s] not found in page [%d].", key, pageIndex));
+      }
     }
   }
 
