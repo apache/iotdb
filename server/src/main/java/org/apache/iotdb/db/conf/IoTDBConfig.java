@@ -1563,7 +1563,7 @@ public class IoTDBConfig {
     return status;
   }
 
-  public void setSystemStatus(NodeStatus newStatus) {
+  public void setNodeStatus(NodeStatus newStatus) {
     if (newStatus == NodeStatus.ReadOnly) {
       logger.error(
           "Change system mode to read-only! Only query statements are permitted!",

@@ -147,7 +147,7 @@ public class DirectoryManager {
       return sequenceFileFolders.get(sequenceStrategy.nextFolderIndex());
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All disks of wal folders are full, change system mode to read-only.", e);
-      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(NodeStatus.ReadOnly);
+      IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw e;
     }
   }
@@ -161,7 +161,7 @@ public class DirectoryManager {
       return unsequenceFileFolders.get(unsequenceStrategy.nextFolderIndex());
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All disks of wal folders are full, change system mode to read-only.", e);
-      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(NodeStatus.ReadOnly);
+      IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw e;
     }
   }

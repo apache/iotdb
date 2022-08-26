@@ -56,7 +56,7 @@ public abstract class DirectoryStrategy {
     }
     if (!hasSpace) {
       logger.error("Disk space is insufficient, change system mode to read-only");
-      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(NodeStatus.ReadOnly);
+      IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw new DiskSpaceInsufficientException(folders);
     }
 

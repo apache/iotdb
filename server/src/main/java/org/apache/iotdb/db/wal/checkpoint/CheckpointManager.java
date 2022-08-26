@@ -174,7 +174,7 @@ public class CheckpointManager implements AutoCloseable {
             "Fail to fsync wal node-{}'s checkpoint writer, change system mode to error.",
             identifier,
             e);
-        config.setSystemStatus(NodeStatus.Error);
+        config.setNodeStatus(NodeStatus.Error);
       }
 
       try {
@@ -193,7 +193,7 @@ public class CheckpointManager implements AutoCloseable {
             "Fail to roll wal node-{}'s checkpoint writer, change system mode to error.",
             identifier,
             e);
-        config.setSystemStatus(NodeStatus.Error);
+        config.setNodeStatus(NodeStatus.Error);
       }
     } finally {
       infoLock.unlock();

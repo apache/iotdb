@@ -838,7 +838,7 @@ public class TsFileProcessor {
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
       }
       if (tsFileSyncManager.isEnableSync()) {
-        tsFileSyncManager.collectRealTimeDeletion(deletion);
+        tsFileSyncManager.collectRealTimeDeletion(deletion, storageGroupName);
       }
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -1238,7 +1238,7 @@ public class TsFileProcessor {
               storageGroupName,
               tsFileResource.getTsFile().getName(),
               e);
-          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(NodeStatus.Error);
+          IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
           try {
             logger.error(
                 "{}: {} IOTask meets error, truncate the corrupted data",
@@ -1368,7 +1368,7 @@ public class TsFileProcessor {
               storageGroupName,
               tsFileResource.getTsFile().getAbsolutePath(),
               e);
-          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(NodeStatus.Error);
+          IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
           break;
         }
       }

@@ -16,33 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apche.iotdb.external.api;
+package org.apache.iotdb.external.api;
 
+import java.nio.file.Path;
 import java.util.Properties;
 
-/** An interface for series number limiting, users can implement their own limitation strategy */
-public interface ISeriesNumerLimiter {
+/**
+ * An interface to load properties from external properties file to override the default
+ * configurations
+ */
+public interface IPropertiesLoader {
 
   /**
-   * do the necessary initialization
+   * Load Properties from specific file
    *
-   * @param properties Properties containing all the parameters needed to init
+   * @param file The path of the properties file to open
+   * @return a property list with values in file.
    */
-  void init(Properties properties);
-
-  /**
-   * add time series
-   *
-   * @param number time series number for current createTimeSeries operation
-   * @return true if totalTimeSeriesNumber doesn't exceed the limit and current createTimeSeries
-   *     operation is allowed, otherwise false
-   */
-  boolean addTimeSeries(int number);
-
-  /**
-   * delete time series
-   *
-   * @param number time series number for current deleteTimeSeries operation
-   */
-  void deleteTimeSeries(int number);
+  Properties loadProperties(Path file);
 }

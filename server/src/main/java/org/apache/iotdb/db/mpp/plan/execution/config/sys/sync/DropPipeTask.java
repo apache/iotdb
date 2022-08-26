@@ -37,6 +37,6 @@ public class DropPipeTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.dropPipeSink();
+    return configTaskExecutor.dropPipe();
   }
 }

@@ -22,11 +22,11 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.external.api.IPropertiesLoader;
+import org.apache.iotdb.external.api.ISeriesNumerLimiter;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.apache.commons.io.FileUtils;
-import org.apche.iotdb.external.api.IPropertiesLoader;
-import org.apche.iotdb.external.api.ISeriesNumerLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
