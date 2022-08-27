@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -123,6 +124,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
@@ -2354,11 +2356,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("MERGE ON CLUSTER is not supported in standalone mode");
     }
-    if (ctx.LOCAL() != null) {
-      mergeStatement.setCluster(false);
-    } else {
-      mergeStatement.setCluster(true);
-    }
+    mergeStatement.setCluster(ctx.LOCAL() == null);
     return mergeStatement;
   }
 
@@ -2368,11 +2366,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("FULL MERGE ON CLUSTER is not supported in standalone mode");
     }
-    if (ctx.LOCAL() != null) {
-      mergeStatement.setCluster(false);
-    } else {
-      mergeStatement.setCluster(true);
-    }
+    mergeStatement.setCluster(ctx.LOCAL() == null);
     return mergeStatement;
   }
 
@@ -2388,11 +2382,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
     }
-    if (ctx.LOCAL() != null) {
-      flushStatement.setCluster(false);
-    } else {
-      flushStatement.setCluster(true);
-    }
+    flushStatement.setCluster(ctx.LOCAL() == null);
     if (ctx.prefixPath(0) != null) {
       storageGroups = new ArrayList<>();
       for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
@@ -2411,11 +2401,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("CLEAR CACHE ON CLUSTER is not supported in standalone mode");
     }
-    if (ctx.LOCAL() != null) {
-      clearCacheStatement.setCluster(false);
-    } else {
-      clearCacheStatement.setCluster(true);
-    }
+    clearCacheStatement.setCluster(ctx.LOCAL() == null);
     return clearCacheStatement;
   }
 
@@ -2429,12 +2415,28 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException(
           "LOAD CONFIGURATION ON CLUSTER is not supported in standalone mode");
     }
-    if (ctx.LOCAL() != null) {
-      loadConfigurationStatement.setCluster(false);
-    } else {
-      loadConfigurationStatement.setCluster(true);
-    }
+    loadConfigurationStatement.setCluster(ctx.LOCAL() == null);
     return loadConfigurationStatement;
+  }
+
+  // Set System Status
+
+  @Override
+  public Statement visitSetSystemStatus(IoTDBSqlParser.SetSystemStatusContext ctx) {
+    SetSystemStatusStatement setSystemStatusStatement = new SetSystemStatusStatement();
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException(
+          "SET SYSTEM STATUS ON CLUSTER is not supported in standalone mode");
+    }
+    setSystemStatusStatement.setCluster(ctx.LOCAL() == null);
+    if (ctx.RUNNING() != null) {
+      setSystemStatusStatement.setStatus(NodeStatus.Running);
+    } else if (ctx.READONLY() != null) {
+      setSystemStatusStatement.setStatus(NodeStatus.ReadOnly);
+    } else if (ctx.ERROR() != null) {
+      setSystemStatusStatement.setStatus(NodeStatus.Error);
+    }
+    return setSystemStatusStatement;
   }
 
   // show region

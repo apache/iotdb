@@ -2243,7 +2243,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       // Set system to ReadOnly
       return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, true);
     } else {
-      // Set system to Writable
+      // Set system to Running
       return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, false);
     }
   }
