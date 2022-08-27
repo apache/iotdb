@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
-import org.apache.iotdb.db.mpp.transformation.datastructure.NewCache;
+import org.apache.iotdb.db.mpp.transformation.datastructure.Cache;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -359,7 +359,7 @@ public class ElasticSerializableTVList implements PointCollector {
     this.evictionUpperBound = evictionUpperBound;
   }
 
-  private class LRUCache extends NewCache {
+  private class LRUCache extends Cache {
 
     LRUCache(int capacity) {
       super(capacity);

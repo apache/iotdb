@@ -21,11 +21,16 @@ package org.apache.iotdb.db.query.udf.datastructure;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 
 public class LRUCacheTest {
+
+  private static final Logger logger = LoggerFactory.getLogger(LRUCacheTest.class);
 
   private static final int CACHE_SIZE = 3;
   private static final int DATA_SIZE = CACHE_SIZE << 3;
@@ -148,11 +153,12 @@ public class LRUCacheTest {
   }
 
   @Test
+  @Ignore
   public void testRandomPerformance() {
     double[] rate = new double[] {0.07, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
     for (int i = 0; i < rate.length; i++) {
       double sum = loopsForRandom((int) (PERFORMANCE_CACHE_SIZE / rate[i]));
-      System.out.println("LRUCache " + rate[i] + " " + (sum / LOOP_COUNT));
+      logger.info("Random LRUCache " + rate[i] + " " + (sum / LOOP_COUNT));
     }
   }
 
@@ -177,11 +183,12 @@ public class LRUCacheTest {
   }
 
   @Test
+  @Ignore
   public void testScanPerformance() {
     double[] rate = new double[] {0.07, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
     for (int i = 0; i < rate.length; i++) {
       double sum = loopsForScan((int) (PERFORMANCE_CACHE_SIZE / rate[i]));
-      System.out.println("Scan LRUCache " + rate[i] + " " + (sum / LOOP_COUNT));
+      logger.info("Scan LRUCache " + rate[i] + " " + (sum / LOOP_COUNT));
     }
   }
 }

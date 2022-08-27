@@ -47,15 +47,15 @@ public class LRUCache extends Cache {
   }
 
   private void access(int targetIndex) {
-    if (!removeFirstOccurrence(targetIndex)) {
-      if (cacheCapacity <= cacheSize) {
-        int lastIndex = removeLast();
+    if (!containsKey(targetIndex)) {
+      if (cacheCapacity <= size()) {
+        int lastIndex = getLast();
         outMemory[lastIndex] = inMemory[lastIndex];
         inMemory[lastIndex] = Integer.MIN_VALUE;
       }
       inMemory[targetIndex] = outMemory[targetIndex];
       outMemory[targetIndex] = Integer.MIN_VALUE;
     }
-    addFirst(targetIndex);
+    putKey(targetIndex);
   }
 }
