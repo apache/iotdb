@@ -1,0 +1,8 @@
+-------------------------------------------------------------------------------
+Test set: org.apache.iotdb.cluster.query.ClusterPlanExecutorTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 1.063 s <<< FAILURE! - in org.apache.iotdb.cluster.query.ClusterPlanExecutorTest
+testGetAllStorageGroupNodes(org.apache.iotdb.cluster.query.ClusterPlanExecutorTest)  Time elapsed: 1.061 s  <<< FAILURE!
+org.junit.ComparisonFailure: expected:<root.test[7]> but was:<root.test[0]>
+	at org.apache.iotdb.cluster.query.ClusterPlanExecutorTest.testGetAllStorageGroupNodes(ClusterPlanExecutorTest.java:93)
+

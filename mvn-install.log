@@ -81,14 +81,7 @@
 [[1;34mINFO[m] Skipping pom project
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-parent[0;1m ---[m
-[[1;34mINFO[m] Enabled default license matchers.
-[[1;34mINFO[m] Will parse SCM ignores for exclusions...
-[[1;34mINFO[m] Parsing exclusions from /home/kejiawu2/mp1/iotdb/.gitignore
-[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
-[[1;34mINFO[m] 156 implicit excludes (use -debug for more details).
-[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
-[[1;34mINFO[m] 374 resources included (use -debug for more details)
-[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 352 licenses.
+[[1;34mINFO[m] RAT will not execute since it is configured to be skipped via system property 'rat.skip'.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-parent[0;1m ---[m
 [[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/pom.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-parent/0.13.0-SNAPSHOT/iotdb-parent-0.13.0-SNAPSHOT.pom
@@ -120,10 +113,7 @@
 [[1;34mINFO[m] Copying 3 resources
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36mtsfile[0;1m ---[m
-[[1;34mINFO[m] Changes detected - recompiling the module!
-[[1;34mINFO[m] Compiling 247 source files to /home/kejiawu2/mp1/iotdb/tsfile/target/classes
-[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/tsfile/src/main/java/org/apache/iotdb/tsfile/read/reader/chunk/ChunkReader.java: Some input files use unchecked or unsafe operations.
-[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/tsfile/src/main/java/org/apache/iotdb/tsfile/read/reader/chunk/ChunkReader.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] Nothing to compile - all classes are up to date
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36mtsfile[0;1m ---[m
 [[1;34mINFO[m] 
@@ -136,10 +126,7 @@
 [[1;34mINFO[m] Copying 3 resources
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36mtsfile[0;1m ---[m
-[[1;34mINFO[m] Changes detected - recompiling the module!
-[[1;34mINFO[m] Compiling 106 source files to /home/kejiawu2/mp1/iotdb/tsfile/target/test-classes
-[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/tsfile/src/test/java/org/apache/iotdb/tsfile/write/TsFileIOWriterTest.java: Some input files use unchecked or unsafe operations.
-[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/tsfile/src/test/java/org/apache/iotdb/tsfile/write/TsFileIOWriterTest.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] Nothing to compile - all classes are up to date
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36mtsfile[0;1m ---[m
 [[1;34mINFO[m] Tests are skipped.
@@ -148,7 +135,6 @@
 [[1;34mINFO[m] Tests are skipped.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36mtsfile[0;1m ---[m
-[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/tsfile/target/tsfile-0.13.0-SNAPSHOT.jar
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36mtsfile[0;1m ---[m
 [[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
@@ -172,7 +158,6 @@
 [[1;34mINFO[m] 
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36mtsfile[0;1m ---[m
-[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/tsfile/target/tsfile-0.13.0-SNAPSHOT-sources.jar
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36mtsfile[0;1m ---[m
 [[1;34mINFO[m] Tests are skipped.
@@ -189,13 +174,7 @@
 [[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36mtsfile[0;1m ---[m
-[[1;34mINFO[m] Enabled default license matchers.
-[[1;34mINFO[m] Will parse SCM ignores for exclusions...
-[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
-[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
-[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
-[[1;34mINFO[m] 357 resources included (use -debug for more details)
-[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 357 licenses.
+[[1;34mINFO[m] RAT will not execute since it is configured to be skipped via system property 'rat.skip'.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36mtsfile[0;1m ---[m
 [[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/tsfile/target/tsfile-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/tsfile/0.13.0-SNAPSHOT/tsfile-0.13.0-SNAPSHOT.jar
@@ -220,9 +199,8 @@
 [[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-antlr[0;1m ---[m
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mantlr4-maven-plugin:4.8-1:antlr4[m [1m(default)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] No grammars to process
 [[1;34mINFO[m] ANTLR 4: Processing source directory /home/kejiawu2/mp1/iotdb/antlr/src/main/antlr4
-[[1;34mINFO[m] Processing grammar: org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.g4
-[[1;34mINFO[m] Processing grammar: org/apache/iotdb/db/qp/sql/IoTDBSqlParser.g4
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mbuild-helper-maven-plugin:3.2.0:add-source[m [1m(add-source)[m @ [36miotdb-antlr[0;1m ---[m
 [[1;34mINFO[m] Source directory: /home/kejiawu2/mp1/iotdb/antlr/target/generated-sources/antlr4 added.
@@ -237,8 +215,7 @@
 [[1;34mINFO[m] Copying 3 resources
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36miotdb-antlr[0;1m ---[m
-[[1;34mINFO[m] Changes detected - recompiling the module!
-[[1;34mINFO[m] Compiling 4 source files to /home/kejiawu2/mp1/iotdb/antlr/target/classes
+[[1;34mINFO[m] Nothing to compile - all classes are up to date
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-antlr[0;1m ---[m
 [[1;34mINFO[m] 
@@ -257,7 +234,6 @@
 [[1;34mINFO[m] Tests are skipped.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36miotdb-antlr[0;1m ---[m
-[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/antlr/target/iotdb-antlr-0.13.0-SNAPSHOT.jar
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36miotdb-antlr[0;1m ---[m
 [[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
@@ -288,7 +264,6 @@
 [[1;34mINFO[m] 
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-antlr[0;1m ---[m
-[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/antlr/target/iotdb-antlr-0.13.0-SNAPSHOT-sources.jar
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36miotdb-antlr[0;1m ---[m
 [[1;34mINFO[m] Tests are skipped.
@@ -302,13 +277,7 @@
 [[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-antlr[0;1m ---[m
-[[1;34mINFO[m] Enabled default license matchers.
-[[1;34mINFO[m] Will parse SCM ignores for exclusions...
-[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
-[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
-[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
-[[1;34mINFO[m] 3 resources included (use -debug for more details)
-[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 3 licenses.
+[[1;34mINFO[m] RAT will not execute since it is configured to be skipped via system property 'rat.skip'.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-antlr[0;1m ---[m
 [[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/antlr/target/iotdb-antlr-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-antlr/0.13.0-SNAPSHOT/iotdb-antlr-0.13.0-SNAPSHOT.jar
@@ -333,6 +302,7 @@
 [[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-thrift[0;1m ---[m
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mdownload-maven-plugin:1.6.7:wget[m [1m(get-thrift-executable)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] File already exist, skipping
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mexec-maven-plugin:1.6.0:exec[m [1m(make-thrift-executable-executable)[m @ [36miotdb-thrift[0;1m ---[m
 [[1;34mINFO[m] 
@@ -431,13 +401,7 @@
 [[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-thrift[0;1m ---[m
-[[1;34mINFO[m] Enabled default license matchers.
-[[1;34mINFO[m] Will parse SCM ignores for exclusions...
-[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
-[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
-[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
-[[1;34mINFO[m] 4 resources included (use -debug for more details)
-[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 4 licenses.
+[[1;34mINFO[m] RAT will not execute since it is configured to be skipped via system property 'rat.skip'.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-thrift[0;1m ---[m
 [[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/thrift/target/iotdb-thrift-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-thrift/0.13.0-SNAPSHOT/iotdb-thrift-0.13.0-SNAPSHOT.jar
@@ -462,6 +426,7 @@
 [[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-thrift-cluster[0;1m ---[m
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mdownload-maven-plugin:1.6.7:wget[m [1m(get-thrift-executable)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] File already exist, skipping
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mexec-maven-plugin:1.6.0:exec[m [1m(make-thrift-executable-executable)[m @ [36miotdb-thrift-cluster[0;1m ---[m
 [[1;34mINFO[m] 
@@ -558,13 +523,7 @@
 [[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-thrift-cluster[0;1m ---[m
-[[1;34mINFO[m] Enabled default license matchers.
-[[1;34mINFO[m] Will parse SCM ignores for exclusions...
-[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
-[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
-[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
-[[1;34mINFO[m] 4 resources included (use -debug for more details)
-[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 4 licenses.
+[[1;34mINFO[m] RAT will not execute since it is configured to be skipped via system property 'rat.skip'.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-thrift-cluster[0;1m ---[m
 [[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/thrift-cluster/target/iotdb-thrift-cluster-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-thrift-cluster/0.13.0-SNAPSHOT/iotdb-thrift-cluster-0.13.0-SNAPSHOT.jar
@@ -589,6 +548,7 @@
 [[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-thrift-sync[0;1m ---[m
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mdownload-maven-plugin:1.6.7:wget[m [1m(get-thrift-executable)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] File already exist, skipping
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mexec-maven-plugin:1.6.0:exec[m [1m(make-thrift-executable-executable)[m @ [36miotdb-thrift-sync[0;1m ---[m
 [[1;34mINFO[m] 
@@ -685,13 +645,7 @@
 [[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-thrift-sync[0;1m ---[m
-[[1;34mINFO[m] Enabled default license matchers.
-[[1;34mINFO[m] Will parse SCM ignores for exclusions...
-[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
-[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
-[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
-[[1;34mINFO[m] 4 resources included (use -debug for more details)
-[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 4 licenses.
+[[1;34mINFO[m] RAT will not execute since it is configured to be skipped via system property 'rat.skip'.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-thrift-sync[0;1m ---[m
 [[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/thrift-sync/target/iotdb-thrift-sync-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-thrift-sync/0.13.0-SNAPSHOT/iotdb-thrift-sync-0.13.0-SNAPSHOT.jar
@@ -725,8 +679,7 @@
 [[1;34mINFO[m] Copying 3 resources
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36mservice-rpc[0;1m ---[m
-[[1;34mINFO[m] Changes detected - recompiling the module!
-[[1;34mINFO[m] Compiling 24 source files to /home/kejiawu2/mp1/iotdb/service-rpc/target/classes
+[[1;34mINFO[m] Nothing to compile - all classes are up to date
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36mservice-rpc[0;1m ---[m
 [[1;34mINFO[m] 
@@ -738,8 +691,7 @@
 [[1;34mINFO[m] Copying 3 resources
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36mservice-rpc[0;1m ---[m
-[[1;34mINFO[m] Changes detected - recompiling the module!
-[[1;34mINFO[m] Compiling 1 source file to /home/kejiawu2/mp1/iotdb/service-rpc/target/test-classes
+[[1;34mINFO[m] Nothing to compile - all classes are up to date
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36mservice-rpc[0;1m ---[m
 [[1;34mINFO[m] Tests are skipped.
@@ -748,7 +700,6 @@
 [[1;34mINFO[m] Tests are skipped.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36mservice-rpc[0;1m ---[m
-[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/service-rpc/target/service-rpc-0.13.0-SNAPSHOT.jar
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36mservice-rpc[0;1m ---[m
 [[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
@@ -772,7 +723,6 @@
 [[1;34mINFO[m] 
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36mservice-rpc[0;1m ---[m
-[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/service-rpc/target/service-rpc-0.13.0-SNAPSHOT-sources.jar
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36mservice-rpc[0;1m ---[m
 [[1;34mINFO[m] Tests are skipped.
@@ -792,13 +742,7 @@
 [[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36mservice-rpc[0;1m ---[m
-[[1;34mINFO[m] Enabled default license matchers.
-[[1;34mINFO[m] Will parse SCM ignores for exclusions...
-[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
-[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
-[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
-[[1;34mINFO[m] 26 resources included (use -debug for more details)
-[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 26 licenses.
+[[1;34mINFO[m] RAT will not execute since it is configured to be skipped via system property 'rat.skip'.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36mservice-rpc[0;1m ---[m
 [[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/service-rpc/target/service-rpc-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/service-rpc/0.13.0-SNAPSHOT/service-rpc-0.13.0-SNAPSHOT.jar
@@ -837,12 +781,7 @@
 [[1;34mINFO[m] Copying 3 resources
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36miotdb-jdbc[0;1m ---[m
-[[1;34mINFO[m] Changes detected - recompiling the module!
-[[1;34mINFO[m] Compiling 24 source files to /home/kejiawu2/mp1/iotdb/jdbc/target/classes
-[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/jdbc/src/main/java/org/apache/iotdb/jdbc/AbstractIoTDBJDBCResultSet.java: Some input files use or override a deprecated API.
-[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/jdbc/src/main/java/org/apache/iotdb/jdbc/AbstractIoTDBJDBCResultSet.java: Recompile with -Xlint:deprecation for details.
-[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/jdbc/src/main/java/org/apache/iotdb/jdbc/IoTDBDatabaseMetadata.java: /home/kejiawu2/mp1/iotdb/jdbc/src/main/java/org/apache/iotdb/jdbc/IoTDBDatabaseMetadata.java uses unchecked or unsafe operations.
-[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/jdbc/src/main/java/org/apache/iotdb/jdbc/IoTDBDatabaseMetadata.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] Nothing to compile - all classes are up to date
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-jdbc[0;1m ---[m
 [[1;34mINFO[m] 
@@ -854,8 +793,7 @@
 [[1;34mINFO[m] Copying 3 resources
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36miotdb-jdbc[0;1m ---[m
-[[1;34mINFO[m] Changes detected - recompiling the module!
-[[1;34mINFO[m] Compiling 8 source files to /home/kejiawu2/mp1/iotdb/jdbc/target/test-classes
+[[1;34mINFO[m] Nothing to compile - all classes are up to date
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36miotdb-jdbc[0;1m ---[m
 [[1;34mINFO[m] Tests are skipped.
@@ -890,7 +828,6 @@
 [[1;34mINFO[m] 
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-jdbc[0;1m ---[m
-[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/jdbc/target/iotdb-jdbc-0.13.0-SNAPSHOT-sources.jar
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36miotdb-jdbc[0;1m ---[m
 [[1;34mINFO[m] Tests are skipped.
@@ -911,13 +848,7 @@
 [[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-jdbc[0;1m ---[m
-[[1;34mINFO[m] Enabled default license matchers.
-[[1;34mINFO[m] Will parse SCM ignores for exclusions...
-[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
-[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
-[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
-[[1;34mINFO[m] 37 resources included (use -debug for more details)
-[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 37 licenses.
+[[1;34mINFO[m] RAT will not execute since it is configured to be skipped via system property 'rat.skip'.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-jdbc[0;1m ---[m
 [[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/jdbc/target/iotdb-jdbc-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-jdbc/0.13.0-SNAPSHOT/iotdb-jdbc-0.13.0-SNAPSHOT.jar
@@ -1001,7 +932,6 @@
 [[1;34mINFO[m] 
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-server[0;1m ---[m
-[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT-sources.jar
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-assembly-plugin:3.1.0:single[m [1m(server-assembly)[m @ [36miotdb-server[0;1m ---[m
 [[1;34mINFO[m] Reading assembly descriptor: src/assembly/server.xml
@@ -1045,13 +975,7 @@
 [[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-server[0;1m ---[m
-[[1;34mINFO[m] Enabled default license matchers.
-[[1;34mINFO[m] Will parse SCM ignores for exclusions...
-[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
-[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
-[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
-[[1;34mINFO[m] 1181 resources included (use -debug for more details)
-[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 1180 licenses.
+[[1;34mINFO[m] RAT will not execute since it is configured to be skipped via system property 'rat.skip'.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-server[0;1m ---[m
 [[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-server/0.13.0-SNAPSHOT/iotdb-server-0.13.0-SNAPSHOT.jar
@@ -1087,8 +1011,7 @@
 [[1;34mINFO[m] Copying 3 resources
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36miotdb-session[0;1m ---[m
-[[1;34mINFO[m] Changes detected - recompiling the module!
-[[1;34mINFO[m] Compiling 9 source files to /home/kejiawu2/mp1/iotdb/session/target/classes
+[[1;34mINFO[m] Nothing to compile - all classes are up to date
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-session[0;1m ---[m
 [[1;34mINFO[m] 
@@ -1098,8 +1021,7 @@
 [[1;34mINFO[m] Copying 3 resources
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36miotdb-session[0;1m ---[m
-[[1;34mINFO[m] Changes detected - recompiling the module!
-[[1;34mINFO[m] Compiling 11 source files to /home/kejiawu2/mp1/iotdb/session/target/test-classes
+[[1;34mINFO[m] Nothing to compile - all classes are up to date
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36miotdb-session[0;1m ---[m
 [[1;34mINFO[m] Tests are skipped.
@@ -1108,7 +1030,6 @@
 [[1;34mINFO[m] Tests are skipped.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36miotdb-session[0;1m ---[m
-[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/session/target/iotdb-session-0.13.0-SNAPSHOT.jar
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36miotdb-session[0;1m ---[m
 [[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
@@ -1132,7 +1053,6 @@
 [[1;34mINFO[m] 
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-session[0;1m ---[m
-[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/session/target/iotdb-session-0.13.0-SNAPSHOT-sources.jar
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36miotdb-session[0;1m ---[m
 [[1;34mINFO[m] Tests are skipped.
@@ -1155,13 +1075,7 @@
 [[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-session[0;1m ---[m
-[[1;34mINFO[m] Enabled default license matchers.
-[[1;34mINFO[m] Will parse SCM ignores for exclusions...
-[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
-[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
-[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
-[[1;34mINFO[m] 23 resources included (use -debug for more details)
-[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 23 licenses.
+[[1;34mINFO[m] RAT will not execute since it is configured to be skipped via system property 'rat.skip'.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-session[0;1m ---[m
 [[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/session/target/iotdb-session-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-session/0.13.0-SNAPSHOT/iotdb-session-0.13.0-SNAPSHOT.jar
@@ -1244,7 +1158,6 @@
 [[1;34mINFO[m] 
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-cluster[0;1m ---[m
-[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/cluster/target/iotdb-cluster-0.13.0-SNAPSHOT-sources.jar
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-assembly-plugin:3.1.0:single[m [1m(cluster-assembly)[m @ [36miotdb-cluster[0;1m ---[m
 [[1;34mINFO[m] Reading assembly descriptor: src/assembly/cluster.xml
@@ -1275,13 +1188,7 @@
 [[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-cluster[0;1m ---[m
-[[1;34mINFO[m] Enabled default license matchers.
-[[1;34mINFO[m] Will parse SCM ignores for exclusions...
-[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
-[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
-[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
-[[1;34mINFO[m] 349 resources included (use -debug for more details)
-[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 349 licenses.
+[[1;34mINFO[m] RAT will not execute since it is configured to be skipped via system property 'rat.skip'.
 [[1;34mINFO[m] 
 [[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-cluster[0;1m ---[m
 [[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/cluster/target/iotdb-cluster-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-cluster/0.13.0-SNAPSHOT/iotdb-cluster-0.13.0-SNAPSHOT.jar
@@ -1291,20 +1198,20 @@
 [[1;34mINFO[m] [1m------------------------------------------------------------------------[m
 [[1;34mINFO[m] [1mReactor Summary for Apache IoTDB Project Parent POM 0.13.0-SNAPSHOT:[m
 [[1;34mINFO[m] 
-[[1;34mINFO[m] Apache IoTDB Project Parent POM .................... [1;32mSUCCESS[m [  5.004 s]
-[[1;34mINFO[m] TsFile ............................................. [1;32mSUCCESS[m [ 18.937 s]
-[[1;34mINFO[m] sql-antlr .......................................... [1;32mSUCCESS[m [  5.204 s]
-[[1;34mINFO[m] rpc-thrift ......................................... [1;32mSUCCESS[m [ 10.526 s]
-[[1;34mINFO[m] rpc-thrift-cluster ................................. [1;32mSUCCESS[m [  7.701 s]
-[[1;34mINFO[m] rpc-thrift-sync .................................... [1;32mSUCCESS[m [  1.134 s]
-[[1;34mINFO[m] Service-rpc ........................................ [1;32mSUCCESS[m [  1.122 s]
-[[1;34mINFO[m] IoTDB Jdbc ......................................... [1;32mSUCCESS[m [  2.662 s]
-[[1;34mINFO[m] IoTDB Server ....................................... [1;32mSUCCESS[m [ 36.535 s]
-[[1;34mINFO[m] IoTDB Session ...................................... [1;32mSUCCESS[m [  2.269 s]
-[[1;34mINFO[m] cluster ............................................ [1;32mSUCCESS[m [ 12.291 s]
+[[1;34mINFO[m] Apache IoTDB Project Parent POM .................... [1;32mSUCCESS[m [  4.041 s]
+[[1;34mINFO[m] TsFile ............................................. [1;32mSUCCESS[m [ 14.804 s]
+[[1;34mINFO[m] sql-antlr .......................................... [1;32mSUCCESS[m [  3.476 s]
+[[1;34mINFO[m] rpc-thrift ......................................... [1;32mSUCCESS[m [ 13.125 s]
+[[1;34mINFO[m] rpc-thrift-cluster ................................. [1;32mSUCCESS[m [  7.548 s]
+[[1;34mINFO[m] rpc-thrift-sync .................................... [1;32mSUCCESS[m [  1.314 s]
+[[1;34mINFO[m] Service-rpc ........................................ [1;32mSUCCESS[m [  0.924 s]
+[[1;34mINFO[m] IoTDB Jdbc ......................................... [1;32mSUCCESS[m [  1.935 s]
+[[1;34mINFO[m] IoTDB Server ....................................... [1;32mSUCCESS[m [ 35.607 s]
+[[1;34mINFO[m] IoTDB Session ...................................... [1;32mSUCCESS[m [  1.814 s]
+[[1;34mINFO[m] cluster ............................................ [1;32mSUCCESS[m [ 12.313 s]
 [[1;34mINFO[m] [1m------------------------------------------------------------------------[m
 [[1;34mINFO[m] [1;32mBUILD SUCCESS[m
 [[1;34mINFO[m] [1m------------------------------------------------------------------------[m
-[[1;34mINFO[m] Total time:  01:43 min
-[[1;34mINFO[m] Finished at: 2022-08-27T08:29:25-05:00
+[[1;34mINFO[m] Total time:  01:37 min
+[[1;34mINFO[m] Finished at: 2022-08-27T08:45:40-05:00
 [[1;34mINFO[m] [1m------------------------------------------------------------------------[m

@@ -36,6 +36,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -83,10 +85,21 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
   @Test
   public void testGetAllStorageGroupNodes() {
     List<IStorageGroupMNode> allStorageGroupNodes = queryExecutor.getAllStorageGroupNodes();
+    List<IStorageGroupMNode> exceptedStorageGroupNodes =
+        IoTDB.metaManager.getAllStorageGroupNodes();
+    Collections.sort(allStorageGroupNodes, new MNodeComparator());
+    Collections.sort(exceptedStorageGroupNodes, new MNodeComparator());
     for (int i = 0; i < allStorageGroupNodes.size(); i++) {
       assertEquals(
-          IoTDB.metaManager.getAllStorageGroupNodes().get(i).getFullPath(),
+          exceptedStorageGroupNodes.get(i).getFullPath(),
           allStorageGroupNodes.get(i).getFullPath());
+    }
+  }
+
+  class MNodeComparator implements Comparator<IStorageGroupMNode> {
+    @Override
+    public int compare(IStorageGroupMNode a, IStorageGroupMNode b) {
+      return a.getFullPath().compareTo(b.getFullPath());
     }
   }
 
