@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.sql;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -2239,12 +2240,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitSetSystemStatus(IoTDBSqlParser.SetSystemStatusContext ctx) {
-    if (ctx.READONLY() != null) {
-      // Set system to ReadOnly
-      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, true);
+    if (ctx.RUNNING() != null) {
+      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.Running);
+    } else if (ctx.READONLY() != null) {
+      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.ReadOnly);
     } else {
-      // Set system to Running
-      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, false);
+      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.Error);
     }
   }
 

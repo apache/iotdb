@@ -2433,7 +2433,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       setSystemStatusStatement.setStatus(NodeStatus.Running);
     } else if (ctx.READONLY() != null) {
       setSystemStatusStatement.setStatus(NodeStatus.ReadOnly);
-    } else if (ctx.ERROR() != null) {
+    } else {
       setSystemStatusStatement.setStatus(NodeStatus.Error);
     }
     return setSystemStatusStatement;

@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -577,9 +576,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateSetSystemMode(SetSystemModePlan plan) {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setNodeStatus(plan.isReadOnly() ? NodeStatus.ReadOnly : NodeStatus.Running);
+    IoTDBDescriptor.getInstance().getConfig().setNodeStatus(plan.getStatus());
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
