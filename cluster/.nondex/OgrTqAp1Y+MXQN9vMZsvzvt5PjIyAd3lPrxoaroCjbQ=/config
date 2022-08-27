@@ -1,0 +1,11 @@
+nondexFilter=.*
+nondexMode=FULL
+nondexSeed=1016066
+nondexStart=0
+nondexEnd=9223372036854775807
+nondexPrintstack=false
+nondexDir=/home/kejiawu2/mp1/iotdb/cluster/.nondex
+nondexJarDir=/home/kejiawu2/mp1/iotdb/cluster/.nondex
+nondexExecid=OgrTqAp1Y+MXQN9vMZsvzvt5PjIyAd3lPrxoaroCjbQ=
+nondexLogging=CONFIG
+test=

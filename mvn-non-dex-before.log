@@ -1,0 +1,283 @@
+[[1;34mINFO[m] Scanning for projects...
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for org.apache.iotdb:tsfile:jar:0.13.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencyManagement.dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.eclipse.jetty:jetty-server:jar -> version ${jetty.version} vs 11.0.6 @ org.apache.iotdb:iotdb-parent:0.13.0-SNAPSHOT, /home/kejiawu2/mp1/iotdb/pom.xml, line 539, column 25
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for org.apache.iotdb:iotdb-parent:pom:0.13.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencyManagement.dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.eclipse.jetty:jetty-server:jar -> version ${jetty.version} vs 11.0.6 @ line 539, column 25
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] It is highly recommended to fix these problems because they threaten the stability of your build.
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] For this reason, future Maven versions might no longer support building such malformed projects.
+[[1;33mWARNING[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m-------------------< [0;36morg.apache.iotdb:iotdb-cluster[0;1m >-------------------[m
+[[1;34mINFO[m] [1mBuilding cluster 0.13.0-SNAPSHOT[m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mnondex-maven-plugin:1.1.2:nondex[m [1m(default-cli)[0;1m > [0;1mtest-compile[m @ [36miotdb-cluster[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.7.0:process[m [1m(process-resource-bundles)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Preparing remote bundle org.apache:apache-jar-resource-bundle:1.4
+[[1;34mINFO[m] Copying 3 resources from 1 bundle.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:resources[m [1m(default-resources)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/cluster/src/main/resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 220 source files to /home/kejiawu2/mp1/iotdb/cluster/target/classes
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/cluster/src/main/java/org/apache/iotdb/cluster/log/snapshot/PartitionedSnapshot.java: Some input files use unchecked or unsafe operations.
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/cluster/src/main/java/org/apache/iotdb/cluster/log/snapshot/PartitionedSnapshot.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:testResources[m [1m(default-testResources)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] Copying 10 resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 106 source files to /home/kejiawu2/mp1/iotdb/cluster/target/test-classes
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/cluster/src/test/java/org/apache/iotdb/cluster/server/member/BaseMember.java: Some input files use unchecked or unsafe operations.
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/cluster/src/test/java/org/apache/iotdb/cluster/server/member/BaseMember.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mnondex-maven-plugin:1.1.2:nondex[m [1m(default-cli)[0;1m < [0;1mtest-compile[m @ [36miotdb-cluster[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mnondex-maven-plugin:1.1.2:nondex[m [1m(default-cli)[m @ [36miotdb-cluster[0;1m ---[m
+INFO: The original argline is: 
+INFO: Adding NonDex argLine to existing argLine specified by the project
+CONFIG: nondexFilter=.*
+nondexMode=FULL
+nondexSeed=933178
+nondexStart=0
+nondexEnd=9223372036854775807
+nondexPrintstack=false
+nondexDir=/home/kejiawu2/mp1/iotdb/cluster/.nondex
+nondexJarDir=.nondex
+nondexExecid=clean_hSP2hxSIYt4ZsGmoyoZuHILLzn1swVYbLjW+WJLYtXM=
+nondexLogging=CONFIG
+test=
+[[1;33mWARNING[m] The parameter forkMode is deprecated since version 2.14. Use forkCount and reuseForks instead.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] -------------------------------------------------------
+[[1;34mINFO[m]  T E S T S
+[[1;34mINFO[m] -------------------------------------------------------
+[[1;34mINFO[m] Running org.apache.iotdb.cluster.query.[1mClusterPlanExecutorTest[m
+WARN  [2022-08-27 08:31:50,387] [main] org.apache.iotdb.tsfile.common.conf.TSFileDescriptor:100 - Fail to find config file file:/home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-server/0.13.0-SNAPSHOT/iotdb-server-0.13.0-SNAPSHOT-tests.jar!/iotdb-engine.properties 
+WARN  [2022-08-27 08:31:50,422] [main] org.apache.iotdb.cluster.config.ClusterDescriptor:80 - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-cluster.properties, use default configuration 
+WARN  [2022-08-27 08:31:50,593] [main] org.apache.iotdb.db.utils.EnvironmentUtils:254 - EnvironmentUtil setup... 
+WARN  [2022-08-27 08:31:50,596] [main] org.apache.iotdb.db.service.StartupChecks:38 - iotdb.jmx.port missing from iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat) 
+WARN  [2022-08-27 08:31:50,968] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:51,042] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:51,059] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:51,074] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:51,088] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:51,101] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:51,115] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:51,124] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:51,140] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:51,157] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:51,170] [main] org.apache.iotdb.db.utils.EnvironmentUtils:106 - EnvironmentUtil cleanEnv... 
+[[1;34mINFO[m] [1;32mTests run: [0;1;32m1[m, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.327 s - in org.apache.iotdb.cluster.query.[1mClusterPlanExecutorTest[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] Results:
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1;32mTests run: 1, Failures: 0, Errors: 0, Skipped: 0[m
+[[1;34mINFO[m] 
+INFO: Adding excluded groups to newly created one
+INFO: Adding NonDex argLine to existing argLine specified by the project
+CONFIG: nondexFilter=.*
+nondexMode=FULL
+nondexSeed=933178
+nondexStart=0
+nondexEnd=9223372036854775807
+nondexPrintstack=false
+nondexDir=/home/kejiawu2/mp1/iotdb/cluster/.nondex
+nondexJarDir=/home/kejiawu2/mp1/iotdb/cluster/.nondex
+nondexExecid=xACLwQMxcMkGSmeqWFgoD9mP6NJXP2pIxFh2TMjJEo=
+nondexLogging=CONFIG
+test=
+[[1;33mWARNING[m] The parameter forkMode is deprecated since version 2.14. Use forkCount and reuseForks instead.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] -------------------------------------------------------
+[[1;34mINFO[m]  T E S T S
+[[1;34mINFO[m] -------------------------------------------------------
+[[1;34mINFO[m] Running org.apache.iotdb.cluster.query.[1mClusterPlanExecutorTest[m
+WARN  [2022-08-27 08:31:52,661] [main] org.apache.iotdb.tsfile.common.conf.TSFileDescriptor:100 - Fail to find config file file:/home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-server/0.13.0-SNAPSHOT/iotdb-server-0.13.0-SNAPSHOT-tests.jar!/iotdb-engine.properties 
+WARN  [2022-08-27 08:31:52,695] [main] org.apache.iotdb.cluster.config.ClusterDescriptor:80 - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-cluster.properties, use default configuration 
+WARN  [2022-08-27 08:31:52,959] [main] org.apache.iotdb.db.utils.EnvironmentUtils:254 - EnvironmentUtil setup... 
+WARN  [2022-08-27 08:31:52,964] [main] org.apache.iotdb.db.service.StartupChecks:38 - iotdb.jmx.port missing from iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat) 
+WARN  [2022-08-27 08:31:53,486] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:53,600] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:53,648] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:53,679] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:53,704] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:53,732] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:53,756] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:53,795] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:53,816] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:53,833] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:53,851] [main] org.apache.iotdb.db.utils.EnvironmentUtils:106 - EnvironmentUtil cleanEnv... 
+[[1;31mERROR[m] [1;31mTests [0;1mrun: [0;1m1[m, [1;31mFailures: [0;1;31m1[m, Errors: 0, Skipped: 0, Time elapsed: 1.623 s[1;31m <<< FAILURE![m - in org.apache.iotdb.cluster.query.[1mClusterPlanExecutorTest[m
+[[1;31mERROR[m] testGetAllStorageGroupNodes(org.apache.iotdb.cluster.query.ClusterPlanExecutorTest)  Time elapsed: 1.621 s  <<< FAILURE!
+org.junit.ComparisonFailure: expected:<root.test[0]> but was:<root.test[7]>
+	at org.apache.iotdb.cluster.query.ClusterPlanExecutorTest.testGetAllStorageGroupNodes(ClusterPlanExecutorTest.java:87)
+
+[[1;34mINFO[m] 
+[[1;34mINFO[m] Results:
+[[1;34mINFO[m] 
+[[1;31mERROR[m] [1;31mFailures: [m
+[[1;31mERROR[m] [1;31m  ClusterPlanExecutorTest.testGetAllStorageGroupNodes:87 expected:<root.test[0]> but was:<root.test[7]>[m
+[[1;34mINFO[m] 
+[[1;31mERROR[m] [1;31mTests run: 1, Failures: 1, Errors: 0, Skipped: 0[m
+[[1;34mINFO[m] 
+INFO: Surefire failed when running tests for xACLwQMxcMkGSmeqWFgoD9mP6NJXP2pIxFh2TMjJEo=
+INFO: Adding excluded groups to newly created one
+INFO: Adding NonDex argLine to existing argLine specified by the project
+CONFIG: nondexFilter=.*
+nondexMode=FULL
+nondexSeed=974622
+nondexStart=0
+nondexEnd=9223372036854775807
+nondexPrintstack=false
+nondexDir=/home/kejiawu2/mp1/iotdb/cluster/.nondex
+nondexJarDir=/home/kejiawu2/mp1/iotdb/cluster/.nondex
+nondexExecid=MNxh0GrBhHc0+HtthX7BEWea1KIkcwdn5drKlB0z7Y=
+nondexLogging=CONFIG
+test=
+[[1;33mWARNING[m] The parameter forkMode is deprecated since version 2.14. Use forkCount and reuseForks instead.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] -------------------------------------------------------
+[[1;34mINFO[m]  T E S T S
+[[1;34mINFO[m] -------------------------------------------------------
+[[1;34mINFO[m] Running org.apache.iotdb.cluster.query.[1mClusterPlanExecutorTest[m
+WARN  [2022-08-27 08:31:55,094] [main] org.apache.iotdb.tsfile.common.conf.TSFileDescriptor:100 - Fail to find config file file:/home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-server/0.13.0-SNAPSHOT/iotdb-server-0.13.0-SNAPSHOT-tests.jar!/iotdb-engine.properties 
+WARN  [2022-08-27 08:31:55,117] [main] org.apache.iotdb.cluster.config.ClusterDescriptor:80 - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-cluster.properties, use default configuration 
+WARN  [2022-08-27 08:31:55,305] [main] org.apache.iotdb.db.utils.EnvironmentUtils:254 - EnvironmentUtil setup... 
+WARN  [2022-08-27 08:31:55,308] [main] org.apache.iotdb.db.service.StartupChecks:38 - iotdb.jmx.port missing from iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat) 
+WARN  [2022-08-27 08:31:55,653] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:55,736] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:55,757] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:55,776] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:55,796] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:55,812] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:55,838] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:55,857] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:55,876] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:55,891] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:55,909] [main] org.apache.iotdb.db.utils.EnvironmentUtils:106 - EnvironmentUtil cleanEnv... 
+[[1;31mERROR[m] [1;31mTests [0;1mrun: [0;1m1[m, [1;31mFailures: [0;1;31m1[m, Errors: 0, Skipped: 0, Time elapsed: 1.106 s[1;31m <<< FAILURE![m - in org.apache.iotdb.cluster.query.[1mClusterPlanExecutorTest[m
+[[1;31mERROR[m] testGetAllStorageGroupNodes(org.apache.iotdb.cluster.query.ClusterPlanExecutorTest)  Time elapsed: 1.105 s  <<< FAILURE!
+org.junit.ComparisonFailure: expected:<root.test[1]> but was:<root.test[4]>
+	at org.apache.iotdb.cluster.query.ClusterPlanExecutorTest.testGetAllStorageGroupNodes(ClusterPlanExecutorTest.java:87)
+
+[[1;34mINFO[m] 
+[[1;34mINFO[m] Results:
+[[1;34mINFO[m] 
+[[1;31mERROR[m] [1;31mFailures: [m
+[[1;31mERROR[m] [1;31m  ClusterPlanExecutorTest.testGetAllStorageGroupNodes:87 expected:<root.test[1]> but was:<root.test[4]>[m
+[[1;34mINFO[m] 
+[[1;31mERROR[m] [1;31mTests run: 1, Failures: 1, Errors: 0, Skipped: 0[m
+[[1;34mINFO[m] 
+INFO: Surefire failed when running tests for MNxh0GrBhHc0+HtthX7BEWea1KIkcwdn5drKlB0z7Y=
+INFO: Adding excluded groups to newly created one
+INFO: Adding NonDex argLine to existing argLine specified by the project
+CONFIG: nondexFilter=.*
+nondexMode=FULL
+nondexSeed=1016066
+nondexStart=0
+nondexEnd=9223372036854775807
+nondexPrintstack=false
+nondexDir=/home/kejiawu2/mp1/iotdb/cluster/.nondex
+nondexJarDir=/home/kejiawu2/mp1/iotdb/cluster/.nondex
+nondexExecid=OgrTqAp1Y+MXQN9vMZsvzvt5PjIyAd3lPrxoaroCjbQ=
+nondexLogging=CONFIG
+test=
+[[1;33mWARNING[m] The parameter forkMode is deprecated since version 2.14. Use forkCount and reuseForks instead.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] -------------------------------------------------------
+[[1;34mINFO[m]  T E S T S
+[[1;34mINFO[m] -------------------------------------------------------
+[[1;34mINFO[m] Running org.apache.iotdb.cluster.query.[1mClusterPlanExecutorTest[m
+WARN  [2022-08-27 08:31:57,097] [main] org.apache.iotdb.tsfile.common.conf.TSFileDescriptor:100 - Fail to find config file file:/home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-server/0.13.0-SNAPSHOT/iotdb-server-0.13.0-SNAPSHOT-tests.jar!/iotdb-engine.properties 
+WARN  [2022-08-27 08:31:57,131] [main] org.apache.iotdb.cluster.config.ClusterDescriptor:80 - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-cluster.properties, use default configuration 
+WARN  [2022-08-27 08:31:57,304] [main] org.apache.iotdb.db.utils.EnvironmentUtils:254 - EnvironmentUtil setup... 
+WARN  [2022-08-27 08:31:57,308] [main] org.apache.iotdb.db.service.StartupChecks:38 - iotdb.jmx.port missing from iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat) 
+WARN  [2022-08-27 08:31:57,656] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:57,739] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:57,758] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:57,782] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:57,806] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:57,828] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:57,863] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:57,879] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:57,905] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:57,952] [main] org.apache.iotdb.db.engine.compaction.CompactionTaskManager:219 - A CompactionTask failed to be submitted to CompactionTaskManager because taskExecutionPool is null 
+WARN  [2022-08-27 08:31:57,984] [main] org.apache.iotdb.db.utils.EnvironmentUtils:106 - EnvironmentUtil cleanEnv... 
+[[1;31mERROR[m] [1;31mTests [0;1mrun: [0;1m1[m, [1;31mFailures: [0;1;31m1[m, Errors: 0, Skipped: 0, Time elapsed: 1.209 s[1;31m <<< FAILURE![m - in org.apache.iotdb.cluster.query.[1mClusterPlanExecutorTest[m
+[[1;31mERROR[m] testGetAllStorageGroupNodes(org.apache.iotdb.cluster.query.ClusterPlanExecutorTest)  Time elapsed: 1.206 s  <<< FAILURE!
+org.junit.ComparisonFailure: expected:<root.test[0]> but was:<root.test[5]>
+	at org.apache.iotdb.cluster.query.ClusterPlanExecutorTest.testGetAllStorageGroupNodes(ClusterPlanExecutorTest.java:87)
+
+[[1;34mINFO[m] 
+[[1;34mINFO[m] Results:
+[[1;34mINFO[m] 
+[[1;31mERROR[m] [1;31mFailures: [m
+[[1;31mERROR[m] [1;31m  ClusterPlanExecutorTest.testGetAllStorageGroupNodes:87 expected:<root.test[0]> but was:<root.test[5]>[m
+[[1;34mINFO[m] 
+[[1;31mERROR[m] [1;31mTests run: 1, Failures: 1, Errors: 0, Skipped: 0[m
+[[1;34mINFO[m] 
+INFO: Surefire failed when running tests for OgrTqAp1Y+MXQN9vMZsvzvt5PjIyAd3lPrxoaroCjbQ=
+[[1;34mINFO[m] NonDex SUMMARY:
+[[1;34mINFO[m] *********
+[[1;34mINFO[m] mvn nondex:nondex  -DnondexFilter='.*' -DnondexMode=FULL -DnondexSeed=933178 -DnondexStart=0 -DnondexEnd=9223372036854775807 -DnondexPrintstack=false -DnondexDir="/home/kejiawu2/mp1/iotdb/cluster/.nondex" -DnondexJarDir="/home/kejiawu2/mp1/iotdb/cluster/.nondex" -DnondexExecid=xACLwQMxcMkGSmeqWFgoD9mP6NJXP2pIxFh2TMjJEo= -DnondexLogging=CONFIG
+[[1;33mWARNING[m] org.apache.iotdb.cluster.query.ClusterPlanExecutorTest#testGetAllStorageGroupNodes
+[[1;34mINFO[m] *********
+[[1;34mINFO[m] *********
+[[1;34mINFO[m] mvn nondex:nondex  -DnondexFilter='.*' -DnondexMode=FULL -DnondexSeed=974622 -DnondexStart=0 -DnondexEnd=9223372036854775807 -DnondexPrintstack=false -DnondexDir="/home/kejiawu2/mp1/iotdb/cluster/.nondex" -DnondexJarDir="/home/kejiawu2/mp1/iotdb/cluster/.nondex" -DnondexExecid=MNxh0GrBhHc0+HtthX7BEWea1KIkcwdn5drKlB0z7Y= -DnondexLogging=CONFIG
+[[1;33mWARNING[m] org.apache.iotdb.cluster.query.ClusterPlanExecutorTest#testGetAllStorageGroupNodes
+[[1;34mINFO[m] *********
+[[1;34mINFO[m] *********
+[[1;34mINFO[m] mvn nondex:nondex  -DnondexFilter='.*' -DnondexMode=FULL -DnondexSeed=1016066 -DnondexStart=0 -DnondexEnd=9223372036854775807 -DnondexPrintstack=false -DnondexDir="/home/kejiawu2/mp1/iotdb/cluster/.nondex" -DnondexJarDir="/home/kejiawu2/mp1/iotdb/cluster/.nondex" -DnondexExecid=OgrTqAp1Y+MXQN9vMZsvzvt5PjIyAd3lPrxoaroCjbQ= -DnondexLogging=CONFIG
+[[1;33mWARNING[m] org.apache.iotdb.cluster.query.ClusterPlanExecutorTest#testGetAllStorageGroupNodes
+[[1;34mINFO[m] *********
+[[1;34mINFO[m] Across all seeds:
+[[1;34mINFO[m] org.apache.iotdb.cluster.query.ClusterPlanExecutorTest#testGetAllStorageGroupNodes
+[[1;34mINFO[m] Test results can be found at: 
+[[1;34mINFO[m] file:///home/kejiawu2/mp1/iotdb/cluster/.nondex/xACLwQMxcMkGSmeqWFgoD9mP6NJXP2pIxFh2TMjJEo=/test_results.html
+[[1;34mINFO[m] [NonDex] The id of this run is: xACLwQMxcMkGSmeqWFgoD9mP6NJXP2pIxFh2TMjJEo=
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] [1;31mBUILD FAILURE[m
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] Total time:  27.776 s
+[[1;34mINFO[m] Finished at: 2022-08-27T08:31:58-05:00
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;31mERROR[m] Failed to execute goal [32medu.illinois:nondex-maven-plugin:1.1.2:nondex[m [1m(default-cli)[m on project [36miotdb-cluster[m: [1;31mUnable to execute mojo[m: There are test failures.
+[[1;31mERROR[m] 
+[[1;31mERROR[m] Please refer to /home/kejiawu2/mp1/iotdb/cluster/.nondex/xACLwQMxcMkGSmeqWFgoD9mP6NJXP2pIxFh2TMjJEo= for the individual test results.
+[[1;31mERROR[m] Please refer to dump files (if any exist) [date]-jvmRun[N].dump, [date].dumpstream and [date]-jvmRun[N].dumpstream.
+[[1;31mERROR[m] -> [1m[Help 1][m
+[[1;31mERROR[m] 
+[[1;31mERROR[m] To see the full stack trace of the errors, re-run Maven with the [1m-e[m switch.
+[[1;31mERROR[m] Re-run Maven using the [1m-X[m switch to enable full debug logging.
+[[1;31mERROR[m] 
+[[1;31mERROR[m] For more information about the errors and possible solutions, please read the following articles:
+[[1;31mERROR[m] [1m[Help 1][m http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

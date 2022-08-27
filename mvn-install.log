@@ -1,0 +1,1310 @@
+[[1;34mINFO[m] Scanning for projects...
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for org.apache.iotdb:tsfile:jar:0.13.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencyManagement.dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.eclipse.jetty:jetty-server:jar -> version ${jetty.version} vs 11.0.6 @ org.apache.iotdb:iotdb-parent:0.13.0-SNAPSHOT, /home/kejiawu2/mp1/iotdb/pom.xml, line 539, column 25
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] Some problems were encountered while building the effective model for org.apache.iotdb:iotdb-parent:pom:0.13.0-SNAPSHOT
+[[1;33mWARNING[m] 'dependencyManagement.dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.eclipse.jetty:jetty-server:jar -> version ${jetty.version} vs 11.0.6 @ line 539, column 25
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] It is highly recommended to fix these problems because they threaten the stability of your build.
+[[1;33mWARNING[m] 
+[[1;33mWARNING[m] For this reason, future Maven versions might no longer support building such malformed projects.
+[[1;33mWARNING[m] 
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] [1mReactor Build Order:[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] Apache IoTDB Project Parent POM                                    [pom]
+[[1;34mINFO[m] TsFile                                                             [jar]
+[[1;34mINFO[m] sql-antlr                                                          [jar]
+[[1;34mINFO[m] rpc-thrift                                                         [jar]
+[[1;34mINFO[m] rpc-thrift-cluster                                                 [jar]
+[[1;34mINFO[m] rpc-thrift-sync                                                    [jar]
+[[1;34mINFO[m] Service-rpc                                                        [jar]
+[[1;34mINFO[m] IoTDB Jdbc                                                         [jar]
+[[1;34mINFO[m] IoTDB Server                                                       [jar]
+[[1;34mINFO[m] IoTDB Session                                                      [jar]
+[[1;34mINFO[m] cluster                                                            [jar]
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m-------------------< [0;36morg.apache.iotdb:iotdb-parent[0;1m >--------------------[m
+[[1;34mINFO[m] [1mBuilding Apache IoTDB Project Parent POM 0.13.0-SNAPSHOT          [1/11][m
+[[1;34mINFO[m] [1m--------------------------------[ pom ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.7.0:process[m [1m(process-resource-bundles)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] Preparing remote bundle org.apache:apache-jar-resource-bundle:1.4
+[[1;34mINFO[m] Copying 3 resources from 1 bundle.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(unit-tests)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] No site descriptor found: nothing to attach.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m > [0;1mgenerate-sources[m @ [36miotdb-parent[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m < [0;1mgenerate-sources[m @ [36miotdb-parent[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-dependency-plugin:3.1.1:analyze-only[m [1m(check-dependencies)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] Skipping pom project
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] Enabled default license matchers.
+[[1;34mINFO[m] Will parse SCM ignores for exclusions...
+[[1;34mINFO[m] Parsing exclusions from /home/kejiawu2/mp1/iotdb/.gitignore
+[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
+[[1;34mINFO[m] 156 implicit excludes (use -debug for more details).
+[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
+[[1;34mINFO[m] 374 resources included (use -debug for more details)
+[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 352 licenses.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-parent[0;1m ---[m
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/pom.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-parent/0.13.0-SNAPSHOT/iotdb-parent-0.13.0-SNAPSHOT.pom
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m----------------------< [0;36morg.apache.iotdb:tsfile[0;1m >-----------------------[m
+[[1;34mINFO[m] [1mBuilding TsFile 0.13.0-SNAPSHOT                                   [2/11][m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.7.0:process[m [1m(process-resource-bundles)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Preparing remote bundle org.apache:apache-jar-resource-bundle:1.4
+[[1;34mINFO[m] Copying 3 resources from 1 bundle.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:resources[m [1m(default-resources)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/tsfile/src/main/resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 247 source files to /home/kejiawu2/mp1/iotdb/tsfile/target/classes
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/tsfile/src/main/java/org/apache/iotdb/tsfile/read/reader/chunk/ChunkReader.java: Some input files use unchecked or unsafe operations.
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/tsfile/src/main/java/org/apache/iotdb/tsfile/read/reader/chunk/ChunkReader.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-bundle-plugin:5.1.1:manifest[m [1m(bundle-manifest)[m @ [36mtsfile[0;1m ---[m
+[[1;33mWARNING[m] Manifest org.apache.iotdb:tsfile:jar:0.13.0-SNAPSHOT : Export org.apache.iotdb.tsfile.read.query.timegenerator,  has 1,  private references [org.apache.iotdb.tsfile.read.expression.impl]
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:testResources[m [1m(default-testResources)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] Copying 1 resource
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 106 source files to /home/kejiawu2/mp1/iotdb/tsfile/target/test-classes
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/tsfile/src/test/java/org/apache/iotdb/tsfile/write/TsFileIOWriterTest.java: Some input files use unchecked or unsafe operations.
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/tsfile/src/test/java/org/apache/iotdb/tsfile/write/TsFileIOWriterTest.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(unit-tests)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/tsfile/target/tsfile-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m > [0;1mgenerate-sources[m @ [36mtsfile[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m < [0;1mgenerate-sources[m @ [36mtsfile[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/tsfile/target/tsfile-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-failsafe-plugin:2.22.0:integration-test[m [1m(run-integration-tests)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-failsafe-plugin:2.22.0:verify[m [1m(run-integration-tests)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-dependency-plugin:3.1.1:analyze-only[m [1m(check-dependencies)[m @ [36mtsfile[0;1m ---[m
+[[1;33mWARNING[m] Unused declared dependencies found:
+[[1;33mWARNING[m]    org.mockito:mockito-all:jar:1.10.19:test
+[[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Enabled default license matchers.
+[[1;34mINFO[m] Will parse SCM ignores for exclusions...
+[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
+[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
+[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
+[[1;34mINFO[m] 357 resources included (use -debug for more details)
+[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 357 licenses.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36mtsfile[0;1m ---[m
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/tsfile/target/tsfile-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/tsfile/0.13.0-SNAPSHOT/tsfile-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/tsfile/pom.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/tsfile/0.13.0-SNAPSHOT/tsfile-0.13.0-SNAPSHOT.pom
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/tsfile/target/tsfile-0.13.0-SNAPSHOT-sources.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/tsfile/0.13.0-SNAPSHOT/tsfile-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--------------------< [0;36morg.apache.iotdb:iotdb-antlr[0;1m >--------------------[m
+[[1;34mINFO[m] [1mBuilding sql-antlr 0.13.0-SNAPSHOT                                [3/11][m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mantlr4-maven-plugin:4.8-1:antlr4[m [1m(default)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] ANTLR 4: Processing source directory /home/kejiawu2/mp1/iotdb/antlr/src/main/antlr4
+[[1;34mINFO[m] Processing grammar: org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.g4
+[[1;34mINFO[m] Processing grammar: org/apache/iotdb/db/qp/sql/IoTDBSqlParser.g4
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mbuild-helper-maven-plugin:3.2.0:add-source[m [1m(add-source)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Source directory: /home/kejiawu2/mp1/iotdb/antlr/target/generated-sources/antlr4 added.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.7.0:process[m [1m(process-resource-bundles)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Preparing remote bundle org.apache:apache-jar-resource-bundle:1.4
+[[1;34mINFO[m] Copying 3 resources from 1 bundle.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:resources[m [1m(default-resources)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/antlr/src/main/resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 4 source files to /home/kejiawu2/mp1/iotdb/antlr/target/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:testResources[m [1m(default-testResources)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/antlr/src/test/resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] No sources to compile
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(unit-tests)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/antlr/target/iotdb-antlr-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m > [0;1mgenerate-sources[m @ [36miotdb-antlr[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mantlr4-maven-plugin:4.8-1:antlr4[m [1m(default)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] No grammars to process
+[[1;34mINFO[m] ANTLR 4: Processing source directory /home/kejiawu2/mp1/iotdb/antlr/src/main/antlr4
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mbuild-helper-maven-plugin:3.2.0:add-source[m [1m(add-source)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Source directory: /home/kejiawu2/mp1/iotdb/antlr/target/generated-sources/antlr4 added.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m < [0;1mgenerate-sources[m @ [36miotdb-antlr[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/antlr/target/iotdb-antlr-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-dependency-plugin:3.1.1:analyze-only[m [1m(check-dependencies)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;33mWARNING[m] Unused declared dependencies found:
+[[1;33mWARNING[m]    ch.qos.logback:logback-classic:jar:1.2.3:compile
+[[1;33mWARNING[m]    org.slf4j:slf4j-api:jar:1.7.32:compile
+[[1;33mWARNING[m]    junit:junit:jar:4.13.2:test
+[[1;33mWARNING[m]    org.mockito:mockito-all:jar:1.10.19:test
+[[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Enabled default license matchers.
+[[1;34mINFO[m] Will parse SCM ignores for exclusions...
+[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
+[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
+[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
+[[1;34mINFO[m] 3 resources included (use -debug for more details)
+[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 3 licenses.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-antlr[0;1m ---[m
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/antlr/target/iotdb-antlr-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-antlr/0.13.0-SNAPSHOT/iotdb-antlr-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/antlr/pom.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-antlr/0.13.0-SNAPSHOT/iotdb-antlr-0.13.0-SNAPSHOT.pom
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/antlr/target/iotdb-antlr-0.13.0-SNAPSHOT-sources.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-antlr/0.13.0-SNAPSHOT/iotdb-antlr-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m-------------------< [0;36morg.apache.iotdb:iotdb-thrift[0;1m >--------------------[m
+[[1;34mINFO[m] [1mBuilding rpc-thrift 0.13.0-SNAPSHOT                               [4/11][m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mdownload-maven-plugin:1.6.7:wget[m [1m(get-thrift-executable)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mexec-maven-plugin:1.6.0:exec[m [1m(make-thrift-executable-executable)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-java)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-python)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-go)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mbuild-helper-maven-plugin:3.2.0:add-source[m [1m(add-source)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Source directory: /home/kejiawu2/mp1/iotdb/thrift/target/generated-sources/thrift added.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.7.0:process[m [1m(process-resource-bundles)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Preparing remote bundle org.apache:apache-jar-resource-bundle:1.4
+[[1;34mINFO[m] Copying 3 resources from 1 bundle.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:resources[m [1m(default-resources)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/thrift/src/main/resources
+[[1;34mINFO[m] Copying 1 resource
+[[1;34mINFO[m] Copying 1 resource
+[[1;34mINFO[m] Copying 1 resource
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 39 source files to /home/kejiawu2/mp1/iotdb/thrift/target/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-bundle-plugin:5.1.1:manifest[m [1m(bundle-manifest)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:testResources[m [1m(default-testResources)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/thrift/src/test/resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] No sources to compile
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(unit-tests)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/thrift/target/iotdb-thrift-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m > [0;1mgenerate-sources[m @ [36miotdb-thrift[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mdownload-maven-plugin:1.6.7:wget[m [1m(get-thrift-executable)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] File already exist, skipping
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mexec-maven-plugin:1.6.0:exec[m [1m(make-thrift-executable-executable)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-java)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-python)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-go)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mbuild-helper-maven-plugin:3.2.0:add-source[m [1m(add-source)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Source directory: /home/kejiawu2/mp1/iotdb/thrift/target/generated-sources/thrift added.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m < [0;1mgenerate-sources[m @ [36miotdb-thrift[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/thrift/target/iotdb-thrift-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-dependency-plugin:3.1.1:analyze-only[m [1m(check-dependencies)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;33mWARNING[m] Unused declared dependencies found:
+[[1;33mWARNING[m]    ch.qos.logback:logback-classic:jar:1.2.3:compile
+[[1;33mWARNING[m]    junit:junit:jar:4.13.2:test
+[[1;33mWARNING[m]    org.mockito:mockito-all:jar:1.10.19:test
+[[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Enabled default license matchers.
+[[1;34mINFO[m] Will parse SCM ignores for exclusions...
+[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
+[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
+[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
+[[1;34mINFO[m] 4 resources included (use -debug for more details)
+[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 4 licenses.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-thrift[0;1m ---[m
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/thrift/target/iotdb-thrift-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-thrift/0.13.0-SNAPSHOT/iotdb-thrift-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/thrift/pom.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-thrift/0.13.0-SNAPSHOT/iotdb-thrift-0.13.0-SNAPSHOT.pom
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/thrift/target/iotdb-thrift-0.13.0-SNAPSHOT-sources.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-thrift/0.13.0-SNAPSHOT/iotdb-thrift-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m---------------< [0;36morg.apache.iotdb:iotdb-thrift-cluster[0;1m >----------------[m
+[[1;34mINFO[m] [1mBuilding rpc-thrift-cluster 0.13.0-SNAPSHOT                       [5/11][m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mdownload-maven-plugin:1.6.7:wget[m [1m(get-thrift-executable)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mexec-maven-plugin:1.6.0:exec[m [1m(make-thrift-executable-executable)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-java)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-python)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-go)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mbuild-helper-maven-plugin:3.2.0:add-source[m [1m(add-source)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Source directory: /home/kejiawu2/mp1/iotdb/thrift-cluster/target/generated-sources/thrift added.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.7.0:process[m [1m(process-resource-bundles)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Preparing remote bundle org.apache:apache-jar-resource-bundle:1.4
+[[1;34mINFO[m] Copying 3 resources from 1 bundle.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:resources[m [1m(default-resources)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/thrift-cluster/src/main/resources
+[[1;34mINFO[m] Copying 1 resource
+[[1;34mINFO[m] Copying 1 resource
+[[1;34mINFO[m] Copying 1 resource
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 30 source files to /home/kejiawu2/mp1/iotdb/thrift-cluster/target/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:testResources[m [1m(default-testResources)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/thrift-cluster/src/test/resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] No sources to compile
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(unit-tests)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/thrift-cluster/target/iotdb-thrift-cluster-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m > [0;1mgenerate-sources[m @ [36miotdb-thrift-cluster[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mdownload-maven-plugin:1.6.7:wget[m [1m(get-thrift-executable)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] File already exist, skipping
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mexec-maven-plugin:1.6.0:exec[m [1m(make-thrift-executable-executable)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-java)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-python)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-go)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mbuild-helper-maven-plugin:3.2.0:add-source[m [1m(add-source)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Source directory: /home/kejiawu2/mp1/iotdb/thrift-cluster/target/generated-sources/thrift added.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m < [0;1mgenerate-sources[m @ [36miotdb-thrift-cluster[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/thrift-cluster/target/iotdb-thrift-cluster-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-dependency-plugin:3.1.1:analyze-only[m [1m(check-dependencies)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;33mWARNING[m] Unused declared dependencies found:
+[[1;33mWARNING[m]    ch.qos.logback:logback-classic:jar:1.2.3:compile
+[[1;33mWARNING[m]    junit:junit:jar:4.13.2:test
+[[1;33mWARNING[m]    org.mockito:mockito-all:jar:1.10.19:test
+[[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Enabled default license matchers.
+[[1;34mINFO[m] Will parse SCM ignores for exclusions...
+[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
+[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
+[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
+[[1;34mINFO[m] 4 resources included (use -debug for more details)
+[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 4 licenses.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-thrift-cluster[0;1m ---[m
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/thrift-cluster/target/iotdb-thrift-cluster-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-thrift-cluster/0.13.0-SNAPSHOT/iotdb-thrift-cluster-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/thrift-cluster/pom.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-thrift-cluster/0.13.0-SNAPSHOT/iotdb-thrift-cluster-0.13.0-SNAPSHOT.pom
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/thrift-cluster/target/iotdb-thrift-cluster-0.13.0-SNAPSHOT-sources.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-thrift-cluster/0.13.0-SNAPSHOT/iotdb-thrift-cluster-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m-----------------< [0;36morg.apache.iotdb:iotdb-thrift-sync[0;1m >-----------------[m
+[[1;34mINFO[m] [1mBuilding rpc-thrift-sync 0.13.0-SNAPSHOT                          [6/11][m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mdownload-maven-plugin:1.6.7:wget[m [1m(get-thrift-executable)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mexec-maven-plugin:1.6.0:exec[m [1m(make-thrift-executable-executable)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-java)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-python)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-go)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mbuild-helper-maven-plugin:3.2.0:add-source[m [1m(add-source)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Source directory: /home/kejiawu2/mp1/iotdb/thrift-sync/target/generated-sources/thrift added.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.7.0:process[m [1m(process-resource-bundles)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Preparing remote bundle org.apache:apache-jar-resource-bundle:1.4
+[[1;34mINFO[m] Copying 3 resources from 1 bundle.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:resources[m [1m(default-resources)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/thrift-sync/src/main/resources
+[[1;34mINFO[m] Copying 1 resource
+[[1;34mINFO[m] Copying 1 resource
+[[1;34mINFO[m] Copying 1 resource
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 3 source files to /home/kejiawu2/mp1/iotdb/thrift-sync/target/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:testResources[m [1m(default-testResources)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/thrift-sync/src/test/resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] No sources to compile
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(unit-tests)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/thrift-sync/target/iotdb-thrift-sync-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m > [0;1mgenerate-sources[m @ [36miotdb-thrift-sync[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mdownload-maven-plugin:1.6.7:wget[m [1m(get-thrift-executable)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] File already exist, skipping
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mexec-maven-plugin:1.6.0:exec[m [1m(make-thrift-executable-executable)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-java)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-python)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-thrift-plugin:0.1.11:compile[m [1m(generate-thrift-sources-go)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mbuild-helper-maven-plugin:3.2.0:add-source[m [1m(add-source)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Source directory: /home/kejiawu2/mp1/iotdb/thrift-sync/target/generated-sources/thrift added.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m < [0;1mgenerate-sources[m @ [36miotdb-thrift-sync[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/thrift-sync/target/iotdb-thrift-sync-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-dependency-plugin:3.1.1:analyze-only[m [1m(check-dependencies)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;33mWARNING[m] Unused declared dependencies found:
+[[1;33mWARNING[m]    ch.qos.logback:logback-classic:jar:1.2.3:compile
+[[1;33mWARNING[m]    junit:junit:jar:4.13.2:test
+[[1;33mWARNING[m]    org.mockito:mockito-all:jar:1.10.19:test
+[[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Enabled default license matchers.
+[[1;34mINFO[m] Will parse SCM ignores for exclusions...
+[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
+[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
+[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
+[[1;34mINFO[m] 4 resources included (use -debug for more details)
+[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 4 licenses.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-thrift-sync[0;1m ---[m
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/thrift-sync/target/iotdb-thrift-sync-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-thrift-sync/0.13.0-SNAPSHOT/iotdb-thrift-sync-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/thrift-sync/pom.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-thrift-sync/0.13.0-SNAPSHOT/iotdb-thrift-sync-0.13.0-SNAPSHOT.pom
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/thrift-sync/target/iotdb-thrift-sync-0.13.0-SNAPSHOT-sources.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-thrift-sync/0.13.0-SNAPSHOT/iotdb-thrift-sync-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--------------------< [0;36morg.apache.iotdb:service-rpc[0;1m >--------------------[m
+[[1;34mINFO[m] [1mBuilding Service-rpc 0.13.0-SNAPSHOT                              [7/11][m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.7.0:process[m [1m(process-resource-bundles)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Preparing remote bundle org.apache:apache-jar-resource-bundle:1.4
+[[1;34mINFO[m] Copying 3 resources from 1 bundle.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:resources[m [1m(default-resources)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/service-rpc/src/main/resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 24 source files to /home/kejiawu2/mp1/iotdb/service-rpc/target/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-bundle-plugin:5.1.1:manifest[m [1m(bundle-manifest)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:testResources[m [1m(default-testResources)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/service-rpc/src/test/resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 1 source file to /home/kejiawu2/mp1/iotdb/service-rpc/target/test-classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(unit-tests)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/service-rpc/target/service-rpc-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m > [0;1mgenerate-sources[m @ [36mservice-rpc[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m < [0;1mgenerate-sources[m @ [36mservice-rpc[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/service-rpc/target/service-rpc-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-failsafe-plugin:2.22.0:integration-test[m [1m(run-integration-tests)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-failsafe-plugin:2.22.0:verify[m [1m(run-integration-tests)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-dependency-plugin:3.1.1:analyze-only[m [1m(check-dependencies)[m @ [36mservice-rpc[0;1m ---[m
+[[1;33mWARNING[m] Used undeclared dependencies found:
+[[1;33mWARNING[m]    org.apache.thrift:libthrift:jar:0.14.1:compile
+[[1;33mWARNING[m] Unused declared dependencies found:
+[[1;33mWARNING[m]    ch.qos.logback:logback-classic:jar:1.2.3:compile
+[[1;33mWARNING[m]    org.mockito:mockito-all:jar:1.10.19:test
+[[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Enabled default license matchers.
+[[1;34mINFO[m] Will parse SCM ignores for exclusions...
+[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
+[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
+[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
+[[1;34mINFO[m] 26 resources included (use -debug for more details)
+[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 26 licenses.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36mservice-rpc[0;1m ---[m
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/service-rpc/target/service-rpc-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/service-rpc/0.13.0-SNAPSHOT/service-rpc-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/service-rpc/pom.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/service-rpc/0.13.0-SNAPSHOT/service-rpc-0.13.0-SNAPSHOT.pom
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/service-rpc/target/service-rpc-0.13.0-SNAPSHOT-sources.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/service-rpc/0.13.0-SNAPSHOT/service-rpc-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--------------------< [0;36morg.apache.iotdb:iotdb-jdbc[0;1m >---------------------[m
+[[1;34mINFO[m] [1mBuilding IoTDB Jdbc 0.13.0-SNAPSHOT                               [8/11][m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.7.0:process[m [1m(process-resource-bundles)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Preparing remote bundle org.apache:apache-jar-resource-bundle:1.4
+[[1;34mINFO[m] Copying 3 resources from 1 bundle.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:resources[m [1m(default-resources)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] Copying 1 resource to /home/kejiawu2/mp1/iotdb/jdbc/target/feature
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:resources[m [1m(default)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] Copying 1 resource to /home/kejiawu2/mp1/iotdb/jdbc/target/feature
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 24 source files to /home/kejiawu2/mp1/iotdb/jdbc/target/classes
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/jdbc/src/main/java/org/apache/iotdb/jdbc/AbstractIoTDBJDBCResultSet.java: Some input files use or override a deprecated API.
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/jdbc/src/main/java/org/apache/iotdb/jdbc/AbstractIoTDBJDBCResultSet.java: Recompile with -Xlint:deprecation for details.
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/jdbc/src/main/java/org/apache/iotdb/jdbc/IoTDBDatabaseMetadata.java: /home/kejiawu2/mp1/iotdb/jdbc/src/main/java/org/apache/iotdb/jdbc/IoTDBDatabaseMetadata.java uses unchecked or unsafe operations.
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/jdbc/src/main/java/org/apache/iotdb/jdbc/IoTDBDatabaseMetadata.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-bundle-plugin:5.1.1:manifest[m [1m(bundle-manifest)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:testResources[m [1m(default-testResources)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/jdbc/src/test/resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 8 source files to /home/kejiawu2/mp1/iotdb/jdbc/target/test-classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(unit-tests)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/jdbc/target/iotdb-jdbc-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mbuild-helper-maven-plugin:3.0.0:attach-artifact[m [1m(attach-features)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m > [0;1mgenerate-sources[m @ [36miotdb-jdbc[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m < [0;1mgenerate-sources[m @ [36miotdb-jdbc[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/jdbc/target/iotdb-jdbc-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-failsafe-plugin:2.22.0:integration-test[m [1m(run-integration-tests)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-failsafe-plugin:2.22.0:verify[m [1m(run-integration-tests)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-dependency-plugin:3.1.1:analyze-only[m [1m(check-dependencies)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;33mWARNING[m] Used undeclared dependencies found:
+[[1;33mWARNING[m]    org.apache.thrift:libthrift:jar:0.14.1:compile
+[[1;33mWARNING[m]    org.apache.iotdb:iotdb-thrift:jar:0.13.0-SNAPSHOT:compile
+[[1;33mWARNING[m]    org.apache.iotdb:tsfile:jar:0.13.0-SNAPSHOT:compile
+[[1;33mWARNING[m] Unused declared dependencies found:
+[[1;33mWARNING[m]    ch.qos.logback:logback-classic:jar:1.2.3:compile
+[[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Enabled default license matchers.
+[[1;34mINFO[m] Will parse SCM ignores for exclusions...
+[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
+[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
+[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
+[[1;34mINFO[m] 37 resources included (use -debug for more details)
+[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 37 licenses.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-jdbc[0;1m ---[m
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/jdbc/target/iotdb-jdbc-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-jdbc/0.13.0-SNAPSHOT/iotdb-jdbc-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/jdbc/pom.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-jdbc/0.13.0-SNAPSHOT/iotdb-jdbc-0.13.0-SNAPSHOT.pom
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/jdbc/target/feature/feature.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-jdbc/0.13.0-SNAPSHOT/iotdb-jdbc-0.13.0-SNAPSHOT-features.xml
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/jdbc/target/iotdb-jdbc-0.13.0-SNAPSHOT-sources.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-jdbc/0.13.0-SNAPSHOT/iotdb-jdbc-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m-------------------< [0;36morg.apache.iotdb:iotdb-server[0;1m >--------------------[m
+[[1;34mINFO[m] [1mBuilding IoTDB Server 0.13.0-SNAPSHOT                             [9/11][m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.7.0:process[m [1m(process-resource-bundles)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Preparing remote bundle org.apache:apache-jar-resource-bundle:1.4
+[[1;34mINFO[m] Copying 3 resources from 1 bundle.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:resources[m [1m(default-resources)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] Copying 4 resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 831 source files to /home/kejiawu2/mp1/iotdb/server/target/classes
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/server/src/main/java/org/apache/iotdb/db/query/dataset/RawQueryDataSetWithoutValueFilter.java: Some input files use unchecked or unsafe operations.
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/server/src/main/java/org/apache/iotdb/db/query/dataset/RawQueryDataSetWithoutValueFilter.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:testResources[m [1m(default-testResources)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] Copying 5 resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 297 source files to /home/kejiawu2/mp1/iotdb/server/target/test-classes
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/server/src/test/java/org/apache/iotdb/db/engine/compaction/cross/MaxFileMergeFileSelectorTest.java: Some input files use unchecked or unsafe operations.
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/server/src/test/java/org/apache/iotdb/db/engine/compaction/cross/MaxFileMergeFileSelectorTest.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(unit-tests)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m > [0;1mgenerate-sources[m @ [36miotdb-server[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m < [0;1mgenerate-sources[m @ [36miotdb-server[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-assembly-plugin:3.1.0:single[m [1m(server-assembly)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Reading assembly descriptor: src/assembly/server.xml
+[[1;34mINFO[m] Copying files to /home/kejiawu2/mp1/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT
+[[1;33mWARNING[m] Assembly file: /home/kejiawu2/mp1/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT is not a regular file (it may be a directory). It cannot be attached to the project build for installation or deployment.
+[[1;34mINFO[m] Building zip: /home/kejiawu2/mp1/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT.zip
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:test-jar[m [1m(default)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT-tests.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-failsafe-plugin:2.22.0:integration-test[m [1m(run-integration-tests)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-failsafe-plugin:2.22.0:verify[m [1m(run-integration-tests)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-dependency-plugin:3.1.1:analyze-only[m [1m(check-dependencies)[m @ [36miotdb-server[0;1m ---[m
+[[1;33mWARNING[m] Used undeclared dependencies found:
+[[1;33mWARNING[m]    org.apache.thrift:libthrift:jar:0.14.1:compile
+[[1;33mWARNING[m]    org.apache.iotdb:iotdb-thrift:jar:0.13.0-SNAPSHOT:compile
+[[1;33mWARNING[m]    net.minidev:json-smart:jar:2.3:compile
+[[1;33mWARNING[m]    com.fasterxml.jackson.core:jackson-databind:jar:2.11.0:compile
+[[1;33mWARNING[m]    org.antlr:antlr4-runtime:jar:4.8-1:compile
+[[1;33mWARNING[m]    commons-io:commons-io:jar:2.11.0:compile
+[[1;33mWARNING[m]    com.nimbusds:nimbus-jose-jwt:jar:8.14.1:compile
+[[1;33mWARNING[m]    org.eclipse.jetty:jetty-servlet:jar:9.4.35.v20201120:compile
+[[1;33mWARNING[m]    io.netty:netty-common:jar:4.1.53.Final:compile
+[[1;33mWARNING[m]    javax.servlet:javax.servlet-api:jar:3.1.0:compile
+[[1;33mWARNING[m]    io.netty:netty-codec-mqtt:jar:4.1.53.Final:compile
+[[1;33mWARNING[m]    org.mockito:mockito-core:jar:2.23.0:test
+[[1;33mWARNING[m]    org.apache.httpcomponents:httpcore:jar:4.4.13:compile
+[[1;33mWARNING[m]    com.google.guava:guava:jar:31.1-jre:compile
+[[1;33mWARNING[m] Unused declared dependencies found:
+[[1;33mWARNING[m]    org.eclipse.jetty:jetty-webapp:jar:9.4.35.v20201120:compile
+[[1;33mWARNING[m]    io.jsonwebtoken:jjwt-impl:jar:0.10.7:runtime
+[[1;33mWARNING[m]    io.jsonwebtoken:jjwt-jackson:jar:0.10.7:runtime
+[[1;33mWARNING[m]    org.mockito:mockito-all:jar:1.10.19:test
+[[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Enabled default license matchers.
+[[1;34mINFO[m] Will parse SCM ignores for exclusions...
+[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
+[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
+[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
+[[1;34mINFO[m] 1181 resources included (use -debug for more details)
+[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 1180 licenses.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-server[0;1m ---[m
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-server/0.13.0-SNAPSHOT/iotdb-server-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/server/pom.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-server/0.13.0-SNAPSHOT/iotdb-server-0.13.0-SNAPSHOT.pom
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT-sources.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-server/0.13.0-SNAPSHOT/iotdb-server-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT.zip to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-server/0.13.0-SNAPSHOT/iotdb-server-0.13.0-SNAPSHOT.zip
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT-tests.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-server/0.13.0-SNAPSHOT/iotdb-server-0.13.0-SNAPSHOT-tests.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m-------------------< [0;36morg.apache.iotdb:iotdb-session[0;1m >-------------------[m
+[[1;34mINFO[m] [1mBuilding IoTDB Session 0.13.0-SNAPSHOT                           [10/11][m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.7.0:process[m [1m(process-resource-bundles)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Preparing remote bundle org.apache:apache-jar-resource-bundle:1.4
+[[1;34mINFO[m] Copying 3 resources from 1 bundle.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:resources[m [1m(default-resources)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/session/src/main/resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 9 source files to /home/kejiawu2/mp1/iotdb/session/target/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:testResources[m [1m(default-testResources)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] Copying 2 resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 11 source files to /home/kejiawu2/mp1/iotdb/session/target/test-classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(unit-tests)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/session/target/iotdb-session-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m > [0;1mgenerate-sources[m @ [36miotdb-session[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m < [0;1mgenerate-sources[m @ [36miotdb-session[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/session/target/iotdb-session-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-failsafe-plugin:2.22.0:integration-test[m [1m(run-integration-tests)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-failsafe-plugin:2.22.0:verify[m [1m(run-integration-tests)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-dependency-plugin:3.1.1:analyze-only[m [1m(check-dependencies)[m @ [36miotdb-session[0;1m ---[m
+[[1;33mWARNING[m] Used undeclared dependencies found:
+[[1;33mWARNING[m]    org.apache.thrift:libthrift:jar:0.14.1:compile
+[[1;33mWARNING[m]    org.apache.iotdb:iotdb-thrift:jar:0.13.0-SNAPSHOT:compile
+[[1;33mWARNING[m]    org.apache.iotdb:tsfile:jar:0.13.0-SNAPSHOT:compile
+[[1;33mWARNING[m] Unused declared dependencies found:
+[[1;33mWARNING[m]    commons-io:commons-io:jar:2.11.0:compile
+[[1;33mWARNING[m]    ch.qos.logback:logback-classic:jar:1.2.3:compile
+[[1;33mWARNING[m]    org.mockito:mockito-all:jar:1.10.19:test
+[[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Enabled default license matchers.
+[[1;34mINFO[m] Will parse SCM ignores for exclusions...
+[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
+[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
+[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
+[[1;34mINFO[m] 23 resources included (use -debug for more details)
+[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 23 licenses.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-session[0;1m ---[m
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/session/target/iotdb-session-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-session/0.13.0-SNAPSHOT/iotdb-session-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/session/pom.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-session/0.13.0-SNAPSHOT/iotdb-session-0.13.0-SNAPSHOT.pom
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/session/target/iotdb-session-0.13.0-SNAPSHOT-sources.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-session/0.13.0-SNAPSHOT/iotdb-session-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m-------------------< [0;36morg.apache.iotdb:iotdb-cluster[0;1m >-------------------[m
+[[1;34mINFO[m] [1mBuilding cluster 0.13.0-SNAPSHOT                                 [11/11][m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.7.0:process[m [1m(process-resource-bundles)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Preparing remote bundle org.apache:apache-jar-resource-bundle:1.4
+[[1;34mINFO[m] Copying 3 resources from 1 bundle.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:resources[m [1m(default-resources)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] skip non existing resourceDirectory /home/kejiawu2/mp1/iotdb/cluster/src/main/resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 220 source files to /home/kejiawu2/mp1/iotdb/cluster/target/classes
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/cluster/src/main/java/org/apache/iotdb/cluster/log/snapshot/PartitionedSnapshot.java: Some input files use unchecked or unsafe operations.
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/cluster/src/main/java/org/apache/iotdb/cluster/log/snapshot/PartitionedSnapshot.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mxml-format-maven-plugin:3.0.7:xml-format[m [1m(xml-format)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:3.1.0:testResources[m [1m(default-testResources)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] Copying 10 resources
+[[1;34mINFO[m] Copying 3 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:testCompile[m [1m(default-testCompile)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 106 source files to /home/kejiawu2/mp1/iotdb/cluster/target/test-classes
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/cluster/src/test/java/org/apache/iotdb/cluster/server/member/BaseMember.java: Some input files use unchecked or unsafe operations.
+[[1;34mINFO[m] /home/kejiawu2/mp1/iotdb/cluster/src/test/java/org/apache/iotdb/cluster/server/member/BaseMember.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(default-test)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(unit-tests)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-jar-plugin:3.2.0:jar[m [1m(default-jar)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/cluster/target/iotdb-cluster-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-site-plugin:3.7.1:attach-descriptor[m [1m(attach-descriptor)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping because packaging 'jar' is not pom.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m > [0;1mgenerate-sources[m @ [36miotdb-cluster[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-checkstyle-plugin:3.0.0:check[m [1m(validate)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-maven-version)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(enforce-version-convergence)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:3.0.0-M2:enforce[m [1m(vulnerability-checks)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Skipping Rule Enforcement.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mspotless-maven-plugin:2.4.2:check[m [1m(spotless-check)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[0;1m < [0;1mgenerate-sources[m @ [36miotdb-cluster[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-source-plugin:3.2.0:jar[m [1m(create-source-package)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Building jar: /home/kejiawu2/mp1/iotdb/cluster/target/iotdb-cluster-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-assembly-plugin:3.1.0:single[m [1m(cluster-assembly)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Reading assembly descriptor: src/assembly/cluster.xml
+[[1;34mINFO[m] Copying files to /home/kejiawu2/mp1/iotdb/cluster/target/iotdb-cluster-0.13.0-SNAPSHOT
+[[1;33mWARNING[m] Assembly file: /home/kejiawu2/mp1/iotdb/cluster/target/iotdb-cluster-0.13.0-SNAPSHOT is not a regular file (it may be a directory). It cannot be attached to the project build for installation or deployment.
+[[1;34mINFO[m] Building zip: /home/kejiawu2/mp1/iotdb/cluster/target/iotdb-cluster-0.13.0-SNAPSHOT.zip
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.22.0:test[m [1m(integration-tests)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-failsafe-plugin:2.22.0:integration-test[m [1m(run-integration-tests)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-failsafe-plugin:2.22.0:verify[m [1m(run-integration-tests)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Tests are skipped.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-dependency-plugin:3.1.1:analyze-only[m [1m(check-dependencies)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;33mWARNING[m] Used undeclared dependencies found:
+[[1;33mWARNING[m]    org.apache.commons:commons-lang3:jar:3.8.1:compile
+[[1;33mWARNING[m]    org.apache.iotdb:iotdb-thrift:jar:0.13.0-SNAPSHOT:compile
+[[1;33mWARNING[m]    org.apache.commons:commons-collections4:jar:4.4:compile
+[[1;33mWARNING[m]    org.apache.iotdb:tsfile:jar:0.13.0-SNAPSHOT:compile
+[[1;33mWARNING[m]    io.airlift:airline:jar:0.8:compile
+[[1;33mWARNING[m]    org.mockito:mockito-core:jar:2.23.0:test
+[[1;33mWARNING[m]    com.google.guava:guava:jar:31.1-jre:compile
+[[1;33mWARNING[m] Unused declared dependencies found:
+[[1;33mWARNING[m]    ch.qos.logback:logback-classic:jar:1.2.3:compile
+[[1;33mWARNING[m]    org.testcontainers:testcontainers:jar:1.15.2:test
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mapache-rat-plugin:0.13:check[m [1m(license-check)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Enabled default license matchers.
+[[1;34mINFO[m] Will parse SCM ignores for exclusions...
+[[1;34mINFO[m] Finished adding exclusions from SCM ignore files.
+[[1;34mINFO[m] 62 implicit excludes (use -debug for more details).
+[[1;34mINFO[m] 34 explicit excludes (use -debug for more details).
+[[1;34mINFO[m] 349 resources included (use -debug for more details)
+[[1;34mINFO[m] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 349 licenses.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-install-plugin:2.5.2:install[m [1m(default-install)[m @ [36miotdb-cluster[0;1m ---[m
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/cluster/target/iotdb-cluster-0.13.0-SNAPSHOT.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-cluster/0.13.0-SNAPSHOT/iotdb-cluster-0.13.0-SNAPSHOT.jar
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/cluster/pom.xml to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-cluster/0.13.0-SNAPSHOT/iotdb-cluster-0.13.0-SNAPSHOT.pom
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/cluster/target/iotdb-cluster-0.13.0-SNAPSHOT-sources.jar to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-cluster/0.13.0-SNAPSHOT/iotdb-cluster-0.13.0-SNAPSHOT-sources.jar
+[[1;34mINFO[m] Installing /home/kejiawu2/mp1/iotdb/cluster/target/iotdb-cluster-0.13.0-SNAPSHOT.zip to /home/kejiawu2/.m2/repository/org/apache/iotdb/iotdb-cluster/0.13.0-SNAPSHOT/iotdb-cluster-0.13.0-SNAPSHOT.zip
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] [1mReactor Summary for Apache IoTDB Project Parent POM 0.13.0-SNAPSHOT:[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] Apache IoTDB Project Parent POM .................... [1;32mSUCCESS[m [  5.004 s]
+[[1;34mINFO[m] TsFile ............................................. [1;32mSUCCESS[m [ 18.937 s]
+[[1;34mINFO[m] sql-antlr .......................................... [1;32mSUCCESS[m [  5.204 s]
+[[1;34mINFO[m] rpc-thrift ......................................... [1;32mSUCCESS[m [ 10.526 s]
+[[1;34mINFO[m] rpc-thrift-cluster ................................. [1;32mSUCCESS[m [  7.701 s]
+[[1;34mINFO[m] rpc-thrift-sync .................................... [1;32mSUCCESS[m [  1.134 s]
+[[1;34mINFO[m] Service-rpc ........................................ [1;32mSUCCESS[m [  1.122 s]
+[[1;34mINFO[m] IoTDB Jdbc ......................................... [1;32mSUCCESS[m [  2.662 s]
+[[1;34mINFO[m] IoTDB Server ....................................... [1;32mSUCCESS[m [ 36.535 s]
+[[1;34mINFO[m] IoTDB Session ...................................... [1;32mSUCCESS[m [  2.269 s]
+[[1;34mINFO[m] cluster ............................................ [1;32mSUCCESS[m [ 12.291 s]
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] [1;32mBUILD SUCCESS[m
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] Total time:  01:43 min
+[[1;34mINFO[m] Finished at: 2022-08-27T08:29:25-05:00
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
