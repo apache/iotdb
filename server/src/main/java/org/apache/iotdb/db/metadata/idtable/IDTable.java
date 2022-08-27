@@ -169,17 +169,34 @@ public interface IDTable {
   List<DeviceEntry> getAllDeviceEntry();
 
   /**
-   * put schema entry to id table, currently used in recover
+   * put schema entry to id table
+   *
+   * @param devicePath device path (can be device id formed path)
+   * @param measurement measurement name
+   * @param schemaEntry schema entry to put
+   * @param isAligned is the device aligned
+   */
+  @TestOnly
+  void putSchemaEntry(
+      String devicePath, String measurement, SchemaEntry schemaEntry, boolean isAligned)
+      throws MetadataException;
+
+  /**
+   * put schema entry to id table, only used in recover
    *
    * @param deviceID device id
+   * @param devicePath device path
    * @param measurement measurement name
    * @param schemaEntry schema entry to put
    * @param isAligned is the device aligned
    */
   void putSchemaEntry(
-      String deviceID, String measurement, SchemaEntry schemaEntry, boolean isAligned)
+      String deviceID,
+      String devicePath,
+      String measurement,
+      SchemaEntry schemaEntry,
+      boolean isAligned)
       throws MetadataException;
-
   /**
    * translate query path's device path to device id
    *

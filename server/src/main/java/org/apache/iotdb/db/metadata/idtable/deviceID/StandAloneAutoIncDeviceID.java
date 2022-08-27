@@ -42,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * and autoIncrementID, where the upper 32 bits are schemaRegionID and the lower 32 bits are
  * autoIncrementID
  */
-public class StandAloneAutoIncDeviceID extends SHA256DeviceID implements IStatefulDeviceID {
+public class StandAloneAutoIncDeviceID extends SHA256DeviceID {
 
   /** logger */
   private static Logger logger = LoggerFactory.getLogger(IDTable.class);
@@ -94,6 +94,13 @@ public class StandAloneAutoIncDeviceID extends SHA256DeviceID implements IStatef
     super(devicePath);
   }
 
+  public StandAloneAutoIncDeviceID(String deviceID, String devicePath) {
+    super(devicePath);
+    long id = parseFromDeviceID(deviceID);
+    this.schemaRegionId = (int) (id >>> 32);
+    this.autoIncrementID = (int) id;
+  }
+
   /**
    * get a StandAloneAutoIncDeviceID instance, create it if it doesn't exist
    *
@@ -125,14 +132,39 @@ public class StandAloneAutoIncDeviceID extends SHA256DeviceID implements IStatef
   }
 
   /**
+   * get a StandAloneAutoIncDeviceID instance, only for recover
+   *
+   * @param device union by deviceID and devicePath
+   * @return a StandAloneAutoIncDeviceID instance
+   */
+  public static StandAloneAutoIncDeviceID getDeviceIDWithRecover(String... device) {
+    String deviceID = device[0];
+    String devicePath = device[1];
+    StandAloneAutoIncDeviceID id = new StandAloneAutoIncDeviceID(deviceID, devicePath);
+    List<IDeviceID> deviceIDs =
+        deviceIDsMap.computeIfAbsent(id.schemaRegionId, integer -> new ArrayList<>());
+    // if there is out-of-order data, write the deviceID to the correct index of the array
+    synchronized (deviceIDs) {
+      if (id.autoIncrementID < deviceIDs.size() && deviceIDs.get(id.autoIncrementID) != null) {
+        return (StandAloneAutoIncDeviceID) deviceIDs.get(id.autoIncrementID);
+      } else {
+        for (int i = deviceIDs.size(); i < id.autoIncrementID; i++) {
+          deviceIDs.add(i, null);
+        }
+        deviceIDs.add(id.autoIncrementID, id);
+        return id;
+      }
+    }
+  }
+
+  /**
    * get device id from a standAloneAutoIncDeviceID
    *
    * @param deviceID StandAloneAutoIncDeviceID deviceID, like: "`1`"
    * @return a standAloneAutoIncDeviceID instance
    */
   private static StandAloneAutoIncDeviceID fromAutoIncDeviceID(String deviceID) {
-    deviceID = deviceID.substring(1, deviceID.length() - 1);
-    long id = Long.parseLong(deviceID);
+    long id = parseFromDeviceID(deviceID);
     int schemaRegionId = (int) (id >>> 32);
     int autoIncrementID = (int) id;
     if (schemaRegionId == -1) {
@@ -200,11 +232,17 @@ public class StandAloneAutoIncDeviceID extends SHA256DeviceID implements IStatef
     }
   }
 
+  private static long parseFromDeviceID(String deviceID) {
+    deviceID = deviceID.substring(1, deviceID.length() - 1);
+    return Long.parseLong(deviceID);
+  }
+
   @Override
   public int hashCode() {
     return super.hashCode();
   }
 
+  /** use sha256 value to determine whether it is equal */
   @Override
   public boolean equals(Object o) {
     if (!(o instanceof StandAloneAutoIncDeviceID)) {
@@ -254,31 +292,6 @@ public class StandAloneAutoIncDeviceID extends SHA256DeviceID implements IStatef
     autoIncrementDeviceID.schemaRegionId = ReadWriteIOUtils.readInt(byteBuffer);
     autoIncrementDeviceID.autoIncrementID = ReadWriteIOUtils.readInt(byteBuffer);
     return autoIncrementDeviceID;
-  }
-
-  /**
-   * recover deviceIDsMap
-   *
-   * @param devicePath device path of the time series, like: "root.sg.x.d1"
-   * @param deviceID device id, like: "`1`"
-   */
-  @Override
-  public void recover(String devicePath, String deviceID) {
-    buildSHA256(devicePath);
-    deviceID = deviceID.substring(1, deviceID.length() - 1);
-    long id = Long.parseLong(deviceID);
-    this.schemaRegionId = (int) (id >>> 32);
-    this.autoIncrementID = (int) id;
-    List<IDeviceID> deviceIDs =
-        deviceIDsMap.computeIfAbsent(schemaRegionId, integer -> new ArrayList<>());
-    // if there is out-of-order data, write the deviceID to the correct index of the array
-    synchronized (deviceIDs) {
-      if (autoIncrementID < deviceIDs.size() && deviceIDs.get(autoIncrementID) != null) return;
-      for (int i = deviceIDs.size(); i < autoIncrementID; i++) {
-        deviceIDs.add(i, null);
-      }
-      deviceIDs.add(autoIncrementID, this);
-    }
   }
 
   @TestOnly

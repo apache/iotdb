@@ -27,7 +27,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.metadata.idtable.deviceID.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.deviceID.IDeviceID;
-import org.apache.iotdb.db.metadata.idtable.deviceID.StandAloneAutoIncDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.InsertMeasurementMNode;
@@ -314,9 +313,6 @@ public class IDTableHashmapImpl implements IDTable {
     if (IDiskSchemaManager != null) {
       IDiskSchemaManager.close();
     }
-    if (DeviceIDFactory.getInstance().getDeviceIDClass() == StandAloneAutoIncDeviceID.class) {
-      StandAloneAutoIncDeviceID.clear();
-    }
   }
 
   /**
@@ -389,20 +385,41 @@ public class IDTableHashmapImpl implements IDTable {
   /**
    * put schema entry to id table, currently used in recover
    *
-   * @param deviceID device id
+   * @param devicePath device path (can be device id formed path)
    * @param measurement measurement name
    * @param schemaEntry schema entry to put
    * @param isAligned is the device aligned
    * @throws MetadataException
    */
   @Override
+  @TestOnly
   public void putSchemaEntry(
-      String deviceID, String measurement, SchemaEntry schemaEntry, boolean isAligned)
+      String devicePath, String measurement, SchemaEntry schemaEntry, boolean isAligned)
       throws MetadataException {
-    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(deviceID, isAligned);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(devicePath, isAligned);
     deviceEntry.putSchemaEntry(measurement, schemaEntry);
   }
 
+  /**
+   * put schema entry to id table, only used in recover
+   *
+   * @param deviceID device id
+   * @param devicePath device path
+   * @param measurement measurement name
+   * @param schemaEntry schema entry to put
+   * @param isAligned is the device aligned
+   */
+  @Override
+  public void putSchemaEntry(
+      String deviceID,
+      String devicePath,
+      String measurement,
+      SchemaEntry schemaEntry,
+      boolean isAligned) {
+    IDeviceID id = DeviceIDFactory.getInstance().getDeviceIDWithRecover(deviceID, devicePath);
+    DeviceEntry deviceEntry = getDeviceEntryWithAutoCreate(id, isAligned);
+    deviceEntry.putSchemaEntry(measurement, schemaEntry);
+  }
   /**
    * get DiskSchemaEntries from disk file
    *
@@ -482,7 +499,7 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   /**
-   * get device id from device path and check is aligned,
+   * get device entry from device path and check is aligned
    *
    * @param deviceName device name of the time series
    * @param isAligned whether the insert plan is aligned
@@ -491,17 +508,8 @@ public class IDTableHashmapImpl implements IDTable {
   private DeviceEntry getDeviceEntryWithAlignedCheck(String deviceName, boolean isAligned)
       throws MetadataException {
     IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceIDWithAutoCreate(deviceName);
-    int slot = calculateSlot(deviceID);
 
-    DeviceEntry deviceEntry = idTables[slot].get(deviceID);
-    // new device
-    if (deviceEntry == null) {
-      deviceEntry = new DeviceEntry(deviceID);
-      deviceEntry.setAligned(isAligned);
-      idTables[slot].put(deviceID, deviceEntry);
-
-      return deviceEntry;
-    }
+    DeviceEntry deviceEntry = getDeviceEntryWithAutoCreate(deviceID, isAligned);
 
     // check aligned
     if (deviceEntry.isAligned() != isAligned) {
@@ -515,6 +523,25 @@ public class IDTableHashmapImpl implements IDTable {
     return deviceEntry;
   }
 
+  /**
+   * get device entry
+   *
+   * @param deviceID
+   * @param isAligned
+   * @return
+   */
+  private DeviceEntry getDeviceEntryWithAutoCreate(IDeviceID deviceID, boolean isAligned) {
+    int slot = calculateSlot(deviceID);
+
+    DeviceEntry deviceEntry = idTables[slot].get(deviceID);
+    // new device
+    if (deviceEntry == null) {
+      deviceEntry = new DeviceEntry(deviceID);
+      deviceEntry.setAligned(isAligned);
+      idTables[slot].put(deviceID, deviceEntry);
+    }
+    return deviceEntry;
+  }
   /**
    * calculate slot that this deviceID should in
    *
