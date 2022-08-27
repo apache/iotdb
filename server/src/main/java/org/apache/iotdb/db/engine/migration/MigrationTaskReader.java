@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.migration;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.migration.MigrationTaskLogWriter.MigrationLog;
+import org.apache.iotdb.db.engine.migration.MigrationTaskWriter.MigrationLog;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -34,22 +34,22 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 
 /**
- * MigrationLogReader reads binarized MigrationLog from file using FileInputStream from head to
+ * MigrationTaskReader reads binarized MigrationLog from file using FileInputStream from head to
  * tail.
  */
-public class MigrationTaskLogReader implements AutoCloseable {
-  private static final Logger logger = LoggerFactory.getLogger(MigrationTaskLogReader.class);
+public class MigrationTaskReader implements AutoCloseable {
+  private static final Logger logger = LoggerFactory.getLogger(MigrationTaskReader.class);
   private File logFile;
   private FileInputStream logFileInStream;
   private MigrationLog log;
   private long unbrokenLogsSize = 0;
 
-  public MigrationTaskLogReader(String logFilePath) throws IOException {
+  public MigrationTaskReader(String logFilePath) throws IOException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     logFileInStream = new FileInputStream(logFile);
   }
 
-  public MigrationTaskLogReader(File logFile) throws IOException {
+  public MigrationTaskReader(File logFile) throws IOException {
     this.logFile = logFile;
     logFileInStream = new FileInputStream(logFile);
   }

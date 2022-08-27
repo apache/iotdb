@@ -273,12 +273,12 @@ public class MigrationTest {
     assertEquals(startTime, plan.getStartTime());
     assertEquals(targetDir.getPath(), plan.getTargetDir().getPath());
 
-    plan = (SetMigrationPlan) planner.parseSQLToPhysicalPlan("UNSET MIGRATION ON " + sg2);
+    plan = (SetMigrationPlan) planner.parseSQLToPhysicalPlan("CANCEL MIGRATION ON " + sg2);
     assertEquals(sg2, plan.getStorageGroup().getFullPath());
     assertEquals(Long.MAX_VALUE, plan.getTTL());
     assertEquals(Long.MAX_VALUE, plan.getStartTime());
 
-    plan = (SetMigrationPlan) planner.parseSQLToPhysicalPlan("UNSET MIGRATION 99");
+    plan = (SetMigrationPlan) planner.parseSQLToPhysicalPlan("CANCEL MIGRATION 99");
     assertEquals(99, plan.getTaskId());
     assertEquals(Long.MAX_VALUE, plan.getTTL());
     assertEquals(Long.MAX_VALUE, plan.getStartTime());
@@ -296,11 +296,11 @@ public class MigrationTest {
     assertEquals(10, plan.getTaskId());
     assertTrue(plan.isPause());
 
-    plan = (PauseMigrationPlan) planner.parseSQLToPhysicalPlan("UNPAUSE MIGRATION ON " + sg1);
+    plan = (PauseMigrationPlan) planner.parseSQLToPhysicalPlan("RESUME MIGRATION ON " + sg1);
     assertEquals(sg1, plan.getStorageGroup().getFullPath());
     assertFalse(plan.isPause());
 
-    plan = (PauseMigrationPlan) planner.parseSQLToPhysicalPlan("UNPAUSE MIGRATION 16");
+    plan = (PauseMigrationPlan) planner.parseSQLToPhysicalPlan("RESUME MIGRATION 16");
     assertEquals(16, plan.getTaskId());
     assertFalse(plan.isPause());
   }

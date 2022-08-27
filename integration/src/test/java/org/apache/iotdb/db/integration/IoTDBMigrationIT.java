@@ -76,7 +76,7 @@ public class IoTDBMigrationIT {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
-        statement.execute("UNSET MIGRATION ON root.MIGRATION_SG1");
+        statement.execute("CANCEL MIGRATION ON root.MIGRATION_SG1");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
@@ -86,7 +86,7 @@ public class IoTDBMigrationIT {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
-        statement.execute("UNPAUSE MIGRATION ON root.MIGRATION_SG1");
+        statement.execute("RESUME MIGRATION ON root.MIGRATION_SG1");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
@@ -185,8 +185,8 @@ public class IoTDBMigrationIT {
 
       StorageEngine.getInstance().syncCloseAllProcessor();
 
-      // test unpause migration
-      statement.execute("UNPAUSE MIGRATION ON root.MIGRATION_SG1");
+      // test resume migration
+      statement.execute("RESUME MIGRATION ON root.MIGRATION_SG1");
 
       Thread.sleep(MIGRATION_CHECK_TIME * 2);
 
@@ -221,7 +221,7 @@ public class IoTDBMigrationIT {
 
       statement.execute(
           "SET MIGRATION TO root.MIGRATION_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
-      statement.execute("UNSET MIGRATION ON root.MIGRATION_SG1");
+      statement.execute("CANCEL MIGRATION ON root.MIGRATION_SG1");
 
       StorageEngine.getInstance().getMigrationManager().setCheckThreadTime(MIGRATION_CHECK_TIME);
 

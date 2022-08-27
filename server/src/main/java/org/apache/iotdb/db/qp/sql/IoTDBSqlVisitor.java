@@ -844,10 +844,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
-  // Unset Migration
+  // Cancel Migration
   @Override
-  public Operator visitUnsetMigration(IoTDBSqlParser.UnsetMigrationContext ctx) {
-    UnsetMigrationOperator operator = new UnsetMigrationOperator(SQLConstant.TOK_UNSET);
+  public Operator visitCancelMigration(IoTDBSqlParser.CancelMigrationContext ctx) {
+    CancelMigrationOperator operator = new CancelMigrationOperator(SQLConstant.TOK_UNSET);
     if (ctx.storageGroup != null) {
       operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
     } else if (ctx.taskId != null) {
@@ -874,10 +874,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return operator;
   }
 
-  // Unpause Migration
+  // Resume Migration
   @Override
-  public Operator visitUnpauseMigration(IoTDBSqlParser.UnpauseMigrationContext ctx) {
-    UnpauseMigrationOperator operator = new UnpauseMigrationOperator(SQLConstant.TOK_UNSET);
+  public Operator visitResumeMigration(IoTDBSqlParser.ResumeMigrationContext ctx) {
+    ResumeMigrationOperator operator = new ResumeMigrationOperator(SQLConstant.TOK_UNSET);
     if (ctx.storageGroup != null) {
       operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
     } else if (ctx.taskId != null) {

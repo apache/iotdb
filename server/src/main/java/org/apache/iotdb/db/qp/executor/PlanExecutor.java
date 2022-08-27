@@ -1690,7 +1690,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void operateSetMigration(SetMigrationPlan plan) throws QueryProcessException {
     if (plan.getTargetDir() == null) {
       // is unset plan
-      StorageEngine.getInstance().unsetMigration(plan.getTaskId(), plan.getStorageGroup());
+      StorageEngine.getInstance().cancelMigration(plan.getTaskId(), plan.getStorageGroup());
     } else {
       try {
         List<PartialPath> storageGroupPaths =
@@ -1709,7 +1709,7 @@ public class PlanExecutor implements IPlanExecutor {
     if (plan.isPause()) {
       StorageEngine.getInstance().pauseMigration(plan.getTaskId(), plan.getStorageGroup());
     } else {
-      StorageEngine.getInstance().unpauseMigration(plan.getTaskId(), plan.getStorageGroup());
+      StorageEngine.getInstance().resumeMigration(plan.getTaskId(), plan.getStorageGroup());
     }
   }
 

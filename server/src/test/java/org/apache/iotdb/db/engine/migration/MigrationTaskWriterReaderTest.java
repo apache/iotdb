@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.migration;
 
-import org.apache.iotdb.db.engine.migration.MigrationTaskLogWriter.MigrationLog;
+import org.apache.iotdb.db.engine.migration.MigrationTaskWriter.MigrationLog;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -41,7 +41,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class MigrationTaskLogWriterReaderTest {
+public class MigrationTaskWriterReaderTest {
 
   private static final String filePath = "logtest.test";
   private final String sg1 = "root.MIGRATE_SG1";
@@ -63,14 +63,14 @@ public class MigrationTaskLogWriterReaderTest {
     migrateLogs = new ArrayList<>();
     migrateLogs.add(new MigrationLog(MigrationLog.LogType.START, task1));
     migrateLogs.add(new MigrationLog(MigrationLog.LogType.SET, task1));
-    migrateLogs.add(new MigrationLog(MigrationLog.LogType.UNSET, task2));
+    migrateLogs.add(new MigrationLog(MigrationLog.LogType.CANCEL, task2));
     migrateLogs.add(new MigrationLog(MigrationLog.LogType.PAUSE, task2));
-    migrateLogs.add(new MigrationLog(MigrationLog.LogType.UNPAUSE, task2));
+    migrateLogs.add(new MigrationLog(MigrationLog.LogType.RESUME, task2));
 
     startTime = DatetimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
   }
 
-  public void writeLog(MigrationTaskLogWriter writer) throws IOException {
+  public void writeLog(MigrationTaskWriter writer) throws IOException {
     writer.startMigration(task1);
     writer.setMigration(task1);
     writer.unsetMigration(task2);
@@ -108,11 +108,11 @@ public class MigrationTaskLogWriterReaderTest {
 
   @Test
   public void testWriteAndRead() throws Exception {
-    MigrationTaskLogWriter writer = new MigrationTaskLogWriter(filePath);
+    MigrationTaskWriter writer = new MigrationTaskWriter(filePath);
     writeLog(writer);
     try {
       writer.close();
-      MigrationTaskLogReader reader = new MigrationTaskLogReader(new File(filePath));
+      MigrationTaskReader reader = new MigrationTaskReader(new File(filePath));
       List<MigrationLog> res = new ArrayList<>();
       while (reader.hasNext()) {
         res.add(reader.next());
@@ -130,7 +130,7 @@ public class MigrationTaskLogWriterReaderTest {
   public void testTruncateBrokenLogs() throws Exception {
     try {
       // write normal data
-      MigrationTaskLogWriter writer = new MigrationTaskLogWriter(filePath);
+      MigrationTaskWriter writer = new MigrationTaskWriter(filePath);
       try {
         writeLog(writer);
       } finally {
@@ -156,7 +156,7 @@ public class MigrationTaskLogWriterReaderTest {
       }
 
       // read & check
-      MigrationTaskLogReader reader = new MigrationTaskLogReader(new File(filePath));
+      MigrationTaskReader reader = new MigrationTaskReader(new File(filePath));
       try {
         List<MigrationLog> res = new ArrayList<>();
         while (reader.hasNext()) {

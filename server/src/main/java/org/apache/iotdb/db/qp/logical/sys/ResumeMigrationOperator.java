@@ -26,12 +26,12 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.PauseMigrationPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class UnpauseMigrationOperator extends Operator {
+public class ResumeMigrationOperator extends Operator {
 
   private long taskId = -1;
   private PartialPath storageGroup;
 
-  public UnpauseMigrationOperator(int tokenIntType) {
+  public ResumeMigrationOperator(int tokenIntType) {
     super(tokenIntType);
     this.operatorType = OperatorType.PAUSE_MIGRATION;
   }

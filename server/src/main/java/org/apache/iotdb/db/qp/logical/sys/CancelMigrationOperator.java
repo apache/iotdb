@@ -27,12 +27,12 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetMigrationPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class UnsetMigrationOperator extends Operator {
+public class CancelMigrationOperator extends Operator {
   private PartialPath storageGroup = null;
 
   private long taskId = -1;
 
-  public UnsetMigrationOperator(int tokenIntType) {
+  public CancelMigrationOperator(int tokenIntType) {
     super(tokenIntType);
     this.operatorType = OperatorType.SET_MIGRATION;
   }

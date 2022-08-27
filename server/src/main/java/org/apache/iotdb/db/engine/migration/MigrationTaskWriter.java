@@ -31,17 +31,17 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-/** MigrationLog writes the binary logs of MigrationTask into file using FileOutputStream */
-public class MigrationTaskLogWriter implements AutoCloseable {
+/** MigrationTasKWriter writes the binary logs of MigrationTask into file using FileOutputStream */
+public class MigrationTaskWriter implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(MLogTxtWriter.class);
   private final File logFile;
   private FileOutputStream logFileOutStream;
 
-  public MigrationTaskLogWriter(String logFileName) throws FileNotFoundException {
+  public MigrationTaskWriter(String logFileName) throws FileNotFoundException {
     this(SystemFileFactory.INSTANCE.getFile(logFileName));
   }
 
-  public MigrationTaskLogWriter(File logFile) throws FileNotFoundException {
+  public MigrationTaskWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
     if (!logFile.exists()) {
       if (logFile.getParentFile() != null) {
@@ -97,7 +97,7 @@ public class MigrationTaskLogWriter implements AutoCloseable {
   }
 
   public void unsetMigration(MigrationTask migrationTask) throws IOException {
-    MigrationLog log = new MigrationLog(MigrationLog.LogType.UNSET, migrationTask.getTaskId());
+    MigrationLog log = new MigrationLog(MigrationLog.LogType.CANCEL, migrationTask.getTaskId());
     putLog(log);
   }
 
@@ -107,7 +107,7 @@ public class MigrationTaskLogWriter implements AutoCloseable {
   }
 
   public void unpauseMigration(MigrationTask migrationTask) throws IOException {
-    MigrationLog log = new MigrationLog(MigrationLog.LogType.UNPAUSE, migrationTask.getTaskId());
+    MigrationLog log = new MigrationLog(MigrationLog.LogType.RESUME, migrationTask.getTaskId());
     putLog(log);
   }
 
@@ -162,10 +162,10 @@ public class MigrationTaskLogWriter implements AutoCloseable {
 
     public enum LogType {
       SET,
-      UNSET,
+      CANCEL,
       START,
       PAUSE,
-      UNPAUSE,
+      RESUME,
       FINISHED,
       ERROR
     }

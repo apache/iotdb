@@ -1337,19 +1337,19 @@ public class StorageEngine implements IService {
     }
   }
 
-  // push the migration info to migrationManager
+  /** push the migration info to migrationManager */
   public void setMigration(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
     migrationManager.setMigrate(storageGroup, targetDir, ttl, startTime);
     logger.info("start check migration task successfully.");
   }
 
-  public void unsetMigration(long taskId, PartialPath storageGroup) {
+  public void cancelMigration(long taskId, PartialPath storageGroup) {
     if (taskId >= 0) {
-      migrationManager.unsetMigration(taskId);
+      migrationManager.cancelMigration(taskId);
     } else if (storageGroup != null) {
-      migrationManager.unsetMigration(storageGroup);
+      migrationManager.cancelMigration(storageGroup);
     } else {
-      logger.error("unset migration cannot recognize taskId or storagegroup");
+      logger.error("cancel migration cannot recognize taskId or storagegroup");
     }
   }
 
@@ -1363,13 +1363,13 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void unpauseMigration(long taskId, PartialPath storageGroup) {
+  public void resumeMigration(long taskId, PartialPath storageGroup) {
     if (taskId >= 0) {
-      migrationManager.unpauseMigration(taskId);
+      migrationManager.resumeMigration(taskId);
     } else if (storageGroup != null) {
-      migrationManager.unpauseMigration(storageGroup);
+      migrationManager.resumeMigration(storageGroup);
     } else {
-      logger.error("unpause migration cannot recognize taskId or storagegroup");
+      logger.error("resume migration cannot recognize taskId or storagegroup");
     }
   }
 

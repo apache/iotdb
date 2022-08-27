@@ -22,7 +22,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.migration.MigrationTaskLogWriter.MigrationLog;
+import org.apache.iotdb.db.engine.migration.MigrationTaskWriter.MigrationLog;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 public class MigrationManager {
   private static final Logger logger = LoggerFactory.getLogger(MigrationManager.class);
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private MigrationTaskLogWriter logWriter;
+  private MigrationTaskWriter logWriter;
 
   // taskId -> MigrationTask
   private ConcurrentHashMap<Long, MigrationTask> migrationTasks = new ConcurrentHashMap<>();
@@ -87,14 +87,14 @@ public class MigrationManager {
     }
 
     try {
-      logWriter = new MigrationTaskLogWriter(LOG_FILE_NAME);
+      logWriter = new MigrationTaskWriter(LOG_FILE_NAME);
     } catch (FileNotFoundException e) {
       logger.error("Cannot find/create log for migration.");
     }
 
     // read from logReader
     try {
-      MigrationTaskLogReader logReader = new MigrationTaskLogReader(LOG_FILE_NAME);
+      MigrationTaskReader logReader = new MigrationTaskReader(LOG_FILE_NAME);
       Set<Long> errorSet = new HashSet<>();
 
       while (logReader.hasNext()) {
@@ -109,8 +109,8 @@ public class MigrationManager {
                 log.ttl,
                 log.startTime);
             break;
-          case UNSET:
-            unsetMigrationFromLog(log.taskId);
+          case CANCEL:
+            cancelMigrationFromLog(log.taskId);
             break;
           case START:
             // if task started but didn't finish, then error occurred
@@ -120,8 +120,8 @@ public class MigrationManager {
             errorSet.remove(log.taskId);
             pauseMigrationFromLog(log.taskId);
             break;
-          case UNPAUSE:
-            unpauseMigrationFromLog(log.taskId);
+          case RESUME:
+            resumeMigrationFromLog(log.taskId);
             break;
           case FINISHED:
             // finished task => remove from list and remove from potential error task
@@ -220,7 +220,7 @@ public class MigrationManager {
    * @param unsetTaskId taskId of task to remove
    * @return true if task with taskId exists, false otherwise
    */
-  public boolean unsetMigration(long unsetTaskId) {
+  public boolean cancelMigration(long unsetTaskId) {
     if (migrationTasks.containsKey(unsetTaskId)) {
       MigrationTask task = migrationTasks.get(unsetTaskId);
       if (task.getTaskId() == unsetTaskId
@@ -241,13 +241,13 @@ public class MigrationManager {
   }
 
   /**
-   * Unset migration task from migrationTasks list using storage group. If multiple tasks with such
+   * Cancel migration task from migrationTasks list using storage group. If multiple tasks with such
    * storage group exists, remove the one with the lowest taskId.
    *
    * @param storageGroup sg for task to remove
    * @return true if exists task with storageGroup
    */
-  public boolean unsetMigration(PartialPath storageGroup) {
+  public boolean cancelMigration(PartialPath storageGroup) {
     for (MigrationTask task : migrationTasks.values()) {
       if (task.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
           && (task.getStatus() == MigrationTask.MigrationTaskStatus.READY
@@ -266,8 +266,8 @@ public class MigrationManager {
     return false;
   }
 
-  /** same as unsetMigrate using taskId except does not write to log */
-  public boolean unsetMigrationFromLog(long taskId) {
+  /** same as cancelMigrate using taskId except does not write to log */
+  public boolean cancelMigrationFromLog(long taskId) {
     if (migrationTasks.containsKey(taskId)) {
       migrationTasks.remove(taskId);
       return true;
@@ -343,7 +343,7 @@ public class MigrationManager {
    * @param unpauseTaskId taskId of task to unpause
    * @return true if task with index exists and paused
    */
-  public boolean unpauseMigration(long unpauseTaskId) {
+  public boolean resumeMigration(long unpauseTaskId) {
     if (migrationTasks.containsKey(unpauseTaskId)) {
       MigrationTask task = migrationTasks.get(unpauseTaskId);
       if (task.getStatus() == MigrationTask.MigrationTaskStatus.PAUSED) {
@@ -362,13 +362,13 @@ public class MigrationManager {
   }
 
   /**
-   * Unpause migration task from migrationTasks list using storage group. If multiple tasks with
-   * such storage group exists, remove the one with the lowest taskId and paused.
+   * Resume migration task from migrationTasks list using storage group. If multiple tasks with such
+   * storage group exists, remove the one with the lowest taskId and paused.
    *
    * @param storageGroup sg for task to remove
    * @return true if exists task with storageGroup
    */
-  public boolean unpauseMigration(PartialPath storageGroup) {
+  public boolean resumeMigration(PartialPath storageGroup) {
     for (MigrationTask task : migrationTasks.values()) {
       if (task.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
           && (task.getStatus() == MigrationTask.MigrationTaskStatus.PAUSED)) {
@@ -386,8 +386,8 @@ public class MigrationManager {
     return false;
   }
 
-  /** same as unpauseMigration using taskId except does not write to log */
-  public boolean unpauseMigrationFromLog(long unpauseTaskId) {
+  /** same as resumeMigration using taskId except does not write to log */
+  public boolean resumeMigrationFromLog(long unpauseTaskId) {
     if (migrationTasks.containsKey(unpauseTaskId)) {
       migrationTasks.get(unpauseTaskId).setStatus(MigrationTask.MigrationTaskStatus.READY);
       return true;

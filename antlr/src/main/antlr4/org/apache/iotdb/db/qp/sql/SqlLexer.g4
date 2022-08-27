@@ -109,6 +109,10 @@ CACHE
     : C A C H E
     ;
 
+CANCEL
+    : C A N C E L
+    ;
+
 CHILD
     : C H I L D
     ;
@@ -424,6 +428,10 @@ RESAMPLE
 
 RESOURCE
     : R E S O U R C E
+    ;
+
+RESUME
+    : R E S U M E
     ;
 
 REVOKE
