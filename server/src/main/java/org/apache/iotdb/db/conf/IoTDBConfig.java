@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
+import org.apache.iotdb.db.utils.HandleSystemErrorStrategy;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -84,8 +85,9 @@ public class IoTDBConfig {
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
-  /** Shutdown system or set it to read-only mode when unrecoverable error occurs. */
-  private boolean allowReadOnlyWhenErrorsOccur = true;
+  /** What will the system do when unrecoverable error occurs. */
+  private HandleSystemErrorStrategy handleSystemErrorStrategy =
+      HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY;
 
   /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
@@ -1546,17 +1548,18 @@ public class IoTDBConfig {
     this.sessionTimeoutThreshold = sessionTimeoutThreshold;
   }
 
-  boolean isAllowReadOnlyWhenErrorsOccur() {
-    return allowReadOnlyWhenErrorsOccur;
+  public HandleSystemErrorStrategy getHandleSystemErrorStrategy() {
+    return handleSystemErrorStrategy;
   }
 
-  void setAllowReadOnlyWhenErrorsOccur(boolean allowReadOnlyWhenErrorsOccur) {
-    this.allowReadOnlyWhenErrorsOccur = allowReadOnlyWhenErrorsOccur;
+  public void setHandleSystemErrorStrategy(HandleSystemErrorStrategy handleSystemErrorStrategy) {
+    this.handleSystemErrorStrategy = handleSystemErrorStrategy;
   }
 
   public boolean isReadOnly() {
     return status == NodeStatus.ReadOnly
-        || (status == NodeStatus.Error && allowReadOnlyWhenErrorsOccur);
+        || (status == NodeStatus.Error
+            && handleSystemErrorStrategy == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY);
   }
 
   public NodeStatus getNodeStatus() {
@@ -1566,17 +1569,21 @@ public class IoTDBConfig {
   public void setNodeStatus(NodeStatus newStatus) {
     if (newStatus == NodeStatus.ReadOnly) {
       logger.error(
-          "Change system mode to read-only! Only query statements are permitted!",
+          "Change system status to read-only! Only query statements are permitted!",
           new RuntimeException("System mode is set to READ_ONLY"));
     } else if (newStatus == NodeStatus.Error) {
-      if (allowReadOnlyWhenErrorsOccur) {
+      if (handleSystemErrorStrategy == HandleSystemErrorStrategy.NONE) {
         logger.error(
-            "Unrecoverable error occurs! Make system read-only when allow_read_only_when_errors_occur is true.",
+            "Unrecoverable error occurs! Just change system status to error when handle_system_error is NONE.",
+            new RuntimeException("System mode is set to ERROR"));
+      } else if (handleSystemErrorStrategy == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY) {
+        logger.error(
+            "Unrecoverable error occurs! Change system status to read-only when handle_system_error is CHANGE_TO_READ_ONLY. Only query statements are permitted!",
             new RuntimeException("System mode is set to READ_ONLY"));
         newStatus = NodeStatus.ReadOnly;
-      } else {
+      } else if (handleSystemErrorStrategy == HandleSystemErrorStrategy.SHUTDOWN) {
         logger.error(
-            "Unrecoverable error occurs! Shutdown system directly when allow_read_only_when_errors_occur is false.",
+            "Unrecoverable error occurs! Shutdown system directly when handle_system_error is SHUTDOWN.",
             new RuntimeException("System mode is set to ERROR"));
         System.exit(-1);
       }
