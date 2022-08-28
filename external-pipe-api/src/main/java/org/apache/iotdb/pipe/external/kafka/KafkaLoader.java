@@ -52,8 +52,11 @@ public class KafkaLoader {
       props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
       props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
       props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, this.kafkaParams.get("offset"));
-      props.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, 100 * 1024 * 1024);
-      props.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, 100 * 1024 * 1024);
+      // props.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, 100 * 1024 * 1024);
+      // props.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, 100 * 1024 * 1024);
+      props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 600000);
+      props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 100);
+      props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 60000);
 
       props.put(ConsumerConfig.GROUP_ID_CONFIG, topic);
 
@@ -61,7 +64,7 @@ public class KafkaLoader {
       consumer.subscribe(Collections.singleton(topic));
 
       if (i == 0) {
-        int partition_num = get_partition_num(consumer, this.kafkaParams.get("topic"));
+        int partition_num = get_partition_num(consumer, topic);
         if (partition_num > 1) {
           this.single_partition = false;
         }
@@ -112,8 +115,8 @@ public class KafkaLoader {
     DROP
   }
 
-  public String getStatus() {
-    return this.status.toString();
+  public LoaderStatus getStatus() {
+    return this.status;
   }
 
   @Override
@@ -139,7 +142,7 @@ public class KafkaLoader {
       numOfFailedTimeSeriesDeletion += cs.getNumOfFailedTimeSeriesDeletion();
     }
 
-    return "ExternalPipeSinkWriterStatus{"
+    return "LoaderSyncStatus{"
         + "startTime="
         + startTime
         + ", numOfSuccessfulInsertion="

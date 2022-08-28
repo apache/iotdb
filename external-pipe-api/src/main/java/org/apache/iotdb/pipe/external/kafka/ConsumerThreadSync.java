@@ -220,7 +220,7 @@ public class ConsumerThreadSync implements Runnable {
   public void run() {
     try {
       do {
-        ConsumerRecords<String, String> records = this.consumer.poll(Duration.ofSeconds(10));
+        ConsumerRecords<String, String> records = this.consumer.poll(Duration.ofSeconds(60));
         List<String> datas = new ArrayList<>(records.count());
         for (ConsumerRecord<String, String> record : records) {
           datas.add(record.value());

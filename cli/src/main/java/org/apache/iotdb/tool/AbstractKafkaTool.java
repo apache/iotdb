@@ -17,7 +17,7 @@ import java.util.Set;
 public abstract class AbstractKafkaTool {
 
   static final PrintStream console = System.out;
-  static final String LOG_DIR = "./log/LoadKafka.log";
+  static final String LOG_DIR = "./logs/LoadKafka.log";
   static final String PAUSE = "pause";
   static final String RESUME = "resume";
   static final String HELP = "help";
@@ -197,16 +197,21 @@ public abstract class AbstractKafkaTool {
     }
     if (PAUSE.equals(specialCmd)) {
       kl.cancel();
+      console.println("The statement has been executed successfully.");
       return true;
     }
     if (RESUME.equals(specialCmd)) {
       kl.run();
+      console.println("The statement has been executed successfully.");
       return true;
     }
     if (STATUS.equals(specialCmd)) {
       console.println(kl.getStatus());
       console.println(kl);
+      return true;
     }
+    console.println("Error: invalid command type. Correct commands shall be:");
+    showHelp();
     return true;
   }
 
@@ -228,7 +233,6 @@ public abstract class AbstractKafkaTool {
         if (!result) {
           return false;
         }
-        console.println("The statement has been executed successfully.");
       }
     }
     return true;

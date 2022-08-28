@@ -407,7 +407,7 @@ public class kafkaTest {
     // send_to_kafka_no_type();
     // send_to_kafka_with_type();
     try {
-      send_random_point(10000, 100);
+      send_random_point(50000000, 1);
     } catch (IOException ignore) {
     }
     // load_from_kafka();

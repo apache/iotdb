@@ -136,9 +136,13 @@ public class LoadKafka extends AbstractKafkaTool {
       kafkaParams.put("topic", topic);
       kafkaParams.put("max_consumer", max_consumer);
       kafkaParams.put("offset", offset);
+      console.println("Connecting to IoTDB......");
       SessionPool sp = new SessionPool(host, Integer.parseInt(port), username, password, 5);
+      console.println("Successfully connected to IoTDB.");
+      console.println("Connecting to Kafka......");
       KafkaLoader kl = new KafkaLoader(sp, kafkaParams);
-      console.println("created consumers: " + kl.open());
+      console.println("Created consumers: " + kl.open());
+      console.println("Successfully connected to Kafka.");
       kl.run();
       String s;
       console.println(LOADER_CLI_PREFIX + "> start successfully");
