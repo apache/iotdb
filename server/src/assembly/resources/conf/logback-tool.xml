@@ -19,4 +19,18 @@
     under the License.
 
 -->
-<configuration/>
+<configuration scan="true" scanPeriod="60 seconds">
+    <appender class="ch.qos.logback.core.ConsoleAppender" name="stdout">
+        <Target>System.out</Target>
+        <encoder>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+    </appender>
+    <root level="error">
+        <appender-ref ref="stdout"/>
+    </root>
+</configuration>

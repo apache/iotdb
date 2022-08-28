@@ -51,6 +51,7 @@ import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 
 import static org.apache.iotdb.db.utils.JarLoaderUtil.loadExternLib;
@@ -133,7 +134,16 @@ public class IoTDB implements IoTDBMBean {
     config.setEnablePartialInsert(prevIsEnablePartialInsert);
     activated = true;
 
+    processPid();
+
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
+  }
+
+  void processPid() {
+    String pidFile = System.getProperty(IoTDBConstant.IOTDB_PIDFILE);
+    if (pidFile != null) {
+      new File(pidFile).deleteOnExit();
+    }
   }
 
   private void setUp() throws StartupException, QueryProcessException {

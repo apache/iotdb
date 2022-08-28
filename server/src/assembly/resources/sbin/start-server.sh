@@ -18,12 +18,6 @@
 # under the License.
 #
 
-
-echo ---------------------
-echo Starting IoTDB
-echo ---------------------
-
-
 if [ "x$IOTDB_INCLUDE" = "x" ]; then
     # Locations (in order) to use when searching for an include file.
     for include in "`dirname "$0"`/iotdb.in.sh" \
@@ -41,7 +35,6 @@ elif [ -r "$IOTDB_INCLUDE" ]; then
     . "$IOTDB_INCLUDE"
 fi
 
-
 if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="`dirname "$0"`/.."
 fi
@@ -54,26 +47,103 @@ if [ -z "${IOTDB_LOG_DIR}" ]; then
   export IOTDB_LOG_DIR=${IOTDB_HOME}/logs
 fi
 
+if [ -z "${configurationFile}" ]; then
+  IOTDB_LOG_CONFIG="${IOTDB_CONF}/logback.xml"
+fi
 
-is_conf_path=false
-for arg do
-  shift
-  if [ "$arg" == "-c" ]; then
-    is_conf_path=true
-    continue
-  fi
-  if [ $is_conf_path == true ]; then
-    IOTDB_CONF=$arg
-    is_conf_path=false
-    continue
-  fi
-  set -- "$@" "$arg"
+# Parse any command line options.
+args=`getopt gvRfhp:c:bD::H:E: "$@"`
+eval set -- "$args"
+
+while true; do
+    case "$1" in
+        -c)
+            IOTDB_CONF="$2"
+            shift 2
+            ;;
+        -p)
+            pidfile="$2"
+            shift 2
+        ;;
+        -f)
+            foreground="yes"
+            shift
+        ;;
+        -g)
+            PRINT_GC="yes"
+            shift
+        ;;
+        -H)
+            IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -XX:HeapDumpPath=$2"
+            shift 2
+        ;;
+        -E)
+            IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -XX:ErrorFile=$2"
+            shift 2
+        ;;
+        -D)
+            IOTDB_JVM_OPTS="$IOTDB_JVM_OPTS -D$2"
+            shift 2
+        ;;
+        -h)
+            echo "Usage: $0 [-v] [-f] [-h] [-p pidfile] [-c configFolder] [-H HeapDumpPath] [-E JvmErrorFile] [printgc]"
+            exit 0
+        ;;
+        -v)
+            SHOW_VERSION="yes"
+            break
+        ;;
+        --)
+            shift
+            #all others are args to the program
+            PARAMS=$*
+            break
+        ;;
+        *)
+            echo "Error parsing arguments! Unknown argument \"$1\"" >&2
+            exit 1
+        ;;
+    esac
 done
 
-CONF_PARAMS=$*
+CLASSPATH=""
+for f in ${IOTDB_HOME}/lib/*.jar; do
+  CLASSPATH=${CLASSPATH}":"$f
+done
+
+classname=org.apache.iotdb.db.service.IoTDB
+
+if [ "x$SHOW_VERSION" != "x" ]; then
+    classname=org.apache.iotdb.db.service.GetVersion
+    IOTDB_LOG_CONFIG="${IOTDB_CONF}/logback-tool.xml"
+    # find java in JAVA_HOME
+    if [ -n "$JAVA_HOME" ]; then
+        for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
+            if [ -x "$java" ]; then
+                JAVA="$java"
+                break
+            fi
+        done
+    else
+        JAVA=java
+    fi
+    exec "$JAVA" -cp "$CLASSPATH" $IOTDB_JVM_OPTS "-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}" "$classname"
+    exit 0
+fi
+
+echo ---------------------
+echo Starting IoTDB
+echo ---------------------
+
+## this is for being compatibile with v0.13, can be removed from v0.14 on.
+data=($*)
+if [ "x${data[0]}" == "xprintgc" ]; then
+  PRINT_GC="yes"
+fi
+## end
 
 if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
-    if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+    if [ "x$PRINT_GC" != "x" ]; then
       . "$IOTDB_CONF/iotdb-env.sh" "printgc"
     else
         . "$IOTDB_CONF/iotdb-env.sh"
@@ -82,22 +152,42 @@ else
     echo "can't find $IOTDB_CONF/iotdb-env.sh"
 fi
 
-CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
-  CLASSPATH=${CLASSPATH}":"$f
-done
-classname=org.apache.iotdb.db.service.IoTDB
-
 launch_service()
 {
 	class="$1"
-	iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback.xml"
+	iotdb_parms="-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}"
 	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -DTSFILE_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
-	exec "$JAVA" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
+	iotdb_parms="$iotdb_parms -DIOTDB_LOG_DIR=${DIOTDB_LOG_DIR}"
+
+  if [ "x$pidpath" != "x" ]; then
+     iotdb_parms="$iotdb_parms -Diotdb-pidfile=$pidpath"
+  fi
+
+  # The iotdb-foreground option will tell IoTDB not to close stdout/stderr, but it's up to us not to background.
+  if [ "x$foreground" != "x" ]; then
+      iotdb_parms="$iotdb_parms -Diotdb-foreground=yes"
+      if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
+          exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
+      else
+          exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
+      fi
+  # Startup IoTDB, background it, and write the pid.
+  else
+      if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
+            exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null  <&- &
+            [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
+            true
+      else
+            exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null <&- &
+            [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
+            true
+      fi
+  fi
+
 	return $?
 }
 
