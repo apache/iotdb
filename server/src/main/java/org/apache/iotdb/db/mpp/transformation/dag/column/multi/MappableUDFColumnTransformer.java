@@ -92,4 +92,10 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   public ColumnTransformer[] getInputColumnTransformers() {
     return inputColumnTransformers;
   }
+
+  @Override
+  public void close() {
+    // finalize executor
+    executor.beforeDestroy();
+  }
 }
