@@ -60,12 +60,12 @@ void createSchemaTemplate() {
         temp.addToTemplate(mNodeS2);
 
         session->createSchemaTemplate(temp);
-        session->setSchemaTemplate("template1", "root.sg2");
+        session->setSchemaTemplate("template1", "root.sg3.d1");
     }
 }
 
 void ActivateTemplate() {
-    session->executeNonQueryStatement("insert into root.sg2.d1(timestamp,s1, s2) values(200, 1, 1);");
+    session->executeNonQueryStatement("insert into root.sg3.d1(timestamp,s1, s2) values(200, 1, 1);");
 }
 
 void showDevices() {
@@ -163,7 +163,7 @@ void insertAlignedTablet() {
     tablet.setAligned(true);
 
     for (int64_t time = 0; time < DEFAULT_ROW_NUMBER; time++) {
-        int row = tablet.rowSize++;
+        size_t row = tablet.rowSize++;
         tablet.timestamps[row] = time;
         int randVal1 = 123456;
         double randVal2 = 123456.1234;
@@ -202,9 +202,9 @@ void insertAlignedTablets() {
     tabletMap["root.sg1.d3"] = &tablet3;
 
     for (int64_t time = 0; time < 20; time++) {
-        int row1 = tablet1.rowSize++;
-        int row2 = tablet2.rowSize++;
-        int row3 = tablet3.rowSize++;
+        size_t row1 = tablet1.rowSize++;
+        size_t row2 = tablet2.rowSize++;
+        size_t row3 = tablet3.rowSize++;
         tablet1.timestamps[row1] = time;
         tablet2.timestamps[row2] = time;
         tablet3.timestamps[row3] = time;
@@ -260,7 +260,7 @@ void insertNullableTabletWithAlignedTimeseries() {
     tablet.setAligned(true);
 
     for (int64_t time = 0; time < 20; time++) {
-        int row = tablet.rowSize++;
+        size_t row = tablet.rowSize++;
         tablet.timestamps[row] = time;
         for (int i = 0; i < 3; i++) {
             int randVal1 = rand();
@@ -274,8 +274,8 @@ void insertNullableTabletWithAlignedTimeseries() {
                 tablet.addValue(i, row, &randVal3);
             }
             // mark null value
-            if (row % 3 == i) {
-                tablet.bitMaps[i]->mark(row);
+            if ((row % 3) == (unsigned int) i) {
+                tablet.bitMaps[i].mark(row);
             }
         }
         if (tablet.rowSize == tablet.maxRowNumber) {
@@ -337,6 +337,8 @@ void deleteStorageGroups() {
 
 
 int main() {
+    LOG_LEVEL = LEVEL_DEBUG;
+
     session = new Session("127.0.0.1", 6667, "root", "root");
 
     cout << "session open\n" << endl;
@@ -346,7 +348,7 @@ int main() {
     try {
         session->setStorageGroup("root.sg1");
     }
-    catch (IoTDBConnectionException &e) {
+    catch (IoTDBException &e) {
         string errorMessage(e.what());
         if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
             cout << errorMessage << endl;

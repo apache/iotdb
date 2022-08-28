@@ -176,9 +176,9 @@ public class LoadManager {
   }
 
   private void updateNodeLoadStatistic() {
-    AtomicBoolean existFailDownDataNode = new AtomicBoolean(false);
-    AtomicBoolean existChangeLeaderSchemaRegionGroup = new AtomicBoolean(false);
-    AtomicBoolean existChangeLeaderDataRegionGroup = new AtomicBoolean(false);
+    AtomicBoolean existDataNodeChangesStatus = new AtomicBoolean(false);
+    AtomicBoolean existSchemaRegionGroupChangesLeader = new AtomicBoolean(false);
+    AtomicBoolean existDataRegionGroupChangesLeader = new AtomicBoolean(false);
     boolean isNeedBroadcast = false;
 
     getNodeManager()
@@ -186,10 +186,10 @@ public class LoadManager {
         .values()
         .forEach(
             nodeCache -> {
-              boolean updateResult = nodeCache.updateLoadStatistic();
+              boolean updateResult = nodeCache.updateNodeStatus();
               if (nodeCache instanceof DataNodeHeartbeatCache) {
-                // Check if some DataNodes fail down
-                existFailDownDataNode.compareAndSet(false, updateResult);
+                // Check if some DataNodes changes status
+                existDataNodeChangesStatus.compareAndSet(false, updateResult);
               }
             });
 
@@ -202,27 +202,27 @@ public class LoadManager {
               switch (regionGroupCache.getConsensusGroupId().getType()) {
                   // Check if some RegionGroups change their leader
                 case SchemaRegion:
-                  existChangeLeaderSchemaRegionGroup.compareAndSet(false, updateResult);
+                  existSchemaRegionGroupChangesLeader.compareAndSet(false, updateResult);
                   break;
                 case DataRegion:
-                  existChangeLeaderDataRegionGroup.compareAndSet(false, updateResult);
+                  existDataRegionGroupChangesLeader.compareAndSet(false, updateResult);
                   break;
               }
             });
 
-    if (existFailDownDataNode.get()) {
-      // The RegionRouteMap must be broadcast if some DataNodes fail down
+    if (existDataNodeChangesStatus.get()) {
+      // The RegionRouteMap must be broadcast if some DataNodes change status
       isNeedBroadcast = true;
     }
 
     if (RouteBalancer.LEADER_POLICY.equals(CONF.getRoutingPolicy())) {
       // Check the condition of leader routing policy
-      if (existChangeLeaderSchemaRegionGroup.get()) {
+      if (existSchemaRegionGroupChangesLeader.get()) {
         // Broadcast the RegionRouteMap if some SchemaRegionGroups change their leader
         isNeedBroadcast = true;
       }
       if (!ConsensusFactory.MultiLeaderConsensus.equals(CONF.getDataRegionConsensusProtocolClass())
-          && existChangeLeaderDataRegionGroup.get()) {
+          && existDataRegionGroupChangesLeader.get()) {
         // Broadcast the RegionRouteMap if some DataRegionGroups change their leader
         // and the consensus protocol isn't MultiLeader
         isNeedBroadcast = true;

@@ -16,17 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf;
+package org.apache.iotdb.db.integration.sync;
 
-/** Status of current system */
-public enum SystemStatus {
-  /** System can read and write normally */
-  NORMAL,
-  /** Only query statements are permitted */
-  READ_ONLY,
-  /**
-   * Unrecoverable errors occur, system will be read-only or exit according to the param
-   * allow_read_only_when_errors_occur
-   */
-  ERROR,
+import org.apache.iotdb.db.sync.pipedata.PipeData;
+import org.apache.iotdb.db.sync.transport.client.ISyncClient;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class MockSyncClient implements ISyncClient {
+
+  private final List<PipeData> pipeDataList;
+
+  public MockSyncClient() {
+    this.pipeDataList = new ArrayList<>();
+  }
+
+  public List<PipeData> getPipeDataList() {
+    return pipeDataList;
+  }
+
+  @Override
+  public boolean handshake() {
+    return true;
+  }
+
+  @Override
+  public boolean send(PipeData pipeData) {
+    pipeDataList.add(pipeData);
+    return true;
+  }
+
+  @Override
+  public void close() {}
 }

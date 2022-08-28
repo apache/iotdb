@@ -16,37 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration.sync;
+package org.apache.iotdb.external.api;
 
-import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.transport.client.ITransportClient;
+import java.nio.file.Path;
+import java.util.Properties;
 
-import java.util.ArrayList;
-import java.util.List;
+/**
+ * An interface to load properties from external properties file to override the default
+ * configurations
+ */
+public interface IPropertiesLoader {
 
-public class MockTransportClient implements ITransportClient {
-
-  private final List<PipeData> pipeDataList;
-
-  public MockTransportClient() {
-    this.pipeDataList = new ArrayList<>();
-  }
-
-  public List<PipeData> getPipeDataList() {
-    return pipeDataList;
-  }
-
-  @Override
-  public boolean handshake() {
-    return true;
-  }
-
-  @Override
-  public boolean send(PipeData pipeData) {
-    pipeDataList.add(pipeData);
-    return true;
-  }
-
-  @Override
-  public void close() {}
+  /**
+   * Load Properties from specific file
+   *
+   * @param file The path of the properties file to open
+   * @return a property list with values in file.
+   */
+  Properties loadProperties(Path file);
 }

@@ -15,34 +15,29 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apche.iotdb.external.api;
+package org.apache.iotdb.db.sync.transport.client;
 
-import java.util.Properties;
+import org.apache.iotdb.db.exception.SyncConnectionException;
+import org.apache.iotdb.db.sync.pipedata.PipeData;
 
-/** An interface for series number limiting, users can implement their own limitation strategy */
-public interface ISeriesNumerLimiter {
+public interface ISyncClient {
+  /**
+   * Create connection and handshake before sending messages
+   *
+   * @return true if success; false if failed to check IoTDB version.
+   * @throws SyncConnectionException cannot create connection to receiver
+   */
+  boolean handshake() throws SyncConnectionException;
 
   /**
-   * do the necessary initialization
+   * Send {@link PipeData} to receiver and load.
    *
-   * @param properties Properties containing all the parameters needed to init
+   * @return true if success; false if failed to send or load.
+   * @throws SyncConnectionException cannot create connection to receiver
    */
-  void init(Properties properties);
+  boolean send(PipeData pipeData) throws SyncConnectionException;
 
-  /**
-   * add time series
-   *
-   * @param number time series number for current createTimeSeries operation
-   * @return true if totalTimeSeriesNumber doesn't exceed the limit and current createTimeSeries
-   *     operation is allowed, otherwise false
-   */
-  boolean addTimeSeries(int number);
-
-  /**
-   * delete time series
-   *
-   * @param number time series number for current deleteTimeSeries operation
-   */
-  void deleteTimeSeries(int number);
+  void close();
 }

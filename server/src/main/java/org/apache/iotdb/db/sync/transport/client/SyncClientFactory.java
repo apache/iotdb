@@ -31,15 +31,15 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
-public class TransportClientFactory {
+public class SyncClientFactory {
 
-  private static final Logger logger = LoggerFactory.getLogger(TransportClientFactory.class);
+  private static final Logger logger = LoggerFactory.getLogger(SyncClientFactory.class);
 
-  public static ITransportClient createTransportClient(Pipe pipe, PipeSink pipeSink) {
+  public static ISyncClient createSyncClient(Pipe pipe, PipeSink pipeSink) {
     switch (pipeSink.getType()) {
       case IoTDB:
         IoTDBPipeSink ioTDBPipeSink = (IoTDBPipeSink) pipeSink;
-        return new IoTDBSinkTransportClient(
+        return new IoTDBSyncClient(
             pipe, ioTDBPipeSink.getIp(), ioTDBPipeSink.getPort(), getLocalIP(ioTDBPipeSink));
       case ExternalPipe:
       default:
