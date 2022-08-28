@@ -22,9 +22,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
@@ -116,7 +116,7 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   @Override
   public TSStatus stopPipe(String pipeName) {
     try {
-      syncInfo.operatePipe(pipeName, Operator.OperatorType.STOP_PIPE);
+      syncInfo.operatePipe(pipeName, StatementType.STOP_PIPE);
     } catch (PipeException | IOException e) {
       RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
@@ -126,7 +126,7 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   @Override
   public TSStatus startPipe(String pipeName) {
     try {
-      syncInfo.operatePipe(pipeName, Operator.OperatorType.START_PIPE);
+      syncInfo.operatePipe(pipeName, StatementType.START_PIPE);
     } catch (PipeException | IOException e) {
       RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
@@ -136,7 +136,7 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   @Override
   public TSStatus dropPipe(String pipeName) {
     try {
-      syncInfo.operatePipe(pipeName, Operator.OperatorType.DROP_PIPE);
+      syncInfo.operatePipe(pipeName, StatementType.DROP_PIPE);
     } catch (PipeException | IOException e) {
       RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
