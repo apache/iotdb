@@ -2766,7 +2766,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.syncAttributeClauses() != null) {
       createPipeStatement.setPipeAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
-    }else {
+    } else {
       createPipeStatement.setPipeAttributes(new HashMap<>());
     }
     return createPipeStatement;

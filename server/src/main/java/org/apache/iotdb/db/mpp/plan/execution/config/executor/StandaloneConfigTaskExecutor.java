@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupT
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -505,10 +507,9 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showPipe(ShowPipeStatement showPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    future.setException(
-        new IoTDBException(
-            "Executing show pipe is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    TShowPipeResp showPipeResp =
+        LocalConfigNode.getInstance().showPipe(showPipeStatement.getPipeName());
+    ShowPipeTask.buildTSBlock(showPipeResp.getPipeInfoList(), future);
     return future;
   }
 }

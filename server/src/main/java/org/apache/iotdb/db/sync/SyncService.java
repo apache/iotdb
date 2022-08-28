@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
@@ -61,6 +62,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +70,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -352,6 +355,40 @@ public class SyncService implements IService {
         }
         break;
     }
+  }
+
+  public List<TPipeInfo> showPipe(String pipeName) {
+    boolean showAll = StringUtils.isEmpty(pipeName);
+    List<TPipeInfo> list = new ArrayList<>();
+    // show pipe in sender
+    for (PipeInfo pipe : SyncService.getInstance().getAllPipeInfos()) {
+      if (showAll || pipeName.equals(pipe.getPipeName())) {
+        TPipeInfo tPipeInfo =
+            new TPipeInfo(
+                pipe.getCreateTime(),
+                pipe.getPipeName(),
+                SyncConstant.ROLE_SENDER,
+                pipe.getPipeSinkName(),
+                pipe.getStatus().name(),
+                "");
+        list.add(tPipeInfo);
+      }
+    }
+    // show pipe in receiver
+    for (TSyncIdentityInfo identityInfo : receiverManager.getAllTSyncIdentityInfos()) {
+      if (showAll || pipeName.equals(identityInfo.getPipeName())) {
+        TPipeInfo tPipeInfo =
+            new TPipeInfo(
+                identityInfo.getCreateTime(),
+                identityInfo.getPipeName(),
+                SyncConstant.ROLE_RECEIVER,
+                identityInfo.getAddress(),
+                Pipe.PipeStatus.RUNNING.name(),
+                "");
+        list.add(tPipeInfo);
+      }
+    }
+    return list;
   }
 
   public void showPipe(ShowPipePlan plan, ListDataSet listDataSet) {

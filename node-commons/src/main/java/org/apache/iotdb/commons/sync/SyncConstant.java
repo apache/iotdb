@@ -26,6 +26,8 @@ public class SyncConstant {
 
   public static final String SYNC_SYS_DIR = "sys";
   public static final String FILE_DATA_DIR_NAME = "file-data";
+  public static final String ROLE_SENDER = "sender";
+  public static final String ROLE_RECEIVER = "receiver";
 
   // pipe log: serialNumber + SEPARATOR + SUFFIX
   public static final String PIPE_LOG_DIR_NAME = "pipe-log";

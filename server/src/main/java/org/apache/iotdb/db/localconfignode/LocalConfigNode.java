@@ -48,6 +48,9 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -79,7 +82,6 @@ import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
@@ -1399,8 +1401,8 @@ public class LocalConfigNode {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public TSStatus showPipe(ShowPipeStatement showPipeStatement) {
-    // TODO: show pipe
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  public TShowPipeResp showPipe(String pipeName) {
+    List<TPipeInfo> pipeInfos = SyncService.getInstance().showPipe(pipeName);
+    return new TShowPipeResp().setPipeInfoList(pipeInfos).setStatus(StatusUtils.OK);
   }
 }
