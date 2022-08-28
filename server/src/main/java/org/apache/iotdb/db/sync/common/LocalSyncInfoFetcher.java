@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
@@ -96,6 +97,16 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   public TSStatus addPipe(CreatePipePlan plan, long createTime) {
     try {
       syncInfo.addPipe(plan, createTime);
+    } catch (PipeException | IOException e) {
+      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus addPipe(CreatePipeStatement createPipeStatement, long createTime) {
+    try {
+      syncInfo.addPipe(createPipeStatement, createTime);
     } catch (PipeException | IOException e) {
       RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.sync.common.persistence;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
@@ -55,6 +56,7 @@ public class SyncLogWriter {
     }
   }
 
+  // TODO(sync): delete this in new-standalone version
   public synchronized void addPipeSink(CreatePipeSinkPlan plan) throws IOException {
     getBufferedWriter();
     pipeInfoWriter.write(Operator.OperatorType.CREATE_PIPESINK.name());
@@ -83,6 +85,7 @@ public class SyncLogWriter {
     pipeInfoWriter.flush();
   }
 
+  // TODO(sync): delete this in new-standalone version
   public synchronized void addPipe(CreatePipePlan plan, long pipeCreateTime) throws IOException {
     getBufferedWriter();
     pipeInfoWriter.write(Operator.OperatorType.CREATE_PIPE.name());
@@ -90,6 +93,18 @@ public class SyncLogWriter {
     pipeInfoWriter.write(String.valueOf(pipeCreateTime));
     pipeInfoWriter.newLine();
     pipeInfoWriter.write(plan.toString());
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.flush();
+  }
+
+  public synchronized void addPipe(CreatePipeStatement createPipeStatement, long pipeCreateTime)
+      throws IOException {
+    getBufferedWriter();
+    pipeInfoWriter.write(createPipeStatement.getType().name());
+    pipeInfoWriter.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
+    pipeInfoWriter.write(String.valueOf(pipeCreateTime));
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.write(createPipeStatement.toString());
     pipeInfoWriter.newLine();
     pipeInfoWriter.flush();
   }

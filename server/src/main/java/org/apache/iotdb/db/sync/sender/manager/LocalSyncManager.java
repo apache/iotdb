@@ -53,7 +53,7 @@ public class LocalSyncManager implements ISyncManager {
   /** tsfile */
   @Override
   public void syncRealTimeDeletion(Deletion deletion) {
-    syncPipe.collectRealTimeDeletion(deletion);
+    syncPipe.collectRealTimeDeletion(deletion, dataRegion.getStorageGroupName());
   }
 
   @Override
