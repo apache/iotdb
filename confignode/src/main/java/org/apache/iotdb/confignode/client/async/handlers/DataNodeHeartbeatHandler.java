@@ -28,14 +28,10 @@ import org.apache.iotdb.confignode.manager.load.heartbeat.RegionHeartbeatSample;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeHeartbeatHandler.class);
 
   // Update DataNodeHeartbeatCache when success
   private final TDataNodeLocation dataNodeLocation;
@@ -57,7 +53,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
 
     // Update NodeCache
     dataNodeHeartbeatCache.cacheHeartbeatSample(
-        new NodeHeartbeatSample(heartbeatResp.getHeartbeatTimestamp(), receiveTime));
+        new NodeHeartbeatSample(heartbeatResp, receiveTime));
 
     // Update RegionCache
     if (heartbeatResp.isSetJudgedLeaders()) {
@@ -66,7 +62,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
           .forEach(
               (consensusGroupId, isLeader) ->
                   regionGroupCacheMap
-                      .computeIfAbsent(consensusGroupId, empty -> new RegionGroupCache())
+                      .computeIfAbsent(
+                          consensusGroupId, empty -> new RegionGroupCache(consensusGroupId))
                       .cacheHeartbeatSample(
                           new RegionHeartbeatSample(
                               heartbeatResp.getHeartbeatTimestamp(),
@@ -78,10 +75,6 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
 
   @Override
   public void onError(Exception e) {
-    LOGGER.warn(
-        "Heartbeat error on DataNode: {id={}, internalEndPoint={}}",
-        dataNodeLocation.getDataNodeId(),
-        dataNodeLocation.getInternalEndPoint(),
-        e);
+    // Do nothing
   }
 }

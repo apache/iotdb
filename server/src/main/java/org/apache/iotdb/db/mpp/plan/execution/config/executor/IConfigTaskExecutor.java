@@ -34,6 +34,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -60,7 +63,13 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
-  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq);
+  SettableFuture<ConfigTaskResult> merge(boolean isCluster);
+
+  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean isCluster);
+
+  SettableFuture<ConfigTaskResult> clearCache(boolean isCluster);
+
+  SettableFuture<ConfigTaskResult> loadConfiguration(boolean isCluster);
 
   SettableFuture<ConfigTaskResult> showCluster();
 
@@ -69,6 +78,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement);
 
   SettableFuture<ConfigTaskResult> showDataNodes(ShowDataNodesStatement showDataNodesStatement);
+
+  SettableFuture<ConfigTaskResult> showConfigNodes();
 
   SettableFuture<ConfigTaskResult> createSchemaTemplate(
       CreateSchemaTemplateStatement createSchemaTemplateStatement);
@@ -84,4 +95,20 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> createPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
+
+  SettableFuture<ConfigTaskResult> dropPipeSink(DropPipeSinkStatement dropPipeSinkStatement);
+
+  SettableFuture<ConfigTaskResult> showPipeSink(ShowPipeSinkStatement showPipeSinkStatement);
+
+  SettableFuture<ConfigTaskResult> dropPipe();
+
+  SettableFuture<ConfigTaskResult> createPipe();
+
+  SettableFuture<ConfigTaskResult> showPipe();
+
+  SettableFuture<ConfigTaskResult> startPipe();
+
+  SettableFuture<ConfigTaskResult> stopPipe();
 }

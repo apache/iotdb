@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -49,7 +49,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 public class StandaloneScheduler implements IScheduler {
@@ -60,44 +59,29 @@ public class StandaloneScheduler implements IScheduler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneScheduler.class);
 
-  private MPPQueryContext queryContext;
+  private final MPPQueryContext queryContext;
   // The stateMachine of the QueryExecution owned by this QueryScheduler
-  private QueryStateMachine stateMachine;
-  private QueryType queryType;
+  private final QueryStateMachine stateMachine;
+  private final QueryType queryType;
   // The fragment instances which should be sent to corresponding Nodes.
-  private List<FragmentInstance> instances;
+  private final List<FragmentInstance> instances;
 
-  private ExecutorService executor;
-  private ScheduledExecutorService scheduledExecutor;
-
-  private IFragInstanceDispatcher dispatcher;
-  private IFragInstanceStateTracker stateTracker;
-  private IQueryTerminator queryTerminator;
+  private final IFragInstanceStateTracker stateTracker;
 
   public StandaloneScheduler(
       MPPQueryContext queryContext,
       QueryStateMachine stateMachine,
       List<FragmentInstance> instances,
       QueryType queryType,
-      ExecutorService executor,
       ScheduledExecutorService scheduledExecutor,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.queryContext = queryContext;
     this.instances = instances;
     this.queryType = queryType;
-    this.executor = executor;
-    this.scheduledExecutor = scheduledExecutor;
     this.stateMachine = stateMachine;
     this.stateTracker =
         new FixedRateFragInsStateTracker(
-            stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
-    this.queryTerminator =
-        new SimpleQueryTerminator(
-            executor,
-            scheduledExecutor,
-            queryContext.getQueryId(),
-            instances,
-            internalServiceClientManager);
+            stateMachine, scheduledExecutor, instances, internalServiceClientManager);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -131,17 +115,20 @@ public class StandaloneScheduler implements IScheduler {
         // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
         stateMachine.transitionToRunning();
         LOGGER.info("{} transit to RUNNING", getLogHeader());
-        instances.forEach(
-            instance ->
-                stateMachine.initialFragInstanceState(
-                    instance.getId(), FragmentInstanceState.RUNNING));
         this.stateTracker.start();
         LOGGER.info("{} state tracker starts", getLogHeader());
         break;
       case WRITE:
+        // reject non-query operations when system is read-only
+        if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+          TSStatus failedStatus = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
+          failedStatus.setMessage("Fail to do non-query operations because system is read-only.");
+          stateMachine.transitionToFailed(failedStatus);
+          return;
+        }
         try {
           for (FragmentInstance fragmentInstance : instances) {
-            PlanNode planNode = fragmentInstance.getFragment().getRoot();
+            PlanNode planNode = fragmentInstance.getFragment().getPlanNodeTree();
             ConsensusGroupId groupId =
                 ConsensusGroupId.Factory.createFromTConsensusGroupId(
                     fragmentInstance.getRegionReplicaSet().getRegionId());

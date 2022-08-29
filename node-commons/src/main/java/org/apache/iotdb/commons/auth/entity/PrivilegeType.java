@@ -50,7 +50,12 @@ public enum PrivilegeType {
   CREATE_CONTINUOUS_QUERY,
   DROP_CONTINUOUS_QUERY,
   ALL,
-  DELETE_STORAGE_GROUP(true);
+  DELETE_STORAGE_GROUP(true),
+  ALTER_TIMESERIES(true),
+  UPDATE_TEMPLATE,
+  READ_TEMPLATE,
+  APPLY_TEMPLATE(true),
+  READ_TEMPLATE_APPLICATION;
 
   private static final int PRIVILEGE_COUNT = values().length;
 
@@ -73,5 +78,9 @@ public enum PrivilegeType {
    */
   public static boolean isPathRelevant(int type) {
     return 0 <= type && type < PRIVILEGE_COUNT && values()[type].isPathRelevant;
+  }
+
+  public boolean isPathRelevant() {
+    return isPathRelevant;
   }
 }

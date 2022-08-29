@@ -26,6 +26,8 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
+import java.util.List;
+
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
  */
@@ -37,7 +39,7 @@ public class AuthorOperator extends Operator {
   private String password;
   private String newPassword;
   private String[] privilegeList;
-  private PartialPath nodeName;
+  private List<PartialPath> nodeNameList;
 
   /**
    * AuthorOperator Constructor with AuthorType.
@@ -107,12 +109,12 @@ public class AuthorOperator extends Operator {
     this.privilegeList = authorizationList;
   }
 
-  public PartialPath getNodeName() {
-    return nodeName;
+  public List<PartialPath> getNodeNameList() {
+    return nodeNameList;
   }
 
-  public void setNodeNameList(PartialPath nodePath) {
-    this.nodeName = nodePath;
+  public void setNodeNameList(List<PartialPath> nodePath) {
+    this.nodeNameList = nodePath;
   }
 
   @Override
@@ -120,7 +122,7 @@ public class AuthorOperator extends Operator {
       throws QueryProcessException {
     try {
       return new AuthorPlan(
-          authorType, userName, roleName, password, newPassword, privilegeList, nodeName);
+          authorType, userName, roleName, password, newPassword, privilegeList, nodeNameList);
     } catch (AuthException e) {
       throw new QueryProcessException(e.getMessage());
     }
@@ -141,9 +143,7 @@ public class AuthorOperator extends Operator {
     LIST_USER,
     LIST_ROLE,
     LIST_USER_PRIVILEGE,
-    LIST_ROLE_PRIVILEGE,
-    LIST_USER_ROLES,
-    LIST_ROLE_USERS;
+    LIST_ROLE_PRIVILEGE;
 
     /**
      * deserialize short number.
@@ -183,10 +183,6 @@ public class AuthorOperator extends Operator {
           return LIST_USER_PRIVILEGE;
         case 14:
           return LIST_ROLE_PRIVILEGE;
-        case 15:
-          return LIST_USER_ROLES;
-        case 16:
-          return LIST_ROLE_USERS;
         default:
           return null;
       }
@@ -229,10 +225,6 @@ public class AuthorOperator extends Operator {
           return 13;
         case LIST_ROLE_PRIVILEGE:
           return 14;
-        case LIST_USER_ROLES:
-          return 15;
-        case LIST_ROLE_USERS:
-          return 16;
         default:
           return -1;
       }

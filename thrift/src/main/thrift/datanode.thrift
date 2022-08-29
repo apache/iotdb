@@ -47,7 +47,7 @@ struct TRegionLeaderChangeReq {
     2: required common.TDataNodeLocation newLeaderNode
 }
 
-struct TAddConsensusGroup {
+struct TCreatePeerReq {
     1: required common.TConsensusGroupId regionId
     2: required list<common.TDataNodeLocation> regionLocations
     3: required string storageGroup
@@ -127,6 +127,7 @@ struct TFetchFragmentInstanceStateReq {
 // TODO: need to supply more fields according to implementation
 struct TFragmentInstanceStateResp {
   1: required string state
+  2: optional list<string> failedMessages
 }
 
 struct TCancelQueryReq {
@@ -183,14 +184,24 @@ struct THeartbeatReq {
 
 struct THeartbeatResp {
   1: required i64 heartbeatTimestamp
-  2: optional map<common.TConsensusGroupId, bool> judgedLeaders
-  3: optional i16 cpu
-  4: optional i16 memory
+  2: required string status
+  3: optional map<common.TConsensusGroupId, bool> judgedLeaders
+  4: optional i16 cpu
+  5: optional i16 memory
 }
 
 struct TRegionRouteReq {
   1: required i64 timestamp
   2: required map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
+}
+
+struct TUpdateConfigNodeGroupReq {
+  1: required list<common.TConfigNodeLocation> configNodeLocations
+}
+
+struct TUpdateTemplateReq{
+    1: required byte type
+    2: required binary templateInfo
 }
 
 service IDataNodeRPCService {
@@ -263,16 +274,29 @@ service IDataNodeRPCService {
   common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req);
 
   /**
-   * Config node will add Data nodes to the region consensus group
-   * @param region id and it's expect locations
+   * Create new peer in the given data node for region consensus group
+   * @param region id and it's expected locations
    */
-  common.TSStatus addToRegionConsensusGroup(TAddConsensusGroup req);
+  common.TSStatus createPeerToConsensusGroup(TCreatePeerReq req);
 
   /**
-   * Config node will migrate a region from this node to newNode
-   * @param migrate which region from one node to other node
+   * Config node will add a region peer to a region group
+   * @param add region req which region from one node to other node
    */
-  common.TSStatus migrateRegion(TMigrateRegionReq req);
+  common.TSStatus addRegionPeer(TMigrateRegionReq req);
+
+  /**
+   * Config node will remove a region peer to a region group
+   * @param remove region peer region from one node to other node
+   */
+  common.TSStatus removeRegionPeer(TMigrateRegionReq req);
+
+  /**
+   * Delete the datanode peer for the given consensus group. Usually a region group has
+   * multiple replicas, thus relates to multiple nodes.
+   * @param TMigrateRegionReq which contains the dest datanode to be removed
+  */
+  common.TSStatus deletePeerToConsensusGroup(TMigrateRegionReq req);
 
   /**
   * Config node will disable the Data node, the Data node will not accept read/write request when disabled
@@ -320,9 +344,29 @@ service IDataNodeRPCService {
    */
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
 
+  /* Maintenance Tools */
+
+  common.TSStatus merge()
+
   common.TSStatus flush(common.TFlushReq req)
 
+  common.TSStatus clearCache()
+
+  common.TSStatus loadConfiguration()
+
+  /**
+   * Config node will Set the TTL for the storage group on a list of data nodes.
+   */
   common.TSStatus setTTL(common.TSetTTLReq req)
+  
+  /**
+   * configNode will notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced
+   *
+   * @param list<common.TConfigNodeLocation> configNodeLocations
+   */
+  common.TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req)
+
+  common.TSStatus updateTemplate(TUpdateTemplateReq req)
 }
 
 service MPPDataExchangeService {

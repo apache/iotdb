@@ -121,6 +121,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         }
         ((SinkHandle) sinkHandles.get(e.getSourceFragmentInstanceId()))
             .acknowledgeTsBlock(e.getStartSequenceId(), e.getEndSequenceId());
+      } catch (Throwable t) {
+        logger.error(
+            "ack TsBlock [{}, {}) failed.", e.getStartSequenceId(), e.getEndSequenceId(), t);
+        throw t;
       }
     }
 
@@ -141,7 +145,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             || sourceHandles
                 .get(e.getTargetFragmentInstanceId())
                 .get(e.getTargetPlanNodeId())
-                .isAborted()) {
+                .isAborted()
+            || sourceHandles
+                .get(e.getTargetFragmentInstanceId())
+                .get(e.getTargetPlanNodeId())
+                .isFinished()) {
           // In some scenario, when the SourceHandle sends the data block ACK event, its upstream
           // may
           // have already been stopped. For example, in the query whit LimitOperator, the downstream
@@ -176,7 +184,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             || sourceHandles
                 .get(e.getTargetFragmentInstanceId())
                 .get(e.getTargetPlanNodeId())
-                .isAborted()) {
+                .isAborted()
+            || sourceHandles
+                .get(e.getTargetFragmentInstanceId())
+                .get(e.getTargetPlanNodeId())
+                .isFinished()) {
           logger.warn(
               "received onEndOfDataBlockEvent but the downstream FragmentInstance[{}] is not found",
               e.getTargetFragmentInstanceId());

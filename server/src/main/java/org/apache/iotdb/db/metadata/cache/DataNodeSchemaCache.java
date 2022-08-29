@@ -23,17 +23,19 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class takes the responsibility of metadata cache management of all DataRegions under
@@ -41,6 +43,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
  */
 public class DataNodeSchemaCache {
 
+  private static final Logger logger = LoggerFactory.getLogger(DataNodeSchemaCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Cache<PartialPath, SchemaCacheEntry> cache;
@@ -53,18 +56,14 @@ public class DataNodeSchemaCache {
                 (PartialPath key, SchemaCacheEntry value) ->
                     PartialPath.estimateSize(key) + SchemaCacheEntry.estimateSize(value))
             .build();
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      // add metrics
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.CACHE_HIT.toString(),
-              MetricLevel.IMPORTANT,
-              cache,
-              l -> (long) (l.stats().hitRate() * 100),
-              Tag.NAME.toString(),
-              "schemaCache");
-    }
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.CACHE_HIT.toString(),
+            MetricLevel.IMPORTANT,
+            cache,
+            l -> (long) (l.stats().hitRate() * 100),
+            Tag.NAME.toString(),
+            "schemaCache");
   }
 
   public static DataNodeSchemaCache getInstance() {
@@ -83,8 +82,8 @@ public class DataNodeSchemaCache {
    * @param measurements
    * @return timeseries partialPath and its SchemaEntity
    */
-  public SchemaTree get(PartialPath devicePath, String[] measurements) {
-    SchemaTree schemaTree = new SchemaTree();
+  public ClusterSchemaTree get(PartialPath devicePath, String[] measurements) {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     SchemaCacheEntry schemaCacheEntry;
     for (String measurement : measurements) {
       PartialPath path = devicePath.concatNode(measurement);
@@ -101,7 +100,7 @@ public class DataNodeSchemaCache {
     return schemaTree;
   }
 
-  public void put(SchemaTree schemaTree) {
+  public void put(ISchemaTree schemaTree) {
     for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
       SchemaCacheEntry schemaCacheEntry =
           new SchemaCacheEntry(
@@ -120,6 +119,7 @@ public class DataNodeSchemaCache {
     return DataNodeLastCacheManager.getLastCache(entry);
   }
 
+  /** get SchemaCacheEntry and update last cache */
   public void updateLastCache(
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
@@ -128,6 +128,34 @@ public class DataNodeSchemaCache {
     SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
     if (null == entry) {
       return;
+    }
+
+    DataNodeLastCacheManager.updateLastCache(
+        entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
+  }
+
+  /**
+   * get or create SchemaCacheEntry and update last cache, only support non-aligned sensor or
+   * aligned sensor without only one sub sensor
+   */
+  public void updateLastCache(
+      MeasurementPath measurementPath,
+      TimeValuePair timeValuePair,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    PartialPath seriesPath = measurementPath.transformToPartialPath();
+    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    if (null == entry) {
+      synchronized (cache) {
+        entry = cache.getIfPresent(seriesPath);
+        if (null == entry) {
+          entry =
+              new SchemaCacheEntry(
+                  (MeasurementSchema) measurementPath.getMeasurementSchema(),
+                  measurementPath.isUnderAlignedEntity());
+          cache.put(seriesPath, entry);
+        }
+      }
     }
 
     DataNodeLastCacheManager.updateLastCache(

@@ -44,7 +44,7 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
   }
 
   private int toStorageGroupId(PartialPath deviceId) {
-    return Math.abs(deviceId.hashCode() % STORAGE_GROUP_NUM);
+    return Math.abs(deviceId.getFullPath().hashCode() % STORAGE_GROUP_NUM);
   }
 
   private static class HashVirtualPartitionerHolder {

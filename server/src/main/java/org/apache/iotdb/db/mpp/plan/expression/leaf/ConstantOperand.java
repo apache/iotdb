@@ -20,16 +20,12 @@
 package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.ConstantIntermediateLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -57,6 +53,11 @@ public class ConstantOperand extends LeafOperand {
   public ConstantOperand(ByteBuffer byteBuffer) {
     dataType = TSDataType.deserializeFrom(byteBuffer);
     valueString = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  @Override
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitConstantOperand(this, context);
   }
 
   public TSDataType getDataType() {
@@ -115,43 +116,6 @@ public class ConstantOperand extends LeafOperand {
   @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     // Do nothing
-  }
-
-  @Override
-  public IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      expressionDataTypeMap.put(this, this.getDataType());
-      IntermediateLayer intermediateLayer =
-          new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
-      expressionIntermediateLayerMap.put(this, intermediateLayer);
-    }
-
-    return expressionIntermediateLayerMap.get(this);
-  }
-
-  @Override
-  public IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      TypeProvider typeProvider,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      IntermediateLayer intermediateLayer =
-          new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
-      expressionIntermediateLayerMap.put(this, intermediateLayer);
-    }
-
-    return expressionIntermediateLayerMap.get(this);
   }
 
   @Override

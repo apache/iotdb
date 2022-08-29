@@ -26,7 +26,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceCompactionFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
@@ -423,7 +423,7 @@ public class CrossSpaceCompactionTest {
           CrossSpaceCompactionResource mergeResource =
               new CrossSpaceCompactionResource(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
-          ICrossSpaceMergeFileSelector fileSelector =
+          ICrossSpaceCompactionFileSelector fileSelector =
               new RewriteCompactionFileSelector(mergeResource, Long.MAX_VALUE);
           List[] mergeFiles = fileSelector.select();
           index++;
@@ -729,7 +729,7 @@ public class CrossSpaceCompactionTest {
           CrossSpaceCompactionResource mergeResource =
               new CrossSpaceCompactionResource(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
-          ICrossSpaceMergeFileSelector fileSelector =
+          ICrossSpaceCompactionFileSelector fileSelector =
               new RewriteCompactionFileSelector(mergeResource, Long.MAX_VALUE);
           List[] mergeFiles = fileSelector.select();
           if (mergeFiles.length > 0) {
@@ -1033,7 +1033,7 @@ public class CrossSpaceCompactionTest {
           CrossSpaceCompactionResource mergeResource =
               new CrossSpaceCompactionResource(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
-          ICrossSpaceMergeFileSelector fileSelector =
+          ICrossSpaceCompactionFileSelector fileSelector =
               new RewriteCompactionFileSelector(mergeResource, Long.MAX_VALUE);
           List[] mergeFiles = fileSelector.select();
           if (mergeFiles.length > 0) {

@@ -1066,6 +1066,7 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
+  @Ignore // disable align is not supported yet
   public void testDisableAlign() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

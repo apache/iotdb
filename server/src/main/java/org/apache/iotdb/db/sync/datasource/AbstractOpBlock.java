@@ -33,21 +33,18 @@ public abstract class AbstractOpBlock implements Comparable<AbstractOpBlock> {
 
   // StorageGroup Name
   protected String storageGroup;
-  long filePipeSerialNumber;
+  long pipeDataSerialNumber;
 
-  boolean closed = true;
+  boolean closed = false;
 
-  // record First Entry's index
+  // record First Entry's index. It is the index of all data of 1 SG.
   protected long beginIndex = -1;
-  // data number of this data file
+  // data number of this OpBlock
   protected long dataCount = -1;
 
-  public AbstractOpBlock(String storageGroupName) {
-    this(storageGroupName, 0);
-  }
-
-  public AbstractOpBlock(String storageGroupName, long beginIndex) {
+  public AbstractOpBlock(String storageGroupName, long pipeDataSerialNumber, long beginIndex) {
     this.storageGroup = storageGroupName;
+    this.pipeDataSerialNumber = pipeDataSerialNumber;
     this.beginIndex = beginIndex;
   }
 
@@ -93,18 +90,30 @@ public abstract class AbstractOpBlock implements Comparable<AbstractOpBlock> {
 
   /** release current class' resource */
   public void close() {
-    closed = false;
+    closed = true;
   };
 
   public boolean isClosed() {
     return closed;
   };
 
-  public long getFilePipeSerialNumber() {
-    return filePipeSerialNumber;
+  public long getPipeDataSerialNumber() {
+    return pipeDataSerialNumber;
   }
 
-  public void setFilePipeSerialNumber(long filePipeSerialNumber) {
-    this.filePipeSerialNumber = filePipeSerialNumber;
+  public void setPipeDataSerialNumber(long pipeDataSerialNumber) {
+    this.pipeDataSerialNumber = pipeDataSerialNumber;
+  }
+
+  @Override
+  public String toString() {
+    return "storageGroup="
+        + storageGroup
+        + ", beginIndex="
+        + beginIndex
+        + ", dataCount="
+        + dataCount
+        + ", filePipeSerialNumber="
+        + pipeDataSerialNumber;
   }
 }

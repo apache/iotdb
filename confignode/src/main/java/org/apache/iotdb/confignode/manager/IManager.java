@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
@@ -38,17 +38,22 @@ import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -110,11 +115,11 @@ public interface IManager {
   UDFManager getUDFManager();
 
   /**
-   * Get DataNodeRemoveManager
+   * Get ProcedureManager
    *
-   * @return DataNodeRemoveManager instance
+   * @return ProcedureManager instance
    */
-  DataNodeRemoveManager getDataNodeRemoveManager();
+  ProcedureManager getProcedureManager();
 
   /**
    * Register DataNode
@@ -126,19 +131,27 @@ public interface IManager {
   /**
    * Remove DataNode
    *
-   * @param removeDataNodePlan
+   * @param removeDataNodePlan RemoveDataNodePlan
    * @return DataNodeToStatusResp
    */
   DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan);
 
   /**
+   * DataNode report region migrate result to ConfigNode when remove DataNode
+   *
+   * @param req TRegionMigrateResultReportReq
+   * @return TSStatus
+   */
+  TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req);
+
+  /**
    * Get DataNode info
    *
-   * @return DataNodesInfoDataSet
+   * @return DataNodesConfigurationDataSet
    */
-  DataSet getDataNodeInfo(GetDataNodeInfoPlan getDataNodeInfoPlan);
+  DataSet getDataNodeConfiguration(GetDataNodeConfigurationPlan getDataNodeConfigurationPlan);
 
-  TClusterNodeInfos getAllClusterNodeInfos();
+  TShowClusterResp showCluster();
 
   TSStatus setTTL(SetTTLPlan configRequest);
 
@@ -180,20 +193,16 @@ public interface IManager {
   /**
    * Get SchemaPartition
    *
-   * @param isContainedReplicaSet The last map level of result will contain TRegionReplicaSet if
-   *     true, otherwise the last level will be TConsensusGroupId
    * @return TSchemaPartitionResp
    */
-  Object getSchemaPartition(PathPatternTree patternTree, boolean isContainedReplicaSet);
+  TSchemaPartitionTableResp getSchemaPartition(PathPatternTree patternTree);
 
   /**
    * Get or create SchemaPartition
    *
-   * @param isContainedReplicaSet The last map level of result will contain TRegionReplicaSet if
-   *     true, otherwise the last level will be TConsensusGroupId
    * @return TSchemaPartitionResp
    */
-  Object getOrCreateSchemaPartition(PathPatternTree patternTree, boolean isContainedReplicaSet);
+  TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
    * create SchemaNodeManagementPartition for child paths node management
@@ -205,21 +214,17 @@ public interface IManager {
   /**
    * Get DataPartition
    *
-   * @param isContainedReplicaSet The last map level of result will contain TRegionReplicaSet if
-   *     true, otherwise the last level will be TConsensusGroupId
    * @return TDataPartitionResp
    */
-  Object getDataPartition(GetDataPartitionPlan getDataPartitionPlan, boolean isContainedReplicaSet);
+  TDataPartitionTableResp getDataPartition(GetDataPartitionPlan getDataPartitionPlan);
 
   /**
    * Get or create DataPartition
    *
-   * @param isContainedReplicaSet The last map level of result will contain TRegionReplicaSet if
-   *     true, otherwise the last level will be TConsensusGroupId
    * @return TDataPartitionResp
    */
-  Object getOrCreateDataPartition(
-      GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan, boolean isContainedReplicaSet);
+  TDataPartitionTableResp getOrCreateDataPartition(
+      GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan);
 
   /**
    * Operate Permission
@@ -244,9 +249,9 @@ public interface IManager {
   /**
    * Register ConfigNode when it is first startup
    *
-   * @return TConfigNodeRegisterResp
+   * @return TSStatus
    */
-  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req);
+  TSStatus registerConfigNode(TConfigNodeRegisterReq req);
 
   /**
    * Add Consensus Group in new node.
@@ -266,7 +271,17 @@ public interface IManager {
 
   TSStatus dropFunction(String udfName);
 
+  /** Merge on all DataNodes */
+  TSStatus merge();
+
+  /** Flush on all DataNodes */
   TSStatus flush(TFlushReq req);
+
+  /** Clear cache on all DataNodes */
+  TSStatus clearCache();
+
+  /** Load configuration on all DataNodes */
+  TSStatus loadConfiguration();
 
   /**
    * Get the latest RegionRouteMap
@@ -280,8 +295,19 @@ public interface IManager {
   /** Show (data/schema) regions */
   DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan);
 
-  /** Show datanodes */
-  DataSet showDataNodes();
+  /** Show DataNodes */
+  TShowDataNodesResp showDataNodes();
+
+  /** Show ConfigNodes */
+  TShowConfigNodesResp showConfigNodes();
+
+  /**
+   * Show StorageGroup
+   *
+   * @param getStorageGroupPlan GetStorageGroupPlan, including path patterns about StorageGroups
+   * @return TShowStorageGroupResp
+   */
+  TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan);
 
   /**
    * create schema template
@@ -294,7 +320,7 @@ public interface IManager {
   /**
    * show schema templates
    *
-   * @return
+   * @return TGetAllTemplatesResp
    */
   TGetAllTemplatesResp getAllTemplates();
 
@@ -302,7 +328,7 @@ public interface IManager {
    * show nodes in schema template
    *
    * @param req String
-   * @return
+   * @return TGetTemplateResp
    */
   TGetTemplateResp getTemplate(String req);
 

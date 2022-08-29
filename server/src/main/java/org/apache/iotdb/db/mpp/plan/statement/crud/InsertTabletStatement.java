@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
@@ -38,6 +39,11 @@ public class InsertTabletStatement extends InsertBaseStatement {
   private Object[] columns;
 
   private int rowCount = 0;
+
+  public InsertTabletStatement() {
+    super();
+    statementType = StatementType.BATCH_INSERT;
+  }
 
   public int getRowCount() {
     return rowCount;
@@ -69,6 +75,15 @@ public class InsertTabletStatement extends InsertBaseStatement {
 
   public void setTimes(long[] times) {
     this.times = times;
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return rowCount == 0
+        || times.length == 0
+        || measurements.length == 0
+        || dataTypes.length == 0
+        || columns.length == 0;
   }
 
   public List<TTimePartitionSlot> getTimePartitionSlots() {

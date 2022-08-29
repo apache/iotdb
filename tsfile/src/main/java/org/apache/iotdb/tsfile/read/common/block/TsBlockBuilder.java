@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.List;
 
@@ -307,6 +308,21 @@ public class TsBlockBuilder {
     }
 
     return TsBlock.wrapBlocksWithoutCopy(declaredPositions, timeColumn, columns);
+  }
+
+  /**
+   * Write a text value to the columnIndex. If the value is null, then the place will be recorded
+   * with null.
+   *
+   * @param columnIndex the target column index.
+   * @param value the text value to be inserted.
+   */
+  public void writeNullableText(int columnIndex, String value) {
+    if (value == null) {
+      getColumnBuilder(columnIndex).appendNull();
+    } else {
+      getColumnBuilder(columnIndex).writeBinary(new Binary(value));
+    }
   }
 
   private static void checkArgument(boolean expression, String errorMessage) {

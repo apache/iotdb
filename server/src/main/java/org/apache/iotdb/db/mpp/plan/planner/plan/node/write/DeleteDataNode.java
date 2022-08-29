@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -168,7 +168,7 @@ public class DeleteDataNode extends WritePlanNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    SchemaTree schemaTree = analysis.getSchemaTree();
+    ISchemaTree schemaTree = analysis.getSchemaTree();
     DataPartition dataPartition = analysis.getDataPartitionInfo();
 
     Map<TRegionReplicaSet, List<PartialPath>> regionToPatternMap = new HashMap<>();
@@ -193,7 +193,7 @@ public class DeleteDataNode extends WritePlanNode {
   private void splitPathPatternByDevice(
       PartialPath devicePattern,
       PartialPath pathPattern,
-      SchemaTree schemaTree,
+      ISchemaTree schemaTree,
       DataPartition dataPartition,
       Map<TRegionReplicaSet, List<PartialPath>> regionToPatternMap) {
     for (DeviceSchemaInfo deviceSchemaInfo : schemaTree.getMatchedDevices(devicePattern)) {

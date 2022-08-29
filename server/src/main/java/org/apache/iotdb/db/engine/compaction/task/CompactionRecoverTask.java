@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
@@ -301,7 +302,7 @@ public class CompactionRecoverTask {
             "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files is lost, do nothing. Set allowCompaction to false",
             fullStorageGroupName,
             targetFileIdentifier.getFilePath());
-        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+        IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
         return false;
       }
     }

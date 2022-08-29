@@ -500,7 +500,7 @@ public class PartialPathTest {
   }
 
   @Test
-  public void testMatchPath() throws IllegalPathException {
+  public void testMatchFullPath() throws IllegalPathException {
     PartialPath p1 = new PartialPath("root.sg1.d1.*");
 
     Assert.assertTrue(p1.matchFullPath(new PartialPath("root.sg1.d1.s2")));
@@ -508,12 +508,144 @@ public class PartialPathTest {
     Assert.assertFalse(p1.matchFullPath(new PartialPath("root.sg2.d1.*")));
     Assert.assertFalse(p1.matchFullPath(new PartialPath("", false)));
 
-    PartialPath path = new PartialPath("root.sg.d.s");
-    String[] patterns = {
-      "root.**", "root.**.s", "root.sg.*.s", "root.*.*.*", "root.sg.d.s", "root.s*.d.s"
+    PartialPath path = new PartialPath("root.sg1.d1.s1");
+    String[] patterns1 = {
+      "root.sg1.d1.s1",
+      "root.sg1.*.s1",
+      "root.*.d1.*",
+      "root.*.*.*",
+      "root.s*.d1.s1",
+      "root.*g1.d1.s1",
+      "root.s*.d1.*",
+      "root.s*.d*.s*",
+      "root.**",
+      "root.**.s1",
+      "root.sg1.**",
     };
-    for (String pattern : patterns) {
+    for (String pattern : patterns1) {
       Assert.assertTrue(new PartialPath(pattern).matchFullPath(path));
+    }
+
+    String[] patterns2 = {
+      "root2.sg1.d1.s1",
+      "root.sg1.*.s2",
+      "root.*.d2.s1",
+      "root.*.d*.s2",
+      "root.*.a*.s1",
+      "root.*",
+      "root.*.*",
+      "root.s*.d*.a*",
+      "root2.**",
+      "root.**.s2",
+      "root.**.d1",
+      "root.sg2.**",
+    };
+    for (String pattern : patterns2) {
+      Assert.assertFalse(new PartialPath(pattern).matchFullPath(path));
+    }
+  }
+
+  @Test
+  public void testMatchPrefixPath() throws IllegalPathException {
+    // ===
+    PartialPath pattern1 = new PartialPath("root.sg1.d1.*");
+    Assert.assertTrue(pattern1.matchPrefixPath(new PartialPath("", false)));
+
+    String[] prefixPathList11 = {"root.sg1.d1.s1", "root.sg1.d1", "root.sg1", "root"};
+    for (String prefixPath : prefixPathList11) {
+      Assert.assertTrue(pattern1.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+    String[] prefixPathList12 = {
+      "root2.sg1.d1.s1",
+      "root.sg2.d1.s1",
+      "root.sg1.d2.s1",
+      "root.sg1.d2",
+      "root.sg2.d1",
+      "root.sg2",
+      "root2",
+      "root.sg1.d1.s1.o1"
+    };
+    for (String prefixPath : prefixPathList12) {
+      Assert.assertFalse(pattern1.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+
+    // ===
+    PartialPath pattern2 = new PartialPath("root.*.d1.*");
+    for (String prefixPath : prefixPathList11) {
+      Assert.assertTrue(pattern2.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+    String[] prefixPathList22 = {
+      "root2.sg1.d1.s1", "root.sg1.d2.s1", "root.sg1.d2", "root2.sg2", "root2"
+    };
+    for (String prefixPath : prefixPathList22) {
+      Assert.assertFalse(pattern2.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+
+    // ==
+    PartialPath pattern3 = new PartialPath("root.sg1.*.*");
+    for (String prefixPath : prefixPathList11) {
+      Assert.assertTrue(pattern3.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+    String[] prefixPathList32 = {
+      "root2.sg1.d1.s1", "root.sg2.d2.s1", "root.sg1.d1.s1.o1", "root.sg2", "root2"
+    };
+    for (String prefixPath : prefixPathList32) {
+      Assert.assertFalse(pattern3.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+
+    // ==
+    PartialPath pattern4 = new PartialPath("root.**");
+    for (String prefixPath : prefixPathList11) {
+      Assert.assertTrue(pattern4.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+    String[] prefixPathList42 = {"root2.sg1.d1.s1"};
+    for (String prefixPath : prefixPathList42) {
+      Assert.assertFalse(pattern4.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+
+    // ==
+    PartialPath pattern5 = new PartialPath("root.**.d1");
+    String[] prefixPathList51 = {
+      "root.sg1.d1.s1", "root.sg1.d1", "root.sg1", "root", "root.sg1.d1.s1"
+    };
+    for (String prefixPath : prefixPathList51) {
+      Assert.assertTrue(pattern5.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+    String[] prefixPathList52 = {"root2.sg1.d1.s1"};
+    for (String prefixPath : prefixPathList52) {
+      Assert.assertFalse(pattern5.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+
+    // ==
+    PartialPath pattern6 = new PartialPath("root.sg1.**");
+    for (String prefixPath : prefixPathList11) {
+      Assert.assertTrue(pattern6.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+    String[] prefixPathList62 = {"root2.sg1.d1.s1", "root.sg2.d1.s1"};
+    for (String prefixPath : prefixPathList62) {
+      Assert.assertFalse(pattern6.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+
+    // ==
+    PartialPath pattern7 = new PartialPath("root.**.d1.**");
+    String[] prefixPathList71 = {
+      "root.sg1.d1.s1", "root.sg1.d1", "root.sg1", "root", "root.sg1.d2.s1"
+    };
+    for (String prefixPath : prefixPathList71) {
+      Assert.assertTrue(pattern7.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+    String[] prefixPathList72 = {"root2.sg1.d1.s1"};
+    for (String prefixPath : prefixPathList72) {
+      Assert.assertFalse(pattern7.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+
+    // ==
+    PartialPath pattern8 = new PartialPath("root.**.d1.*");
+    for (String prefixPath : prefixPathList71) {
+      Assert.assertTrue(pattern8.matchPrefixPath(new PartialPath(prefixPath)));
+    }
+    for (String prefixPath : prefixPathList72) {
+      Assert.assertFalse(pattern7.matchPrefixPath(new PartialPath(prefixPath)));
     }
   }
 

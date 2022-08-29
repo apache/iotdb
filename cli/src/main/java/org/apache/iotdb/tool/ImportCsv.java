@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -42,7 +43,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -82,6 +82,9 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String CSV_SUFFIXS = "csv";
   private static final String TXT_SUFFIXS = "txt";
 
+  private static final String TIMESTAMP_PRECISION_ARGS = "tp";
+  private static final String TIMESTAMP_PRECISION_NAME = "timestamp precision (ms/us/ns)";
+
   private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
 
   private static String targetPath;
@@ -92,6 +95,8 @@ public class ImportCsv extends AbstractCsvTool {
   private static String deviceColumn = "Device";
 
   private static int batchPointSize = 100_000;
+
+  private static String timestampPrecision = "ms";
 
   /**
    * create the commandline options.
@@ -153,6 +158,14 @@ public class ImportCsv extends AbstractCsvTool {
             .build();
     options.addOption(opBatchPointSize);
 
+    Option opTimestampPrecision =
+        Option.builder(TIMESTAMP_PRECISION_ARGS)
+            .argName(TIMESTAMP_PRECISION_ARGS)
+            .hasArg()
+            .desc("Timestamp precision (ms/us/ns)")
+            .build();
+    options.addOption(opTimestampPrecision);
+
     return options;
   }
 
@@ -177,6 +190,10 @@ public class ImportCsv extends AbstractCsvTool {
     }
     if (commandLine.getOptionValue(ALIGNED_ARGS) != null) {
       aligned = Boolean.valueOf(commandLine.getOptionValue(ALIGNED_ARGS));
+    }
+
+    if (commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS) != null) {
+      timestampPrecision = commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS);
     }
   }
 
@@ -331,10 +348,12 @@ public class ImportCsv extends AbstractCsvTool {
 
     Set<String> devices = deviceAndMeasurementNames.keySet();
     String devicesStr = StringUtils.join(devices, ",");
-    try {
-      queryType(devicesStr, headerTypeMap, "Time");
-    } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
+    if (headerTypeMap.isEmpty()) {
+      try {
+        queryType(devicesStr, headerTypeMap, "Time");
+      } catch (IoTDBConnectionException e) {
+        e.printStackTrace();
+      }
     }
 
     List<String> deviceIds = new ArrayList<>();
@@ -343,7 +362,6 @@ public class ImportCsv extends AbstractCsvTool {
     List<List<TSDataType>> typesList = new ArrayList<>();
     List<List<Object>> valuesList = new ArrayList<>();
 
-    AtomicReference<SimpleDateFormat> timeFormatter = new AtomicReference<>(null);
     AtomicReference<Boolean> hasStarted = new AtomicReference<>(false);
     AtomicInteger pointSize = new AtomicInteger(0);
 
@@ -353,7 +371,6 @@ public class ImportCsv extends AbstractCsvTool {
         record -> {
           if (!hasStarted.get()) {
             hasStarted.set(true);
-            timeFormatter.set(formatterInit(record.get(0)));
           } else if (pointSize.get() >= batchPointSize) {
             writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
             pointSize.set(0);
@@ -401,17 +418,7 @@ public class ImportCsv extends AbstractCsvTool {
               }
             }
             if (!measurements.isEmpty()) {
-              if (timeFormatter.get() == null) {
-                times.add(Long.valueOf(record.get(timeColumn)));
-              } else {
-                try {
-                  times.add(timeFormatter.get().parse(record.get(timeColumn)).getTime());
-                } catch (ParseException e) {
-                  System.out.println(
-                      "Meet error when insert csv because the format of time is not supported");
-                  System.exit(0);
-                }
-              }
+              times.add(parseTimestamp(record.get(timeColumn)));
               deviceIds.add(deviceId);
               typesList.add(types);
               valuesList.add(values);
@@ -470,7 +477,7 @@ public class ImportCsv extends AbstractCsvTool {
           // only run in first record
           if (deviceName.get() == null) {
             deviceName.set(record.get(1));
-            timeFormatter.set(formatterInit(record.get(0)));
+            // timeFormatter.set(formatterInit(record.get(0)));
           } else if (!Objects.equals(deviceName.get(), record.get(1))) {
             // if device changed
             writeAndEmptyDataSet(
@@ -501,7 +508,9 @@ public class ImportCsv extends AbstractCsvTool {
                 // query the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
                   try {
-                    hasResult = queryType(deviceName.get(), headerTypeMap, "Device");
+                    if (headerTypeMap.isEmpty()) {
+                      hasResult = queryType(deviceName.get(), headerTypeMap, "Device");
+                    }
                     typeQueriedDevice.add(deviceName.get());
                   } catch (IoTDBConnectionException e) {
                     e.printStackTrace();
@@ -543,13 +552,7 @@ public class ImportCsv extends AbstractCsvTool {
             if (timeFormatter.get() == null) {
               times.add(Long.valueOf(record.get(timeColumn)));
             } else {
-              try {
-                times.add(timeFormatter.get().parse(record.get(timeColumn)).getTime());
-              } catch (ParseException e) {
-                System.out.println(
-                    "Meet error when insert csv because the format of time is not supported");
-                System.exit(0);
-              }
+              times.add(parseTimestamp(record.get(timeColumn)));
             }
             typesList.add(types);
             valuesList.add(values);
@@ -736,32 +739,6 @@ public class ImportCsv extends AbstractCsvTool {
   }
 
   /**
-   * return a suit time formatter
-   *
-   * @param time
-   * @return
-   */
-  private static SimpleDateFormat formatterInit(String time) {
-    try {
-      Long.parseLong(time);
-      return null;
-    } catch (Exception ignored) {
-      // do nothing
-    }
-
-    for (String timeFormat : STRING_TIME_FORMAT) {
-      SimpleDateFormat format = new SimpleDateFormat(timeFormat);
-      try {
-        format.parse(time);
-        return format;
-      } catch (java.text.ParseException ignored) {
-        // do nothing
-      }
-    }
-    return null;
-  }
-
-  /**
    * return the TSDataType
    *
    * @param typeStr
@@ -829,7 +806,7 @@ public class ImportCsv extends AbstractCsvTool {
           if (value.startsWith("\"") && value.endsWith("\"")) {
             return value.substring(1, value.length() - 1);
           }
-          return null;
+          return value;
         case BOOLEAN:
           if (!"true".equals(value) && !"false".equals(value)) {
             return null;
@@ -849,5 +826,15 @@ public class ImportCsv extends AbstractCsvTool {
     } catch (NumberFormatException e) {
       return null;
     }
+  }
+
+  private static long parseTimestamp(String str) {
+    long timestamp;
+    try {
+      timestamp = Long.parseLong(str);
+    } catch (NumberFormatException e) {
+      timestamp = DatetimeUtils.convertDatetimeStrToLong(str, zoneId, timestampPrecision);
+    }
+    return timestamp;
   }
 }

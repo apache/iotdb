@@ -34,14 +34,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public class SnapshotStorage implements StateMachineStorage {
@@ -90,47 +86,21 @@ public class SnapshotStorage implements StateMachineStorage {
     if (snapshots == null || snapshots.length == 0) {
       return null;
     }
-    return snapshots[snapshots.length - 1].toFile();
-  }
-
-  private List<Path> getAllFilesUnder(File rootDir) {
-    List<Path> allFiles = new ArrayList<>();
-    try {
-      Files.walkFileTree(
-          rootDir.toPath(),
-          new FileVisitor<Path>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
-                throws IOException {
-              return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                throws IOException {
-              if (attrs.isRegularFile()) {
-                allFiles.add(file);
-              }
-              return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-              logger.info("visit file {} failed due to {}", file.toAbsolutePath(), exc);
-              return FileVisitResult.TERMINATE;
-            }
-
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc)
-                throws IOException {
-              return FileVisitResult.CONTINUE;
-            }
-          });
-    } catch (IOException ioException) {
-      logger.error("IOException occurred during listing snapshot directory: ", ioException);
-      return Collections.emptyList();
+    int i = snapshots.length - 1;
+    for (; i >= 0; i--) {
+      String metafilePath =
+          getMetafilePath(snapshots[i].toFile(), snapshots[i].getFileName().toString());
+      if (new File(metafilePath).exists()) {
+        break;
+      } else {
+        try {
+          FileUtils.deleteFully(snapshots[i]);
+        } catch (IOException e) {
+          logger.warn("delete incomplete snapshot directory {} failed due to {}", snapshots[i], e);
+        }
+      }
     }
-    return allFiles;
+    return i < 0 ? null : snapshots[i].toFile();
   }
 
   @Override
@@ -141,8 +111,16 @@ public class SnapshotStorage implements StateMachineStorage {
     }
     TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
 
+    List<Path> actualSnapshotFiles = applicationStateMachine.getSnapshotFiles(latestSnapshotDir);
+    if (actualSnapshotFiles == null) {
+      return null;
+    }
+
     List<FileInfo> fileInfos = new ArrayList<>();
-    for (Path file : getAllFilesUnder(latestSnapshotDir)) {
+    for (Path file : actualSnapshotFiles) {
+      if (file.endsWith(".md5")) {
+        continue;
+      }
       FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
       fileInfos.add(fileInfo);
     }

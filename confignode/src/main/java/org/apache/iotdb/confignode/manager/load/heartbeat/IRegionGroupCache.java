@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+
 public interface IRegionGroupCache {
 
   /**
@@ -26,6 +28,13 @@ public interface IRegionGroupCache {
    * @param newHeartbeatSample The newest HeartbeatSample
    */
   void cacheHeartbeatSample(RegionHeartbeatSample newHeartbeatSample);
+
+  /**
+   * Remove the specific sample cache if exists
+   *
+   * @param dataNodeId DataNodeId
+   */
+  void removeCacheIfExists(Integer dataNodeId);
 
   /**
    * Invoking periodically to update RegionGroups' load statistics
@@ -40,4 +49,11 @@ public interface IRegionGroupCache {
    * @return The DataNodeId of the latest leader
    */
   int getLeaderDataNodeId();
+
+  /**
+   * Get RegionGroup's ConsensusGroupId
+   *
+   * @return TConsensusGroupId
+   */
+  TConsensusGroupId getConsensusGroupId();
 }

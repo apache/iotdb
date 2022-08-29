@@ -23,76 +23,208 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.heartbeat.RegionGroupCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.RegionHeartbeatSample;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LeaderRouterTest {
 
-  private static final TDataNodeLocation dataNodeLocation1 =
-      new TDataNodeLocation(
-          1,
-          new TEndPoint("0.0.0.0", 6667),
-          new TEndPoint("0.0.0.0", 9003),
-          new TEndPoint("0.0.0.0", 8777),
-          new TEndPoint("0.0.0.0", 40010),
-          new TEndPoint("0.0.0.0", 50010));
-
-  private static final TDataNodeLocation dataNodeLocation2 =
-      new TDataNodeLocation(
-          2,
-          new TEndPoint("0.0.0.0", 6668),
-          new TEndPoint("0.0.0.0", 9004),
-          new TEndPoint("0.0.0.0", 8778),
-          new TEndPoint("0.0.0.0", 40011),
-          new TEndPoint("0.0.0.0", 50011));
-
-  private static final TDataNodeLocation dataNodeLocation3 =
-      new TDataNodeLocation(
-          3,
-          new TEndPoint("0.0.0.0", 6669),
-          new TEndPoint("0.0.0.0", 9005),
-          new TEndPoint("0.0.0.0", 8779),
-          new TEndPoint("0.0.0.0", 40012),
-          new TEndPoint("0.0.0.0", 50012));
-
   @Test
-  public void genRealTimeRoutingPolicy() {
-    TConsensusGroupId groupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 0);
-
-    /* Build leaderMap */
-    Map<TConsensusGroupId, Integer> leaderMap = new HashMap<>();
-    leaderMap.put(groupId, 2);
-
-    /* Build loadScoreMap */
-    Map<Integer, Float> loadScoreMap = new HashMap<>();
-    loadScoreMap.put(1, (float) -10.0);
-    loadScoreMap.put(2, (float) -20.0);
-    loadScoreMap.put(3, (float) -30.0);
-
-    /* Build TRegionReplicaSet */
-    TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+  public void testGenRealTimeRoutingPolicy() {
+    // Build TDataNodeLocations
     List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
-    dataNodeLocations.add(dataNodeLocation1);
-    dataNodeLocations.add(dataNodeLocation2);
-    dataNodeLocations.add(dataNodeLocation3);
-    regionReplicaSet.setRegionId(groupId);
-    regionReplicaSet.setDataNodeLocations(dataNodeLocations);
+    for (int i = 0; i < 6; i++) {
+      dataNodeLocations.add(
+          new TDataNodeLocation(
+              i,
+              new TEndPoint("0.0.0.0", 6667 + i),
+              new TEndPoint("0.0.0.0", 9003 + i),
+              new TEndPoint("0.0.0.0", 8777 + i),
+              new TEndPoint("0.0.0.0", 40010 + i),
+              new TEndPoint("0.0.0.0", 50010 + i)));
+    }
 
-    TRegionReplicaSet result =
-        new LeaderRouter(leaderMap, loadScoreMap)
-            .genRealTimeRoutingPolicy(Collections.singletonList(regionReplicaSet))
-            .get(groupId);
-    /* Leader first */
-    Assert.assertEquals(dataNodeLocation2, result.getDataNodeLocations().get(0));
-    /* The others will be sorted by loadScore */
-    Assert.assertEquals(dataNodeLocation3, result.getDataNodeLocations().get(1));
-    Assert.assertEquals(dataNodeLocation1, result.getDataNodeLocations().get(2));
+    // Build nodeCacheMap
+    long currentTimeMillis = System.currentTimeMillis();
+    Map<Integer, BaseNodeCache> nodeCacheMap = new HashMap<>();
+    for (int i = 0; i < 6; i++) {
+      nodeCacheMap.put(i, new DataNodeHeartbeatCache());
+      // Simulate that the DataNode-i returned a heartbeat at (currentTime - i * 1000) ms
+      nodeCacheMap
+          .get(i)
+          .cacheHeartbeatSample(
+              new NodeHeartbeatSample(
+                  new THeartbeatResp(currentTimeMillis - i * 1000, NodeStatus.Running.getStatus()),
+                  currentTimeMillis - i * 1000));
+    }
+    nodeCacheMap.values().forEach(BaseNodeCache::updateNodeStatus);
+
+    // Get the loadScoreMap
+    Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();
+    nodeCacheMap.forEach(
+        (dataNodeId, heartbeatCache) ->
+            loadScoreMap.put(dataNodeId, heartbeatCache.getLoadScore()));
+
+    // Build TRegionReplicaSet
+    TConsensusGroupId groupId1 = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1);
+    TRegionReplicaSet regionReplicaSet1 =
+        new TRegionReplicaSet(
+            groupId1,
+            Arrays.asList(
+                dataNodeLocations.get(2), dataNodeLocations.get(1), dataNodeLocations.get(0)));
+    TConsensusGroupId groupId2 = new TConsensusGroupId(TConsensusGroupType.DataRegion, 2);
+    TRegionReplicaSet regionReplicaSet2 =
+        new TRegionReplicaSet(
+            groupId2,
+            Arrays.asList(
+                dataNodeLocations.get(5), dataNodeLocations.get(4), dataNodeLocations.get(3)));
+    List<TRegionReplicaSet> regionReplicaSets = Arrays.asList(regionReplicaSet1, regionReplicaSet2);
+
+    // Build regionGroupCacheMap
+    Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap = new HashMap<>();
+    regionGroupCacheMap.put(groupId1, new RegionGroupCache(groupId1));
+    regionGroupCacheMap.put(groupId2, new RegionGroupCache(groupId2));
+
+    /* Simulate ratis consensus protocol(only one leader) */
+    regionGroupCacheMap
+        .get(groupId1)
+        .cacheHeartbeatSample(new RegionHeartbeatSample(10, 10, 0, false));
+    regionGroupCacheMap
+        .get(groupId1)
+        .cacheHeartbeatSample(new RegionHeartbeatSample(11, 11, 1, true));
+    regionGroupCacheMap
+        .get(groupId1)
+        .cacheHeartbeatSample(new RegionHeartbeatSample(12, 12, 2, false));
+    regionGroupCacheMap
+        .get(groupId2)
+        .cacheHeartbeatSample(new RegionHeartbeatSample(13, 13, 3, false));
+    regionGroupCacheMap
+        .get(groupId2)
+        .cacheHeartbeatSample(new RegionHeartbeatSample(14, 14, 4, true));
+    regionGroupCacheMap
+        .get(groupId2)
+        .cacheHeartbeatSample(new RegionHeartbeatSample(15, 15, 5, false));
+
+    // Get leaderMap
+    Map<TConsensusGroupId, Integer> leaderMap = new HashMap<>();
+    regionGroupCacheMap
+        .values()
+        .forEach(regionGroupCache -> Assert.assertTrue(regionGroupCache.updateLoadStatistic()));
+    regionGroupCacheMap.forEach(
+        (groupId, regionGroupCache) ->
+            leaderMap.put(groupId, regionGroupCache.getLeaderDataNodeId()));
+
+    // Check result
+    Map<TConsensusGroupId, TRegionReplicaSet> result =
+        new LeaderRouter(leaderMap, loadScoreMap).genLatestRegionRouteMap(regionReplicaSets);
+    TRegionReplicaSet result1 = result.get(groupId1);
+    // Leader first
+    Assert.assertEquals(dataNodeLocations.get(1), result1.getDataNodeLocations().get(0));
+    // The others will be sorted by loadScore
+    Assert.assertEquals(dataNodeLocations.get(0), result1.getDataNodeLocations().get(1));
+    Assert.assertEquals(dataNodeLocations.get(2), result1.getDataNodeLocations().get(2));
+    TRegionReplicaSet result2 = result.get(groupId2);
+    // Leader first
+    Assert.assertEquals(dataNodeLocations.get(4), result2.getDataNodeLocations().get(0));
+    // The others will be sorted by loadScore
+    Assert.assertEquals(dataNodeLocations.get(3), result2.getDataNodeLocations().get(1));
+    Assert.assertEquals(dataNodeLocations.get(5), result2.getDataNodeLocations().get(2));
+
+    /* Simulate multiLeader consensus protocol(Each Region believes it is the leader) */
+    for (int i = 2; i <= 1000; i++) {
+      regionGroupCacheMap
+          .get(groupId1)
+          .cacheHeartbeatSample(new RegionHeartbeatSample(i * 10, i * 10, 0, true));
+      regionGroupCacheMap
+          .get(groupId1)
+          .cacheHeartbeatSample(new RegionHeartbeatSample(i * 10 + 1, i * 10 + 1, 1, true));
+      regionGroupCacheMap
+          .get(groupId1)
+          .cacheHeartbeatSample(new RegionHeartbeatSample(i * 10 + 2, i * 10 + 2, 2, true));
+      regionGroupCacheMap
+          .get(groupId2)
+          .cacheHeartbeatSample(new RegionHeartbeatSample(i * 10 + 3, i * 10 + 3, 3, true));
+      regionGroupCacheMap
+          .get(groupId2)
+          .cacheHeartbeatSample(new RegionHeartbeatSample(i * 10 + 4, i * 10 + 4, 4, true));
+      regionGroupCacheMap
+          .get(groupId2)
+          .cacheHeartbeatSample(new RegionHeartbeatSample(i * 10 + 5, i * 10 + 5, 5, true));
+
+      // Get leaderMap
+      leaderMap.clear();
+      regionGroupCacheMap.values().forEach(IRegionGroupCache::updateLoadStatistic);
+      regionGroupCacheMap.forEach(
+          (groupId, regionGroupCache) ->
+              leaderMap.put(groupId, regionGroupCache.getLeaderDataNodeId()));
+
+      // Check result
+      result = new LeaderRouter(leaderMap, loadScoreMap).genLatestRegionRouteMap(regionReplicaSets);
+      result1 = result.get(groupId1);
+      // Leader first
+      Assert.assertEquals(dataNodeLocations.get(2), result1.getDataNodeLocations().get(0));
+      // The others will be sorted by loadScore
+      Assert.assertEquals(dataNodeLocations.get(0), result1.getDataNodeLocations().get(1));
+      Assert.assertEquals(dataNodeLocations.get(1), result1.getDataNodeLocations().get(2));
+      result2 = result.get(groupId2);
+      // Leader first
+      Assert.assertEquals(dataNodeLocations.get(5), result2.getDataNodeLocations().get(0));
+      // The others will be sorted by loadScore
+      Assert.assertEquals(dataNodeLocations.get(3), result2.getDataNodeLocations().get(1));
+      Assert.assertEquals(dataNodeLocations.get(4), result2.getDataNodeLocations().get(2));
+    }
+
+    /* Simulate multiLeader consensus protocol with a DataNode fails down */
+    regionGroupCacheMap
+        .get(groupId1)
+        .cacheHeartbeatSample(new RegionHeartbeatSample(10030, 10030, 0, true));
+    regionGroupCacheMap
+        .get(groupId1)
+        .cacheHeartbeatSample(new RegionHeartbeatSample(10031, 10031, 1, true));
+    regionGroupCacheMap
+        .get(groupId2)
+        .cacheHeartbeatSample(new RegionHeartbeatSample(10033, 10033, 3, true));
+    regionGroupCacheMap
+        .get(groupId2)
+        .cacheHeartbeatSample(new RegionHeartbeatSample(10034, 10034, 4, true));
+
+    // Get leaderMap
+    leaderMap.clear();
+    regionGroupCacheMap
+        .values()
+        .forEach(regionGroupCache -> Assert.assertTrue(regionGroupCache.updateLoadStatistic()));
+    regionGroupCacheMap.forEach(
+        (groupId, regionGroupCache) ->
+            leaderMap.put(groupId, regionGroupCache.getLeaderDataNodeId()));
+
+    // Check result
+    result = new LeaderRouter(leaderMap, loadScoreMap).genLatestRegionRouteMap(regionReplicaSets);
+    result1 = result.get(groupId1);
+    // Leader first
+    Assert.assertEquals(dataNodeLocations.get(1), result1.getDataNodeLocations().get(0));
+    // The others will be sorted by loadScore
+    Assert.assertEquals(dataNodeLocations.get(0), result1.getDataNodeLocations().get(1));
+    Assert.assertEquals(dataNodeLocations.get(2), result1.getDataNodeLocations().get(2));
+    result2 = result.get(groupId2);
+    // Leader first
+    Assert.assertEquals(dataNodeLocations.get(4), result2.getDataNodeLocations().get(0));
+    // The others will be sorted by loadScore
+    Assert.assertEquals(dataNodeLocations.get(3), result2.getDataNodeLocations().get(1));
+    Assert.assertEquals(dataNodeLocations.get(5), result2.getDataNodeLocations().get(2));
   }
 }
