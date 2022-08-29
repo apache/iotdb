@@ -71,7 +71,7 @@ public class LocalSyncManager implements ISyncManager {
 
   @Override
   public void delete() {
-    // todo: parse to delete operation and sync
+    // TODO(sync): parse to delete operation and sync
     // 1、get timeseries
     // 2、get time partition
     //    syncPipe.collectRealTimeDeletion();

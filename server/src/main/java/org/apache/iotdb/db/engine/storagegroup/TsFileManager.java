@@ -404,7 +404,6 @@ public class TsFileManager {
       if (!isRealTimeTsFile) {
         File mods = new File(tsFileResource.getModFile().getFilePath());
         long modsOffset = mods.exists() ? mods.length() : 0L;
-        // TODO: 这里有点奇怪，要想办法把创建硬连接给解耦开
         File hardlink = syncManager.createHardlink(tsFile, modsOffset);
         if (hardlink != null) {
           historyTsFiles.add(hardlink);

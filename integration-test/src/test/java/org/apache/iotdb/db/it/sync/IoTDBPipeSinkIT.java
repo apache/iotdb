@@ -88,7 +88,7 @@ public class IoTDBPipeSinkIT {
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPESINK demo3")) {
-        String[] expectedRetSet = new String[] {"demo3,IoTDB,ip='127.0.0.1',port=6670,"};
+        String[] expectedRetSet = new String[] {"demo3,IoTDB,ip='127.0.0.1',port=6667,"};
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
     } catch (Exception e) {

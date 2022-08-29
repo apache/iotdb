@@ -101,9 +101,11 @@ public class TsFilePipe implements Pipe {
 
     // init sync manager
     List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
-    System.out.println("init syncManager " + dataRegions.size());
     for (DataRegion dataRegion : dataRegions) {
-      System.out.println(dataRegion.getStorageGroupName() + "-" + dataRegion.getDataRegionId());
+      logger.info(
+          logFormat(
+              "init syncManager for %s-%s",
+              dataRegion.getStorageGroupName(), dataRegion.getDataRegionId()));
       syncManagerMap.put(dataRegion.getDataRegionId(), new LocalSyncManager(dataRegion, this));
     }
     try {
@@ -117,8 +119,7 @@ public class TsFilePipe implements Pipe {
       status = PipeStatus.RUNNING;
     } catch (IOException e) {
       logger.error(
-          String.format(
-              "Clear pipe dir %s error.", SyncPathUtil.getSenderPipeDir(name, createTime)),
+          logFormat("Clear pipe dir %s error.", SyncPathUtil.getSenderPipeDir(name, createTime)),
           e);
       throw new PipeException("Start error, can not clear pipe log.");
     }
@@ -151,8 +152,7 @@ public class TsFilePipe implements Pipe {
 
       return pipeLog.createTsFileAndModsHardlink(tsFile, modsOffset);
     } catch (IOException e) {
-      logger.error(
-          String.format("Create hardlink for history tsfile %s error.", tsFile.getPath()), e);
+      logger.error(logFormat("Create hardlink for history tsfile %s error.", tsFile.getPath()), e);
       return null;
     } finally {
       collectRealTimeDataLock.unlock();
@@ -178,7 +178,7 @@ public class TsFilePipe implements Pipe {
         realTimeQueue.offer(deletionData);
       }
     } catch (MetadataException e) {
-      logger.warn(String.format("Collect deletion %s error.", deletion), e);
+      logger.warn(logFormat("Collect deletion %s error.", deletion), e);
     } finally {
       collectRealTimeDataLock.unlock();
     }
@@ -195,11 +195,10 @@ public class TsFilePipe implements Pipe {
       File hardlink = pipeLog.createTsFileHardlink(tsFile);
       PipeData tsFileData =
           new TsFilePipeData(hardlink.getParent(), hardlink.getName(), maxSerialNumber);
-      System.out.println("collect realtime " + tsFile.getAbsolutePath());
       realTimeQueue.offer(tsFileData);
     } catch (IOException e) {
       logger.warn(
-          String.format(
+          logFormat(
               "Create Hardlink tsfile %s on disk error, serial number is %d.",
               tsFile.getPath(), maxSerialNumber),
           e);
@@ -212,7 +211,7 @@ public class TsFilePipe implements Pipe {
     try {
       pipeLog.createTsFileResourceHardlink(tsFile);
     } catch (IOException e) {
-      logger.warn(String.format("Record tsfile resource %s on disk error.", tsFile.getPath()), e);
+      logger.warn(logFormat("Record tsfile resource %s on disk error.", tsFile.getPath()), e);
     }
   }
 
@@ -300,8 +299,12 @@ public class TsFilePipe implements Pipe {
       realTimeQueue.clear();
       pipeLog.clear();
     } catch (IOException e) {
-      logger.warn(String.format("Clear pipe %s %d error.", name, createTime), e);
+      logger.warn(logFormat("Clear pipe %s %d error.", name, createTime), e);
     }
+  }
+
+  private String logFormat(String format, Object... arguments) {
+    return String.format(String.format("[%s-%s] ", this.name, this.createTime) + format, arguments);
   }
 
   @Override

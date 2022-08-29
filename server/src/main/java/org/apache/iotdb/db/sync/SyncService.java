@@ -204,7 +204,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void addPipe(CreatePipeStatement statement) throws PipeException {
-    // check plan
+    // check statement
     long currentTime = DatetimeUtils.currentTime();
     if (statement.getStartTime() > currentTime) {
       throw new PipeException(
@@ -603,7 +603,7 @@ public class SyncService implements IService {
   }
 
   public List<ISyncManager> getOrCreateSyncManager(String dataRegionId) {
-    // TODO：1、从Pipe中获取 2、缓存
+    // TODO(sync): maybe add cache to accelerate
     List<ISyncManager> syncManagerList = new ArrayList<>();
     if (runningPipe != null) {
       syncManagerList.add(runningPipe.getOrCreateSyncManager(dataRegionId));
