@@ -16,7 +16,7 @@
  */
 package org.apache.iotdb.db.service.thrift.handler;
 
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
@@ -36,8 +36,7 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
 
   @Override
   public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "RPC")
         .incr(1L);
@@ -48,8 +47,7 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
   public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
     // release query resources.
     serviceImpl.handleClientExit();
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "RPC")
         .decr(1L);

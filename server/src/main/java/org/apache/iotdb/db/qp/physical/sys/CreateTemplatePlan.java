@@ -51,8 +51,13 @@ public class CreateTemplatePlan extends PhysicalPlan {
   TSDataType[][] dataTypes;
   TSEncoding[][] encodings;
   CompressionType[][] compressors;
-  // constant to help resolve serialized sequence
+
+  // Flags for compatible issues, located at where to put size of schemaNames
+  // NEW_PLAN means no schemaNames, but not directly aligned
   private static final int NEW_PLAN = -1;
+  // directly-alignment-flag to indicate directly aligned, with no schemaNames as well
+  // NECESSARY for occasions where only ONE measurement inside a template
+  private static final int DIR_ALI_FLG = -2;
 
   public CreateTemplatePlan() {
     super(OperatorType.CREATE_TEMPLATE);
@@ -286,9 +291,13 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
     ReadWriteIOUtils.write(name, buffer);
 
-    // write NEW_PLAN as flag to note that there is no schemaNames and new nested list for
-    // compressors
-    ReadWriteIOUtils.write(NEW_PLAN, buffer);
+    if (alignedDeviceId != null && alignedDeviceId.contains("")) {
+      // indicate template is directly aligned, no schemaNames of course
+      ReadWriteIOUtils.write(DIR_ALI_FLG, buffer);
+    } else {
+      // indicate that there is no schemaNames and a nested list for compressors
+      ReadWriteIOUtils.write(NEW_PLAN, buffer);
+    }
 
     // measurements
     ReadWriteIOUtils.write(measurements.length, buffer);
@@ -332,14 +341,16 @@ public class CreateTemplatePlan extends PhysicalPlan {
   @Override
   @SuppressWarnings("Duplicates")
   public void deserialize(ByteBuffer buffer) {
-    boolean isFormerSerialized;
+    boolean isFormerSerialized = false;
     name = ReadWriteIOUtils.readString(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
 
-    if (size == NEW_PLAN) {
-      isFormerSerialized = false;
-    } else {
+    if (size == DIR_ALI_FLG) {
+      // no action for NEW_PLAN
+      alignedDeviceId = new HashSet<>();
+      alignedDeviceId.add("");
+    } else if (size > 0) {
       // deserialize schemaNames
       isFormerSerialized = true;
       schemaNames = new String[size];
@@ -416,9 +427,13 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
     ReadWriteIOUtils.write(name, stream);
 
-    // write NEW_PLAN as flag to note that there is no schemaNames and new nested list for
-    // compressors
-    ReadWriteIOUtils.write(NEW_PLAN, stream);
+    if (alignedDeviceId != null && alignedDeviceId.contains("")) {
+      // indicate template is directly aligned, no schemaNames of course
+      ReadWriteIOUtils.write(DIR_ALI_FLG, stream);
+    } else {
+      // indicate that there is no schemaNames and a nested list for compressors
+      ReadWriteIOUtils.write(NEW_PLAN, stream);
+    }
 
     // measurements
     ReadWriteIOUtils.write(measurements.length, stream);

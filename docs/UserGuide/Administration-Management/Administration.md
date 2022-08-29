@@ -36,6 +36,20 @@ The user is the legal user of the database. A user corresponds to a unique usern
 
 The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges are divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node.
 
+> Note: the path wildcard is not allowed in granting or revoking privileges .
+
+The following example is the wrong usage:
+
+```
+GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln.**;
+```
+
+The correct usage should be:
+
+```
+GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
+```
+
 ### Role
 
 A role is a set of privileges and has a unique role name as an identifier. A user usually corresponds to a real identity (such as a traffic dispatcher), while a real identity may correspond to multiple users. These users with the same real identity tend to have the same privileges. Roles are abstractions that can unify the management of such privileges.

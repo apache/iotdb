@@ -156,7 +156,6 @@ public class StorageGroupManager {
    * @return virtual storage group processor
    */
   @SuppressWarnings("java:S2445")
-  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public VirtualStorageGroupProcessor getProcessor(
       PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
@@ -166,7 +165,9 @@ public class StorageGroupManager {
     if (processor == null) {
       // if finish recover
       if (isVsgReady[loc].get()) {
-        synchronized (storageGroupMNode) {
+        // it's unsafe to synchronize MNode here because
+        // concurrent deletions and creations will create a new MNode
+        synchronized (isVsgReady[loc]) {
           processor = virtualStorageGroupProcessor[loc];
           if (processor == null) {
             processor =

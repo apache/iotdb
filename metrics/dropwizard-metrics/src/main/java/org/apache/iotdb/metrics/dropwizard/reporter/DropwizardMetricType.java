@@ -17,17 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.utils;
+package org.apache.iotdb.metrics.dropwizard.reporter;
 
-public enum PredefinedMetric {
-  JVM,
-  LOGBACK,
-  FILE,
-  PROCESS,
-  SYSTEM;
+public enum DropwizardMetricType {
+  COUNTER("counter"),
+  GAUGE("gauge"),
+  SUMMARY("summary"),
+  HISTOGRAM("histogram"),
+  UNTYPED("untyped");
 
-  @Override
-  public String toString() {
-    return name();
+  private final String text;
+
+  DropwizardMetricType(String text) {
+    this.text = text;
+  }
+
+  public String getText() {
+    return text;
   }
 }

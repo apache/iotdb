@@ -109,13 +109,13 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_ROLE_PRIVILEGE.ordinal();
       case REVOKE_USER_PRIVILEGE:
         return PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal();
-      case GRANT_USER_ROLE:
+      case GRANT_ROLE_TO_USER:
         return PrivilegeType.GRANT_USER_ROLE.ordinal();
       case DELETE_USER:
         return PrivilegeType.DELETE_USER.ordinal();
       case DELETE_ROLE:
         return PrivilegeType.DELETE_ROLE.ordinal();
-      case REVOKE_USER_ROLE:
+      case REVOKE_ROLE_TO_USER:
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();
