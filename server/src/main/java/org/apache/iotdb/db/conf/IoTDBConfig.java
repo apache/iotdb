@@ -135,7 +135,7 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /** Memory allocated for the write process */
-  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 4 / 10;
+  private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 4 / 10;
 
   /** Memory allocated for the read process */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
@@ -153,6 +153,12 @@ public class IoTDBConfig {
 
   /** Reject proportion for system */
   private double rejectProportion = 0.8;
+
+  /** The proportion of write memory for memtable */
+  private double writeProportion = 0.8;
+
+  /** The proportion of write memory for compaction */
+  private double compactionProportion = 0.2;
 
   /** If storage group increased more than this threshold, report to system. Unit: byte */
   private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
@@ -623,9 +629,6 @@ public class IoTDBConfig {
 
   /** TEXT encoding when creating schema automatically is enabled */
   private TSEncoding defaultTextEncoding = TSEncoding.PLAIN;
-
-  /** How much memory (in byte) can be used by a single merge task. */
-  private long crossCompactionMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.1);
 
   /** How many threads will be set up to perform upgrade tasks. */
   private int upgradeThreadNum = 1;
@@ -1717,14 +1720,6 @@ public class IoTDBConfig {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
   }
 
-  public long getCrossCompactionMemoryBudget() {
-    return crossCompactionMemoryBudget;
-  }
-
-  public void setCrossCompactionMemoryBudget(long crossCompactionMemoryBudget) {
-    this.crossCompactionMemoryBudget = crossCompactionMemoryBudget;
-  }
-
   public long getMergeIntervalSec() {
     return mergeIntervalSec;
   }
@@ -1765,12 +1760,12 @@ public class IoTDBConfig {
     this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
   }
 
-  public long getAllocateMemoryForWrite() {
-    return allocateMemoryForWrite;
+  public long getAllocateMemoryForStorageEngine() {
+    return allocateMemoryForStorageEngine;
   }
 
-  public void setAllocateMemoryForWrite(long allocateMemoryForWrite) {
-    this.allocateMemoryForWrite = allocateMemoryForWrite;
+  public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
+    this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
   }
 
   public long getAllocateMemoryForSchema() {
@@ -3134,6 +3129,22 @@ public class IoTDBConfig {
 
   public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
+  }
+
+  public double getWriteProportion() {
+    return writeProportion;
+  }
+
+  public void setWriteProportion(double writeProportion) {
+    this.writeProportion = writeProportion;
+  }
+
+  public double getCompactionProportion() {
+    return compactionProportion;
+  }
+
+  public void setCompactionProportion(double compactionProportion) {
+    this.compactionProportion = compactionProportion;
   }
 
   public long getThrottleThreshold() {
