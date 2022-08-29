@@ -68,6 +68,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -432,14 +433,19 @@ public class NodeManager {
 
   /** loop body of the heartbeat thread */
   private void heartbeatLoopBody() {
-    if (getConsensusManager().isLeader()) {
-      // Generate HeartbeatReq
-      THeartbeatReq heartbeatReq = genHeartbeatReq();
-      // Send heartbeat requests to all the registered DataNodes
-      pingRegisteredDataNodes(heartbeatReq, getRegisteredDataNodes());
-      // Send heartbeat requests to all the registered ConfigNodes
-      pingRegisteredConfigNodes(heartbeatReq, getRegisteredConfigNodes());
-    }
+    // the consensusManager of configManager may not be fully initialized at this time
+    Optional.ofNullable(getConsensusManager())
+        .ifPresent(
+            consensusManager -> {
+              if (getConsensusManager().isLeader()) {
+                // Generate HeartbeatReq
+                THeartbeatReq heartbeatReq = genHeartbeatReq();
+                // Send heartbeat requests to all the registered DataNodes
+                pingRegisteredDataNodes(heartbeatReq, getRegisteredDataNodes());
+                // Send heartbeat requests to all the registered ConfigNodes
+                pingRegisteredConfigNodes(heartbeatReq, getRegisteredConfigNodes());
+              }
+            });
   }
 
   private THeartbeatReq genHeartbeatReq() {
@@ -537,7 +543,9 @@ public class NodeManager {
    */
   private String getNodeStatus(int nodeId) {
     BaseNodeCache nodeCache = nodeCacheMap.get(nodeId);
-    return nodeCache == null ? "Unknown" : nodeCache.getNodeStatus().getStatus();
+    return nodeCache == null
+        ? NodeStatus.Unknown.getStatus()
+        : nodeCache.getNodeStatus().getStatus();
   }
 
   /**

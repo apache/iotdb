@@ -169,6 +169,9 @@ public class ConfigManager implements IManager {
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
+
+    // ConsensusManager must be initialized last, as it would load states from disk and reinitialize
+    // above managers
     this.consensusManager = new ConsensusManager(this, stateMachine);
   }
 
