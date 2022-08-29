@@ -38,9 +38,18 @@ public interface BaseEnv {
 
   void cleanAfterTest();
 
-  Connection getConnection() throws SQLException;
+  default Connection getConnection() throws SQLException {
+    return getConnection("root", "root");
+  }
 
-  Connection getConnection(Constant.Version version) throws SQLException;
+  Connection getConnection(String username, String password) throws SQLException;
+
+  default Connection getConnection(Constant.Version version) throws SQLException {
+    return getConnection(version, "root", "root");
+  }
+
+  Connection getConnection(Constant.Version version, String username, String password)
+      throws SQLException;
 
   void setTestMethodName(String testCaseName);
 

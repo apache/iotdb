@@ -1105,7 +1105,7 @@ public class LocalConfigNode {
           }
         }
         break;
-      case GRANT_ROLE_TO_USER:
+      case GRANT_USER_ROLE:
         iAuthorizer.grantRoleToUser(roleName, userName);
         break;
       case REVOKE_USER:
@@ -1122,7 +1122,7 @@ public class LocalConfigNode {
           }
         }
         break;
-      case REVOKE_ROLE_FROM_USER:
+      case REVOKE_USER_ROLE:
         iAuthorizer.revokeRoleFromUser(roleName, userName);
         break;
       default:
