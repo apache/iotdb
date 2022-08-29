@@ -26,7 +26,7 @@ import java.util.List;
 
 /**
  * ISyncManager is designed for collect all history TsFiles(i.e. before the pipe start time, all
- * tsfiles whose memtable is set to null.), and realtime tsfiles for registered {@link TsFilePipe}.
+ * tsfiles whose memtable is set to null.) and realtime TsFiles for registered {@link TsFilePipe}.
  */
 public interface ISyncManager {
   /** tsfile */

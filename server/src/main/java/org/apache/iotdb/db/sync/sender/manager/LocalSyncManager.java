@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 
@@ -75,11 +74,6 @@ public class LocalSyncManager implements ISyncManager {
     // 1、get timeseries
     // 2、get time partition
     //    syncPipe.collectRealTimeDeletion();
-  }
-
-  public DeleteTimeSeriesPlan splitDeleteTimeseriesPlanByDevice(PartialPath pathPattern)
-      throws MetadataException {
-    return new DeleteTimeSeriesPlan(splitPathPatternByDevice(pathPattern));
   }
 
   public static List<PartialPath> splitPathPatternByDevice(PartialPath pathPattern)
