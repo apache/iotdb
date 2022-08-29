@@ -486,10 +486,6 @@ public class IoTDBStartCheck {
         properties.setProperty(
             SCHEMA_REGION_CONSENSUS_PROTOCOL, globalConfig.getSchemaRegionConsensusProtocolClass());
       }
-      properties.setProperty(
-          PARTITION_INTERVAL_STRING, String.valueOf(globalConfig.timePartitionInterval));
-      properties.setProperty(
-          PARTITION_INTERVAL_STRING, String.valueOf(globalConfig.timePartitionInterval));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
       if (propertiesFile.exists()) {
