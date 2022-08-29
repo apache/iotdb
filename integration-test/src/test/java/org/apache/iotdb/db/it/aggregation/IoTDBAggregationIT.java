@@ -33,10 +33,8 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.Locale;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
@@ -982,45 +980,6 @@ public class IoTDBAggregationIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void timeWasNullTest() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      // create timeseries
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-
-      for (int i = 0; i < 10; i++) {
-        statement.addBatch(
-            "insert into root.sg1.d1(timestamp, s1, s2) values(" + i + "," + 1 + "," + 1 + ")");
-      }
-
-      statement.execute("insert into root.sg1.d1(timestamp, s3) values(103, 1)");
-      statement.execute("insert into root.sg1.d1(timestamp, s3) values(104, 1)");
-      statement.execute("insert into root.sg1.d1(timestamp, s3) values(105, 1)");
-      statement.executeBatch();
-      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
-        ResultSetMetaData metaData = resultSet.getMetaData();
-        int columnCount = metaData.getColumnCount();
-        while (resultSet.next()) {
-          for (int i = 1; i <= columnCount; i++) {
-            int ct = metaData.getColumnType(i);
-            if (ct == Types.TIMESTAMP) {
-              if (resultSet.wasNull()) {
-                fail();
-              }
-            }
-          }
-        }
-      }
     }
   }
 }
