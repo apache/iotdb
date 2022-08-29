@@ -64,7 +64,7 @@ public class AsyncDataNodeClientPool {
 
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager;
 
-  private final int retryNum = 6;
+  private static final int MAX_RETRY_NUM = 6;
 
   private AsyncDataNodeClientPool() {
     clientManager =
@@ -90,7 +90,7 @@ public class AsyncDataNodeClientPool {
     if (dataNodeLocationMap.isEmpty()) {
       return;
     }
-    for (int retry = 0; retry < retryNum; retry++) {
+    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
       for (TDataNodeLocation targetDataNode : dataNodeLocationMap.values()) {
         AbstractRetryHandler handler;
@@ -256,7 +256,7 @@ public class AsyncDataNodeClientPool {
     if (dataNodeLocationMap.isEmpty()) {
       return new HashMap<>();
     }
-    for (int retry = 0; retry < retryNum; retry++) {
+    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
       index = 0;
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
       for (Map.Entry<String, List<TRegionReplicaSet>> entry :
