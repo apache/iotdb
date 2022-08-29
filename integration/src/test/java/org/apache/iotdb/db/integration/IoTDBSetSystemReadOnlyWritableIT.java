@@ -170,7 +170,7 @@ public class IoTDBSetSystemReadOnlyWritableIT {
     }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET SYSTEM TO WRITABLE");
+      statement.execute("SET SYSTEM TO RUNNING");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -33,7 +33,7 @@ import java.util.List;
 
 public class FlushTask implements IConfigTask {
 
-  private FlushStatement flushStatement;
+  private final FlushStatement flushStatement;
 
   public FlushTask(FlushStatement flushStatement) {
     this.flushStatement = flushStatement;
@@ -55,6 +55,6 @@ public class FlushTask implements IConfigTask {
     }
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.flush(tFlushReq, flushStatement.isCluster());
+    return configTaskExecutor.flush(tFlushReq, flushStatement.isOnCluster());
   }
 }

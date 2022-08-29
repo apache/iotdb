@@ -16,33 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.utils;
 
-package org.apache.iotdb.confignode.client;
-
-public enum DataNodeRequestType {
-  DELETE_REGIONS,
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
-  CREATE_PEER,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  DELETE_PEER,
-  DISABLE_DATA_NODE,
-  STOP_DATA_NODE,
-
-  SET_TTL,
-  CREATE_DATA_REGIONS,
-  CREATE_SCHEMA_REGIONS,
-  CREATE_FUNCTION,
-  DROP_FUNCTION,
-  FLUSH,
-  UPDATE_REGION_ROUTE_MAP,
-  BROADCAST_LATEST_CONFIG_NODE_GROUP,
-  UPDATE_TEMPLATE,
-  CLEAR_CACHE,
-  MERGE,
-  FULL_MERGE,
-  LOAD_CONFIGURATION,
-  SET_SYSTEM_STATUS,
+public enum HandleSystemErrorStrategy {
+  /** just set system status to error and then do nothing else */
+  NONE,
+  /** set system status to read-only and the system only accepts query operations */
+  CHANGE_TO_READ_ONLY,
+  /** the system will be shutdown */
+  SHUTDOWN,
 }
