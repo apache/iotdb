@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.sync.sender.manager;
 
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 
 import java.io.File;
@@ -30,15 +29,6 @@ import java.util.List;
  * tsfiles whose memtable is set to null.), and realtime tsfiles for registered {@link TsFilePipe}.
  */
 public interface ISyncManager {
-  // TODO: add comment
-  void registerSyncTask(Pipe pipe);
-
-  void deregisterSyncTask();
-
-  boolean isEnabledSync();
-
-  void clear();
-
   /** tsfile */
   void syncRealTimeDeletion(Deletion deletion);
 
@@ -49,4 +39,6 @@ public interface ISyncManager {
   List<File> syncHistoryTsFile(long dataStartTime);
 
   File createHardlink(File tsFile, long modsOffset);
+
+  void delete();
 }

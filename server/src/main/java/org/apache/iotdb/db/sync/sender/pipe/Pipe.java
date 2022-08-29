@@ -108,7 +108,16 @@ public interface Pipe {
    */
   void commit();
 
-  ISyncManager getOrCreateSyncManager(String storageGroup);
+  /**
+   * Get {@linkplain ISyncManager} by dataRegionId. If ISyncManager does not exist, it will be
+   * created automatically.
+   *
+   * @param dataRegionId string of {@linkplain org.apache.iotdb.commons.consensus.DataRegionId}
+   * @return ISyncManager
+   */
+  ISyncManager getOrCreateSyncManager(String dataRegionId);
+
+  void deleteSyncManager(String dataRegionId);
 
   // a new pipe should be stop status
   enum PipeStatus {

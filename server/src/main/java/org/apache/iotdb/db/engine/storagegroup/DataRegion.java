@@ -746,11 +746,9 @@ public class DataRegion {
     TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
     if (!recoverPerformer.canWrite()) {
       // cannot write, just close it
-      for (ISyncManager tsFileSyncManager :
+      for (ISyncManager syncManager :
           SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
-        if (tsFileSyncManager.isEnabledSync()) {
-          tsFileSyncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
-        }
+        syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
       }
       try {
         tsFileResource.close();
@@ -2376,11 +2374,9 @@ public class DataRegion {
         tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
       }
 
-      for (ISyncManager tsFileSyncManager :
+      for (ISyncManager syncManager :
           SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
-        if (tsFileSyncManager.isEnabledSync()) {
-          tsFileSyncManager.syncRealTimeDeletion(deletion);
-        }
+        syncManager.syncRealTimeDeletion(deletion);
       }
 
       // add a record in case of rollback

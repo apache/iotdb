@@ -18,37 +18,30 @@
  */
 package org.apache.iotdb.db.sync.sender.manager;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 public class LocalSyncManager implements ISyncManager {
 
   private TsFilePipe syncPipe;
   private final DataRegion dataRegion;
 
-  public LocalSyncManager(DataRegion dataRegion) {
+  public LocalSyncManager(DataRegion dataRegion, Pipe pipe) {
     this.dataRegion = dataRegion;
+    this.syncPipe = (TsFilePipe) pipe;
   }
-
-  @Override
-  public void registerSyncTask(Pipe pipe) {}
-
-  @Override
-  public void deregisterSyncTask() {}
-
-  @Override
-  public boolean isEnabledSync() {
-    return false;
-  }
-
-  @Override
-  public void clear() {}
 
   /** tsfile */
   @Override
@@ -74,5 +67,30 @@ public class LocalSyncManager implements ISyncManager {
   @Override
   public File createHardlink(File tsFile, long modsOffset) {
     return syncPipe.createHistoryTsFileHardlink(tsFile, modsOffset);
+  }
+
+  @Override
+  public void delete() {
+    // todo: parse to delete operation and sync
+    // 1、get timeseries
+    // 2、get time partition
+    //    syncPipe.collectRealTimeDeletion();
+  }
+
+  public DeleteTimeSeriesPlan splitDeleteTimeseriesPlanByDevice(PartialPath pathPattern)
+      throws MetadataException {
+    return new DeleteTimeSeriesPlan(splitPathPatternByDevice(pathPattern));
+  }
+
+  public static List<PartialPath> splitPathPatternByDevice(PartialPath pathPattern)
+      throws MetadataException {
+    Set<PartialPath> devices = LocalSchemaProcessor.getInstance().getBelongedDevices(pathPattern);
+    List<PartialPath> resultPathPattern = new LinkedList<>();
+    for (PartialPath device : devices) {
+      pathPattern.alterPrefixPath(device).stream()
+          .filter(i -> !i.equals(device))
+          .forEach(resultPathPattern::add);
+    }
+    return resultPathPattern;
   }
 }

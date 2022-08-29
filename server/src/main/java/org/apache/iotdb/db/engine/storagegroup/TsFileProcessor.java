@@ -838,9 +838,7 @@ public class TsFileProcessor {
       for (ISyncManager syncManager :
           SyncService.getInstance()
               .getOrCreateSyncManager(storageGroupInfo.getDataRegion().getDataRegionId())) {
-        if (syncManager.isEnabledSync()) {
-          syncManager.syncRealTimeDeletion(deletion);
-        }
+        syncManager.syncRealTimeDeletion(deletion);
       }
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -995,9 +993,7 @@ public class TsFileProcessor {
         for (ISyncManager syncManager :
             SyncService.getInstance()
                 .getOrCreateSyncManager(storageGroupInfo.getDataRegion().getDataRegionId())) {
-          if (syncManager.isEnabledSync()) {
-            syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
-          }
+          syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
         }
         logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
@@ -1429,9 +1425,7 @@ public class TsFileProcessor {
     for (ISyncManager syncManager :
         SyncService.getInstance()
             .getOrCreateSyncManager(storageGroupInfo.getDataRegion().getDataRegionId())) {
-      if (syncManager.isEnabledSync()) {
-        syncManager.syncRealTimeResource(tsFileResource.getTsFile());
-      }
+      syncManager.syncRealTimeResource(tsFileResource.getTsFile());
     }
     logger.info("Ended file {}", tsFileResource);
 

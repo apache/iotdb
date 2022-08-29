@@ -56,7 +56,7 @@ public class SyncConstant {
 
   // data config
   public static final String DEFAULT_PIPE_SINK_IP = "127.0.0.1";
-  public static final int DEFAULT_PIPE_SINK_PORT = 6670;
+  public static final int DEFAULT_PIPE_SINK_PORT = 6667;
 
   public static final Long HEARTBEAT_DELAY_SECONDS = 30L;
   public static final int CONNECT_TIMEOUT_MILLISECONDS = 1_000;

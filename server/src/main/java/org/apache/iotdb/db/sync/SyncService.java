@@ -604,7 +604,18 @@ public class SyncService implements IService {
 
   public List<ISyncManager> getOrCreateSyncManager(String dataRegionId) {
     // TODO：1、从Pipe中获取 2、缓存
-    return null;
+    List<ISyncManager> syncManagerList = new ArrayList<>();
+    if (runningPipe != null) {
+      syncManagerList.add(runningPipe.getOrCreateSyncManager(dataRegionId));
+    }
+    return syncManagerList;
+  }
+
+  /** This method will be called before deleting dataRegion */
+  public void deleteSyncManager(String dataRegionId) {
+    if (runningPipe != null) {
+      runningPipe.deleteSyncManager(dataRegionId);
+    }
   }
 
   @TestOnly

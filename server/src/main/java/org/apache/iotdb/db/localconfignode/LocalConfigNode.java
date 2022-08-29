@@ -86,15 +86,12 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.sync.SyncService;
-import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -118,8 +115,6 @@ import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /**
  * This class simulates the behaviour of configNode to manage the configs locally. The schema
@@ -277,10 +272,6 @@ public class LocalConfigNode {
       schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
     }
 
-    if (SchemaSyncManager.getInstance().isEnableSync()) {
-      SchemaSyncManager.getInstance().syncMetadataPlan(new SetStorageGroupPlan(storageGroup));
-    }
-
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(1);
     }
@@ -294,21 +285,11 @@ public class LocalConfigNode {
       dataPartitionTable.deleteStorageGroup(storageGroup);
     }
 
-    DeleteTimeSeriesPlan deleteTimeSeriesPlan =
-        SchemaSyncManager.getInstance().isEnableSync()
-            ? SchemaSyncManager.getInstance()
-                .splitDeleteTimeseriesPlanByDevice(
-                    storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD))
-            : null;
-
     deleteSchemaRegionsInStorageGroup(
         storageGroup, schemaPartitionTable.getSchemaRegionIdsByStorageGroup(storageGroup));
 
     for (Template template : templateManager.getTemplateMap().values()) {
       templateManager.unmarkStorageGroup(template, storageGroup.getFullPath());
-    }
-    if (SchemaSyncManager.getInstance().isEnableSync()) {
-      SchemaSyncManager.getInstance().syncMetadataPlan(deleteTimeSeriesPlan);
     }
 
     if (!config.isEnableMemControl()) {
@@ -1394,7 +1375,7 @@ public class LocalConfigNode {
 
   public TSStatus dropPipe(String pipeName) {
     try {
-      syncService.stopPipe(pipeName);
+      syncService.dropPipe(pipeName);
     } catch (PipeException e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
