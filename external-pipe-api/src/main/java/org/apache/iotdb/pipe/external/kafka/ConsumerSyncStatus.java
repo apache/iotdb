@@ -4,21 +4,21 @@ public class ConsumerSyncStatus {
   private Long numOfSuccessfulInsertion;
   private Long numOfSuccessfulStringInsertion;
   private Long numOfSuccessfulRecordDeletion;
-  private Long numOfSuccessfulTimeSeriesDeletion;
+  //  private Long numOfSuccessfulTimeSeriesDeletion;
   private Long numOfFailedInsertion;
   private Long numOfFailedStringInsertion;
   private Long numOfFailedRecordDeletion;
-  private Long numOfFailedTimeSeriesDeletion;
+  //  private Long numOfFailedTimeSeriesDeletion;
 
   ConsumerSyncStatus() {
     numOfSuccessfulInsertion = 0L;
     numOfSuccessfulStringInsertion = 0L;
     numOfSuccessfulRecordDeletion = 0L;
-    numOfSuccessfulTimeSeriesDeletion = 0L;
+    //    numOfSuccessfulTimeSeriesDeletion = 0L;
     numOfFailedInsertion = 0L;
     numOfFailedStringInsertion = 0L;
     numOfFailedRecordDeletion = 0L;
-    numOfFailedTimeSeriesDeletion = 0L;
+    //    numOfFailedTimeSeriesDeletion = 0L;
   }
 
   public void setNumOfSuccessfulInsertion(Long numOfSuccessfulInsertion) {
@@ -45,13 +45,13 @@ public class ConsumerSyncStatus {
     return numOfSuccessfulRecordDeletion;
   }
 
-  public void setNumOfSuccessfulTimeSeriesDeletion(Long numOfSuccessfulTimeSeriesDeletion) {
-    this.numOfSuccessfulTimeSeriesDeletion = numOfSuccessfulTimeSeriesDeletion;
-  }
-
-  public Long getNumOfSuccessfulTimeSeriesDeletion() {
-    return numOfSuccessfulTimeSeriesDeletion;
-  }
+  //  public void setNumOfSuccessfulTimeSeriesDeletion(Long numOfSuccessfulTimeSeriesDeletion) {
+  //    this.numOfSuccessfulTimeSeriesDeletion = numOfSuccessfulTimeSeriesDeletion;
+  //  }
+  //
+  //  public Long getNumOfSuccessfulTimeSeriesDeletion() {
+  //    return numOfSuccessfulTimeSeriesDeletion;
+  //  }
 
   public void setNumOfFailedInsertion(Long numOfFailedInsertion) {
     this.numOfFailedInsertion = numOfFailedInsertion;
@@ -77,11 +77,11 @@ public class ConsumerSyncStatus {
     return numOfFailedRecordDeletion;
   }
 
-  public void setNumOfFailedTimeSeriesDeletion(Long numOfFailedTimeSeriesDeletion) {
-    this.numOfFailedTimeSeriesDeletion = numOfFailedTimeSeriesDeletion;
-  }
+  //  public void setNumOfFailedTimeSeriesDeletion(Long numOfFailedTimeSeriesDeletion) {
+  //    this.numOfFailedTimeSeriesDeletion = numOfFailedTimeSeriesDeletion;
+  //  }
 
-  public Long getNumOfFailedTimeSeriesDeletion() {
-    return numOfFailedTimeSeriesDeletion;
-  }
+  //  public Long getNumOfFailedTimeSeriesDeletion() {
+  //    return numOfFailedTimeSeriesDeletion;
+  //  }
 }

@@ -1,6 +1,7 @@
 package org.apache.iotdb.pipe.external.kafka;
 
-import org.apache.iotdb.pipe.external.api.DataType;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -206,37 +207,40 @@ public class kafkaTest {
       kw.open();
 
       String[] Timeseries = {"root", "vehicle", "d0", "s0"};
-      kw.createTimeSeries(Timeseries, DataType.BOOLEAN);
-      kw.insertBoolean(Timeseries, 123, true);
+      // kw.createTimeSeries(Timeseries, DataType.BOOLEAN);
+      kw.insertBoolean("root.vehicle.d0", Timeseries, 123, true);
 
       Timeseries[3] = "s1";
-      kw.createTimeSeries(Timeseries, DataType.TEXT);
-      kw.insertText(Timeseries, 123, "txt");
+      // kw.createTimeSeries(Timeseries, DataType.TEXT);
+      kw.insertText("root.vehicle.d0", Timeseries, 123, "txt");
 
       Timeseries[3] = "s2";
-      kw.createTimeSeries(Timeseries, DataType.INT32);
-      kw.insertInt32(Timeseries, 123, 15);
+      // kw.createTimeSeries(Timeseries, DataType.INT32);
+      kw.insertInt32("root.vehicle.d0", Timeseries, 123, 15);
 
       Timeseries[3] = "s3";
-      kw.createTimeSeries(Timeseries, DataType.INT64);
-      kw.insertInt64(Timeseries, 123, 166666);
+      // kw.createTimeSeries(Timeseries, DataType.INT64);
+      kw.insertInt64("root.vehicle.d0", Timeseries, 123, 166666);
 
       Timeseries[3] = "s4";
-      kw.createTimeSeries(Timeseries, DataType.FLOAT);
-      kw.insertFloat(Timeseries, 123, 1.5f);
+      // kw.createTimeSeries(Timeseries, DataType.FLOAT);
+      kw.insertFloat("root.vehicle.d0", Timeseries, 123, 1.5f);
 
       Timeseries[3] = "s5";
-      kw.createTimeSeries(Timeseries, DataType.DOUBLE);
-      kw.insertDouble(Timeseries, 123, 1.33);
+      // kw.createTimeSeries(Timeseries, DataType.DOUBLE);
+      kw.insertDouble("root.vehicle.d0", Timeseries, 123, 1.33);
 
       Timeseries[3] = "s1";
-      kw.createTimeSeries(Timeseries, DataType.TEXT);
-      kw.insertText(Timeseries, 124, "txt");
+      // kw.createTimeSeries(Timeseries, DataType.TEXT);
+      kw.insertText("root.vehicle.d0", Timeseries, 124, "txt");
 
-      kw.delete(Timeseries, 124);
+      // kw.createTimeSeries(Timeseries, DataType.TEXT);
+      kw.insertText("root.vehicle.d0", Timeseries, 125, "txt");
 
-      Timeseries[3] = "s2";
-      kw.deleteTimeSeries(Timeseries);
+      kw.delete("root.vehicle.d0", "root.vehicle.d0.s1", 123, 124);
+
+      // Timeseries[3] = "s2";
+      // kw.deleteTimeSeries(Timeseries);
 
       // String[] Timeseries2 = {"root", "a", "c"};
       // kw.createTimeSeries(Timeseries2, DataType.VECTOR);
@@ -283,37 +287,41 @@ public class kafkaTest {
       kw2.open();
 
       String[] Timeseries = {"root", "vehicle", "d1", "s0"};
-      kw2.createTimeSeries(Timeseries, DataType.BOOLEAN);
-      kw2.insertBoolean(Timeseries, 123, true);
+      // kw2.createTimeSeries(Timeseries, DataType.BOOLEAN);
+      kw2.insertBoolean("root.vehicle.d1", Timeseries, 123, true);
 
       Timeseries[3] = "s1";
-      kw2.createTimeSeries(Timeseries, DataType.TEXT);
-      kw2.insertText(Timeseries, 123, "txt");
+      // kw2.createTimeSeries(Timeseries, DataType.TEXT);
+      kw2.insertText("root.vehicle.d1", Timeseries, 123, "txt");
 
       Timeseries[3] = "s2";
-      kw2.createTimeSeries(Timeseries, DataType.INT32);
-      kw2.insertInt32(Timeseries, 123, 15);
+      // kw2.createTimeSeries(Timeseries, DataType.INT32);
+      kw2.insertInt32("root.vehicle.d1", Timeseries, 123, 15);
 
       Timeseries[3] = "s3";
-      kw2.createTimeSeries(Timeseries, DataType.INT64);
-      kw2.insertInt64(Timeseries, 123, 166666);
+      // kw2.createTimeSeries(Timeseries, DataType.INT64);
+      kw2.insertInt64("root.vehicle.d1", Timeseries, 123, 166666);
 
       Timeseries[3] = "s4";
-      kw2.createTimeSeries(Timeseries, DataType.FLOAT);
-      kw2.insertFloat(Timeseries, 123, 1.5f);
+      // kw2.createTimeSeries(Timeseries, DataType.FLOAT);
+      kw2.insertFloat("root.vehicle.d1", Timeseries, 123, 1.5f);
 
       Timeseries[3] = "s5";
-      kw2.createTimeSeries(Timeseries, DataType.DOUBLE);
-      kw2.insertDouble(Timeseries, 123, 1.33);
+      // kw2.createTimeSeries(Timeseries, DataType.DOUBLE);
+      kw2.insertDouble("root.vehicle.d1", Timeseries, 123, 1.33);
 
       Timeseries[3] = "s1";
-      kw2.createTimeSeries(Timeseries, DataType.TEXT);
-      kw2.insertText(Timeseries, 124, "txt");
+      // kw2.createTimeSeries(Timeseries, DataType.TEXT);
+      kw2.insertText("root.vehicle.d1", Timeseries, 124, "txt");
 
-      kw2.delete(Timeseries, 124);
+      Timeseries[3] = "s1";
+      // kw2.createTimeSeries(Timeseries, DataType.TEXT);
+      kw2.insertText("root.vehicle.d1", Timeseries, 125, "txt");
 
-      Timeseries[3] = "s2";
-      kw2.deleteTimeSeries(Timeseries);
+      kw2.delete("root.vehicle.d1", "root.vehicle.d1.s1", 123, 124);
+
+      // Timeseries[3] = "s2";
+      // kw2.deleteTimeSeries(Timeseries);
 
       // String[] Timeseries2 = {"root", "a", "c"};
       // kw2.createTimeSeries(Timeseries2, DataType.VECTOR);
@@ -403,13 +411,15 @@ public class kafkaTest {
   }
 
   @Test
-  public void full_Test() {
-    // send_to_kafka_no_type();
-    // send_to_kafka_with_type();
-    try {
-      send_random_point(50000000, 1);
-    } catch (IOException ignore) {
-    }
-    // load_from_kafka();
+  public void full_Test() throws IoTDBConnectionException, StatementExecutionException {
+    send_to_kafka_no_type();
+    send_to_kafka_with_type();
+    // try {
+    //  send_random_point(50000000, 1);
+    // } catch (IOException ignore) {
+    // }
+    load_from_kafka();
+    // SessionPool sp = new SessionPool("localhost", 6667, "root", "root", 5);
+    // sp.deleteData(Collections.singletonList("root.vehicle.d1.s1"), 123, 124);
   }
 }

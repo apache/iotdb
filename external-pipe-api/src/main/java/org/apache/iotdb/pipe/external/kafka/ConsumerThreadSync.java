@@ -31,9 +31,8 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 /** The class is Thread class of Consumer. ConsumerThreadSync. */
 public class ConsumerThreadSync implements Runnable {
@@ -70,26 +69,86 @@ public class ConsumerThreadSync implements Runnable {
     List<List<String>> valuesStringList = new ArrayList<>(size);
     List<List<String>> measurementsStringList = new ArrayList<>(size);
 
-    Map<String, Integer> deleteMap = new HashMap<>();
-
-    List<String> delTimeDeviceIds = new ArrayList<>(size);
+    // List<String> delTimeDeviceIds = new ArrayList<>(size);
 
     for (String data : datas) {
       String[] suffix = StringUtils.split(data, ":");
       if (suffix[0].equals("delete")) {
         if (single_partition) {
-          if (!deleteMap.containsKey(suffix[1])
-              || Integer.parseInt(suffix[2]) > deleteMap.get(suffix[1])) {
-            deleteMap.put(suffix[1], Integer.parseInt(suffix[2]));
+          int size_p = deviceIds.size();
+          if (!deviceIds.isEmpty()) {
+            try {
+              pool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
+              this.consumerSyncStatus.setNumOfSuccessfulInsertion(
+                  consumerSyncStatus.getNumOfSuccessfulInsertion() + size_p);
+              deviceIds.clear();
+              times.clear();
+              measurementsList.clear();
+              typesList.clear();
+              valuesList.clear();
+            } catch (Exception e) {
+              logger.error(
+                  "Kafka sync insertion failure, data batch = \n{}", String.join("\n", datas), e);
+              this.consumerSyncStatus.setNumOfFailedInsertion(
+                  consumerSyncStatus.getNumOfFailedInsertion() + size_p);
+            }
+          }
+
+          int size_s = deviceStringIds.size();
+          if (!deviceStringIds.isEmpty()) {
+            try {
+              pool.insertRecords(
+                  deviceStringIds, stringTimes, measurementsStringList, valuesStringList);
+              this.consumerSyncStatus.setNumOfSuccessfulStringInsertion(
+                  consumerSyncStatus.getNumOfSuccessfulStringInsertion() + size_s);
+              deviceStringIds.clear();
+              stringTimes.clear();
+              measurementsStringList.clear();
+              valuesStringList.clear();
+            } catch (Exception e) {
+              logger.error(
+                  "Kafka sync string insertion failure, data batch = \n{}",
+                  String.join("\n", datas),
+                  e);
+              this.consumerSyncStatus.setNumOfFailedStringInsertion(
+                  consumerSyncStatus.getNumOfFailedStringInsertion() + size_s);
+            }
+          }
+          try {
+            Thread.sleep(100);
+          } catch (Exception ignore) {
+          }
+          try {
+            pool.deleteData(
+                Collections.singletonList(suffix[1]),
+                Long.parseLong(suffix[2]),
+                Long.parseLong(suffix[3]));
+            // pool.deleteData(Collections.singletonList("root.vehicle.d1.s1"), 123, 124);
+            this.consumerSyncStatus.setNumOfSuccessfulRecordDeletion(
+                consumerSyncStatus.getNumOfSuccessfulRecordDeletion() + 1);
+          } catch (Exception e) {
+            logger.error(
+                "Kafka sync data deletion failure, device = {}, startTime = {}, endTime = {}\n",
+                Collections.singletonList(suffix[1]),
+                Long.parseLong(suffix[2]),
+                Long.parseLong(suffix[3]),
+                e);
+            this.consumerSyncStatus.setNumOfFailedRecordDeletion(
+                consumerSyncStatus.getNumOfFailedRecordDeletion() + 1);
+          }
+          try {
+            Thread.sleep(100);
+          } catch (Exception ignore) {
           }
         }
         continue;
-      } else if (suffix[0].equals("del_time")) {
-        if (single_partition) {
-          delTimeDeviceIds.add(suffix[1]);
-        }
-        continue;
       }
+      //      else if (suffix[0].equals("del_time")) {
+      //        if (single_partition) {
+      //          delTimeDeviceIds.add(suffix[1]);
+      //        }
+      //        continue;
+      //      }
       String[] dataArray = StringUtils.split(data, ",");
       boolean is_string_insert = false;
       String device = dataArray[0];
@@ -171,36 +230,21 @@ public class ConsumerThreadSync implements Runnable {
       }
     }
 
-    for (String deleteDeviceId : deleteMap.keySet()) {
-      try {
-        pool.deleteData(deleteDeviceId, deleteMap.get(deleteDeviceId));
-        this.consumerSyncStatus.setNumOfSuccessfulRecordDeletion(
-            consumerSyncStatus.getNumOfSuccessfulRecordDeletion() + 1);
-      } catch (Exception e) {
-        logger.error(
-            "Kafka sync data deletion failure, device = {}, time = {}\n",
-            deleteDeviceId,
-            deleteMap.get(deleteDeviceId),
-            e);
-        this.consumerSyncStatus.setNumOfFailedRecordDeletion(
-            consumerSyncStatus.getNumOfFailedRecordDeletion() + 1);
-      }
-    }
-
-    if (!delTimeDeviceIds.isEmpty()) {
-      try {
-        pool.deleteTimeseries(delTimeDeviceIds);
-        this.consumerSyncStatus.setNumOfSuccessfulTimeSeriesDeletion(
-            consumerSyncStatus.getNumOfSuccessfulTimeSeriesDeletion() + delTimeDeviceIds.size());
-      } catch (Exception e) {
-        logger.error(
-            "Kafka sync time-series deletion failure, data batch = \n{}",
-            String.join("\n", datas),
-            e);
-        this.consumerSyncStatus.setNumOfFailedTimeSeriesDeletion(
-            consumerSyncStatus.getNumOfFailedTimeSeriesDeletion() + delTimeDeviceIds.size());
-      }
-    }
+    //    if (!delTimeDeviceIds.isEmpty()) {
+    //      try {
+    //        pool.deleteTimeseries(delTimeDeviceIds);
+    //        this.consumerSyncStatus.setNumOfSuccessfulTimeSeriesDeletion(
+    //            consumerSyncStatus.getNumOfSuccessfulTimeSeriesDeletion() +
+    // delTimeDeviceIds.size());
+    //      } catch (Exception e) {
+    //        logger.error(
+    //            "Kafka sync time-series deletion failure, data batch = \n{}",
+    //            String.join("\n", datas),
+    //            e);
+    //        this.consumerSyncStatus.setNumOfFailedTimeSeriesDeletion(
+    //            consumerSyncStatus.getNumOfFailedTimeSeriesDeletion() + delTimeDeviceIds.size());
+    //      }
+    //    }
   }
 
   public void close() {

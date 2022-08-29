@@ -82,32 +82,35 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
     kafka_send(data);
   }
 
-  public void insertBoolean(String[] path, long time, boolean value) throws IOException {
+  public void insertBoolean(String sgName, String[] path, long time, boolean value)
+      throws IOException {
     insertData(path, time, value, DataType.BOOLEAN);
   }
 
-  public void insertInt32(String[] path, long time, int value) throws IOException {
+  public void insertInt32(String sgName, String[] path, long time, int value) throws IOException {
     insertData(path, time, value, DataType.INT32);
   }
 
-  public void insertInt64(String[] path, long time, long value) throws IOException {
+  public void insertInt64(String sgName, String[] path, long time, long value) throws IOException {
     insertData(path, time, value, DataType.INT64);
   }
 
-  public void insertFloat(String[] path, long time, float value) throws IOException {
+  public void insertFloat(String sgName, String[] path, long time, float value) throws IOException {
     insertData(path, time, value, DataType.FLOAT);
   }
 
-  public void insertDouble(String[] path, long time, double value) throws IOException {
+  public void insertDouble(String sgName, String[] path, long time, double value)
+      throws IOException {
     insertData(path, time, value, DataType.DOUBLE);
   }
 
-  public void insertText(String[] path, long time, String value) throws IOException {
+  public void insertText(String sgName, String[] path, long time, String value) throws IOException {
     insertData(path, time, value, DataType.TEXT);
   }
 
   /** To do because there's only one path, which shall be many. */
-  public void insertVector(String[] path, DataType[] dataTypes, long time, Object[] values)
+  public void insertVector(
+      String sgName, String[] path, DataType[] dataTypes, long time, Object[] values)
       throws IOException {
     String Timeseries = String.join(".", path);
     String data;
@@ -131,10 +134,10 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
     kafka_send(data);
   }
 
-  public void delete(String[] path, long time) throws IOException {
+  public void delete(String sgName, String delPath, long startTime, long endTime)
+      throws IOException {
     try {
-      String Timeseries = String.join(".", path);
-      String data = "delete:" + Timeseries + ':' + time;
+      String data = "delete:" + delPath + ':' + startTime + ':' + endTime;
       this.producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
     } catch (Exception e) {
       throw new IOException();
@@ -143,17 +146,17 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
 
   // The "vector" TimeSeries does not contain its dataTypes currently.
   // This function will be fixed when ultimate version is specified.
-  public void createTimeSeries(String[] path, DataType dataType) throws IOException {}
-
-  public void deleteTimeSeries(String[] path) throws IOException {
-    try {
-      String Timeseries = String.join(".", path);
-      String data = "del_time:" + Timeseries;
-      producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
-    } catch (Exception e) {
-      throw new IOException();
-    }
-  }
+  //  public void createTimeSeries(String[] path, DataType dataType) throws IOException {}
+  //
+  //  public void deleteTimeSeries(String[] path) throws IOException {
+  //    try {
+  //      String Timeseries = String.join(".", path);
+  //      String data = "del_time:" + Timeseries;
+  //      producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
+  //    } catch (Exception e) {
+  //      throw new IOException();
+  //    }
+  //  }
 
   public void flush() throws IOException {}
 

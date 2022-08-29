@@ -124,22 +124,22 @@ public class KafkaLoader {
     Long numOfSuccessfulInsertion = 0L;
     Long numOfSuccessfulStringInsertion = 0L;
     Long numOfSuccessfulRecordDeletion = 0L;
-    Long numOfSuccessfulTimeSeriesDeletion = 0L;
+    //    Long numOfSuccessfulTimeSeriesDeletion = 0L;
     Long numOfFailedInsertion = 0L;
     Long numOfFailedStringInsertion = 0L;
     Long numOfFailedRecordDeletion = 0L;
-    Long numOfFailedTimeSeriesDeletion = 0L;
+    //    Long numOfFailedTimeSeriesDeletion = 0L;
 
     for (ConsumerThreadSync consumerThread : consumerThreads) {
       ConsumerSyncStatus cs = consumerThread.consumerSyncStatus;
       numOfSuccessfulInsertion += cs.getNumOfSuccessfulInsertion();
       numOfSuccessfulStringInsertion += cs.getNumOfSuccessfulStringInsertion();
       numOfSuccessfulRecordDeletion += cs.getNumOfSuccessfulRecordDeletion();
-      numOfSuccessfulTimeSeriesDeletion += cs.getNumOfSuccessfulTimeSeriesDeletion();
+      //      numOfSuccessfulTimeSeriesDeletion += cs.getNumOfSuccessfulTimeSeriesDeletion();
       numOfFailedInsertion += cs.getNumOfFailedInsertion();
       numOfFailedStringInsertion += cs.getNumOfFailedStringInsertion();
       numOfFailedRecordDeletion += cs.getNumOfFailedRecordDeletion();
-      numOfFailedTimeSeriesDeletion += cs.getNumOfFailedTimeSeriesDeletion();
+      //      numOfFailedTimeSeriesDeletion += cs.getNumOfFailedTimeSeriesDeletion();
     }
 
     return "LoaderSyncStatus{"
@@ -151,16 +151,16 @@ public class KafkaLoader {
         + numOfSuccessfulStringInsertion
         + ", numOfSuccessfulRecordDeletion="
         + numOfSuccessfulRecordDeletion
-        + ", numOfSuccessfulTimeSeriesDeletion="
-        + numOfSuccessfulTimeSeriesDeletion
+        //        + ", numOfSuccessfulTimeSeriesDeletion="
+        //        + numOfSuccessfulTimeSeriesDeletion
         + ", numOfFailedInsertion="
         + numOfFailedInsertion
         + ", numOfFailedStringInsertion="
         + numOfFailedStringInsertion
         + ", numOfFailedRecordDeletion="
         + numOfFailedRecordDeletion
-        + ", numOfFailedTimeSeriesDeletion="
-        + numOfFailedTimeSeriesDeletion
+        //        + ", numOfFailedTimeSeriesDeletion="
+        //        + numOfFailedTimeSeriesDeletion
         + '}';
   }
 }
