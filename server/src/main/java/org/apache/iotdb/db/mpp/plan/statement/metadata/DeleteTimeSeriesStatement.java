@@ -30,7 +30,7 @@ import java.util.List;
 
 public class DeleteTimeSeriesStatement extends Statement implements IConfigStatement {
 
-  List<PartialPath> partialPaths;
+  List<PartialPath> pathPatternList;
 
   public DeleteTimeSeriesStatement() {
     super();
@@ -39,11 +39,15 @@ public class DeleteTimeSeriesStatement extends Statement implements IConfigState
 
   @Override
   public List<PartialPath> getPaths() {
-    return partialPaths;
+    return pathPatternList;
   }
 
-  public void setPartialPaths(List<PartialPath> partialPaths) {
-    this.partialPaths = partialPaths;
+  public List<PartialPath> getPathPatternList() {
+    return pathPatternList;
+  }
+
+  public void setPathPatternList(List<PartialPath> pathPatternList) {
+    this.pathPatternList = pathPatternList;
   }
 
   @Override

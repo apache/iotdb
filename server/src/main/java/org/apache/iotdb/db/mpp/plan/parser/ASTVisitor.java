@@ -528,7 +528,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
       partialPaths.add(parsePrefixPath(prefixPathContext));
     }
-    deleteTimeSeriesStatement.setPartialPaths(partialPaths);
+    deleteTimeSeriesStatement.setPathPatternList(partialPaths);
     return deleteTimeSeriesStatement;
   }
 
