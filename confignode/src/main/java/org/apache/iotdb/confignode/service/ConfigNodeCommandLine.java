@@ -107,7 +107,8 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
       TConfigNodeLocation removeConfigNodeLocation =
           ConfigNodeRemoveCheck.getInstance().removeCheck(endPoint);
       if (removeConfigNodeLocation == null) {
-        LOGGER.error("The ConfigNode to be removed is not in the cluster, please check the ip:port input.");
+        LOGGER.error(
+            "The ConfigNode to be removed is not in the cluster, please check the ip:port input.");
         return;
       }
 

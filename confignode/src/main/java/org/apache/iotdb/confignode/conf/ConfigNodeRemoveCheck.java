@@ -70,7 +70,7 @@ public class ConfigNodeRemoveCheck {
     return nodeLocation;
   }
 
-  public void removeConfigNode(TConfigNodeLocation nodeLocation)
+  public void removeConfigNode(TConfigNodeLocation removedNode)
       throws BadNodeUrlException, IOException {
     TSStatus status = new TSStatus();
     for (TConfigNodeLocation configNodeLocation : getConfigNodeList()) {
@@ -79,7 +79,7 @@ public class ConfigNodeRemoveCheck {
               SyncConfigNodeClientPool.getInstance()
                   .sendSyncRequestToConfigNodeWithRetry(
                       configNodeLocation.getInternalEndPoint(),
-                      nodeLocation,
+                      removedNode,
                       ConfigNodeRequestType.REMOVE_CONFIG_NODE);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         break;
