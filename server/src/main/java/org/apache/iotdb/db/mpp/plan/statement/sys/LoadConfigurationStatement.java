@@ -29,18 +29,18 @@ import java.util.Collections;
 import java.util.List;
 
 public class LoadConfigurationStatement extends Statement implements IConfigStatement {
-  private boolean isCluster;
+  private boolean onCluster;
 
   public LoadConfigurationStatement(StatementType loadConfigurationType) {
     this.statementType = loadConfigurationType;
   }
 
-  public boolean isCluster() {
-    return isCluster;
+  public boolean isOnCluster() {
+    return onCluster;
   }
 
-  public void setCluster(boolean isCluster) {
-    this.isCluster = isCluster;
+  public void setOnCluster(boolean onCluster) {
+    this.onCluster = onCluster;
   }
 
   @Override

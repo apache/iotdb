@@ -773,6 +773,10 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   private TSExecuteStatementResp submitQueryTask(
       PhysicalPlan physicalPlan, long startTime, TSExecuteStatementReq req) throws Exception {
+    TSStatus status = SESSION_MANAGER.checkAuthority(physicalPlan, req.getSessionId());
+    if (status != null) {
+      return new TSExecuteStatementResp(status);
+    }
     QueryTask queryTask =
         new QueryTask(
             physicalPlan,

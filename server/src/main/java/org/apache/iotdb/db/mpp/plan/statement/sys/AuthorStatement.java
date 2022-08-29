@@ -75,10 +75,10 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case UPDATE_USER:
         this.setType(StatementType.MODIFY_PASSWORD);
         break;
-      case GRANT_ROLE_TO_USER:
-        this.setType(StatementType.GRANT_ROLE_PRIVILEGE);
+      case GRANT_USER_ROLE:
+        this.setType(StatementType.GRANT_USER_ROLE);
         break;
-      case REVOKE_ROLE_FROM_USER:
+      case REVOKE_USER_ROLE:
         this.setType(StatementType.REVOKE_USER_ROLE);
         break;
       case LIST_USER_PRIVILEGE:
@@ -175,10 +175,10 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case DROP_ROLE:
       case GRANT_ROLE:
       case GRANT_USER:
-      case GRANT_ROLE_TO_USER:
+      case GRANT_USER_ROLE:
       case REVOKE_USER:
       case REVOKE_ROLE:
-      case REVOKE_ROLE_FROM_USER:
+      case REVOKE_USER_ROLE:
       case UPDATE_USER:
         queryType = QueryType.WRITE;
         break;

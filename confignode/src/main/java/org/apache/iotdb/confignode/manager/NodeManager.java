@@ -415,6 +415,20 @@ public class NodeManager {
     return dataNodeResponseStatus;
   }
 
+  public List<TSStatus> setSystemStatus(String status) {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            status,
+            dataNodeLocationMap,
+            DataNodeRequestType.SET_SYSTEM_STATUS,
+            dataNodeResponseStatus);
+    return dataNodeResponseStatus;
+  }
+
   /** Start the heartbeat service */
   public void startHeartbeatService() {
     synchronized (scheduleMonitor) {

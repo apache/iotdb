@@ -227,6 +227,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             unseqResources,
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
+            0,
             0);
     task.start();
 
@@ -464,6 +465,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             unseqResources,
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
+            0,
             0);
     task.start();
 
@@ -611,6 +613,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             unseqResources,
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
+            0,
             0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
@@ -731,6 +734,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             unseqResources,
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
+            0,
             0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();

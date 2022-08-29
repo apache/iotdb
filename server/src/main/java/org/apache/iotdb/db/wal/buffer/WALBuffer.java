@@ -150,7 +150,9 @@ public class WALBuffer extends AbstractWALBuffer {
       try {
         serialize();
       } finally {
-        serializeThread.submit(new SerializeTask());
+        if (!isClosed) {
+          serializeThread.submit(new SerializeTask());
+        }
       }
     }
 

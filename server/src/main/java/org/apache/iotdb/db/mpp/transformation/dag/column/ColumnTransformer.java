@@ -75,4 +75,8 @@ public abstract class ColumnTransformer {
   protected abstract void evaluate();
 
   protected abstract void checkType();
+
+  public void close() {
+    // do nothing
+  }
 }
