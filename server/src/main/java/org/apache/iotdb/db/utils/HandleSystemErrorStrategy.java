@@ -37,16 +37,16 @@ public enum HandleSystemErrorStrategy {
     NodeStatus status = NodeStatus.Error;
     if (this == HandleSystemErrorStrategy.NONE) {
       logger.error(
-          "Unrecoverable error occurs! Just change system status to error when handle_system_error is NONE.",
+          "Unrecoverable error occurs! Just change system status to error because handle_system_error is NONE.",
           new RuntimeException("System mode is set to ERROR"));
     } else if (this == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY) {
       logger.error(
-          "Unrecoverable error occurs! Change system status to read-only when handle_system_error is CHANGE_TO_READ_ONLY. Only query statements are permitted!",
+          "Unrecoverable error occurs! Change system status to read-only because handle_system_error is CHANGE_TO_READ_ONLY. Only query statements are permitted!",
           new RuntimeException("System mode is set to READ_ONLY"));
       status = NodeStatus.ReadOnly;
     } else if (this == HandleSystemErrorStrategy.SHUTDOWN) {
       logger.error(
-          "Unrecoverable error occurs! Shutdown system directly when handle_system_error is SHUTDOWN.",
+          "Unrecoverable error occurs! Shutdown system directly because handle_system_error is SHUTDOWN.",
           new RuntimeException("System mode is set to ERROR"));
       System.exit(-1);
     }
