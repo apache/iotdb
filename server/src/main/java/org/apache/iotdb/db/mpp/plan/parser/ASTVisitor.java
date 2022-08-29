@@ -2356,7 +2356,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("MERGE ON CLUSTER is not supported in standalone mode");
     }
-    mergeStatement.setCluster(ctx.LOCAL() == null);
+    mergeStatement.setOnCluster(ctx.LOCAL() == null);
     return mergeStatement;
   }
 
@@ -2366,7 +2366,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("FULL MERGE ON CLUSTER is not supported in standalone mode");
     }
-    mergeStatement.setCluster(ctx.LOCAL() == null);
+    mergeStatement.setOnCluster(ctx.LOCAL() == null);
     return mergeStatement;
   }
 
@@ -2382,7 +2382,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
     }
-    flushStatement.setCluster(ctx.LOCAL() == null);
+    flushStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.prefixPath(0) != null) {
       storageGroups = new ArrayList<>();
       for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
@@ -2401,7 +2401,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("CLEAR CACHE ON CLUSTER is not supported in standalone mode");
     }
-    clearCacheStatement.setCluster(ctx.LOCAL() == null);
+    clearCacheStatement.setOnCluster(ctx.LOCAL() == null);
     return clearCacheStatement;
   }
 
@@ -2415,7 +2415,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException(
           "LOAD CONFIGURATION ON CLUSTER is not supported in standalone mode");
     }
-    loadConfigurationStatement.setCluster(ctx.LOCAL() == null);
+    loadConfigurationStatement.setOnCluster(ctx.LOCAL() == null);
     return loadConfigurationStatement;
   }
 
@@ -2428,7 +2428,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException(
           "SET SYSTEM STATUS ON CLUSTER is not supported in standalone mode");
     }
-    setSystemStatusStatement.setCluster(ctx.LOCAL() == null);
+    setSystemStatusStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.RUNNING() != null) {
       setSystemStatusStatement.setStatus(NodeStatus.Running);
     } else if (ctx.READONLY() != null) {

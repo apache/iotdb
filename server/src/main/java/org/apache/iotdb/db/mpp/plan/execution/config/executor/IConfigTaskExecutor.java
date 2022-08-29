@@ -64,15 +64,15 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
-  SettableFuture<ConfigTaskResult> merge(boolean isCluster);
+  SettableFuture<ConfigTaskResult> merge(boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean isCluster);
+  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> clearCache(boolean isCluster);
+  SettableFuture<ConfigTaskResult> clearCache(boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> loadConfiguration(boolean isCluster);
+  SettableFuture<ConfigTaskResult> loadConfiguration(boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> setSystemStatus(boolean isCluster, NodeStatus status);
+  SettableFuture<ConfigTaskResult> setSystemStatus(boolean onCluster, NodeStatus status);
 
   SettableFuture<ConfigTaskResult> showCluster();
 

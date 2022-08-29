@@ -30,7 +30,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class SetSystemStatusStatement extends Statement implements IConfigStatement {
-  private boolean isCluster;
+  private boolean onCluster;
 
   private NodeStatus status;
 
@@ -38,12 +38,12 @@ public class SetSystemStatusStatement extends Statement implements IConfigStatem
     this.statementType = StatementType.SET_SYSTEM_MODE;
   }
 
-  public boolean isCluster() {
-    return isCluster;
+  public boolean isOnCluster() {
+    return onCluster;
   }
 
-  public void setCluster(boolean isCluster) {
-    this.isCluster = isCluster;
+  public void setOnCluster(boolean onCluster) {
+    this.onCluster = onCluster;
   }
 
   public NodeStatus getStatus() {

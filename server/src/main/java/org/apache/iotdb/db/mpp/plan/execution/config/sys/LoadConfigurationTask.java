@@ -26,7 +26,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import com.google.common.util.concurrent.ListenableFuture;
 
 public class LoadConfigurationTask implements IConfigTask {
-  private LoadConfigurationStatement loadConfigurationStatement;
+  private final LoadConfigurationStatement loadConfigurationStatement;
 
   public LoadConfigurationTask(LoadConfigurationStatement loadConfigurationStatement) {
     this.loadConfigurationStatement = loadConfigurationStatement;
@@ -37,6 +37,6 @@ public class LoadConfigurationTask implements IConfigTask {
       throws InterruptedException {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.loadConfiguration(loadConfigurationStatement.isCluster());
+    return configTaskExecutor.loadConfiguration(loadConfigurationStatement.isOnCluster());
   }
 }
