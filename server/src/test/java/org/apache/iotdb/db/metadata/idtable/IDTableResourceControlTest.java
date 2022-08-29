@@ -65,7 +65,7 @@ public class IDTableResourceControlTest {
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement");
+    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
     EnvironmentUtils.envSetUp();
   }
 

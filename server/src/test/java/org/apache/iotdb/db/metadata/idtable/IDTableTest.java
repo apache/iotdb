@@ -88,7 +88,7 @@ public class IDTableTest {
     isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement");
+    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
     EnvironmentUtils.envSetUp();
   }
@@ -614,9 +614,10 @@ public class IDTableTest {
       String sgPath = "root.laptop";
       for (int i = 0; i < 10; i++) {
         String devicePath = sgPath + ".d" + i;
-        IDeviceID iDeviceID = DeviceIDFactory.getInstance().getDeviceIDWithAutoCreate(devicePath);
+        IDeviceID iDeviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
         String measurement = "s" + i;
         idTable.putSchemaEntry(
+            iDeviceID.toStringID(),
             devicePath,
             measurement,
             new SchemaEntry(
@@ -661,7 +662,7 @@ public class IDTableTest {
                 new PartialPath(devicePath + "." + measurement),
                 false,
                 idTable.getIDiskSchemaManager());
-        idTable.putSchemaEntry(devicePath, measurement, schemaEntry, false);
+        idTable.putSchemaEntry(iDeviceID.toStringID(), devicePath, measurement, schemaEntry, false);
       }
       List<PartialPath> partialPaths = new ArrayList<>();
       partialPaths.add(new PartialPath("root.laptop.d0.s0"));

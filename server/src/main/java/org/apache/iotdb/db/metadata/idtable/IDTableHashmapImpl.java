@@ -392,34 +392,17 @@ public class IDTableHashmapImpl implements IDTable {
    * @throws MetadataException
    */
   @Override
-  @TestOnly
-  public void putSchemaEntry(
-      String devicePath, String measurement, SchemaEntry schemaEntry, boolean isAligned)
-      throws MetadataException {
-    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(devicePath, isAligned);
-    deviceEntry.putSchemaEntry(measurement, schemaEntry);
-  }
-
-  /**
-   * put schema entry to id table, only used in recover
-   *
-   * @param deviceID device id
-   * @param devicePath device path
-   * @param measurement measurement name
-   * @param schemaEntry schema entry to put
-   * @param isAligned is the device aligned
-   */
-  @Override
   public void putSchemaEntry(
       String deviceID,
       String devicePath,
       String measurement,
       SchemaEntry schemaEntry,
-      boolean isAligned) {
-    IDeviceID id = DeviceIDFactory.getInstance().getDeviceIDWithRecover(deviceID, devicePath);
-    DeviceEntry deviceEntry = getDeviceEntryWithAutoCreate(id, isAligned);
+      boolean isAligned)
+      throws MetadataException {
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(devicePath, isAligned);
     deviceEntry.putSchemaEntry(measurement, schemaEntry);
   }
+
   /**
    * get DiskSchemaEntries from disk file
    *
@@ -505,12 +488,18 @@ public class IDTableHashmapImpl implements IDTable {
    * @param isAligned whether the insert plan is aligned
    * @return device entry of the timeseries
    */
-  private DeviceEntry getDeviceEntryWithAlignedCheck(String deviceName, boolean isAligned)
+  protected DeviceEntry getDeviceEntryWithAlignedCheck(String deviceName, boolean isAligned)
       throws MetadataException {
-    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceIDWithAutoCreate(deviceName);
+    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(deviceName);
+    int slot = calculateSlot(deviceID);
 
-    DeviceEntry deviceEntry = getDeviceEntryWithAutoCreate(deviceID, isAligned);
-
+    DeviceEntry deviceEntry = idTables[slot].get(deviceID);
+    // new device
+    if (deviceEntry == null) {
+      deviceEntry = new DeviceEntry(deviceID);
+      deviceEntry.setAligned(isAligned);
+      idTables[slot].put(deviceID, deviceEntry);
+    }
     // check aligned
     if (deviceEntry.isAligned() != isAligned) {
       throw new MetadataException(
@@ -524,31 +513,12 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   /**
-   * get device entry
-   *
-   * @param deviceID
-   * @param isAligned
-   * @return
-   */
-  private DeviceEntry getDeviceEntryWithAutoCreate(IDeviceID deviceID, boolean isAligned) {
-    int slot = calculateSlot(deviceID);
-
-    DeviceEntry deviceEntry = idTables[slot].get(deviceID);
-    // new device
-    if (deviceEntry == null) {
-      deviceEntry = new DeviceEntry(deviceID);
-      deviceEntry.setAligned(isAligned);
-      idTables[slot].put(deviceID, deviceEntry);
-    }
-    return deviceEntry;
-  }
-  /**
    * calculate slot that this deviceID should in
    *
    * @param deviceID device id
    * @return slot number
    */
-  private int calculateSlot(IDeviceID deviceID) {
+  protected int calculateSlot(IDeviceID deviceID) {
     int hashVal = deviceID.hashCode();
     return Math.abs(hashVal == Integer.MIN_VALUE ? 0 : hashVal) % NUM_OF_SLOTS;
   }
@@ -560,7 +530,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @return schema entry of the timeseries
    * @throws MetadataException throw if this timeseries is not exist
    */
-  private SchemaEntry getSchemaEntry(TimeseriesID timeseriesID) throws MetadataException {
+  protected SchemaEntry getSchemaEntry(TimeseriesID timeseriesID) throws MetadataException {
     IDeviceID deviceID = timeseriesID.getDeviceID();
     int slot = calculateSlot(deviceID);
 
@@ -580,7 +550,6 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   @Override
-  @TestOnly
   public Map<IDeviceID, DeviceEntry>[] getIdTables() {
     return idTables;
   }

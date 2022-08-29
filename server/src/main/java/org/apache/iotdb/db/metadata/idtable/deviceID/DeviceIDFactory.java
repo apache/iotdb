@@ -22,20 +22,13 @@ package org.apache.iotdb.db.metadata.idtable.deviceID;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.idtable.IDTableAutoIncImpl;
 
 import java.util.function.Function;
 
 /** factory to build device id according to configured algorithm */
 public class DeviceIDFactory {
-
-  /** used to obtain a IDeviceID instance in the query operation */
   Function<String, IDeviceID> getDeviceIDFunction;
-
-  /** used to obtain a IDeviceID instance in the insert operation */
-  Function<String, IDeviceID> getDeviceIDWithAutoCreateFunction;
-
-  /** used to obtain a IDeviceID instance in the system restart */
-  Function<String[], IDeviceID> getDeviceIDWithRecoverFunction;
 
   // region DeviceIDFactory Singleton
   private static class DeviceIDFactoryHolder {
@@ -58,27 +51,17 @@ public class DeviceIDFactory {
 
   private DeviceIDFactory() {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-      if (IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getDeviceIDTransformationMethod()
-          .equals("SHA256")) {
-        getDeviceIDFunction = SHA256DeviceID::new;
-        getDeviceIDWithAutoCreateFunction = SHA256DeviceID::new;
-        getDeviceIDWithRecoverFunction = null;
-        return;
-      } else if (IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getDeviceIDTransformationMethod()
-          .equals("AutoIncrement")) {
-        getDeviceIDFunction = StandAloneAutoIncDeviceID::getDeviceID;
-        getDeviceIDWithAutoCreateFunction = StandAloneAutoIncDeviceID::getDeviceIDWithAutoCreate;
-        getDeviceIDWithRecoverFunction = StandAloneAutoIncDeviceID::getDeviceIDWithRecover;
-        return;
+      switch (DeviceIDMode.valueOf(
+          IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod())) {
+        case SHA256:
+          getDeviceIDFunction = SHA256DeviceID::new;
+          return;
+        case AutoIncrement:
+          getDeviceIDFunction = IDTableAutoIncImpl::getDeviceID;
+          return;
       }
     }
     getDeviceIDFunction = PlainDeviceID::new;
-    getDeviceIDWithAutoCreateFunction = PlainDeviceID::new;
-    getDeviceIDWithRecoverFunction = null;
   }
   // endregion
 
@@ -102,77 +85,21 @@ public class DeviceIDFactory {
     return getDeviceIDFunction.apply(devicePath);
   }
 
-  /**
-   * get and set device id by full path
-   *
-   * @param devicePath device path of the timeseries
-   * @return a IDeviceID instance of the device path
-   */
-  public IDeviceID getDeviceIDWithAutoCreate(PartialPath devicePath) {
-    return getDeviceIDWithAutoCreateFunction.apply(devicePath.toString());
-  }
-
-  /**
-   * get and set device id by full path
-   *
-   * @param devicePath device path of the timeseries
-   * @return a IDeviceID instance of the device path
-   */
-  public IDeviceID getDeviceIDWithAutoCreate(String devicePath) {
-    return getDeviceIDWithAutoCreateFunction.apply(devicePath);
-  }
-
-  /**
-   * get a device id, only for recover
-   *
-   * @param deviceID device id
-   * @param devicePath device path of the timeseries
-   * @return a IDeviceID instance of the device path
-   */
-  public IDeviceID getDeviceIDWithRecover(String deviceID, String devicePath) {
-    if (getDeviceIDWithRecoverFunction == null) {
-      return getDeviceID(devicePath);
-    } else {
-      return getDeviceIDWithRecoverFunction.apply(new String[] {deviceID, devicePath});
-    }
-  }
-
   /** reset id method */
   @TestOnly
   public void reset() {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-      if (IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getDeviceIDTransformationMethod()
-          .equals("SHA256")) {
-        getDeviceIDFunction = SHA256DeviceID::new;
-        getDeviceIDWithAutoCreateFunction = SHA256DeviceID::new;
-        return;
-      } else if (IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getDeviceIDTransformationMethod()
-          .equals("AutoIncrement")) {
-        getDeviceIDFunction = StandAloneAutoIncDeviceID::getDeviceID;
-        getDeviceIDWithAutoCreateFunction = StandAloneAutoIncDeviceID::getDeviceIDWithAutoCreate;
-        getDeviceIDWithRecoverFunction = StandAloneAutoIncDeviceID::getDeviceIDWithRecover;
-        StandAloneAutoIncDeviceID.reset();
-        return;
+      switch (DeviceIDMode.valueOf(
+          IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod())) {
+        case SHA256:
+          getDeviceIDFunction = SHA256DeviceID::new;
+          return;
+        case AutoIncrement:
+          getDeviceIDFunction = IDTableAutoIncImpl::getDeviceID;
+          IDTableAutoIncImpl.reset();
+          return;
       }
     }
     getDeviceIDFunction = PlainDeviceID::new;
-    getDeviceIDWithAutoCreateFunction = PlainDeviceID::new;
-  }
-
-  /** clear device id state */
-  @TestOnly
-  public void clear() {
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-      if (IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getDeviceIDTransformationMethod()
-          .equals("AutoIncrement")) {
-        StandAloneAutoIncDeviceID.clear();
-      }
-    }
   }
 }

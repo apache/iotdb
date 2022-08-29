@@ -159,7 +159,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
                   loc);
           idTable.putSchemaEntry(
               cur.deviceID,
-              cur.seriesKey.substring(0, cur.seriesKey.length() - cur.measurementName.length() - 1),
+              getDevicePathFromSeriesKey(cur.seriesKey, cur.measurementName),
               cur.measurementName,
               schemaEntry,
               cur.isAligned);
@@ -252,7 +252,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     String measurementName = readString();
     String deviceID =
         DeviceIDFactory.getInstance()
-            .getDeviceID(seriesKey.substring(0, seriesKey.length() - measurementName.length() - 1))
+            .getDeviceID(getDevicePathFromSeriesKey(seriesKey, measurementName))
             .toStringID();
     return new DiskSchemaEntry(
         deviceID,
@@ -269,6 +269,10 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     byte[] bytes = new byte[strLength];
     randomAccessFile.read(bytes, 0, strLength);
     return new String(bytes, 0, strLength);
+  }
+
+  private String getDevicePathFromSeriesKey(String seriesKey, String measurement) {
+    return seriesKey.substring(0, seriesKey.length() - measurement.length() - 1);
   }
 
   @Override

@@ -66,7 +66,7 @@ public class IDTableRestartTest {
     isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement");
+    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
     EnvironmentUtils.envSetUp();
   }
@@ -157,6 +157,7 @@ public class IDTableRestartTest {
     }
 
     assertEquals(5, count);
+
     queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + sg2 + ".d2");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(0, dataSet.getPaths().size());
