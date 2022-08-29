@@ -48,7 +48,7 @@ public class PrimitiveArrayManager {
 
   /** threshold total size of arrays for all data types */
   private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
-      CONFIG.getAllocateMemoryForWrite()
+      CONFIG.getAllocateMemoryForStorageEngine()
           * CONFIG.getBufferedArraysMemoryProportion()
           / AMPLIFICATION_FACTOR;
 

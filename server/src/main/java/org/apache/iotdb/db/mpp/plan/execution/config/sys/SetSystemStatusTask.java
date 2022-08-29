@@ -21,15 +21,15 @@ package org.apache.iotdb.db.mpp.plan.execution.config.sys;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class LoadConfigurationTask implements IConfigTask {
-  private final LoadConfigurationStatement loadConfigurationStatement;
+public class SetSystemStatusTask implements IConfigTask {
+  private final SetSystemStatusStatement setSystemStatusStatement;
 
-  public LoadConfigurationTask(LoadConfigurationStatement loadConfigurationStatement) {
-    this.loadConfigurationStatement = loadConfigurationStatement;
+  public SetSystemStatusTask(SetSystemStatusStatement setSystemStatusStatement) {
+    this.setSystemStatusStatement = setSystemStatusStatement;
   }
 
   @Override
@@ -37,6 +37,7 @@ public class LoadConfigurationTask implements IConfigTask {
       throws InterruptedException {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.loadConfiguration(loadConfigurationStatement.isOnCluster());
+    return configTaskExecutor.setSystemStatus(
+        setSystemStatusStatement.isOnCluster(), setSystemStatusStatement.getStatus());
   }
 }

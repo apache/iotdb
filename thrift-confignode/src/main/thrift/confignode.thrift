@@ -599,6 +599,9 @@ service IConfigNodeRPCService {
   /** Load configuration on all DataNodes */
   common.TSStatus loadConfiguration()
 
+  /** Set system status on DataNodes */
+  common.TSStatus setSystemStatus(string status)
+
   // ======================================================
   // Cluster Tools
   // ======================================================

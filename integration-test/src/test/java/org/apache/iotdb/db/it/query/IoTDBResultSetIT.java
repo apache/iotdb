@@ -222,4 +222,18 @@ public class IoTDBResultSetIT {
       }
     }
   }
+  
+  @Test
+  public void emptyLastQueryTest() {
+    String expectedHeader =
+        ColumnHeaderConstant.COLUMN_TIME
+            + ","
+            + ColumnHeaderConstant.COLUMN_TIMESERIES
+            + ","
+            + ColumnHeaderConstant.COLUMN_VALUE
+            + ","
+            + ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE
+            + ",";
+    resultSetEqualTest("select last s1 from root.sg.d1", expectedHeader, emptyResultSet);
+  }
 }
