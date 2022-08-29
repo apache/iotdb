@@ -222,7 +222,7 @@ public class IoTDBResultSetIT {
       }
     }
   }
-  
+
   @Test
   public void emptyLastQueryTest() {
     String expectedHeader =
