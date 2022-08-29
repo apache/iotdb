@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.metrics.micrometer.reporter;
 
-import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.Reporter;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -45,7 +45,7 @@ public class MicrometerPrometheusReporter implements Reporter {
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
 
-  private MetricManager metricManager;
+  private AbstractMetricManager metricManager;
   private DisposableServer httpServer;
 
   @Override
@@ -57,6 +57,7 @@ public class MicrometerPrometheusReporter implements Reporter {
     PrometheusMeterRegistry prometheusMeterRegistry;
     if (meterRegistrySet.size() == 0) {
       prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+      prometheusMeterRegistry.throwExceptionOnRegistrationFailure();
       Metrics.addRegistry(prometheusMeterRegistry);
     } else {
       prometheusMeterRegistry = (PrometheusMeterRegistry) meterRegistrySet.toArray()[0];
@@ -65,9 +66,7 @@ public class MicrometerPrometheusReporter implements Reporter {
         HttpServer.create()
             .idleTimeout(Duration.ofMillis(30_000L))
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
-            .port(
-                Integer.parseInt(
-                    metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort()))
+            .port(metricConfig.getPrometheusExporterPort())
             .route(
                 routes ->
                     routes.get(
@@ -76,8 +75,7 @@ public class MicrometerPrometheusReporter implements Reporter {
                             response.sendString(Mono.just(prometheusMeterRegistry.scrape()))))
             .bindNow();
     LOGGER.info(
-        "http server for metrics stated, listen on {}",
-        metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort());
+        "http server for metrics started, listen on {}", metricConfig.getPrometheusExporterPort());
     return true;
   }
 
@@ -105,11 +103,11 @@ public class MicrometerPrometheusReporter implements Reporter {
 
   @Override
   public ReporterType getReporterType() {
-    return ReporterType.prometheus;
+    return ReporterType.PROMETHEUS;
   }
 
   @Override
-  public void setMetricManager(MetricManager metricManager) {
+  public void setMetricManager(AbstractMetricManager metricManager) {
     this.metricManager = metricManager;
   }
 }

@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.StatusUtils;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -117,5 +117,17 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
 
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, deletePathList.size());
+  }
+
+  @Override
+  public String toString() {
+    return "DeleteTimeSeriesPlan{"
+        + "deletePathList="
+        + deletePathList
+        + ", results="
+        + results
+        + ", partitionFilter="
+        + partitionFilter
+        + '}';
   }
 }

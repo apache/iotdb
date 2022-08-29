@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -67,7 +67,9 @@ public class AggregationPlan extends RawDataQueryPlan {
 
       for (Map.Entry<String, AggregateResult> groupPathResult :
           getGroupPathsResultMap().entrySet()) {
-        respColumns.add(groupPathResult.getKey());
+        String resultColumnName = groupPathResult.getKey();
+        String aliasName = groupByLevelController.getAlias(resultColumnName);
+        respColumns.add(aliasName != null ? aliasName : resultColumnName);
         columnsTypes.add(groupPathResult.getValue().getResultDataType().toString());
       }
       resp.setColumns(respColumns);
@@ -95,6 +97,10 @@ public class AggregationPlan extends RawDataQueryPlan {
     }
     seriesTypes.addAll(SchemaUtils.getSeriesTypesByPaths(paths, aggregations));
     return seriesTypes;
+  }
+
+  public GroupByLevelController getGroupByLevelController() {
+    return groupByLevelController;
   }
 
   @Override
@@ -147,7 +153,7 @@ public class AggregationPlan extends RawDataQueryPlan {
       String transformedPath = groupByLevelController.getGroupedPath(rawPath);
       AggregateResult result = groupPathsResultMap.get(transformedPath);
       if (result == null) {
-        groupPathsResultMap.put(transformedPath, aggregateResults.get(i));
+        groupPathsResultMap.put(transformedPath, aggregateResults.get(i).clone());
       } else {
         result.merge(aggregateResults.get(i));
         groupPathsResultMap.put(transformedPath, result);
@@ -163,13 +169,19 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   @Override
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
-    return resultColumns.get(pathIndex).getResultColumnName();
+    return isGroupByLevel()
+        ? resultColumns.get(pathIndex).getExpressionString()
+        : resultColumns.get(pathIndex).getResultColumnName();
   }
 
   @Override
   public String getColumnForDisplay(String columnForReader, int pathIndex) {
     String columnForDisplay = columnForReader;
     if (isGroupByLevel()) {
+      if (resultColumns.get(pathIndex).hasAlias()) {
+        return resultColumns.get(pathIndex).getAlias();
+      }
+
       PartialPath path = paths.get(pathIndex);
       String functionName = aggregations.get(pathIndex);
       String aggregatePath =

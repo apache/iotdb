@@ -16,7 +16,11 @@
  */
 package org.apache.iotdb.db.service.thrift.handler;
 
-import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
+import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.db.service.thrift.impl.IClientRPCServiceWithHandler;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
@@ -24,22 +28,31 @@ import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
 public class RPCServiceThriftHandler implements TServerEventHandler {
-  private TSServiceImpl serviceImpl;
 
-  public RPCServiceThriftHandler(TSServiceImpl serviceImpl) {
-    this.serviceImpl = serviceImpl;
+  private final IClientRPCServiceWithHandler eventHandler;
+
+  public RPCServiceThriftHandler(IClientRPCServiceWithHandler eventHandler) {
+    this.eventHandler = eventHandler;
   }
 
   @Override
   public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
-    // nothing
+    MetricService.getInstance()
+        .getOrCreateGauge(
+            Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "RPC")
+        .incr(1L);
     return null;
   }
 
   @Override
   public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
     // release query resources.
-    serviceImpl.handleClientExit();
+    eventHandler.handleClientExit();
+
+    MetricService.getInstance()
+        .getOrCreateGauge(
+            Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "RPC")
+        .decr(1L);
   }
 
   @Override

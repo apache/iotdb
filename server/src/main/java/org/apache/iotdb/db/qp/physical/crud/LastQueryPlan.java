@@ -19,19 +19,16 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGt;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGtEq;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.apache.thrift.TException;
 
@@ -80,16 +77,11 @@ public class LastQueryPlan extends RawDataQueryPlan {
     if (isValidExpression(expression)) {
       super.setExpression(expression);
     } else {
-      throw new QueryProcessException("Only '>' and '>=' are supported in LAST query");
+      throw new QueryProcessException("Only time filters are supported in LAST query");
     }
   }
 
-  // Only > and >= are supported in time filter
   private boolean isValidExpression(IExpression expression) {
-    if (expression instanceof GlobalTimeExpression) {
-      Filter filter = ((GlobalTimeExpression) expression).getFilter();
-      return filter instanceof TimeGtEq || filter instanceof TimeGt;
-    }
-    return false;
+    return expression instanceof GlobalTimeExpression;
   }
 }

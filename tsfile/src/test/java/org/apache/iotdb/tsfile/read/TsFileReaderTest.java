@@ -71,6 +71,8 @@ public class TsFileReaderTest {
 
     TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
     // make multi pages in one group
+    int oldPointNumInPage = tsFileConfig.getMaxNumberOfPointsInPage();
+    int oldGroupSizeInByte = tsFileConfig.getGroupSizeInByte();
     tsFileConfig.setMaxNumberOfPointsInPage(100);
     tsFileConfig.setGroupSizeInByte(100 * 1024 * 1024);
     TsFileWriter tsFileWriter = new TsFileWriter(file, new Schema(), tsFileConfig);
@@ -120,6 +122,8 @@ public class TsFileReaderTest {
 
     tsFileReader.close();
     file.delete();
+    tsFileConfig.setGroupSizeInByte(oldGroupSizeInByte);
+    tsFileConfig.setMaxNumberOfPointsInPage(oldPointNumInPage);
   }
 
   @Test

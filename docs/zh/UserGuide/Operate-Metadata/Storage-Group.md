@@ -40,7 +40,7 @@ Msg: 300: root.ln has already been set to storage group.
 IoTDB> create storage group root.ln.wf01
 Msg: 300: root.ln has already been set to storage group.
 ```
-存储组节点名只支持中英文字符、数字、下划线和中划线的组合。
+存储组节点名只支持中英文字符、数字、下划线的组合，如果想设置为纯数字或者包含其他字符，需要用反引号(``)把存储组名称引起来。
 
 还需注意，如果在 Windows 系统上部署，存储组名是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
 
@@ -57,12 +57,12 @@ IoTDB> show storage group root.**
 执行结果为：
 
 ```
-+-------------+
-|storage group|
-+-------------+
-|    root.sgcc|
-|      root.ln|
-+-------------+
++-------------+----+-------------------------+-----------------------+-----------------------+
+|storage group| ttl|schema_replication_factor|data_replication_factor|time_partition_interval|
++-------------+----+-------------------------+-----------------------+-----------------------+
+|    root.sgcc|null|                        2|                      2|                 604800|
+|      root.ln|null|                        2|                      2|                 604800|
++-------------+----+-------------------------+-----------------------+-----------------------+
 Total line number = 2
 It costs 0.060s
 ```
@@ -76,4 +76,64 @@ IoTDB > DELETE STORAGE GROUP root.ln
 IoTDB > DELETE STORAGE GROUP root.sgcc
 // 删除所有数据，时间序列以及存储组
 IoTDB > DELETE STORAGE GROUP root.**
+```
+
+## 统计存储组数量
+
+用户可以使用`COUNT STORAGE GROUP <PathPattern>`语句统计存储组的数量，允许指定`PathPattern` 用来统计匹配该`PathPattern` 的存储组的数量
+
+SQL 语句如下所示：
+
+```
+IoTDB> show storage group
+IoTDB> count storage group
+IoTDB> count storage group root.*
+IoTDB> count storage group root.sgcc.*
+IoTDB> count storage group root.sgcc
+```
+
+执行结果为：
+
+```
++-------------+
+|storage group|
++-------------+
+|    root.sgcc|
+| root.turbine|
+|      root.ln|
++-------------+
+Total line number = 3
+It costs 0.003s
+
++-------------+
+|storage group|
++-------------+
+|            3|
++-------------+
+Total line number = 1
+It costs 0.003s
+
++-------------+
+|storage group|
++-------------+
+|            3|
++-------------+
+Total line number = 1
+It costs 0.002s
+
++-------------+
+|storage group|
++-------------+
+|            0|
++-------------+
+Total line number = 1
+It costs 0.002s
+
++-------------+
+|storage group|
++-------------+
+|            1|
++-------------+
+Total line number = 1
+It costs 0.002s
 ```

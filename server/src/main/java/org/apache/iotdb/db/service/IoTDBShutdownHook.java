@@ -18,7 +18,13 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.wal.WALManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +35,30 @@ public class IoTDBShutdownHook extends Thread {
 
   @Override
   public void run() {
+    // close rocksdb if possible to avoid lose data
+    if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
+        .equals(SchemaEngineMode.Rocksdb_based)) {
+      IoTDB.configManager.clear();
+    }
+
+    // == flush data to Tsfile and remove WAL log files
+    if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
+      if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        StorageEngineV2.getInstance().syncCloseAllProcessor();
+      }
+    } else {
+      StorageEngine.getInstance().syncCloseAllProcessor();
+    }
+    WALManager.getInstance().deleteOutdatedWALFiles();
+
+    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      // This setting ensures that compaction work is not discarded
+      // even if there are frequent restarts
+      DataRegionConsensusImpl.getInstance()
+          .getAllConsensusGroupIds()
+          .forEach(id -> DataRegionConsensusImpl.getInstance().triggerSnapshot(id));
+    }
+
     if (logger.isInfoEnabled()) {
       logger.info(
           "IoTDB exits. Jvm memory usage: {}",

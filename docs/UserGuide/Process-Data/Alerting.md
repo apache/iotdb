@@ -353,7 +353,7 @@ whose operation logic is defined
 by `org.apache.iotdb.trigger.AlertingExample` java class.
 
 ``` sql
-  CREATE TRIGGER root-ln-wf01-wt01-alert
+  CREATE TRIGGER `root-ln-wf01-wt01-alert`
   AFTER INSERT
   ON root.ln.wf01.wt01.temperature
   AS "org.apache.iotdb.trigger.AlertingExample"

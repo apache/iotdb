@@ -18,18 +18,22 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -45,10 +49,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.MAGIC_STRING;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SEQ_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_TARGET_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_UNSEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_SOURCE_FILES;
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_TARGET_FILES;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
@@ -85,25 +87,27 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
-    RewriteCrossSpaceCompactionLogger compactionLogger =
-        new RewriteCrossSpaceCompactionLogger(compactionLogFile);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
+    CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
-    compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
-    compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
-    CompactionUtils.compact(seqResources, unseqResources, targetResources);
-    compactionLogger.logStringInfo(MAGIC_STRING);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     compactionLogger.close();
-    CrossSpaceCompactionExceptionHandler.handleException(
+    CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         compactionLogFile,
         targetResources,
         seqResources,
         unseqResources,
         tsFileManager,
-        0L);
+        0,
+        false,
+        true);
     // all source file should still exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -157,26 +161,28 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
-    RewriteCrossSpaceCompactionLogger compactionLogger =
-        new RewriteCrossSpaceCompactionLogger(compactionLogFile);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
+    CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
-    compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
-    compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
-    CompactionUtils.compact(seqResources, unseqResources, targetResources);
-    compactionLogger.logStringInfo(MAGIC_STRING);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     compactionLogger.close();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    CrossSpaceCompactionExceptionHandler.handleException(
+    CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         compactionLogFile,
         targetResources,
         seqResources,
         unseqResources,
         tsFileManager,
-        0L);
+        0,
+        false,
+        true);
     // all source file should still exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -230,15 +236,16 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
-    RewriteCrossSpaceCompactionLogger compactionLogger =
-        new RewriteCrossSpaceCompactionLogger(compactionLogFile);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
+    CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
-    compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
-    compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
-    CompactionUtils.compact(seqResources, unseqResources, targetResources);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     for (TsFileResource resource : seqResources) {
       tsFileManager.getSequenceListByTimePartition(0).remove(resource);
@@ -250,16 +257,17 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       tsFileManager.getSequenceListByTimePartition(0).keepOrderInsert(resource);
     }
     seqResources.get(0).getTsFile().delete();
-    compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
-    CrossSpaceCompactionExceptionHandler.handleException(
+    CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         compactionLogFile,
         targetResources,
         seqResources,
         unseqResources,
         tsFileManager,
-        0L);
+        0,
+        false,
+        true);
     // all source file should not exist
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
@@ -313,17 +321,17 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
-    RewriteCrossSpaceCompactionLogger compactionLogger =
-        new RewriteCrossSpaceCompactionLogger(compactionLogFile);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
+    CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
-    compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
-    compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
-    CompactionUtils.compact(seqResources, unseqResources, targetResources);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -341,7 +349,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), false);
     }
-    CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
+    CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
     for (TsFileResource resource : seqResources) {
       tsFileManager.getSequenceListByTimePartition(0).remove(resource);
     }
@@ -353,14 +361,16 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     }
     seqResources.get(0).remove();
 
-    CrossSpaceCompactionExceptionHandler.handleException(
+    CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         compactionLogFile,
         targetResources,
         seqResources,
         unseqResources,
         tsFileManager,
-        0L);
+        0,
+        false,
+        true);
     // All source file should not exist. All compaction mods file and old mods file of each source
     // file should not exist
     for (TsFileResource resource : seqResources) {
@@ -428,17 +438,17 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     File compactionLogFile =
         new File(
             SEQ_DIRS,
-            seqResources.get(0).getTsFile().getName()
-                + "."
-                + RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
-    RewriteCrossSpaceCompactionLogger compactionLogger =
-        new RewriteCrossSpaceCompactionLogger(compactionLogFile);
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
+    CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
-    compactionLogger.logFiles(seqResources, STR_SEQ_FILES);
-    compactionLogger.logFiles(unseqResources, STR_UNSEQ_FILES);
-    CompactionUtils.compact(seqResources, unseqResources, targetResources);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    compactionLogger.logStringInfo(MAGIC_STRING);
     compactionLogger.close();
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -456,16 +466,18 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), false);
     }
-    CompactionUtils.combineModsInCompaction(seqResources, unseqResources, targetResources);
+    CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
 
-    CrossSpaceCompactionExceptionHandler.handleException(
+    CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         compactionLogFile,
         targetResources,
         seqResources,
         unseqResources,
         tsFileManager,
-        0L);
+        0,
+        false,
+        true);
     // all source file should still exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());

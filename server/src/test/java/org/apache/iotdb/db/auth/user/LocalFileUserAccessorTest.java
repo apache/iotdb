@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.auth.user;
 
-import org.apache.iotdb.db.auth.entity.PathPrivilege;
-import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.auth.user.LocalFileUserAccessor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 

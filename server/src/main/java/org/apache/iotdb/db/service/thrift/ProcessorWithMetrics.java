@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.service.thrift;
 
-import org.apache.iotdb.db.service.metrics.Metric;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
-import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
-import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
+import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Processor;
 
 import org.apache.thrift.ProcessFunction;
 import org.apache.thrift.TApplicationException;
@@ -63,8 +64,13 @@ public class ProcessorWithMetrics extends Processor {
       fn.process(msg.seqid, in, out, iface);
     }
     long cost = System.currentTimeMillis() - startTime;
-    MetricsService.getInstance()
-        .getMetricManager()
-        .timer(cost, TimeUnit.MILLISECONDS, Metric.ENTRY.toString(), Tag.NAME.toString(), msg.name);
+    MetricService.getInstance()
+        .timer(
+            cost,
+            TimeUnit.MILLISECONDS,
+            Metric.ENTRY.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            msg.name);
   }
 }

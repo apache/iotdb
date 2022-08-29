@@ -18,16 +18,16 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.IInnerSeqSpaceSelector;
+import org.apache.iotdb.db.engine.compaction.inner.IInnerUnseqSpaceSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -35,8 +35,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -45,30 +46,36 @@ import java.util.PriorityQueue;
  * selector traverses the file list from old to new. If the size of selected files or the number of
  * select files exceed given threshold, a compaction task will be submitted to task queue in
  * CompactionTaskManager. In CompactionTaskManager, tasks are ordered by {@link
- * org.apache.iotdb.db.engine.compaction.CompactionTaskComparator}. To maximize compaction
- * efficiency, selector searches compaction task from 0 compaction files(that is, file that never
- * been compacted, named level 0 file) to higher level files. If a compaction task is found in some
- * level, selector will not search higher level anymore.
+ * org.apache.iotdb.db.engine.compaction.comparator.ICompactionTaskComparator}. To maximize
+ * compaction efficiency, selector searches compaction task from 0 compaction files(that is, file
+ * that never been compacted, named level 0 file) to higher level files. If a compaction task is
+ * found in some level, selector will not search higher level anymore.
  */
-public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSelector {
+public class SizeTieredCompactionSelector
+    implements IInnerSeqSpaceSelector, IInnerUnseqSpaceSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected String storageGroupName;
+  protected String dataRegionId;
+  protected long timePartition;
+  protected List<TsFileResource> tsFileResources;
+  protected boolean sequence;
+  protected TsFileManager tsFileManager;
+  protected boolean hasNextTimePartition;
 
   public SizeTieredCompactionSelector(
-      String logicalStorageGroupName,
-      String virtualStorageGroupName,
+      String storageGroupName,
+      String dataRegionId,
       long timePartition,
-      TsFileManager tsFileManager,
       boolean sequence,
-      InnerSpaceCompactionTaskFactory taskFactory) {
-    super(
-        logicalStorageGroupName,
-        virtualStorageGroupName,
-        timePartition,
-        tsFileManager,
-        sequence,
-        taskFactory);
+      TsFileManager tsFileManager) {
+    this.storageGroupName = storageGroupName;
+    this.dataRegionId = dataRegionId;
+    this.timePartition = timePartition;
+    this.sequence = sequence;
+    this.tsFileManager = tsFileManager;
+    hasNextTimePartition = tsFileManager.hasNextTimePartition(timePartition, sequence);
   }
 
   /**
@@ -80,7 +87,8 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public void selectAndSubmit() {
+  public List<List<TsFileResource>> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
+    this.tsFileResources = tsFileResources;
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
     try {
@@ -90,12 +98,16 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
           break;
         }
       }
+      List<List<TsFileResource>> taskList = new LinkedList<>();
       while (taskPriorityQueue.size() > 0) {
-        createAndSubmitTask(taskPriorityQueue.poll().left);
+        List<TsFileResource> resources = taskPriorityQueue.poll().left;
+        taskList.add(resources);
       }
+      return taskList;
     } catch (Exception e) {
       LOGGER.error("Exception occurs while selecting files", e);
     }
+    return Collections.emptyList();
   }
 
   /**
@@ -123,7 +135,8 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
-      if (currentName.getInnerCompactionCnt() != level || currentFile.isCompactionCandidate()) {
+      if (currentName.getInnerCompactionCnt() != level
+          || currentFile.getStatus() != TsFileResourceStatus.CLOSED) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;
@@ -138,7 +151,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
           selectedFileSize);
       // if the file size or file num reach threshold
       if (selectedFileSize >= targetCompactionFileSize
-          || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
+          || selectedFileList.size() >= config.getMaxInnerCompactionCandidateFileNum()) {
         // submit the task
         if (selectedFileList.size() > 1) {
           taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
@@ -148,14 +161,19 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         shouldContinueToSearch = false;
       }
     }
+
+    // if next time partition exists
+    // submit a merge task even it does not meet the requirement for file num or file size
+    if (hasNextTimePartition && selectedFileList.size() > 1) {
+      taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+      shouldContinueToSearch = false;
+    }
     return shouldContinueToSearch;
   }
 
   private int searchMaxFileLevel() throws IOException {
     int maxLevel = -1;
-    Iterator<TsFileResource> iterator = tsFileResources.iterator();
-    while (iterator.hasNext()) {
-      TsFileResource currentFile = iterator.next();
+    for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
       if (currentName.getInnerCompactionCnt() > maxLevel) {
@@ -163,20 +181,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
       }
     }
     return maxLevel;
-  }
-
-  private boolean createAndSubmitTask(List<TsFileResource> selectedFileList)
-      throws InterruptedException {
-    selectedFileList.forEach(x -> x.setCompactionCandidate(true));
-    AbstractCompactionTask compactionTask =
-        taskFactory.createTask(
-            logicalStorageGroupName,
-            virtualStorageGroupName,
-            timePartition,
-            tsFileManager,
-            selectedFileList,
-            sequence);
-    return CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
   }
 
   private class SizeTieredCompactionTaskComparator

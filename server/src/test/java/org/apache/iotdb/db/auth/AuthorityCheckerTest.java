@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.auth;
 
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -44,7 +44,7 @@ public class AuthorityCheckerTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    authorizer = BasicAuthorizer.getInstance();
+    authorizer = AuthorizerManager.getInstance();
     user = new User("user", "password");
   }
 
@@ -90,6 +90,8 @@ public class AuthorityCheckerTest {
         user.getName(), nodeName, PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal());
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal());
+    authorizer.grantPrivilegeToUser(
+        user.getName(), nodeName, PrivilegeType.ALTER_TIMESERIES.ordinal());
 
     Assert.assertTrue(
         AuthorityChecker.check(
@@ -250,6 +252,13 @@ public class AuthorityCheckerTest {
             user.getName(),
             Collections.singletonList(new PartialPath(nodeName)),
             OperatorType.DROP_CONTINUOUS_QUERY,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.ALTER_TIMESERIES,
             user.getName()));
   }
 }

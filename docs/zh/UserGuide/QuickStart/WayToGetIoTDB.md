@@ -35,7 +35,7 @@ IoTDB 为您提供了两种安装方式，您可以参考下面的建议，任�
 
 1. Maven >= 3.6 的运行环境，具体安装方法可以参考以下链接：[https://maven.apache.org/install.html](https://maven.apache.org/install.html)。
 
-> 注： 也可以选择不安装，使用我们提供的'mvnw.sh' 或 'mvnw.cmd' 工具。使用时请用'mvnw.sh' 或 'mvnw.cmd'命令代替下文的'mvn'命令。
+> 注： 也可以选择不安装，使用我们提供的'mvnw' 或 'mvnw.cmd' 工具。使用时请用'mvnw' 或 'mvnw.cmd'命令代替下文的'mvn'命令。
 
 ### 从官网下载二进制可执行文件
 
@@ -44,14 +44,20 @@ IoTDB 为您提供了两种安装方式，您可以参考下面的建议，任�
 下载后，您可使用以下操作对 IoTDB 的压缩包进行解压：
 
 ```
-Shell > uzip iotdb-<version>.zip
+Shell > unzip iotdb-<version>.zip
 ```
 
 ### 使用源码编译
 
 您可以获取已发布的源码 [https://iotdb.apache.org/Download/](https://iotdb.apache.org/Download/) ，或者从 [https://github.com/apache/iotdb/tree/master](https://github.com/apache/iotdb/tree/master) git 仓库获取
 
-源码克隆后，进入到源码文件夹目录下，使用以下命令进行编译：
+源码克隆后，进入到源码文件夹目录下。如果您想编译已经发布过的版本，可以先用`git checkout -b my_{project.version} v{project.version}`命令新建并切换分支。比如您要编译0.12.4这个版本，您可以用如下命令去切换分支：
+
+```shell
+> git checkout -b my_0.12.4 v0.12.4
+```
+
+切换分支之后就可以使用以下命令进行编译：
 
 ```
 > mvn clean package -pl server -am -Dmaven.test.skip=true
@@ -68,6 +74,15 @@ Shell > uzip iotdb-<version>.zip
 |
 +- tools/      <-- system tools
 ```
+
+如果您想要编译项目中的某个模块，您可以在源码文件夹中使用`mvn clean package -pl {module.name} -am -DskipTests`命令进行编译。如果您需要的是带依赖的 jar 包，您可以在编译命令后面加上`-P get-jar-with-dependencies`参数。比如您想编译带依赖的 jdbc jar 包，您就可以使用以下命令进行编译：  
+
+```shell
+> mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
+```
+
+编译完成后就可以在`{module.name}/target`目录中找到需要的包了。
+
 
 ### 通过 Docker 安装 (Dockerfile)
 
@@ -139,7 +154,7 @@ $ /%IOTDB_HOME%/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
-            <version>0.13.0-SNAPSHOT</version>
+            <version>0.14.0-SNAPSHOT</version>
         </dependency>
 ```
 这里是一些使用 IoTDB-JDBC 连接 IoTDB 的示例：https://github.com/apache/iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb

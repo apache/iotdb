@@ -18,47 +18,44 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTaskFactory;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceCompactionFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompactionSelector {
+public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected String logicalStorageGroupName;
+  protected String dataRegionId;
+  protected long timePartition;
+  protected TsFileManager tsFileManager;
 
   public RewriteCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
-      String virtualStorageGroupId,
-      String storageGroupDir,
+      String dataRegionId,
       long timePartition,
-      TsFileManager tsFileManager,
-      CrossSpaceCompactionTaskFactory taskFactory) {
-    super(
-        logicalStorageGroupName,
-        virtualStorageGroupId,
-        storageGroupDir,
-        timePartition,
-        tsFileManager,
-        taskFactory);
+      TsFileManager tsFileManager) {
+    this.logicalStorageGroupName = logicalStorageGroupName;
+    this.dataRegionId = dataRegionId;
+    this.timePartition = timePartition;
+    this.tsFileManager = tsFileManager;
   }
 
   /**
@@ -70,10 +67,11 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public void selectAndSubmit() {
+  public List selectCrossSpaceTask(
+      List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
     if ((CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread())
         || (!config.isEnableCrossSpaceCompaction())) {
-      return;
+      return Collections.emptyList();
     }
     Iterator<TsFileResource> seqIterator = sequenceFileList.iterator();
     Iterator<TsFileResource> unSeqIterator = unsequenceFileList.iterator();
@@ -86,28 +84,19 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
       unSeqFileList.add(unSeqIterator.next());
     }
     if (seqFileList.isEmpty() || unSeqFileList.isEmpty()) {
-      return;
+      return Collections.emptyList();
     }
     long budget = config.getCrossCompactionMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-    CrossSpaceMergeResource mergeResource =
-        new CrossSpaceMergeResource(seqFileList, unSeqFileList, timeLowerBound);
+    CrossSpaceCompactionResource compactionResource =
+        new CrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
 
-    ICrossSpaceMergeFileSelector fileSelector =
-        InnerSpaceCompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);
+    ICrossSpaceCompactionFileSelector fileSelector =
+        CompactionUtils.getCrossSpaceFileSelector(budget, compactionResource);
     try {
       List[] mergeFiles = fileSelector.select();
-      // avoid pending tasks holds the metadata and streams
-      mergeResource.clear();
       if (mergeFiles.length == 0) {
-        if (mergeResource.getUnseqFiles().size() > 0) {
-          // still have unseq files but cannot be selected
-          LOGGER.warn(
-              "{} cannot select merge candidates under the budget {}",
-              logicalStorageGroupName,
-              budget);
-        }
-        return;
+        return Collections.emptyList();
       }
       LOGGER.info(
           "select files for cross compaction, sequence files: {}, unsequence files {}",
@@ -115,26 +104,17 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
           mergeFiles[1]);
 
       if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
-        mergeFiles[0].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));
-        mergeFiles[1].forEach(x -> ((TsFileResource) x).setCompactionCandidate(true));
-        AbstractCompactionTask compactionTask =
-            taskFactory.createTask(
-                logicalStorageGroupName,
-                virtualGroupId,
-                timePartition,
-                tsFileManager,
-                mergeFiles[0],
-                mergeFiles[1]);
-        CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
         LOGGER.info(
             "{} [Compaction] submit a task with {} sequence file and {} unseq files",
-            logicalStorageGroupName + "-" + virtualGroupId,
-            mergeResource.getSeqFiles().size(),
-            mergeResource.getUnseqFiles().size());
+            logicalStorageGroupName + "-" + dataRegionId,
+            mergeFiles[0].size(),
+            mergeFiles[1].size());
+        return Collections.singletonList(new Pair<>(mergeFiles[0], mergeFiles[1]));
       }
 
-    } catch (MergeException | IOException | InterruptedException e) {
+    } catch (MergeException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
+    return Collections.emptyList();
   }
 }

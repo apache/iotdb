@@ -26,24 +26,25 @@
 In IoTDB, `SELECT` statement is used to retrieve data from one or more selected time series. Here is the syntax definition of `SELECT` statement:
 
 ```sql
-[TRACING?] SELECT 
-	[LAST?] selectExpr (, selectExpr)*
-	<fromClause> FROM prefixPath (, prefixPath)*
-	<whereClause?> WHERE queryFilter
-	<orderByTimeClause?> ORDER BY TIME [ASC | DESC]
-	<paginationClause?> [LIMIT | SLIMIT] INT [OFFSET | SOFFSET] INT
-	<groupByLevelClause?> GROUP BY LEVEL = INT
-	<groupByTimeClause?> GROUP BY ([startTime, endTime), slidingStep)
-	<fillClause?> FILL ([PREVIOUS, beforeRange | LINEAR, beforeRange, afterRange | constant])
-	<withoutNullClause?> WITHOUT NULL [ANY | ALL]
-	<alignClause?> [ALIGN BY DEVICE | DISABLE ALIGN]
+[TRACING] SELECT
+    [LAST] [TOP k] resultColumn [, resultColumn] ...
+    FROM prefixPath [, prefixPath] ...
+    WHERE whereCondition
+    [GROUP BY ([startTime, endTime), interval, slidingStep)]
+    [GROUP BY LEVEL = levelNum [, levelNum] ...]
+    [FILL ({PREVIOUS, beforeRange | LINEAR, beforeRange, afterRange | constant})]
+    [LIMIT rowLimit] [OFFSET rowOffset]
+    [SLIMIT seriesLimit] [SOFFSET seriesOffset]
+    [WITHOUT NULL {ANY | ALL} [resultColumn [, resultColumn] ...]]
+    [ORDER BY TIME {ASC | DESC}]
+    [{ALIGN BY DEVICE | DISABLE ALIGN}]
 ```
 
 The most commonly used clauses of `SELECT` statements are these:
 
-- Each `selectExpr` indicates a column that you want to retrieve, which may be a suffix of time series paths, an aggregate function and so on. There must be at least one `selectExpr`.  For more details for `selectExpr`, please refer to [Select Expression](./Select-Expression.md) .
+- Each `resultColumn` indicates a column that you want to retrieve, which may be a suffix of time series paths, an aggregate function and so on. There must be at least one `resultColumn`.  For more details for `resultColumn`, please refer to [Select Expression](./Select-Expression.md) .
 - `fromClause` contains the prefix of one or more time-series paths to query.
-- `whereClause` (Optional) specify the filter criterion named ` queryfilter`. `queryfilter` is a logical expression that returns the data points which calculation result is TRUE. If you do not specify `whereClause`, return all data points in the time series. For more details, please refer to [Query Filter](./Query-Filter.md).
+- `whereCondition` (Optional) specify the filter criterion named ` queryfilter`. `queryfilter` is a logical expression that returns the data points which calculation result is TRUE. If you do not specify `whereCondition`, return all data points in the time series. For more details, please refer to [Query Filter](./Query-Filter.md).
 - The query results are sorted in ascending order by timestamp. You can specify the results to be sorted in descending order by timestamp through `ORDER BY TIME DESC` clause.
 - When there is a large amount of query result data, you can use `LIMIT/SLIMIT` and `OFFSET/SOFFSET` to paginate the result set, see [Query Result Pagination](./Pagination.md) for details.
 - The query result set is aligned according to the timestamp by default, that is, the time series is used as the column, and the timestamp of each row of data is the same. For other result set alignments, see [Query Result Alignment](./Result-Format.md).

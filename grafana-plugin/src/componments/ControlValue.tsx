@@ -14,9 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { FunctionComponent } from 'react';
+import React, { FunctionComponent } from 'react';
 import { SegmentInput } from '@grafana/ui';
-import React from 'react';
 
 export interface Props {
   control: string;
@@ -31,7 +30,7 @@ export const ControlValue: FunctionComponent<Props> = ({ control, onChange }) =>
           className="min-width-8"
           placeholder="(optional)"
           value={control}
-          onChange={string => onChange(string.toString())}
+          onChange={(string) => onChange(string.toString())}
         />
       </>
     }

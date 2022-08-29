@@ -66,6 +66,8 @@ public interface IMeasurementSchema {
   /* test whether the schema contains Measurement with given measurementId */
   boolean containsSubMeasurement(String measurementId);
 
+  int serializedSize();
+
   int serializeTo(ByteBuffer buffer);
 
   int serializeTo(OutputStream outputStream) throws IOException;

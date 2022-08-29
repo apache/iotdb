@@ -35,11 +35,9 @@ import java.nio.ByteBuffer;
 
 public class ExtremeAggrResult extends AggregateResult {
 
-  // timestamp of current value
-  protected long timestamp = Long.MIN_VALUE;
-
   public ExtremeAggrResult(TSDataType dataType) {
     super(dataType, AggregationType.EXTREME);
+    timestamp = Long.MIN_VALUE;
     reset();
   }
 
@@ -90,6 +88,7 @@ public class ExtremeAggrResult extends AggregateResult {
     Comparable<Object> absMinVal = (Comparable<Object>) getAbsValue(minVal);
 
     Comparable<Object> extVal = absMaxVal.compareTo(absMinVal) >= 0 ? maxVal : minVal;
+    setTime(statistics.getStartTime());
     updateResult(extVal);
   }
 
@@ -110,6 +109,7 @@ public class ExtremeAggrResult extends AggregateResult {
       extVal = getExtremeValue(extVal, (Comparable<Object>) batchIterator.currentValue());
       batchIterator.next();
     }
+    setTime(minBound);
     updateResult(extVal);
   }
 
@@ -122,6 +122,7 @@ public class ExtremeAggrResult extends AggregateResult {
     for (int i = 0; i < length; i++) {
       extVal = getExtremeValue(extVal, (Comparable<Object>) values[i]);
     }
+    setTime(timestamps[0]);
     updateResult(extVal);
   }
 
@@ -131,6 +132,7 @@ public class ExtremeAggrResult extends AggregateResult {
     while (valueIterator.hasNext()) {
       extVal = getExtremeValue(extVal, (Comparable<Object>) valueIterator.next());
     }
+    setTime(timestamps[0]);
     updateResult(extVal);
   }
 

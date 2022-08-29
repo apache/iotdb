@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
+import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
 
 public abstract class SerializableListTest {
 

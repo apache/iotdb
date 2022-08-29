@@ -176,6 +176,9 @@ public class TsFileGeneratorForTest {
 
     Schema schema = generateTestSchema();
 
+    int oldGroupSizeInByte = TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
+    int oldMaxPointNumInPage =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
 
@@ -190,6 +193,9 @@ public class TsFileGeneratorForTest {
       }
     } catch (WriteProcessException e) {
       e.printStackTrace();
+    } finally {
+      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldMaxPointNumInPage);
+      TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldGroupSizeInByte);
     }
   }
 
@@ -281,6 +287,9 @@ public class TsFileGeneratorForTest {
       Assert.assertTrue(file.delete());
     }
     file.getParentFile().mkdirs();
+    int oldGroupSizeInByte = TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
+    int oldMaxPointNumInPage =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
     try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
@@ -309,6 +318,9 @@ public class TsFileGeneratorForTest {
 
     } catch (IOException | WriteProcessException e) {
       e.printStackTrace();
+    } finally {
+      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldMaxPointNumInPage);
+      TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldGroupSizeInByte);
     }
   }
 

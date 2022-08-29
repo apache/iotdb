@@ -104,20 +104,23 @@ var config = {
 				  {
 					text: 'Community',
 					items: [
+					  { text: 'About', link: '/Community/About'},
 					  { text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					  { text: 'People', link: '/Community/Community-Project Committers'},
 					  { text: 'Powered By', link: '/Community/Community-Powered By'},
 					  { text: 'Resources', link: '/Community/Materials'},
-						{ text: 'Feedback', link: '/Community/Feedback'},
-					]
+					  { text: 'Feedback', link: '/Community/Feedback'},
+				]
 				  },
 				  {
 					text: 'Development',
 					items: [
 					  { text: 'How to vote', link: '/Development/VoteRelease'},
 					  { text: 'How to Commit', link: '/Development/HowToCommit'},
+					  { text: 'Become a Contributor', link: '/Development/HowToJoin'},
 					  { text: 'Become a Committer', link: '/Development/Committer'},
 					  { text: 'ContributeGuide', link: '/Development/ContributeGuide'},
+					  { text: 'How to Contribute Code', link: '/Development/HowtoContributeCode'},
 					  { text: 'Changelist of TsFile', link: '/Development/format-changelist'},
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
 					]
@@ -699,6 +702,7 @@ var config = {
 							['API/Programming-Go-Native-API','Go Native API'],
 							['API/Programming-JDBC','JDBC (Not Recommend)'],
 							['API/Programming-MQTT','MQTT'],
+							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/Status-Codes','Status Codes']
 						]
@@ -775,7 +779,8 @@ var config = {
 					{
 						title: 'Ecosystem Integration',
 						children: [
-							['Ecosystem Integration/Grafana Connector','Grafana Connector'],
+							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector (Not Recommended)'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
@@ -784,7 +789,8 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS'],
+							['Ecosystem Integration/nifi iotdb bundle','nifi-iotdb-bundle'],
 						]
 					},
 					{
@@ -875,7 +881,9 @@ var config = {
 							['API/Programming-MQTT','MQTT'],
 							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
-							['API/Status-Codes','Status Codes']
+							['API/InfluxDB-Protocol','InfluxDB Protocol'],
+							['API/Status-Codes','Status Codes'],
+							['API/Interface-Comparison', 'Interface Comparison']
 						]
 					},
 					{
@@ -960,14 +968,15 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS'],
+							['Ecosystem Integration/nifi iotdb bundle','nifi-iotdb-bundle'],
 						]
 					},
 					{
-						title: 'Cluster Setup',
+						title: 'Cluster',
 						children: [
-							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+							['Cluster/Cluster-Concept','Cluster Concept'],
+							['Cluster/Cluster-Setup','Cluster Setup']
 						]
 					},
 					{
@@ -982,6 +991,7 @@ var config = {
 					        ['UDF-Library/Data-Quality', 'Data Quality'],
 					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
 					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
+					        ['UDF-Library/Series-Processing', 'Series Processing'],
                             ['UDF-Library/String-Processing', 'String Processing'],
                             ['UDF-Library/M4', 'M4']
 					    ]
@@ -989,7 +999,8 @@ var config = {
 					{
 						title: 'Reference',
 						children: [
-							['Reference/Config-Manual','Config Manual'],
+							['Reference/ConfigNode-Config-Manual','ConfigNode Config Manual'],
+							['Reference/DataNode-Config-Manual','DataNode Config Manual'],
 							['Reference/Keywords','Keywords'],
 							['Reference/Frequently-asked-questions','Frequently asked questions'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
@@ -1039,11 +1050,12 @@ var config = {
 				  {
 					text: '社区',
 					items: [
+						{ text: '关于社区', link: '/zh/Community/About'},
 						{ text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					    { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
 					    { text: '技术支持', link: '/zh/Community/Community-Powered By'},
-							{ text: '活动与报告', link: '/Community/Materials'},
-							{ text: '交流与反馈', link: '/zh/Community/Feedback'},
+						{ text: '活动与报告', link: '/Community/Materials'},
+						{ text: '交流与反馈', link: '/zh/Community/Feedback'},
 					]
 				  },
 				  {
@@ -1051,8 +1063,10 @@ var config = {
 					items: [
 					  { text: '如何投票', link: '/zh/Development/VoteRelease'},
 					  { text: '如何提交代码', link: '/zh/Development/HowToCommit'},
+					  { text: '成为Contributor', link: '/zh/Development/HowToJoin'},
 					  { text: '成为Committer', link: '/zh/Development/Committer'},
 					  { text: '项目开发指南', link: '/zh/Development/ContributeGuide'},
+					  { text: '技术贡献指南', link: '/zh/Development/HowtoContributeCode'},
 					  { text: 'TsFile的更改列表', link: '/zh/Development/format-changelist'},
 					  { text: 'RPC变更清单', link: '/zh/Development/rpc-changelist'},
 					]
@@ -1615,6 +1629,7 @@ var config = {
 							['API/Programming-Go-Native-API','Go 原生接口'],
 							['API/Programming-JDBC','JDBC (不推荐)'],
 							['API/Programming-MQTT','MQTT'],
+							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/Status-Codes','状态码']
 						]
@@ -1702,6 +1717,7 @@ var config = {
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
 							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+							['Ecosystem Integration/nifi iotdb bundle','nifi-iotdb-bundle'],
 						]
 					},
 					{
@@ -1792,8 +1808,9 @@ var config = {
 							['API/Programming-MQTT','MQTT'],
 							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
-							['API/InfluxDB-Protocol','InfluxDB 协议适配器（开发中)'],
-							['API/Status-Codes','状态码']
+							['API/InfluxDB-Protocol','InfluxDB 协议适配器'],
+							['API/Status-Codes','状态码'],
+							['API/Interface-Comparison', '原生接口对比']
 						]
 					},
 					{
@@ -1879,13 +1896,14 @@ var config = {
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
 							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+							['Ecosystem Integration/nifi iotdb bundle','nifi-iotdb-bundle'],
 						]
 					},
 					{
-						title: '集群搭建',
+						title: '分布式',
 						children: [
-							['Cluster/Cluster-Setup','集群搭建'],
-							['Cluster/Cluster-Setup-Example','集群搭建示例']
+							['Cluster/Cluster-Concept','基本概念'],
+							['Cluster/Cluster-Setup','分布式部署']
 						]
 					},
 					{
@@ -1900,6 +1918,7 @@ var config = {
                             ['UDF-Library/Data-Quality', '数据质量'],
                             ['UDF-Library/Data-Repairing', '数据修复'],
                             ['UDF-Library/Series-Discovery', '序列发现'],
+                            ['UDF-Library/Series-Processing', '序列处理'],
                             ['UDF-Library/String-Processing', '字符串处理'],
                             ['UDF-Library/M4', 'M4']
                         ]
@@ -1907,7 +1926,8 @@ var config = {
 					{
 						title: '参考',
 						children: [
-							['Reference/Config-Manual','配置参数'],
+							['Reference/ConfigNode-Config-Manual','ConfigNode配置参数'],
+							['Reference/DataNode-Config-Manual','DataNode配置参数'],
 							['Reference/Keywords','关键字'],
 							['Reference/Frequently-asked-questions','常见问题'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']

@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 
 import java.io.IOException;
 
@@ -35,6 +37,14 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   }
 
   @Override
+  public String getFullPath() {
+    if (fullPath == null) {
+      fullPath = concatFullPath().intern();
+    }
+    return fullPath;
+  }
+
+  @Override
   public long getDataTTL() {
     return dataTTL;
   }
@@ -45,8 +55,35 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   }
 
   @Override
+  public void setSchemaReplicationFactor(int schemaReplicationFactor) {}
+
+  @Override
+  public void setDataReplicationFactor(int dataReplicationFactor) {}
+
+  @Override
+  public void setTimePartitionInterval(long timePartitionInterval) {}
+
+  @Override
+  public void setStorageGroupSchema(TStorageGroupSchema schema) {}
+
+  @Override
+  public TStorageGroupSchema getStorageGroupSchema() {
+    return null;
+  }
+
+  @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    super.moveDataToNewMNode(newMNode);
+  }
+
+  @Override
   public boolean isStorageGroup() {
     return true;
+  }
+
+  @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return MNodeType.STORAGE_GROUP;
   }
 
   @Override
@@ -54,5 +91,10 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
     serializeChildren(logWriter);
 
     logWriter.serializeStorageGroupMNode(this);
+  }
+
+  @Override
+  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
+    return visitor.visitStorageGroupEntityMNode(this, context);
   }
 }

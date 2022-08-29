@@ -168,13 +168,13 @@ Segmentation aggregation is a typical query method for time series data. Data is
 
 Downsampling query refers to a query method that uses a lower frequency than the time frequency of data collection, and is a special case of segmented aggregation. For example, the frequency of data collection is one second. If you want to display the data in one minute, you need to use downsampling query.
 
-This section mainly introduces the related examples of downsampling aggregation query,  using the `GROUP BY` clause.  IoTDB supports partitioning result sets according to time interval and customized sliding step which should not be smaller than the time interval and defaults to equal the time interval if not set. And by default results are sorted by time in ascending order. 
+This section mainly introduces the related examples of downsampling aggregation query,  using the `GROUP BY` clause.  IoTDB supports partitioning result sets according to time interval and customized sliding step. And by default results are sorted by time in ascending order. 
 
 The GROUP BY statement provides users with three types of specified parameters:
 
 * Parameter 1: The display window on the time axis
 * Parameter 2: Time interval for dividing the time axis(should be positive)
-* Parameter 3: Time sliding step (optional and should not be smaller than the time interval and defaults to equal the time interval if not set)
+* Parameter 3: Time sliding step (optional and defaults to equal the time interval if not set)
 
 The actual meanings of the three types of parameters are shown in Figure below. 
 Among them, the parameter 3 is optional. 
@@ -256,6 +256,30 @@ Since there is data for each time period in the result range to be displayed, th
 |2017-11-07T00:00:00.000+08:00|                            180|                                   25.99|
 +-----------------------------+-------------------------------+----------------------------------------+
 Total line number = 7
+It costs 0.006s
+```
+
+The sliding step can be smaller than the interval, in which case there is overlapping time between the aggregation windows (similar to a sliding window).
+
+The SQL statement is:
+
+```sql
+select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-01 10:00:00), 4h, 2h);
+```
+
+The execution result of the SQL statement is shown below:
+
+```
++-----------------------------+-------------------------------+----------------------------------------+
+|                         Time|count(root.ln.wf01.wt01.status)|max_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-------------------------------+----------------------------------------+
+|2017-11-01T00:00:00.000+08:00|                            180|                                   25.98|
+|2017-11-01T02:00:00.000+08:00|                            180|                                   25.98|
+|2017-11-01T04:00:00.000+08:00|                            180|                                   25.96|
+|2017-11-01T06:00:00.000+08:00|                            180|                                   25.96|
+|2017-11-01T08:00:00.000+08:00|                            180|                                    26.0|
++-----------------------------+-------------------------------+----------------------------------------+
+Total line number = 5
 It costs 0.006s
 ```
 
@@ -428,4 +452,98 @@ Result:
 +-----------------------------+-------------------------+
 Total line number = 7
 It costs 0.004s
+```
+
+## Aggregate result filtering
+
+If you want to filter the results of aggregate queries, 
+you can use the `HAVING` clause after the `GROUP BY` clause.
+
+> NOTE：
+>
+> 1.The expression in HAVING clause must consist of aggregate values; the original sequence cannot appear alone.
+> The following usages are incorrect：
+> ```sql
+> select count(s1) from root.** group by ([1,3),1ms) having sum(s1) > s1
+> select count(s1) from root.** group by ([1,3),1ms) having s1 > 1
+> ```
+> 2.When filtering the `GROUP BY LEVEL` result, the PATH in `SELECT` and `HAVING` can only have one node.
+> The following usages are incorrect：
+> ```sql
+> select count(s1) from root.** group by ([1,3),1ms), level=1 having sum(d1.s1) > 1
+> select count(d1.s1) from root.** group by ([1,3),1ms), level=1 having sum(s1) > 1
+> ```
+
+Here are a few examples of using the 'HAVING' clause to filter aggregate results.
+
+Aggregation result 1：
+
+```
++-----------------------------+---------------------+---------------------+
+|                         Time|count(root.test.*.s1)|count(root.test.*.s2)|
++-----------------------------+---------------------+---------------------+
+|1970-01-01T08:00:00.001+08:00|                    4|                    4|
+|1970-01-01T08:00:00.003+08:00|                    1|                    0|
+|1970-01-01T08:00:00.005+08:00|                    2|                    4|
+|1970-01-01T08:00:00.007+08:00|                    3|                    2|
+|1970-01-01T08:00:00.009+08:00|                    4|                    4|
++-----------------------------+---------------------+---------------------+
+```
+
+Aggregation result filtering query 1：
+
+```sql
+ select count(s1) from root.** group by ([1,11),2ms), level=1 having count(s2) > 1
+```
+
+Filtering result 1：
+
+```
++-----------------------------+---------------------+
+|                         Time|count(root.test.*.s1)|
++-----------------------------+---------------------+
+|1970-01-01T08:00:00.001+08:00|                    4|
+|1970-01-01T08:00:00.005+08:00|                    2|
+|1970-01-01T08:00:00.009+08:00|                    4|
++-----------------------------+---------------------+
+```
+
+Aggregation result 2：
+
+```
++-----------------------------+-------------+---------+---------+
+|                         Time|       Device|count(s1)|count(s2)|
++-----------------------------+-------------+---------+---------+
+|1970-01-01T08:00:00.001+08:00|root.test.sg1|        1|        2|
+|1970-01-01T08:00:00.003+08:00|root.test.sg1|        1|        0|
+|1970-01-01T08:00:00.005+08:00|root.test.sg1|        1|        2|
+|1970-01-01T08:00:00.007+08:00|root.test.sg1|        2|        1|
+|1970-01-01T08:00:00.009+08:00|root.test.sg1|        2|        2|
+|1970-01-01T08:00:00.001+08:00|root.test.sg2|        2|        2|
+|1970-01-01T08:00:00.003+08:00|root.test.sg2|        0|        0|
+|1970-01-01T08:00:00.005+08:00|root.test.sg2|        1|        2|
+|1970-01-01T08:00:00.007+08:00|root.test.sg2|        1|        1|
+|1970-01-01T08:00:00.009+08:00|root.test.sg2|        2|        2|
++-----------------------------+-------------+---------+---------+
+```
+
+Aggregation result filtering query 2：
+
+```sql
+ select count(s1), count(s2) from root.** group by ([1,11),2ms) having count(s2) > 1 align by device
+```
+
+Filtering result 2：
+
+```
++-----------------------------+-------------+---------+---------+
+|                         Time|       Device|count(s1)|count(s2)|
++-----------------------------+-------------+---------+---------+
+|1970-01-01T08:00:00.001+08:00|root.test.sg1|        1|        2|
+|1970-01-01T08:00:00.005+08:00|root.test.sg1|        1|        2|
+|1970-01-01T08:00:00.009+08:00|root.test.sg1|        2|        2|
+|1970-01-01T08:00:00.001+08:00|root.test.sg2|        2|        2|
+|1970-01-01T08:00:00.005+08:00|root.test.sg2|        1|        2|
+|1970-01-01T08:00:00.009+08:00|root.test.sg2|        2|        2|
++-----------------------------+-------------+---------+---------+
 ```

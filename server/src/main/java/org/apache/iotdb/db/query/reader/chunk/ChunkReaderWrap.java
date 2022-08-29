@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
 import java.io.IOException;
 
@@ -74,7 +73,7 @@ public class ChunkReaderWrap {
   public IReaderByTimestamp getIReaderByTimestamp() throws IOException {
     if (type.equals(ChunkReaderType.DISK_CHUNK)) {
       Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
-      ChunkReaderByTimestamp chunkReader = new ChunkReaderByTimestamp(chunk);
+      ChunkReader chunkReader = new ChunkReader(chunk, null);
       return new DiskChunkReaderByTimestamp(chunkReader);
     } else {
       return new ByTimestampReaderAdapter(readOnlyMemChunk.getPointReader());

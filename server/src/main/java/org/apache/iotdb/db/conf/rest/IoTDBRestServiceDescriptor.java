@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.conf.rest;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +74,9 @@ public class IoTDBRestServiceDescriptor {
       conf.setEnableHttps(
           Boolean.parseBoolean(
               properties.getProperty("enable_https", Boolean.toString(conf.isEnableHttps()))));
+      conf.setClientAuth(
+          Boolean.parseBoolean(
+              properties.getProperty("client_auth", Boolean.toString(conf.isClientAuth()))));
       conf.setKeyStorePath(properties.getProperty("key_store_path", conf.getKeyStorePath()));
       conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePwd()));
       conf.setTrustStorePath(properties.getProperty("trust_store_path", conf.getTrustStorePath()));

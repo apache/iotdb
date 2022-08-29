@@ -31,7 +31,7 @@ show version
 +---------------+
 |        version|
 +---------------+
-|0.13.0-SNAPSHOT|
+|0.14.0-SNAPSHOT|
 +---------------+
 Total line number = 1
 It costs 0.417s
@@ -352,12 +352,6 @@ Eg: IoTDB > SHOW CHILD PATHS root.ln
 Eg: IoTDB > SHOW CHILD PATHS root.*.wf01
 Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
 Note: This statement can be used in IoTDB Client and JDBC.
-```
-
-* 为 schema 创建快照
-
-```
-CREATE SNAPSHOT FOR SCHEMA
 ```
 
 ## 数据管理语句
@@ -1044,7 +1038,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 NOW()
 Eg. INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false) 
 Eg. DELETE FROM root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature WHERE time < NOW()
-Eg. SELECT * FROM root WHERE time < NOW()
+Eg. SELECT * FROM root.** WHERE time < NOW()
 Eg. SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE time < NOW()
 ```
 

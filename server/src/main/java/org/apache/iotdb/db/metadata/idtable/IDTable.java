@@ -19,23 +19,26 @@
 
 package org.apache.iotdb.db.metadata.idtable;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface IDTable {
   /** logger */
@@ -66,6 +70,15 @@ public interface IDTable {
    * @throws MetadataException if the device is aligned, throw it
    */
   void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException;
+
+  /**
+   * Delete all timeseries matching the given paths
+   *
+   * @param fullPaths paths to be deleted
+   * @return deletion failed Timeseries
+   * @throws MetadataException
+   */
+  Pair<Integer, Set<String>> deleteTimeseries(List<PartialPath> fullPaths) throws MetadataException;
 
   /**
    * check inserting timeseries existence and fill their measurement mnode
@@ -128,14 +141,23 @@ public interface IDTable {
    * @param deviceName device name of the time series
    * @return device entry of the timeseries
    */
-  public DeviceEntry getDeviceEntry(String deviceName);
+  DeviceEntry getDeviceEntry(String deviceName);
+
+  /**
+   * get schema from device and measurements
+   *
+   * @param deviceName device name of the time series
+   * @param measurementName measurement name of the time series
+   * @return schema entry of the timeseries
+   */
+  IMeasurementSchema getSeriesSchema(String deviceName, String measurementName);
 
   /**
    * get all device entries
    *
    * @return all device entries
    */
-  public List<DeviceEntry> getAllDeviceEntry();
+  List<DeviceEntry> getAllDeviceEntry();
 
   /**
    * put schema entry to id table, currently used in recover
@@ -145,7 +167,7 @@ public interface IDTable {
    * @param schemaEntry schema entry to put
    * @param isAligned is the device aligned
    */
-  public void putSchemaEntry(
+  void putSchemaEntry(
       String devicePath, String measurement, SchemaEntry schemaEntry, boolean isAligned)
       throws MetadataException;
 
@@ -183,6 +205,15 @@ public interface IDTable {
       throw new IllegalArgumentException("can't translate path to device id, path is: " + fullPath);
     }
   }
+
+  /**
+   * get DiskSchemaEntries from disk file
+   *
+   * @param schemaEntries get the disk pointers from schemaEntries
+   * @return DiskSchemaEntries
+   */
+  @TestOnly
+  List<DiskSchemaEntry> getDiskSchemaEntries(List<SchemaEntry> schemaEntries);
 
   @TestOnly
   Map<IDeviceID, DeviceEntry>[] getIdTables();

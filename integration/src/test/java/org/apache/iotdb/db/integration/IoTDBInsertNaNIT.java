@@ -50,7 +50,7 @@ import static org.junit.Assert.fail;
 public class IoTDBInsertNaNIT {
 
   private static final String CREATE_TEMPLATE_SQL =
-      "CREATE TIMESERIES root.vehicle.%s.%s WITH DATATYPE=%s, ENCODING=%s, MAX_POINT_NUMBER=%d";
+      "CREATE TIMESERIES root.vehicle.%s.%s WITH DATATYPE=%s, ENCODING=%s, 'MAX_POINT_NUMBER'='%d'";
   private static final String INSERT_TEMPLATE_SQL =
       "insert into root.vehicle.%s(timestamp,%s) values(%d,%s)";
   private static final String INSERT_BRAND_NEW_TEMPLATE_SQL =

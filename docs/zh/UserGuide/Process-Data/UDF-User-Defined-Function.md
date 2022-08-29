@@ -41,15 +41,15 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 ``` xml
 <dependency>
   <groupId>org.apache.iotdb</groupId>
-  <artifactId>iotdb-server</artifactId>
-  <version>0.13.0-SNAPSHOT</version>
+  <artifactId>udf-api</artifactId>
+  <version>0.14.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 ```
 
 ## UDTF（User Defined Timeseries Generating Function）
 
-编写一个 UDTF 需要继承`org.apache.iotdb.db.query.udf.api.UDTF`类，并至少实现`beforeStart`方法和一种`transform`方法。
+编写一个 UDTF 需要继承`org.apache.iotdb.udf.api.UDTF`类，并至少实现`beforeStart`方法和一种`transform`方法。
 
 下表是所有可供用户实现的接口说明。
 
@@ -92,7 +92,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
 #### UDFParameters
 
-`UDFParameters`的作用是解析 SQL 语句中的 UDF 参数（SQL 中 UDF 函数名称后括号中的部分）。参数包括路径（及其序列类型）参数和字符串 key-value 对形式输入的属性参数。
+`UDFParameters`的作用是解析 SQL 语句中的 UDF 参数（SQL 中 UDF 函数名称后括号中的部分）。参数包括序列类型参数和字符串 key-value 对形式输入的属性参数。
 
 例子：
 
@@ -104,11 +104,6 @@ SELECT UDF(s1, s2, 'key1'='iotdb', 'key2'='123.45') FROM root.sg.d;
 
 ``` java
 void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception {
-  // parameters
-	for (PartialPath path : parameters.getPaths()) {
-    TSDataType dataType = parameters.getDataType(path);
-  	// do something
-  }
   String stringValue = parameters.getString("key1"); // iotdb
   Float floatValue = parameters.getFloat("key2"); // 123.45
   Double doubleValue = parameters.getDouble("key3"); // null
@@ -134,7 +129,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
   // configurations
   configurations
     .setAccessStrategy(new RowByRowAccessStrategy())
-    .setOutputDataType(TSDataType.INT32);
+    .setOutputDataType(Type.INT32);
 }
 ```
 
@@ -146,13 +141,18 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 下面是您可以设定的访问原始数据的策略：
 
-| 接口定义                          | 描述                                                         | 调用的`transform`方法                                        |
-| :-------------------------------- | :----------------------------------------------------------- | ------------------------------------------------------------ |
+| 接口定义                          | 描述                                                                                                                                                         | 调用的`transform`方法                                        |
+| :-------------------------------- |:-----------------------------------------------------------------------------------------------------------------------------------------------------------| ------------------------------------------------------------ |
 | `RowByRowAccessStrategy`          | 逐行地处理原始数据。框架会为每一行原始数据输入调用一次`transform`方法。当 UDF 只有一个输入序列时，一行输入就是该输入序列中的一个数据点。当 UDF 有多个输入序列时，一行输入序列对应的是这些输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(Row row, PointCollector collector) throws Exception` |
-| `SlidingTimeWindowAccessStrategy` | 以滑动时间窗口的方式处理原始数据。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
-| `SlidingSizeWindowAccessStrategy`    | 以固定行数的方式处理原始数据，即每个数据处理窗口都会包含固定行数的数据（最后一个窗口除外）。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
+| `SlidingTimeWindowAccessStrategy` | 以滑动时间窗口的方式处理原始数据。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。                                | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
+| `SlidingSizeWindowAccessStrategy`    | 以固定行数的方式处理原始数据，即每个数据处理窗口都会包含固定行数的数据（最后一个窗口除外）。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。   | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
+| `SessionTimeWindowAccessStrategy`    | 以会话窗口的方式处理原始数据，框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。                                  | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
+| `StateWindowAccessStrategy`    | 以状态窗口的方式处理原始数据，框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据。目前仅支持对一个物理量也就是一列数据进行开窗。                                                                       | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
 
 `RowByRowAccessStrategy`的构造不需要任何参数。
+
+如图是`SlidingTimeWindowAccessStrategy`的开窗示意图。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/timeWindow.png">
 
 `SlidingTimeWindowAccessStrategy`有多种构造方法，您可以向构造方法提供 3 类参数：
 
@@ -170,12 +170,31 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 注意，最后的一些时间窗口的实际时间间隔可能小于规定的时间间隔参数。另外，可能存在某些时间窗口内数据行数量为 0 的情况，这种情况框架也会为该窗口调用一次`transform`方法。
 
+如图是`SlidingSizeWindowAccessStrategy`的开窗示意图。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/countWindow.png">
+
 `SlidingSizeWindowAccessStrategy`有多种构造方法，您可以向构造方法提供 2 个参数：
 
 1. 窗口大小，即一个数据处理窗口包含的数据行数。注意，最后一些窗口的数据行数可能少于规定的数据行数。
 2. 滑动步长，即下一窗口第一个数据行与当前窗口第一个数据行间的数据行数（不要求大于等于窗口大小，但是必须为正数）
 
 滑动步长参数不是必须的。当您不提供滑动步长参数时，滑动步长会被设定为窗口大小。
+
+如图是`SessionTimeWindowAccessStrategy`的开窗示意图。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/sessionWindow.png">
+
+`SessionTimeWindowAccessStrategy`有多种构造方法，您可以向构造方法提供 2 类参数：
+1. 时间轴显示时间窗开始和结束时间。
+2. 会话窗口之间的最小时间间隔。
+   
+如图是`StateWindowAccessStrategy`的开窗示意图。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/UDF-User-Defined-Function/stateWindow.png">
+
+`StateWindowAccessStrategy`有四种构造方法。
+1. 针对数值型数据，可以提供时间轴显示时间窗开始和结束时间以及对于单个窗口内部允许变化的阈值delta。
+2. 针对文本数据以及布尔数据，可以提供时间轴显示时间窗开始和结束时间。对于这两种数据类型，单个窗口内的数据是相同的，不需要提供变化阈值。
+3. 针对数值型数据，可以只提供单个窗口内部允许变化的阈值delta，时间轴显示时间窗开始时间会被定义为整个查询结果集中最小的时间戳，时间轴显示时间窗结束时间会被定义为整个查询结果集中最大的时间戳。
+4. 针对文本数据以及布尔数据，可以不提供任何参数，开始与结束时间戳见3中解释。
 
 策略的构造方法详见 Javadoc。
 
@@ -190,7 +209,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 | `FLOAT`                             | `float`                                                      |
 | `DOUBLE`                            | `double`                                                     |
 | `BOOLEAN`                           | `boolean`                                                    |
-| `TEXT`                              | `java.lang.String` 和 `org.apache.iotdb.tsfile.utils.Binary` |
+| `TEXT`                              | `java.lang.String` 和 `org.apache.iotdb.udf.api.type.Binary` |
 
 UDTF 输出序列的类型是运行时决定的。您可以根据输入序列类型动态决定输出序列类型。
 
@@ -216,20 +235,20 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 下面是一个实现了`void transform(Row row, PointCollector collector) throws Exception`方法的完整 UDF 示例。它是一个加法器，接收两列时间序列输入，当这两个数据点都不为`null`时，输出这两个数据点的代数和。
 
 ``` java
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 public class Adder implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     configurations
-        .setOutputDataType(TSDataType.INT64)
+        .setOutputDataType(Type.INT64)
         .setAccessStrategy(new RowByRowAccessStrategy());
   }
 
@@ -253,20 +272,20 @@ public class Adder implements UDTF {
 
 ```java
 import java.io.IOException;
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.RowWindow;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.RowWindow;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 public class Counter implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     configurations
-        .setOutputDataType(TSDataType.INT32)
+        .setOutputDataType(Type.INT32)
         .setAccessStrategy(new SlidingTimeWindowAccessStrategy(
             parameters.getLong("time_interval"),
             parameters.getLong("sliding_step"),
@@ -295,13 +314,13 @@ public class Counter implements UDTF {
 
 ```java
 import java.io.IOException;
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 public class Max implements UDTF {
 
@@ -349,7 +368,7 @@ UDTF 的结束方法，您可以在此方法中进行一些资源释放等的操
 
 1. 实现一个完整的 UDF 类，假定这个类的全类名为`org.apache.iotdb.udf.UDTFExample`
 2. 将项目打成 JAR 包，如果您使用 Maven 管理项目，可以参考上述 Maven 项目示例的写法
-3. 将 JAR 包放置到目录 `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf` （也可以是`iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf`的子目录）下。
+3. 将 JAR 包放置到目录 `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf` （也可以是`iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf`的子目录）下。
    **注意，在部署集群的时候，需要保证每一个节点的 UDF JAR 包路径下都存在相应的 JAR 包。**
    
     > 您可以通过修改配置文件中的`udf_root_dir`来指定 UDF 加载 Jar 的根路径。
@@ -457,7 +476,7 @@ SHOW FUNCTIONS
 
 ## 配置项
 
-在 SQL 语句中使用自定义函数时，可能提示内存不足。这种情况下，您可以通过更改配置文件`iotdb-engine.properties`中的`udf_initial_byte_array_length_for_memory_control`，`udf_memory_budget_in_mb`和`udf_reader_transformer_collector_memory_proportion`并重启服务来解决此问题。
+在 SQL 语句中使用自定义函数时，可能提示内存不足。这种情况下，您可以通过更改配置文件`iotdb-datanode.properties`中的`udf_initial_byte_array_length_for_memory_control`，`udf_memory_budget_in_mb`和`udf_reader_transformer_collector_memory_proportion`并重启服务来解决此问题。
 
 ## 贡献 UDF
 
@@ -515,7 +534,7 @@ Q1: 如何修改已经注册的 UDF？
 A1: 假设 UDF 的名称为`example`，全类名为`org.apache.iotdb.udf.UDTFExample`，由`example.jar`引入
 
 1. 首先卸载已经注册的`example`函数，执行`DROP FUNCTION example`
-2. 删除 `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf` 目录下的`example.jar`
+2. 删除 `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf` 目录下的`example.jar`
 3. 修改`org.apache.iotdb.udf.UDTFExample`中的逻辑，重新打包，JAR 包的名字可以仍然为`example.jar`
-4. 将新的 JAR 包上传至 `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf` 目录下
+4. 将新的 JAR 包上传至 `iotdb-server-0.14.0-SNAPSHOT-all-bin/ext/udf` 目录下
 5. 装载新的 UDF，执行`CREATE FUNCTION example AS "org.apache.iotdb.udf.UDTFExample"`

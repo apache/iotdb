@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.commons.exception.ShutdownException;
 
 @FunctionalInterface
 public interface IoTDBMBean {
 
-  void stop() throws StorageEngineException;
+  void stop() throws ShutdownException;
 }

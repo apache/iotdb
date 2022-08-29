@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -63,6 +64,9 @@ public class AbstractCompactionTest {
       TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
   private static final int oldPagePointSize =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+
+  private static final int oldMaxCrossCompactionFileNum =
+      IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
 
   protected static File STORAGE_GROUP_DIR =
       new File(
@@ -108,7 +112,7 @@ public class AbstractCompactionTest {
     }
 
     EnvironmentUtils.envSetUp();
-    IoTDB.metaManager.init();
+    IoTDB.configManager.init();
   }
 
   /**
@@ -183,6 +187,12 @@ public class AbstractCompactionTest {
           isAlign,
           isSeq);
     }
+    // sleep a few milliseconds to avoid generating files with same timestamps
+    try {
+      Thread.sleep(10);
+    } catch (Exception e) {
+
+    }
   }
 
   private void addResource(
@@ -203,7 +213,7 @@ public class AbstractCompactionTest {
       }
     }
     resource.updatePlanIndexes(fileVersion);
-    resource.setClosed(true);
+    resource.setStatus(TsFileResourceStatus.CLOSED);
     // resource.setTimeIndexType((byte) 0);
     resource.serialize();
     if (isSeq) {
@@ -226,14 +236,14 @@ public class AbstractCompactionTest {
           dataTypes.add(TSDataType.INT64);
           encodings.add(TSEncoding.PLAIN);
           compressionTypes.add(CompressionType.UNCOMPRESSED);
-          IoTDB.metaManager.createTimeseries(
+          IoTDB.schemaProcessor.createTimeseries(
               new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
               TSDataType.INT64,
               TSEncoding.PLAIN,
               CompressionType.UNCOMPRESSED,
               Collections.emptyMap());
         }
-        IoTDB.metaManager.createAlignedTimeSeries(
+        IoTDB.schemaProcessor.createAlignedTimeSeries(
             new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + (i + 10000)),
             measurements,
             dataTypes,
@@ -241,7 +251,7 @@ public class AbstractCompactionTest {
             compressionTypes);
       } else {
         for (int j = 0; j < measurementNum; j++) {
-          IoTDB.metaManager.createTimeseries(
+          IoTDB.schemaProcessor.createTimeseries(
               new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
               TSDataType.INT64,
               TSEncoding.PLAIN,
@@ -257,8 +267,11 @@ public class AbstractCompactionTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionFileNum);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);
     EnvironmentUtils.cleanEnv();

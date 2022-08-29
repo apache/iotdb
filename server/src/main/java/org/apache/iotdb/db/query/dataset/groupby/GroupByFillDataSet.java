@@ -22,13 +22,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
+import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.query.executor.fill.ValueFill;
-import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -48,7 +48,7 @@ import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 
-public class GroupByFillDataSet extends GroupByEngineDataSet {
+public class GroupByFillDataSet extends GroupByTimeDataSet {
 
   private static final Logger logger = LoggerFactory.getLogger(GroupByFillDataSet.class);
 
@@ -153,11 +153,11 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
     RowRecord record;
     long curTimestamp;
     if (leftCRightO) {
-      curTimestamp = curStartTime;
-      record = new RowRecord(curStartTime);
+      curTimestamp = curAggrTimeRange.getMin();
+      record = new RowRecord(curAggrTimeRange.getMin());
     } else {
-      curTimestamp = curEndTime - 1;
-      record = new RowRecord(curEndTime - 1);
+      curTimestamp = curAggrTimeRange.getMax() - 1;
+      record = new RowRecord(curAggrTimeRange.getMax() - 1);
     }
 
     for (int i = 0; i < aggregations.size(); i++) {

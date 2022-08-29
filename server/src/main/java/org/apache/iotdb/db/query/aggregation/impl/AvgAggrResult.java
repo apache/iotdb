@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.aggregation.RemovableAggregateResult;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
@@ -36,7 +37,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class AvgAggrResult extends AggregateResult {
+public class AvgAggrResult extends AggregateResult implements RemovableAggregateResult {
 
   private TSDataType seriesDataType;
   private double avg = 0.0;
@@ -80,6 +81,7 @@ public class AvgAggrResult extends AggregateResult {
       sum = statistics.getSumDoubleValue();
     }
     avg = (avg * preCnt + sum) / cnt;
+    setTime(statistics.getStartTime());
   }
 
   @Override
@@ -97,6 +99,7 @@ public class AvgAggrResult extends AggregateResult {
       updateAvg(seriesDataType, batchIterator.currentValue());
       batchIterator.next();
     }
+    setTime(minBound);
   }
 
   @Override
@@ -108,6 +111,7 @@ public class AvgAggrResult extends AggregateResult {
         updateAvg(seriesDataType, values[i]);
       }
     }
+    setTime(timestamps[0]);
   }
 
   @Override
@@ -115,6 +119,7 @@ public class AvgAggrResult extends AggregateResult {
     while (valueIterator.hasNext()) {
       updateAvg(seriesDataType, valueIterator.next());
     }
+    setTime(timestamps[0]);
   }
 
   private void updateAvg(TSDataType type, Object sumVal) throws UnSupportedDataTypeException {
@@ -173,6 +178,21 @@ public class AvgAggrResult extends AggregateResult {
     }
     avg = (avg * cnt + anotherAvg.avg * anotherAvg.cnt) / (cnt + anotherAvg.cnt);
     cnt += anotherAvg.cnt;
+  }
+
+  @Override
+  public void remove(AggregateResult another) {
+    AvgAggrResult anotherAvg = (AvgAggrResult) another;
+    if (anotherAvg.cnt == 0) {
+      // avoid two empty results producing an NaN
+      return;
+    }
+    if (cnt == anotherAvg.cnt) {
+      reset();
+    } else {
+      avg = (avg * cnt - anotherAvg.avg * anotherAvg.cnt) / (cnt - anotherAvg.cnt);
+      cnt -= anotherAvg.cnt;
+    }
   }
 
   @Override

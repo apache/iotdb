@@ -74,10 +74,10 @@ for %%i in (%*) do (
 	)
 )
 
-IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
-    CALL "%IOTDB_CONF%\iotdb-env.bat" %1
+IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
+    CALL "%IOTDB_CONF%\datanode-env.bat" %1
     ) ELSE (
-    echo "can't find %IOTDB_CONF%\iotdb-env.bat"
+    echo "can't find %IOTDB_CONF%\datanode-env.bat"
     )
 
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.service.IoTDB
@@ -96,7 +96,7 @@ set JAVA_OPTS=-ea^
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
-set CLASSPATH="%IOTDB_HOME%\lib\*"
+if EXIST %IOTDB_HOME%\lib (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPATH="%IOTDB_HOME%\..\lib\*"
 set CLASSPATH=%CLASSPATH%;iotdb.IoTDB
 goto okClasspath
 

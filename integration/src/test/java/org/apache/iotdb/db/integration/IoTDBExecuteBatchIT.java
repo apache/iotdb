@@ -88,9 +88,11 @@ public class IoTDBExecuteBatchIT {
           "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600001,2.3)");
       statement.addBatch("delete timeseries root.ln.wf01.wt01.**");
       statement.addBatch(
-          "create timeseries root.turbine.d1.s1(s1) with datatype=boolean, encoding=plain , compression=snappy tags(tag1=v1, tag2=v2) attributes(attr1=v3, attr2=v4)");
+          "create timeseries root.turbine.d1.s1(s1) with datatype=boolean, encoding=plain , compression=snappy "
+              + "tags('tag1'='v1', 'tag2'='v2') attributes('attr1'='v3', 'attr2'='v4')");
       statement.addBatch(
-          "create timeseries root.turbine.d1.s2(s2) with datatype=float, encoding=rle, compression=uncompressed tags(tag1=v5, tag2=v6) attributes(attr1=v7, attr2=v8) ");
+          "create timeseries root.turbine.d1.s2(s2) with datatype=float, encoding=rle, compression=uncompressed "
+              + "tags('tag1'='v5', 'tag2'='v6') attributes('attr1'='v7', 'attr2'='v8') ");
       statement.addBatch(
           "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600002,3.4)");
       statement.addBatch(

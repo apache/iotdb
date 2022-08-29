@@ -30,9 +30,10 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByTimeDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByTimeEngineDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
@@ -177,7 +178,7 @@ public class QueryRouter implements IQueryRouter {
               + Arrays.toString(groupByTimePlan.getLevels()));
     }
 
-    GroupByEngineDataSet dataSet;
+    GroupByTimeEngineDataSet dataSet;
 
     if (groupByTimePlan.getExpression().getType() == ExpressionType.GLOBAL_TIME) {
       dataSet = getGroupByWithoutValueFilterDataSet(context, groupByTimePlan);
@@ -223,7 +224,7 @@ public class QueryRouter implements IQueryRouter {
 
     GroupByFillDataSet dataSet = new GroupByFillDataSet(context, groupByFillPlan);
 
-    GroupByEngineDataSet engineDataSet;
+    GroupByTimeDataSet engineDataSet;
     // reset queryStartTime and queryEndTime for init GroupByEngineDataSet
     groupByFillPlan.setQueryStartTime(groupByFillPlan.getStartTime());
     groupByFillPlan.setQueryEndTime(groupByFillPlan.getEndTime());

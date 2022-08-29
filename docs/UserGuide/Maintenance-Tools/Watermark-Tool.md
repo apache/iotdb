@@ -25,7 +25,7 @@ This tool has two functions: 1) watermark embedding of the IoTDB query result an
 
 #### Configuration
 
-Watermark is disabled by default in IoTDB. To enable watermark embedding, the first thing is to modify the following fields in the configuration file `iotdb-engine.properties`:
+Watermark is disabled by default in IoTDB. To enable watermark embedding, the first thing is to modify the following fields in the configuration file `iotdb-datanode.properties`:
 
 | Name                    | Example                                                | Explanation                                                  |
 | ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
@@ -43,7 +43,7 @@ Notes:
   - Both of them should be positive integers. 
   - `embed_row_cycle` controls the ratio of rows watermarked. The smaller the `embed_row_cycle`, the larger the ratio of rows watermarked. When `embed_row_cycle` equals 1, every row is watermarked. 
   - GroupBasedLSBMethod uses LSB embedding. `embed_lsb_num` controls the number of least significant bits available for watermark embedding. The biggger the `embed_lsb_num`, the larger the varying range of a data point.
-- `watermark_secret_key`, `watermark_bit_string`  and `watermark_method` should be kept secret from possible attackers. That is, it is your responsiblity to take care of `iotdb-engine.properties`.
+- `watermark_secret_key`, `watermark_bit_string`  and `watermark_method` should be kept secret from possible attackers. That is, it is your responsiblity to take care of `iotdb-datanode.properties`.
 
 #### Usage Example 
 

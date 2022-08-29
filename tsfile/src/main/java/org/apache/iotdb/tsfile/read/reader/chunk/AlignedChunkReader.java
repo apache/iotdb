@@ -56,6 +56,7 @@ public class AlignedChunkReader implements IChunkReader {
       Decoder.getDecoderByType(
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
           TSDataType.INT64);
+  private long currentTimestamp;
 
   protected Filter filter;
 
@@ -76,6 +77,31 @@ public class AlignedChunkReader implements IChunkReader {
     this.valueDeleteIntervalList = new ArrayList<>();
     this.timeChunkHeader = timeChunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
+    this.currentTimestamp = Long.MIN_VALUE;
+    List<Statistics> valueChunkStatisticsList = new ArrayList<>();
+    valueChunkList.forEach(
+        chunk -> {
+          valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
+          valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
+          valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
+          valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
+        });
+    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
+  }
+
+  /**
+   * Constructor of ChunkReader by timestamp. This constructor is used to accelerate queries by
+   * filtering out pages whose endTime is less than current timestamp.
+   */
+  public AlignedChunkReader(
+      Chunk timeChunk, List<Chunk> valueChunkList, Filter filter, long currentTimestamp)
+      throws IOException {
+    this.filter = filter;
+    this.timeChunkDataBuffer = timeChunk.getData();
+    this.valueDeleteIntervalList = new ArrayList<>();
+    this.timeChunkHeader = timeChunk.getHeader();
+    this.unCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
+    this.currentTimestamp = currentTimestamp;
     List<Statistics> valueChunkStatisticsList = new ArrayList<>();
     valueChunkList.forEach(
         chunk -> {
@@ -147,6 +173,10 @@ public class AlignedChunkReader implements IChunkReader {
 
   /** used for value page filter */
   protected boolean pageSatisfied(PageHeader pageHeader, List<TimeRange> valueDeleteInterval) {
+    if (currentTimestamp > pageHeader.getEndTime()) {
+      // used for chunk reader by timestamp
+      return false;
+    }
     if (valueDeleteInterval != null) {
       for (TimeRange range : valueDeleteInterval) {
         if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {

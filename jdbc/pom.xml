@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
+        <version>0.14.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-jdbc</artifactId>
@@ -34,6 +34,9 @@
         <jdbc.test.skip>false</jdbc.test.skip>
         <jdbc.it.skip>${jdbc.test.skip}</jdbc.it.skip>
         <jdbc.ut.skip>${jdbc.test.skip}</jdbc.ut.skip>
+        <osgi.cmpn.version>6.0.0</osgi.cmpn.version>
+        <pax-jdbc-common.version>1.4.5</pax-jdbc-common.version>
+        <org.osgi.core.version>6.0.0</org.osgi.core.version>
     </properties>
     <dependencies>
         <dependency>
@@ -44,17 +47,17 @@
         <dependency>
             <groupId>org.osgi</groupId>
             <artifactId>osgi.cmpn</artifactId>
-            <version>6.0.0</version>
+            <version>${osgi.cmpn.version}</version>
         </dependency>
         <dependency>
             <groupId>org.ops4j.pax.jdbc</groupId>
             <artifactId>pax-jdbc-common</artifactId>
-            <version>1.4.5</version>
+            <version>${pax-jdbc-common.version}</version>
         </dependency>
         <dependency>
             <groupId>org.osgi</groupId>
             <artifactId>org.osgi.core</artifactId>
-            <version>6.0.0</version>
+            <version>${org.osgi.core.version}</version>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>

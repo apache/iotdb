@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
@@ -58,6 +58,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private QueryContext context;
   private IExpression expression;
 
+  // contains only original measurement, alias not included
   private List<String> measurements;
   private List<PartialPath> paths;
   private List<String> aggregations;
@@ -91,7 +92,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     this.aggregations = alignByDevicePlan.getAggregations();
     this.queryRouter = queryRouter;
     this.context = context;
-    this.deviceIterator = alignByDevicePlan.getDeviceToPathIndex().keySet().iterator();
+    this.deviceIterator =
+        alignByDevicePlan.getDeviceToPathIndex().keySet().stream().sorted().iterator();
     this.deviceToPathIndex = alignByDevicePlan.getDeviceToPathIndex();
     this.deviceToFilterMap = alignByDevicePlan.getDeviceToFilterMap();
 
@@ -126,12 +128,15 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         // only redirect query for raw data query
         this.rawDataQueryPlan.setEnableRedirect(alignByDevicePlan.isEnableRedirect());
     }
-
     this.curDataSetInitialized = false;
   }
 
   public int getPathsNum() {
     return pathsNum;
+  }
+
+  public List<String> getMeasurements() {
+    return measurements;
   }
 
   @Override
@@ -206,8 +211,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
             break;
           case QUERY:
             // Group all the subSensors of one vector into one VectorPartialPath
-            executePaths = MetaUtils.groupAlignedPaths(executePaths);
             rawDataQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
+            rawDataQueryPlan.setDeduplicatedVectorPaths(MetaUtils.groupAlignedPaths(executePaths));
             rawDataQueryPlan.setExpression(expression);
             currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
             break;
@@ -221,8 +226,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       }
 
       if (currentDataSet.getEndPoint() != null) {
-        org.apache.iotdb.service.rpc.thrift.EndPoint endPoint =
-            new org.apache.iotdb.service.rpc.thrift.EndPoint();
+        org.apache.iotdb.common.rpc.thrift.TEndPoint endPoint =
+            new org.apache.iotdb.common.rpc.thrift.TEndPoint();
         endPoint.setIp(currentDataSet.getEndPoint().getIp());
         endPoint.setPort(currentDataSet.getEndPoint().getPort());
         throw new RedirectException(endPoint);

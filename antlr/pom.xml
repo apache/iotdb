@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
+        <version>0.14.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-antlr</artifactId>
@@ -47,6 +47,7 @@
                         <configuration>
                             <listener>false</listener>
                             <visitor>true</visitor>
+                            <libDirectory>src/main/antlr4/org/apache/iotdb/db/qp/sql</libDirectory>
                         </configuration>
                         <goals>
                             <goal>antlr4</goal>

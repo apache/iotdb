@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -90,6 +92,29 @@ public class RawDataQueryPlan extends QueryPlan {
 
     // group all the aligned sensors of one device into one AlignedPath
     groupVectorPaths(physicalGenerator);
+  }
+
+  @Override
+  public void convertSpecialClauseValues(SpecialClauseComponent specialClauseComponent)
+      throws QueryProcessException {
+    if (specialClauseComponent != null) {
+      if (!specialClauseComponent.getWithoutNullColumns().isEmpty()) {
+        withoutNullColumnsIndex = new HashSet<>();
+      }
+      for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
+        if (getPathToIndex().containsKey(expression.getExpressionString())) {
+          withoutNullColumnsIndex.add(getPathToIndex().get(expression.getExpressionString()));
+        } else {
+          throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
+        }
+      }
+      setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
+      setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
+      setRowLimit(specialClauseComponent.getRowLimit());
+      setRowOffset(specialClauseComponent.getRowOffset());
+      setAscending(specialClauseComponent.isAscending());
+      setAlignByTime(specialClauseComponent.isAlignByTime());
+    }
   }
 
   public IExpression getExpression() {

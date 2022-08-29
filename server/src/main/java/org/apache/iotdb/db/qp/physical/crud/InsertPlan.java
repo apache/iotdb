@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -45,7 +45,7 @@ public abstract class InsertPlan extends PhysicalPlan {
   protected String[] measurements;
   // get from client
   protected TSDataType[] dataTypes;
-  // get from MManager
+  // get from SchemaProcessor
   protected IMeasurementMNode[] measurementMNodes;
 
   /**
@@ -85,6 +85,15 @@ public abstract class InsertPlan extends PhysicalPlan {
     this.measurements = measurements;
   }
 
+  public boolean hasValidMeasurements() {
+    for (Object o : measurements) {
+      if (o != null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public TSDataType[] getDataTypes() {
     return dataTypes;
   }
@@ -122,6 +131,8 @@ public abstract class InsertPlan extends PhysicalPlan {
   }
 
   public abstract long getMinTime();
+
+  public abstract Object getFirstValueOfIndex(int index);
 
   /**
    * This method is overrided in InsertRowPlan and InsertTabletPlan. After marking failed

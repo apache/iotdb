@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.utils.CommonUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +58,7 @@ public class RandomOnDiskUsableSpaceStrategy extends DirectoryStrategy {
     List<Long> spaceList = new ArrayList<>();
     for (int i = 0; i < folders.size(); i++) {
       String folder = folders.get(i);
-      spaceList.add(CommonUtils.getUsableSpace(folder));
+      spaceList.add(JVMCommonUtils.getUsableSpace(folder));
     }
     return spaceList;
   }

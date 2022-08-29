@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.exception;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class LoadFileException extends IoTDBException {

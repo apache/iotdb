@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -40,8 +42,12 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class QueryPlan extends PhysicalPlan {
+
+  public static final String WITHOUT_NULL_FILTER_ERROR_MESSAGE =
+      "The without null columns don't match the columns queried. If there is an alias, please use the alias.";
 
   protected List<ResultColumn> resultColumns = null;
   protected List<MeasurementPath> paths = null;
@@ -53,7 +59,10 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private boolean ascending = true;
 
-  private Map<String, Integer> pathToIndex = new HashMap<>();
+  private final Map<String, Integer> pathToIndex = new HashMap<>();
+
+  protected Set<Integer>
+      withoutNullColumnsIndex; // index set that withoutNullColumns for output data columns
 
   private boolean enableRedirect = false;
   private boolean enableTracing = false;
@@ -69,7 +78,14 @@ public abstract class QueryPlan extends PhysicalPlan {
     setQuery(true);
   }
 
+  public Set<Integer> getWithoutNullColumnsIndex() {
+    return withoutNullColumnsIndex;
+  }
+
   public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
+
+  public abstract void convertSpecialClauseValues(SpecialClauseComponent specialClauseComponent)
+      throws QueryProcessException;
 
   /** Construct the header of result set. Return TSExecuteStatementResp. */
   public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)
@@ -104,7 +120,8 @@ public abstract class QueryPlan extends PhysicalPlan {
     for (int i = 0; i < resultColumns.size(); ++i) {
       if (isJdbcQuery) {
         // Separate sgName from the name of resultColumn to reduce the network IO
-        String sgName = IoTDB.metaManager.getBelongedStorageGroup(getPaths().get(i)).getFullPath();
+        String sgName =
+            IoTDB.schemaProcessor.getBelongedStorageGroup(getPaths().get(i)).getFullPath();
         respSgColumns.add(sgName);
         if (resultColumns.get(i).getAlias() == null) {
           respColumns.add(

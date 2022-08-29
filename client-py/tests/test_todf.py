@@ -65,10 +65,11 @@ def create_ts(session):
 
 
 def test_simple_query():
-    with IoTDBContainer() as db:
+    with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
+        session.execute_non_query_statement("set storage group to root.wt1")
 
         create_ts(session)
 
@@ -92,7 +93,7 @@ def test_simple_query():
 
         df_input.insert(0, "Time", timestamps)
 
-        session_data_set = session.execute_query_statement("SELECT * FROM root.*")
+        session_data_set = session.execute_query_statement("SELECT ** FROM root")
         df_output = session_data_set.todf()
         df_output = df_output[df_input.columns.tolist()]
 
@@ -101,10 +102,11 @@ def test_simple_query():
 
 
 def test_with_null_query():
-    with IoTDBContainer() as db:
+    with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
+        session.execute_non_query_statement("set storage group to root.wt1")
 
         create_ts(session)
 
@@ -121,7 +123,7 @@ def test_with_null_query():
         )
         data[ts_path_lst[5]] = np.random.choice(
             ["text1", "text2"], size=data_nums
-        ).astype(np.object)
+        ).astype(object)
 
         data_empty = {}
         for ts_path in ts_path_lst:
@@ -133,7 +135,7 @@ def test_with_null_query():
                     tmp_array = pd.Series(tmp_array).astype("Int64")
             elif data[ts_path].dtype == np.float32 or data[ts_path].dtype == np.double:
                 tmp_array = np.full(data_nums, np.nan, data[ts_path].dtype)
-            elif data[ts_path].dtype == np.bool:
+            elif data[ts_path].dtype == bool:
                 tmp_array = np.full(data_nums, np.nan, np.float32)
                 tmp_array = pd.Series(tmp_array).astype("boolean")
             else:
@@ -171,7 +173,7 @@ def test_with_null_query():
 
         df_input.insert(0, "Time", timestamps)
 
-        session_data_set = session.execute_query_statement("SELECT * FROM root.*")
+        session_data_set = session.execute_query_statement("SELECT ** FROM root")
         df_output = session_data_set.todf()
         df_output = df_output[df_input.columns.tolist()]
 
@@ -180,10 +182,11 @@ def test_with_null_query():
 
 
 def test_multi_fetch():
-    with IoTDBContainer() as db:
+    with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
+        session.execute_non_query_statement("set storage group to root.wt1")
 
         create_ts(session)
 
@@ -207,7 +210,7 @@ def test_multi_fetch():
 
         df_input.insert(0, "Time", timestamps)
 
-        session_data_set = session.execute_query_statement("SELECT * FROM root.*")
+        session_data_set = session.execute_query_statement("SELECT ** FROM root")
         session_data_set.set_fetch_size(100)
         df_output = session_data_set.todf()
         df_output = df_output[df_input.columns.tolist()]

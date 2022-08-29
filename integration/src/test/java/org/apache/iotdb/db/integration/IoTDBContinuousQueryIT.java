@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
@@ -232,6 +232,48 @@ public class IoTDBContinuousQueryIT {
           "root.ln.wf02.wt01.ws02.temperature",
           "root.ln.wf02.wt02.ws01.temperature",
           "root.ln.wf02.wt02.ws02.temperature",
+          "root.ln.wf01.temperature_cnt",
+          "root.ln.wf02.temperature_cnt"
+        });
+
+    statement.execute("DROP CONTINUOUS QUERY cq1");
+
+    stopDataGenerator();
+  }
+
+  public void testContinuousQueryResultSeriesWithLevels1() throws Exception {
+    createTimeSeries(
+        new String[] {
+          "root.ln.wf01.wt01.ws01.`(temperature)`",
+          "root.ln.wf01.wt01.ws02.`(temperature)`",
+          "root.ln.wf01.wt02.ws01.`(temperature)`",
+          "root.ln.wf01.wt02.ws02.`(temperature)`",
+          "root.ln.wf02.wt01.ws01.`(temperature)`",
+          "root.ln.wf02.wt01.ws02.`(temperature)`",
+          "root.ln.wf02.wt02.ws01.`(temperature)`",
+          "root.ln.wf02.wt02.ws02.`(temperature)`"
+        });
+    startDataGenerator();
+
+    Thread.sleep(500);
+
+    statement.execute(
+        "CREATE CONTINUOUS QUERY cq1 "
+            + "BEGIN SELECT count(`(temperature)`) INTO temperature_cnt FROM root.ln.*.*.* "
+            + "GROUP BY time(1s), level=1,2 END");
+
+    Thread.sleep(5500);
+
+    checkShowTimeSeriesResult(
+        new String[] {
+          "root.ln.wf01.wt01.ws01.`(temperature)`",
+          "root.ln.wf01.wt01.ws02.`(temperature)`",
+          "root.ln.wf01.wt02.ws01.`(temperature)`",
+          "root.ln.wf01.wt02.ws02.`(temperature)`",
+          "root.ln.wf02.wt01.ws01.`(temperature)`",
+          "root.ln.wf02.wt01.ws02.`(temperature)`",
+          "root.ln.wf02.wt02.ws01.`(temperature)`",
+          "root.ln.wf02.wt02.ws02.`(temperature)`",
           "root.ln.wf01.temperature_cnt",
           "root.ln.wf02.temperature_cnt"
         });

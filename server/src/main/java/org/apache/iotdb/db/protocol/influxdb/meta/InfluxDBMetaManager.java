@@ -18,14 +18,13 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.meta;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxDBConstant;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -33,6 +32,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -46,22 +46,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class InfluxDBMetaManager {
+public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
 
   protected final Planner planner;
 
   private final ServiceProvider serviceProvider;
-
-  private static final String SELECT_TAG_INFO_SQL =
-      "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
-
-  public static InfluxDBMetaManager getInstance() {
-    return InfluxDBMetaManagerHolder.INSTANCE;
-  }
-
-  // TODO avoid OOM
-  private static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
-      new HashMap<>();
 
   private InfluxDBMetaManager() {
     serviceProvider = IoTDB.serviceProvider;
@@ -69,6 +58,11 @@ public class InfluxDBMetaManager {
     planner = serviceProvider.getPlanner();
   }
 
+  public static InfluxDBMetaManager getInstance() {
+    return InfluxDBMetaManagerHolder.INSTANCE;
+  }
+
+  @Override
   public void recover() {
     long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
     try {
@@ -120,80 +114,24 @@ public class InfluxDBMetaManager {
     }
   }
 
-  public synchronized Map<String, Map<String, Integer>> createDatabase(String database) {
-    Map<String, Map<String, Integer>> measurement2TagOrders =
-        database2Measurement2TagOrders.get(database);
-    if (measurement2TagOrders != null) {
-      return measurement2TagOrders;
-    }
-
+  @Override
+  public void setStorageGroup(String database, long sessionID) {
     try {
       SetStorageGroupPlan setStorageGroupPlan =
           new SetStorageGroupPlan(new PartialPath("root." + database));
       serviceProvider.executeNonQuery(setStorageGroupPlan);
     } catch (QueryProcessException e) {
       // errCode = 300 means sg has already set
-      if (e.getErrorCode() != 300) {
+      if (e.getErrorCode() != TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
         throw new InfluxDBException(e.getMessage());
       }
     } catch (IllegalPathException | StorageGroupNotSetException | StorageEngineException e) {
       throw new InfluxDBException(e.getMessage());
     }
-
-    measurement2TagOrders = new HashMap<>();
-    database2Measurement2TagOrders.put(database, measurement2TagOrders);
-    return measurement2TagOrders;
   }
 
-  public synchronized Map<String, Integer> getTagOrdersWithAutoCreatingSchema(
-      String database, String measurement) {
-    return createDatabase(database).computeIfAbsent(measurement, m -> new HashMap<>());
-  }
-
-  public synchronized String generatePath(
-      String database, String measurement, Map<String, String> tags) {
-    Map<String, Integer> tagKeyToLayerOrders =
-        getTagOrdersWithAutoCreatingSchema(database, measurement);
-    // to support rollback if fails to persisting new tag info
-    Map<String, Integer> newTagKeyToLayerOrders = new HashMap<>(tagKeyToLayerOrders);
-    // record the layer orders of tag keys that the path contains
-    Map<Integer, String> layerOrderToTagKeysInPath = new HashMap<>();
-
-    int tagNumber = tagKeyToLayerOrders.size();
-
-    TagInfoRecords newTagInfoRecords = null;
-    for (Map.Entry<String, String> tag : tags.entrySet()) {
-      final String tagKey = tag.getKey();
-      if (!newTagKeyToLayerOrders.containsKey(tagKey)) {
-        if (newTagInfoRecords == null) {
-          newTagInfoRecords = new TagInfoRecords();
-        }
-        ++tagNumber;
-        newTagInfoRecords.add(database, measurement, tagKey, tagNumber);
-        newTagKeyToLayerOrders.put(tagKey, tagNumber);
-      }
-
-      layerOrderToTagKeysInPath.put(newTagKeyToLayerOrders.get(tagKey), tagKey);
-    }
-
-    if (newTagInfoRecords != null) {
-      updateTagInfoRecords(newTagInfoRecords);
-      database2Measurement2TagOrders.get(database).put(measurement, newTagKeyToLayerOrders);
-    }
-
-    StringBuilder path =
-        new StringBuilder("root.").append(database).append(".").append(measurement);
-    for (int i = 1; i <= tagNumber; ++i) {
-      path.append(".")
-          .append(
-              layerOrderToTagKeysInPath.containsKey(i)
-                  ? tags.get(layerOrderToTagKeysInPath.get(i))
-                  : InfluxDBConstant.PLACE_HOLDER);
-    }
-    return path.toString();
-  }
-
-  private void updateTagInfoRecords(TagInfoRecords tagInfoRecords) {
+  @Override
+  public void updateTagInfoRecords(TagInfoRecords tagInfoRecords, long sessionID) {
     List<InsertRowPlan> plans = tagInfoRecords.convertToInsertRowPlans();
     for (InsertRowPlan plan : plans) {
       try {

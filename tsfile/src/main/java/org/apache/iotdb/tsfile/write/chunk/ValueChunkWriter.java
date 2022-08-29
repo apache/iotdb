@@ -125,28 +125,28 @@ public class ValueChunkWriter {
     pageWriter.write(time, value, isNull);
   }
 
-  public void write(long[] timestamps, int[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
+  public void write(long[] timestamps, int[] values, boolean[] isNull, int batchSize, int pos) {
+    pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
-  public void write(long[] timestamps, long[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
+  public void write(long[] timestamps, long[] values, boolean[] isNull, int batchSize, int pos) {
+    pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
-  public void write(long[] timestamps, boolean[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
+  public void write(long[] timestamps, boolean[] values, boolean[] isNull, int batchSize, int pos) {
+    pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
-  public void write(long[] timestamps, float[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
+  public void write(long[] timestamps, float[] values, boolean[] isNull, int batchSize, int pos) {
+    pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
-  public void write(long[] timestamps, double[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
+  public void write(long[] timestamps, double[] values, boolean[] isNull, int batchSize, int pos) {
+    pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
-  public void write(long[] timestamps, Binary[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
+  public void write(long[] timestamps, Binary[] values, boolean[] isNull, int batchSize, int pos) {
+    pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
   public void writeEmptyPageToPageBuffer() {
@@ -207,11 +207,17 @@ public class ValueChunkWriter {
 
   public long getCurrentChunkSize() {
     /**
-     * It may happen if pageBuffer stores empty bits and subsequent write operations are all out of
-     * order, then count of statistics in this chunk will be 0 and this chunk will not be flushed.
+     * It may happen if subsequent write operations are all out of order, then count of statistics
+     * in this chunk will be 0 and this chunk will not be flushed.
      */
-    if (pageBuffer.size() == 0 || statistics.getCount() == 0) {
+    if (pageBuffer.size() == 0) {
       return 0;
+    }
+
+    // Empty chunk, it may happen if pageBuffer stores empty bits and only chunk header will be
+    // flushed.
+    if (statistics.getCount() == 0) {
+      return ChunkHeader.getSerializedSize(measurementId, 0);
     }
 
     // return the serialized size of the chunk header + all pages

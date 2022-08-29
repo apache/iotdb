@@ -72,7 +72,7 @@ public class FilePathUtils {
     return pathSegments[pathSegments.length - 4];
   }
 
-  public static String getVirtualStorageGroupId(String tsFileAbsolutePath) {
+  public static String getDataRegionId(String tsFileAbsolutePath) {
     String[] pathSegments = splitTsFilePath(tsFileAbsolutePath);
     return pathSegments[pathSegments.length - 3];
   }
