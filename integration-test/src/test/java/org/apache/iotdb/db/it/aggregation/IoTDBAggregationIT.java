@@ -990,9 +990,24 @@ public class IoTDBAggregationIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select max_value(temperature),count(status) from root.ln.wf01.wt01 group by ([0, 600), 100ms)")) {
+      // create timeseries
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+
+      for (int i = 0; i < 10; i++) {
+        statement.addBatch(
+            "insert into root.sg1.d1(timestamp, s1, s2) values(" + i + "," + 1 + "," + 1 + ")");
+      }
+
+      statement.execute("insert into root.sg1.d1(timestamp, s3) values(103, 1)");
+      statement.execute("insert into root.sg1.d1(timestamp, s3) values(104, 1)");
+      statement.execute("insert into root.sg1.d1(timestamp, s3) values(105, 1)");
+      statement.executeBatch();
+      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         int columnCount = metaData.getColumnCount();
         while (resultSet.next()) {
