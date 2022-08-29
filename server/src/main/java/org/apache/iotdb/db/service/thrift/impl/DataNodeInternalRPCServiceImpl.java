@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -384,6 +385,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req) throws TException {
     THeartbeatResp resp = new THeartbeatResp();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
+    resp.setStatus(IoTDBDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
 
     // Judging leader if necessary
     if (req.isNeedJudgeLeader()) {
@@ -508,6 +510,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       IoTDBDescriptor.getInstance().loadHotModifiedProps();
     } catch (QueryProcessException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus setSystemStatus(String status) throws TException {
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.parse(status));
+    } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);

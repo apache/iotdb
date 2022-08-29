@@ -39,6 +39,7 @@ import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -771,5 +772,11 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
         return window;
       }
     };
+  }
+
+  @Override
+  protected LayerRowWindowReader constructRowStateWindowReader(
+      StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
+    throw new UnsupportedOperationException();
   }
 }

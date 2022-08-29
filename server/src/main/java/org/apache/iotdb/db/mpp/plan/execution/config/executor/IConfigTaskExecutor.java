@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
@@ -34,6 +35,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -60,13 +64,15 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
-  SettableFuture<ConfigTaskResult> merge(boolean isCluster);
+  SettableFuture<ConfigTaskResult> merge(boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean isCluster);
+  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> clearCache(boolean isCluster);
+  SettableFuture<ConfigTaskResult> clearCache(boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> loadConfiguration(boolean isCluster);
+  SettableFuture<ConfigTaskResult> loadConfiguration(boolean onCluster);
+
+  SettableFuture<ConfigTaskResult> setSystemStatus(boolean onCluster, NodeStatus status);
 
   SettableFuture<ConfigTaskResult> showCluster();
 
@@ -93,17 +99,17 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement);
 
-  SettableFuture<ConfigTaskResult> createPipe();
+  SettableFuture<ConfigTaskResult> createPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
 
-  SettableFuture<ConfigTaskResult> createPipeSink();
+  SettableFuture<ConfigTaskResult> dropPipeSink(DropPipeSinkStatement dropPipeSinkStatement);
+
+  SettableFuture<ConfigTaskResult> showPipeSink(ShowPipeSinkStatement showPipeSinkStatement);
 
   SettableFuture<ConfigTaskResult> dropPipe();
 
-  SettableFuture<ConfigTaskResult> dropPipeSink();
+  SettableFuture<ConfigTaskResult> createPipe();
 
   SettableFuture<ConfigTaskResult> showPipe();
-
-  SettableFuture<ConfigTaskResult> showPipeSink();
 
   SettableFuture<ConfigTaskResult> startPipe();
 

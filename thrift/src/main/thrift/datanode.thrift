@@ -184,9 +184,10 @@ struct THeartbeatReq {
 
 struct THeartbeatResp {
   1: required i64 heartbeatTimestamp
-  2: optional map<common.TConsensusGroupId, bool> judgedLeaders
-  3: optional i16 cpu
-  4: optional i16 memory
+  2: required string status
+  3: optional map<common.TConsensusGroupId, bool> judgedLeaders
+  4: optional i16 cpu
+  5: optional i16 memory
 }
 
 struct TRegionRouteReq {
@@ -352,6 +353,8 @@ service IDataNodeRPCService {
   common.TSStatus clearCache()
 
   common.TSStatus loadConfiguration()
+
+  common.TSStatus setSystemStatus(string status)
 
   /**
    * Config node will Set the TTL for the storage group on a list of data nodes.

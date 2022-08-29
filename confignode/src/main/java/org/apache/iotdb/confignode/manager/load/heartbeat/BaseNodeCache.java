@@ -48,11 +48,11 @@ public abstract class BaseNodeCache {
   public abstract void cacheHeartbeatSample(NodeHeartbeatSample newHeartbeatSample);
 
   /**
-   * Invoking periodically to update Nodes' load statistics
+   * Invoking periodically to update Nodes' current running status
    *
-   * @return true if some load statistic changed
+   * @return True if the specific Node's status changed, false otherwise
    */
-  public abstract boolean updateLoadStatistic();
+  public abstract boolean updateNodeStatus();
 
   /**
    * TODO: The loadScore of each Node will be changed to Double

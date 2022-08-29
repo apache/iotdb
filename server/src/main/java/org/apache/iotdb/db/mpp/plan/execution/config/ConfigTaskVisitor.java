@@ -43,8 +43,10 @@ import org.apache.iotdb.db.mpp.plan.execution.config.sys.ClearCacheTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.LoadConfigurationTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.MergeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.SetSystemStatusTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.CreatePipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.CreatePipeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.DropPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.DropPipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
@@ -77,8 +79,10 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
@@ -177,6 +181,12 @@ public class ConfigTaskVisitor
   }
 
   @Override
+  public IConfigTask visitSetSystemStatus(
+      SetSystemStatusStatement setSystemStatusStatement, TaskContext context) {
+    return new SetSystemStatusTask(setSystemStatusStatement);
+  }
+
+  @Override
   public IConfigTask visitDropFunction(
       DropFunctionStatement dropFunctionStatement, TaskContext context) {
     return new DropFunctionTask(dropFunctionStatement);
@@ -255,6 +265,12 @@ public class ConfigTaskVisitor
   public IConfigTask visitCreatePipeSink(
       CreatePipeSinkStatement createPipeSinkStatement, TaskContext context) {
     return new CreatePipeSinkTask(createPipeSinkStatement);
+  }
+
+  @Override
+  public IConfigTask visitDropPipeSink(
+      DropPipeSinkStatement dropPipeSinkStatement, TaskContext context) {
+    return new DropPipeSinkTask(dropPipeSinkStatement);
   }
 
   @Override

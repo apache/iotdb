@@ -16,17 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf;
+package org.apache.iotdb.db.utils;
 
-/** Status of current system */
-public enum SystemStatus {
-  /** System can read and write normally */
-  NORMAL,
-  /** Only query statements are permitted */
-  READ_ONLY,
-  /**
-   * Unrecoverable errors occur, system will be read-only or exit according to the param
-   * allow_read_only_when_errors_occur
-   */
-  ERROR,
+public enum HandleSystemErrorStrategy {
+  /** just set system status to error and then do nothing else */
+  NONE,
+  /** set system status to read-only and the system only accepts query operations */
+  CHANGE_TO_READ_ONLY,
+  /** the system will be shutdown */
+  SHUTDOWN,
 }

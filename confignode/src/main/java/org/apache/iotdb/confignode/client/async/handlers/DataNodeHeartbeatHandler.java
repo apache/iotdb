@@ -53,7 +53,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
 
     // Update NodeCache
     dataNodeHeartbeatCache.cacheHeartbeatSample(
-        new NodeHeartbeatSample(heartbeatResp.getHeartbeatTimestamp(), receiveTime));
+        new NodeHeartbeatSample(heartbeatResp, receiveTime));
 
     // Update RegionCache
     if (heartbeatResp.isSetJudgedLeaders()) {

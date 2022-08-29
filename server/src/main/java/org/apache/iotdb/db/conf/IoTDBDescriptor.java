@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.utils.HandleSystemErrorStrategy;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -589,11 +590,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "upgrade_thread_num", Integer.toString(conf.getUpgradeThreadNum()))));
-    conf.setCrossCompactionMemoryBudget(
-        Long.parseLong(
-            properties.getProperty(
-                "cross_compaction_memory_budget",
-                Long.toString(conf.getCrossCompactionMemoryBudget()))));
     conf.setCrossCompactionFileSelectionTimeBudget(
         Long.parseLong(
             properties.getProperty(
@@ -721,11 +717,10 @@ public class IoTDBDescriptor {
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
 
-    conf.setAllowReadOnlyWhenErrorsOccur(
-        Boolean.parseBoolean(
+    conf.setHandleSystemErrorStrategy(
+        HandleSystemErrorStrategy.valueOf(
             properties.getProperty(
-                "allow_read_only_when_errors_occur",
-                String.valueOf(conf.isAllowReadOnlyWhenErrorsOccur()))));
+                "handle_system_error", String.valueOf(conf.getHandleSystemErrorStrategy()))));
 
     // the num of memtables in each storage group
     conf.setConcurrentWritingTimePartition(
@@ -1527,7 +1522,7 @@ public class IoTDBDescriptor {
       }
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
       if (proportionSum != 0) {
-        conf.setAllocateMemoryForWrite(
+        conf.setAllocateMemoryForStorageEngine(
             maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setAllocateMemoryForRead(
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
@@ -1537,10 +1532,11 @@ public class IoTDBDescriptor {
     }
 
     logger.info("allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
-    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
+    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
     initSchemaMemoryAllocate(properties);
+    initStorageEngineAllocate(properties);
 
     conf.setMaxQueryDeduplicatedPathNum(
         Integer.parseInt(
@@ -1603,6 +1599,19 @@ public class IoTDBDescriptor {
           conf.getAllocateMemoryForDataExchange() + partForDataExchange);
       conf.setAllocateMemoryForOperators(conf.getAllocateMemoryForOperators() + partForOperators);
     }
+  }
+
+  private void initStorageEngineAllocate(Properties properties) {
+    String allocationRatio = properties.getProperty("storage_engine_memory_proportion", "8:2");
+    String[] proportions = allocationRatio.split(":");
+    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
+    int proportionForCompaction = Integer.parseInt(proportions[1].trim());
+    conf.setWriteProportion(
+        ((double) (proportionForMemTable)
+            / (double) (proportionForCompaction + proportionForMemTable)));
+    conf.setCompactionProportion(
+        ((double) (proportionForCompaction)
+            / (double) (proportionForCompaction + proportionForMemTable)));
   }
 
   private void initSchemaMemoryAllocate(Properties properties) {

@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.wal.exception.WALNodeClosedException;
@@ -150,7 +150,9 @@ public class WALBuffer extends AbstractWALBuffer {
       try {
         serialize();
       } finally {
-        serializeThread.submit(new SerializeTask());
+        if (!isClosed) {
+          serializeThread.submit(new SerializeTask());
+        }
       }
     }
 
@@ -420,7 +422,7 @@ public class WALBuffer extends AbstractWALBuffer {
       } catch (Throwable e) {
         logger.error(
             "Fail to sync wal node-{}'s buffer, change system mode to error.", identifier, e);
-        config.setSystemStatus(SystemStatus.ERROR);
+        config.setNodeStatus(NodeStatus.Error);
       } finally {
         switchSyncingBufferToIdle();
       }
@@ -441,7 +443,7 @@ public class WALBuffer extends AbstractWALBuffer {
           if (info.rollWALFileWriterListener != null) {
             info.rollWALFileWriterListener.fail(e);
           }
-          config.setSystemStatus(SystemStatus.ERROR);
+          config.setNodeStatus(NodeStatus.Error);
         }
       } else if (forceFlag) { // force os cache to the storage device, avoid force twice by judging
         // after rolling file
@@ -456,7 +458,7 @@ public class WALBuffer extends AbstractWALBuffer {
           for (WALFlushListener fsyncListener : info.fsyncListeners) {
             fsyncListener.fail(e);
           }
-          config.setSystemStatus(SystemStatus.ERROR);
+          config.setNodeStatus(NodeStatus.Error);
         }
       }
 
