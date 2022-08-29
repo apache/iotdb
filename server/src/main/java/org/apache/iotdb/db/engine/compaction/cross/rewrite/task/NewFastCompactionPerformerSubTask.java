@@ -1,12 +1,17 @@
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.reader.PriorityCompactionReader;
 import org.apache.iotdb.db.engine.compaction.writer.NewFastCrossCompactionWriter;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -26,6 +31,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.Callable;
 import java.util.stream.Stream;
@@ -61,6 +67,13 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
 
   private final PriorityCompactionReader priorityCompactionReader =
       new PriorityCompactionReader(this::removePage);
+
+  // sorted source files by the start time of device
+  private final List<TsFileResource> sortedSourceFiles = new ArrayList<>();
+
+  FastCompactionPerformer fastCompactionPerformer;
+
+  private String deviceId;
 
   public NewFastCompactionPerformerSubTask(
       List<String> allMeasurements,
@@ -107,6 +120,17 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       compactionWriter.endMeasurement(subTaskId);
     }
     return null;
+  }
+
+  private void compactFiles() throws PageException, IOException, WriteProcessException {
+    while (!sortedSourceFiles.isEmpty()) {
+      // =sortedSourceFiles.remove(0);
+      List<TsFileResource> overlappedFiles = findOverlapFiles(sortedSourceFiles.get(0));
+
+      // read chunk metadatas and put them into chunk metadata queue
+
+      compactChunks();
+    }
   }
 
   /**
@@ -170,6 +194,30 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     } else {
       // chunk.endTime > file.endTime, then deserialize chunk
       compactWithOverlapChunks(Collections.singletonList(chunkMetadataElement));
+    }
+  }
+
+  private void deserializeFileIntoQueue(List<TsFileResource> resources)
+      throws IOException, IllegalPathException {
+    for (TsFileResource resource : resources) {
+      for (Map.Entry<String, List<ChunkMetadata>> entry :
+          fastCompactionPerformer
+              .getReaderFromCache(resource)
+              .readChunkMetadataInDevice(deviceId)
+              .entrySet()) {
+        String sensor = entry.getKey();
+        List<ChunkMetadata> chunkMetadataList = entry.getValue();
+        if (!chunkMetadataList.isEmpty()) {
+          // set file path
+          chunkMetadataList.forEach(x -> x.setFilePath(resource.getTsFilePath()));
+
+          // modify chunk metadatas
+          QueryUtils.modifyChunkMetaData(
+              chunkMetadataList,
+              fastCompactionPerformer.getModifications(
+                  resource, new PartialPath(deviceId, sensor)));
+        }
+      }
     }
   }
 
@@ -359,6 +407,19 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     return elements;
   }
 
+  private List<TsFileResource> findOverlapFiles(TsFileResource resource) {
+    List<TsFileResource> overlappedFiles = new ArrayList<>();
+    long endTime = resource.getEndTime(deviceId);
+    for (TsFileResource sourceFile : sortedSourceFiles) {
+      if (sourceFile.getStartTime(deviceId) <= endTime) {
+        overlappedFiles.add(sourceFile);
+      } else {
+        break;
+      }
+    }
+    return overlappedFiles;
+  }
+
   private boolean isChunkOverlap(ChunkMetadataElement chunkMetadataElement) {
     return false;
   }
@@ -444,4 +505,5 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       }
     }
   }
+
 }

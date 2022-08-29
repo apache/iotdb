@@ -21,7 +21,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,11 +79,11 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
   public void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
     sortedSourceFiles = CompactionUtils.sortSourceFiles(seqFiles, unseqFiles);
+    // Todo: use one tsfileSequenceReader，instead of opening a new reader in device iterator.
     try (NewFastCrossCompactionWriter compactionWriter =
-        new NewFastCrossCompactionWriter(targetFiles, seqFiles)) {
-      MultiTsFileDeviceIterator deviceIterator =
-          new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
-
+            new NewFastCrossCompactionWriter(targetFiles, seqFiles);
+        MultiTsFileDeviceIterator deviceIterator =
+            new MultiTsFileDeviceIterator(seqFiles, unseqFiles)) {
       // iterate each device
       // Todo: to decrease memory, get device in batch on one node instead of getting all at one
       // time.
@@ -216,6 +215,8 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
     List<TsFileResource> allResources = new ArrayList<>(seqFiles);
     allResources.addAll(unseqFiles);
     for (TsFileResource resource : allResources) {
+      Map<String, List<ChunkMetadata>> mm =
+          getReaderFromCache(resource).readChunkMetadataInDevice(device);
       for (Map.Entry<String, List<ChunkMetadata>> entry :
           getReaderFromCache(resource).readChunkMetadataInDevice(device).entrySet()) {
         String sensor = entry.getKey();
@@ -235,6 +236,7 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
           }
         }
       }
+
     }
     return chunkMetadataMap;
   }
