@@ -36,12 +36,14 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
@@ -100,8 +102,15 @@ public class StandaloneScheduler implements IScheduler {
             if (groupId instanceof DataRegionId) {
               DataRegion region =
                   StorageEngineV2.getInstance().getDataRegion((DataRegionId) groupId);
-              FragmentInstanceManager.getInstance()
-                  .execDataQueryFragmentInstance(fragmentInstance, region);
+              FragmentInstanceInfo info =
+                  FragmentInstanceManager.getInstance()
+                      .execDataQueryFragmentInstance(fragmentInstance, region);
+              // query dispatch failed
+              if (info.getState().isFailed()) {
+                stateMachine.transitionToFailed(
+                    RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, info.getMessage()));
+                return;
+              }
             } else {
               ISchemaRegion region =
                   SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) groupId);
@@ -111,12 +120,14 @@ public class StandaloneScheduler implements IScheduler {
           }
         } catch (Exception e) {
           stateMachine.transitionToFailed(e);
+          LOGGER.info("transit to FAILED");
+          return;
         }
         // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
         stateMachine.transitionToRunning();
-        LOGGER.info("{} transit to RUNNING", getLogHeader());
+        LOGGER.info("transit to RUNNING");
         this.stateTracker.start();
-        LOGGER.info("{} state tracker starts", getLogHeader());
+        LOGGER.info("state tracker starts");
         break;
       case WRITE:
         // reject non-query operations when system is read-only
