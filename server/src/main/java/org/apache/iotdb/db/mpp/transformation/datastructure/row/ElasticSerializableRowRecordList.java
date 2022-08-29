@@ -287,9 +287,9 @@ public class ElasticSerializableRowRecordList {
     }
 
     SerializableRowRecordList get(int targetIndex) throws IOException {
-      if (!removeFirstOccurrence(targetIndex)) {
-        if (cacheCapacity <= cacheSize) {
-          int lastIndex = removeLast();
+      if (!containsKey(targetIndex)) {
+        if (cacheCapacity <= size()) {
+          int lastIndex = getLast();
           if (lastIndex < evictionUpperBound / internalRowRecordListCapacity) {
             rowRecordLists.set(lastIndex, null);
             bitMaps.set(lastIndex, null);
@@ -299,7 +299,7 @@ public class ElasticSerializableRowRecordList {
         }
         rowRecordLists.get(targetIndex).deserialize();
       }
-      addFirst(targetIndex);
+      putKey(targetIndex);
       return rowRecordLists.get(targetIndex);
     }
   }

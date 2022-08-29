@@ -208,6 +208,17 @@ public class FilterAndProjectOperator implements ProcessOperator {
   }
 
   @Override
+  public void close() throws Exception {
+    for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
+      columnTransformer.close();
+    }
+    if (filterOutputTransformer != null) {
+      filterOutputTransformer.close();
+    }
+    inputOperator.close();
+  }
+
+  @Override
   public long calculateMaxPeekMemory() {
     long maxPeekMemory = inputOperator.calculateMaxReturnSize();
     int maxCachedColumn = 0;

@@ -53,7 +53,6 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_CHILDNODES = "child nodes";
   public static final String COLUMN_VERSION = "version";
   public static final String COLUMN_PATHS = "paths";
-  public static final String COLUMN_PIPESINK_TYPE = "type";
 
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
@@ -88,6 +87,13 @@ public class ColumnHeaderConstant {
 
   // column names for show schema template statement
   public static final String COLUMN_TEMPLATE_NAME = "template name";
+
+  // column names for show pipe sink type
+  public static final String COLUMN_PIPESINK_TYPE = "type";
+
+  // column names for show pipe sink
+  public static final String COLUMN_PIPESINK_NAME = "name";
+  public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -221,4 +227,10 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showPipeSinkTypeColumnHeaders =
       ImmutableList.of(new ColumnHeader(COLUMN_PIPESINK_TYPE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showPipeSinkColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_PIPESINK_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPESINK_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPESINK_ATTRIBUTES, TSDataType.TEXT));
 }

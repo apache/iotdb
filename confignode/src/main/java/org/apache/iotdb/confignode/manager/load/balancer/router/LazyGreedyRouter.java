@@ -40,26 +40,26 @@ import java.util.stream.Collectors;
  */
 public class LazyGreedyRouter implements IRouter {
 
-  /** Set<DataNodeId> which stores the unknown and removing datanodes */
-  private final Set<Integer> unknownDataNodes;
+  /** Set<DataNodeId> which stores the DataNodes that unable to provide service */
+  private final Set<Integer> disabledDataNodes;
 
   private final Map<TConsensusGroupId, TRegionReplicaSet> routeMap;
 
   public LazyGreedyRouter() {
-    this.unknownDataNodes = Collections.synchronizedSet(new HashSet<>());
+    this.disabledDataNodes = Collections.synchronizedSet(new HashSet<>());
     this.routeMap = new ConcurrentHashMap<>();
   }
 
   /**
-   * Update unknownDataNodes cache in LazyRandomRouter
+   * Update the disabledDataNodes cache in LazyRandomRouter
    *
-   * @param unknownDataNodes DataNodes that have unknown status
+   * @param disabledDataNodes DataNodes whose status aren't Running
    */
-  public void updateUnknownDataNodes(List<TDataNodeConfiguration> unknownDataNodes) {
-    synchronized (this.unknownDataNodes) {
-      this.unknownDataNodes.clear();
-      this.unknownDataNodes.addAll(
-          unknownDataNodes.stream()
+  public void updateDisabledDataNodes(List<TDataNodeConfiguration> disabledDataNodes) {
+    synchronized (this.disabledDataNodes) {
+      this.disabledDataNodes.clear();
+      this.disabledDataNodes.addAll(
+          disabledDataNodes.stream()
               .map(dataNodeConfiguration -> dataNodeConfiguration.getLocation().getDataNodeId())
               .collect(Collectors.toList()));
     }
@@ -68,7 +68,7 @@ public class LazyGreedyRouter implements IRouter {
   @Override
   public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
       List<TRegionReplicaSet> replicaSets) {
-    synchronized (unknownDataNodes) {
+    synchronized (disabledDataNodes) {
       // Map<DataNodeId, leaderCount> Count the number of leaders in each DataNodes
       Map<Integer, Integer> leaderCounter = new HashMap<>();
       Map<TConsensusGroupId, TRegionReplicaSet> result = new ConcurrentHashMap<>();
@@ -120,7 +120,7 @@ public class LazyGreedyRouter implements IRouter {
 
     // The RouteEntry needs update when the status of DataNode corresponding to the first priority
     // is unknown
-    return unknownDataNodes.contains(
+    return disabledDataNodes.contains(
         routeMap.get(groupId).getDataNodeLocations().get(0).getDataNodeId());
   }
 
@@ -133,7 +133,7 @@ public class LazyGreedyRouter implements IRouter {
     int locateLeaderCount = Integer.MAX_VALUE;
     for (int i = 0; i < newRouteEntry.getDataNodeLocationsSize(); i++) {
       int currentDataNodeId = newRouteEntry.getDataNodeLocations().get(i).getDataNodeId();
-      if (!unknownDataNodes.contains(currentDataNodeId)
+      if (!disabledDataNodes.contains(currentDataNodeId)
           && leaderCounter.getOrDefault(currentDataNodeId, 0) < locateLeaderCount) {
         leaderIndex = i;
         locateLeaderCount = leaderCounter.getOrDefault(currentDataNodeId, 0);

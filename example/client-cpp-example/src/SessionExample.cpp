@@ -104,12 +104,12 @@ void createSchemaTemplate() {
         temp.addToTemplate(mNodeS2);
 
         session->createSchemaTemplate(temp);
-        session->setSchemaTemplate("template1", "root.sg2");
+        session->setSchemaTemplate("template1", "root.sg3.d1");
     }
 }
 
 void ActivateTemplate() {
-    session->executeNonQueryStatement("insert into root.sg2.d1(timestamp,s1, s2) values(200, 1, 1);");
+    session->executeNonQueryStatement("insert into root.sg3.d1(timestamp,s1, s2) values(200, 1, 1);");
 }
 
 void showTimeseries() {
@@ -155,7 +155,7 @@ void insertTablet() {
     Tablet tablet("root.sg1.d1", schemas, 100);
 
     for (int64_t time = 0; time < 30; time++) {
-        int row = tablet.rowSize++;
+        size_t row = tablet.rowSize++;
         tablet.timestamps[row] = time;
 
         bool randVal1 = rand() % 2;
@@ -230,8 +230,8 @@ void insertTablets() {
     tabletMap["root.sg1.d3"] = &tablet2;
 
     for (int64_t time = 0; time < 30; time++) {
-        int row1 = tablet1.rowSize++;
-        int row2 = tablet2.rowSize++;
+        size_t row1 = tablet1.rowSize++;
+        size_t row2 = tablet2.rowSize++;
         tablet1.timestamps[row1] = time;
         tablet2.timestamps[row2] = time;
 
@@ -288,14 +288,14 @@ void insertTabletWithNullValues() {
     Tablet tablet("root.sg1.d4", schemas, 30);
 
     for (int64_t time = 0; time < 30; time++) {
-        int row = tablet.rowSize++;
+        size_t row = tablet.rowSize++;
         tablet.timestamps[row] = time;
         for (int i = 0; i < 3; i++) {
             int64_t randVal = rand();
             tablet.addValue(i, row, &randVal);
             // mark null value
-            if (row % 3 == i) {
-                tablet.bitMaps[i]->mark(row);
+            if (row % 3 == (unsigned int) i) {
+                tablet.bitMaps[i].mark(row);
             }
         }
         if (tablet.rowSize == tablet.maxRowNumber) {
@@ -375,6 +375,8 @@ void queryLast() {
 }
 
 int main() {
+    LOG_LEVEL = LEVEL_DEBUG;
+
     session = new Session("127.0.0.1", 6667, "root", "root");
     session->open(false);
 
@@ -382,7 +384,7 @@ int main() {
     try {
         session->setStorageGroup("root.sg1");
     }
-    catch (IoTDBConnectionException &e) {
+    catch (IoTDBException &e) {
         string errorMessage(e.what());
         if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
             cout << errorMessage << endl;
@@ -394,7 +396,7 @@ int main() {
     try {
         session->setStorageGroup("root.sg2");
     }
-    catch (IoTDBConnectionException &e) {
+    catch (IoTDBException &e) {
         string errorMessage(e.what());
         if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
             cout << errorMessage << endl;

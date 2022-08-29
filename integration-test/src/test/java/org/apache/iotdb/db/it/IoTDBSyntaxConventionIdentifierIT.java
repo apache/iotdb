@@ -407,6 +407,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       statement.execute("CREATE TIMESERIES root.sg1.d1.`1` INT32");
       statement.execute("CREATE TIMESERIES root.sg1.d1.`a.b` INT32");
       statement.execute("CREATE TIMESERIES root.sg1.d1.`a.``b` INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.text TEXT");
       int pointCnt = 3;
       for (int i = 0; i < pointCnt; i++) {
         statement.execute(
@@ -483,6 +484,34 @@ public class IoTDBSyntaxConventionIdentifierIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
+      }
+
+      cnt = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT text FROM root.sg1.d1 where text = '\'")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+
+      cnt = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT text FROM root.sg1.d1 where text = '\' or text = 'asdf'")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+
+      cnt = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT text FROM root.sg1.d1 where text = '\\'")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
       }
     } catch (SQLException e) {
       e.printStackTrace();
