@@ -377,7 +377,7 @@ public class TsFileProcessor {
                 : 0;
       }
       // TEXT data mem size
-      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
+      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT && insertRowPlan.getValues()[i] != null) {
         textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     }
@@ -432,7 +432,7 @@ public class TsFileProcessor {
                 * insertRowPlan.getDataTypes()[i].getDataTypeSize();
       }
       // TEXT data mem size
-      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
+      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT && insertRowPlan.getValues()[i] != null) {
         textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     }
