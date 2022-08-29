@@ -69,7 +69,7 @@ IoTDB> CLEAR CACHE ON CLUSTER
 
 ## SET SYSTEM TO READONLY / RUNNING / ERROR
 
-手动设置系统为正常运行、只读、错误状态。在集群模式下，我们提供了设置本节点状态、设置整个集群状态的命令。
+手动设置系统为正常运行、只读、错误状态。在集群模式下，我们提供了设置本节点状态、设置整个集群状态的命令，默认对整个集群生效。
 
 ```sql
 IoTDB> SET SYSTEM TO RUNNING
