@@ -93,7 +93,7 @@ public class AuthorityChecker {
     return false;
   }
 
-  private static int translateToPermissionId(Operator.OperatorType type) {
+  public static int translateToPermissionId(Operator.OperatorType type) {
     switch (type) {
       case GRANT_ROLE_PRIVILEGE:
         return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();

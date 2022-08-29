@@ -99,7 +99,7 @@ INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
-Msg: 602: No permissions for this operation INSERT
+Msg: 602: No permissions for this operation, please add privilege READ_TIMESERIES.
 ```
 
 Now, we grant the two users write privileges to the corresponding storage groups, and try to write data again.
@@ -140,7 +140,7 @@ Msg: The statement is executed successfully.
 REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
 Msg: The statement is executed successfully.
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
-Msg: 602: No permissions for this operation INSERT
+Msg: 602: No permissions for this operation, please add privilege READ_TIMESERIES.
 ```
 
 ### SQL Statements

@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.cluster.integration;
 
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -115,9 +118,17 @@ public class SingleNodeTest extends BaseSingleNodeTest {
       } catch (Exception e) {
         assertEquals(
             System.lineSeparator()
-                + "No permissions for this operation CREATE_TIMESERIES for SQL: \"create timeseries root.sg1.d1.s1 with datatype=int32\""
+                + "No permissions for this operation, please add privilege "
+                + PrivilegeType.values()[
+                    AuthorityChecker.translateToPermissionId(
+                        Operator.OperatorType.CREATE_TIMESERIES)]
+                + " for SQL: \"create timeseries root.sg1.d1.s1 with datatype=int32\""
                 + System.lineSeparator()
-                + "No permissions for this operation CREATE_TIMESERIES for SQL: \"create timeseries root.sg2.d1.s1 with datatype=int32\""
+                + "No permissions for this operation, please add privilege "
+                + PrivilegeType.values()[
+                    AuthorityChecker.translateToPermissionId(
+                        Operator.OperatorType.CREATE_TIMESERIES)]
+                + " for SQL: \"create timeseries root.sg2.d1.s1 with datatype=int32\""
                 + System.lineSeparator(),
             e.getMessage());
       }
