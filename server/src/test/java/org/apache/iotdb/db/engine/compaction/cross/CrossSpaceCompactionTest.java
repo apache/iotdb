@@ -26,8 +26,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceCompactionFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
@@ -423,11 +422,12 @@ public class CrossSpaceCompactionTest {
           CrossSpaceCompactionResource mergeResource =
               new CrossSpaceCompactionResource(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
-          ICrossSpaceCompactionFileSelector fileSelector =
-              new RewriteCompactionFileSelector(mergeResource, Long.MAX_VALUE);
-          List[] mergeFiles = fileSelector.select();
+          RewriteCrossSpaceCompactionSelector selector =
+              new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+              selector.selectCrossSpaceTask(seqTsFileResourceList, unseqTsFileResourceList);
           index++;
-          if (mergeFiles.length > 0) {
+          if (selected.size() > 0) {
             AbstractCompactionTask compactionTask =
                 new CrossSpaceCompactionTask(
                     0,
@@ -442,6 +442,7 @@ public class CrossSpaceCompactionTest {
                         .getCrossCompactionPerformer()
                         .createInstance(),
                     new AtomicInteger(0),
+                    0,
                     0);
             compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
@@ -729,10 +730,11 @@ public class CrossSpaceCompactionTest {
           CrossSpaceCompactionResource mergeResource =
               new CrossSpaceCompactionResource(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
-          ICrossSpaceCompactionFileSelector fileSelector =
-              new RewriteCompactionFileSelector(mergeResource, Long.MAX_VALUE);
-          List[] mergeFiles = fileSelector.select();
-          if (mergeFiles.length > 0) {
+          RewriteCrossSpaceCompactionSelector selector =
+              new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+              selector.selectCrossSpaceTask(seqTsFileResourceList, unseqTsFileResourceList);
+          if (selected.size() > 0) {
             AbstractCompactionTask compactionTask =
                 new CrossSpaceCompactionTask(
                     0,
@@ -747,6 +749,7 @@ public class CrossSpaceCompactionTest {
                         .getCrossCompactionPerformer()
                         .createInstance(),
                     new AtomicInteger(0),
+                    0,
                     0);
             compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
@@ -1033,10 +1036,11 @@ public class CrossSpaceCompactionTest {
           CrossSpaceCompactionResource mergeResource =
               new CrossSpaceCompactionResource(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
-          ICrossSpaceCompactionFileSelector fileSelector =
-              new RewriteCompactionFileSelector(mergeResource, Long.MAX_VALUE);
-          List[] mergeFiles = fileSelector.select();
-          if (mergeFiles.length > 0) {
+          RewriteCrossSpaceCompactionSelector selector =
+              new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+              selector.selectCrossSpaceTask(seqTsFileResourceList, unseqTsFileResourceList);
+          if (selected.size() > 0) {
             AbstractCompactionTask compactionTask =
                 new CrossSpaceCompactionTask(
                     0,
@@ -1051,6 +1055,7 @@ public class CrossSpaceCompactionTest {
                         .getCrossCompactionPerformer()
                         .createInstance(),
                     new AtomicInteger(0),
+                    0,
                     0);
             compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();

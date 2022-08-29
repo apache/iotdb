@@ -759,6 +759,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus setSystemStatus(String systemStatus) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.setSystemStatus(systemStatus))
+        : status;
+  }
+
+  @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() {
     TSStatus status = confirmLeader();
     TRegionRouteMapResp resp = new TRegionRouteMapResp(status);

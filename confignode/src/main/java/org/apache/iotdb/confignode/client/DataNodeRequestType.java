@@ -44,4 +44,5 @@ public enum DataNodeRequestType {
   MERGE,
   FULL_MERGE,
   LOAD_CONFIGURATION,
+  SET_SYSTEM_STATUS,
 }

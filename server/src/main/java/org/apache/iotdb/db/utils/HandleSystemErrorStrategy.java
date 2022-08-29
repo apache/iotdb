@@ -16,32 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.utils;
 
-package org.apache.iotdb.db.mpp.transformation.datastructure;
-
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-public abstract class Cache extends LinkedHashMap<Integer, Integer> {
-
-  protected final int cacheCapacity;
-
-  protected Cache(int cacheCapacity) {
-    super(cacheCapacity, 0.75F, true);
-    this.cacheCapacity = cacheCapacity;
-  }
-
-  @Override
-  protected boolean removeEldestEntry(Map.Entry<Integer, Integer> eldest) {
-    return size() > cacheCapacity;
-  }
-
-  // get the eldest key
-  public int getLast() {
-    return this.entrySet().iterator().next().getKey();
-  }
-
-  protected Integer putKey(Integer index) {
-    return put(index, index);
-  }
+public enum HandleSystemErrorStrategy {
+  /** just set system status to error and then do nothing else */
+  NONE,
+  /** set system status to read-only and the system only accepts query operations */
+  CHANGE_TO_READ_ONLY,
+  /** the system will be shutdown */
+  SHUTDOWN,
 }

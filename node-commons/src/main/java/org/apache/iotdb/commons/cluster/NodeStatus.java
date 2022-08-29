@@ -48,6 +48,15 @@ public enum NodeStatus {
     return status;
   }
 
+  public static NodeStatus parse(String status) {
+    for (NodeStatus nodeStatus : NodeStatus.values()) {
+      if (nodeStatus.status.equals(status)) {
+        return nodeStatus;
+      }
+    }
+    throw new RuntimeException(String.format("NodeStatus %s doesn't exist.", status));
+  }
+
   public static boolean isNormalStatus(NodeStatus status) {
     // Currently, the only normal status is Running
     return status.equals(NodeStatus.Running);

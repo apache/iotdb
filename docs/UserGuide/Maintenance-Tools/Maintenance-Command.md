@@ -67,13 +67,14 @@ IoTDB> CLEAR CACHE ON CLUSTER
 ```
 
 
-## SET STSTEM TO READONLY / WRITABLE
+## SET SYSTEM TO READONLY / RUNNING / ERROR
 
-Manually set IoTDB system to read-only or writable mode.
+Manually set IoTDB system to running, read-only, error mode. In cluster mode, we provide commands to set the local node status and set the cluster status.
 
 ```sql
-IoTDB> SET SYSTEM TO READONLY
-IoTDB> SET SYSTEM TO WRITABLE
+IoTDB> SET SYSTEM TO RUNNING
+IoTDB> SET SYSTEM TO READONLY ON LOCAL
+IoTDB> SET SYSTEM TO ERROR ON CLUSTER
 ```
 
 
