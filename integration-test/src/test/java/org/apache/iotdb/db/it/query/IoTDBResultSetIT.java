@@ -183,4 +183,18 @@ public class IoTDBResultSetIT {
         ColumnHeaderConstant.COLUMN_DEVICES + "," + ColumnHeaderConstant.COLUMN_IS_ALIGNED + ",";
     resultSetEqualTest("show devices root.sg1.**", expectedHeader, emptyResultSet);
   }
+
+  @Test
+  public void emptyLastQueryTest() {
+    String expectedHeader =
+        ColumnHeaderConstant.COLUMN_TIME
+            + ","
+            + ColumnHeaderConstant.COLUMN_TIMESERIES
+            + ","
+            + ColumnHeaderConstant.COLUMN_VALUE
+            + ","
+            + ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE
+            + ",";
+    resultSetEqualTest("select last s1 from root.sg.d1", expectedHeader, emptyResultSet);
+  }
 }
