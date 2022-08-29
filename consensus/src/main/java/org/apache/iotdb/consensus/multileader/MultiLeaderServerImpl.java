@@ -127,7 +127,7 @@ public class MultiLeaderServerImpl {
               !stateMachineCondition.await(
                   config.getReplication().getThrottleTimeOutMs(), TimeUnit.MILLISECONDS);
           if (timeout) {
-            return RpcUtils.getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR);
+            return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
           }
         } catch (InterruptedException e) {
           logger.error("Failed to throttle down because ", e);

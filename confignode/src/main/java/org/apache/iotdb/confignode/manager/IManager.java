@@ -283,6 +283,9 @@ public interface IManager {
   /** Load configuration on all DataNodes */
   TSStatus loadConfiguration();
 
+  /** Set system status on all DataNodes */
+  TSStatus setSystemStatus(String status);
+
   /**
    * Get the latest RegionRouteMap
    *
