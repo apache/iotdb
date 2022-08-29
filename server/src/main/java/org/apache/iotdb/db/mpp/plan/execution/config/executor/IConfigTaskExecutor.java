@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
@@ -133,4 +134,7 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement);
 
   SettableFuture<ConfigTaskResult> showPipe(ShowPipeStatement showPipeStatement);
+
+  SettableFuture<ConfigTaskResult> deleteTimeSeries(
+      DeleteTimeSeriesStatement deleteTimeSeriesStatement);
 }

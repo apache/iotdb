@@ -61,6 +61,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -300,6 +301,12 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitStopPipe(StopPipeStatement stopPipeStatement, TaskContext context) {
     return new StopPipeTask(stopPipeStatement);
+  }
+
+  @Override
+  public IConfigTask visitDeleteTimeseries(
+      DeleteTimeSeriesStatement deleteTimeSeriesStatement, TaskContext context) {
+    return super.visitDeleteTimeseries(deleteTimeSeriesStatement, context);
   }
 
   public static class TaskContext {}

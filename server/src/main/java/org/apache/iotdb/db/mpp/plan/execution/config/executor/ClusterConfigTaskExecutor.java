@@ -65,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathS
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
@@ -744,5 +745,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             "Executing stop pipe is not supported",
             TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> deleteTimeSeries(
+      DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
+    return null;
   }
 }
