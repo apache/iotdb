@@ -22,14 +22,15 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.common.persistence.SyncLogReader;
 import org.apache.iotdb.db.sync.common.persistence.SyncLogWriter;
-import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
+import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 
@@ -84,6 +85,7 @@ public class SyncInfo {
     return pipeSinks.containsKey(name);
   }
 
+  // TODO: delete this in new-standalone version
   public void addPipeSink(CreatePipeSinkPlan plan) throws PipeSinkException, IOException {
     if (isPipeSinkExist(plan.getPipeSinkName())) {
       throw new PipeSinkException(
@@ -94,6 +96,21 @@ public class SyncInfo {
     // should guarantee the adding pipesink is not exist.
     pipeSinks.put(pipeSink.getPipeSinkName(), pipeSink);
     syncLogWriter.addPipeSink(plan);
+  }
+
+  public void addPipeSink(CreatePipeSinkStatement createPipeSinkStatement)
+      throws PipeSinkException, IOException {
+    if (isPipeSinkExist(createPipeSinkStatement.getPipeSinkName())) {
+      throw new PipeSinkException(
+          "There is a pipeSink named "
+              + createPipeSinkStatement.getPipeSinkName()
+              + " in IoTDB, please drop it.");
+    }
+
+    PipeSink pipeSink = SyncPipeUtil.parseCreatePipeSinkStatement(createPipeSinkStatement);
+    // should guarantee the adding pipesink is not exist.
+    pipeSinks.put(pipeSink.getPipeSinkName(), pipeSink);
+    syncLogWriter.addPipeSink(createPipeSinkStatement);
   }
 
   public void dropPipeSink(String name) throws PipeSinkException, IOException {

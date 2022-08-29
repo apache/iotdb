@@ -248,7 +248,10 @@ public class StatementGenerator {
       }
       insertTabletStatement.setDataTypes(dataTypes);
       insertTabletStatement.setAligned(req.isAligned);
-
+      // skip empty tablet
+      if (insertTabletStatement.isEmpty()) {
+        continue;
+      }
       insertTabletStatementList.add(insertTabletStatement);
     }
 
@@ -268,6 +271,10 @@ public class StatementGenerator {
       statement.setTime(req.getTimestamps().get(i));
       statement.fillValues(req.valuesList.get(i));
       statement.setAligned(req.isAligned);
+      // skip empty statement
+      if (statement.isEmpty()) {
+        continue;
+      }
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
@@ -288,7 +295,10 @@ public class StatementGenerator {
       statement.setTime(req.getTimestamps().get(i));
       statement.setNeedInferType(true);
       statement.setAligned(req.isAligned);
-
+      // skip empty statement
+      if (statement.isEmpty()) {
+        continue;
+      }
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
@@ -308,7 +318,10 @@ public class StatementGenerator {
       statement.setTime(req.timestamps.get(i));
       statement.fillValues(req.valuesList.get(i));
       statement.setAligned(req.isAligned);
-
+      // skip empty statement
+      if (statement.isEmpty()) {
+        continue;
+      }
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
@@ -330,7 +343,10 @@ public class StatementGenerator {
       statement.setTime(req.timestamps.get(i));
       statement.setNeedInferType(true);
       statement.setAligned(req.isAligned);
-
+      // skip empty statement
+      if (statement.isEmpty()) {
+        continue;
+      }
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);

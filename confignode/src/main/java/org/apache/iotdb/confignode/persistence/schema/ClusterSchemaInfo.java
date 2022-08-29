@@ -157,7 +157,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.warn("Storage group not exist", e);
       result
           .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-          .setMessage("Storage group not exist");
+          .setMessage("Storage group not exist: " + e.getMessage());
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
@@ -176,7 +176,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error("Error StorageGroup name", e);
       result.setStatus(
           new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-              .setMessage("Error StorageGroup name"));
+              .setMessage("Error StorageGroup name: " + e.getMessage()));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
@@ -202,7 +202,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error("Error StorageGroup name", e);
       result.setStatus(
           new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-              .setMessage("Error StorageGroup name"));
+              .setMessage("Error StorageGroup name: " + e.getMessage()));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }

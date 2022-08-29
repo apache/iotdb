@@ -23,7 +23,7 @@ import org.apache.iotdb.db.qp.sql.PathParser.NodeNameContext;
 import org.apache.iotdb.db.qp.sql.PathParserBaseVisitor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 
 import java.util.List;
 
@@ -64,12 +64,33 @@ public class PathVisitor extends PathParserBaseVisitor<String[]> {
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
-      if (StringUtils.isNumeric(unWrapped)
+      if (isRealNumber(unWrapped)
           || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
         return nodeName;
       }
       return unWrapped;
     }
     return nodeName;
+  }
+
+  /** Return true if the str is a real number. Examples: 1.0; +1.0; -1.0; 0011; 011e3; +23e-3 */
+  public static boolean isRealNumber(String str) {
+    if (str.startsWith("+") || str.startsWith("-")) {
+      String removeSign = str.substring(1);
+      if (removeSign.startsWith("+") || removeSign.startsWith("-")) {
+        return false;
+      } else {
+        str = removeSign;
+      }
+    }
+    int index = 0;
+    // remove zeros
+    for (int i = 0, n = str.length(); i < n; i++) {
+      if (str.charAt(i) != '0') {
+        index = i;
+        break;
+      }
+    }
+    return NumberUtils.isCreatable(str.substring(index));
   }
 }

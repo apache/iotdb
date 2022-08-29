@@ -174,7 +174,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     // delete snapshotDir fully in case of last takeSnapshot() crashed
     FileUtils.deleteFully(snapshotDir);
 
-    snapshotDir.mkdir();
+    snapshotDir.mkdirs();
     if (!snapshotDir.isDirectory()) {
       logger.error("Unable to create snapshotDir at {}", snapshotDir);
       return RaftLog.INVALID_LOG_INDEX;

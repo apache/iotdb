@@ -119,6 +119,7 @@
         <module>schema-engine-rocksdb</module>
         <module>udf-api</module>
         <module>rewrite-tsfile-tool</module>
+        <module>external-api</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -1344,6 +1345,7 @@
                                     <generator>py</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
+                                    <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
                                 </configuration>
                             </execution>
@@ -1357,6 +1359,7 @@
                                     <generator>go</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
+                                    <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>

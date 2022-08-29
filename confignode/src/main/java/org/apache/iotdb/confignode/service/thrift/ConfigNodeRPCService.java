@@ -77,7 +77,7 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
               getBindPort(),
               configConf.getRpcMaxConcurrentClientNum(),
               configConf.getThriftServerAwaitTimeForStopService(),
-              new ConfigNodeRPCServiceHandler(configNodeRPCServiceProcessor),
+              new ConfigNodeRPCServiceHandler(),
               commonConfig.isRpcThriftCompressionEnabled());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());

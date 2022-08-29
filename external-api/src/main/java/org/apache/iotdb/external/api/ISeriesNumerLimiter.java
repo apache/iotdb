@@ -16,17 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf;
+package org.apache.iotdb.external.api;
 
-/** Status of current system */
-public enum SystemStatus {
-  /** System can read and write normally */
-  NORMAL,
-  /** Only query statements are permitted */
-  READ_ONLY,
+import java.util.Properties;
+
+/** An interface for series number limiting, users can implement their own limitation strategy */
+public interface ISeriesNumerLimiter {
+
   /**
-   * Unrecoverable errors occur, system will be read-only or exit according to the param
-   * allow_read_only_when_errors_occur
+   * do the necessary initialization
+   *
+   * @param properties Properties containing all the parameters needed to init
    */
-  ERROR,
+  void init(Properties properties);
+
+  /**
+   * add time series
+   *
+   * @param number time series number for current createTimeSeries operation
+   * @return true if totalTimeSeriesNumber doesn't exceed the limit and current createTimeSeries
+   *     operation is allowed, otherwise false
+   */
+  boolean addTimeSeries(int number);
+
+  /**
+   * delete time series
+   *
+   * @param number time series number for current deleteTimeSeries operation
+   */
+  void deleteTimeSeries(int number);
 }

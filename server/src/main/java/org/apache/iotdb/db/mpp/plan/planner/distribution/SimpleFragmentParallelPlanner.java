@@ -82,7 +82,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private void prepare() {
     List<PlanFragment> fragments = subPlan.getPlanFragmentList();
     for (PlanFragment fragment : fragments) {
-      recordPlanNodeRelation(fragment.getRoot(), fragment.getId());
+      recordPlanNodeRelation(fragment.getPlanNodeTree(), fragment.getId());
       produceFragmentInstance(fragment);
     }
   }
@@ -90,7 +90,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private void produceFragmentInstance(PlanFragment fragment) {
     // If one PlanFragment will produce several FragmentInstance, the instanceIdx will be increased
     // one by one
-    PlanNode rootCopy = PlanNodeUtil.deepCopy(fragment.getRoot());
+    PlanNode rootCopy = PlanNodeUtil.deepCopy(fragment.getPlanNodeTree());
     Filter timeFilter = analysis.getGlobalTimeFilter();
     FragmentInstance fragmentInstance =
         new FragmentInstance(
@@ -98,7 +98,8 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
             fragment.getId().genFragmentInstanceId(),
             timeFilter,
             queryContext.getQueryType(),
-            queryContext.getTimeOut());
+            queryContext.getTimeOut(),
+            fragment.isRoot());
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
@@ -174,7 +175,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
 
   private void calculateNodeTopologyBetweenInstance() {
     for (FragmentInstance instance : fragmentInstanceList) {
-      PlanNode rootNode = instance.getFragment().getRoot();
+      PlanNode rootNode = instance.getFragment().getPlanNodeTree();
       if (rootNode instanceof FragmentSinkNode) {
         // Set target Endpoint for FragmentSinkNode
         FragmentSinkNode sinkNode = (FragmentSinkNode) rootNode;

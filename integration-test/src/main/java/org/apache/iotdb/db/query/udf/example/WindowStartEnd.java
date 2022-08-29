@@ -27,6 +27,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
@@ -70,6 +71,28 @@ public class WindowStartEnd implements UDTF {
                   parameters.getLong(ExampleUDFConstant.SESSION_GAP_KEY))
               : new SessionTimeWindowAccessStrategy(
                   parameters.getLong(ExampleUDFConstant.SESSION_GAP_KEY)));
+    } else if (ExampleUDFConstant.ACCESS_STRATEGY_STATE.equals(
+        parameters.getString(ExampleUDFConstant.ACCESS_STRATEGY_KEY))) {
+      if (parameters.hasAttribute(ExampleUDFConstant.DISPLAY_WINDOW_BEGIN_KEY)
+          && parameters.hasAttribute(ExampleUDFConstant.DISPLAY_WINDOW_END_KEY)) {
+        if (parameters.hasAttribute(ExampleUDFConstant.STATE_DELTA_KEY)) {
+          configurations.setAccessStrategy(
+              new StateWindowAccessStrategy(
+                  parameters.getLong(ExampleUDFConstant.DISPLAY_WINDOW_BEGIN_KEY),
+                  parameters.getLong(ExampleUDFConstant.DISPLAY_WINDOW_END_KEY),
+                  parameters.getLong(ExampleUDFConstant.STATE_DELTA_KEY)));
+        } else {
+          configurations.setAccessStrategy(
+              new StateWindowAccessStrategy(
+                  parameters.getLong(ExampleUDFConstant.DISPLAY_WINDOW_BEGIN_KEY),
+                  parameters.getLong(ExampleUDFConstant.DISPLAY_WINDOW_END_KEY)));
+        }
+      } else if (parameters.hasAttribute(ExampleUDFConstant.STATE_DELTA_KEY)) {
+        configurations.setAccessStrategy(
+            new StateWindowAccessStrategy(parameters.getLong(ExampleUDFConstant.STATE_DELTA_KEY)));
+      } else {
+        configurations.setAccessStrategy(new StateWindowAccessStrategy());
+      }
     }
   }
 

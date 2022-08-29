@@ -116,7 +116,6 @@ keyWords
     | PATHS
     | PIPE
     | PIPES
-    | PIPESERVER
     | PIPESINK
     | PIPESINKS
     | PIPESINKTYPE

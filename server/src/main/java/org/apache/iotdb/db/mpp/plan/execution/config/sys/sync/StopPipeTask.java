@@ -15,31 +15,28 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.sync.transport.conf;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
+package org.apache.iotdb.db.mpp.plan.execution.config.sys.sync;
 
-import java.io.File;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 
-public class TransportConfig {
-  private TransportConfig() {}
+import com.google.common.util.concurrent.ListenableFuture;
 
-  /** default base dir, stores all IoTDB runtime files */
-  private static final String DEFAULT_BASE_DIR = addHomeDir("data");
+public class StopPipeTask implements IConfigTask {
 
-  private static String addHomeDir(String dir) {
-    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
-      } else {
-        dir = homeDir + dir;
-      }
-    }
-    return dir;
+  private StopPipeStatement stopPipeStatement;
+
+  public StopPipeTask(StopPipeStatement stopPipeStatement) {
+    this.stopPipeStatement = stopPipeStatement;
   }
 
-  public static boolean isCheckFileDegistAgain = false;
+  @Override
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.stopPipe();
+  }
 }

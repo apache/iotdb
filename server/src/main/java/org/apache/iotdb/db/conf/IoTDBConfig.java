@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -62,7 +63,8 @@ public class IoTDBConfig {
 
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
-  static final String CONFIG_NAME = "iotdb-datanode.properties";
+  public static final String CONFIG_NAME = "iotdb-datanode.properties";
+  public static final String EXTERNAL_CONFIG_NAME = "iotdb-datanode-external.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
@@ -86,7 +88,7 @@ public class IoTDBConfig {
   private boolean allowReadOnlyWhenErrorsOccur = true;
 
   /** Status of current system. */
-  private volatile SystemStatus status = SystemStatus.NORMAL;
+  private volatile NodeStatus status = NodeStatus.Running;
 
   /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
@@ -271,6 +273,16 @@ public class IoTDBConfig {
   /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
+
+  /** External lib directory for properties loader, stores user-uploaded JAR files */
+  private String externalPropertiesLoaderDir =
+      IoTDBConstant.EXT_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.EXT_PROPERTIES_LOADER_FOLDER_NAME;
+
+  /** External lib directory for limiter, stores user uploaded JAR files */
+  private String externalLimiterDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_LIMITER;
 
   /** Data directories. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {
@@ -730,7 +742,7 @@ public class IoTDBConfig {
   private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = true;
+  private boolean enablePartition = false;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second. Default time is
@@ -1077,6 +1089,8 @@ public class IoTDBConfig {
     temporaryLibDir = addHomeDir(temporaryLibDir);
     triggerDir = addHomeDir(triggerDir);
     mqttDir = addHomeDir(mqttDir);
+    externalPropertiesLoaderDir = addHomeDir(externalPropertiesLoaderDir);
+    externalLimiterDir = addHomeDir(externalLimiterDir);
     for (int i = 0; i < walDirs.length; i++) {
       walDirs[i] = addHomeDir(walDirs[i]);
     }
@@ -1314,6 +1328,22 @@ public class IoTDBConfig {
     this.mqttDir = mqttDir;
   }
 
+  public String getExternalPropertiesLoaderDir() {
+    return externalPropertiesLoaderDir;
+  }
+
+  public void setExternalPropertiesLoaderDir(String externalPropertiesLoaderDir) {
+    this.externalPropertiesLoaderDir = externalPropertiesLoaderDir;
+  }
+
+  public String getExternalLimiterDir() {
+    return externalLimiterDir;
+  }
+
+  public void setExternalLimiterDir(String externalLimiterDir) {
+    this.externalLimiterDir = externalLimiterDir;
+  }
+
   public String getMultiDirStrategyClassName() {
     return multiDirStrategyClassName;
   }
@@ -1525,25 +1555,25 @@ public class IoTDBConfig {
   }
 
   public boolean isReadOnly() {
-    return status == SystemStatus.READ_ONLY
-        || (status == SystemStatus.ERROR && allowReadOnlyWhenErrorsOccur);
+    return status == NodeStatus.ReadOnly
+        || (status == NodeStatus.Error && allowReadOnlyWhenErrorsOccur);
   }
 
-  public SystemStatus getSystemStatus() {
+  public NodeStatus getNodeStatus() {
     return status;
   }
 
-  public void setSystemStatus(SystemStatus newStatus) {
-    if (newStatus == SystemStatus.READ_ONLY) {
+  public void setNodeStatus(NodeStatus newStatus) {
+    if (newStatus == NodeStatus.ReadOnly) {
       logger.error(
           "Change system mode to read-only! Only query statements are permitted!",
           new RuntimeException("System mode is set to READ_ONLY"));
-    } else if (newStatus == SystemStatus.ERROR) {
+    } else if (newStatus == NodeStatus.Error) {
       if (allowReadOnlyWhenErrorsOccur) {
         logger.error(
             "Unrecoverable error occurs! Make system read-only when allow_read_only_when_errors_occur is true.",
             new RuntimeException("System mode is set to READ_ONLY"));
-        newStatus = SystemStatus.READ_ONLY;
+        newStatus = NodeStatus.ReadOnly;
       } else {
         logger.error(
             "Unrecoverable error occurs! Shutdown system directly when allow_read_only_when_errors_occur is false.",
