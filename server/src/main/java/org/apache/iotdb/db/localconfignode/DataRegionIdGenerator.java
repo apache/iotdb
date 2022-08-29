@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.localconfignode;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataRegionIdGenerator {
@@ -34,6 +36,11 @@ public class DataRegionIdGenerator {
   }
 
   public int getNextId() {
-    return idCounter.addAndGet(1);
+    return idCounter.getAndIncrement();
+  }
+
+  @TestOnly
+  public void reset() {
+    this.idCounter.set(0);
   }
 }
