@@ -42,7 +42,8 @@ public enum CrossCompactionStrategy {
       long timePartitionId,
       TsFileManager tsFileManager,
       List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList) {
+      List<TsFileResource> selectedUnSeqTsFileResourceList,
+      long memoryCost) {
     switch (this) {
       case REWRITE_COMPACTION:
       default:
@@ -53,7 +54,8 @@ public enum CrossCompactionStrategy {
             tsFileManager,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList,
-            CompactionTaskManager.currentTaskNum);
+            CompactionTaskManager.currentTaskNum,
+            memoryCost);
     }
   }
 
