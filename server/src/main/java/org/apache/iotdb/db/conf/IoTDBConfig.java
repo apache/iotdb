@@ -751,7 +751,7 @@ public class IoTDBConfig {
    * Time range for partitioning data inside each storage group, the unit is second. Default time is
    * a day.
    */
-  private long partitionInterval = 10;
+  private long partitionInterval = 86400;
 
   /** Max size of a {@link PlanNode}, mainly used to control memory of {@link LoadTsFileNode}. */
   private long maxPlanNodeSize = 500 * 1048576L;
