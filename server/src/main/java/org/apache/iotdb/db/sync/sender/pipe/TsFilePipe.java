@@ -63,8 +63,6 @@ public class TsFilePipe implements Pipe {
   private final TsFilePipeLogger pipeLog;
   private final ReentrantLock collectRealTimeDataLock;
 
-  // true if pipe has completed historical data collection
-  private boolean isCollectingRealTimeData;
   private long maxSerialNumber;
 
   private PipeStatus status;
@@ -84,7 +82,6 @@ public class TsFilePipe implements Pipe {
     this.pipeLog = new TsFilePipeLogger(this);
     this.collectRealTimeDataLock = new ReentrantLock();
 
-    this.isCollectingRealTimeData = false;
     this.maxSerialNumber = Math.max(0L, realTimeQueue.getLastMaxSerialNumber());
 
     this.status = PipeStatus.STOP;
@@ -114,7 +111,6 @@ public class TsFilePipe implements Pipe {
         collectHistoryData();
         pipeLog.finishCollect();
       }
-      isCollectingRealTimeData = true;
 
       status = PipeStatus.RUNNING;
     } catch (IOException e) {
@@ -139,8 +135,6 @@ public class TsFilePipe implements Pipe {
       File tsFile = historyTsFiles.get(i);
       historyQueue.offer(new TsFilePipeData(tsFile.getParent(), tsFile.getName(), serialNumber));
     }
-
-    isCollectingRealTimeData = true;
   }
 
   public File createHistoryTsFileHardlink(File tsFile, long modsOffset) {
@@ -226,7 +220,6 @@ public class TsFilePipe implements Pipe {
   }
 
   public List<PipeData> pull(long serialNumber) {
-    // TODO：should judge isCollectingRealTimeData here
     List<PipeData> pullPipeData = new ArrayList<>();
     if (!historyQueue.isEmpty()) {
       pullPipeData.addAll(historyQueue.pull(serialNumber));
@@ -277,7 +270,6 @@ public class TsFilePipe implements Pipe {
       throw new PipeException(
           String.format("Can not stop pipe %s, because the pipe is drop.", name));
     }
-    isCollectingRealTimeData = true;
     status = PipeStatus.STOP;
   }
 
@@ -292,8 +284,6 @@ public class TsFilePipe implements Pipe {
   }
 
   private void clear() {
-    isCollectingRealTimeData = false;
-
     try {
       historyQueue.clear();
       realTimeQueue.clear();
@@ -312,9 +302,6 @@ public class TsFilePipe implements Pipe {
     if (status == PipeStatus.DROP) {
       return;
     }
-
-    isCollectingRealTimeData = false;
-
     historyQueue.close();
     realTimeQueue.close();
   }
@@ -355,8 +342,6 @@ public class TsFilePipe implements Pipe {
         + syncDelOp
         + ", pipeLog="
         + pipeLog
-        + ", isCollectingRealTimeData="
-        + isCollectingRealTimeData
         + ", maxSerialNumber="
         + maxSerialNumber
         + ", status="
