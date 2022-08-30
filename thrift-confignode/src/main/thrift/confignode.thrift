@@ -230,6 +230,11 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
+// Trigger
+struct TCreateTriggerReq {
+  1: required string triggerName
+}
+
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status

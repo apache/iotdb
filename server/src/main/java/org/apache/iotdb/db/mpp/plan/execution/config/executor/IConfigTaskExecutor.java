@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
+import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
@@ -53,13 +56,20 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> countStorageGroup(
       CountStorageGroupStatement countStorageGroupStatement);
 
-  SettableFuture<ConfigTaskResult> createFunction(
-      String udfName, String className, List<String> uris);
-
   SettableFuture<ConfigTaskResult> deleteStorageGroup(
       DeleteStorageGroupStatement deleteStorageGroupStatement);
 
+  SettableFuture<ConfigTaskResult> createFunction(
+      String udfName, String className, List<String> uris);
+
   SettableFuture<ConfigTaskResult> dropFunction(String udfName);
+
+  SettableFuture<ConfigTaskResult> createTrigger(
+      String triggerName,
+      String className,
+      TriggerEvent triggerEvent,
+      TriggerType triggerType,
+      PartialPath pathPattern);
 
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
