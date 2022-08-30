@@ -28,7 +28,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -183,8 +183,7 @@ public abstract class AbstractMemTable implements IMemTable {
     totalPointsNum += pointsInserted;
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .count(
               pointsInserted,
               Metric.QUANTITY.toString(),
@@ -234,8 +233,7 @@ public abstract class AbstractMemTable implements IMemTable {
     totalPointsNum += pointsInserted;
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .count(
               pointsInserted,
               Metric.QUANTITY.toString(),
@@ -259,8 +257,7 @@ public abstract class AbstractMemTable implements IMemTable {
               * (end - start);
       totalPointsNum += pointsInserted;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-        MetricsService.getInstance()
-            .getMetricManager()
+        MetricService.getInstance()
             .count(
                 pointsInserted,
                 Metric.QUANTITY.toString(),
@@ -287,8 +284,7 @@ public abstract class AbstractMemTable implements IMemTable {
               * (end - start);
       totalPointsNum += pointsInserted;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-        MetricsService.getInstance()
-            .getMetricManager()
+        MetricService.getInstance()
             .count(
                 pointsInserted,
                 Metric.QUANTITY.toString(),
@@ -466,6 +462,9 @@ public abstract class AbstractMemTable implements IMemTable {
       return;
     }
     totalPointsNum -= memChunkGroup.delete(originalPath, devicePath, startTimestamp, endTimestamp);
+    if (memChunkGroup.getMemChunkMap().isEmpty()) {
+      memTableMap.remove(getDeviceID(devicePath));
+    }
   }
 
   @Override

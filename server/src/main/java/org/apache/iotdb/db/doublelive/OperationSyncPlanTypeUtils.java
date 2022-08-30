@@ -24,23 +24,32 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 
 public class OperationSyncPlanTypeUtils {
 
   public static OperationSyncPlanType getOperationSyncPlanType(PhysicalPlan plan) {
-    if (plan instanceof SetStorageGroupPlan
+    if (plan instanceof DeletePlan || plan instanceof InsertPlan) {
+      return OperationSyncPlanType.DMLPlan;
+    } else if (plan instanceof SetStorageGroupPlan
         || plan instanceof DeleteStorageGroupPlan
         || plan instanceof CreateTimeSeriesPlan
         || plan instanceof CreateMultiTimeSeriesPlan
@@ -54,10 +63,15 @@ public class OperationSyncPlanTypeUtils {
         || plan instanceof DropTemplatePlan
         || plan instanceof PruneTemplatePlan
         || plan instanceof SetTemplatePlan
-        || plan instanceof UnsetTemplatePlan) {
+        || plan instanceof UnsetTemplatePlan
+        || plan instanceof SetTTLPlan
+        || plan instanceof CreateContinuousQueryPlan
+        || plan instanceof DataAuthPlan
+        || plan instanceof DropContinuousQueryPlan
+        || plan instanceof ChangeAliasPlan
+        || plan instanceof ChangeTagOffsetPlan
+        || plan instanceof AuthorPlan) {
       return OperationSyncPlanType.DDLPlan;
-    } else if (plan instanceof DeletePlan || plan instanceof InsertPlan) {
-      return OperationSyncPlanType.DMLPlan;
     }
     return null;
   }

@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -110,8 +110,7 @@ public class TimeSeriesMetadataCache {
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       // add metrics
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateAutoGauge(
               Metric.CACHE_HIT.toString(),
               MetricLevel.IMPORTANT,
@@ -120,8 +119,7 @@ public class TimeSeriesMetadataCache {
               Tag.NAME.toString(),
               "timeSeriesMeta");
       // add metrics
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateAutoGauge(
               Metric.CACHE_HIT.toString(),
               MetricLevel.IMPORTANT,

@@ -172,7 +172,7 @@ public class AuthorityCheckerTest {
         AuthorityChecker.check(
             user.getName(),
             Collections.singletonList(new PartialPath(nodeName)),
-            OperatorType.GRANT_USER_ROLE,
+            OperatorType.GRANT_ROLE_TO_USER,
             user.getName()));
 
     Assert.assertTrue(

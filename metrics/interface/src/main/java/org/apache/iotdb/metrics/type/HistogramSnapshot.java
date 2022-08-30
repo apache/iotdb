@@ -21,34 +21,30 @@ package org.apache.iotdb.metrics.type;
 
 import java.io.OutputStream;
 
-/** used by Timer and Histogram. */
+/** used by timer and histogram. */
 public interface HistogramSnapshot {
 
-  /** Get value by quantile */
+  /** get value by quantile */
   double getValue(double quantile);
 
-  /** Get values in snapshot */
+  /** get values in snapshot */
   long[] getValues();
 
-  /** Get size of value in snapshot */
+  /** get the size of values in snapshot */
   int size();
 
-  /** Get median of values */
-  double getMedian();
-
-  /** Get min of values */
+  /** get min value in values */
   long getMin();
 
-  /** Get mean of values */
+  /** get median value in values */
+  double getMedian();
+
+  /** get mean value in values */
   double getMean();
 
-  /** Get max of values */
+  /** get max value of values */
   long getMax();
 
-  /**
-   * Writes the values of the snapshot to the given stream.
-   *
-   * @param output an output stream
-   */
+  /** writes the values of the snapshot to the given stream */
   void dump(OutputStream output);
 }
