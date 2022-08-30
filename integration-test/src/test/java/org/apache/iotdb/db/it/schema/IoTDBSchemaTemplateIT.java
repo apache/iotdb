@@ -119,6 +119,11 @@ public class IoTDBSchemaTemplateIT {
     }
     Assert.assertTrue(expectedResult.isEmpty());
 
+    try (ResultSet resultSet = statement.executeQuery("COUNT TIMESERIES root.sg1.**")) {
+      resultSet.next();
+      Assert.assertEquals(4, resultSet.getInt(1));
+    }
+
     expectedResult = new HashSet<>(Arrays.asList("root.sg1.d1,false", "root.sg1.d2,true"));
 
     try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
@@ -183,6 +188,11 @@ public class IoTDBSchemaTemplateIT {
       }
     }
     Assert.assertTrue(expectedResult.isEmpty());
+
+    try (ResultSet resultSet = statement.executeQuery("COUNT TIMESERIES root.sg1.**")) {
+      resultSet.next();
+      Assert.assertEquals(4, resultSet.getInt(1));
+    }
 
     expectedResult = new HashSet<>(Arrays.asList("root.sg1.d1,false", "root.sg1.d2,true"));
 

@@ -98,7 +98,7 @@ public class TimeSeriesCountOperator implements SourceOperator {
         count =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
                 .getSchemaRegion()
-                .getAllTimeseriesCount(partialPath, isPrefixPath);
+                .getAllTimeseriesCount(partialPath, templateMap, isPrefixPath);
       }
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
