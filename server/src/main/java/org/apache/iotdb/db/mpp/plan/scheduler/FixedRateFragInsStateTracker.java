@@ -100,7 +100,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
             instanceStateMap.computeIfAbsent(
                 instance.getId(), k -> new InstanceStateMetrics(instance.isRoot()));
         if (needPrintState(metrics.lastState, state, metrics.durationToLastPrintInMS)) {
-          logger.info("State is {}", state);
+          logger.debug("State is {}", state);
           metrics.reset(state);
         } else {
           metrics.addDuration(STATE_FETCH_INTERVAL_IN_MS);

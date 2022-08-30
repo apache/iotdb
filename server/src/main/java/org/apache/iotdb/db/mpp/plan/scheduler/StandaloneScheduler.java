@@ -120,14 +120,14 @@ public class StandaloneScheduler implements IScheduler {
           }
         } catch (Exception e) {
           stateMachine.transitionToFailed(e);
-          LOGGER.info("transit to FAILED");
+          LOGGER.debug("transit to FAILED");
           return;
         }
         // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
         stateMachine.transitionToRunning();
-        LOGGER.info("transit to RUNNING");
+        LOGGER.debug("transit to RUNNING");
         this.stateTracker.start();
-        LOGGER.info("state tracker starts");
+        LOGGER.debug("state tracker starts");
         break;
       case WRITE:
         // reject non-query operations when system is read-only

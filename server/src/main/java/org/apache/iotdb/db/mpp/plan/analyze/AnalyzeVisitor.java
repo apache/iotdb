@@ -174,9 +174,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setStatement(queryStatement);
 
       // request schema fetch API
-      logger.info("{} fetch query schema...", getLogHeader());
+      logger.debug("{} fetch query schema...", getLogHeader());
       ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
-      logger.info("{} fetch schema done", getLogHeader());
+      logger.debug("{} fetch schema done", getLogHeader());
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
         if (queryStatement.isLastQuery()) {
@@ -1386,9 +1386,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (showTimeSeriesStatement.isOrderByHeat()) {
       patternTree.constructTree();
       // request schema fetch API
-      logger.info("{} fetch query schema...", getLogHeader());
+      logger.debug("{} fetch query schema...", getLogHeader());
       ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
-      logger.info("{} fetch schema done", getLogHeader());
+      logger.debug("{} fetch schema done", getLogHeader());
       List<MeasurementPath> allSelectedPath = schemaTree.getAllMeasurement();
 
       Set<Expression> sourceExpressions =

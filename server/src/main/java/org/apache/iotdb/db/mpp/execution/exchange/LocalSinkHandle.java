@@ -113,7 +113,7 @@ public class LocalSinkHandle implements ISinkHandle {
       if (queue.hasNoMoreTsBlocks()) {
         return;
       }
-      logger.info("send TsBlocks");
+      logger.debug("send TsBlocks");
       synchronized (this) {
         blocked = queue.add(tsBlock);
       }
@@ -129,9 +129,9 @@ public class LocalSinkHandle implements ISinkHandle {
   public void setNoMoreTsBlocks() {
     synchronized (queue) {
       synchronized (this) {
-        logger.info("set noMoreTsBlocks.");
+        logger.debug("set noMoreTsBlocks.");
         if (aborted || closed) {
-          logger.info("SinkHandle has been aborted={} or closed={}.", aborted, closed);
+          logger.debug("SinkHandle has been aborted={} or closed={}.", aborted, closed);
           return;
         }
         queue.setNoMoreTsBlocks(true);
@@ -139,12 +139,12 @@ public class LocalSinkHandle implements ISinkHandle {
       }
     }
     checkAndInvokeOnFinished();
-    logger.info("noMoreTsBlocks has been set.");
+    logger.debug("noMoreTsBlocks has been set.");
   }
 
   @Override
   public void abort() {
-    logger.info("Sink handle is being aborted.");
+    logger.debug("Sink handle is being aborted.");
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
@@ -155,12 +155,12 @@ public class LocalSinkHandle implements ISinkHandle {
         sinkHandleListener.onAborted(this);
       }
     }
-    logger.info("Sink handle is aborted");
+    logger.debug("Sink handle is aborted");
   }
 
   @Override
   public void close() {
-    logger.info("Sink handle is being closed.");
+    logger.debug("Sink handle is being closed.");
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
@@ -171,7 +171,7 @@ public class LocalSinkHandle implements ISinkHandle {
         sinkHandleListener.onFinish(this);
       }
     }
-    logger.info("Sink handle is closed");
+    logger.debug("Sink handle is closed");
   }
 
   public TFragmentInstanceId getRemoteFragmentInstanceId() {

@@ -142,7 +142,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       throw new IllegalArgumentException(errorMsg);
     }
     if (regionReplicaSet.getDataNodeLocationsSize() != availableDataNodes.size()) {
-      logger.info("available replicas: " + availableDataNodes);
+      logger.debug("available replicas: " + availableDataNodes);
     }
     int targetIndex;
     if (!selectRandomDataNode || queryContext.getSession() == null) {

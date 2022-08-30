@@ -215,12 +215,12 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinished(ISourceHandle sourceHandle) {
-      logger.info("finished and release resources");
+      logger.debug("finished and release resources");
       if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
           || !sourceHandles
               .get(sourceHandle.getLocalFragmentInstanceId())
               .containsKey(sourceHandle.getLocalPlanNodeId())) {
-        logger.info("resources has already been released");
+        logger.debug("resources has already been released");
       } else {
         sourceHandles
             .get(sourceHandle.getLocalFragmentInstanceId())
@@ -234,7 +234,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onAborted(ISourceHandle sourceHandle) {
-      logger.info("onAborted is invoked");
+      logger.debug("onAborted is invoked");
       onFinished(sourceHandle);
     }
 
@@ -273,14 +273,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onAborted(ISinkHandle sinkHandle) {
-      logger.info("onAborted is invoked");
+      logger.debug("onAborted is invoked");
       removeFromMPPDataExchangeManager(sinkHandle);
     }
 
     private void removeFromMPPDataExchangeManager(ISinkHandle sinkHandle) {
-      logger.info("release resources of finished sink handle");
+      logger.debug("release resources of finished sink handle");
       if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
-        logger.info("resources already been released");
+        logger.debug("resources already been released");
       }
       sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId());
     }
@@ -492,7 +492,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    * <p>This method should be called when a fragment instance finished in an abnormal state.
    */
   public void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
-    logger.info("Force deregister fragment instance");
+    logger.debug("Force deregister fragment instance");
     if (sinkHandles.containsKey(fragmentInstanceId)) {
       ISinkHandle sinkHandle = sinkHandles.get(fragmentInstanceId);
       sinkHandle.abort();
@@ -501,7 +501,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     if (sourceHandles.containsKey(fragmentInstanceId)) {
       Map<String, ISourceHandle> planNodeIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
       for (Entry<String, ISourceHandle> entry : planNodeIdToSourceHandle.entrySet()) {
-        logger.info("Close source handle {}", sourceHandles);
+        logger.debug("Close source handle {}", sourceHandles);
         entry.getValue().abort();
       }
       sourceHandles.remove(fragmentInstanceId);

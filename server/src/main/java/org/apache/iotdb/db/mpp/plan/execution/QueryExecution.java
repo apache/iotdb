@@ -153,7 +153,7 @@ public class QueryExecution implements IQueryExecution {
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
-              logger.info("release resource because Query State is: {}", state);
+              logger.debug("release resource because Query State is: {}", state);
               releaseResource();
             }
           }
@@ -162,7 +162,7 @@ public class QueryExecution implements IQueryExecution {
 
   public void start() {
     if (skipExecute()) {
-      logger.info("execution of query will be skipped. Transit to RUNNING immediately.");
+      logger.debug("execution of query will be skipped. Transit to RUNNING immediately.");
       constructResultForMemorySource();
       stateMachine.transitionToRunning();
       return;
@@ -260,7 +260,7 @@ public class QueryExecution implements IQueryExecution {
     LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
     this.logicalPlan = planner.plan(this.analysis);
     if (isQuery()) {
-      logger.info(
+      logger.debug(
           "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
     }
   }
@@ -270,7 +270,7 @@ public class QueryExecution implements IQueryExecution {
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
     if (isQuery()) {
-      logger.info(
+      logger.debug(
           "distribution plan done. Fragment instance count is {}, details is: \n {}",
           distributedPlan.getInstances().size(),
           printFragmentInstances(distributedPlan.getInstances()));
@@ -326,7 +326,7 @@ public class QueryExecution implements IQueryExecution {
     while (true) {
       try {
         if (resultHandle.isAborted()) {
-          logger.info("resultHandle for client is aborted");
+          logger.debug("resultHandle for client is aborted");
           stateMachine.transitionToAborted();
           if (stateMachine.getFailureStatus() != null) {
             throw new IoTDBException(
@@ -339,7 +339,7 @@ public class QueryExecution implements IQueryExecution {
           // Once the resultHandle is finished, we should transit the state of this query to
           // FINISHED.
           // So that the corresponding cleanup work could be triggered.
-          logger.info("resultHandle for client is finished");
+          logger.debug("resultHandle for client is finished");
           stateMachine.transitionToFinished();
           return Optional.empty();
         }

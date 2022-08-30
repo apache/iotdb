@@ -78,7 +78,7 @@ public class FragmentInstanceStateMachine {
     instanceState.addStateChangeListener(
         newState -> {
           try (SetThreadName threadName = new SetThreadName(fragmentInstanceId.getFullId())) {
-            LOGGER.info("State transfer to {}", newState);
+            LOGGER.debug("State transfer to {}", newState);
           }
         });
   }
