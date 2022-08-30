@@ -40,11 +40,8 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Base class of SELECT statement.
@@ -100,14 +97,7 @@ public class QueryStatement extends Statement {
 
   @Override
   public List<PartialPath> getPaths() {
-    Set<PartialPath> authPaths = new HashSet<>();
-    List<PartialPath> prefixPaths = fromComponent.getPrefixPaths();
-    List<ResultColumn> resultColumns = selectComponent.getResultColumns();
-    for (ResultColumn resultColumn : resultColumns) {
-      Expression expression = resultColumn.getExpression();
-      authPaths.addAll(ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths));
-    }
-    return new ArrayList<>(authPaths);
+    return fromComponent.getPrefixPaths();
   }
 
   public SelectComponent getSelectComponent() {
