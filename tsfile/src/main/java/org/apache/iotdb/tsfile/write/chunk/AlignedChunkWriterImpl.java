@@ -21,6 +21,8 @@ package org.apache.iotdb.tsfile.write.chunk;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -32,6 +34,7 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -294,6 +297,16 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
       }
     }
     return false;
+  }
+
+  public void writePageHeaderAndDataIntoTimeBuff(ByteBuffer data, PageHeader header)
+      throws PageException {
+    // timeChunkWriter.writePageHeaderAndDataIntoBuff(data, header);
+  }
+
+  public void writePageHeaderAndDataIntoValueBuff(
+      ByteBuffer data, PageHeader header, int valueIndex) throws PageException {
+    // valueChunkWriterList.get(valueIndex).writePageHeaderAndDataIntoBuff(data, header);
   }
 
   public TSDataType getCurrentValueChunkType() {

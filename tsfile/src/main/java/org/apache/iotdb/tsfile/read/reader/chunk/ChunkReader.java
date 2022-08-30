@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
@@ -235,7 +236,7 @@ public class ChunkReader implements IChunkReader {
    *
    * @param compressedPageData Compressed page data
    */
-  public BatchData readPageData(PageHeader pageHeader, ByteBuffer compressedPageData)
+  public TsBlock readPageData(PageHeader pageHeader, ByteBuffer compressedPageData)
       throws IOException {
     // uncompress page data
     int compressedPageBodyLength = pageHeader.getCompressedSize();
@@ -262,7 +263,7 @@ public class ChunkReader implements IChunkReader {
     PageReader pageReader =
         new PageReader(pageHeader, pageData, dataType, valueDecoder, timeDecoder, filter);
     pageReader.setDeleteIntervalList(deleteIntervalList);
-    return pageReader.getAllSatisfiedPageData(true);
+    return pageReader.getAllSatisfiedData();
   }
 
   @Override

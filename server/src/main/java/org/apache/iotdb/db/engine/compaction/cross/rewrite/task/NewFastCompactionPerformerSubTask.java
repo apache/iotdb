@@ -7,7 +7,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.cross.utils.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
 import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.reader.PriorityCompactionReader;
+import org.apache.iotdb.db.engine.compaction.reader.PointPriorityReader;
 import org.apache.iotdb.db.engine.compaction.writer.NewFastCrossCompactionWriter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -16,9 +16,12 @@ import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -65,13 +68,14 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
 
   private final List<MeasurementSchema> measurementSchemas;
 
-  private final PriorityCompactionReader priorityCompactionReader =
-      new PriorityCompactionReader(this::removePage);
+  private final PointPriorityReader pointPriorityReader = new PointPriorityReader(this::removePage);
 
   // sorted source files by the start time of device
   private final List<TsFileResource> sortedSourceFiles = new ArrayList<>();
 
-  FastCompactionPerformer fastCompactionPerformer;
+  private FastCompactionPerformer fastCompactionPerformer;
+
+  private boolean isAligned;
 
   private String deviceId;
 
@@ -110,8 +114,20 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
         continue;
       }
       int chunkMetadataPriority = 0;
-      for (ChunkMetadata chunkMetadata : allSensorMetadatas.get(index)) {
-        chunkMetadataQueue.add(new ChunkMetadataElement(chunkMetadata, chunkMetadataPriority++));
+      if (isAligned) {
+        for (int i = 0; i < allSensorMetadatas.get(0).size(); i++) {
+          List<IChunkMetadata> alignedChunkMetadatas = new ArrayList<>();
+          int idx = i;
+          allSensorMetadatas.forEach(x -> alignedChunkMetadatas.add(x.get(idx)));
+          chunkMetadataQueue.add(
+              new ChunkMetadataElement(
+                  new AlignedChunkMetadata(alignedChunkMetadatas.remove(0), alignedChunkMetadatas),
+                  chunkMetadataPriority++));
+        }
+      } else {
+        for (ChunkMetadata chunkMetadata : allSensorMetadatas.get(index)) {
+          chunkMetadataQueue.add(new ChunkMetadataElement(chunkMetadata, chunkMetadataPriority++));
+        }
       }
 
       compactionWriter.startMeasurement(
@@ -146,6 +162,18 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       List<ChunkMetadataElement> overlappedChunkMetadatas =
           findOverlapChunkMetadatas(firstChunkMetadataElement);
       boolean isChunkOverlap = overlappedChunkMetadatas.size() > 1;
+      int modifiedStatus =
+          isAligned
+              ? (getAlignedChunkDeletions(
+                              (AlignedChunkMetadata) firstChunkMetadataElement.chunkMetadata)
+                          .size()
+                      > 0
+                  ? 0
+                  : -1)
+              : isPageOrChunkModified(
+                  firstChunkMetadataElement.startTime,
+                  firstChunkMetadataElement.chunkMetadata.getEndTime(),
+                  firstChunkMetadataElement.chunkMetadata.getDeleteIntervalList());
 
       switch (isPageOrChunkModified(
           firstChunkMetadataElement.startTime,
@@ -224,7 +252,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
   private void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement)
       throws IOException {
-    Chunk chunk = ChunkCache.getInstance().get(chunkMetadataElement.chunkMetadata);
+    Chunk chunk = ChunkCache.getInstance().get((ChunkMetadata) chunkMetadataElement.chunkMetadata);
     ChunkReader chunkReader = new ChunkReader(chunk);
     ByteBuffer chunkDataBuffer = chunk.getData();
     ChunkHeader chunkHeader = chunk.getHeader();
@@ -287,8 +315,21 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
 
   private void compactWithNonOverlapPage(PageElement pageElement)
       throws PageException, IOException, WriteProcessException {
-    if (compactionWriter.flushPageToChunkWriter(
-        pageElement.pageData, pageElement.pageHeader, subTaskId)) {
+    boolean success;
+    if (pageElement.iChunkReader instanceof AlignedChunkReader) {
+      success =
+          compactionWriter.flushAlignedPageToChunkWriter(
+              pageElement.pageData,
+              pageElement.pageHeader,
+              pageElement.valuePageDatas,
+              pageElement.valuePageHeaders,
+              subTaskId);
+    } else {
+      success =
+          compactionWriter.flushPageToChunkWriter(
+              pageElement.pageData, pageElement.pageHeader, subTaskId);
+    }
+    if (success) {
       // flush the page successfully
       removePage(pageElement, null);
     } else {
@@ -306,21 +347,21 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
    */
   private void compactWithOverlapPages(List<PageElement> overlappedPages)
       throws IOException, PageException, WriteProcessException {
-    priorityCompactionReader.addNewPages(Collections.singletonList(overlappedPages.remove(0)));
-    priorityCompactionReader.setNewOverlappedPages(overlappedPages);
-    while (priorityCompactionReader.hasNext()) {
+    pointPriorityReader.addNewPages(Collections.singletonList(overlappedPages.remove(0)));
+    pointPriorityReader.setNewOverlappedPages(overlappedPages);
+    while (pointPriorityReader.hasNext()) {
       for (int pageIndex = 0; pageIndex < overlappedPages.size(); pageIndex++) {
         PageElement nextPageElement = overlappedPages.get(pageIndex);
 
         // write currentPage.point.time < nextPage.startTime to chunk writer
-        while (priorityCompactionReader.currentPoint().getTimestamp() < nextPageElement.startTime) {
+        while (pointPriorityReader.currentPoint().getTimestamp() < nextPageElement.startTime) {
           // write data point to chunk writer
-          compactionWriter.writeTimeValue(priorityCompactionReader.currentPoint(), subTaskId);
-          priorityCompactionReader.next();
+          compactionWriter.writeTimeValue(pointPriorityReader.currentPoint(), subTaskId);
+          pointPriorityReader.next();
         }
 
         boolean isNextPageOverlap =
-            !(priorityCompactionReader.currentPoint().getTimestamp()
+            !(pointPriorityReader.currentPoint().getTimestamp()
                     > nextPageElement.pageHeader.getEndTime()
                 && !isPageOverlap(nextPageElement));
 
@@ -332,7 +373,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
             // no data on this page has been deleted
             if (isNextPageOverlap) {
               // has overlap with other pages, deserialize it
-              priorityCompactionReader.addNewPages(Collections.singletonList(nextPageElement));
+              pointPriorityReader.addNewPages(Collections.singletonList(nextPageElement));
             } else {
               // has none overlap, flush it to chunk writer directly
               compactWithNonOverlapPage(nextPageElement);
@@ -340,7 +381,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
             break;
           case 0:
             // there is data on this page been deleted, deserialize it
-            priorityCompactionReader.addNewPages(Collections.singletonList(nextPageElement));
+            pointPriorityReader.addNewPages(Collections.singletonList(nextPageElement));
             break;
           case 1:
             // all data on this page has been deleted, remove it
@@ -352,10 +393,10 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       overlappedPages.clear();
 
       // write remaining data points
-      while (priorityCompactionReader.hasNext()) {
+      while (pointPriorityReader.hasNext()) {
         // write data point to chunk writer
-        compactionWriter.writeTimeValue(priorityCompactionReader.currentPoint(), subTaskId);
-        priorityCompactionReader.next();
+        compactionWriter.writeTimeValue(pointPriorityReader.currentPoint(), subTaskId);
+        pointPriorityReader.next();
         if (overlappedPages.size() > 0) {
           // finish compacting the first page and find the new overlapped pages, then start
           // compacting them with new first page
@@ -424,7 +465,7 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     return false;
   }
 
-  /** Check is the page overlap with other pages in page queue or not. */
+  /** Check is the page overlap with other pages later then the specific page in queue or not. */
   private boolean isPageOverlap(PageElement pageElement) {
     long endTime = pageElement.pageHeader.getEndTime();
     Stream<PageElement> pages =
@@ -432,14 +473,11 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     Iterator<PageElement> it = pages.iterator();
     while (it.hasNext()) {
       PageElement element = it.next();
-      if (element.equals(pageElement)) {
+      // only check pages later then the specific page
+      if (element.equals(pageElement) || element.startTime < pageElement.startTime) {
         continue;
       }
-      if (element.startTime <= endTime) {
-        return true;
-      } else {
-        return false;
-      }
+      return element.startTime <= endTime;
     }
     return false;
   }
@@ -481,10 +519,9 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       // uncessary to find new overlap pages with current top page, just return
       return;
     }
-    if (isFirstPage
-        && priorityCompactionReader.getPageDatas().size() != 0
-        && pageQueue.size() != 0) {
-      // find new overlaped pages and put them into list
+    if (pointPriorityReader.hasNext() && pageQueue.size() != 0) {
+      // when deserializing new chunks into page queue or first page is removed from page queue, we
+      // should find new overlapped pages and put them into list
       newOverlappedPages.addAll(findOverlapPages(pageQueue.peek()));
     }
   }
@@ -506,4 +543,12 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     }
   }
 
+  private List<TimeRange> getAlignedChunkDeletions(AlignedChunkMetadata alignedChunkMetadata) {
+    List<TimeRange> deletions = new ArrayList<>();
+    deletions.addAll(alignedChunkMetadata.getTimeChunkMetadata().getDeleteIntervalList());
+    for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+      deletions.addAll(valueChunkMetadata.getDeleteIntervalList());
+    }
+    return deletions;
+  }
 }

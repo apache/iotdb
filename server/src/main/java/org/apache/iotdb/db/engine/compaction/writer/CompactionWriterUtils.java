@@ -126,6 +126,8 @@ public class CompactionWriterUtils {
       case FLOAT:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
         break;
+      case VECTOR:
+        // chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getVector());
       default:
         throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
     }

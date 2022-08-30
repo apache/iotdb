@@ -1,9 +1,9 @@
 package org.apache.iotdb.db.engine.compaction.cross.utils;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 
 public class ChunkMetadataElement {
-  public ChunkMetadata chunkMetadata;
+  public IChunkMetadata chunkMetadata;
 
   public int priority;
 
@@ -13,7 +13,7 @@ public class ChunkMetadataElement {
 
   public boolean isFirstChunk = false;
 
-  public ChunkMetadataElement(ChunkMetadata chunkMetadata, int priority) {
+  public ChunkMetadataElement(IChunkMetadata chunkMetadata, int priority) {
     this.chunkMetadata = chunkMetadata;
     this.priority = priority;
     this.startTime = chunkMetadata.getStartTime();
