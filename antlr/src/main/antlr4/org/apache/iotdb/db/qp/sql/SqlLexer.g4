@@ -423,8 +423,16 @@ QUERY
     : Q U E R Y
     ;
 
+RUNNING
+    : R U N N I N G
+    ;
+
 READONLY
     : R E A D O N L Y
+    ;
+
+ERROR
+    : E R R O R
     ;
 
 REGEXP
@@ -941,15 +949,15 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | '""' | ~('"') )* '"'
+    : '"' ( '\\"' | '""' | ~('"') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\'. | '\'\'' |~('\'') )* '\''
+    : '\'' ( '\\\'' | '\'\'' | ~('\'') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\' ~('`') | '``' | ~('`') )* '`'
+    : '`' ( '``' | ~('`') )* '`'
     ;
 
 

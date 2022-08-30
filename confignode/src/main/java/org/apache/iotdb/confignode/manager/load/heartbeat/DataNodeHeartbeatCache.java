@@ -51,41 +51,33 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
   }
 
   @Override
-  public boolean updateLoadStatistic() {
+  public boolean updateNodeStatus() {
     if (isRemoving()) {
       return false;
     }
 
-    long lastSendTime = 0;
+    NodeHeartbeatSample lastSample = null;
     synchronized (slidingWindow) {
       if (slidingWindow.size() > 0) {
-        lastSendTime = slidingWindow.getLast().getSendTimestamp();
+        lastSample = slidingWindow.getLast();
       }
     }
+    long lastSendTime = lastSample == null ? 0 : lastSample.getSendTimestamp();
 
     /* Update loadScore */
-    if (lastSendTime > 0) {
-      loadScore = -lastSendTime;
-    }
+    loadScore = -lastSendTime;
 
     /* Update Node status */
-    NodeStatus originStatus;
-    switch (status) {
-      case Running:
-        originStatus = NodeStatus.Running;
-        break;
-      case Unknown:
-      default:
-        originStatus = NodeStatus.Unknown;
-    }
-
+    String originStatus = status.getStatus();
     // TODO: Optimize judge logic
     if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
       status = NodeStatus.Unknown;
-    } else {
-      status = NodeStatus.Running;
+    } else if (lastSample != null) {
+      status = lastSample.getStatus();
     }
-    return !status.getStatus().equals(originStatus.getStatus());
+
+    return NodeStatus.isNormalStatus(status)
+        != NodeStatus.isNormalStatus(NodeStatus.parse(originStatus));
   }
 
   @Override
@@ -94,15 +86,8 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
       return Long.MAX_VALUE;
     }
 
-    // Return a copy of loadScore
-    switch (status) {
-      case Running:
-        return loadScore;
-      case Unknown:
-      default:
-        // The Unknown Node will get the highest loadScore
-        return Long.MAX_VALUE;
-    }
+    // The DataNode whose status isn't Running will get the highest loadScore
+    return status == NodeStatus.Running ? loadScore : Long.MAX_VALUE;
   }
 
   @Override
@@ -112,12 +97,6 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     }
 
     // Return a copy of status
-    switch (status) {
-      case Running:
-        return NodeStatus.Running;
-      case Unknown:
-      default:
-        return NodeStatus.Unknown;
-    }
+    return NodeStatus.parse(status.getStatus());
   }
 }

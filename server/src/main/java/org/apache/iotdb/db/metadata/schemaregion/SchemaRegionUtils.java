@@ -45,12 +45,11 @@ public class SchemaRegionUtils {
     }
     for (File file : sgFiles) {
       if (file.delete()) {
-        logger.info("delete schema region folder {}", schemaRegionDir.getAbsolutePath());
+        logger.info("delete schema region file {}", file.getAbsolutePath());
       } else {
-        logger.info("delete schema region folder {} failed.", schemaRegionDir.getAbsolutePath());
+        logger.info("delete schema region file {} failed.", file.getAbsolutePath());
         throw new MetadataException(
-            String.format(
-                "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
+            String.format("Failed to delete schema region file %s", file.getAbsolutePath()));
       }
     }
 

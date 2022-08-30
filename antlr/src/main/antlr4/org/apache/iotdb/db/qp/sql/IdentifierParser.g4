@@ -116,7 +116,6 @@ keyWords
     | PATHS
     | PIPE
     | PIPES
-    | PIPESERVER
     | PIPESINK
     | PIPESINKS
     | PIPESINKTYPE
@@ -128,7 +127,9 @@ keyWords
     | PRUNE
     | QUERIES
     | QUERY
+    | RUNNING
     | READONLY
+    | ERROR
     | REGEXP
     | REGIONS
     | REMOVE
@@ -174,6 +175,5 @@ keyWords
     | WHERE
     | WITH
     | WITHOUT
-    | WRITABLE
     | PRIVILEGE_VALUE
     ;

@@ -309,14 +309,14 @@ Below are basic constraints of identifiers, specific identifiers may have other 
 - Permitted characters in unquoted identifiers:
   - [0-9 a-z A-Z _ ] (letters, digits and underscore)
   - ['\u2E80'..'\u9FFF'] (UNICODE Chinese characters)
-- Identifiers may begin with a digit, unquoted identifiers can not consists of solely digits.
+- Identifiers may begin with a digit, unquoted identifiers can not be a real number.
 - Identifiers are case sensitive.
 - Key words can be used as an identifier.
 
 **You need to quote the identifier with back quote(`) in the following cases:**
 
 - Identifier contains special characters.
-- Identifier consists of solely digits.
+- Identifier that is a real number.
 
 ### How to use quotations marks in quoted identifiers
 
@@ -355,14 +355,14 @@ Examples of case in which quoted identifier is used ：
 - UDF name should be quoted in cases described above ：
 
   ```sql
-  # create a funciton named 111, 111 consists of solely digits.
+  # create a funciton named 111, 111 is a real number.
   CREATE FUNCTION `111` AS 'org.apache.iotdb.udf.UDTFExample'
   ```
 
 - Template name should be quoted in cases described above ：
 
   ```sql
-  # create a template named 111, 111 consists of solely digits.
+  # create a template named 111, 111 is a real number.
   create schema template `111` 
   (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
   ```
@@ -461,7 +461,7 @@ When node name is not wildcard, it is a identifier, which means the constraints 
 # Node name contains special characters like ` and .,all nodes of this timeseries are: ["root","sg","www.`baidu.com"]
 create timeseries root.sg.`www.``baidu.com`.a with datatype=FLOAT,encoding=PLAIN;
 
-# Node name consists of solely digits.
+# Node name is a real number.
 create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 ```
 
@@ -482,7 +482,7 @@ After executing above statments, execute "show timeseries"，below is the result
 # Node name contains special characters like . and `
 insert into root.sg.`www.``baidu.com`(timestamp, a) values(1, 2);
 
-# Node name consists of solely digits.
+# Node name is a real number.
 insert into root.sg(timestamp, `111`) values (1, 2);
 ```
 
@@ -492,7 +492,7 @@ insert into root.sg(timestamp, `111`) values (1, 2);
 # Node name contains special characters like . and `
 select a from root.sg.`www.``baidu.com`;
 
-# Node name consists of solely digits.
+# Node name is a real number.
 select `111` from root.sg
 ```
 

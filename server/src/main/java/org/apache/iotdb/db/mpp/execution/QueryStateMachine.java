@@ -19,14 +19,10 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
@@ -37,7 +33,6 @@ import java.util.concurrent.ExecutorService;
 public class QueryStateMachine {
   private final String name;
   private final StateMachine<QueryState> queryState;
-  private final Map<FragmentInstanceId, FragmentInstanceState> fragInstanceStateMap;
 
   // The executor will be used in all the state machines belonged to this query.
   private Executor stateMachineExecutor;
@@ -47,32 +42,12 @@ public class QueryStateMachine {
   public QueryStateMachine(QueryId queryId, ExecutorService executor) {
     this.name = String.format("QueryStateMachine[%s]", queryId);
     this.stateMachineExecutor = executor;
-    this.fragInstanceStateMap = new ConcurrentHashMap<>();
     this.queryState =
         new StateMachine<>(
             queryId.toString(),
             this.stateMachineExecutor,
             QueryState.QUEUED,
             QueryState.TERMINAL_INSTANCE_STATES);
-  }
-
-  public void initialFragInstanceState(FragmentInstanceId id, FragmentInstanceState state) {
-    this.fragInstanceStateMap.put(id, state);
-  }
-
-  public void updateFragInstanceState(FragmentInstanceId id, FragmentInstanceState state) {
-    this.fragInstanceStateMap.put(id, state);
-    // TODO: (xingtanzjr) we need to distinguish the Timeout situation
-    if (state.isFailed()) {
-      transitionToFailed(
-          new RuntimeException(String.format("FragmentInstance[%s] is failed.", id)));
-    }
-    boolean allFinished =
-        fragInstanceStateMap.values().stream()
-            .allMatch(currentState -> currentState == FragmentInstanceState.FINISHED);
-    if (allFinished) {
-      transitionToFinished();
-    }
   }
 
   public void addStateChangeListener(

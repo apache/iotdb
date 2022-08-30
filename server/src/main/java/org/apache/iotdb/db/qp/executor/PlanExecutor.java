@@ -39,7 +39,6 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
@@ -577,9 +576,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateSetSystemMode(SetSystemModePlan plan) {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setSystemStatus(plan.isReadOnly() ? SystemStatus.READ_ONLY : SystemStatus.NORMAL);
+    IoTDBDescriptor.getInstance().getConfig().setNodeStatus(plan.getStatus());
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
@@ -1936,7 +1933,7 @@ public class PlanExecutor implements IPlanExecutor {
             }
           }
           break;
-        case GRANT_ROLE_TO_USER:
+        case GRANT_USER_ROLE:
           authorizerManager.grantRoleToUser(roleName, userName);
           break;
         case REVOKE_USER:
@@ -1953,7 +1950,7 @@ public class PlanExecutor implements IPlanExecutor {
             }
           }
           break;
-        case REVOKE_ROLE_FROM_USER:
+        case REVOKE_USER_ROLE:
           authorizerManager.revokeRoleFromUser(roleName, userName);
           break;
         default:

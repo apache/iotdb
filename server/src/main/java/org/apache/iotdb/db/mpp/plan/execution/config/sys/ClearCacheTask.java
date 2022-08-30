@@ -28,7 +28,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class ClearCacheTask implements IConfigTask {
 
-  private ClearCacheStatement clearCacheStatement;
+  private final ClearCacheStatement clearCacheStatement;
 
   public ClearCacheTask(ClearCacheStatement clearCacheStatement) {
     this.clearCacheStatement = clearCacheStatement;
@@ -39,6 +39,6 @@ public class ClearCacheTask implements IConfigTask {
       throws InterruptedException {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.clearCache(clearCacheStatement.isCluster());
+    return configTaskExecutor.clearCache(clearCacheStatement.isOnCluster());
   }
 }

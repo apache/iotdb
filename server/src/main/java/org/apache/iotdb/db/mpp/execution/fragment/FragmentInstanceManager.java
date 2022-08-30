@@ -102,7 +102,7 @@ public class FragmentInstanceManager {
                 try {
                   DataDriver driver =
                       planner.plan(
-                          instance.getFragment().getRoot(),
+                          instance.getFragment().getPlanNodeTree(),
                           instance.getFragment().getTypeProvider(),
                           context,
                           instance.getTimeFilter(),
@@ -144,7 +144,7 @@ public class FragmentInstanceManager {
 
               try {
                 SchemaDriver driver =
-                    planner.plan(instance.getFragment().getRoot(), context, schemaRegion);
+                    planner.plan(instance.getFragment().getPlanNodeTree(), context, schemaRegion);
                 return createFragmentInstanceExecution(
                     scheduler,
                     instanceId,
@@ -162,26 +162,27 @@ public class FragmentInstanceManager {
     return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
   }
 
-  /** Aborts a FragmentInstance. */
+  /** Aborts a FragmentInstance. keep FragmentInstanceContext for later state tracking */
   public FragmentInstanceInfo abortFragmentInstance(FragmentInstanceId fragmentInstanceId) {
-    FragmentInstanceExecution execution = instanceExecution.remove(fragmentInstanceId);
-    if (execution != null) {
-      instanceContext.remove(fragmentInstanceId);
-      execution.abort();
-      return execution.getInstanceInfo();
+    instanceExecution.remove(fragmentInstanceId);
+    FragmentInstanceContext context = instanceContext.get(fragmentInstanceId);
+    if (context != null) {
+      context.abort();
+      return context.getInstanceInfo();
     }
     return null;
   }
 
   /** Cancels a FragmentInstance. */
   public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId) {
+    logger.error("cancelTask");
     requireNonNull(instanceId, "taskId is null");
 
-    FragmentInstanceExecution execution = instanceExecution.remove(instanceId);
-    if (execution != null) {
-      instanceContext.remove(instanceId);
-      execution.cancel();
-      return execution.getInstanceInfo();
+    FragmentInstanceContext context = instanceContext.remove(instanceId);
+    if (context != null) {
+      instanceExecution.remove(instanceId);
+      context.cancel();
+      return context.getInstanceInfo();
     }
     return null;
   }
@@ -194,11 +195,11 @@ public class FragmentInstanceManager {
    */
   public FragmentInstanceInfo getInstanceInfo(FragmentInstanceId instanceId) {
     requireNonNull(instanceId, "instanceId is null");
-    FragmentInstanceExecution execution = instanceExecution.get(instanceId);
-    if (execution == null) {
+    FragmentInstanceContext context = instanceContext.get(instanceId);
+    if (context == null) {
       return null;
     }
-    return execution.getInstanceInfo();
+    return context.getInstanceInfo();
   }
 
   public CounterStat getFailedInstances() {
@@ -217,18 +218,8 @@ public class FragmentInstanceManager {
         .entrySet()
         .removeIf(
             entry -> {
-              FragmentInstanceId instanceId = entry.getKey();
-              FragmentInstanceExecution execution = instanceExecution.get(instanceId);
-              if (execution == null) {
-                return true;
-              }
-              long endTime = execution.getInstanceInfo().getEndTime();
-              if (endTime != -1 && endTime <= oldestAllowedInstance) {
-                instanceContext.remove(instanceId);
-                return true;
-              } else {
-                return false;
-              }
+              long endTime = entry.getValue().getEndTime();
+              return endTime != -1 && endTime <= oldestAllowedInstance;
             });
   }
 

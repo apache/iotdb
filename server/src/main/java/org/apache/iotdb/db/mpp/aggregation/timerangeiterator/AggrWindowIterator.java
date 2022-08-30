@@ -176,4 +176,27 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   public long currentOutputTime() {
     return leftCRightO ? curTimeRange.getMin() : curTimeRange.getMax();
   }
+
+  @Override
+  public long getTotalIntervalNum() {
+    long queryRange = endTime - startTime;
+    long intervalNum;
+
+    if (isSlidingStepByMonth) {
+      intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep * MS_TO_MONTH));
+      long retStartTime = DatetimeUtils.calcIntervalByMonth(startTime, intervalNum * slidingStep);
+      while (retStartTime > endTime) {
+        intervalNum -= 1;
+        retStartTime = DatetimeUtils.calcIntervalByMonth(startTime, intervalNum * slidingStep);
+      }
+    } else {
+      intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
+    }
+    return intervalNum;
+  }
+
+  public void reset() {
+    curTimeRange = null;
+    hasCachedTimeRange = false;
+  }
 }

@@ -874,6 +874,7 @@ public class SessionConnection {
   protected TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateResp execResp;
+    req.setSessionId(sessionId);
     try {
       execResp = client.querySchemaTemplate(req);
       RpcUtils.verifySuccess(execResp.getStatus());

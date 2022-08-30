@@ -45,9 +45,9 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TTL = "ttl";
-  public static final String COLUMN_SCHEMA_REPLICATION_FACTOR = "schema_replication_factor";
-  public static final String COLUMN_DATA_REPLICATION_FACTOR = "data_replication_factor";
-  public static final String COLUMN_TIME_PARTITION_INTERVAL = "time_partition_interval";
+  public static final String COLUMN_SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
+  public static final String COLUMN_DATA_REPLICATION_FACTOR = "DataReplicationFactor";
+  public static final String COLUMN_TIME_PARTITION_INTERVAL = "TimePartitionInterval";
   public static final String COLUMN_CHILDPATHS = "child paths";
   public static final String COLUMN_NODETYPES = "node types";
   public static final String COLUMN_CHILDNODES = "child nodes";
@@ -77,8 +77,8 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_REGION_ID = "RegionId";
   public static final String COLUMN_TYPE = "Type";
   public static final String COLUMN_DATANODE_ID = "DataNodeId";
-  public static final String COLUMN_SERIES_SLOTS = "Series Slots";
-  public static final String COLUMN_TIME_SLOTS = "Time Slots";
+  public static final String COLUMN_SERIES_SLOTS = "SeriesSlots";
+  public static final String COLUMN_TIME_SLOTS = "TimeSlots";
   public static final String COLUMN_ROLE = "Role";
 
   // column names for show datanodes
@@ -87,6 +87,13 @@ public class ColumnHeaderConstant {
 
   // column names for show schema template statement
   public static final String COLUMN_TEMPLATE_NAME = "template name";
+
+  // column names for show pipe sink type
+  public static final String COLUMN_PIPESINK_TYPE = "type";
+
+  // column names for show pipe sink
+  public static final String COLUMN_PIPESINK_NAME = "name";
+  public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -127,7 +134,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
           new ColumnHeader(COLUMN_SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(COLUMN_DATA_REPLICATION_FACTOR, TSDataType.INT32),
-          new ColumnHeader(COLUMN_TIME_PARTITION_INTERVAL, TSDataType.INT64));
+          new ColumnHeader(COLUMN_TIME_PARTITION_INTERVAL, TSDataType.INT64),
+          new ColumnHeader(COLUMN_SCHEMA_REGION_NUM, TSDataType.INT32),
+          new ColumnHeader(COLUMN_DATA_REGION_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
       ImmutableList.of(
@@ -215,4 +224,13 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showSchemaTemplateHeaders =
       ImmutableList.of(new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showPipeSinkTypeColumnHeaders =
+      ImmutableList.of(new ColumnHeader(COLUMN_PIPESINK_TYPE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showPipeSinkColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_PIPESINK_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPESINK_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPESINK_ATTRIBUTES, TSDataType.TEXT));
 }

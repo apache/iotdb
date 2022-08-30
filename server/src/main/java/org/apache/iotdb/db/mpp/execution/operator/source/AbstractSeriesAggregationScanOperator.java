@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -40,7 +41,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
 
 public abstract class AbstractSeriesAggregationScanOperator implements DataSourceOperator {
@@ -68,14 +68,19 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
 
   protected boolean finished = false;
 
+  private final long maxRetainedSize;
+  private final long maxReturnSize;
+
   public AbstractSeriesAggregationScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
       SeriesScanUtil seriesScanUtil,
       int subSensorSize,
       List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
       boolean ascending,
-      GroupByTimeParameter groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.ascending = ascending;
@@ -83,14 +88,17 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     this.seriesScanUtil = seriesScanUtil;
     this.subSensorSize = subSensorSize;
     this.aggregators = aggregators;
-
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+    this.timeRangeIterator = timeRangeIterator;
 
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
+
+    this.maxRetainedSize =
+        (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    this.maxReturnSize = maxReturnSize;
   }
 
   @Override
@@ -109,6 +117,21 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
   }
 
   @Override
+  public long calculateMaxPeekMemory() {
+    return maxRetainedSize + maxReturnSize;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return maxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return maxRetainedSize;
+  }
+
+  @Override
   public boolean hasNext() {
     return timeRangeIterator.hasNextTimeRange();
   }
@@ -118,9 +141,6 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
-
-    // reset operator state
-    resultTsBlockBuilder.reset();
 
     while (System.nanoTime() - start < maxRuntime
         && timeRangeIterator.hasNextTimeRange()
@@ -138,7 +158,9 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     }
 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
-      return resultTsBlockBuilder.build();
+      TsBlock resultTsBlock = resultTsBlockBuilder.build();
+      resultTsBlockBuilder.reset();
+      return resultTsBlock;
     } else {
       return null;
     }

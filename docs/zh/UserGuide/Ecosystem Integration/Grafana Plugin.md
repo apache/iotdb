@@ -302,6 +302,8 @@ Type下拉中有Query、Custom、Text box、Constant、DataSource、Interval、A
 *  `show devices`
 *  `select xx from root.xxx limit xx 等sql 查询`
 
+* 提示：如果查询的字段中有布尔类型的数据，会将true转化成1，false转化成0结果值进行显示。
+
 #### 告警功能
 本插件支持 Grafana alert功能。
 

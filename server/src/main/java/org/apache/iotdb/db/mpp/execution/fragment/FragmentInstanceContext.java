@@ -176,7 +176,23 @@ public class FragmentInstanceContext extends QueryContext {
     stateMachine.transitionToFlushing();
   }
 
+  public void cancel() {
+    stateMachine.cancel();
+  }
+
+  public void abort() {
+    stateMachine.abort();
+  }
+
   public long getEndTime() {
     return executionEndTime.get();
+  }
+
+  public FragmentInstanceInfo getInstanceInfo() {
+    return new FragmentInstanceInfo(stateMachine.getState(), getEndTime(), getFailedCause());
+  }
+
+  public FragmentInstanceStateMachine getStateMachine() {
+    return stateMachine;
   }
 }

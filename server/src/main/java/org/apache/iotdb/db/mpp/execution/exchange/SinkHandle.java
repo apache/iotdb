@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.concurrent.SetThreadName;
 import org.apache.commons.lang3.Validate;
@@ -40,7 +41,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -117,7 +117,8 @@ public class SinkHandle implements ISinkHandle {
     this.blocked =
         localMemoryManager
             .getQueryPool()
-            .reserve(localFragmentInstanceId.getQueryId(), DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+            .reserve(localFragmentInstanceId.getQueryId(), DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES)
+            .left;
     this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
@@ -144,24 +145,20 @@ public class SinkHandle implements ISinkHandle {
     }
     long retainedSizeInBytes = tsBlock.getRetainedSizeInBytes();
     int startSequenceId;
-    List<Long> tsBlockSizes = new ArrayList<>();
     startSequenceId = nextSequenceId;
     blocked =
         localMemoryManager
             .getQueryPool()
-            .reserve(localFragmentInstanceId.getQueryId(), retainedSizeInBytes);
+            .reserve(localFragmentInstanceId.getQueryId(), retainedSizeInBytes)
+            .left;
     bufferRetainedSizeInBytes += retainedSizeInBytes;
 
     sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
     nextSequenceId += 1;
     currentTsBlockSize = retainedSizeInBytes;
 
-    for (int i = startSequenceId; i < nextSequenceId; i++) {
-      tsBlockSizes.add(sequenceIdToTsBlock.get(i).left.getRetainedSizeInBytes());
-    }
-
     // TODO: consider merge multiple NewDataBlockEvent for less network traffic.
-    submitSendNewDataBlockEventTask(startSequenceId, tsBlockSizes);
+    submitSendNewDataBlockEventTask(startSequenceId, ImmutableList.of(retainedSizeInBytes));
   }
 
   @Override
@@ -233,7 +230,7 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     logger.info("SinkHandle is being closed.");
     sequenceIdToTsBlock.clear();
     closed = true;
@@ -249,17 +246,17 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public boolean isAborted() {
+  public synchronized boolean isAborted() {
     return aborted;
   }
 
   @Override
-  public boolean isFinished() {
+  public synchronized boolean isFinished() {
     return noMoreTsBlocks && sequenceIdToTsBlock.isEmpty();
   }
 
   @Override
-  public long getBufferRetainedSizeInBytes() {
+  public synchronized long getBufferRetainedSizeInBytes() {
     return bufferRetainedSizeInBytes;
   }
 
@@ -271,13 +268,23 @@ public class SinkHandle implements ISinkHandle {
     throw new UnsupportedOperationException();
   }
 
-  ByteBuffer getSerializedTsBlock(int sequenceId) throws IOException {
-    TsBlock tsBlock;
-    tsBlock = sequenceIdToTsBlock.get(sequenceId).left;
-    if (tsBlock == null) {
+  synchronized ByteBuffer getSerializedTsBlock(int sequenceId) throws IOException {
+    if (aborted || closed) {
+      logger.warn(
+          "SinkHandle still receive getting TsBlock request after being aborted={} or closed={}",
+          aborted,
+          closed);
+      throw new IllegalStateException("Sink handle is aborted or closed. ");
+    }
+    Pair<TsBlock, Long> pair = sequenceIdToTsBlock.get(sequenceId);
+    if (pair == null || pair.left == null) {
+      logger.error(
+          "The data block doesn't exist. Sequence ID is {}, remaining map is {}",
+          sequenceId,
+          sequenceIdToTsBlock.entrySet());
       throw new IllegalStateException("The data block doesn't exist. Sequence ID: " + sequenceId);
     }
-    return serde.serialize(tsBlock);
+    return serde.serialize(pair.left);
   }
 
   void acknowledgeTsBlock(int startSequenceId, int endSequenceId) {

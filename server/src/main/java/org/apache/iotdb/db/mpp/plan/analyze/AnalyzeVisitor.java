@@ -91,6 +91,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTe
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
@@ -178,6 +179,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.info("{} fetch schema done", getLogHeader());
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
+        if (queryStatement.isLastQuery()) {
+          analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
+        }
         analysis.setFinishQueryAfterAnalyze(true);
         return analysis;
       }
@@ -810,14 +814,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<Expression> aggregationExpressionsInHaving) {
 
     if (queryStatement.isGroupByLevel()) {
-      Map<Expression, Expression> RawPathToGroupedPathMapInHaving =
+      Map<Expression, Expression> rawPathToGroupedPathMapInHaving =
           analyzeGroupByLevelInHaving(
               queryStatement, aggregationExpressionsInHaving, groupByLevelExpressions);
       List<Expression> convertedPredicates = new ArrayList<>();
       for (Expression expression : transformExpressionsInHaving) {
         convertedPredicates.add(
             ExpressionAnalyzer.replaceRawPathWithGroupedPath(
-                expression, RawPathToGroupedPathMapInHaving));
+                expression, rawPathToGroupedPathMapInHaving));
       }
       return ExpressionUtils.constructQueryFilter(
           convertedPredicates.stream().distinct().collect(Collectors.toList()));
@@ -1785,6 +1789,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
 
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitShowPipeSinkType(
+      ShowPipeSinkTypeStatement showPipeSinkTypeStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    analysis.setStatement(showPipeSinkTypeStatement);
+    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowPipeSinkTypeHeader());
+    analysis.setFinishQueryAfterAnalyze(true);
     return analysis;
   }
 }
