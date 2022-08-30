@@ -837,8 +837,8 @@ public class IoTDBAuthIT {
       adminStatement.execute("CREATE USER user01 'pass1234'");
       adminStatement.execute("CREATE USER user02 'pass1234'");
       adminStatement.execute("CREATE ROLE manager");
-      adminStatement.execute("GRANT USER user01 PRIVILEGES GRANT_USER_ROLE on root");
-      adminStatement.execute("GRANT USER user01 PRIVILEGES REVOKE_USER_ROLE on root");
+      adminStatement.execute("GRANT USER user01 PRIVILEGES GRANT_USER_ROLE on root.**");
+      adminStatement.execute("GRANT USER user01 PRIVILEGES REVOKE_USER_ROLE on root.**");
     }
 
     try (Connection userCon = EnvFactory.getEnv().getConnection("user01", "pass1234");
