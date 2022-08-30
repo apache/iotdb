@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -816,7 +817,9 @@ public class TSServiceImpl implements TSIService.Iface {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,
-              "No permissions for this operation " + plan.getOperatorType()));
+              "No permissions for this operation, please add privilege "
+                  + OperatorType.values()[
+                      AuthorityChecker.translateToPermissionId(plan.getOperatorType())]));
     }
 
     long queryId = context.getQueryId();
