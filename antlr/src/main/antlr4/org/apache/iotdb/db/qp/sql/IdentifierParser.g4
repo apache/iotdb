@@ -148,6 +148,8 @@ keyWords
     | SOFFSET
     | STORAGE
     | START
+    | STATEFUL
+    | STATELESS
     | STOP
     | SYSTEM
     | TAGS
