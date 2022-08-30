@@ -23,7 +23,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -826,6 +825,28 @@ public class IoTDBAuthIT {
             userStatement.executeQuery(
                 "SELECT s1, s1, s1 - s3, s2 * sin(s1), s1 + 1 / 2 * sin(s1), sin(s1), sin(s1) FROM root.test")) {
       assertTrue(resultSet.next());
+    }
+  }
+
+  /** IOTDB-2769 */
+  @Test
+  public void testGrantUserRole() throws SQLException{
+    try (Connection adminConnection = EnvFactory.getEnv().getConnection();
+         Statement adminStatement = adminConnection.createStatement()) {
+      adminStatement.execute("CREATE USER user01 'pass1234'");
+      adminStatement.execute("CREATE USER user02 'pass1234'");
+      adminStatement.execute("CREATE ROLE manager");
+      adminStatement.execute("GRANT USER user01 PRIVILEGES GRANT_USER_ROLE on root");
+      adminStatement.execute("GRANT USER user01 PRIVILEGES REVOKE_USER_ROLE on root");
+    }
+
+    try (Connection userCon = EnvFactory.getEnv().getConnection("user01", "pass1234");
+         Statement userStatement = userCon.createStatement()) {
+      try {
+        userStatement.execute("grant manager to user02");
+      } catch (SQLException e) {
+        fail(e.getMessage());
+      }
     }
   }
 }
