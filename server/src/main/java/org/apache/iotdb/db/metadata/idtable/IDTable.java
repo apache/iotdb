@@ -171,7 +171,8 @@ public interface IDTable {
   /**
    * put schema entry to id table, currently used in recover
    *
-   * @param devicePath device path (can be device id formed path)
+   * @param deviceID device id
+   * @param devicePath device path
    * @param measurement measurement name
    * @param schemaEntry schema entry to put
    * @param isAligned is the device aligned

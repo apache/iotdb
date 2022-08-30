@@ -66,7 +66,7 @@ public class IDTableRestartTest {
     isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
+    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement");
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
     EnvironmentUtils.envSetUp();
   }
@@ -83,23 +83,15 @@ public class IDTableRestartTest {
 
   @Test
   public void testRawDataQueryAfterRestart() throws Exception {
-    String sg1 = "root.isp1";
-    String sg2 = "root.isp2";
-    insertDataInMemoryWithTablet(sg1 + ".d1");
-    insertDataInMemoryWithRecord(sg1 + ".d1");
-    insertDataInMemoryWithTablet(sg2 + ".d1");
-    insertDataInMemoryWithRecord(sg2 + ".d1");
-
-    // restart
-    try {
-      EnvironmentUtils.restartDaemon();
-    } catch (Exception e) {
-      Assert.fail();
-    }
+    String path1 = "root.isp1.d1";
+    String path2 = "root.isp2.d1";
+    insertDataInMemoryWithTablet(path1);
+    insertDataInMemoryWithTablet(path2);
+    insertDataInMemoryWithRecord(path1);
+    insertDataInMemoryWithRecord(path2);
 
     PlanExecutor executor = new PlanExecutor();
-    QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + sg1 + ".d1");
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + path1);
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(6, dataSet.getPaths().size());
     int count = 0;
@@ -109,9 +101,39 @@ public class IDTableRestartTest {
       count++;
     }
 
+    executor = new PlanExecutor();
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + path2);
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(6, dataSet.getPaths().size());
+    count = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      System.out.println(record);
+      count++;
+    }
+
+    // restart
+    try {
+      EnvironmentUtils.restartDaemon();
+    } catch (Exception e) {
+      Assert.fail();
+    }
+
+    executor = new PlanExecutor();
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + path1);
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(6, dataSet.getPaths().size());
+    count = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      System.out.println(record);
+      count++;
+    }
+
     assertEquals(5, count);
 
-    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + sg2 + ".d1");
+    executor = new PlanExecutor();
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + path2);
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(6, dataSet.getPaths().size());
     count = 0;
@@ -132,9 +154,21 @@ public class IDTableRestartTest {
     } catch (Exception e) {
       Assert.fail();
     }
+    executor = new PlanExecutor();
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + path1);
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(6, dataSet.getPaths().size());
+    count = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      System.out.println(record);
+      count++;
+    }
+
+    assertEquals(5, count);
 
     executor = new PlanExecutor();
-    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + sg1 + ".d1");
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + path2);
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(6, dataSet.getPaths().size());
     count = 0;
@@ -145,25 +179,9 @@ public class IDTableRestartTest {
     }
 
     assertEquals(5, count);
-
-    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + sg2 + ".d1");
-    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
-    count = 0;
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      System.out.println(record);
-      count++;
-    }
-
-    assertEquals(5, count);
-
-    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from " + sg2 + ".d2");
-    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(0, dataSet.getPaths().size());
   }
 
-  private void insertDataInMemoryWithRecord(String storageGroupPath)
+  private void insertDataInMemoryWithRecord(String path)
       throws IllegalPathException, QueryProcessException {
     long time = 100L;
     TSDataType[] dataTypes =
@@ -182,11 +200,11 @@ public class IDTableRestartTest {
     columns[2] = 10000 + "";
     columns[3] = 100 + "";
     columns[4] = false + "";
-    columns[5] = "hh" + 0;
+    columns[5] = path;
 
     InsertRowPlan insertRowPlan =
         new InsertRowPlan(
-            new PartialPath(storageGroupPath),
+            new PartialPath(path),
             time,
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
             dataTypes,
@@ -196,7 +214,7 @@ public class IDTableRestartTest {
     executor.insert(insertRowPlan);
   }
 
-  private void insertDataInMemoryWithTablet(String storageGroupPath)
+  private void insertDataInMemoryWithTablet(String path)
       throws IllegalPathException, QueryProcessException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
@@ -221,14 +239,12 @@ public class IDTableRestartTest {
       ((long[]) columns[2])[r] = 100000 + r;
       ((int[]) columns[3])[r] = 1000 + r;
       ((boolean[]) columns[4])[r] = false;
-      ((Binary[]) columns[5])[r] = new Binary("mm" + r);
+      ((Binary[]) columns[5])[r] = new Binary(path);
     }
 
     InsertTabletPlan tabletPlan =
         new InsertTabletPlan(
-            new PartialPath(storageGroupPath),
-            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-            dataTypes);
+            new PartialPath(path), new String[] {"s1", "s2", "s3", "s4", "s5", "s6"}, dataTypes);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);

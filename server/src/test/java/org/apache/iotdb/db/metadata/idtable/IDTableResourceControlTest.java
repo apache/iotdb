@@ -65,7 +65,7 @@ public class IDTableResourceControlTest {
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
+    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("AutoIncrement");
     EnvironmentUtils.envSetUp();
   }
 
@@ -102,9 +102,9 @@ public class IDTableResourceControlTest {
         continue;
       }
 
-      for (IDeviceID deviceID : map.keySet()) {
+      for (DeviceEntry deviceEntry : map.values()) {
         if (idTableDeviceID == null) {
-          idTableDeviceID = deviceID;
+          idTableDeviceID = deviceEntry.getDeviceID();
         } else {
           fail("there should only be one device in id table");
         }

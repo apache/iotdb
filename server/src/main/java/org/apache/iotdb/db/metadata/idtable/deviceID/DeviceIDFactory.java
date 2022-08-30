@@ -59,6 +59,9 @@ public class DeviceIDFactory {
         case AutoIncrement:
           getDeviceIDFunction = IDTableAutoIncImpl::getDeviceID;
           return;
+        default:
+          getDeviceIDFunction = PlainDeviceID::new;
+          return;
       }
     }
     getDeviceIDFunction = PlainDeviceID::new;
@@ -97,6 +100,9 @@ public class DeviceIDFactory {
         case AutoIncrement:
           getDeviceIDFunction = IDTableAutoIncImpl::getDeviceID;
           IDTableAutoIncImpl.reset();
+          return;
+        default:
+          getDeviceIDFunction = PlainDeviceID::new;
           return;
       }
     }
