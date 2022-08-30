@@ -281,9 +281,11 @@ public class IoTDBSchemaTemplateIT {
         new String[] {"root.sg1.d1", "root.sg2.d2", "root.sg1.d2", "root.sg2.d1"};
     Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
+      String resultRecord;
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("paths")));
-        expectedResultSet.remove(resultSet.getString("paths"));
+        resultRecord = resultSet.getString(1);
+        Assert.assertTrue(expectedResultSet.contains(resultRecord));
+        expectedResultSet.remove(resultRecord);
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -291,9 +293,11 @@ public class IoTDBSchemaTemplateIT {
     expectedResult = new String[] {"root.sg3.d1", "root.sg3.d2"};
     expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t2")) {
+      String resultRecord;
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("paths")));
-        expectedResultSet.remove(resultSet.getString("paths"));
+        resultRecord = resultSet.getString(1);
+        Assert.assertTrue(expectedResultSet.contains(resultRecord));
+        expectedResultSet.remove(resultRecord);
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -301,9 +305,11 @@ public class IoTDBSchemaTemplateIT {
     expectedResult = new String[] {"root.sg1.d2", "root.sg2.d1"};
     expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.executeQuery("SHOW PATHS USING SCHEMA TEMPLATE t1")) {
+      String resultRecord;
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("paths")));
-        expectedResultSet.remove(resultSet.getString("paths"));
+        resultRecord = resultSet.getString(1);
+        Assert.assertTrue(expectedResultSet.contains(resultRecord));
+        expectedResultSet.remove(resultRecord);
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
