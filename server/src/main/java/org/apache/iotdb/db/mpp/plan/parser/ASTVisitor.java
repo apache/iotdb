@@ -67,6 +67,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
+import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -749,9 +750,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // initialize query statement
     queryStatement = new QueryStatement();
 
-    // parser select, from
+    // parse select, from
     parseSelectClause(ctx.selectClause());
     parseFromClause(ctx.fromClause());
+
+    // parse into clause
+    if (ctx.intoClause() != null) {
+      parseIntoClause(ctx.intoClause());
+    }
 
     // parse where clause
     if (ctx.whereClause() != null) {
@@ -1301,6 +1307,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       queryStatement.setResultSetFormat(ResultSetFormat.DISABLE_ALIGN);
     }
+  }
+
+  // parse INTO clause
+
+  private void parseIntoClause(IoTDBSqlParser.IntoClauseContext ctx) {
+    boolean isAligned = ctx.ALIGNED() != null;
+    List<PartialPath> intoPaths = new ArrayList<>();
+
+    queryStatement.setIntoComponent(new IntoComponent(intoPaths, isAligned));
   }
 
   // Insert Statement ========================================================================
