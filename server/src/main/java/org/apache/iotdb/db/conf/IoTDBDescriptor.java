@@ -62,6 +62,7 @@ public class IoTDBDescriptor {
     ServiceLoader<IPropertiesLoader> propertiesLoaderServiceLoader =
         ServiceLoader.load(IPropertiesLoader.class);
     for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
+      logger.info("Will reload properties from {} ", loader.getClass().getName());
       try {
         Properties properties = loader.loadProperties();
         loadProperties(properties);

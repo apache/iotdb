@@ -243,6 +243,7 @@ public class MManager {
         // it means there is more than one ISeriesNumerLimiter implementation.
         logger.warn("There are more than one ISeriesNumerLimiter implementation. pls check.");
       }
+      logger.info("Will set seriesNumerMonitor from {} ", loader.getClass().getName());
       this.seriesNumerMonitor = loader;
     }
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
