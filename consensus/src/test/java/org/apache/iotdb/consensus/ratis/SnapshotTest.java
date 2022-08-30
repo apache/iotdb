@@ -118,6 +118,10 @@ public class SnapshotTest {
     SnapshotInfo info = proxy.getLatestSnapshot();
     Assert.assertEquals(info.getTerm(), 616);
     Assert.assertEquals(info.getIndex(), 4217);
+    // metafile must be the last file in SnapshotInfo for atomicity consideration
+    Path last = info.getFiles().get(info.getFiles().size() - 1).getPath();
+    Assert.assertEquals(
+        last.toFile().getName(), new File(getSnapshotMetaFilename("616_4217")).getName());
 
     // clean up
     proxy.getStateMachineStorage().cleanupOldSnapshots(null);
@@ -190,7 +194,7 @@ public class SnapshotTest {
     String actualSnapshotName =
         CrossDiskLinkStatemachine.ensureSnapshotFileName(testDir, "20_1005");
     File actualSnapshotFile = new File(actualSnapshotName);
-    Assert.assertEquals(proxy.getLatestSnapshot().getFiles().size(), 1);
+    Assert.assertEquals(proxy.getLatestSnapshot().getFiles().size(), 2);
     Assert.assertEquals(
         proxy.getLatestSnapshot().getFiles().get(0).getPath().toFile().getAbsolutePath(),
         actualSnapshotFile.getAbsolutePath());
