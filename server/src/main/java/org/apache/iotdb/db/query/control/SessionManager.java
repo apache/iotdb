@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
@@ -342,7 +343,9 @@ public class SessionManager {
       if (!checkAuthorization(plan, sessionIdToUsername.get(sessionId))) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
-            "No permissions for this operation " + plan.getOperatorType());
+            "No permissions for this operation, please add privilege "
+                + PrivilegeType.values()[
+                    AuthorityChecker.translateToPermissionId(plan.getOperatorType())]);
       }
     } catch (AuthException e) {
       LOGGER.warn("meet error while checking authorization.", e);

@@ -154,7 +154,9 @@ public class AuthorityChecker {
       if (!checkAuthorization(statement, sessionManager.getUsername(sessionId))) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
-            "No permissions for this operation " + statement.getType());
+            "No permissions for this operation, please add privilege "
+                + PrivilegeType.values()[
+                    AuthorityChecker.translateToPermissionId(statement.getType())]);
       }
     } catch (AuthException e) {
       logger.warn("meet error while checking authorization.", e);
@@ -180,7 +182,7 @@ public class AuthorityChecker {
         username, statement.getPaths(), statement.getType(), targetUser);
   }
 
-  private static int translateToPermissionId(Operator.OperatorType type) {
+  public static int translateToPermissionId(Operator.OperatorType type) {
     switch (type) {
       case GRANT_ROLE_PRIVILEGE:
         return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
