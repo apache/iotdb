@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.mpp.plan.statement.sys;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
@@ -29,12 +29,13 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import java.util.Collections;
 import java.util.List;
 
-public class ClearCacheStatement extends Statement implements IConfigStatement {
-
+public class SetSystemStatusStatement extends Statement implements IConfigStatement {
   private boolean onCluster;
 
-  public ClearCacheStatement(StatementType clearCacheType) {
-    this.statementType = clearCacheType;
+  private NodeStatus status;
+
+  public SetSystemStatusStatement() {
+    this.statementType = StatementType.SET_SYSTEM_MODE;
   }
 
   public boolean isOnCluster() {
@@ -43,6 +44,14 @@ public class ClearCacheStatement extends Statement implements IConfigStatement {
 
   public void setOnCluster(boolean onCluster) {
     this.onCluster = onCluster;
+  }
+
+  public NodeStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(NodeStatus status) {
+    this.status = status;
   }
 
   @Override
@@ -57,6 +66,6 @@ public class ClearCacheStatement extends Statement implements IConfigStatement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitClearCache(this, context);
+    return visitor.visitSetSystemStatus(this, context);
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.sql;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -2013,8 +2014,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitGrantRoleToUser(IoTDBSqlParser.GrantRoleToUserContext ctx) {
     AuthorOperator authorOperator =
-        new AuthorOperator(
-            SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_ROLE_TO_USER);
+        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_USER_ROLE);
     authorOperator.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorOperator.setUserName(parseIdentifier(ctx.userName.getText()));
     return authorOperator;
@@ -2089,7 +2089,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitRevokeRoleFromUser(IoTDBSqlParser.RevokeRoleFromUserContext ctx) {
     AuthorOperator authorOperator =
-        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_ROLE_FROM_USER);
+        new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_USER_ROLE);
     authorOperator.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorOperator.setUserName(parseIdentifier(ctx.userName.getText()));
     return authorOperator;
@@ -2242,12 +2242,14 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitSetSystemStatus(IoTDBSqlParser.SetSystemStatusContext ctx) {
-    if (ctx.READONLY() != null) {
-      // Set system to ReadOnly
-      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, true);
+    if (ctx.RUNNING() != null) {
+      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.Running);
+    } else if (ctx.READONLY() != null) {
+      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.ReadOnly);
+    } else if (ctx.ERROR() != null) {
+      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.Error);
     } else {
-      // Set system to Writable
-      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, false);
+      throw new RuntimeException("Unknown system status in set system command.");
     }
   }
 

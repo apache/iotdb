@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
+import org.apache.iotdb.db.utils.HandleSystemErrorStrategy;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -84,8 +85,9 @@ public class IoTDBConfig {
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
-  /** Shutdown system or set it to read-only mode when unrecoverable error occurs. */
-  private boolean allowReadOnlyWhenErrorsOccur = true;
+  /** What will the system do when unrecoverable error occurs. */
+  private HandleSystemErrorStrategy handleSystemErrorStrategy =
+      HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY;
 
   /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
@@ -133,7 +135,7 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /** Memory allocated for the write process */
-  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 4 / 10;
+  private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 4 / 10;
 
   /** Memory allocated for the read process */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
@@ -151,6 +153,12 @@ public class IoTDBConfig {
 
   /** Reject proportion for system */
   private double rejectProportion = 0.8;
+
+  /** The proportion of write memory for memtable */
+  private double writeProportion = 0.8;
+
+  /** The proportion of write memory for compaction */
+  private double compactionProportion = 0.2;
 
   /** If storage group increased more than this threshold, report to system. Unit: byte */
   private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
@@ -621,9 +629,6 @@ public class IoTDBConfig {
 
   /** TEXT encoding when creating schema automatically is enabled */
   private TSEncoding defaultTextEncoding = TSEncoding.PLAIN;
-
-  /** How much memory (in byte) can be used by a single merge task. */
-  private long crossCompactionMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.1);
 
   /** How many threads will be set up to perform upgrade tasks. */
   private int upgradeThreadNum = 1;
@@ -1546,17 +1551,18 @@ public class IoTDBConfig {
     this.sessionTimeoutThreshold = sessionTimeoutThreshold;
   }
 
-  boolean isAllowReadOnlyWhenErrorsOccur() {
-    return allowReadOnlyWhenErrorsOccur;
+  public HandleSystemErrorStrategy getHandleSystemErrorStrategy() {
+    return handleSystemErrorStrategy;
   }
 
-  void setAllowReadOnlyWhenErrorsOccur(boolean allowReadOnlyWhenErrorsOccur) {
-    this.allowReadOnlyWhenErrorsOccur = allowReadOnlyWhenErrorsOccur;
+  public void setHandleSystemErrorStrategy(HandleSystemErrorStrategy handleSystemErrorStrategy) {
+    this.handleSystemErrorStrategy = handleSystemErrorStrategy;
   }
 
   public boolean isReadOnly() {
     return status == NodeStatus.ReadOnly
-        || (status == NodeStatus.Error && allowReadOnlyWhenErrorsOccur);
+        || (status == NodeStatus.Error
+            && handleSystemErrorStrategy == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY);
   }
 
   public NodeStatus getNodeStatus() {
@@ -1566,22 +1572,12 @@ public class IoTDBConfig {
   public void setNodeStatus(NodeStatus newStatus) {
     if (newStatus == NodeStatus.ReadOnly) {
       logger.error(
-          "Change system mode to read-only! Only query statements are permitted!",
+          "Change system status to read-only! Only query statements are permitted!",
           new RuntimeException("System mode is set to READ_ONLY"));
     } else if (newStatus == NodeStatus.Error) {
-      if (allowReadOnlyWhenErrorsOccur) {
-        logger.error(
-            "Unrecoverable error occurs! Make system read-only when allow_read_only_when_errors_occur is true.",
-            new RuntimeException("System mode is set to READ_ONLY"));
-        newStatus = NodeStatus.ReadOnly;
-      } else {
-        logger.error(
-            "Unrecoverable error occurs! Shutdown system directly when allow_read_only_when_errors_occur is false.",
-            new RuntimeException("System mode is set to ERROR"));
-        System.exit(-1);
-      }
+      newStatus = handleSystemErrorStrategy.handle();
     } else {
-      logger.info("Set system mode from {} to NORMAL.", status);
+      logger.info("Set system mode from {} to {}.", status, newStatus);
     }
     this.status = newStatus;
   }
@@ -1710,14 +1706,6 @@ public class IoTDBConfig {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
   }
 
-  public long getCrossCompactionMemoryBudget() {
-    return crossCompactionMemoryBudget;
-  }
-
-  public void setCrossCompactionMemoryBudget(long crossCompactionMemoryBudget) {
-    this.crossCompactionMemoryBudget = crossCompactionMemoryBudget;
-  }
-
   public long getMergeIntervalSec() {
     return mergeIntervalSec;
   }
@@ -1758,12 +1746,12 @@ public class IoTDBConfig {
     this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
   }
 
-  public long getAllocateMemoryForWrite() {
-    return allocateMemoryForWrite;
+  public long getAllocateMemoryForStorageEngine() {
+    return allocateMemoryForStorageEngine;
   }
 
-  public void setAllocateMemoryForWrite(long allocateMemoryForWrite) {
-    this.allocateMemoryForWrite = allocateMemoryForWrite;
+  public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
+    this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
   }
 
   public long getAllocateMemoryForSchema() {
@@ -3127,6 +3115,22 @@ public class IoTDBConfig {
 
   public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
+  }
+
+  public double getWriteProportion() {
+    return writeProportion;
+  }
+
+  public void setWriteProportion(double writeProportion) {
+    this.writeProportion = writeProportion;
+  }
+
+  public double getCompactionProportion() {
+    return compactionProportion;
+  }
+
+  public void setCompactionProportion(double compactionProportion) {
+    this.compactionProportion = compactionProportion;
   }
 
   public long getThrottleThreshold() {

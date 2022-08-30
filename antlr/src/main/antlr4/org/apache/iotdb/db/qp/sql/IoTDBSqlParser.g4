@@ -643,9 +643,9 @@ explain
     : EXPLAIN selectStatement
     ;
 
-// Set System To ReadOnly/Writable
+// Set System To readonly/running/error
 setSystemStatus
-    : SET SYSTEM TO (READONLY|WRITABLE)
+    : SET SYSTEM TO (READONLY|RUNNING|ERROR) (ON (LOCAL | CLUSTER))?
     ;
 
 // Show Version

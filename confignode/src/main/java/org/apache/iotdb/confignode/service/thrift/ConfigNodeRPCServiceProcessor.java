@@ -508,6 +508,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus setSystemStatus(String status) {
+    return configManager.setSystemStatus(status);
+  }
+
+  @Override
   public TShowRegionResp showRegion(TShowRegionReq showRegionReq) throws TException {
     GetRegionInfoListPlan getRegionInfoListPlan = new GetRegionInfoListPlan(showRegionReq);
     RegionInfoListResp dataSet = configManager.showRegion(getRegionInfoListPlan);

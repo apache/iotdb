@@ -80,6 +80,6 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
   @Override
   public NodeStatus getNodeStatus() {
     // Return a copy of status
-    return NodeStatus.valueOf(status.getStatus());
+    return NodeStatus.parse(status.getStatus());
   }
 }

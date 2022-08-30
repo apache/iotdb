@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -257,7 +258,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> merge(boolean isCluster) {
+  public SettableFuture<ConfigTaskResult> merge(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().executeMergeOperation();
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -269,7 +270,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean isCluster) {
+  public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().executeFlushOperation(tFlushReq);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -281,7 +282,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> clearCache(boolean isCluster) {
+  public SettableFuture<ConfigTaskResult> clearCache(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().executeClearCacheOperation();
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -293,9 +294,21 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> loadConfiguration(boolean isCluster) {
+  public SettableFuture<ConfigTaskResult> loadConfiguration(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = LocalConfigNode.getInstance().executeLoadConfigurationOperation();
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setSystemStatus(boolean onCluster, NodeStatus status) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TSStatus tsStatus = LocalConfigNode.getInstance().executeSetSystemStatus(status);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {

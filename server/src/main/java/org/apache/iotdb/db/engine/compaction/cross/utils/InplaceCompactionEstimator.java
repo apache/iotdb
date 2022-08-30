@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceEstimator;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -35,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 public class InplaceCompactionEstimator extends AbstractCrossSpaceEstimator {
-  private static final Logger logger = LoggerFactory.getLogger(RewriteCompactionFileSelector.class);
+  private static final Logger logger = LoggerFactory.getLogger(InplaceCompactionEstimator.class);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
   private boolean tightEstimate;

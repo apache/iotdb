@@ -70,13 +70,13 @@ public class RemoteServerEnv implements BaseEnv {
   public void cleanAfterTest() {}
 
   @Override
-  public Connection getConnection() throws SQLException {
+  public Connection getConnection(String username, String password) throws SQLException {
     Connection connection = null;
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
       connection =
           DriverManager.getConnection(
-              Config.IOTDB_URL_PREFIX + ip_addr + ":" + port, user, password);
+              Config.IOTDB_URL_PREFIX + ip_addr + ":" + port, this.user, this.password);
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       fail();
@@ -85,7 +85,8 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public Connection getConnection(Constant.Version version) throws SQLException {
+  public Connection getConnection(Constant.Version version, String username, String password)
+      throws SQLException {
     Connection connection = null;
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
@@ -99,8 +100,8 @@ public class RemoteServerEnv implements BaseEnv {
                   + VERSION
                   + "="
                   + version.toString(),
-              user,
-              password);
+              this.user,
+              this.password);
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       fail();

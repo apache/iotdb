@@ -235,8 +235,9 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public Connection getConnection() throws SQLException {
-    return new ClusterTestConnection(getWriteConnection(null), getReadConnections(null));
+  public Connection getConnection(String username, String password) throws SQLException {
+    return new ClusterTestConnection(
+        getWriteConnection(null, username, password), getReadConnections(null, username, password));
   }
 
   private Connection getConnection(String endpoint, int queryTimeout) throws SQLException {
@@ -252,15 +253,19 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public Connection getConnection(Constant.Version version) throws SQLException {
+  public Connection getConnection(Constant.Version version, String username, String password)
+      throws SQLException {
     if (System.getProperty("ReadAndVerifyWithMultiNode", "true").equalsIgnoreCase("true")) {
-      return new ClusterTestConnection(getWriteConnection(version), getReadConnections(version));
+      return new ClusterTestConnection(
+          getWriteConnection(version, username, password),
+          getReadConnections(version, username, password));
     } else {
-      return getWriteConnection(version).getUnderlyingConnecton();
+      return getWriteConnection(version, username, password).getUnderlyingConnecton();
     }
   }
 
-  protected NodeConnection getWriteConnection(Constant.Version version) throws SQLException {
+  protected NodeConnection getWriteConnection(
+      Constant.Version version, String username, String password) throws SQLException {
     DataNodeWrapper dataNode;
 
     if (System.getProperty("RandomSelectWriteNode", "true").equalsIgnoreCase("true")) {
@@ -274,8 +279,8 @@ public abstract class AbstractEnv implements BaseEnv {
     Connection writeConnection =
         DriverManager.getConnection(
             Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
-            System.getProperty("User", "root"),
-            System.getProperty("Password", "root"));
+            System.getProperty("User", username),
+            System.getProperty("Password", password));
     return new NodeConnection(
         endpoint,
         NodeConnection.NodeRole.DATA_NODE,
@@ -283,7 +288,8 @@ public abstract class AbstractEnv implements BaseEnv {
         writeConnection);
   }
 
-  protected List<NodeConnection> getReadConnections(Constant.Version version) throws SQLException {
+  protected List<NodeConnection> getReadConnections(
+      Constant.Version version, String username, String password) throws SQLException {
     List<String> endpoints = new ArrayList<>();
     ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
         new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
@@ -295,8 +301,8 @@ public abstract class AbstractEnv implements BaseEnv {
             Connection readConnection =
                 DriverManager.getConnection(
                     Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
-                    System.getProperty("User", "root"),
-                    System.getProperty("Password", "root"));
+                    System.getProperty("User", username),
+                    System.getProperty("Password", password));
             return new NodeConnection(
                 endpoint,
                 NodeConnection.NodeRole.DATA_NODE,

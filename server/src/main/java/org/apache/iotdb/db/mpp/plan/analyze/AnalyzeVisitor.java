@@ -179,6 +179,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.info("{} fetch schema done", getLogHeader());
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
+        if (queryStatement.isLastQuery()) {
+          analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
+        }
         analysis.setFinishQueryAfterAnalyze(true);
         return analysis;
       }
