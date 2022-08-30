@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -830,9 +831,9 @@ public class IoTDBAuthIT {
 
   /** IOTDB-2769 */
   @Test
-  public void testGrantUserRole() throws SQLException{
+  public void testGrantUserRole() throws SQLException {
     try (Connection adminConnection = EnvFactory.getEnv().getConnection();
-         Statement adminStatement = adminConnection.createStatement()) {
+        Statement adminStatement = adminConnection.createStatement()) {
       adminStatement.execute("CREATE USER user01 'pass1234'");
       adminStatement.execute("CREATE USER user02 'pass1234'");
       adminStatement.execute("CREATE ROLE manager");
@@ -841,7 +842,7 @@ public class IoTDBAuthIT {
     }
 
     try (Connection userCon = EnvFactory.getEnv().getConnection("user01", "pass1234");
-         Statement userStatement = userCon.createStatement()) {
+        Statement userStatement = userCon.createStatement()) {
       try {
         userStatement.execute("grant manager to user02");
       } catch (SQLException e) {
