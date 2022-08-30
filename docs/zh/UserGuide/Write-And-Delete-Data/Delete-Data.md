@@ -60,7 +60,7 @@ expressions like : time > XXX, time <= XXX, or two atomic expressions connected 
 
 如果 delete 语句中未指定 where 子句，则会删除时间序列中的所有数据。
 ```sql
-delete from root.ln.wf02.status
+delete from root.ln.wf02.wt02.status
 ```
 
 ## 多传感器时间序列值删除    
