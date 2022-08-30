@@ -1125,4 +1125,31 @@ public class IoTDBAuthorizationIT {
       assertTrue(resultSet.next());
     }
   }
+
+  /** IOTDB-2769 */
+  @Test
+  public void testGrantUserRole() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection adminConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStatement = adminConnection.createStatement()) {
+      adminStatement.execute("CREATE USER user01 'pass1234'");
+      adminStatement.execute("CREATE USER user02 'pass1234'");
+      adminStatement.execute("CREATE ROLE manager");
+      adminStatement.execute("GRANT USER user01 PRIVILEGES GRANT_USER_ROLE on root");
+      adminStatement.execute("GRANT USER user01 PRIVILEGES REVOKE_USER_ROLE on root");
+    }
+
+    try (Connection userConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "user01", "pass1234");
+        Statement userStatement = userConnection.createStatement(); ) {
+      try {
+        userStatement.execute("grant manager to user02");
+      } catch (SQLException e) {
+        fail(e.getMessage());
+      }
+    }
+  }
 }
