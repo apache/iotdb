@@ -1119,7 +1119,7 @@ public class ExpressionAnalyzer {
           getDeviceNameInSourceExpression(((TernaryExpression) expression).getFirstExpression());
       if (DeviceName == null) {
         DeviceName =
-            getDeviceNameInSourceExpression(((TernaryExpression) expression).getFirstExpression());
+            getDeviceNameInSourceExpression(((TernaryExpression) expression).getSecondExpression());
       }
       if (DeviceName == null) {
         DeviceName =
@@ -1152,9 +1152,9 @@ public class ExpressionAnalyzer {
       Expression firstExpression =
           getMeasurementExpression(((TernaryExpression) expression).getFirstExpression());
       Expression secondExpression =
-          getMeasurementExpression(((TernaryExpression) expression).getFirstExpression());
+          getMeasurementExpression(((TernaryExpression) expression).getSecondExpression());
       Expression thirdExpression =
-          getMeasurementExpression(((TernaryExpression) expression).getFirstExpression());
+          getMeasurementExpression(((TernaryExpression) expression).getThirdExpression());
       return reconstructTernaryExpressions(
               expression,
               Collections.singletonList(firstExpression),
