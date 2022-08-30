@@ -724,6 +724,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.triggerEventClause().DELETE() != null) {
       throw new SemanticException("Trigger does not support DELETE as TRIGGER_EVENT for now.");
     }
+    if (ctx.triggerType() == null) {
+      throw new SemanticException("Please specify trigger type: STATELESS or STATEFUL.");
+    }
     Map<String, String> attributes = new HashMap<>();
     if (ctx.triggerAttributeClause() != null) {
       for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :

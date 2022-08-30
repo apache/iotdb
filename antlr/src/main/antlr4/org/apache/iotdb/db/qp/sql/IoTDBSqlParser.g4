@@ -126,7 +126,7 @@ uri
 
 // Create Trigger
 createTrigger
-    : CREATE triggerType TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL triggerAttributeClause?
+    : CREATE triggerType? TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL triggerAttributeClause?
     ;
 
 triggerType
