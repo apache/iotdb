@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
+import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -93,6 +95,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
@@ -711,6 +714,32 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowFunctions(ShowFunctionsContext ctx) {
     return new ShowFunctionsStatement();
+  }
+
+  // Create Trigger =====================================================================
+  @Override
+  public Statement visitCreateTrigger(IoTDBSqlParser.CreateTriggerContext ctx) {
+    if (ctx.triggerEventClause().DELETE() != null) {
+      throw new SemanticException("Trigger does not support DELETE as TRIGGER_EVENT for now.");
+    }
+    Map<String, String> attributes = new HashMap<>();
+    if (ctx.triggerAttributeClause() != null) {
+      for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :
+          ctx.triggerAttributeClause().triggerAttribute()) {
+        attributes.put(
+            parseAttributeKey(triggerAttributeContext.key),
+            parseAttributeValue(triggerAttributeContext.value));
+      }
+    }
+    return new CreateTriggerStatement(
+        parseIdentifier(ctx.triggerName.getText()),
+        parseStringLiteral(ctx.className.getText()),
+        ctx.triggerEventClause().BEFORE() != null
+            ? TriggerEvent.BEFORE_INSERT
+            : TriggerEvent.AFTER_INSERT,
+        ctx.triggerType().STATELESS() != null ? TriggerType.STATELESS : TriggerType.STATEFUL,
+        parsePrefixPath(ctx.prefixPath()),
+        attributes);
   }
 
   // Show Child Paths =====================================================================

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class CreateTriggerStatement extends Statement implements IConfigStatement {
 
@@ -41,17 +42,21 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
 
   private final PartialPath pathPattern;
 
+  private final Map<String, String> attributes;
+
   public CreateTriggerStatement(
       String triggerName,
       String className,
       TriggerEvent triggerEvent,
       TriggerType triggerType,
-      PartialPath pathPattern) {
+      PartialPath pathPattern,
+      Map<String, String> attributes) {
     this.triggerName = triggerName;
     this.className = className;
     this.triggerEvent = triggerEvent;
     this.triggerType = triggerType;
     this.pathPattern = pathPattern;
+    this.attributes = attributes;
   }
 
   public String getTriggerName() {
@@ -72,6 +77,10 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
 
   public PartialPath getPathPattern() {
     return pathPattern;
+  }
+
+  public Map<String, String> getAttributes() {
+    return attributes;
   }
 
   @Override

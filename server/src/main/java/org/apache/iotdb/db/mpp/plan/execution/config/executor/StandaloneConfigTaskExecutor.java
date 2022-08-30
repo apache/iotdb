@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
+import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupInfo;
@@ -155,26 +157,6 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createFunction(
-      String udfName, String className, List<String> uris) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try {
-      UDFRegistrationService.getInstance()
-          .register(udfName, className, uris, UDFExecutableManager.getInstance(), true);
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-    } catch (Exception e) {
-      final String message =
-          String.format(
-              "Failed to create function %s(%s), URI: %s, because %s.",
-              udfName, className, uris, e.getMessage());
-      LOGGER.error(message, e);
-      future.setException(
-          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
-    }
-    return future;
-  }
-
-  @Override
   public SettableFuture<ConfigTaskResult> deleteStorageGroup(
       DeleteStorageGroupStatement deleteStorageGroupStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -205,6 +187,26 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> createFunction(
+      String udfName, String className, List<String> uris) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      UDFRegistrationService.getInstance()
+          .register(udfName, className, uris, UDFExecutableManager.getInstance(), true);
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } catch (Exception e) {
+      final String message =
+          String.format(
+              "Failed to create function %s(%s), URI: %s, because %s.",
+              udfName, className, uris, e.getMessage());
+      LOGGER.error(message, e);
+      future.setException(
+          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> dropFunction(String udfName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
@@ -213,6 +215,27 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (Exception e) {
       final String message =
           String.format("Failed to drop function %s, because %s.", udfName, e.getMessage());
+      LOGGER.error(message, e);
+      future.setException(
+          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createTrigger(
+      String triggerName,
+      String className,
+      TriggerEvent triggerEvent,
+      TriggerType triggerType,
+      PartialPath pathPattern) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      // todo: implementation
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } catch (Exception e) {
+      final String message =
+          String.format("Failed to create trigger %s, because %s.", triggerName, e.getMessage());
       LOGGER.error(message, e);
       future.setException(
           new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
