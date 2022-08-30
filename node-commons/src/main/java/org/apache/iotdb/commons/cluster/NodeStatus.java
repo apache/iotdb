@@ -30,7 +30,7 @@ public enum NodeStatus {
   Removing("Removing"),
 
   /** Only query statements are permitted */
-  ReadOnly("Read-Only"),
+  ReadOnly("ReadOnly"),
 
   /**
    * Unrecoverable errors occur, system will be read-only or exit according to the param
