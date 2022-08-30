@@ -730,7 +730,7 @@ select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
 
 #### 通配符列表
 
-| Time           | temperature                                |
+| wildcard       | description                                |
 |----------------|--------------------------------------------|
 | `*`            | 在路径中表示一层。                                  |
 | `**`           | 在路径中表示是（`*`）+，即为一层或多层`*`。                  |
