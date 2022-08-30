@@ -20,8 +20,8 @@ package org.apache.iotdb.external.api;
 
 import java.util.Properties;
 
-/** An interface for series number limiting, users can implement their own limitation strategy */
-public interface ISeriesNumerLimiter {
+/** An interface for series number monitoring, users can implement their own limitation strategy */
+public interface ISeriesNumerMonitor {
 
   /**
    * do the necessary initialization
@@ -34,8 +34,7 @@ public interface ISeriesNumerLimiter {
    * add time series
    *
    * @param number time series number for current createTimeSeries operation
-   * @return true if totalTimeSeriesNumber doesn't exceed the limit and current createTimeSeries
-   *     operation is allowed, otherwise false
+   * @return true if we want to allow the operation, otherwise false
    */
   boolean addTimeSeries(int number);
 
