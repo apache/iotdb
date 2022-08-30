@@ -1,0 +1,12 @@
+{
+  "name": "iotdbwriter",
+  "parameter": {
+    "username": "",
+    "password": "",
+    "host": "",
+    "port": "",
+    "column": [],
+    "deviceId": "",
+    "batchSize": ""
+  }
+}

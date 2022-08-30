@@ -1,0 +1,6 @@
+{
+  "name": "iotdbwriter",
+  "class": "org.apache.iotdb.datax.writer.iotdbwriter.IoTDBWriter",
+  "description": "",
+  "developer": ""
+}
