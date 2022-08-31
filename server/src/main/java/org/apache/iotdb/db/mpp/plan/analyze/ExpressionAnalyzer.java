@@ -124,20 +124,29 @@ public class ExpressionAnalyzer {
       boolean rawFlag = false, aggregationFlag = false;
       if (firstType == ResultColumn.ColumnType.RAW
           || secondType == ResultColumn.ColumnType.RAW
-          || thirdType == ResultColumn.ColumnType.RAW) rawFlag = true;
+          || thirdType == ResultColumn.ColumnType.RAW) {
+        rawFlag = true;
+      }
       if (firstType == ResultColumn.ColumnType.AGGREGATION
           || secondType == ResultColumn.ColumnType.AGGREGATION
-          || thirdType == ResultColumn.ColumnType.AGGREGATION) aggregationFlag = true;
-      if (rawFlag && aggregationFlag)
+          || thirdType == ResultColumn.ColumnType.AGGREGATION) {
+        aggregationFlag = true;
+      }
+      if (rawFlag && aggregationFlag) {
         throw new SemanticException(
             "Raw data and aggregation result hybrid calculation is not supported.");
+      }
       if (firstType == ResultColumn.ColumnType.CONSTANT
           && secondType == ResultColumn.ColumnType.CONSTANT
           && thirdType == ResultColumn.ColumnType.CONSTANT) {
         throw new SemanticException("Constant column is not supported.");
       }
-      if (firstType != ResultColumn.ColumnType.CONSTANT) return firstType;
-      if (secondType != ResultColumn.ColumnType.CONSTANT) return secondType;
+      if (firstType != ResultColumn.ColumnType.CONSTANT) {
+        return firstType;
+      }
+      if (secondType != ResultColumn.ColumnType.CONSTANT) {
+        return secondType;
+      }
       return thirdType;
     } else if (expression instanceof BinaryExpression) {
       ResultColumn.ColumnType leftType =
@@ -1026,9 +1035,9 @@ public class ExpressionAnalyzer {
       Expression firstExpression =
           removeAliasFromExpression(((TernaryExpression) expression).getFirstExpression());
       Expression secondExpression =
-          removeAliasFromExpression(((TernaryExpression) expression).getFirstExpression());
+          removeAliasFromExpression(((TernaryExpression) expression).getSecondExpression());
       Expression thirdExpression =
-          removeAliasFromExpression(((TernaryExpression) expression).getFirstExpression());
+          removeAliasFromExpression(((TernaryExpression) expression).getThirdExpression());
       return reconstructTernaryExpressions(
               expression,
               Collections.singletonList(firstExpression),
@@ -1110,7 +1119,7 @@ public class ExpressionAnalyzer {
           getDeviceNameInSourceExpression(((TernaryExpression) expression).getFirstExpression());
       if (DeviceName == null) {
         DeviceName =
-            getDeviceNameInSourceExpression(((TernaryExpression) expression).getFirstExpression());
+            getDeviceNameInSourceExpression(((TernaryExpression) expression).getSecondExpression());
       }
       if (DeviceName == null) {
         DeviceName =
@@ -1143,9 +1152,9 @@ public class ExpressionAnalyzer {
       Expression firstExpression =
           getMeasurementExpression(((TernaryExpression) expression).getFirstExpression());
       Expression secondExpression =
-          getMeasurementExpression(((TernaryExpression) expression).getFirstExpression());
+          getMeasurementExpression(((TernaryExpression) expression).getSecondExpression());
       Expression thirdExpression =
-          getMeasurementExpression(((TernaryExpression) expression).getFirstExpression());
+          getMeasurementExpression(((TernaryExpression) expression).getThirdExpression());
       return reconstructTernaryExpressions(
               expression,
               Collections.singletonList(firstExpression),
