@@ -36,21 +36,23 @@ public class LocalSyncManager implements ISyncManager {
 
   private TsFilePipe syncPipe;
   private final DataRegion dataRegion;
+  private final String dataRegionId;
 
   public LocalSyncManager(DataRegion dataRegion, Pipe pipe) {
     this.dataRegion = dataRegion;
+    this.dataRegionId = dataRegion.getDataRegionId();
     this.syncPipe = (TsFilePipe) pipe;
   }
 
   /** tsfile */
   @Override
   public void syncRealTimeDeletion(Deletion deletion) {
-    syncPipe.collectRealTimeDeletion(deletion, dataRegion.getStorageGroupName());
+    syncPipe.collectRealTimeDeletion(deletion, dataRegion.getStorageGroupName(), dataRegionId);
   }
 
   @Override
   public void syncRealTimeTsFile(File tsFile) {
-    syncPipe.collectRealTimeTsFile(tsFile);
+    syncPipe.collectRealTimeTsFile(tsFile, dataRegionId);
   }
 
   @Override

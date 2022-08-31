@@ -99,26 +99,11 @@ public interface Pipe {
    * Used for {@linkplain ISyncClient} to take one {@linkplain PipeData} from this pipe. If there is
    * no new data in this pipe, the method will block the thread until there is a new one.
    *
-   * @return A {@linkplain PipeData}.
-   * @throws InterruptedException Be Interrupted when waiting for new {@linkplain PipeData}.
-   */
-  PipeData take() throws InterruptedException;
-
-  /**
-   * Used for {@linkplain ISyncClient} to take one {@linkplain PipeData} from this pipe. If there is
-   * no new data in this pipe, the method will block the thread until there is a new one.
-   *
    * @param dataRegionId string of {@linkplain org.apache.iotdb.commons.consensus.DataRegionId}
    * @return A {@linkplain PipeData}.
    * @throws InterruptedException Be Interrupted when waiting for new {@linkplain PipeData}.
    */
   PipeData take(String dataRegionId) throws InterruptedException;
-
-  /**
-   * Used for {@linkplain ISyncClient} to commit all {@linkplain PipeData}s which are taken but not
-   * be committed yet.
-   */
-  void commit();
 
   /**
    * Used for {@linkplain ISyncClient} to commit all {@linkplain PipeData}s which are taken but not
