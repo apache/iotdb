@@ -34,6 +34,7 @@ import org.apache.iotdb.db.sync.pipedata.queue.BufferedPipeDataQueue;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.sync.sender.manager.LocalSyncManager;
 import org.apache.iotdb.db.sync.sender.recovery.TsFilePipeLogger;
+import org.apache.iotdb.db.sync.transport.client.SenderManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +64,9 @@ public class TsFilePipe implements Pipe {
   private final TsFilePipeLogger pipeLog;
   private final ReentrantLock collectRealTimeDataLock;
 
+  /* handle rpc send logic in sender-side*/
+  private final SenderManager senderManager;
+
   private long maxSerialNumber;
 
   private PipeStatus status;
@@ -81,6 +85,7 @@ public class TsFilePipe implements Pipe {
         new BufferedPipeDataQueue(SyncPathUtil.getSenderRealTimePipeLogDir(name, createTime));
     this.pipeLog = new TsFilePipeLogger(this);
     this.collectRealTimeDataLock = new ReentrantLock();
+    this.senderManager = new SenderManager(this, pipeSink);
 
     this.maxSerialNumber = Math.max(0L, realTimeQueue.getLastMaxSerialNumber());
 
@@ -103,6 +108,7 @@ public class TsFilePipe implements Pipe {
           logFormat(
               "init syncManager for %s-%s",
               dataRegion.getStorageGroupName(), dataRegion.getDataRegionId()));
+      senderManager.registerDataRegion(dataRegion.getDataRegionId());
       syncManagerMap.put(dataRegion.getDataRegionId(), new LocalSyncManager(dataRegion, this));
     }
     try {
@@ -113,6 +119,7 @@ public class TsFilePipe implements Pipe {
       }
 
       status = PipeStatus.RUNNING;
+      senderManager.start();
     } catch (IOException e) {
       logger.error(
           logFormat("Clear pipe dir %s error.", SyncPathUtil.getSenderPipeDir(name, createTime)),
@@ -212,11 +219,15 @@ public class TsFilePipe implements Pipe {
   /** transport data * */
   @Override
   public PipeData take() throws InterruptedException {
-    // TODO：should judge isCollectingRealTimeData here
     if (!historyQueue.isEmpty()) {
       return historyQueue.take();
     }
     return realTimeQueue.take();
+  }
+
+  @Override
+  public PipeData take(String dataRegionId) throws InterruptedException {
+    return null;
   }
 
   public List<PipeData> pull(long serialNumber) {
@@ -239,19 +250,26 @@ public class TsFilePipe implements Pipe {
   }
 
   @Override
+  public void commit(String dataRegionId) {}
+
+  @Override
   public ISyncManager getOrCreateSyncManager(String dataRegionId) {
     return syncManagerMap.computeIfAbsent(
         dataRegionId,
-        id ->
-            new LocalSyncManager(
-                StorageEngineV2.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(id))),
-                this));
+        id -> {
+          senderManager.registerDataRegion(id);
+          return new LocalSyncManager(
+              StorageEngineV2.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(id))),
+              this);
+        });
   }
 
   @Override
-  public void deleteSyncManager(String dataRegionId) {
-    if (syncManagerMap.containsKey(dataRegionId)) {
-      syncManagerMap.remove(dataRegionId).delete();
+  public void unregisterDataRegion(String dataRegionId) {
+    ISyncManager syncManager = syncManagerMap.remove(dataRegionId);
+    if (syncManager != null) {
+      syncManager.delete();
+      senderManager.unregisterDataRegion(dataRegionId);
     }
   }
 
@@ -270,6 +288,7 @@ public class TsFilePipe implements Pipe {
       throw new PipeException(
           String.format("Can not stop pipe %s, because the pipe is drop.", name));
     }
+    senderManager.stop();
     status = PipeStatus.STOP;
   }
 
@@ -278,7 +297,7 @@ public class TsFilePipe implements Pipe {
     if (status == PipeStatus.DROP) {
       return;
     }
-
+    senderManager.close();
     clear();
     status = PipeStatus.DROP;
   }
@@ -304,6 +323,7 @@ public class TsFilePipe implements Pipe {
     }
     historyQueue.close();
     realTimeQueue.close();
+    senderManager.close();
   }
 
   @Override
@@ -362,5 +382,10 @@ public class TsFilePipe implements Pipe {
   @Override
   public int hashCode() {
     return Objects.hash(createTime, name, pipeSink);
+  }
+
+  @Override
+  public SenderManager getSenderManager() {
+    return senderManager;
   }
 }
