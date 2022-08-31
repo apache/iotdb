@@ -111,12 +111,12 @@ public class PartitionInfo implements SnapshotProcessor {
   public void addMetrics() {
     MetricService.getInstance()
         .getOrCreateAutoGauge(
-            Metric.STORAGE_GROUP.toString(),
-            MetricLevel.CORE,
+            Metric.QUANTITY.toString(),
+            MetricLevel.IMPORTANT,
             storageGroupPartitionTables,
             ConcurrentHashMap::size,
             Tag.NAME.toString(),
-            "number");
+            "storageGroup");
     MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.REGION.toString(),
