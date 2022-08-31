@@ -58,7 +58,6 @@ public class SingleSeriesCompactionExecutor {
   private ChunkWriterImpl chunkWriter;
   private Chunk cachedChunk;
   private ChunkMetadata cachedChunkMetadata;
-  private Chunk lastChunk = null;
   private RateLimiter compactionRateLimiter =
       CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
   // record the min time and max time to update the target resource
@@ -125,12 +124,6 @@ public class SingleSeriesCompactionExecutor {
         if (this.chunkWriter == null) {
           constructChunkWriterFromReadChunk(currentChunk);
         }
-        // Fix: When the same measurement has different encoding/compression methods in the tsfile
-        // file, there will be an error in data writing
-        if (isTypeChanged(lastChunk, currentChunk)) {
-          forceFlush();
-          constructChunkWriterFromReadChunk(currentChunk);
-        }
         CompactionMetricsRecorder.recordReadInfo(
             currentChunk.getHeader().getSerializedSize() + currentChunk.getHeader().getDataSize());
 
@@ -150,7 +143,6 @@ public class SingleSeriesCompactionExecutor {
         } else {
           processMiddleChunk(currentChunk, chunkMetadata);
         }
-        lastChunk = currentChunk;
       }
     }
 
@@ -220,9 +212,17 @@ public class SingleSeriesCompactionExecutor {
       writeChunkIntoChunkWriter(chunk);
       flushChunkWriterIfLargeEnough();
     } else if (cachedChunk != null) {
-      // if there is a cached chunk, merge it with current chunk, then flush it
-      mergeWithCachedChunk(chunk, chunkMetadata);
-      flushCachedChunkIfLargeEnough();
+      // Fix: Merging chunks can be problematic when the same measurement has different encoding/compression
+      if (!isTypeChanged(cachedChunk, chunk)){
+        // if there is a cached chunk, merge it with current chunk, then flush it
+        mergeWithCachedChunk(chunk, chunkMetadata);
+        flushCachedChunkIfLargeEnough();
+      } else {
+        // If Encoding /compression changes, force Flush to put the current Chunk into the cache
+        forceFlush();
+        cachedChunk = chunk;
+        cachedChunkMetadata = chunkMetadata;
+      }
     } else {
       // there is no points remaining in ChunkWriter and no cached chunk
       // flush it to file directly
@@ -238,9 +238,17 @@ public class SingleSeriesCompactionExecutor {
       writeChunkIntoChunkWriter(chunk);
       flushChunkWriterIfLargeEnough();
     } else if (cachedChunk != null) {
-      // if there is a cached chunk, merge it with current chunk
-      mergeWithCachedChunk(chunk, chunkMetadata);
-      flushCachedChunkIfLargeEnough();
+      // Fix: Merging chunks can be problematic when the same measurement has different encoding/compression
+      if (!isTypeChanged(cachedChunk, chunk)){
+        // if there is a cached chunk, merge it with current chunk
+        mergeWithCachedChunk(chunk, chunkMetadata);
+        flushCachedChunkIfLargeEnough();
+      } else {
+        // If Encoding /compression changes, force Flush to put the current Chunk into the cache
+        forceFlush();
+        cachedChunk = chunk;
+        cachedChunkMetadata = chunkMetadata;
+      }
     } else {
       // there is no points remaining in ChunkWriter and no cached chunk
       // cached current chunk
