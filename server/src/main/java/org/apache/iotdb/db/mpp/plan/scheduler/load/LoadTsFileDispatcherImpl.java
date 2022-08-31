@@ -37,7 +37,7 @@ import org.apache.iotdb.db.mpp.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.mpp.plan.scheduler.IFragInstanceDispatcher;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
-import org.apache.iotdb.mpp.rpc.thrift.TLoadTsFileReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -101,7 +101,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       if (isDispatchedToLocal(endPoint)) {
         dispatchLocally(instance);
       } else {
-        dispatchRemote(instance, endPoint);
+        dispatchRemote(instance, endPoint); // TODO: can read only once
       }
     }
   }
@@ -114,12 +114,12 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       throws FragmentInstanceDispatchException {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
-      TLoadTsFileReq loadTsFileReq =
-          new TLoadTsFileReq(
+      TTsFilePieceReq loadTsFileReq =
+          new TTsFilePieceReq(
               instance.getFragment().getPlanNodeTree().serializeToByteBuffer(),
               uuid,
               instance.getRegionReplicaSet().getRegionId());
-      TLoadResp loadResp = client.sendLoadNode(loadTsFileReq);
+      TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
       if (!loadResp.isAccepted()) {
         logger.error(loadResp.message);
         throw new FragmentInstanceDispatchException(loadResp.status);

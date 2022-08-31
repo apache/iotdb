@@ -69,7 +69,7 @@ public class LoadTsFileManager {
     if (dir.delete()) {
       logger.info(String.format("Delete origin load TsFile dir %s.", dir.getPath()));
     }
-    if (dir.mkdirs()) {
+    if (!dir.mkdirs()) {
       logger.warn(String.format("load TsFile dir %s can not be created.", dir.getPath()));
     }
   }
@@ -188,7 +188,7 @@ public class LoadTsFileManager {
           entry.getValue().close();
         }
       }
-      if (taskDir.delete()) {
+      if (!taskDir.delete()) {
         logger.warn(String.format("Can not delete load uuid dir %s.", taskDir.getPath()));
       }
       dataPartition2Writer = null;

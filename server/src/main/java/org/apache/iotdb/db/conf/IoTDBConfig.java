@@ -245,7 +245,8 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
-  private String loadTsFileDir = systemDir + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+  private String loadTsFileDir =
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
 
   /** Performance tracing directory, stores performance tracing files */
   private String tracingDir =

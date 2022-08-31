@@ -205,7 +205,7 @@ struct TUpdateTemplateReq{
     2: required binary templateInfo
 }
 
-struct TLoadTsFileReq{
+struct TTsFilePieceReq{
     1: required binary body
     2: required string uuid
     3: required common.TConsensusGroupId consensusGroupId
@@ -246,7 +246,7 @@ service IDataNodeRPCService {
 
   TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req)
 
-  TLoadResp sendLoadNode(TLoadTsFileReq req);
+  TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
 
   TLoadResp sendLoadCommand(TLoadCommandReq req);
 
