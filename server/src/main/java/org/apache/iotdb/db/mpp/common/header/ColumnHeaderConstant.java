@@ -207,7 +207,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PORT, TSDataType.INT32));
+          new ColumnHeader(COLUMN_PORT, TSDataType.INT32),
+          new ColumnHeader(COLUMN_ROLE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showClusterColumnHeaders =
       ImmutableList.of(

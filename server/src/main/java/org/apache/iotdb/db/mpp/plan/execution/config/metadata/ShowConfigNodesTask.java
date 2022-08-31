@@ -72,6 +72,7 @@ public class ShowConfigNodesTask implements IConfigTask {
             .getColumnBuilder(2)
             .writeBinary(Binary.valueOf(configNodeInfo.getInternalAddress()));
         builder.getColumnBuilder(3).writeInt(configNodeInfo.getInternalPort());
+        builder.getColumnBuilder(4).writeBinary(Binary.valueOf(configNodeInfo.getRoleType()));
         builder.declarePosition();
       }
     }
