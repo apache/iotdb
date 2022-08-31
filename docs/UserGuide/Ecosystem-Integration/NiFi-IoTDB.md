@@ -18,9 +18,37 @@
     under the License.
 
 -->
+# nifi-iotdb-bundle
+
+## Apache NiFi Introduction
+
+Apache NiFi is an easy to use, powerful, and reliable system to process and distribute data.
+
+Apache NiFi supports powerful and scalable directed graphs of data routing, transformation, and system mediation logic.
+
+Apache NiFi includes the following capabilities:
+
+* Browser-based user interface
+    * Seamless experience for design, control, feedback, and monitoring
+* Data provenance tracking
+    * Complete lineage of information from beginning to end
+* Extensive configuration
+    * Loss-tolerant and guaranteed delivery
+    * Low latency and high throughput
+    * Dynamic prioritization
+    * Runtime modification of flow configuration
+    * Back pressure control
+* Extensible design
+    * Component architecture for custom Processors and Services
+    * Rapid development and iterative testing
+* Secure communication
+    * HTTPS with configurable authentication strategies
+    * Multi-tenant authorization and policy management
+    * Standard protocols for encrypted communication including TLS and SSH
+
 ## PutIoTDB
 
-This processor is used to insert data of flowfile into IoTDB.
+This is a processor that reads the content of the incoming FlowFile as individual records using the configured 'Record Reader' and writes them to Apache IoTDB using native interface.
 
 ### Properties of PutIoTDB
 
