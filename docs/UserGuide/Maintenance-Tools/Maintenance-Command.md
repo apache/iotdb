@@ -217,13 +217,13 @@ Eg :
 
 ```
 IoTDB> show confignodes
-+------+-------+-------+-----+
-|NodeID| Status|   Host| Port|
-+------+-------+-------+-----+
-|     0|Running|0.0.0.0|22277|
-|     1|Running|0.0.0.0|22279|
-|     2|Running|0.0.0.0|22281|
-+------+-------+-------+-----+
++------+-------+-------+-----+--------+
+|NodeID| Status|   Host| Port|    Role|
++------+-------+-------+-----+--------+
+|     0|Running|0.0.0.0|22277|  Leader|
+|     1|Running|0.0.0.0|22279|Follower|
+|     2|Running|0.0.0.0|22281|Follower|
++------+-------+-------+-----+--------+
 Total line number = 3
 It costs 0.030s
 ```
@@ -232,13 +232,13 @@ After a ConfigNode is stopped, its status will change, as shown below:
 
 ```
 IoTDB> show confignodes
-+------+-------+-------+-----+
-|NodeID| Status|   Host| Port|
-+------+-------+-------+-----+
-|     0|Running|0.0.0.0|22277|
-|     1|Running|0.0.0.0|22279|
-|     2|Unknown|0.0.0.0|22281|
-+------+-------+-------+-----+
++------+-------+-------+-----+--------+
+|NodeID| Status|   Host| Port|    Role|
++------+-------+-------+-----+--------+
+|     0|Running|0.0.0.0|22277|  Leader|
+|     1|Running|0.0.0.0|22279|Follower|
+|     2|Unknown|0.0.0.0|22281|Follower|
++------+-------+-------+-----+--------+
 Total line number = 3
 It costs 0.009s
 ```

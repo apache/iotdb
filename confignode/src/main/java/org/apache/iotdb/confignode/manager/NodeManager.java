@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -278,6 +279,10 @@ public class NodeManager {
             info.setStatus(getNodeStatus(configNodeId));
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
+            info.setRoleType(
+                configNodeLocation.getInternalEndPoint().equals(CURRENT_NODE)
+                    ? RegionRoleType.Leader.name()
+                    : RegionRoleType.Follower.name());
             configNodeInfoList.add(info);
           });
     }
