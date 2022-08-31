@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.cache.AlteringRecordsCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
@@ -28,6 +29,8 @@ import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -182,12 +185,20 @@ public class SingleSeriesCompactionExecutor {
 
   private void constructChunkWriterFromReadChunk(Chunk chunk) {
     ChunkHeader chunkHeader = chunk.getHeader();
+    // Gets the altering encoding/compressed timeseries record in the cache
+    Pair<TSEncoding, CompressionType> cacheRecord = AlteringRecordsCache.getInstance().getRecord(series.getMeasurement());
+    TSEncoding encoding = chunkHeader.getEncodingType();
+    CompressionType compressionType = chunkHeader.getCompressionType();
+    if(cacheRecord != null) {
+      encoding = cacheRecord.left;
+      compressionType = cacheRecord.right;
+    }
     this.schema =
         new MeasurementSchema(
             series.getMeasurement(),
             chunkHeader.getDataType(),
-            chunkHeader.getEncodingType(),
-            chunkHeader.getCompressionType());
+                encoding,
+                compressionType);
     this.chunkWriter = new ChunkWriterImpl(this.schema);
   }
 

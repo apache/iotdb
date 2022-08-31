@@ -59,6 +59,10 @@ public class AlteringRecordsCache {
   }
 
   public Pair<TSEncoding, CompressionType> getRecord(String fullPath) {
+
+    if(!isAltering.get()) {
+      return null;
+    }
     return alteringRecords.get(fullPath);
   }
 
