@@ -183,6 +183,16 @@ public class MultiLeaderServerImpl {
     stateMachine.loadSnapshot(latestSnapshotRootDir);
   }
 
+  public void inactivePeer(Peer peer) {
+    // TODO: (xingtanzjr) investigate how to implement here smoothly using sync/async client
+  }
+
+  public void notifyPeersToBuildSyncLogChannel(Peer targetPeer) {}
+
+  public void buildSyncLogChannel(Peer targetPeer) {
+
+  }
+
   public void persistConfiguration() {
     try (PublicBAOS publicBAOS = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {

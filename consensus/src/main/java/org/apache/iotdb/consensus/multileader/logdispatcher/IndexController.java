@@ -47,10 +47,12 @@ public class IndexController {
 
   private final String storageDir;
   private final String prefix;
+  private final long initialIndex;
 
-  public IndexController(String storageDir, String prefix) {
+  public IndexController(String storageDir, String prefix, long initialIndex) {
     this.storageDir = storageDir;
     this.prefix = prefix + '-';
+    this.initialIndex = initialIndex;
     restore();
   }
 
@@ -137,10 +139,13 @@ public class IndexController {
       }
       currentIndex = lastFlushedIndex;
     } else {
-      versionFile = new File(directory, prefix + "0");
+      currentIndex = initialIndex;
+      versionFile = new File(directory, prefix + initialIndex);
       try {
         Files.createFile(versionFile.toPath());
       } catch (IOException e) {
+        // TODO: (xingtanzjr) we need to handle the situation that file creation failed.
+        //  Or the dispatcher won't run correctly
         logger.error("Error occurred when creating new file {}", versionFile.getAbsolutePath(), e);
       }
     }

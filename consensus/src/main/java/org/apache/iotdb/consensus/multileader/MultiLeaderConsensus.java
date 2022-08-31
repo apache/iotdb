@@ -230,6 +230,18 @@ public class MultiLeaderConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse addPeer(ConsensusGroupId groupId, Peer peer) {
+    MultiLeaderServerImpl impl = stateMachineMap.get(groupId);
+    if (impl == null) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new ConsensusGroupNotExistException(groupId))
+          .build();
+    }
+    // step 1: inactive new Peer to prepare for following steps
+    impl.inactivePeer(peer);
+
+    // step 2: notify all the other Peers to build the sync connection to newPeer
+    impl.notifyPeersToBuildSyncLogChannel(peer);
+
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 

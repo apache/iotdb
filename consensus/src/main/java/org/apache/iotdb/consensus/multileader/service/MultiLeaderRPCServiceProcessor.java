@@ -31,6 +31,8 @@ import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
 import org.apache.iotdb.consensus.multileader.thrift.MultiLeaderConsensusIService;
 import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerRes;
+import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelReq;
+import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelRes;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
@@ -164,6 +166,11 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     resultHandler.onComplete(
         new TActivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
   }
+
+  @Override
+  public void buildSyncLogChannel(
+      TBuildSyncLogChannelReq req, AsyncMethodCallback<TBuildSyncLogChannelRes> resultHandler)
+      throws TException {}
 
   public void handleClientExit() {}
 }

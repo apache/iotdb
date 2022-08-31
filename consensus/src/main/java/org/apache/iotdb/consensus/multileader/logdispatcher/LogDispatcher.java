@@ -55,13 +55,14 @@ import java.util.stream.Collectors;
 
 /** Manage all asynchronous replication threads and corresponding async clients */
 public class LogDispatcher {
-
   private final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
-
+  private static final long DEFAULT_INITIAL_SYNC_INDEX = 0L;
   private final MultiLeaderServerImpl impl;
   private final List<LogDispatcherThread> threads;
   private final IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager;
   private ExecutorService executorService;
+
+  private boolean stopped = false;
 
   public LogDispatcher(
       MultiLeaderServerImpl impl,
@@ -71,22 +72,26 @@ public class LogDispatcher {
     this.threads =
         impl.getConfiguration().stream()
             .filter(x -> !Objects.equals(x, impl.getThisNode()))
-            .map(x -> new LogDispatcherThread(x, impl.getConfig()))
+            .map(x -> new LogDispatcherThread(x, impl.getConfig(), DEFAULT_INITIAL_SYNC_INDEX))
             .collect(Collectors.toList());
     if (!threads.isEmpty()) {
+      // We use cached thread pool here because each LogDispatcherThread will occupy one thread.
+      // And every LogDispatcherThread won't release its thread in this pool because it won't stop
+      // unless LogDispatcher stop.
+      // Thus, the size of this threadPool will be the same as the count of LogDispatcherThread.
       this.executorService =
-          IoTDBThreadPoolFactory.newFixedThreadPool(
-              threads.size(), "LogDispatcher-" + impl.getThisNode().getGroupId());
+          IoTDBThreadPoolFactory.newCachedThreadPool(
+              "LogDispatcher-" + impl.getThisNode().getGroupId());
     }
   }
 
-  public void start() {
+  public synchronized void start() {
     if (!threads.isEmpty()) {
       threads.forEach(executorService::submit);
     }
   }
 
-  public void stop() {
+  public synchronized void stop() {
     if (!threads.isEmpty()) {
       threads.forEach(LogDispatcherThread::stop);
       executorService.shutdownNow();
@@ -100,31 +105,64 @@ public class LogDispatcher {
         logger.error("Unexpected Interruption when closing LogDispatcher service ");
       }
     }
+    stopped = true;
   }
 
-  public OptionalLong getMinSyncIndex() {
+  public synchronized void addLogDispatcherThread(Peer peer, long initialIndex) {
+    if (stopped) {
+      return;
+    }
+    //
+    LogDispatcherThread thread = new LogDispatcherThread(peer, impl.getConfig(), initialIndex);
+    threads.add(thread);
+    executorService.submit(thread);
+  }
+
+  public synchronized void removeLogDispatcherThread(Peer peer) {
+    if (stopped) {
+      return;
+    }
+    int threadIndex = -1;
+    for (int i = 0; i < threads.size(); i++) {
+      if (threads.get(i).peer.getEndpoint().getIp().equals(peer.getEndpoint().getIp())) {
+        threadIndex = i;
+        break;
+      }
+    }
+    if (threadIndex == -1) {
+      return;
+    }
+    threads.get(threadIndex).stop();
+    threads.remove(threadIndex);
+  }
+
+  public synchronized OptionalLong getMinSyncIndex() {
     return threads.stream().mapToLong(LogDispatcherThread::getCurrentSyncIndex).min();
   }
 
   public void offer(IndexedConsensusRequest request) {
     List<ByteBuffer> serializedRequests = request.buildSerializedRequests();
-    threads.forEach(
-        thread -> {
-          logger.debug(
-              "{}->{}: Push a log to the queue, where the queue length is {}",
-              impl.getThisNode().getGroupId(),
-              thread.getPeer().getEndpoint().getIp(),
-              thread.getPendingRequest().size());
-          if (!thread
-              .getPendingRequest()
-              .offer(new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
+    // we put the serialization step outside the synchronized block because it is stateless and
+    // time-consuming
+    synchronized (this) {
+      threads.forEach(
+          thread -> {
             logger.debug(
-                "{}: Log queue of {} is full, ignore the log to this node, searchIndex: {}",
+                "{}->{}: Push a log to the queue, where the queue length is {}",
                 impl.getThisNode().getGroupId(),
-                thread.getPeer(),
-                request.getSearchIndex());
-          }
-        });
+                thread.getPeer().getEndpoint().getIp(),
+                thread.getPendingRequest().size());
+            if (!thread
+                .getPendingRequest()
+                .offer(new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
+              logger.debug(
+                  "{}: Log queue of {} is full, ignore the log to this node, searchIndex: {}",
+                  impl.getThisNode().getGroupId(),
+                  thread.getPeer(),
+                  request.getSearchIndex());
+            }
+          });
+    }
   }
 
   public class LogDispatcherThread implements Runnable {
@@ -146,14 +184,16 @@ public class LogDispatcher {
     private ConsensusReqReader.ReqIterator walEntryiterator;
     private long iteratorIndex = 1;
 
-    public LogDispatcherThread(Peer peer, MultiLeaderConfig config) {
+    public LogDispatcherThread(Peer peer, MultiLeaderConfig config, long initialSyncIndex) {
       this.peer = peer;
       this.config = config;
       this.pendingRequest =
           new ArrayBlockingQueue<>(config.getReplication().getMaxPendingRequestNumPerNode());
       this.controller =
           new IndexController(
-              impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()));
+              impl.getStorageDir(),
+              Utils.fromTEndPointToString(peer.getEndpoint()),
+              initialSyncIndex);
       this.syncStatus = new SyncStatus(controller, config);
       this.walEntryiterator = reader.getReqIterator(iteratorIndex);
     }

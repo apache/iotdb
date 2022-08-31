@@ -46,7 +46,7 @@ public class IndexControllerTest {
   /** test indexController when incrementIntervalAfterRestart == false */
   @Test
   public void testIncrementIntervalAfterRestart() {
-    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix);
+    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -55,7 +55,7 @@ public class IndexControllerTest {
     Assert.assertEquals(IndexController.FLUSH_INTERVAL - 1, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), prefix);
+    controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -63,7 +63,7 @@ public class IndexControllerTest {
     Assert.assertEquals(IndexController.FLUSH_INTERVAL + 1, controller.getCurrentIndex());
     Assert.assertEquals(IndexController.FLUSH_INTERVAL, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), prefix);
+    controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0);
     Assert.assertEquals(IndexController.FLUSH_INTERVAL, controller.getCurrentIndex());
     Assert.assertEquals(IndexController.FLUSH_INTERVAL, controller.getLastFlushedIndex());
 
@@ -71,7 +71,7 @@ public class IndexControllerTest {
     Assert.assertEquals(IndexController.FLUSH_INTERVAL * 2 - 1, controller.getCurrentIndex());
     Assert.assertEquals(IndexController.FLUSH_INTERVAL, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), prefix);
+    controller = new IndexController(storageDir.getAbsolutePath(), prefix, 0);
     Assert.assertEquals(IndexController.FLUSH_INTERVAL, controller.getCurrentIndex());
     Assert.assertEquals(IndexController.FLUSH_INTERVAL, controller.getLastFlushedIndex());
 

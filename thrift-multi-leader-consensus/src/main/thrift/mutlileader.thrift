@@ -51,8 +51,18 @@ struct TSyncLogRes {
   1: required list<common.TSStatus> status
 }
 
+struct TBuildSyncLogChannelReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required common.TEndPoint endPoint
+}
+
+struct TBuildSyncLogChannelRes {
+  1: required list<common.TSStatus> status
+}
+
 service MultiLeaderConsensusIService {
   TSyncLogRes syncLog(TSyncLogReq req)
   TInactivatePeerRes inactivatePeer(TInactivatePeerReq req)
   TActivatePeerRes activatePeer(TActivatePeerReq req)
+  TBuildSyncLogChannelRes buildSyncLogChannel(TBuildSyncLogChannelReq req)
 }
