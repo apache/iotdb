@@ -239,6 +239,10 @@ public class kafkaTest {
 
       kw.delete("root.vehicle.d0", "root.vehicle.d0.s1", 123, 124);
 
+      Timeseries[3] = "s1";
+      // kw.createTimeSeries(Timeseries, DataType.TEXT);
+      kw.insertText("root.vehicle.d0", Timeseries, 124, "txt");
+
       // Timeseries[3] = "s2";
       // kw.deleteTimeSeries(Timeseries);
 
@@ -319,6 +323,10 @@ public class kafkaTest {
       kw2.insertText("root.vehicle.d1", Timeseries, 125, "txt");
 
       kw2.delete("root.vehicle.d1", "root.vehicle.d1.s1", 123, 124);
+
+      Timeseries[3] = "s1";
+      // kw2.createTimeSeries(Timeseries, DataType.TEXT);
+      kw2.insertText("root.vehicle.d1", Timeseries, 124, "txt");
 
       // Timeseries[3] = "s2";
       // kw2.deleteTimeSeries(Timeseries);

@@ -115,10 +115,6 @@ public class ConsumerThreadSync implements Runnable {
             }
           }
           try {
-            Thread.sleep(100);
-          } catch (Exception ignore) {
-          }
-          try {
             pool.deleteData(
                 Collections.singletonList(suffix[1]),
                 Long.parseLong(suffix[2]),
@@ -135,10 +131,6 @@ public class ConsumerThreadSync implements Runnable {
                 e);
             this.consumerSyncStatus.setNumOfFailedRecordDeletion(
                 consumerSyncStatus.getNumOfFailedRecordDeletion() + 1);
-          }
-          try {
-            Thread.sleep(100);
-          } catch (Exception ignore) {
           }
         }
         continue;
