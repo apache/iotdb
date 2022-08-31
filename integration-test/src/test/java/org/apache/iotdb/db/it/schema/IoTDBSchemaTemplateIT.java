@@ -325,7 +325,6 @@ public class IoTDBSchemaTemplateIT {
     while (resultSet.next()) {
       Assert.assertEquals(2L, resultSet.getLong("COUNT(root.test.sg_satosg.s1)"));
     }
-    System.out.println(resultSet);
   }
 
   private void prepareTemplate() throws SQLException {
