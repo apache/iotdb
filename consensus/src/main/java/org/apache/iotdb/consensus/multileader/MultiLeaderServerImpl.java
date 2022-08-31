@@ -69,6 +69,7 @@ public class MultiLeaderServerImpl {
   private final LogDispatcher logDispatcher;
   private final MultiLeaderConfig config;
   private final ConsensusReqReader reader;
+  private boolean active;
 
   public MultiLeaderServerImpl(
       String storageDir,
@@ -77,6 +78,7 @@ public class MultiLeaderServerImpl {
       IStateMachine stateMachine,
       IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager,
       MultiLeaderConfig config) {
+    this.active = true;
     this.storageDir = storageDir;
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
@@ -115,6 +117,10 @@ public class MultiLeaderServerImpl {
    * records the index of the log and writes locally, and then asynchronous replication is performed
    */
   public TSStatus write(IConsensusRequest request) {
+    if (!active) {
+      // TODO: (xingtanzjr) whether we need to define a new status to indicate the inactive status ?
+      return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
+    }
     stateMachineLock.lock();
     try {
       if (needBlockWrite()) {
@@ -275,5 +281,13 @@ public class MultiLeaderServerImpl {
 
   public boolean isReadOnly() {
     return stateMachine.isReadOnly();
+  }
+
+  public boolean isActive() {
+    return active;
+  }
+
+  public void setActive(boolean active) {
+    this.active = active;
   }
 }

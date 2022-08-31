@@ -29,11 +29,16 @@ import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.consensus.multileader.MultiLeaderConsensus;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
 import org.apache.iotdb.consensus.multileader.thrift.MultiLeaderConsensusIService;
+import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerReq;
+import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerRes;
+import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
+import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,6 +81,13 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
             new IoTDBException(message, TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode()));
         return;
       }
+      if (!impl.isActive()) {
+        resultHandler.onError(
+            new IoTDBException(
+                "peer is inactive and not ready to receive sync log request",
+                TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()));
+        return;
+      }
       BatchIndexedConsensusRequest requestsInThisBatch = new BatchIndexedConsensusRequest();
       // We use synchronized to ensure atomicity of executing multiple logs
       if (!req.getBatches().isEmpty()) {
@@ -110,6 +122,47 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     } catch (Exception e) {
       resultHandler.onError(e);
     }
+  }
+
+  @Override
+  public void inactivatePeer(
+      TInactivatePeerReq req, AsyncMethodCallback<TInactivatePeerRes> resultHandler)
+      throws TException {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    MultiLeaderServerImpl impl = consensus.getImpl(groupId);
+    if (impl == null) {
+      String message =
+          String.format("Unexpected consensusGroupId %s for inactivatePeer request", groupId);
+      logger.error(message);
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage(message);
+      resultHandler.onComplete(new TInactivatePeerRes(status));
+      return;
+    }
+    impl.setActive(false);
+    resultHandler.onComplete(
+        new TInactivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+  }
+
+  @Override
+  public void activatePeer(
+      TActivatePeerReq req, AsyncMethodCallback<TActivatePeerRes> resultHandler) throws TException {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    MultiLeaderServerImpl impl = consensus.getImpl(groupId);
+    if (impl == null) {
+      String message =
+          String.format("Unexpected consensusGroupId %s for inactivatePeer request", groupId);
+      logger.error(message);
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage(message);
+      resultHandler.onComplete(new TActivatePeerRes(status));
+      return;
+    }
+    impl.setActive(true);
+    resultHandler.onComplete(
+        new TActivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
   }
 
   public void handleClientExit() {}

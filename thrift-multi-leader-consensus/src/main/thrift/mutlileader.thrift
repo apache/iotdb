@@ -31,10 +31,28 @@ struct TSyncLogReq {
   2: required list<TLogBatch> batches
 }
 
+struct TInactivatePeerReq {
+  1: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TInactivatePeerRes {
+  1: required common.TSStatus status
+}
+
+struct TActivatePeerReq {
+  1: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TActivatePeerRes {
+  1: required common.TSStatus status
+}
+
 struct TSyncLogRes {
   1: required list<common.TSStatus> status
 }
 
 service MultiLeaderConsensusIService {
   TSyncLogRes syncLog(TSyncLogReq req)
+  TInactivatePeerRes inactivatePeer(TInactivatePeerReq req)
+  TActivatePeerRes activatePeer(TActivatePeerReq req)
 }
