@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -45,12 +46,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Properties;
+import java.util.ServiceLoader;
 
 public class IoTDBDescriptor {
 
@@ -60,6 +59,22 @@ public class IoTDBDescriptor {
 
   protected IoTDBDescriptor() {
     loadProps();
+    ServiceLoader<IPropertiesLoader> propertiesLoaderServiceLoader =
+        ServiceLoader.load(IPropertiesLoader.class);
+    for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
+      logger.info("Will reload properties from {} ", loader.getClass().getName());
+      try {
+        Properties properties = loader.loadProperties();
+        loadProperties(properties);
+        conf.setCustomizedProperties(loader.getCustomizedProperties());
+        TSFileDescriptor.getInstance().overwriteConfigByCustomSettings(properties);
+        TSFileDescriptor.getInstance()
+            .getConfig()
+            .setCustomizedProperties(loader.getCustomizedProperties());
+      } catch (UnknownHostException e) {
+        logger.warn("load property from {} failed.", loader.getClass().getName(), e);
+      }
+    }
   }
 
   public static IoTDBDescriptor getInstance() {
@@ -115,52 +130,6 @@ public class IoTDBDescriptor {
     } catch (MalformedURLException e) {
       return null;
     }
-  }
-
-  /**
-   * get external props url location
-   *
-   * @return url object if location exit, otherwise null.
-   */
-  public Path getExternalPropsPath() {
-    // Check if a config-directory was specified first.
-    String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
-    // If it wasn't, check if a home directory was provided (This usually contains a config)
-    if (urlString == null) {
-      urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-      if (urlString != null) {
-        urlString =
-            urlString
-                + File.separatorChar
-                + "conf"
-                + File.separatorChar
-                + IoTDBConfig.EXTERNAL_CONFIG_NAME;
-      } else {
-        // If this too wasn't provided, try to find a default config in the root of the classpath.
-        URL uri = IoTDBConfig.class.getResource("/" + IoTDBConfig.EXTERNAL_CONFIG_NAME);
-        if (uri != null) {
-          try {
-            return Paths.get(uri.toURI());
-          } catch (URISyntaxException e) {
-            return null;
-          }
-        }
-        logger.warn(
-            "Cannot find IOTDB_HOME or IOTDB_EXTERNAL_CONF environment variable when loading "
-                + "config file {}, use default configuration",
-            IoTDBConfig.EXTERNAL_CONFIG_NAME);
-        // update all data seriesPath
-        conf.updatePath();
-        return null;
-      }
-    }
-    // If a config location was provided, but it doesn't end with a properties file,
-    // append the default location.
-    else if (!urlString.endsWith(".properties")) {
-      urlString += (File.separatorChar + IoTDBConfig.EXTERNAL_CONFIG_NAME);
-    }
-
-    return Paths.get(urlString);
   }
 
   /** load an property file and set TsfileDBConfig variables. */
@@ -976,19 +945,6 @@ public class IoTDBDescriptor {
 
     // CQ
     loadCQProps(properties);
-
-    // external lib props
-    loadExternalLibProps(properties);
-  }
-
-  private void loadExternalLibProps(Properties properties) {
-
-    conf.setExternalPropertiesLoaderDir(
-        properties.getProperty(
-            "external_properties_loader_dir", conf.getExternalPropertiesLoaderDir()));
-
-    conf.setExternalLimiterDir(
-        properties.getProperty("external_limiter_dir", conf.getExternalLimiterDir()));
   }
 
   // to keep consistent with the cluster module.
