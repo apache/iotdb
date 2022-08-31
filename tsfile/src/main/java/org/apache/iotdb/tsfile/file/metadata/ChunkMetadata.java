@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
@@ -159,6 +160,40 @@ public class ChunkMetadata implements IChunkMetadata {
       byteLen += statistics.serialize(outputStream);
     }
     return byteLen;
+  }
+
+  /**
+   * Serialize the chunk metadata with full path, data type and statistic
+   *
+   * @param outputStream OutputStream
+   * @param seriesFullPath the full path of the chunk metadata
+   * @return length
+   * @throws IOException
+   */
+  public int serializeWithFullInfo(OutputStream outputStream, String seriesFullPath)
+      throws IOException {
+    int byteLen = 0;
+    byteLen += ReadWriteIOUtils.write(new Binary(seriesFullPath), outputStream);
+    byteLen += ReadWriteIOUtils.write(tsDataType, outputStream);
+    byteLen += this.serializeTo(outputStream, true);
+    return byteLen;
+  }
+
+  /**
+   * Deserialize with full info, the result is store in param chunkMetadata
+   *
+   * @param buffer ByteBuffer
+   * @param chunkMetadata ChunkMetadata to store the result
+   * @return the full path of the measurement
+   * @throws IOException
+   */
+  public static String deserializeWithFullInfo(ByteBuffer buffer, ChunkMetadata chunkMetadata)
+      throws IOException {
+    String fullPath = ReadWriteIOUtils.readBinary(buffer).toString();
+    chunkMetadata.tsDataType = TSDataType.deserialize(ReadWriteIOUtils.readByte(buffer));
+    chunkMetadata.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
+    chunkMetadata.statistics = Statistics.deserialize(buffer, chunkMetadata.tsDataType);
+    return fullPath;
   }
 
   /**

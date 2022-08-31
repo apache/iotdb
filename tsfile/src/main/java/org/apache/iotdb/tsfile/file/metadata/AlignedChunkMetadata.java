@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
 
@@ -181,6 +182,10 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   @Override
   public int serializeTo(OutputStream outputStream, boolean serializeStatistic) {
     throw new UnsupportedOperationException("VectorChunkMetadata doesn't support serial method");
+  }
+
+  public int serializeWithFullInfo(OutputStream outputStream, String seriesFullPath) throws IOException {
+    return 0;
   }
 
   @Override

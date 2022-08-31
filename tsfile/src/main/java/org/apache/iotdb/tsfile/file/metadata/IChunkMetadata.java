@@ -73,5 +73,7 @@ public interface IChunkMetadata {
 
   int serializeTo(OutputStream outputStream, boolean serializeStatistic) throws IOException;
 
+  int serializeWithFullInfo(OutputStream outputStream, String seriesFullPath) throws IOException;
+
   byte getMask();
 }

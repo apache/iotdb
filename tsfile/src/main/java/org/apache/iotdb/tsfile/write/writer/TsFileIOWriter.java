@@ -76,7 +76,7 @@ public class TsFileIOWriter implements AutoCloseable {
   protected File file;
 
   // current flushed Chunk
-  private ChunkMetadata currentChunkMetadata;
+  protected ChunkMetadata currentChunkMetadata;
   // current flushed ChunkGroup
   protected List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
   // all flushed ChunkGroups
@@ -240,6 +240,28 @@ public class TsFileIOWriter implements AutoCloseable {
     currentChunkMetadata = null;
   }
 
+  protected Map<Path, List<IChunkMetadata>> groupChunkMetadataListBySeries() {
+    // group ChunkMetadata by series
+    Map<Path, List<IChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
+
+    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
+      List<ChunkMetadata> chunkMetadatas = chunkGroupMetadata.getChunkMetadataList();
+      for (IChunkMetadata chunkMetadata : chunkMetadatas) {
+        Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
+        chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
+      }
+    }
+
+    if (chunkMetadataList != null && chunkMetadataList.size() > 0) {
+      ChunkMetadata chunkMetadata = chunkMetadataList.get(0);
+      Path series = new Path(currentChunkGroupDeviceId, chunkMetadata.getMeasurementUid());
+      chunkMetadataListMap
+          .computeIfAbsent(series, k -> new ArrayList<>())
+          .addAll(chunkMetadataList);
+    }
+    return chunkMetadataListMap;
+  }
+
   /**
    * write {@linkplain TsFileMetadata TSFileMetaData} to output stream and close it.
    *
@@ -253,15 +275,7 @@ public class TsFileIOWriter implements AutoCloseable {
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
 
     // group ChunkMetadata by series
-    Map<Path, List<IChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
-
-    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-      List<ChunkMetadata> chunkMetadatas = chunkGroupMetadata.getChunkMetadataList();
-      for (IChunkMetadata chunkMetadata : chunkMetadatas) {
-        Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
-        chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
-      }
-    }
+    Map<Path, List<IChunkMetadata>> chunkMetadataListMap = groupChunkMetadataListBySeries();
 
     MetadataIndexNode metadataIndex = flushMetadataIndex(chunkMetadataListMap);
     TsFileMetadata tsFileMetaData = new TsFileMetadata();
