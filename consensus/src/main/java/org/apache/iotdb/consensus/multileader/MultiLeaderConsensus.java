@@ -44,6 +44,7 @@ import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClie
 import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCService;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCServiceProcessor;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -144,6 +145,10 @@ public class MultiLeaderConsensus implements IConsensus {
     if (impl.isReadOnly()) {
       status = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
       status.setMessage("Fail to do non-query operations because system is read-only.");
+    } else if (!impl.isActive()) {
+      // TODO: (xingtanzjr) whether we need to define a new status to indicate the inactive status ?
+      status = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
+      status.setMessage("peer is inactive and not ready to receive sync log request.");
     } else {
       status = impl.write(request);
     }

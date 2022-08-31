@@ -117,10 +117,6 @@ public class MultiLeaderServerImpl {
    * records the index of the log and writes locally, and then asynchronous replication is performed
    */
   public TSStatus write(IConsensusRequest request) {
-    if (!active) {
-      // TODO: (xingtanzjr) whether we need to define a new status to indicate the inactive status ?
-      return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
-    }
     stateMachineLock.lock();
     try {
       if (needBlockWrite()) {
