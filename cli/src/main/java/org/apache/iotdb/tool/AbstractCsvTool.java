@@ -214,26 +214,74 @@ public abstract class AbstractCsvTool {
   public static Boolean writeCsvFile(
       List<String> headerNames, List<List<Object>> records, String filePath) {
     try {
-      CSVPrinter printer =
+      final CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(filePath);
+      if (headerNames != null) {
+        csvPrinterWrapper.printRecord(headerNames);
+      }
+      for (List record : records) {
+        csvPrinterWrapper.printRecord(record);
+      }
+      csvPrinterWrapper.flush();
+      csvPrinterWrapper.close();
+      return true;
+    } catch (IOException e) {
+      e.printStackTrace();
+      return false;
+    }
+  }
+
+  static class CSVPrinterWrapper {
+    private final String filePath;
+    private final CSVFormat csvFormat;
+    private CSVPrinter csvPrinter;
+
+    public CSVPrinterWrapper(String filePath) {
+      this.filePath = filePath;
+      this.csvFormat =
           CSVFormat.Builder.create(CSVFormat.DEFAULT)
               .setHeader()
               .setSkipHeaderRecord(true)
               .setEscape('\\')
               .setQuoteMode(QuoteMode.NONE)
-              .build()
-              .print(new PrintWriter(filePath));
-      if (headerNames != null) {
-        printer.printRecord(headerNames);
+              .build();
+    }
+
+    public void printRecord(final Iterable<?> values) throws IOException {
+      if (csvPrinter == null) {
+        csvPrinter = csvFormat.print(new PrintWriter(filePath));
       }
-      for (List record : records) {
-        printer.printRecord(record);
+      csvPrinter.printRecord(values);
+    }
+
+    public void print(Object value) {
+      if (csvPrinter == null) {
+        try {
+          csvPrinter = csvFormat.print(new PrintWriter(filePath));
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
       }
-      printer.flush();
-      printer.close();
-      return true;
-    } catch (IOException e) {
-      e.printStackTrace();
-      return false;
+      try {
+        csvPrinter.print(value);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+
+    public void println() throws IOException {
+      csvPrinter.println();
+    }
+
+    public void close() throws IOException {
+      if (csvPrinter != null) {
+        csvPrinter.close();
+      }
+    }
+
+    public void flush() throws IOException {
+      if (csvPrinter != null) {
+        csvPrinter.flush();
+      }
     }
   }
 }
