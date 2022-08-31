@@ -188,6 +188,10 @@ public class FragmentInstanceContext extends QueryContext {
     return executionEndTime.get();
   }
 
+  public long getStartTime() {
+    return executionStartTime.get();
+  }
+
   public FragmentInstanceInfo getInstanceInfo() {
     return new FragmentInstanceInfo(stateMachine.getState(), getEndTime(), getFailedCause());
   }
