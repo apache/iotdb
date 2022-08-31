@@ -36,6 +36,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAddPeerException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
@@ -236,11 +237,25 @@ public class MultiLeaderConsensus implements IConsensus {
           .setException(new ConsensusGroupNotExistException(groupId))
           .build();
     }
-    // step 1: inactive new Peer to prepare for following steps
-    impl.inactivePeer(peer);
+    try {
+      // step 1: inactive new Peer to prepare for following steps
+      impl.inactivePeer(peer);
 
-    // step 2: notify all the other Peers to build the sync connection to newPeer
-    impl.notifyPeersToBuildSyncLogChannel(peer);
+      // step 2: notify all the other Peers to build the sync connection to newPeer
+      impl.notifyPeersToBuildSyncLogChannel(peer);
+
+      // step 3: take snapshot
+      impl.takeSnapshot();
+
+      // step 4: transit snapshot
+      impl.transitSnapshot(peer);
+
+      // step 5: active new Peer
+      impl.activePeer(peer);
+
+    } catch (ConsensusGroupAddPeerException e) {
+
+    }
 
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }

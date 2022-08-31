@@ -108,12 +108,12 @@ public class LogDispatcher {
     stopped = true;
   }
 
-  public synchronized void addLogDispatcherThread(Peer peer, long initialIndex) {
+  public synchronized void addLogDispatcherThread(Peer peer, long initialSyncIndex) {
     if (stopped) {
       return;
     }
     //
-    LogDispatcherThread thread = new LogDispatcherThread(peer, impl.getConfig(), initialIndex);
+    LogDispatcherThread thread = new LogDispatcherThread(peer, impl.getConfig(), initialSyncIndex);
     threads.add(thread);
     executorService.submit(thread);
   }
@@ -124,7 +124,7 @@ public class LogDispatcher {
     }
     int threadIndex = -1;
     for (int i = 0; i < threads.size(); i++) {
-      if (threads.get(i).peer.getEndpoint().getIp().equals(peer.getEndpoint().getIp())) {
+      if (threads.get(i).peer.equals(peer)) {
         threadIndex = i;
         break;
       }

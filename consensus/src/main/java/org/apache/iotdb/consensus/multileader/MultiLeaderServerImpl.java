@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAddPeerException;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
@@ -44,6 +45,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
@@ -56,6 +58,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class MultiLeaderServerImpl {
 
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
+  private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
+  private static final String SNAPSHOT_DIR_NAME = "snapshot";
 
   private final Logger logger = LoggerFactory.getLogger(MultiLeaderServerImpl.class);
 
@@ -175,46 +179,123 @@ public class MultiLeaderServerImpl {
     return stateMachine.read(request);
   }
 
-  public boolean takeSnapshot(File snapshotDir) {
-    return stateMachine.takeSnapshot(snapshotDir);
+  public void takeSnapshot() throws ConsensusGroupAddPeerException {
+    try {
+      File snapshotDir = new File(storageDir, CONFIGURATION_TMP_FILE_NAME);
+      Path snapshotDirPath = Paths.get(snapshotDir.getAbsolutePath());
+      if (snapshotDir.exists()) {
+        Files.delete(snapshotDirPath);
+      }
+      if (!snapshotDir.mkdirs()) {
+        throw new ConsensusGroupAddPeerException(
+            String.format("%s: cannot mkdir for snapshot", thisNode.getGroupId()));
+      }
+      if (!stateMachine.takeSnapshot(snapshotDir)) {
+        throw new ConsensusGroupAddPeerException("unknown error when taking snapshot");
+      }
+    } catch (IOException e) {
+      throw new ConsensusGroupAddPeerException("error when taking snapshot", e);
+    }
   }
+
+  public void transitSnapshot(Peer targetPeer) throws ConsensusGroupAddPeerException {}
 
   public void loadSnapshot(File latestSnapshotRootDir) {
     stateMachine.loadSnapshot(latestSnapshotRootDir);
   }
 
-  public void inactivePeer(Peer peer) {
+  public void inactivePeer(Peer peer) throws ConsensusGroupAddPeerException {
     // TODO: (xingtanzjr) investigate how to implement here smoothly using sync/async client
   }
 
-  public void notifyPeersToBuildSyncLogChannel(Peer targetPeer) {}
+  public void activePeer(Peer peer) throws ConsensusGroupAddPeerException {}
 
-  public void buildSyncLogChannel(Peer targetPeer) {
+  public void notifyPeersToBuildSyncLogChannel(Peer targetPeer)
+      throws ConsensusGroupAddPeerException {
+    for (Peer peer : this.configuration) {
+      if (peer.equals(thisNode)) {
+        // use searchIndex for thisNode as the initialSyncIndex because targetPeer will load the
+        // snapshot produced by thisNode
+        buildSyncLogChannel(targetPeer, index.get());
+      } else {
+        // use RPC to tell other peers to build sync log channel to target peer
+      }
+    }
+  }
 
+  /** build SyncLog channel with safeIndex as the default initial sync index */
+  public void buildSyncLogChannel(Peer targetPeer) throws ConsensusGroupAddPeerException {
+    buildSyncLogChannel(targetPeer, getCurrentSafelyDeletedSearchIndex());
+  }
+
+  public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex)
+      throws ConsensusGroupAddPeerException {
+    // step 1, build sync channel in LogDispatcher
+    logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex);
+    // step 2, update configuration
+    if (!persistConfigurationUpdate()) {
+      throw new ConsensusGroupAddPeerException(
+          String.format("error when build sync log channel to %s", targetPeer));
+    }
   }
 
   public void persistConfiguration() {
     try (PublicBAOS publicBAOS = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
-      outputStream.writeInt(configuration.size());
-      for (Peer peer : configuration) {
-        peer.serialize(outputStream);
-      }
+      serializeConfigurationTo(outputStream);
       Files.write(
           Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath()),
           publicBAOS.getBuf());
     } catch (IOException e) {
+      // TODO: (xingtanzjr) need to handle the IOException because the MultiLeaderConsensus won't
+      // work expectedly
+      //  if the exception occurs
       logger.error("Unexpected error occurs when persisting configuration", e);
+    }
+  }
+
+  public boolean persistConfigurationUpdate() {
+    try (PublicBAOS publicBAOS = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+      serializeConfigurationTo(outputStream);
+      Path tmpConfigurationPath =
+          Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
+      Path configurationPath =
+          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
+      Files.write(tmpConfigurationPath, publicBAOS.getBuf());
+      Files.delete(configurationPath);
+      Files.move(tmpConfigurationPath, configurationPath);
+      return true;
+    } catch (IOException e) {
+      logger.error("Unexpected error occurs when update configuration", e);
+      return false;
+    }
+  }
+
+  private void serializeConfigurationTo(DataOutputStream outputStream) throws IOException {
+    outputStream.writeInt(configuration.size());
+    for (Peer peer : configuration) {
+      peer.serialize(outputStream);
     }
   }
 
   public void recoverConfiguration() {
     ByteBuffer buffer;
     try {
-      buffer =
-          ByteBuffer.wrap(
-              Files.readAllBytes(
-                  Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath())));
+      Path tmpConfigurationPath =
+          Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
+      Path configurationPath =
+          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
+      // If the tmpConfigurationPath exists, it means the `persistConfigurationUpdate` is
+      // interrupted
+      // unexpectedly, we need substitute configuration with tmpConfiguration file
+      if (Files.exists(tmpConfigurationPath)) {
+        if (Files.exists(configurationPath)) {
+          Files.delete(configurationPath);
+        }
+        Files.move(tmpConfigurationPath, configurationPath);
+      }
+      buffer = ByteBuffer.wrap(Files.readAllBytes(configurationPath));
       int size = buffer.getInt();
       for (int i = 0; i < size; i++) {
         configuration.add(Peer.deserialize(buffer));
