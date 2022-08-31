@@ -27,7 +27,6 @@
 [IOTDB-3087] enlarge default value of avg_series_point_number_threshold
 [IOTDB-3861] Enable insert null values in Session
 [IOTDB-3996] REST API nonQuery support Continuous Query
-[IOTDB-4096] Optimize metric module and Fix inconsistency between dropwizard and micrometer.
 [IOTDB-4120] Optimize memory allocation of Expression
 [IOTDB-4190] update documents about nifi-iotdb-bundle
 REST support "select into" in nonQuery API
@@ -41,6 +40,7 @@ Import-CSV supports specify data type and no need quotation for text value
 [IOTDB-3302] Without any authorization, ordinary users still have the right to query other user information
 [IOTDB-4023] The C++ interface query result returns records error
 [IOTDB-4047] Query NPE after change device alignment
+[IOTDB-4096] Fix the names of metric pushed to Prometheus are inconsistency in micrometer and dropwizard
 [IOTDB-4194] IOException happened in Compaction
 [IOTDB-4215] Fix incorrect aggregate query results due to wrong unseq file traversal order
 [IOTDB-4216] Fix execute create aligned timeseries but a non-aligned timeseries created
