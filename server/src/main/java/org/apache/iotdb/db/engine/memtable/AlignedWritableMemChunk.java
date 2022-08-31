@@ -38,12 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class AlignedWritableMemChunk implements IWritableMemChunk {
 
@@ -295,65 +290,92 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public void encode(IChunkWriter chunkWriter) {
     AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
-    List<Integer> timeDuplicateAlignedRowIndexList = null;
+
+    boolean[] timeDuplicateInfo = null;
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
-      // skip duplicated data
-      if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
-        // record the time duplicated row index list for vector type
-        if (timeDuplicateAlignedRowIndexList == null) {
-          timeDuplicateAlignedRowIndexList = new ArrayList<>();
-          timeDuplicateAlignedRowIndexList.add(list.getValueIndex(sortedRowIndex));
+      if (sortedRowIndex == list.rowCount() - 1 || time != list.getTime(sortedRowIndex + 1)) {
+        alignedChunkWriter.write(time);
+      } else {
+        if (Objects.isNull(timeDuplicateInfo)) {
+          timeDuplicateInfo = new boolean[list.rowCount()];
         }
-        timeDuplicateAlignedRowIndexList.add(list.getValueIndex(sortedRowIndex + 1));
-        continue;
+        timeDuplicateInfo[sortedRowIndex] = true;
       }
-      List<TSDataType> dataTypes = list.getTsDataTypes();
-      int originRowIndex = list.getValueIndex(sortedRowIndex);
-      for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-        // write the time duplicated rows
-        if (timeDuplicateAlignedRowIndexList != null
-            && !timeDuplicateAlignedRowIndexList.isEmpty()) {
-          originRowIndex =
-              list.getValidRowIndexForTimeDuplicatedRows(
-                  timeDuplicateAlignedRowIndexList, columnIndex);
+    }
+
+    List<TSDataType> dataTypes = list.getTsDataTypes();
+    // value columns
+    for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+      // Pair of Time and Index
+      Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
+      if (Objects.nonNull(timeDuplicateInfo)) {
+        lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
+      }
+      for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
+        // skip time duplicated rows
+        if (Objects.nonNull(timeDuplicateInfo)) {
+          if (!list.isNullValue(list.getValueIndex(sortedRowIndex), columnIndex)) {
+            lastValidPointIndexForTimeDupCheck.left = list.getTime(sortedRowIndex);
+            lastValidPointIndexForTimeDupCheck.right = list.getValueIndex(sortedRowIndex);
+          }
+          if (timeDuplicateInfo[sortedRowIndex]) {
+            continue;
+          }
+        }
+        // The part of code solves the following problem:
+        // Time: 1,2,2,3
+        // Value: 1,2,null,null
+        // When rowIndex:1, pair(min,null), timeDuplicateInfo:false, write(T:1,V:1)
+        // When rowIndex:2, pair(2,2), timeDuplicateInfo:true, skip writing value
+        // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2!=air.left:2, write(T:2,V:2)
+        // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2, write(T:3,V:null)
+        int originRowIndex;
+        long time = list.getTime(sortedRowIndex);
+        if (Objects.nonNull(lastValidPointIndexForTimeDupCheck)
+            && (time == lastValidPointIndexForTimeDupCheck.left)) {
+          originRowIndex = lastValidPointIndexForTimeDupCheck.right;
+        } else {
+          originRowIndex = list.getValueIndex(sortedRowIndex);
         }
         boolean isNull = list.isNullValue(originRowIndex, columnIndex);
         switch (dataTypes.get(columnIndex)) {
           case BOOLEAN:
-            alignedChunkWriter.write(
+            alignedChunkWriter.writeByColumn(
                 time, list.getBooleanByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case INT32:
-            alignedChunkWriter.write(
+            alignedChunkWriter.writeByColumn(
                 time, list.getIntByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case INT64:
-            alignedChunkWriter.write(
+            alignedChunkWriter.writeByColumn(
                 time, list.getLongByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case FLOAT:
-            alignedChunkWriter.write(
+            alignedChunkWriter.writeByColumn(
                 time, list.getFloatByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case DOUBLE:
-            alignedChunkWriter.write(
+            alignedChunkWriter.writeByColumn(
                 time, list.getDoubleByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           case TEXT:
-            alignedChunkWriter.write(
+            alignedChunkWriter.writeByColumn(
                 time, list.getBinaryByValueIndex(originRowIndex, columnIndex), isNull);
             break;
           default:
-            LOGGER.error(
-                "AlignedWritableMemChunk does not support data type: {}",
-                dataTypes.get(columnIndex));
             break;
         }
       }
-      alignedChunkWriter.write(time);
-      timeDuplicateAlignedRowIndexList = null;
+      alignedChunkWriter.nextColumn();
+    }
+
+    for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
+      if (Objects.isNull(timeDuplicateInfo) || !timeDuplicateInfo[sortedRowIndex]) {
+        alignedChunkWriter.write(list.getTime(sortedRowIndex));
+      }
     }
   }
 
