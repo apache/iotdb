@@ -20,6 +20,8 @@
 -->
 ## PutIoTDB
 
+这个 processor 用于将 flowfile 中的数据插入 IoTDB。
+
 ### PutIoTDB的配置项
 
 | 配置项        | 描述                                                         | 默认值 | 是否必填 |
