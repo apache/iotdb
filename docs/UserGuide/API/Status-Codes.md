@@ -91,7 +91,7 @@ Here is a list of Status Code and related message:
 |506|MULTIPLE_ERROR|Meet error when executing multiple statements|
 |600|WRONG_LOGIN_PASSWORD_ERROR|Username or password is wrong|
 |601|NOT_LOGIN_ERROR|Has not logged in|
-|602|NO_PERMISSION_ERROR|No permissions for this operation|
+|602|NO_PERMISSION_ERROR|No permissions for this operation, please add privilege|
 |603|UNINITIALIZED_AUTH_ERROR|Uninitialized authorizer|
 |700|PARTITION_NOT_READY|Partition table not ready|
 |701|TIME_OUT|Operation timeout|

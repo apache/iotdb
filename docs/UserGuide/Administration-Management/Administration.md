@@ -91,7 +91,7 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 
 ```
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
-Msg: 602: No permissions for this operation INSERT
+Msg: 602: No permissions for this operation, please add privilege INSERT_TIMESERIES.
 ```
 
 Now, we use root user to grant the two users write privileges to the corresponding storage groups.
@@ -144,7 +144,7 @@ Msg: The statement is executed successfully.
 After revoking, ln_write_user has no permission to writing data to root.ln.**
 ```
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
-Msg: 602: No permissions for this operation INSERT
+Msg: 602: No permissions for this operation, please add privilege INSERT_TIMESERIES.
 ```
 
 ### SQL Statements
