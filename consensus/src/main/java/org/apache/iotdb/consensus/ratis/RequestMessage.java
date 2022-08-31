@@ -28,14 +28,20 @@ public class RequestMessage implements Message {
 
   private final IConsensusRequest actualRequest;
   private volatile ByteString serializedContent;
+  private final int replicas;
 
-  public RequestMessage(IConsensusRequest request) {
+  public RequestMessage(IConsensusRequest request, int groupReplicas) {
     this.actualRequest = request;
+    this.replicas = groupReplicas;
     serializedContent = null;
   }
 
   public IConsensusRequest getActualRequest() {
     return actualRequest;
+  }
+
+  public int getReplicas() {
+    return replicas;
   }
 
   @Override

@@ -37,11 +37,13 @@ import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
+import org.apache.iotdb.consensus.exception.TooMuchQueuedRequestsException;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -100,6 +102,8 @@ class RatisConsensus implements IConsensus {
 
   private final Map<RaftGroupId, RaftGroup> lastSeen = new ConcurrentHashMap<>();
 
+  private final MemChecker memChecker;
+
   private final ClientId localFakeId = ClientId.randomId();
   private final AtomicLong localFakeCallId = new AtomicLong(0);
 
@@ -120,6 +124,13 @@ class RatisConsensus implements IConsensus {
     GrpcConfigKeys.Server.setPort(properties, config.getThisNode().getPort());
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
+
+    RatisConfig.MemControl memControl = config.getRatisConfig().getMemControl();
+    memChecker =
+        new MemChecker(
+            memControl.getMaxAllowedDirectMemory().getSize(),
+            memControl.getMaxAllowedHeapMemory().getSize(),
+            memControl.getMaxQueueingRequests());
 
     clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
 
@@ -162,54 +173,71 @@ class RatisConsensus implements IConsensus {
     }
 
     // serialize request into Message
-    Message message = new RequestMessage(IConsensusRequest);
+    Message message = new RequestMessage(IConsensusRequest, raftGroup.getPeers().size());
 
-    // 1. first try the local server
-    RaftClientRequest clientRequest =
-        buildRawRequest(raftGroupId, message, RaftClientRequest.writeRequestType());
-    RaftClientReply localServerReply;
-    RaftPeer suggestedLeader = null;
-    if (isLeader(consensusGroupId) && waitUntilLeaderReady(raftGroupId)) {
-      try {
-        localServerReply = server.submitClientRequest(clientRequest);
-        if (localServerReply.isSuccess()) {
-          ResponseMessage responseMessage = (ResponseMessage) localServerReply.getMessage();
-          TSStatus writeStatus = (TSStatus) responseMessage.getContentHolder();
-          return ConsensusWriteResponse.newBuilder().setStatus(writeStatus).build();
-        }
-        NotLeaderException ex = localServerReply.getNotLeaderException();
-        if (ex != null) { // local server is not leader
-          suggestedLeader = ex.getSuggestedLeader();
-        }
-      } catch (IOException e) {
-        return failedWrite(new RatisRequestFailedException(e));
-      }
+    boolean permit = memChecker.tryAcquire(message);
+    if (!permit) {
+      return failedWrite(
+          new TooMuchQueuedRequestsException(
+              memChecker.getUsedDirectBytes().get(),
+              memChecker.getUsedHeapBytes().get(),
+              memChecker.getQueueingRequests().get(),
+              memChecker.getMaxAllowedDirectBytes(),
+              memChecker.getMaxAllowedHeapBytes(),
+              memChecker.getMaxQueueingRequests()));
     }
 
-    // 2. try raft client
-    TSStatus writeResult;
-    RatisClient client = null;
     try {
-      client = getRaftClient(raftGroup);
-      RaftClientReply reply = client.getRaftClient().io().send(message);
-      if (!reply.isSuccess()) {
-        return failedWrite(new RatisRequestFailedException(reply.getException()));
+      // 1. first try the local server
+      RaftClientRequest clientRequest =
+          buildRawRequest(raftGroupId, message, RaftClientRequest.writeRequestType());
+      RaftClientReply localServerReply;
+      RaftPeer suggestedLeader = null;
+      if (isLeader(consensusGroupId) && waitUntilLeaderReady(raftGroupId)) {
+        try {
+          localServerReply = server.submitClientRequest(clientRequest);
+          if (localServerReply.isSuccess()) {
+            ResponseMessage responseMessage = (ResponseMessage) localServerReply.getMessage();
+            TSStatus writeStatus = (TSStatus) responseMessage.getContentHolder();
+            return ConsensusWriteResponse.newBuilder().setStatus(writeStatus).build();
+          }
+          NotLeaderException ex = localServerReply.getNotLeaderException();
+          if (ex != null) { // local server is not leader
+            suggestedLeader = ex.getSuggestedLeader();
+          }
+        } catch (IOException e) {
+          return failedWrite(new RatisRequestFailedException(e));
+        }
       }
-      writeResult = Utils.deserializeFrom(reply.getMessage().getContent().asReadOnlyByteBuffer());
-    } catch (IOException | TException e) {
-      return failedWrite(new RatisRequestFailedException(e));
+
+      // 2. try raft client
+      TSStatus writeResult;
+      RatisClient client = null;
+      try {
+        client = getRaftClient(raftGroup);
+        RaftClientReply reply = client.getRaftClient().io().send(message);
+        if (!reply.isSuccess()) {
+          return failedWrite(new RatisRequestFailedException(reply.getException()));
+        }
+        writeResult = Utils.deserializeFrom(reply.getMessage().getContent().asReadOnlyByteBuffer());
+      } catch (IOException | TException e) {
+        return failedWrite(new RatisRequestFailedException(e));
+      } finally {
+        if (client != null) {
+          client.returnSelf();
+        }
+      }
+
+      if (suggestedLeader != null) {
+        TEndPoint leaderEndPoint = Utils.formRaftPeerIdToTEndPoint(suggestedLeader.getId());
+        writeResult.setRedirectNode(
+            new TEndPoint(leaderEndPoint.getIp(), leaderEndPoint.getPort()));
+      }
+
+      return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();
     } finally {
-      if (client != null) {
-        client.returnSelf();
-      }
+      memChecker.release(message);
     }
-
-    if (suggestedLeader != null) {
-      TEndPoint leaderEndPoint = Utils.formRaftPeerIdToTEndPoint(suggestedLeader.getId());
-      writeResult.setRedirectNode(new TEndPoint(leaderEndPoint.getIp(), leaderEndPoint.getPort()));
-    }
-
-    return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();
   }
 
   /** Read directly from LOCAL COPY notice: May read stale data (not linearizable) */
@@ -224,7 +252,7 @@ class RatisConsensus implements IConsensus {
 
     RaftClientReply reply;
     try {
-      RequestMessage message = new RequestMessage(IConsensusRequest);
+      RequestMessage message = new RequestMessage(IConsensusRequest, group.getPeers().size());
       RaftClientRequest clientRequest =
           buildRawRequest(groupId, message, RaftClientRequest.staleReadRequestType(-1));
       reply = server.submitClientRequest(clientRequest);
