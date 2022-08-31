@@ -813,7 +813,8 @@ public class IoTDBAuthIT {
         Statement adminStatement = adminConnection.createStatement()) {
       adminStatement.execute("CREATE USER a_application 'a_application'");
       adminStatement.execute("CREATE ROLE application_role");
-      adminStatement.execute("GRANT ROLE application_role PRIVILEGES READ_TIMESERIES ON root.**");
+      adminStatement.execute(
+          "GRANT ROLE application_role PRIVILEGES READ_TIMESERIES ON root.test.**");
       adminStatement.execute("GRANT application_role TO a_application");
 
       adminStatement.execute("INSERT INTO root.test(time, s1, s2, s3) VALUES(1, 2, 3, 4)");
