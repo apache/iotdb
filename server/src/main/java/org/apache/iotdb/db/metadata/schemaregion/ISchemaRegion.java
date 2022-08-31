@@ -143,6 +143,10 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   int getAllTimeseriesCount(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
+      throws MetadataException;
+
+  int getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
       throws MetadataException;
 

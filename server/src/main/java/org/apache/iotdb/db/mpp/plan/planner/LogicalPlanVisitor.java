@@ -581,7 +581,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
     return planBuilder
         .planDevicesCountSource(
-            countDevicesStatement.getPartialPath(), countDevicesStatement.isPrefixPath())
+            countDevicesStatement.getPathPattern(), countDevicesStatement.isPrefixPath())
         .planCountMerge()
         .getRoot();
   }
@@ -592,11 +592,12 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
     return planBuilder
         .planTimeSeriesCountSource(
-            countTimeSeriesStatement.getPartialPath(),
+            countTimeSeriesStatement.getPathPattern(),
             countTimeSeriesStatement.isPrefixPath(),
             countTimeSeriesStatement.getKey(),
             countTimeSeriesStatement.getValue(),
-            countTimeSeriesStatement.isContains())
+            countTimeSeriesStatement.isContains(),
+            analysis.getRelatedTemplateInfo())
         .planCountMerge()
         .getRoot();
   }
@@ -607,7 +608,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
     return planBuilder
         .planLevelTimeSeriesCountSource(
-            countLevelTimeSeriesStatement.getPartialPath(),
+            countLevelTimeSeriesStatement.getPathPattern(),
             countLevelTimeSeriesStatement.isPrefixPath(),
             countLevelTimeSeriesStatement.getLevel(),
             countLevelTimeSeriesStatement.getKey(),
@@ -621,7 +622,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitCountNodes(CountNodesStatement countStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
     return planBuilder
-        .planNodePathsSchemaSource(countStatement.getPartialPath(), countStatement.getLevel())
+        .planNodePathsSchemaSource(countStatement.getPathPattern(), countStatement.getLevel())
         .planSchemaQueryMerge(false)
         .planNodeManagementMemoryMerge(analysis.getMatchedNodes())
         .planNodePathsCount()

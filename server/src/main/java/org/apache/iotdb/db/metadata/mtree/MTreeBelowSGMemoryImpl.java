@@ -863,6 +863,16 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return counter.getCount();
   }
 
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
+      throws MetadataException {
+    CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
+    counter.setPrefixMatch(isPrefixMatch);
+    counter.setTemplateMap(templateMap);
+    counter.traverse();
+    return counter.getCount();
+  }
+
   /**
    * Get the count of timeseries matching the given path.
    *

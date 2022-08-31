@@ -22,6 +22,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -43,9 +44,18 @@ public class GroupByQueryOperator extends AggregationQueryOperator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return isAlignByDevice()
-        ? this.generateAlignByDevicePlan(generator)
-        : super.generateRawDataQueryPlan(generator, initGroupByTimePlan(new GroupByTimePlan()));
+    PhysicalPlan plan =
+        isAlignByDevice()
+            ? this.generateAlignByDevicePlan(generator)
+            : super.generateRawDataQueryPlan(generator, initGroupByTimePlan(new GroupByTimePlan()));
+
+    AggregationPlan aggregationPlan =
+        isAlignByDevice()
+            ? ((AlignByDevicePlan) plan).getAggregationPlan()
+            : (AggregationPlan) plan;
+    aggregationPlan.verifyAllAggregationDataTypesMatched();
+
+    return plan;
   }
 
   @Override
@@ -53,7 +63,6 @@ public class GroupByQueryOperator extends AggregationQueryOperator {
       throws QueryProcessException {
     AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
     alignByDevicePlan.setGroupByTimePlan(initGroupByTimePlan(new GroupByTimePlan()));
-
     return alignByDevicePlan;
   }
 

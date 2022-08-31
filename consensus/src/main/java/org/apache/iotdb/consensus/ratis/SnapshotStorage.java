@@ -117,13 +117,20 @@ public class SnapshotStorage implements StateMachineStorage {
     }
 
     List<FileInfo> fileInfos = new ArrayList<>();
+    FileInfo metafileInfo = null;
     for (Path file : actualSnapshotFiles) {
       if (file.endsWith(".md5")) {
         continue;
       }
       FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
-      fileInfos.add(fileInfo);
+      if (file.toFile().getName().startsWith(META_FILE_PREFIX)) {
+        metafileInfo = fileInfo;
+      } else {
+        fileInfos.add(fileInfo);
+      }
     }
+    // metafile should be sent last for atomicity considerations
+    fileInfos.add(metafileInfo);
 
     return new FileListSnapshotInfo(
         fileInfos, snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());
@@ -176,11 +183,6 @@ public class SnapshotStorage implements StateMachineStorage {
     return snapshotDir.getAbsolutePath() + File.separator + META_FILE_PREFIX + termIndexMetadata;
   }
 
-  private String getMetafileMatcherRegex() {
-    // meta file should always end with term_index
-    return META_FILE_PREFIX + "\\d+_\\d+$";
-  }
-
   /**
    * After leader InstallSnapshot to a slow follower, Ratis will put all snapshot files directly
    * under statemachineDir. We need to handle this special scenario and rearrange these files to
@@ -189,7 +191,7 @@ public class SnapshotStorage implements StateMachineStorage {
    */
   void moveSnapshotFileToSubDirectory() {
     File[] potentialMetafile =
-        stateMachineDir.listFiles((dir, name) -> name.matches(getMetafileMatcherRegex()));
+        stateMachineDir.listFiles((dir, name) -> name.startsWith(META_FILE_PREFIX));
     if (potentialMetafile == null || potentialMetafile.length == 0) {
       // the statemachine dir contains no direct metafile
       return;
