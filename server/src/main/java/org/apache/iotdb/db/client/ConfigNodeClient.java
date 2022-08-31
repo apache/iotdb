@@ -159,7 +159,9 @@ public class ConfigNodeClient
           RpcTransportFactory.INSTANCE.getTransport(
               // as there is a try-catch already, we do not need to use TSocket.wrap
               endpoint.getIp(), endpoint.getPort(), (int) connectionTimeout);
-      transport.open();
+      if (!transport.isOpen()) {
+        transport.open();
+      }
       configNode = endpoint;
     } catch (TTransportException e) {
       throw new TException(e);
