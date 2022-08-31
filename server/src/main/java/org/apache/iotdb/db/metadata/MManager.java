@@ -208,7 +208,7 @@ public class MManager {
   private TagManager tagManager = TagManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
 
-  // seriesNumerLimiter may be null, so we must check it before use it.
+  // seriesNumerMonitor may be null, so we must check it before use it.
   private ISeriesNumerMonitor seriesNumerMonitor = null;
 
   // region MManager Singleton
@@ -233,15 +233,15 @@ public class MManager {
 
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   protected MManager() {
-    // init seriesNumerLimiter if there is.
-    // each mmanager instance will generate an ISeriesNumerLimiter instance
-    // So, if you want to share the ISeriesNumerLimiter instance, pls change this part of code.
-    ServiceLoader<ISeriesNumerMonitor> limiterServiceLoader =
+    // init ISeriesNumerMonitor if there is.
+    // each mmanager instance will generate an ISeriesNumerMonitor instance
+    // So, if you want to share the ISeriesNumerMonitor instance, pls change this part of code.
+    ServiceLoader<ISeriesNumerMonitor> monitorServiceLoader =
         ServiceLoader.load(ISeriesNumerMonitor.class);
-    for (ISeriesNumerMonitor loader : limiterServiceLoader) {
+    for (ISeriesNumerMonitor loader : monitorServiceLoader) {
       if (this.seriesNumerMonitor != null) {
-        // it means there is more than one ISeriesNumerLimiter implementation.
-        logger.warn("There are more than one ISeriesNumerLimiter implementation. pls check.");
+        // it means there is more than one ISeriesNumerMonitor implementation.
+        logger.warn("There are more than one ISeriesNumerMonitor implementation. pls check.");
       }
       logger.info("Will set seriesNumerMonitor from {} ", loader.getClass().getName());
       this.seriesNumerMonitor = loader;
