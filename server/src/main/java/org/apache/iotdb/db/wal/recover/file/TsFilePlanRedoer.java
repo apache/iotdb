@@ -90,7 +90,7 @@ public class TsFilePlanRedoer {
     }
   }
 
-  void redoDelete(DeleteDataNode deleteDataNode) throws IOException, MetadataException {
+  void redoDelete(DeleteDataNode deleteDataNode) throws IOException {
     List<PartialPath> paths = deleteDataNode.getPathList();
     for (PartialPath path : paths) {
       // path here is device path pattern
