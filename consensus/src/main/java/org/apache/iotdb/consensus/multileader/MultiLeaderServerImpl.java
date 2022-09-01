@@ -22,7 +22,6 @@ package org.apache.iotdb.consensus.multileader;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -128,16 +127,6 @@ public class MultiLeaderServerImpl {
   }
 
   public void start() {
-    try {
-      takeSnapshot();
-      transitSnapshot(
-          new Peer(
-              new DataRegionId(1),
-              new TEndPoint("172.20.31.41", thisNode.getEndpoint().getPort())));
-    } catch (ConsensusGroupAddPeerException e) {
-      throw new RuntimeException(e);
-    }
-
     stateMachine.start();
     logDispatcher.start();
   }
@@ -290,7 +279,7 @@ public class MultiLeaderServerImpl {
 
   public void loadSnapshot(String snapshotId) {
     // TODO: (xingtanzjr) throw exception if the snapshot load failed
-    stateMachine.loadSnapshot(new File(storageDir, latestSnapshotId));
+    stateMachine.loadSnapshot(new File(storageDir, snapshotId));
   }
 
   public void inactivePeer(Peer peer) throws ConsensusGroupAddPeerException {
