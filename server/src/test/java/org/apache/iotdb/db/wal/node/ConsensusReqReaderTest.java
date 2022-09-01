@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.node;
 
+import java.util.Collections;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -73,14 +75,14 @@ public class ConsensusReqReaderTest {
   }
 
   /**
-   * Generate wal files as below: <br>
-   * _0-0-1.wal: 1,-1 <br>
-   * _1-1-1.wal: 2,2,2 <br>
-   * _2-2-1.wal: 3,3 <br>
-   * _3-3-1.wal: 3,4 <br>
-   * _4-4-1.wal: 4 <br>
-   * _5-4-1.wal: 4,4,5 <br>
-   * _6-5-1.wal: 6 <br>
+   * Generate wal files as below:
+   * _0-0-1.wal: 1,-1
+   * _1-1-1.wal: 2,2,2
+   * _2-2-1.wal: 3,3
+   * _3-3-1.wal: 3,4
+   * _4-4-1.wal: 4
+   * _5-4-1.wal: 4,4,5
+   * _6-5-1.wal: 6
    * 1 - InsertRowNode, 2 - InsertRowsOfOneDeviceNode, 3 - InsertRowsNode, 4 -
    * InsertMultiTabletsNode, 5 - InsertTabletNode, 6 - InsertRowNode
    */
@@ -143,7 +145,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(1, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertRowNode);
       Assert.assertEquals(1, ((InsertRowNode) planNode).getSearchIndex());
     }
@@ -151,7 +153,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(3, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertRowNode);
       Assert.assertEquals(2, ((InsertRowNode) planNode).getSearchIndex());
     }
@@ -159,7 +161,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(3, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertRowNode);
       Assert.assertEquals(3, ((InsertRowNode) planNode).getSearchIndex());
     }
@@ -167,7 +169,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(4, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertTabletNode);
       Assert.assertEquals(4, ((InsertTabletNode) planNode).getSearchIndex());
     }
@@ -175,7 +177,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(1, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertTabletNode);
       Assert.assertEquals(5, ((InsertTabletNode) planNode).getSearchIndex());
     }
@@ -194,7 +196,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(4, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertTabletNode);
       Assert.assertEquals(4, ((InsertTabletNode) planNode).getSearchIndex());
     }
@@ -211,7 +213,7 @@ public class ConsensusReqReaderTest {
               Assert.assertEquals(1, req.getRequests().size());
               for (IConsensusRequest innerRequest : req.getRequests()) {
                 PlanNode node =
-                    WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+                    WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
                 Assert.assertTrue(node instanceof InsertTabletNode);
                 Assert.assertEquals(5, ((InsertTabletNode) node).getSearchIndex());
               }
@@ -244,7 +246,7 @@ public class ConsensusReqReaderTest {
               request = iterator.next();
               Assert.assertEquals(1, request.getRequests().size());
               for (IConsensusRequest innerRequest : request.getRequests()) {
-                planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+                planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
                 Assert.assertTrue(planNode instanceof InsertTabletNode);
                 Assert.assertEquals(5, ((InsertTabletNode) planNode).getSearchIndex());
               }
@@ -253,7 +255,7 @@ public class ConsensusReqReaderTest {
               request = iterator.next();
               Assert.assertEquals(1, request.getRequests().size());
               for (IConsensusRequest innerRequest : request.getRequests()) {
-                planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+                planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
                 Assert.assertTrue(planNode instanceof InsertRowNode);
                 Assert.assertEquals(6, ((InsertRowNode) planNode).getSearchIndex());
               }
@@ -283,7 +285,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(1, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertRowNode);
       Assert.assertEquals(1, ((InsertRowNode) planNode).getSearchIndex());
     }
@@ -291,7 +293,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(3, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertRowNode);
       Assert.assertEquals(2, ((InsertRowNode) planNode).getSearchIndex());
     }
@@ -302,7 +304,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(4, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertTabletNode);
       Assert.assertEquals(4, ((InsertTabletNode) planNode).getSearchIndex());
     }
@@ -310,7 +312,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(1, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertTabletNode);
       Assert.assertEquals(5, ((InsertTabletNode) planNode).getSearchIndex());
     }
@@ -330,7 +332,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(1, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertTabletNode);
       Assert.assertEquals(5, ((InsertTabletNode) planNode).getSearchIndex());
     }
@@ -341,7 +343,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(3, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertRowNode);
       Assert.assertEquals(2, ((InsertRowNode) planNode).getSearchIndex());
     }
@@ -349,7 +351,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(3, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertRowNode);
       Assert.assertEquals(3, ((InsertRowNode) planNode).getSearchIndex());
     }
@@ -357,7 +359,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(4, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertTabletNode);
       Assert.assertEquals(4, ((InsertTabletNode) planNode).getSearchIndex());
     }
@@ -365,7 +367,7 @@ public class ConsensusReqReaderTest {
     request = iterator.next();
     Assert.assertEquals(1, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
-      planNode = WALEntry.deserializeInsertNode(innerRequest.serializeToByteBuffer());
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
       Assert.assertTrue(planNode instanceof InsertTabletNode);
       Assert.assertEquals(5, ((InsertTabletNode) planNode).getSearchIndex());
     }
@@ -384,6 +386,50 @@ public class ConsensusReqReaderTest {
     simulateFileScenario01();
     ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(6);
     Assert.assertFalse(iterator.hasNext());
+  }
+
+  /**
+   * Generate wal files as below:
+   * _0-0-0.wal: -1,-1
+   * _1-0-0.wal: -1
+   * _2-0-1.wal: -1,1
+   * _3-1-0.wal: -1
+   * 1 - DeleteDataNode
+   */
+  private void simulateFileScenario02() throws IllegalPathException {
+    InsertRowNode insertRowNode = getInsertRowNode(devicePath);
+    // _0-0-0.wal
+    walNode.log(0, insertRowNode); // -1
+    walNode.log(0, insertRowNode); // -1
+    walNode.rollWALFile();
+    // _1-0-0.wal
+    walNode.log(0, insertRowNode); // -1
+    walNode.rollWALFile();
+    // _2-0-1.wal
+    walNode.log(0, insertRowNode); // -1
+    DeleteDataNode deleteDataNode = getDeleteDataNode(devicePath);
+    deleteDataNode.setSearchIndex(1);
+    walNode.log(0, deleteDataNode); // 1
+    walNode.rollWALFile();
+    // _3-1-0.wal
+    walNode.log(0, insertRowNode); // -1
+    walNode.rollWALFile();
+  }
+
+  @Test
+  public void scenario02TestGetReqIterator01() throws Exception {
+    simulateFileScenario02();
+    ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
+    IndexedConsensusRequest request;
+    PlanNode planNode;
+    Assert.assertTrue(iterator.hasNext());
+    request = iterator.next();
+    Assert.assertEquals(1, request.getRequests().size());
+    for (IConsensusRequest innerRequest : request.getRequests()) {
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
+      Assert.assertTrue(planNode instanceof DeleteDataNode);
+      Assert.assertEquals(1, ((DeleteDataNode) planNode).getSearchIndex());
+    }
   }
 
   public static InsertRowNode getInsertRowNode(String devicePath) throws IllegalPathException {
@@ -489,5 +535,9 @@ public class ConsensusReqReaderTest {
         });
 
     return insertTabletNode;
+  }
+
+  private DeleteDataNode getDeleteDataNode(String devicePath) throws IllegalPathException {
+    return new DeleteDataNode(new PlanNodeId(""), Collections.singletonList(new PartialPath(devicePath)), Long.MIN_VALUE, Long.MAX_VALUE);
   }
 }

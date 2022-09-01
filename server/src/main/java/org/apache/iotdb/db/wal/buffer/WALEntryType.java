@@ -33,6 +33,8 @@ public enum WALEntryType {
   INSERT_ROW_NODE((byte) 4),
   /** {@link org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode} */
   INSERT_TABLET_NODE((byte) 5),
+  /** {@link org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode} */
+  DELETE_DATA_NODE((byte) 6),
   // endregion
   // region signal entry type
   /** signal wal buffer has been closed */
@@ -54,12 +56,17 @@ public enum WALEntryType {
     return code;
   }
 
+  /** Returns true when this type should be searched */
+  public boolean needSearch() {
+    return this == INSERT_TABLET_NODE || this == INSERT_ROW_NODE || this == DELETE_DATA_NODE;
+  }
+
   public static WALEntryType valueOf(byte code) {
     for (WALEntryType type : WALEntryType.values()) {
       if (type.code == code) {
         return type;
       }
     }
-    return null;
+    throw new IllegalArgumentException("Invalid WALEntryType code: " + code);
   }
 }
