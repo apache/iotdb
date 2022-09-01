@@ -39,7 +39,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
@@ -1492,7 +1491,10 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       if (cur.isEntity()) {
         entityMNode = cur.getAsEntityMNode();
       } else {
-        entityMNode = MNodeUtils.setToEntity(cur);
+        entityMNode = store.setToEntity(cur);
+        if (entityMNode.isStorageGroup()) {
+          this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+        }
       }
     }
 
@@ -1517,7 +1519,10 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     if (cur.isEntity()) {
       entityMNode = cur.getAsEntityMNode();
     } else {
-      entityMNode = MNodeUtils.setToEntity(cur);
+      entityMNode = store.setToEntity(cur);
+      if (entityMNode.isStorageGroup()) {
+        this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+      }
     }
 
     if (!entityMNode.isAligned()) {
