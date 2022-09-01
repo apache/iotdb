@@ -230,6 +230,13 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
+// Trigger
+struct TCreateTriggerReq {
+  1: required string triggerName
+  2: required binary triggerInformation
+  3: required common.TFile jarFile
+}
+
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status
@@ -583,6 +590,19 @@ service IConfigNodeRPCService {
      *         EXECUTE_STATEMENT_ERROR if operations on any node failed
      */
   common.TSStatus dropFunction(TDropFunctionReq req)
+
+  // ======================================================
+  // Trigger
+  // ======================================================
+
+   /**
+      * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+      * and sync Information of it to all ConfigNodes
+      *
+      * @return SUCCESS_STATUS if the trigger was created successfully
+      *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+      */
+  common.TSStatus createTrigger(TCreateTriggerReq req)
 
   // ======================================================
   // Maintenance Tools

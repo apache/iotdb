@@ -171,6 +171,16 @@ struct TDropFunctionRequest {
   1: required string udfName
 }
 
+struct TcreateTriggerInstanceReq {
+  1: required binary triggerInformation
+  2: required binary jarFile
+}
+
+struct TremoveTriggerInstanceReq {
+  1: required string triggerName
+  2: required bool needToDeleteJarFile
+}
+
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
@@ -336,6 +346,13 @@ service IDataNodeRPCService {
    * @param function name
    **/
   common.TSStatus dropFunction(TDropFunctionRequest req)
+
+   /**
+    * Config node will create a trigger instance on data node.
+    *
+    * @param TriggerInformation, jar file.
+    **/
+  common.TSStatus createTriggerInstance(TcreateTriggerInstanceReq req)
 
   /**
    * Config node will invalidate permission Info cache.
