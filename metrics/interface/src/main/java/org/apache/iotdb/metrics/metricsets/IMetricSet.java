@@ -25,9 +25,9 @@ public interface IMetricSet {
   /** bind related metric to metric manager */
   void bindTo(AbstractMetricManager metricManager);
 
-  /** start async collectd metric */
+  /** start async collected metric */
   default void startAsyncCollectedMetrics() {}
 
-  /** stop async collectd metric */
+  /** stop async collected metric */
   default void stopAsyncCollectedMetrics() {}
 }
