@@ -52,11 +52,9 @@ public class TsFilePipe implements Pipe {
   // <dataNodeId, ISyncManager>
   private final Map<String, ISyncManager> syncManagerMap = new ConcurrentHashMap<>();
 
-  private final long createTime;
-  private final String name;
+  private final TsFilePipeInfo pipeInfo;
+
   private final PipeSink pipeSink;
-  private final long dataStartTime;
-  private final boolean syncDelOp;
 
   private final BufferedPipeDataQueue historyQueue;
   private final BufferedPipeDataQueue realTimeQueue;
@@ -65,15 +63,18 @@ public class TsFilePipe implements Pipe {
 
   private long maxSerialNumber;
 
-  private PipeStatus status;
-
   public TsFilePipe(
       long createTime, String name, PipeSink pipeSink, long dataStartTime, boolean syncDelOp) {
-    this.createTime = createTime;
-    this.name = name;
+
+    this.pipeInfo =
+        new TsFilePipeInfo(
+            name,
+            pipeSink.getPipeSinkName(),
+            PipeStatus.STOP,
+            createTime,
+            dataStartTime,
+            syncDelOp);
     this.pipeSink = pipeSink;
-    this.dataStartTime = dataStartTime;
-    this.syncDelOp = syncDelOp;
 
     this.historyQueue =
         new BufferedPipeDataQueue(SyncPathUtil.getSenderHistoryPipeLogDir(name, createTime));
@@ -83,16 +84,15 @@ public class TsFilePipe implements Pipe {
     this.collectRealTimeDataLock = new ReentrantLock();
 
     this.maxSerialNumber = Math.max(0L, realTimeQueue.getLastMaxSerialNumber());
-
-    this.status = PipeStatus.STOP;
   }
 
   @Override
   public synchronized void start() throws PipeException {
-    if (status == PipeStatus.DROP) {
+    if (pipeInfo.getStatus() == PipeStatus.DROP) {
       throw new PipeException(
-          String.format("Can not start pipe %s, because the pipe has been drop.", name));
-    } else if (status == PipeStatus.RUNNING) {
+          String.format(
+              "Can not start pipe %s, because the pipe has been drop.", pipeInfo.getPipeName()));
+    } else if (pipeInfo.getStatus() == PipeStatus.RUNNING) {
       return;
     }
 
@@ -112,10 +112,12 @@ public class TsFilePipe implements Pipe {
         pipeLog.finishCollect();
       }
 
-      status = PipeStatus.RUNNING;
+      pipeInfo.setStatus(PipeStatus.RUNNING);
     } catch (IOException e) {
       logger.error(
-          logFormat("Clear pipe dir %s error.", SyncPathUtil.getSenderPipeDir(name, createTime)),
+          logFormat(
+              "Clear pipe dir %s error.",
+              SyncPathUtil.getSenderPipeDir(pipeInfo.getPipeName(), pipeInfo.getCreateTime())),
           e);
       throw new PipeException("Start error, can not clear pipe log.");
     }
@@ -126,7 +128,7 @@ public class TsFilePipe implements Pipe {
     // collect history TsFile
     List<File> historyTsFiles = new ArrayList<>();
     for (ISyncManager syncManager : syncManagerMap.values()) {
-      historyTsFiles.addAll(syncManager.syncHistoryTsFile(dataStartTime));
+      historyTsFiles.addAll(syncManager.syncHistoryTsFile(pipeInfo.getDataStartTimestamp()));
     }
     // put history data into PipeDataQueue
     int historyTsFilesSize = historyTsFiles.size();
@@ -156,7 +158,7 @@ public class TsFilePipe implements Pipe {
   public void collectRealTimeDeletion(Deletion deletion, String sgName) {
     collectRealTimeDataLock.lock();
     try {
-      if (!syncDelOp) {
+      if (!pipeInfo.isSyncDelOp()) {
         return;
       }
 
@@ -255,6 +257,11 @@ public class TsFilePipe implements Pipe {
     }
   }
 
+  @Override
+  public PipeInfo getPipeInfo() {
+    return pipeInfo;
+  }
+
   public void commit(long serialNumber) {
     if (!historyQueue.isEmpty()) {
       historyQueue.commit(serialNumber);
@@ -266,21 +273,21 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public synchronized void stop() throws PipeException {
-    if (status == PipeStatus.DROP) {
+    if (pipeInfo.getStatus() == PipeStatus.DROP) {
       throw new PipeException(
-          String.format("Can not stop pipe %s, because the pipe is drop.", name));
+          String.format("Can not stop pipe %s, because the pipe is drop.", pipeInfo.getPipeName()));
     }
-    status = PipeStatus.STOP;
+    pipeInfo.setStatus(PipeStatus.STOP);
   }
 
   @Override
   public synchronized void drop() throws PipeException {
-    if (status == PipeStatus.DROP) {
+    if (pipeInfo.getStatus() == PipeStatus.DROP) {
       return;
     }
 
     clear();
-    status = PipeStatus.DROP;
+    pipeInfo.setStatus(PipeStatus.DROP);
   }
 
   private void clear() {
@@ -289,17 +296,20 @@ public class TsFilePipe implements Pipe {
       realTimeQueue.clear();
       pipeLog.clear();
     } catch (IOException e) {
-      logger.warn(logFormat("Clear pipe %s %d error.", name, createTime), e);
+      logger.warn(
+          logFormat("Clear pipe %s %d error.", pipeInfo.getPipeName(), pipeInfo.getCreateTime()),
+          e);
     }
   }
 
   private String logFormat(String format, Object... arguments) {
-    return String.format(String.format("[%s-%s] ", this.name, this.createTime) + format, arguments);
+    return String.format(
+        String.format("[%s-%s] ", pipeInfo.getPipeName(), pipeInfo.createTime) + format, arguments);
   }
 
   @Override
   public void close() throws PipeException {
-    if (status == PipeStatus.DROP) {
+    if (pipeInfo.getStatus() == PipeStatus.DROP) {
       return;
     }
     historyQueue.close();
@@ -308,7 +318,7 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public String getName() {
-    return name;
+    return pipeInfo.getPipeName();
   }
 
   @Override
@@ -318,34 +328,27 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public long getCreateTime() {
-    return createTime;
+    return pipeInfo.getCreateTime();
   }
 
   @Override
-  public synchronized PipeStatus getStatus() {
-    return status;
+  public PipeStatus getStatus() {
+    return pipeInfo.getStatus();
   }
 
   @Override
   public String toString() {
     return "TsFilePipe{"
-        + "createTime="
-        + createTime
-        + ", name='"
-        + name
-        + '\''
+        + ", pipeInfo="
+        + pipeInfo
         + ", pipeSink="
         + pipeSink
-        + ", dataStartTime="
-        + dataStartTime
-        + ", syncDelOp="
-        + syncDelOp
         + ", pipeLog="
         + pipeLog
+        + ", collectRealTimeDataLock="
+        + collectRealTimeDataLock
         + ", maxSerialNumber="
         + maxSerialNumber
-        + ", status="
-        + status
         + '}';
   }
 
@@ -354,13 +357,11 @@ public class TsFilePipe implements Pipe {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     TsFilePipe that = (TsFilePipe) o;
-    return createTime == that.createTime
-        && Objects.equals(name, that.name)
-        && Objects.equals(pipeSink, that.pipeSink);
+    return Objects.equals(pipeInfo, that.pipeInfo) && Objects.equals(pipeSink, that.pipeSink);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(createTime, name, pipeSink);
+    return Objects.hash(pipeInfo, pipeSink);
   }
 }

@@ -329,14 +329,18 @@ public class SyncService implements IService {
     }
   }
 
-  public synchronized void receiveMsg(PipeMessage.MsgType type, String message) {
+  public synchronized void receiveMsg(PipeMessage messageType, String message) {
     if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
       logger.info(String.format("No running pipe for receiving msg %s.", message));
       return;
     }
-    switch (type) {
+    TSStatus status = null;
+    switch (messageType) {
       case ERROR:
-        logger.error(String.format("%s from receiver: %s", type.name(), message));
+        logger.error(String.format("%s from receiver: %s", messageType.name(), message));
+        status =
+            syncInfoFetcher.recordMsg(
+                runningPipe.getName(), runningPipe.getCreateTime(), messageType);
         try {
           stopPipe(runningPipe.getName());
         } catch (PipeException e) {
@@ -345,15 +349,18 @@ public class SyncService implements IService {
                   "Stop pipe %s when meeting error in sender service.", runningPipe.getName()),
               e);
         }
-      case WARN:
-        logger.warn(String.format("%s from receiver: %s", type.name(), message));
-        TSStatus status =
-            syncInfoFetcher.recordMsg(
-                runningPipe.getName(), runningPipe.getCreateTime(), new PipeMessage(type, message));
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          logger.warn(String.format("Failed to record message: [%s] %s", type.name(), message));
-        }
         break;
+      case WARN:
+        logger.warn(String.format("%s from receiver: %s", messageType.name(), message));
+        status =
+            syncInfoFetcher.recordMsg(
+                runningPipe.getName(), runningPipe.getCreateTime(), messageType);
+        break;
+      default:
+        logger.error(String.format("Unknown message type [%s] %s", messageType.name(), message));
+    }
+    if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      logger.error(String.format("Failed to record message: [%s] %s", messageType.name(), message));
     }
   }
 
@@ -370,7 +377,7 @@ public class SyncService implements IService {
                 SyncConstant.ROLE_SENDER,
                 pipe.getPipeSinkName(),
                 pipe.getStatus().name(),
-                "");
+                pipe.getPipeMessage().name());
         list.add(tPipeInfo);
       }
     }
@@ -384,7 +391,8 @@ public class SyncService implements IService {
                 SyncConstant.ROLE_RECEIVER,
                 identityInfo.getAddress(),
                 Pipe.PipeStatus.RUNNING.name(),
-                "");
+                // TODO: implement receiver message
+                PipeMessage.NORMAL.name());
         list.add(tPipeInfo);
       }
     }
@@ -403,9 +411,7 @@ public class SyncService implements IService {
         record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getPipeSinkName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
-        record.addField(
-            Binary.valueOf(syncInfoFetcher.getPipeMsg(pipe.getPipeName(), pipe.getCreateTime())),
-            TSDataType.TEXT);
+        record.addField(Binary.valueOf(pipe.getPipeMessage().name()), TSDataType.TEXT);
         boolean needSetFields = true;
         PipeSink pipeSink = syncInfoFetcher.getPipeSink(pipe.getPipeSinkName());
         if (pipeSink.getType() == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe

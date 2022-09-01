@@ -154,13 +154,8 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   }
 
   @Override
-  public String getPipeMsg(String pipeName, long createTime) {
-    return syncInfo.getPipeMessage(pipeName, createTime, false).getMsg();
-  }
-
-  @Override
   public TSStatus recordMsg(String pipeName, long createTime, PipeMessage pipeMessage) {
-    syncInfo.writePipeMessage(pipeName, createTime, pipeMessage);
+    syncInfo.changePipeMessage(pipeName, createTime, pipeMessage);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 

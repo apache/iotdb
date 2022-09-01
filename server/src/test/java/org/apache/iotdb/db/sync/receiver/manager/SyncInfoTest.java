@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.common.SyncInfo;
+import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -33,7 +34,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.List;
 
 public class SyncInfoTest {
   private static final String pipe1 = "pipe1";
@@ -76,21 +76,15 @@ public class SyncInfoTest {
       syncInfo.addPipe(new CreatePipePlan(pipe2, "demo"), createdTime2);
       syncInfo.operatePipe(pipe2, StatementType.STOP_PIPE);
       syncInfo.operatePipe(pipe2, StatementType.START_PIPE);
-      Assert.assertEquals(2, syncInfo.getAllPipeInfos().size());
       Assert.assertEquals(1, syncInfo.getAllPipeSink().size());
-      PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
-      PipeMessage warn = new PipeMessage(PipeMessage.MsgType.WARN, "warn");
-      PipeMessage error = new PipeMessage(PipeMessage.MsgType.ERROR, "error");
-      syncInfo.writePipeMessage(pipe2, createdTime2, info);
-      syncInfo.writePipeMessage(pipe2, createdTime2, warn);
-      List<PipeMessage> messages = syncInfo.getPipeMessages(pipe2, createdTime2, true);
-      Assert.assertEquals(2, messages.size());
-      Assert.assertEquals(info, messages.get(0));
-      Assert.assertEquals(warn, messages.get(1));
-      syncInfo.writePipeMessage(pipe2, createdTime2, error);
-      messages = syncInfo.getPipeMessages(pipe2, createdTime2, true);
-      Assert.assertEquals(1, messages.size());
-      Assert.assertEquals(error, messages.get(0));
+      Assert.assertEquals(2, syncInfo.getAllPipeInfos().size());
+      syncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.WARN);
+      syncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.NORMAL);
+      PipeInfo pipeInfo1 = syncInfo.getPipeInfo(pipe2, createdTime2);
+      Assert.assertEquals(PipeMessage.WARN, pipeInfo1.getPipeMessage());
+      syncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.ERROR);
+      PipeInfo pipeInfo2 = syncInfo.getPipeInfo(pipe2, createdTime2);
+      Assert.assertEquals(PipeMessage.ERROR, pipeInfo2.getPipeMessage());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();

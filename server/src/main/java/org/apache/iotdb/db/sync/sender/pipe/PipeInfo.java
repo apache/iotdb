@@ -21,16 +21,18 @@ package org.apache.iotdb.db.sync.sender.pipe;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 
 public abstract class PipeInfo {
-  private String pipeName;
-  private String pipeSinkName;
-  private PipeStatus status;
-  private long createTime;
+  protected String pipeName;
+  protected String pipeSinkName;
+  protected PipeStatus status;
+  protected long createTime;
+  protected PipeMessage pipeMessage;
 
   public PipeInfo(String pipeName, String pipeSinkName, long createTime) {
     this.pipeName = pipeName;
     this.pipeSinkName = pipeSinkName;
     this.createTime = createTime;
     this.status = PipeStatus.STOP;
+    this.pipeMessage = PipeMessage.NORMAL;
   }
 
   public PipeInfo(String pipeName, String pipeSinkName, PipeStatus status, long createTime) {
@@ -38,6 +40,7 @@ public abstract class PipeInfo {
     this.pipeSinkName = pipeSinkName;
     this.createTime = createTime;
     this.status = status;
+    this.pipeMessage = PipeMessage.NORMAL;
   }
 
   public String getPipeName() {
@@ -58,6 +61,18 @@ public abstract class PipeInfo {
 
   public PipeStatus getStatus() {
     return status;
+  }
+
+  public void setStatus(PipeStatus status) {
+    this.status = status;
+  }
+
+  public PipeMessage getPipeMessage() {
+    return pipeMessage;
+  }
+
+  public void setPipeMessage(PipeMessage pipeMessage) {
+    this.pipeMessage = pipeMessage;
   }
 
   public void start() {

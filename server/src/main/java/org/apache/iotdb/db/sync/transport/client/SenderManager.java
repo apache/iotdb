@@ -83,8 +83,7 @@ public class SenderManager {
           if (!syncClient.handshake()) {
             SyncService.getInstance()
                 .receiveMsg(
-                    PipeMessage.MsgType.ERROR,
-                    String.format("Can not handshake with %s", pipeSink));
+                    PipeMessage.ERROR, String.format("Can not handshake with %s", pipeSink));
           }
           while (!Thread.currentThread().isInterrupted()) {
             PipeData pipeData = pipe.take();
@@ -93,7 +92,7 @@ public class SenderManager {
               // can do something.
               SyncService.getInstance()
                   .receiveMsg(
-                      PipeMessage.MsgType.WARN,
+                      PipeMessage.WARN,
                       String.format(
                           "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber()));
             }

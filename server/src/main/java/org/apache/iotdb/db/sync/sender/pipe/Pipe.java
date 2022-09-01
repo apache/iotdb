@@ -117,7 +117,14 @@ public interface Pipe {
    */
   ISyncManager getOrCreateSyncManager(String dataRegionId);
 
+  /**
+   * Delete {@linkplain ISyncManager} by dataRegionId.
+   *
+   * @param dataRegionId string of {@linkplain org.apache.iotdb.commons.consensus.DataRegionId}
+   */
   void deleteSyncManager(String dataRegionId);
+
+  PipeInfo getPipeInfo();
 
   // a new pipe should be stop status
   enum PipeStatus {

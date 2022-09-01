@@ -79,7 +79,7 @@ public class IoTDBPipeIT {
       String createTime = getCreateTime("p");
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
         String[] expectedRetSet =
-            new String[] {String.format("%s,p,sender,demo,STOP,,", createTime)};
+            new String[] {String.format("%s,p,sender,demo,STOP,NORMAL,", createTime)};
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
       statement.execute("START PIPE p;");
@@ -87,21 +87,21 @@ public class IoTDBPipeIT {
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
         String[] expectedRetSet =
             new String[] {
-              String.format("%s,p,sender,demo,RUNNING,,", createTime),
-              String.format("%s,p,receiver,0.0.0.0,RUNNING,,", createTime),
+              String.format("%s,p,sender,demo,RUNNING,NORMAL,", createTime),
+              String.format("%s,p,receiver,0.0.0.0,RUNNING,NORMAL,", createTime),
             };
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
       statement.execute("STOP PIPE p;");
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
         String[] expectedRetSet =
-            new String[] {String.format("%s,p,sender,demo,STOP,,", createTime)};
+            new String[] {String.format("%s,p,sender,demo,STOP,NORMAL,", createTime)};
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
       statement.execute("DROP PIPE p;");
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
         String[] expectedRetSet =
-            new String[] {String.format("%s,p,sender,demo,DROP,,", createTime)};
+            new String[] {String.format("%s,p,sender,demo,DROP,NORMAL,", createTime)};
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
     } catch (Exception e) {
