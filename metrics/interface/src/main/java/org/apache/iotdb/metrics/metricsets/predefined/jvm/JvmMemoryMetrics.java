@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics.metricsets.predefined.jvm;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.lang.management.BufferPoolMXBean;
 import java.lang.management.ManagementFactory;
@@ -93,6 +94,40 @@ public class JvmMemoryMetrics implements IMetricSet {
           memoryPoolBean.getName(),
           "area",
           area);
+    }
+  }
+
+  @Override
+  public void remove(AbstractMetricManager metricManager) {
+    for (BufferPoolMXBean bufferPoolBean :
+        ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
+      metricManager.remove(
+          MetricType.GAUGE, "jvm.buffer.count.buffers", "id", bufferPoolBean.getName());
+
+      metricManager.remove(
+          MetricType.GAUGE, "jvm.buffer.memory.used.bytes", "id", bufferPoolBean.getName());
+
+      metricManager.remove(
+          MetricType.GAUGE, "jvm.buffer.total.capacity.bytes", "id", bufferPoolBean.getName());
+    }
+
+    for (MemoryPoolMXBean memoryPoolBean :
+        ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) {
+      String area = MemoryType.HEAP.equals(memoryPoolBean.getType()) ? "heap" : "nonheap";
+
+      metricManager.remove(
+          MetricType.GAUGE, "jvm.memory.used.bytes", "id", memoryPoolBean.getName(), "area", area);
+
+      metricManager.remove(
+          MetricType.GAUGE,
+          "jvm.memory.committed.bytes",
+          "id",
+          memoryPoolBean.getName(),
+          "area",
+          area);
+
+      metricManager.remove(
+          MetricType.GAUGE, "jvm.memory.max.bytes", "id", memoryPoolBean.getName(), "area", area);
     }
   }
 }

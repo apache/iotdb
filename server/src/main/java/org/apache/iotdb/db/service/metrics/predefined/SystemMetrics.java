@@ -24,8 +24,8 @@ import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.sun.management.OperatingSystemMXBean;
 
@@ -49,7 +49,25 @@ public class SystemMetrics implements IMetricSet {
   public void bindTo(AbstractMetricManager metricManager) {
     collectSystemCpuInfo(metricManager);
     collectSystemDiskInfo(metricManager);
-    collectSystemMEMInfo(metricManager);
+    collectSystemMemInfo(metricManager);
+
+    // finally start to update the value of some metrics in async way
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        service,
+        this::collect,
+        1,
+        MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
+        TimeUnit.SECONDS);
+  }
+
+  @Override
+  public void remove(AbstractMetricManager metricManager) {
+    // first stop to update the value of some metrics in async way
+    service.shutdown();
+
+    removeSystemCpuInfo(metricManager);
+    removeSystemDiskInfo(metricManager);
+    removeSystemMemInfo(metricManager);
   }
 
   private void collectSystemCpuInfo(AbstractMetricManager metricManager) {
@@ -67,7 +85,15 @@ public class SystemMetrics implements IMetricSet {
         .set(osMXBean.getAvailableProcessors());
   }
 
-  private void collectSystemMEMInfo(AbstractMetricManager metricManager) {
+  private void removeSystemCpuInfo(AbstractMetricManager metricManager) {
+    metricManager.remove(
+        MetricType.GAUGE, Metric.SYS_CPU_LOAD.toString(), Tag.NAME.toString(), "system");
+
+    metricManager.remove(
+        MetricType.GAUGE, Metric.SYS_CPU_CORES.toString(), Tag.NAME.toString(), "system");
+  }
+
+  private void collectSystemMemInfo(AbstractMetricManager metricManager) {
     metricManager
         .getOrCreateGauge(
             Metric.SYS_TOTAL_PHYSICAL_MEMORY_SIZE.toString(),
@@ -105,6 +131,31 @@ public class SystemMetrics implements IMetricSet {
         "system");
   }
 
+  private void removeSystemMemInfo(AbstractMetricManager metricManager) {
+    metricManager.remove(
+        MetricType.GAUGE,
+        Metric.SYS_TOTAL_PHYSICAL_MEMORY_SIZE.toString(),
+        Tag.NAME.toString(),
+        "system");
+    metricManager.remove(
+        MetricType.GAUGE,
+        Metric.SYS_FREE_PHYSICAL_MEMORY_SIZE.toString(),
+        Tag.NAME.toString(),
+        "system");
+    metricManager.remove(
+        MetricType.GAUGE,
+        Metric.SYS_TOTAL_SWAP_SPACE_SIZE.toString(),
+        Tag.NAME.toString(),
+        "system");
+    metricManager.remove(
+        MetricType.GAUGE,
+        Metric.SYS_FREE_SWAP_SPACE_SIZE.toString(),
+        Tag.NAME.toString(),
+        "system");
+    metricManager.remove(
+        MetricType.GAUGE, Metric.SYS_COMMITTED_VM_SIZE.toString(), Tag.NAME.toString(), "system");
+  }
+
   private void collectSystemDiskInfo(AbstractMetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_DISK_TOTAL_SPACE.toString(),
@@ -122,19 +173,11 @@ public class SystemMetrics implements IMetricSet {
         "system");
   }
 
-  @Override
-  public void startAsyncCollectedMetrics() {
-    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-        service,
-        this::collect,
-        1,
-        MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
-        TimeUnit.SECONDS);
-  }
-
-  @Override
-  public void stopAsyncCollectedMetrics() {
-    service.shutdown();
+  private void removeSystemDiskInfo(AbstractMetricManager metricManager) {
+    metricManager.remove(
+        MetricType.GAUGE, Metric.SYS_DISK_TOTAL_SPACE.toString(), Tag.NAME.toString(), "system");
+    metricManager.remove(
+        MetricType.GAUGE, Metric.SYS_DISK_FREE_SPACE.toString(), Tag.NAME.toString(), "system");
   }
 
   private void collect() {

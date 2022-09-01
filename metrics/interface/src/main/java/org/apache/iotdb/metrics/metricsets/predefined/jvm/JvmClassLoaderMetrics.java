@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics.metricsets.predefined.jvm;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.lang.management.ClassLoadingMXBean;
 import java.lang.management.ManagementFactory;
@@ -31,7 +32,6 @@ public class JvmClassLoaderMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricManager metricManager) {
     ClassLoadingMXBean classLoadingBean = ManagementFactory.getClassLoadingMXBean();
-
     metricManager.getOrCreateAutoGauge(
         "jvm.classes.loaded.classes",
         MetricLevel.IMPORTANT,
@@ -42,5 +42,11 @@ public class JvmClassLoaderMetrics implements IMetricSet {
         MetricLevel.IMPORTANT,
         classLoadingBean,
         ClassLoadingMXBean::getUnloadedClassCount);
+  }
+
+  @Override
+  public void remove(AbstractMetricManager metricManager) {
+    metricManager.remove(MetricType.GAUGE, "jvm.classes.loaded.classes");
+    metricManager.remove(MetricType.GAUGE, "jvm.classes.unloaded.classes");
   }
 }

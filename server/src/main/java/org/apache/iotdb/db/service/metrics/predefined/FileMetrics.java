@@ -30,6 +30,8 @@ import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,8 +44,6 @@ import java.util.stream.Stream;
 
 public class FileMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(FileMetrics.class);
-  private final String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
-  private final String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
   private long walFileTotalSize = 0L;
   private long walFileTotalCount = 0L;
@@ -96,10 +96,8 @@ public class FileMetrics implements IMetricSet {
         FileMetrics::getUnsequenceFileTotalCount,
         Tag.NAME.toString(),
         "unseq");
-  }
 
-  @Override
-  public void startAsyncCollectedMetrics() {
+    // finally start to update the value of some metrics in async way
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
         service,
         this::collect,
@@ -109,8 +107,20 @@ public class FileMetrics implements IMetricSet {
   }
 
   @Override
-  public void stopAsyncCollectedMetrics() {
+  public void remove(AbstractMetricManager metricManager) {
+    // first stop to update the value of some metrics in async way
     service.shutdown();
+
+    metricManager.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "wal");
+    metricManager.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "seq");
+    metricManager.remove(
+        MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "unseq");
+    metricManager.remove(
+        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "wal");
+    metricManager.remove(
+        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "seq");
+    metricManager.remove(
+        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "unseq");
   }
 
   private void collect() {

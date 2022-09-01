@@ -22,12 +22,9 @@ package org.apache.iotdb.metrics.metricsets;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 
 public interface IMetricSet {
-  /** bind related metric to metric manager */
+  /** bind metrics to metricManager and init environment */
   void bindTo(AbstractMetricManager metricManager);
 
-  /** start async collected metric */
-  default void startAsyncCollectedMetrics() {}
-
-  /** stop async collected metric */
-  default void stopAsyncCollectedMetrics() {}
+  /** remove metrics from metricManager and clear environment */
+  void remove(AbstractMetricManager metricManager);
 }

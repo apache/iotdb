@@ -24,6 +24,7 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.sun.management.GarbageCollectionNotificationInfo;
 import com.sun.management.GcInfo;
@@ -71,22 +72,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
 
   @Override
   public void bindTo(AbstractMetricManager metricManager) {
-    if (ManagementFactory.getMemoryPoolMXBeans().isEmpty()) {
-      logger.warn(
-          "GC notifications will not be available because MemoryPoolMXBeans are not provided by the JVM");
-      return;
-    }
-
-    try {
-      Class.forName(
-          "com.sun.management.GarbageCollectionNotificationInfo",
-          false,
-          MemoryPoolMXBean.class.getClassLoader());
-    } catch (Throwable e) {
-      // We are operating in a JVM without access to this level of detail
-      logger.warn(
-          "GC notifications will not be available because "
-              + "com.sun.management.GarbageCollectionNotificationInfo is not present");
+    if (!preCheck()) {
       return;
     }
 
@@ -210,6 +196,81 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             }
           });
     }
+  }
+
+  @Override
+  public void remove(AbstractMetricManager metricManager) {
+    if (!preCheck()) {
+      return;
+    }
+
+    metricManager.remove(MetricType.GAUGE, "jvm.gc.max.data.size.bytes");
+    metricManager.remove(MetricType.GAUGE, "jvm.gc.live.data.size.bytes");
+    metricManager.remove(MetricType.COUNTER, "jvm.gc.memory.allocated.bytes");
+
+    if (oldGenPoolName != null) {
+      metricManager.remove(MetricType.COUNTER, "jvm.gc.memory.promoted.bytes");
+    }
+
+    // start watching for GC notifications
+    for (GarbageCollectorMXBean mbean : ManagementFactory.getGarbageCollectorMXBeans()) {
+      if (!(mbean instanceof NotificationEmitter)) {
+        continue;
+      }
+      NotificationListener notificationListener =
+          (notification, ref) -> {
+            CompositeData cd = (CompositeData) notification.getUserData();
+            GarbageCollectionNotificationInfo notificationInfo =
+                GarbageCollectionNotificationInfo.from(cd);
+
+            String gcCause = notificationInfo.getGcCause();
+            String gcAction = notificationInfo.getGcAction();
+            String timerName;
+            if (isConcurrentPhase(gcCause, notificationInfo.getGcName())) {
+              timerName = "jvm.gc.concurrent.phase.time";
+            } else {
+              timerName = "jvm.gc.pause";
+            }
+            metricManager.remove(MetricType.TIMER, timerName, "action", gcAction, "cause", gcCause);
+          };
+      NotificationEmitter notificationEmitter = (NotificationEmitter) mbean;
+      notificationEmitter.addNotificationListener(
+          notificationListener,
+          notification ->
+              notification
+                  .getType()
+                  .equals(GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION),
+          null);
+      notificationListenerCleanUpRunnables.add(
+          () -> {
+            try {
+              notificationEmitter.removeNotificationListener(notificationListener);
+            } catch (ListenerNotFoundException ignore) {
+            }
+          });
+    }
+  }
+
+  private boolean preCheck() {
+    if (ManagementFactory.getMemoryPoolMXBeans().isEmpty()) {
+      logger.warn(
+          "GC notifications will not be available because MemoryPoolMXBeans are not provided by the JVM");
+      return false;
+    }
+
+    try {
+      Class.forName(
+          "com.sun.management.GarbageCollectionNotificationInfo",
+          false,
+          MemoryPoolMXBean.class.getClassLoader());
+    } catch (Throwable e) {
+      // We are operating in a JVM without access to this level of detail
+      logger.warn(
+          "GC notifications will not be available because "
+              + "com.sun.management.GarbageCollectionNotificationInfo is not present");
+      return false;
+    }
+    return true;
   }
 
   private void countPoolSizeDelta(

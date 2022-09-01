@@ -22,22 +22,31 @@ package org.apache.iotdb.metrics.metricsets.predefined.jvm;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class JvmMetrics implements IMetricSet {
+  private List<IMetricSet> metricSets = new ArrayList<>();
+
+  public JvmMetrics() {
+    metricSets.add(new JvmClassLoaderMetrics());
+    metricSets.add(new JvmCompileMetrics());
+    metricSets.add(new JvmGcMetrics());
+    metricSets.add(new JvmMemoryMetrics());
+    metricSets.add(new JvmThreadMetrics());
+  }
+
   @Override
   public void bindTo(AbstractMetricManager metricManager) {
-    JvmClassLoaderMetrics jvmClassLoaderMetricSet = new JvmClassLoaderMetrics();
-    jvmClassLoaderMetricSet.bindTo(metricManager);
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.bindTo(metricManager);
+    }
+  }
 
-    JvmCompileMetrics jvmCompileMetricSet = new JvmCompileMetrics();
-    jvmCompileMetricSet.bindTo(metricManager);
-
-    JvmGcMetrics jvmGcMetricSet = new JvmGcMetrics();
-    jvmGcMetricSet.bindTo(metricManager);
-
-    JvmMemoryMetrics jvmMemoryMetricSet = new JvmMemoryMetrics();
-    jvmMemoryMetricSet.bindTo(metricManager);
-
-    JvmThreadMetrics jvmThreadMetrics = new JvmThreadMetrics();
-    jvmThreadMetrics.bindTo(metricManager);
+  @Override
+  public void remove(AbstractMetricManager metricManager) {
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.remove(metricManager);
+    }
   }
 }

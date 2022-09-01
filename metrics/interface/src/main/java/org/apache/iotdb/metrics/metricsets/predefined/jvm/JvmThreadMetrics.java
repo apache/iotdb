@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics.metricsets.predefined.jvm;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
@@ -61,6 +62,26 @@ public class JvmThreadMetrics implements IMetricSet {
             (bean) -> getThreadStateCount(bean, state),
             "state",
             getStateTagValue(state));
+      }
+    } catch (Error error) {
+      // An error will be thrown for unsupported operations
+      // e.g. SubstrateVM does not support getAllThreadIds
+    }
+  }
+
+  @Override
+  public void remove(AbstractMetricManager metricManager) {
+    ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
+
+    metricManager.remove(MetricType.GAUGE, "jvm.threads.peak.threads");
+    metricManager.remove(MetricType.GAUGE, "jvm.threads.daemon.threads");
+    metricManager.remove(MetricType.GAUGE, "jvm.threads.live.threads");
+
+    try {
+      threadBean.getAllThreadIds();
+      for (Thread.State state : Thread.State.values()) {
+        metricManager.remove(
+            MetricType.GAUGE, "jvm.threads.states.threads", "state", getStateTagValue(state));
       }
     } catch (Error error) {
       // An error will be thrown for unsupported operations

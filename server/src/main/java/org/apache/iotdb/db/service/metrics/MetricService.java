@@ -100,7 +100,6 @@ public class MetricService extends AbstractMetricService implements MetricServic
         return;
     }
     metricSet.bindTo(metricManager);
-    metricSet.startAsyncCollectedMetrics();
     metricSets.add(metricSet);
   }
 

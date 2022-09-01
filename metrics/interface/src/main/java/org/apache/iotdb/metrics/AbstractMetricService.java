@@ -80,6 +80,9 @@ public abstract class AbstractMetricService {
     for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
       enablePredefinedMetrics(predefinedMetric);
     }
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.startAsyncCollectedMetrics();
+    }
     logger.info("Start predefined metrics: {}", metricConfig.getPredefinedMetrics());
   }
 

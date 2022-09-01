@@ -23,8 +23,8 @@ import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.sun.management.OperatingSystemMXBean;
 
@@ -48,6 +48,14 @@ public class ProcessMetrics implements IMetricSet {
     collectThreadInfo(metricManager);
   }
 
+  @Override
+  public void remove(AbstractMetricManager metricManager) {
+    removeProcessCPUInfo(metricManager);
+    removeProcessMemInfo(metricManager);
+    removeProcessStatusInfo(metricManager);
+    removeThreadInfo(metricManager);
+  }
+
   private void collectProcessCPUInfo(AbstractMetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_CPU_LOAD.toString(),
@@ -64,6 +72,14 @@ public class ProcessMetrics implements IMetricSet {
         com.sun.management.OperatingSystemMXBean::getProcessCpuTime,
         Tag.NAME.toString(),
         "process");
+  }
+
+  private void removeProcessCPUInfo(AbstractMetricManager metricManager) {
+    metricManager.remove(
+        MetricType.GAUGE, Metric.PROCESS_CPU_LOAD.toString(), Tag.NAME.toString(), "process");
+
+    metricManager.remove(
+        MetricType.GAUGE, Metric.PROCESS_CPU_TIME.toString(), Tag.NAME.toString(), "process");
   }
 
   private void collectProcessMemInfo(AbstractMetricManager metricManager) {
@@ -105,6 +121,19 @@ public class ProcessMetrics implements IMetricSet {
         "process");
   }
 
+  private void removeProcessMemInfo(AbstractMetricManager metricManager) {
+    metricManager.remove(
+        MetricType.GAUGE, Metric.PROCESS_MAX_MEM.toString(), Tag.NAME.toString(), "process");
+    metricManager.remove(
+        MetricType.GAUGE, Metric.PROCESS_TOTAL_MEM.toString(), Tag.NAME.toString(), "process");
+    metricManager.remove(
+        MetricType.GAUGE, Metric.PROCESS_FREE_MEM.toString(), Tag.NAME.toString(), "process");
+    metricManager.remove(
+        MetricType.GAUGE, Metric.PROCESS_USED_MEM.toString(), Tag.NAME.toString(), "process");
+    metricManager.remove(
+        MetricType.GAUGE, Metric.PROCESS_MEM_RATIO.toString(), Tag.NAME.toString(), "process");
+  }
+
   private void collectThreadInfo(AbstractMetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_THREADS_COUNT.toString(),
@@ -115,6 +144,11 @@ public class ProcessMetrics implements IMetricSet {
         "process");
   }
 
+  private void removeThreadInfo(AbstractMetricManager metricManager) {
+    metricManager.remove(
+        MetricType.GAUGE, Metric.PROCESS_THREADS_COUNT.toString(), Tag.NAME.toString(), "process");
+  }
+
   private void collectProcessStatusInfo(AbstractMetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_STATUS.toString(),
@@ -123,6 +157,11 @@ public class ProcessMetrics implements IMetricSet {
         a -> (getProcessStatus()),
         Tag.NAME.toString(),
         "process");
+  }
+
+  private void removeProcessStatusInfo(AbstractMetricManager metricManager) {
+    metricManager.remove(
+        MetricType.GAUGE, Metric.PROCESS_STATUS.toString(), Tag.NAME.toString(), "process");
   }
 
   private long getProcessUsedMemory() {

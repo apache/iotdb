@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics.metricsets.predefined.jvm;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.lang.management.CompilationMXBean;
 import java.lang.management.ManagementFactory;
@@ -39,6 +40,15 @@ public class JvmCompileMetrics implements IMetricSet {
           CompilationMXBean::getTotalCompilationTime,
           "compiler",
           compilationBean.getName());
+    }
+  }
+
+  @Override
+  public void remove(AbstractMetricManager metricManager) {
+    CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
+    if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
+      metricManager.remove(
+          MetricType.GAUGE, "jvm.compilation.time.ms", "compiler", compilationBean.getName());
     }
   }
 }
