@@ -207,7 +207,7 @@
                 <integrationTest.testEnv>Standalone</integrationTest.testEnv>
             </properties>
             <activation>
-                <activeByDefault>true</activeByDefault>
+                <activeByDefault>false</activeByDefault>
             </activation>
         </profile>
         <!-- Currently RemoteIT is not working as it lacks of the remote endpoint parameters -->
