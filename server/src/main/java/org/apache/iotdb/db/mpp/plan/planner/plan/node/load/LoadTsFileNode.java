@@ -90,7 +90,12 @@ public class LoadTsFileNode extends WritePlanNode {
     for (File file : tsFiles) {
       try {
         LoadSingleTsFileNode singleTsFileNode = new LoadSingleTsFileNode(getPlanNodeId(), file);
-        singleTsFileNode.splitTsFileByDataPartition(analysis.getDataPartitionInfo());
+        singleTsFileNode.checkIfNeedDecodeTsFile(analysis.getDataPartitionInfo());
+        singleTsFileNode.autoRegisterSchema();
+
+        if (singleTsFileNode.needDecodeTsFile()) {
+          singleTsFileNode.splitTsFileByDataPartition(analysis.getDataPartitionInfo());
+        }
         res.add(singleTsFileNode);
       } catch (Exception e) {
         logger.error(String.format("Parse TsFile %s error", file.getPath()), e);

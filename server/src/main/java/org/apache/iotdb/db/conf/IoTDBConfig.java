@@ -245,9 +245,6 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
-  private String loadTsFileDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
-
   /** Performance tracing directory, stores performance tracing files */
   private String tracingDir =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
@@ -293,6 +290,9 @@ public class IoTDBConfig {
   private String[] dataDirs = {
     IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME
   };
+
+  private String loadTsFileDir =
+      dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
@@ -391,13 +391,13 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space compaction for sequence files */
-  private boolean enableSeqSpaceCompaction = true;
+  private boolean enableSeqSpaceCompaction = false;
 
   /** Enable inner space compaction for unsequence files */
-  private boolean enableUnseqSpaceCompaction = true;
+  private boolean enableUnseqSpaceCompaction = false;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private boolean enableCrossSpaceCompaction = true;
+  private boolean enableCrossSpaceCompaction = false;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -747,13 +747,13 @@ public class IoTDBConfig {
   private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = false;
+  private boolean enablePartition = true;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second. Default time is
    * a day.
    */
-  private long partitionInterval = 86400;
+  private long partitionInterval = 10000000;
 
   /** Max size of a {@link PlanNode}, mainly used to control memory of {@link LoadTsFileNode}. */
   private long maxPlanNodeSize = 500 * 1048576L;

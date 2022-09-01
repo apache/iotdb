@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -85,6 +86,14 @@ public class LoadTsFileScheduler implements IScheduler {
   public void start() {
     stateMachine.transitionToRunning();
     for (LoadSingleTsFileNode node : tsFileNodeList) {
+      if (!node.needDecodeTsFile()) {
+        boolean isLoadLocallySuccess = loadLocally(node);
+        if (!isLoadLocallySuccess) {
+          return;
+        }
+        continue;
+      }
+
       String uuid = UUID.randomUUID().toString();
       dispatcher.setUuid(uuid);
       allReplicaSets.clear();
@@ -184,6 +193,27 @@ public class LoadTsFileScheduler implements IScheduler {
       }
       logger.warn("Interrupt or Execution error.", e);
       stateMachine.transitionToFailed(e);
+      return false;
+    }
+    return true;
+  }
+
+  private boolean loadLocally(LoadSingleTsFileNode node) {
+    try {
+      FragmentInstance instance =
+          new FragmentInstance(
+              new PlanFragment(fragmentId, node),
+              fragmentId.genFragmentInstanceId(),
+              null,
+              queryContext.getQueryType(),
+              queryContext.getTimeOut());
+      instance.setDataRegionAndHost(node.getLocalRegionReplicaSet());
+      dispatcher.dispatchLocally(instance);
+    } catch (FragmentInstanceDispatchException e) {
+      logger.error("Dispatch LoadCommand error to local error.");
+      logger.error(String.format("Result status code %s.", e.getFailureStatus().getCode()));
+      logger.error(String.format("Result status message %s.", e.getFailureStatus().getMessage()));
+      stateMachine.transitionToFailed(e.getFailureStatus());
       return false;
     }
     return true;

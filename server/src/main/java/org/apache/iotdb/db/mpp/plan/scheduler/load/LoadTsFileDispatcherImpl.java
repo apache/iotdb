@@ -29,9 +29,12 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.mpp.plan.scheduler.IFragInstanceDispatcher;
@@ -133,26 +136,40 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     }
   }
 
-  private void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
+  public void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
     logger.info(String.format("Receive load node from uuid %s.", uuid));
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(
             instance.getRegionReplicaSet().getRegionId());
-    LoadTsFilePieceNode pieceNode =
-        (LoadTsFilePieceNode)
-            PlanNodeType.deserialize(
-                instance.getFragment().getPlanNodeTree().serializeToByteBuffer());
-    if (pieceNode == null) {
-      throw new FragmentInstanceDispatchException(
-          new TSStatus(TSStatusCode.NODE_DESERIALIZE_ERROR.getStatusCode()));
-    }
+    PlanNode planNode = instance.getFragment().getPlanNodeTree();
 
-    TSStatus resultStatus =
-        StorageEngineV2.getInstance().writeLoadTsFileNode((DataRegionId) groupId, pieceNode, uuid);
+    if (planNode instanceof LoadTsFilePieceNode) {
+      LoadTsFilePieceNode pieceNode =
+          (LoadTsFilePieceNode) PlanNodeType.deserialize(planNode.serializeToByteBuffer());
+      if (pieceNode == null) {
+        throw new FragmentInstanceDispatchException(
+            new TSStatus(TSStatusCode.NODE_DESERIALIZE_ERROR.getStatusCode()));
+      }
+      TSStatus resultStatus =
+          StorageEngineV2.getInstance()
+              .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, uuid);
 
-    if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
-      throw new FragmentInstanceDispatchException(resultStatus);
+      if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
+        throw new FragmentInstanceDispatchException(resultStatus);
+      }
+    } else if (planNode instanceof LoadSingleTsFileNode) {
+      try {
+        StorageEngineV2.getInstance()
+            .getDataRegion((DataRegionId) groupId)
+            .loadNewTsFile(((LoadSingleTsFileNode) planNode).getTsFileResource(), true);
+      } catch (LoadFileException e) {
+        logger.error(String.format("Load TsFile Node %s error.", planNode), e);
+        TSStatus resultStatus = new TSStatus();
+        resultStatus.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+        resultStatus.setMessage(e.getMessage());
+        throw new FragmentInstanceDispatchException(resultStatus);
+      }
     }
   }
 

@@ -19,16 +19,24 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.load;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.load.AlignedChunkData;
 import org.apache.iotdb.db.engine.load.ChunkData;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
+import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -66,31 +74,120 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
 
   private File tsFile;
+  private boolean needDecodeTsFile;
+
   private Map<TRegionReplicaSet, List<LoadTsFilePieceNode>> replicaSet2Pieces;
+
+  private TsFileResource resource;
+  private TRegionReplicaSet localRegionReplicaSet;
 
   public LoadSingleTsFileNode(PlanNodeId id) {
     super(id);
   }
 
-  public LoadSingleTsFileNode(PlanNodeId id, File tsFile) {
+  public LoadSingleTsFileNode(PlanNodeId id, File tsFile) throws IOException {
     super(id);
     this.tsFile = tsFile;
+    this.resource = new TsFileResource(tsFile);
+
+    FileLoaderUtils.loadOrGenerateResource(resource);
+  }
+
+  public void checkIfNeedDecodeTsFile(DataPartition dataPartition) {
+    Set<TRegionReplicaSet> allRegionReplicaSet = new HashSet<>();
+    needDecodeTsFile = false;
+    for (String device : resource.getDevices()) {
+      if (!StorageEngineV2.getTimePartitionSlot(resource.getStartTime(device))
+          .equals(StorageEngineV2.getTimePartitionSlot(resource.getEndTime(device)))) {
+        needDecodeTsFile = true;
+      }
+      allRegionReplicaSet.addAll(dataPartition.getAllDataRegionReplicaSetForOneDevice(device));
+    }
+    needDecodeTsFile = !isDispatchedToLocal(allRegionReplicaSet);
+  }
+
+  private boolean isDispatchedToLocal(Set<TRegionReplicaSet> replicaSets) {
+    if (replicaSets.size() > 1) {
+      return false;
+    }
+    for (TRegionReplicaSet replicaSet : replicaSets) {
+      List<TDataNodeLocation> dataNodeLocationList = replicaSet.getDataNodeLocations();
+      if (dataNodeLocationList.size() > 1) {
+        return false;
+      }
+      localRegionReplicaSet = replicaSet;
+      return isDispatchedToLocal(dataNodeLocationList.get(0).getInternalEndPoint());
+    }
+    return true;
+  }
+
+  private boolean isDispatchedToLocal(TEndPoint endPoint) {
+    return IoTDBDescriptor.getInstance().getConfig().getInternalAddress().equals(endPoint.getIp())
+        && IoTDBDescriptor.getInstance().getConfig().getInternalPort() == endPoint.port;
+  }
+
+  public void autoRegisterSchema()
+      throws IOException, IllegalPathException { // TODO: only support sg level=1
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      List<PartialPath> deviceList = new ArrayList<>();
+      List<String[]> measurementList = new ArrayList<>();
+      List<TSDataType[]> dataTypeList = new ArrayList<>();
+      List<Boolean> isAlignedList = new ArrayList<>();
+
+      Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
+      for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+        deviceList.add(new PartialPath(entry.getKey()));
+
+        List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
+        boolean isAligned =
+            timeseriesMetadataList.stream()
+                    .mapToInt(o -> o.getTSDataType().equals(TSDataType.VECTOR) ? 1 : 0)
+                    .sum()
+                != 0;
+        int measurementSize = timeseriesMetadataList.size() - (isAligned ? 1 : 0);
+        String[] measurements = new String[measurementSize];
+        TSDataType[] tsDataTypes = new TSDataType[measurementSize];
+
+        int index = 0;
+        for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
+          TSDataType dataType = timeseriesMetadata.getTSDataType();
+          if (!dataType.equals(TSDataType.VECTOR)) {
+            measurements[index] = timeseriesMetadata.getMeasurementId();
+            tsDataTypes[index++] = dataType;
+          }
+        }
+        measurementList.add(measurements);
+        dataTypeList.add(tsDataTypes);
+        isAlignedList.add(isAligned);
+      }
+
+      logger.info(String.format("deviceList: %s", deviceList));
+      logger.info(String.format("measurementList: %s", measurementList));
+      logger.info(String.format("dataTypeList: %s", dataTypeList));
+      logger.info(String.format("isAlignedList: %s", isAlignedList));
+      SchemaValidator.validate(deviceList, measurementList, dataTypeList, isAlignedList);
+    }
+  }
+
+  public boolean needDecodeTsFile() {
+    return needDecodeTsFile;
+  }
+
+  /**
+   * only used for load locally.
+   *
+   * @return local TRegionReplicaSet
+   */
+  public TRegionReplicaSet getLocalRegionReplicaSet() {
+    return localRegionReplicaSet;
+  }
+
+  public TsFileResource getTsFileResource() {
+    return resource;
   }
 
   public Map<TRegionReplicaSet, List<LoadTsFilePieceNode>> getReplicaSet2Pieces() {
     return replicaSet2Pieces;
-  }
-
-  private LoadTsFilePieceNode getPieceNode(
-      String device, TTimePartitionSlot timePartitionSlot, DataPartition dataPartition) {
-    TRegionReplicaSet replicaSet =
-        dataPartition.getDataRegionReplicaSetForWriting(device, timePartitionSlot);
-    List<LoadTsFilePieceNode> pieceNodes =
-        replicaSet2Pieces.computeIfAbsent(replicaSet, o -> new ArrayList<>());
-    if (pieceNodes.isEmpty() || pieceNodes.get(pieceNodes.size() - 1).exceedSize()) {
-      pieceNodes.add(new LoadTsFilePieceNode(getPlanNodeId(), tsFile));
-    }
-    return pieceNodes.get(pieceNodes.size() - 1);
   }
 
   @Override
@@ -424,5 +521,17 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         }
       }
     }
+  }
+
+  private LoadTsFilePieceNode getPieceNode(
+      String device, TTimePartitionSlot timePartitionSlot, DataPartition dataPartition) {
+    TRegionReplicaSet replicaSet =
+        dataPartition.getDataRegionReplicaSetForWriting(device, timePartitionSlot);
+    List<LoadTsFilePieceNode> pieceNodes =
+        replicaSet2Pieces.computeIfAbsent(replicaSet, o -> new ArrayList<>());
+    if (pieceNodes.isEmpty() || pieceNodes.get(pieceNodes.size() - 1).exceedSize()) {
+      pieceNodes.add(new LoadTsFilePieceNode(getPlanNodeId(), tsFile));
+    }
+    return pieceNodes.get(pieceNodes.size() - 1);
   }
 }
