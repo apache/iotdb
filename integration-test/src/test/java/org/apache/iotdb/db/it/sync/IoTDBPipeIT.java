@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -37,15 +36,23 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqual;
 
-// TODO: this test only support for new standalone now
-@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
 public class IoTDBPipeIT {
+  private static String ip;
+  private static int port;
 
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeClass();
+    if (EnvFactory.getEnv().getDataNodeWrapperList() != null
+        && EnvFactory.getEnv().getDataNodeWrapperList().size() > 0) {
+      ip = EnvFactory.getEnv().getDataNodeWrapperList().get(0).getIp();
+      port = EnvFactory.getEnv().getDataNodeWrapperList().get(0).getPort();
+    } else {
+      ip = "127.0.0.1";
+      port = 6667;
+    }
   }
 
   @AfterClass
@@ -57,8 +64,6 @@ public class IoTDBPipeIT {
   public void testOperatePipe() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String ip = EnvFactory.getEnv().getDataNodeWrapperList().get(0).getIp();
-      int port = EnvFactory.getEnv().getDataNodeWrapperList().get(0).getPort();
       statement.execute(
           String.format("CREATE PIPESINK demo AS IoTDB (ip='%s',port='%d');", ip, port));
       statement.execute("CREATE PIPE p to demo;");

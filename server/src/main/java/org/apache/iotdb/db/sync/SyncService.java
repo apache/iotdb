@@ -399,6 +399,7 @@ public class SyncService implements IService {
     return list;
   }
 
+  // TODO(sync): delete this in new-standalone version
   public void showPipe(ShowPipePlan plan, ListDataSet listDataSet) {
     boolean showAll = "".equals(plan.getPipeName());
     // show pipe in sender
@@ -411,8 +412,6 @@ public class SyncService implements IService {
         record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getPipeSinkName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipe.getPipeMessage().name()), TSDataType.TEXT);
-        boolean needSetFields = true;
         PipeSink pipeSink = syncInfoFetcher.getPipeSink(pipe.getPipeSinkName());
         if (pipeSink.getType() == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
           ExtPipePluginManager extPipePluginManager =
@@ -423,21 +422,18 @@ public class SyncService implements IService {
             ExternalPipeStatus externalPipeStatus =
                 extPipePluginManager.getExternalPipeStatus(extPipeType);
 
+            // TODO(ext-pipe): Adapting to the new syntax of SHOW PIPE
             if (externalPipeStatus != null) {
               record.addField(
-                  Binary.valueOf(externalPipeStatus.getWriterInvocationFailures().toString()),
+                  Binary.valueOf(
+                      externalPipeStatus.getWriterInvocationFailures().toString()
+                          + ";"
+                          + externalPipeStatus.getWriterStatuses().toString()),
                   TSDataType.TEXT);
-              record.addField(
-                  Binary.valueOf(externalPipeStatus.getWriterStatuses().toString()),
-                  TSDataType.TEXT);
-              needSetFields = false;
             }
           }
-        }
-
-        if (needSetFields) {
-          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
-          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+        } else {
+          record.addField(Binary.valueOf(pipe.getPipeMessage().name()), TSDataType.TEXT);
         }
         listDataSet.putRecord(record);
       }
@@ -454,9 +450,7 @@ public class SyncService implements IService {
       record.addField(Binary.valueOf(IoTDBConstant.SYNC_RECEIVER_ROLE), TSDataType.TEXT);
       record.addField(Binary.valueOf(identityInfo.getAddress()), TSDataType.TEXT);
       record.addField(Binary.valueOf(Pipe.PipeStatus.RUNNING.name()), TSDataType.TEXT);
-      record.addField(Binary.valueOf(""), TSDataType.TEXT);
-      record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
-      record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+      record.addField(Binary.valueOf(PipeMessage.NORMAL.name()), TSDataType.TEXT);
       listDataSet.putRecord(record);
     }
   }
