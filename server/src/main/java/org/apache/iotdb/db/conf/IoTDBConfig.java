@@ -963,6 +963,8 @@ public class IoTDBConfig {
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
 
+  private boolean isDefaultSchemaMemoryConfig = true;
+
   /** Memory allocated for schemaRegion */
   private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
 
@@ -3067,6 +3069,14 @@ public class IoTDBConfig {
 
   public TEndPoint getAddressAndPort() {
     return new TEndPoint(rpcAddress, rpcPort);
+  }
+
+  boolean isDefaultSchemaMemoryConfig() {
+    return isDefaultSchemaMemoryConfig;
+  }
+
+  void setDefaultSchemaMemoryConfig(boolean defaultSchemaMemoryConfig) {
+    isDefaultSchemaMemoryConfig = defaultSchemaMemoryConfig;
   }
 
   public long getAllocateMemoryForSchemaRegion() {
