@@ -259,6 +259,9 @@ public class MultiLeaderConsensus implements IConsensus {
       // step 4: transit snapshot
       impl.transitSnapshot(peer);
 
+      // step 5: let the new peer load snapshot
+      impl.triggerSnapshotLoad(peer);
+
       // step 5: active new Peer
       impl.activePeer(peer);
 

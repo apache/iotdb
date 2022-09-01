@@ -42,6 +42,8 @@ import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentReq;
 import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentRes;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
+import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadReq;
+import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadRes;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -223,6 +225,27 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       responseStatus.setMessage(e.getMessage());
     }
     resultHandler.onComplete(new TSendSnapshotFragmentRes(responseStatus));
+  }
+
+  @Override
+  public void triggerSnapshotLoad(
+      TTriggerSnapshotLoadReq req, AsyncMethodCallback<TTriggerSnapshotLoadRes> resultHandler)
+      throws TException {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    MultiLeaderServerImpl impl = consensus.getImpl(groupId);
+    if (impl == null) {
+      String message =
+          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+      logger.error(message);
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage(message);
+      resultHandler.onComplete(new TTriggerSnapshotLoadRes(status));
+      return;
+    }
+    impl.loadSnapshot(req.snapshotId);
+    resultHandler.onComplete(
+        new TTriggerSnapshotLoadRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
   }
 
   public void handleClientExit() {}

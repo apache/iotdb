@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.multileader;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -41,6 +42,8 @@ import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentReq;
 import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentRes;
+import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadReq;
+import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadRes;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -125,6 +128,16 @@ public class MultiLeaderServerImpl {
   }
 
   public void start() {
+    try {
+      takeSnapshot();
+      transitSnapshot(
+          new Peer(
+              new DataRegionId(1),
+              new TEndPoint("172.20.31.41", thisNode.getEndpoint().getPort())));
+    } catch (ConsensusGroupAddPeerException e) {
+      throw new RuntimeException(e);
+    }
+
     stateMachine.start();
     logDispatcher.start();
   }
@@ -228,6 +241,8 @@ public class MultiLeaderServerImpl {
         SnapshotFragmentReader reader = new SnapshotFragmentReader(latestSnapshotId, path);
         while (reader.hasNext()) {
           TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
+          req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
+          //          receiveSnapshotFragment(latestSnapshotId, req.filePath, req.fileChunk);
           TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
           if (!isSuccess(res.getStatus())) {
             throw new ConsensusGroupAddPeerException(
@@ -248,6 +263,10 @@ public class MultiLeaderServerImpl {
     try {
       String targetFilePath = calculateSnapshotPath(snapshotId, originalFilePath);
       File targetFile = new File(storageDir, targetFilePath);
+      Path parentDir = Paths.get(targetFile.getParent());
+      if (!Files.exists(parentDir)) {
+        Files.createDirectories(parentDir);
+      }
       Files.write(
           Paths.get(targetFile.getAbsolutePath()),
           fileChunk.array(),
@@ -269,8 +288,9 @@ public class MultiLeaderServerImpl {
     return originalFilePath.substring(originalFilePath.indexOf(snapshotId));
   }
 
-  public void loadSnapshot(File latestSnapshotRootDir) {
-    stateMachine.loadSnapshot(latestSnapshotRootDir);
+  public void loadSnapshot(String snapshotId) {
+    // TODO: (xingtanzjr) throw exception if the snapshot load failed
+    stateMachine.loadSnapshot(new File(storageDir, latestSnapshotId));
   }
 
   public void inactivePeer(Peer peer) throws ConsensusGroupAddPeerException {
@@ -285,6 +305,21 @@ public class MultiLeaderServerImpl {
     } catch (IOException | TException e) {
       throw new ConsensusGroupAddPeerException(
           String.format("error when inactivating %s", peer), e);
+    }
+  }
+
+  public void triggerSnapshotLoad(Peer peer) throws ConsensusGroupAddPeerException {
+    try (SyncMultiLeaderServiceClient client = syncClientManager.borrowClient(peer.getEndpoint())) {
+      TTriggerSnapshotLoadRes res =
+          client.triggerSnapshotLoad(
+              new TTriggerSnapshotLoadReq(
+                  thisNode.getGroupId().convertToTConsensusGroupId(), latestSnapshotId));
+      if (!isSuccess(res.status)) {
+        throw new ConsensusGroupAddPeerException(
+            String.format("error when triggering snapshot load %s. %s", peer, res.getStatus()));
+      }
+    } catch (IOException | TException e) {
+      throw new ConsensusGroupAddPeerException(String.format("error when activating %s", peer), e);
     }
   }
 
