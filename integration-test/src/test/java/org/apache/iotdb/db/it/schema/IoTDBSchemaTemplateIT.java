@@ -271,6 +271,15 @@ public class IoTDBSchemaTemplateIT {
     statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg2.d2");
     statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3.d1");
     statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3.d2");
+    statement.execute("INSERT INTO root.sg3.d2.verify(time, show) VALUES (1, 1)");
+
+    try (ResultSet resultSet = statement.executeQuery("SHOW PATHS USING SCHEMA TEMPLATE t1")) {
+      String resultRecord;
+      while (resultSet.next()) {
+        resultRecord = resultSet.getString(1);
+        Assert.assertEquals("", resultRecord);
+      }
+    }
 
     // activate schema template
     statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d2");
