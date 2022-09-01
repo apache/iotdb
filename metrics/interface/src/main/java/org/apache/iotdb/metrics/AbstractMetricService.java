@@ -80,21 +80,18 @@ public abstract class AbstractMetricService {
     for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
       enablePredefinedMetrics(predefinedMetric);
     }
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.startAsyncCollectedMetrics();
-    }
     logger.info("Start predefined metrics: {}", metricConfig.getPredefinedMetrics());
   }
 
   /** stop metric service */
   public void stopService() {
     compositeReporter.stopAll();
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.remove(metricManager);
+    }
     metricManager.stop();
     metricManager = new DoNothingMetricManager();
     compositeReporter = new CompositeReporter();
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.stopAsyncCollectedMetrics();
-    }
     metricSets = new ArrayList<>();
   }
 
