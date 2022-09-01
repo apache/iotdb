@@ -963,6 +963,10 @@ public class IoTDBConfig {
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
 
+  /**
+   * Whether the schema memory allocation is default config. Used for cluster mode initialization
+   * judgement
+   */
   private boolean isDefaultSchemaMemoryConfig = true;
 
   /** Memory allocated for schemaRegion */
