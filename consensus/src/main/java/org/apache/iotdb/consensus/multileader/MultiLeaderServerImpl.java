@@ -44,6 +44,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,6 +83,7 @@ public class MultiLeaderServerImpl {
   private final MultiLeaderConfig config;
   private final ConsensusReqReader reader;
   private boolean active;
+  private String latestSnapshotId;
 
   private final IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager;
 
@@ -193,10 +195,13 @@ public class MultiLeaderServerImpl {
 
   public void takeSnapshot() throws ConsensusGroupAddPeerException {
     try {
-      File snapshotDir = new File(storageDir, CONFIGURATION_TMP_FILE_NAME);
-      Path snapshotDirPath = Paths.get(snapshotDir.getAbsolutePath());
+      latestSnapshotId =
+          String.format(
+              "%s_%s_%d",
+              SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), System.currentTimeMillis());
+      File snapshotDir = new File(storageDir, latestSnapshotId);
       if (snapshotDir.exists()) {
-        Files.delete(snapshotDirPath);
+        FileUtils.deleteDirectory(snapshotDir);
       }
       if (!snapshotDir.mkdirs()) {
         throw new ConsensusGroupAddPeerException(
@@ -210,7 +215,11 @@ public class MultiLeaderServerImpl {
     }
   }
 
-  public void transitSnapshot(Peer targetPeer) throws ConsensusGroupAddPeerException {}
+  public void transitSnapshot(Peer targetPeer) throws ConsensusGroupAddPeerException {
+    File snapshotDir = new File(storageDir, latestSnapshotId);
+    List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
+    System.out.println(snapshotPaths);
+  }
 
   public void loadSnapshot(File latestSnapshotRootDir) {
     stateMachine.loadSnapshot(latestSnapshotRootDir);
