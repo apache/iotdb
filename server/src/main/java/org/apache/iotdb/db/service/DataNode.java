@@ -74,6 +74,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -119,7 +120,7 @@ public class DataNode implements DataNodeMBean {
     thisNode.setPort(IoTDBDescriptor.getInstance().getConfig().getInternalPort());
   }
 
-  protected void doAddNode(String[] args) {
+  protected void doAddNode() {
     try {
       // prepare cluster IoTDB-DataNode
       prepareDataNode();
@@ -388,7 +389,6 @@ public class DataNode implements DataNodeMBean {
   public void stop() {
     deactivate();
 
-    // QSW
     try {
       MetricService.getInstance().stop();
       SchemaRegionConsensusImpl.getInstance().stop();
@@ -396,6 +396,20 @@ public class DataNode implements DataNodeMBean {
     } catch (Exception e) {
       logger.error("stop data node error", e);
     }
+
+    // kill the datanode process 5 seconds later
+    // if remove this step, datanode process will still alive
+    new Thread(
+            () -> {
+              try {
+                TimeUnit.SECONDS.sleep(5);
+              } catch (InterruptedException e) {
+                logger.error("Meets InterruptedException in stop method of DataNode");
+              } finally {
+                System.exit(0);
+              }
+            })
+        .start();
   }
 
   private void initServiceProvider() throws QueryProcessException {
