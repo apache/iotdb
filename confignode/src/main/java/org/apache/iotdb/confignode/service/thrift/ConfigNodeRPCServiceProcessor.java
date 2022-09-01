@@ -587,6 +587,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
-    return null;
+    return configManager.deleteTimeSeries(req.getPathPatternList());
   }
 }

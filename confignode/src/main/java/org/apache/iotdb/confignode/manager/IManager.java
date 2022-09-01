@@ -350,4 +350,12 @@ public interface IManager {
    * @return TGetPathsSetTemplatesResp
    */
   TGetPathsSetTemplatesResp getPathsSetTemplate(String req);
+
+  /*
+   * delete timeseries
+   *
+   * @param req List<String> pathPatternList
+   * @return
+   */
+  TSStatus deleteTimeSeries(List<String> req);
 }

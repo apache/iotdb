@@ -121,6 +121,10 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus deleteTimeSeries(List<String> pathPatternList){
+    return null;
+  }
+
   /** Generate a AddConfigNodeProcedure, and serially execute all the AddConfigNodeProcedure */
   public void addConfigNode(TConfigNodeRegisterReq req) {
     AddConfigNodeProcedure addConfigNodeProcedure =
