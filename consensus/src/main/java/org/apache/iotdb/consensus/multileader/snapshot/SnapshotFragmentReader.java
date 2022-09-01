@@ -31,15 +31,15 @@ public class SnapshotFragmentReader {
   private final String snapshotId;
   private final String filePath;
   private final SeekableByteChannel fileChannel;
-  private final long totalSize;
+  private final long fileSize;
   private final ByteBuffer buf;
-  private long readSize;
+  private long totalReadSize;
   private SnapshotFragment cachedSnapshotFragment;
 
   public SnapshotFragmentReader(String snapshotId, Path path) throws IOException {
     this.snapshotId = snapshotId;
     this.filePath = path.toAbsolutePath().toString();
-    this.totalSize = Files.size(path);
+    this.fileSize = Files.size(path);
     this.fileChannel = Files.newByteChannel(path);
     this.buf = ByteBuffer.allocate(DEFAULT_FILE_FRAGMENT_SIZE);
   }
@@ -49,14 +49,9 @@ public class SnapshotFragmentReader {
     int actualReadSize = fileChannel.read(buf);
     buf.flip();
     if (actualReadSize > 0) {
-      cachedSnapshotFragment = new SnapshotFragment();
-      cachedSnapshotFragment.setSnapshotId(snapshotId);
-      cachedSnapshotFragment.setFilePath(filePath);
-      cachedSnapshotFragment.setTotalSize(totalSize);
-      cachedSnapshotFragment.setFragmentSize(actualReadSize);
-      cachedSnapshotFragment.setStartOffset(readSize);
-      cachedSnapshotFragment.setFileChunk(buf);
-      readSize += actualReadSize;
+      cachedSnapshotFragment =
+          new SnapshotFragment(snapshotId, filePath, fileSize, totalReadSize, actualReadSize, buf);
+      totalReadSize += actualReadSize;
       return true;
     }
     return false;

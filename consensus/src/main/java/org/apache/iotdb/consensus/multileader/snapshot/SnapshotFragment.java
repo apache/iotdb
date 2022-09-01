@@ -24,58 +24,25 @@ import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentReq;
 import java.nio.ByteBuffer;
 
 public class SnapshotFragment {
-  private String snapshotId;
-  private String filePath;
-  private long totalSize;
-  private long startOffset;
-  private long fragmentSize;
-  private ByteBuffer fileChunk;
+  private final String snapshotId;
+  private final String filePath;
+  private final long totalSize;
+  private final long startOffset;
+  private final long fragmentSize;
+  private final ByteBuffer fileChunk;
 
-  public String getSnapshotId() {
-    return snapshotId;
-  }
-
-  public void setSnapshotId(String snapshotId) {
+  public SnapshotFragment(
+      String snapshotId,
+      String filePath,
+      long totalSize,
+      long startOffset,
+      long fragmentSize,
+      ByteBuffer fileChunk) {
     this.snapshotId = snapshotId;
-  }
-
-  public String getFilePath() {
-    return filePath;
-  }
-
-  public void setFilePath(String filePath) {
     this.filePath = filePath;
-  }
-
-  public long getTotalSize() {
-    return totalSize;
-  }
-
-  public void setTotalSize(long totalSize) {
     this.totalSize = totalSize;
-  }
-
-  public long getStartOffset() {
-    return startOffset;
-  }
-
-  public void setStartOffset(long startOffset) {
     this.startOffset = startOffset;
-  }
-
-  public long getFragmentSize() {
-    return fragmentSize;
-  }
-
-  public void setFragmentSize(long fragmentSize) {
     this.fragmentSize = fragmentSize;
-  }
-
-  public ByteBuffer getFileChunk() {
-    return fileChunk;
-  }
-
-  public void setFileChunk(ByteBuffer fileChunk) {
     this.fileChunk = fileChunk;
   }
 
@@ -86,5 +53,29 @@ public class SnapshotFragment {
     req.setChunkLength(fragmentSize);
     req.setFileChunk(fileChunk);
     return req;
+  }
+
+  public String getSnapshotId() {
+    return snapshotId;
+  }
+
+  public String getFilePath() {
+    return filePath;
+  }
+
+  public long getTotalSize() {
+    return totalSize;
+  }
+
+  public long getStartOffset() {
+    return startOffset;
+  }
+
+  public long getFragmentSize() {
+    return fragmentSize;
+  }
+
+  public ByteBuffer getFileChunk() {
+    return fileChunk;
   }
 }
