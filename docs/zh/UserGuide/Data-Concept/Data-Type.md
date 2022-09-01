@@ -34,7 +34,7 @@ IoTDB 支持：
 
 一共六种数据类型。
 
-其中 **FLOAT** 与 **DOUBLE** 类型的序列，如果编码方式采用 [RLE](Encoding.md) 或 [TS_2DIFF](Encoding.md) 可以指定 MAX_POINT_NUMBER，该项为浮点数的小数点后位数，若不指定则系统会根据配置文件`iotdb-datanode.properties`文件中的 [float_precision 项](../Reference/Config-Manual.md) 配置。
+其中 **FLOAT** 与 **DOUBLE** 类型的序列，如果编码方式采用 [RLE](Encoding.md) 或 [TS_2DIFF](Encoding.md) 可以指定 MAX_POINT_NUMBER，该项为浮点数的小数点后位数，若不指定则系统会根据配置文件`iotdb-datanode.properties`文件中的 [float_precision 项](../Reference/DataNode-Config-Manual.md) 配置。
 
 当系统中用户输入的数据类型与该时间序列的数据类型不对应时，系统会提醒类型错误，如下所示，二阶差分编码不支持布尔类型：
 
