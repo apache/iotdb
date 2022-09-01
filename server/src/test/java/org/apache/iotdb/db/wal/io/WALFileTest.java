@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.wal.io;
 
-import java.util.Collections;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -49,6 +48,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -328,7 +328,12 @@ public class WALFileTest {
   }
 
   public static DeleteDataNode getDeleteDataNode(String devicePath) throws IllegalPathException {
-    DeleteDataNode deleteDataNode = new DeleteDataNode(new PlanNodeId(""), Collections.singletonList(new PartialPath(devicePath)), Long.MIN_VALUE, Long.MAX_VALUE);
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(new PartialPath(devicePath)),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
     deleteDataNode.setSearchIndex(100L);
     return deleteDataNode;
   }

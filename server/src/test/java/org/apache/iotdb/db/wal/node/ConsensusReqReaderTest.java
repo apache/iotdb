@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.wal.node;
 
-import java.util.Collections;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -45,6 +44,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -75,16 +75,9 @@ public class ConsensusReqReaderTest {
   }
 
   /**
-   * Generate wal files as below:
-   * _0-0-1.wal: 1,-1
-   * _1-1-1.wal: 2,2,2
-   * _2-2-1.wal: 3,3
-   * _3-3-1.wal: 3,4
-   * _4-4-1.wal: 4
-   * _5-4-1.wal: 4,4,5
-   * _6-5-1.wal: 6
-   * 1 - InsertRowNode, 2 - InsertRowsOfOneDeviceNode, 3 - InsertRowsNode, 4 -
-   * InsertMultiTabletsNode, 5 - InsertTabletNode, 6 - InsertRowNode
+   * Generate wal files as below: _0-0-1.wal: 1,-1 _1-1-1.wal: 2,2,2 _2-2-1.wal: 3,3 _3-3-1.wal: 3,4
+   * _4-4-1.wal: 4 _5-4-1.wal: 4,4,5 _6-5-1.wal: 6 1 - InsertRowNode, 2 - InsertRowsOfOneDeviceNode,
+   * 3 - InsertRowsNode, 4 - InsertMultiTabletsNode, 5 - InsertTabletNode, 6 - InsertRowNode
    */
   private void simulateFileScenario01() throws IllegalPathException {
     InsertTabletNode insertTabletNode;
@@ -389,12 +382,8 @@ public class ConsensusReqReaderTest {
   }
 
   /**
-   * Generate wal files as below:
-   * _0-0-0.wal: -1,-1
-   * _1-0-0.wal: -1
-   * _2-0-1.wal: -1,1
-   * _3-1-0.wal: -1
-   * 1 - DeleteDataNode
+   * Generate wal files as below: _0-0-0.wal: -1,-1 _1-0-0.wal: -1 _2-0-1.wal: -1,1 _3-1-0.wal: -1 1
+   * - DeleteDataNode
    */
   private void simulateFileScenario02() throws IllegalPathException {
     InsertRowNode insertRowNode = getInsertRowNode(devicePath);
@@ -538,6 +527,10 @@ public class ConsensusReqReaderTest {
   }
 
   private DeleteDataNode getDeleteDataNode(String devicePath) throws IllegalPathException {
-    return new DeleteDataNode(new PlanNodeId(""), Collections.singletonList(new PartialPath(devicePath)), Long.MIN_VALUE, Long.MAX_VALUE);
+    return new DeleteDataNode(
+        new PlanNodeId(""),
+        Collections.singletonList(new PartialPath(devicePath)),
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 }
