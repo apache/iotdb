@@ -166,7 +166,7 @@
                             <goal>integration-test</goal>
                         </goals>
                         <configuration>
-                            <skipTests>false</skipTests>
+                            <skipTests>true</skipTests>
                             <groups>${integrationTest.includedGroups}</groups>
                             <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
                             <useSystemClassLoader>false</useSystemClassLoader>
@@ -188,7 +188,7 @@
                             <goal>verify</goal>
                         </goals>
                         <configuration>
-                            <skipTests>false</skipTests>
+                            <skipTests>true</skipTests>
                             <summaryFiles>
                                 <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
                             </summaryFiles>
