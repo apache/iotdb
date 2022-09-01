@@ -37,7 +37,6 @@ import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.utils.HandleSystemErrorStrategy;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -716,11 +715,6 @@ public class IoTDBDescriptor {
         properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
-
-    conf.setHandleSystemErrorStrategy(
-        HandleSystemErrorStrategy.valueOf(
-            properties.getProperty(
-                "handle_system_error", String.valueOf(conf.getHandleSystemErrorStrategy()))));
 
     // the num of memtables in each storage group
     conf.setConcurrentWritingTimePartition(
