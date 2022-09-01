@@ -49,6 +49,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -852,6 +853,10 @@ public class TsFileProcessor {
 
   WALFlushListener logDeleteInWAL(DeletePlan deletePlan) {
     return walNode.log(workMemTable.getMemTableId(), deletePlan);
+  }
+
+  WALFlushListener logDeleteDataNodeInWAL(DeleteDataNode deleteDataNode) {
+    return walNode.log(workMemTable.getMemTableId(), deleteDataNode);
   }
 
   public TsFileResource getTsFileResource() {
