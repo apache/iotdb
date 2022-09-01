@@ -217,7 +217,12 @@ public class PathPatternTree {
   }
 
   public boolean isOverlapWith(PathPatternTree patternTree) {
-    // todo implement this
+    // todo improve this implementation
+    for (PartialPath pathPattern : getAllPathPatterns()) {
+      if (!patternTree.getOverlappedPathPatterns(pathPattern).isEmpty()) {
+        return true;
+      }
+    }
     return false;
   }
 

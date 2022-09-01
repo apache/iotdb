@@ -367,6 +367,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public boolean overlapWith(PartialPath rPath) {
     String[] rNodes = rPath.getNodes();
     for (int i = 0; i < this.nodes.length && i < rNodes.length; i++) {
+      // todo there's case that root.**.a and root.sg.d.s do not overlap with each other
       if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)
           || rNodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
         return true;
