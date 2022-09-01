@@ -151,6 +151,14 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <skipTests>true</skipTests>
+                    <skipITs>true</skipITs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
                 <executions>
                     <execution>
                         <id>integration-test</id>
