@@ -49,6 +49,7 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
@@ -68,7 +69,7 @@ import java.util.Map;
 import java.util.Set;
 
 /** A skeleton class for expression */
-public abstract class Expression {
+public abstract class Expression extends StatementNode {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Operations that Class Expression is not responsible for should be done through a visitor
