@@ -34,6 +34,7 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
@@ -86,6 +87,24 @@ public class TsFilePlanRedoer {
                   tsFileResource.getTsFileSize(),
                   deletePlan.getDeleteStartTime(),
                   deletePlan.getDeleteEndTime()));
+    }
+  }
+
+  void redoDelete(DeleteDataNode deleteDataNode) throws IOException, MetadataException {
+    List<PartialPath> paths = deleteDataNode.getPathList();
+    for (PartialPath path : paths) {
+      for (PartialPath device : IoTDB.schemaProcessor.getBelongedDevices(path)) {
+        recoveryMemTable.delete(
+            path, device, deleteDataNode.getDeleteStartTime(), deleteDataNode.getDeleteEndTime());
+      }
+      tsFileResource
+          .getModFile()
+          .write(
+              new Deletion(
+                  path,
+                  tsFileResource.getTsFileSize(),
+                  deleteDataNode.getDeleteStartTime(),
+                  deleteDataNode.getDeleteEndTime()));
     }
   }
 
