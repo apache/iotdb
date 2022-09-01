@@ -32,12 +32,15 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAddPeerException;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.client.SyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
+import org.apache.iotdb.consensus.multileader.snapshot.SnapshotFragmentReader;
 import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelReq;
 import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelRes;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
+import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentReq;
+import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentRes;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -56,6 +59,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -84,7 +88,6 @@ public class MultiLeaderServerImpl {
   private final ConsensusReqReader reader;
   private boolean active;
   private String latestSnapshotId;
-
   private final IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager;
 
   public MultiLeaderServerImpl(
@@ -219,6 +222,51 @@ public class MultiLeaderServerImpl {
     File snapshotDir = new File(storageDir, latestSnapshotId);
     List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
     System.out.println(snapshotPaths);
+    try (SyncMultiLeaderServiceClient client =
+        syncClientManager.borrowClient(targetPeer.getEndpoint())) {
+      for (Path path : snapshotPaths) {
+        SnapshotFragmentReader reader = new SnapshotFragmentReader(latestSnapshotId, path);
+        while (reader.hasNext()) {
+          TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
+          TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
+          if (!isSuccess(res.getStatus())) {
+            throw new ConsensusGroupAddPeerException(
+                String.format("error when sending snapshot fragment to %s", targetPeer));
+          }
+        }
+        reader.close();
+      }
+    } catch (IOException | TException e) {
+      throw new ConsensusGroupAddPeerException(
+          String.format("error when send snapshot file to %s", targetPeer), e);
+    }
+  }
+
+  public void receiveSnapshotFragment(
+      String snapshotId, String originalFilePath, ByteBuffer fileChunk)
+      throws ConsensusGroupAddPeerException {
+    try {
+      String targetFilePath = calculateSnapshotPath(snapshotId, originalFilePath);
+      File targetFile = new File(storageDir, targetFilePath);
+      Files.write(
+          Paths.get(targetFile.getAbsolutePath()),
+          fileChunk.array(),
+          StandardOpenOption.CREATE,
+          StandardOpenOption.APPEND);
+    } catch (IOException e) {
+      throw new ConsensusGroupAddPeerException(
+          String.format("error when receiving snapshot %s", snapshotId), e);
+    }
+  }
+
+  private String calculateSnapshotPath(String snapshotId, String originalFilePath)
+      throws ConsensusGroupAddPeerException {
+    if (!originalFilePath.contains(snapshotId)) {
+      throw new ConsensusGroupAddPeerException(
+          String.format(
+              "invalid snapshot file. snapshotId: %s, filePath: %s", snapshotId, originalFilePath));
+    }
+    return originalFilePath.substring(originalFilePath.indexOf(snapshotId));
   }
 
   public void loadSnapshot(File latestSnapshotRootDir) {

@@ -38,6 +38,8 @@ import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelRes;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
+import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentReq;
+import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentRes;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -194,6 +196,33 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       responseStatus.setMessage(e.getMessage());
     }
     resultHandler.onComplete(new TBuildSyncLogChannelRes(responseStatus));
+  }
+
+  @Override
+  public void sendSnapshotFragment(
+      TSendSnapshotFragmentReq req, AsyncMethodCallback<TSendSnapshotFragmentRes> resultHandler)
+      throws TException {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    MultiLeaderServerImpl impl = consensus.getImpl(groupId);
+    if (impl == null) {
+      String message =
+          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+      logger.error(message);
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage(message);
+      resultHandler.onComplete(new TSendSnapshotFragmentRes(status));
+      return;
+    }
+    TSStatus responseStatus;
+    try {
+      impl.receiveSnapshotFragment(req.snapshotId, req.filePath, req.fileChunk);
+      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (ConsensusGroupAddPeerException e) {
+      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      responseStatus.setMessage(e.getMessage());
+    }
+    resultHandler.onComplete(new TSendSnapshotFragmentRes(responseStatus));
   }
 
   public void handleClientExit() {}
