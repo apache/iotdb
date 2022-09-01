@@ -87,7 +87,7 @@ public abstract class AbstractMetricService {
   public void stopService() {
     compositeReporter.stopAll();
     for (IMetricSet metricSet : metricSets) {
-      metricSet.remove(metricManager);
+      unbindMetricSet(metricSet);
     }
     metricManager.stop();
     metricManager = new DoNothingMetricManager();
@@ -258,5 +258,25 @@ public abstract class AbstractMetricService {
 
   public boolean isEnable() {
     return isEnableMetric;
+  }
+
+  /** bind metrics and store metric set */
+  public void addMetricSet(IMetricSet metricSet) {
+    metricSet.bindTo(this);
+    metricSets.add(metricSet);
+  }
+
+  /** reload all metric sets that stored */
+  public void reloadMetricSet() {
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.unbindFrom(this);
+      metricSet.bindTo(this);
+    }
+  }
+
+  /** remove metrics and metric set */
+  public void unbindMetricSet(IMetricSet metricSet) {
+    metricSets.remove(metricSet);
+    metricSet.unbindFrom(this);
   }
 }

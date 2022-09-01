@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.metricsets.predefined.jvm;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
 import java.util.ArrayList;
@@ -37,16 +37,16 @@ public class JvmMetrics implements IMetricSet {
   }
 
   @Override
-  public void bindTo(AbstractMetricManager metricManager) {
+  public void bindTo(AbstractMetricService metricService) {
     for (IMetricSet metricSet : metricSets) {
-      metricSet.bindTo(metricManager);
+      metricSet.bindTo(metricService);
     }
   }
 
   @Override
-  public void remove(AbstractMetricManager metricManager) {
+  public void unbindFrom(AbstractMetricService metricService) {
     for (IMetricSet metricSet : metricSets) {
-      metricSet.remove(metricManager);
+      metricSet.unbindFrom(metricService);
     }
   }
 }

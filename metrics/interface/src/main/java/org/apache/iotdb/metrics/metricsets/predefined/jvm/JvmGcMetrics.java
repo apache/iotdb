@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.metricsets.predefined.jvm;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Timer;
@@ -71,7 +71,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   }
 
   @Override
-  public void bindTo(AbstractMetricManager metricManager) {
+  public void bindTo(AbstractMetricService metricService) {
     if (!preCheck()) {
       return;
     }
@@ -85,20 +85,20 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             .orElse(0.0);
 
     AtomicLong maxDataSize = new AtomicLong((long) maxLongLivedPoolBytes);
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         "jvm.gc.max.data.size.bytes", MetricLevel.IMPORTANT, maxDataSize, AtomicLong::get);
 
     AtomicLong liveDataSize = new AtomicLong();
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         "jvm.gc.live.data.size.bytes", MetricLevel.IMPORTANT, liveDataSize, AtomicLong::get);
 
     Counter allocatedBytes =
-        metricManager.getOrCreateCounter("jvm.gc.memory.allocated.bytes", MetricLevel.IMPORTANT);
+        metricService.getOrCreateCounter("jvm.gc.memory.allocated.bytes", MetricLevel.IMPORTANT);
 
     Counter promotedBytes =
         (oldGenPoolName == null)
             ? null
-            : metricManager.getOrCreateCounter(
+            : metricService.getOrCreateCounter(
                 "jvm.gc.memory.promoted.bytes", MetricLevel.IMPORTANT);
 
     // start watching for GC notifications
@@ -125,7 +125,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
               timerName = "jvm.gc.pause";
             }
             Timer timer =
-                metricManager.getOrCreateTimer(
+                metricService.getOrCreateTimer(
                     timerName, MetricLevel.IMPORTANT, "action", gcAction, "cause", gcCause);
             timer.update(duration, TimeUnit.MILLISECONDS);
 
@@ -199,17 +199,17 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   }
 
   @Override
-  public void remove(AbstractMetricManager metricManager) {
+  public void unbindFrom(AbstractMetricService metricService) {
     if (!preCheck()) {
       return;
     }
 
-    metricManager.remove(MetricType.GAUGE, "jvm.gc.max.data.size.bytes");
-    metricManager.remove(MetricType.GAUGE, "jvm.gc.live.data.size.bytes");
-    metricManager.remove(MetricType.COUNTER, "jvm.gc.memory.allocated.bytes");
+    metricService.remove(MetricType.GAUGE, "jvm.gc.max.data.size.bytes");
+    metricService.remove(MetricType.GAUGE, "jvm.gc.live.data.size.bytes");
+    metricService.remove(MetricType.COUNTER, "jvm.gc.memory.allocated.bytes");
 
     if (oldGenPoolName != null) {
-      metricManager.remove(MetricType.COUNTER, "jvm.gc.memory.promoted.bytes");
+      metricService.remove(MetricType.COUNTER, "jvm.gc.memory.promoted.bytes");
     }
 
     // start watching for GC notifications
@@ -231,7 +231,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             } else {
               timerName = "jvm.gc.pause";
             }
-            metricManager.remove(MetricType.TIMER, timerName, "action", gcAction, "cause", gcCause);
+            metricService.remove(MetricType.TIMER, timerName, "action", gcAction, "cause", gcCause);
           };
       NotificationEmitter notificationEmitter = (NotificationEmitter) mbean;
       notificationEmitter.addNotificationListener(

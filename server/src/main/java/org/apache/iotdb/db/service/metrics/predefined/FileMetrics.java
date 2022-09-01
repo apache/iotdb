@@ -26,7 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.wal.WALManager;
-import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -53,43 +53,43 @@ public class FileMetrics implements IMetricSet {
   private long unsequenceFileTotalCount = 0L;
 
   @Override
-  public void bindTo(AbstractMetricManager metricManager) {
-    metricManager.getOrCreateAutoGauge(
+  public void bindTo(AbstractMetricService metricService) {
+    metricService.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getWalFileTotalSize,
         Tag.NAME.toString(),
         "wal");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getSequenceFileTotalSize,
         Tag.NAME.toString(),
         "seq");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getUnsequenceFileTotalSize,
         Tag.NAME.toString(),
         "unseq");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getWalFileTotalCount,
         Tag.NAME.toString(),
         "wal");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getSequenceFileTotalCount,
         Tag.NAME.toString(),
         "seq");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
@@ -107,19 +107,19 @@ public class FileMetrics implements IMetricSet {
   }
 
   @Override
-  public void remove(AbstractMetricManager metricManager) {
+  public void unbindFrom(AbstractMetricService metricService) {
     // first stop to update the value of some metrics in async way
     service.shutdown();
 
-    metricManager.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "wal");
-    metricManager.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "seq");
-    metricManager.remove(
+    metricService.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "wal");
+    metricService.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "seq");
+    metricService.remove(
         MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "unseq");
-    metricManager.remove(
+    metricService.remove(
         MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "wal");
-    metricManager.remove(
+    metricService.remove(
         MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "seq");
-    metricManager.remove(
+    metricService.remove(
         MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "unseq");
   }
 

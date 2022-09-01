@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.metricsets.predefined.logback;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -37,7 +37,7 @@ public class LogbackMetrics implements IMetricSet {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(LogbackMetrics.class);
   static ThreadLocal<Boolean> ignoreMetrics = new ThreadLocal<>();
   private final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-  private final Map<AbstractMetricManager, MetricsTurboFilter> metricsTurboFilters =
+  private final Map<AbstractMetricService, MetricsTurboFilter> metricsTurboFilters =
       new HashMap<>();
 
   public LogbackMetrics() {
@@ -76,26 +76,26 @@ public class LogbackMetrics implements IMetricSet {
   }
 
   @Override
-  public void bindTo(AbstractMetricManager metricManager) {
-    MetricsTurboFilter filter = new MetricsTurboFilter(metricManager);
+  public void bindTo(AbstractMetricService metricService) {
+    MetricsTurboFilter filter = new MetricsTurboFilter(metricService);
     synchronized (metricsTurboFilters) {
-      metricsTurboFilters.put(metricManager, filter);
+      metricsTurboFilters.put(metricService, filter);
       loggerContext.addTurboFilter(filter);
     }
   }
 
   @Override
-  public void remove(AbstractMetricManager metricManager) {
+  public void unbindFrom(AbstractMetricService metricService) {
     try {
       synchronized (metricsTurboFilters) {
         for (MetricsTurboFilter addMetricsTurboFilter : metricsTurboFilters.values()) {
           loggerContext.getTurboFilterList().remove(addMetricsTurboFilter);
         }
-        metricManager.remove(MetricType.COUNTER, "logback.events", "level", "error");
-        metricManager.remove(MetricType.COUNTER, "logback.events", "level", "warn");
-        metricManager.remove(MetricType.COUNTER, "logback.events", "level", "info");
-        metricManager.remove(MetricType.COUNTER, "logback.events", "level", "debug");
-        metricManager.remove(MetricType.COUNTER, "logback.events", "level", "trace");
+        metricService.remove(MetricType.COUNTER, "logback.events", "level", "error");
+        metricService.remove(MetricType.COUNTER, "logback.events", "level", "warn");
+        metricService.remove(MetricType.COUNTER, "logback.events", "level", "info");
+        metricService.remove(MetricType.COUNTER, "logback.events", "level", "debug");
+        metricService.remove(MetricType.COUNTER, "logback.events", "level", "trace");
       }
     } catch (Exception e) {
       logger.error("Failed to remove LogBackMetrics.");

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.metricsets.predefined.logback;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
@@ -36,21 +36,21 @@ public class MetricsTurboFilter extends TurboFilter {
   private Counter debugCounter;
   private Counter traceCounter;
 
-  MetricsTurboFilter(AbstractMetricManager metricManager) {
+  MetricsTurboFilter(AbstractMetricService metricService) {
     errorCounter =
-        metricManager.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "error");
+        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "error");
 
     warnCounter =
-        metricManager.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "warn");
+        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "warn");
 
     infoCounter =
-        metricManager.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "info");
+        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "info");
 
     debugCounter =
-        metricManager.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "debug");
+        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "debug");
 
     traceCounter =
-        metricManager.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "trace");
+        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "trace");
   }
 
   @Override

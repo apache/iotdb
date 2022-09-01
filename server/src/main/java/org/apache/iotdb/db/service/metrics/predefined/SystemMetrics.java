@@ -21,7 +21,7 @@ package org.apache.iotdb.db.service.metrics.predefined;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -46,10 +46,10 @@ public class SystemMetrics implements IMetricSet {
   }
 
   @Override
-  public void bindTo(AbstractMetricManager metricManager) {
-    collectSystemCpuInfo(metricManager);
-    collectSystemDiskInfo(metricManager);
-    collectSystemMemInfo(metricManager);
+  public void bindTo(AbstractMetricService metricService) {
+    collectSystemCpuInfo(metricService);
+    collectSystemDiskInfo(metricService);
+    collectSystemMemInfo(metricService);
 
     // finally start to update the value of some metrics in async way
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
@@ -61,17 +61,17 @@ public class SystemMetrics implements IMetricSet {
   }
 
   @Override
-  public void remove(AbstractMetricManager metricManager) {
+  public void unbindFrom(AbstractMetricService metricService) {
     // first stop to update the value of some metrics in async way
     service.shutdown();
 
-    removeSystemCpuInfo(metricManager);
-    removeSystemDiskInfo(metricManager);
-    removeSystemMemInfo(metricManager);
+    removeSystemCpuInfo(metricService);
+    removeSystemDiskInfo(metricService);
+    removeSystemMemInfo(metricService);
   }
 
-  private void collectSystemCpuInfo(AbstractMetricManager metricManager) {
-    metricManager.getOrCreateAutoGauge(
+  private void collectSystemCpuInfo(AbstractMetricService metricService) {
+    metricService.getOrCreateAutoGauge(
         Metric.SYS_CPU_LOAD.toString(),
         MetricLevel.CORE,
         osMXBean,
@@ -79,50 +79,50 @@ public class SystemMetrics implements IMetricSet {
         Tag.NAME.toString(),
         "system");
 
-    metricManager
+    metricService
         .getOrCreateGauge(
             Metric.SYS_CPU_CORES.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), "system")
         .set(osMXBean.getAvailableProcessors());
   }
 
-  private void removeSystemCpuInfo(AbstractMetricManager metricManager) {
-    metricManager.remove(
+  private void removeSystemCpuInfo(AbstractMetricService metricService) {
+    metricService.remove(
         MetricType.GAUGE, Metric.SYS_CPU_LOAD.toString(), Tag.NAME.toString(), "system");
 
-    metricManager.remove(
+    metricService.remove(
         MetricType.GAUGE, Metric.SYS_CPU_CORES.toString(), Tag.NAME.toString(), "system");
   }
 
-  private void collectSystemMemInfo(AbstractMetricManager metricManager) {
-    metricManager
+  private void collectSystemMemInfo(AbstractMetricService metricService) {
+    metricService
         .getOrCreateGauge(
             Metric.SYS_TOTAL_PHYSICAL_MEMORY_SIZE.toString(),
             MetricLevel.CORE,
             Tag.NAME.toString(),
             "system")
         .set(osMXBean.getTotalPhysicalMemorySize());
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.SYS_FREE_PHYSICAL_MEMORY_SIZE.toString(),
         MetricLevel.CORE,
         osMXBean,
         a -> osMXBean.getFreePhysicalMemorySize(),
         Tag.NAME.toString(),
         "system");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.SYS_TOTAL_SWAP_SPACE_SIZE.toString(),
         MetricLevel.CORE,
         osMXBean,
         a -> osMXBean.getTotalSwapSpaceSize(),
         Tag.NAME.toString(),
         "system");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.SYS_FREE_SWAP_SPACE_SIZE.toString(),
         MetricLevel.CORE,
         osMXBean,
         a -> osMXBean.getFreeSwapSpaceSize(),
         Tag.NAME.toString(),
         "system");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.SYS_COMMITTED_VM_SIZE.toString(),
         MetricLevel.CORE,
         osMXBean,
@@ -131,40 +131,40 @@ public class SystemMetrics implements IMetricSet {
         "system");
   }
 
-  private void removeSystemMemInfo(AbstractMetricManager metricManager) {
-    metricManager.remove(
+  private void removeSystemMemInfo(AbstractMetricService metricService) {
+    metricService.remove(
         MetricType.GAUGE,
         Metric.SYS_TOTAL_PHYSICAL_MEMORY_SIZE.toString(),
         Tag.NAME.toString(),
         "system");
-    metricManager.remove(
+    metricService.remove(
         MetricType.GAUGE,
         Metric.SYS_FREE_PHYSICAL_MEMORY_SIZE.toString(),
         Tag.NAME.toString(),
         "system");
-    metricManager.remove(
+    metricService.remove(
         MetricType.GAUGE,
         Metric.SYS_TOTAL_SWAP_SPACE_SIZE.toString(),
         Tag.NAME.toString(),
         "system");
-    metricManager.remove(
+    metricService.remove(
         MetricType.GAUGE,
         Metric.SYS_FREE_SWAP_SPACE_SIZE.toString(),
         Tag.NAME.toString(),
         "system");
-    metricManager.remove(
+    metricService.remove(
         MetricType.GAUGE, Metric.SYS_COMMITTED_VM_SIZE.toString(), Tag.NAME.toString(), "system");
   }
 
-  private void collectSystemDiskInfo(AbstractMetricManager metricManager) {
-    metricManager.getOrCreateAutoGauge(
+  private void collectSystemDiskInfo(AbstractMetricService metricService) {
+    metricService.getOrCreateAutoGauge(
         Metric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,
         this,
         SystemMetrics::getSystemDiskTotalSpace,
         Tag.NAME.toString(),
         "system");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.SYS_DISK_FREE_SPACE.toString(),
         MetricLevel.CORE,
         this,
@@ -173,10 +173,10 @@ public class SystemMetrics implements IMetricSet {
         "system");
   }
 
-  private void removeSystemDiskInfo(AbstractMetricManager metricManager) {
-    metricManager.remove(
+  private void removeSystemDiskInfo(AbstractMetricService metricService) {
+    metricService.remove(
         MetricType.GAUGE, Metric.SYS_DISK_TOTAL_SPACE.toString(), Tag.NAME.toString(), "system");
-    metricManager.remove(
+    metricService.remove(
         MetricType.GAUGE, Metric.SYS_DISK_FREE_SPACE.toString(), Tag.NAME.toString(), "system");
   }
 

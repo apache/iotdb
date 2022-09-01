@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.metricsets.predefined.jvm;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -30,10 +30,10 @@ import java.lang.management.ManagementFactory;
 /** This file is modified from io.micrometer.core.instrument.binder.jvm.JvmCompilationMetrics */
 public class JvmCompileMetrics implements IMetricSet {
   @Override
-  public void bindTo(AbstractMetricManager metricManager) {
+  public void bindTo(AbstractMetricService metricService) {
     CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
     if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
-      metricManager.getOrCreateAutoGauge(
+      metricService.getOrCreateAutoGauge(
           "jvm.compilation.time.ms",
           MetricLevel.IMPORTANT,
           compilationBean,
@@ -44,10 +44,10 @@ public class JvmCompileMetrics implements IMetricSet {
   }
 
   @Override
-  public void remove(AbstractMetricManager metricManager) {
+  public void unbindFrom(AbstractMetricService metricService) {
     CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
     if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
-      metricManager.remove(
+      metricService.remove(
           MetricType.GAUGE, "jvm.compilation.time.ms", "compiler", compilationBean.getName());
     }
   }

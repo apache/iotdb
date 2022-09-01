@@ -99,8 +99,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
         logger.error("Unknown predefined metrics: {}", metric);
         return;
     }
-    metricSet.bindTo(metricManager);
-    metricSets.add(metricSet);
+    addMetricSet(metricSet);
   }
 
   @Override
