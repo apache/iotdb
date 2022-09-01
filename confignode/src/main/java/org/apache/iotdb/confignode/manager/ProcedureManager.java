@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;
@@ -123,7 +124,23 @@ public class ProcedureManager {
   }
 
   public TSStatus deleteTimeSeries(PathPatternTree patternTree) {
-    return null;
+    long procedureId;
+    synchronized (this) {
+      if (DeleteTimeSeriesProcedure.checkIsOverlapWithRunningTasks(patternTree)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.OVERLAP_WITH_EXISTING_DELETE_TIMESERIES_TASK,
+            "Some other task is deleting some target timeseries.");
+      }
+      procedureId = this.executor.submitProcedure(new DeleteTimeSeriesProcedure(patternTree));
+    }
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return RpcUtils.getStatus(procedureStatus);
+    }
   }
 
   /** Generate a AddConfigNodeProcedure, and serially execute all the AddConfigNodeProcedure */
