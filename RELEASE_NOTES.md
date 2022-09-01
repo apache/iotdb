@@ -20,7 +20,7 @@
 -->
 
 # Apache IoTDB 0.14.0-preview2
-
+The 0.14.0-preview2 version only contains the new cluster version.
 ## New Features
 
 * Support RestApi
