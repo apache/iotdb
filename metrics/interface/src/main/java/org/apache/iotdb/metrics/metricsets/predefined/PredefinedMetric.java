@@ -17,20 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.predefined;
+package org.apache.iotdb.metrics.metricsets.predefined;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
+public enum PredefinedMetric {
+  JVM,
+  LOGBACK,
+  FILE,
+  PROCESS,
+  SYSTEM;
 
-public interface IMetricSet {
-  /** bind related metric to metric manager */
-  void bindTo(AbstractMetricManager metricManager);
-
-  /** get type of metric set */
-  PredefinedMetric getType();
-
-  /** start async collectd metric */
-  default void startAsyncCollectedMetrics() {}
-
-  /** stop async collectd metric */
-  default void stopAsyncCollectedMetrics() {}
+  @Override
+  public String toString() {
+    return name();
+  }
 }

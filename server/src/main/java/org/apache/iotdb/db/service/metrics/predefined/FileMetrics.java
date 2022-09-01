@@ -28,10 +28,8 @@ import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,11 +96,6 @@ public class FileMetrics implements IMetricSet {
         FileMetrics::getUnsequenceFileTotalCount,
         Tag.NAME.toString(),
         "unseq");
-  }
-
-  @Override
-  public PredefinedMetric getType() {
-    return PredefinedMetric.FILE;
   }
 
   @Override

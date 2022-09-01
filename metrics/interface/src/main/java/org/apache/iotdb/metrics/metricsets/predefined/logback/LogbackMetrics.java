@@ -17,11 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.predefined.logback;
+package org.apache.iotdb.metrics.metricsets.predefined.logback;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
@@ -95,11 +94,6 @@ public class LogbackMetrics implements IMetricSet, AutoCloseable {
     } finally {
       ignoreMetrics.remove();
     }
-  }
-
-  @Override
-  public PredefinedMetric getType() {
-    return PredefinedMetric.LOGBACK;
   }
 
   @Override

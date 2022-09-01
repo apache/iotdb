@@ -17,11 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.predefined.jvm;
+package org.apache.iotdb.metrics.metricsets.predefined.jvm;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.lang.management.ClassLoadingMXBean;
@@ -43,10 +42,5 @@ public class JvmClassLoaderMetrics implements IMetricSet {
         MetricLevel.IMPORTANT,
         classLoadingBean,
         ClassLoadingMXBean::getUnloadedClassCount);
-  }
-
-  @Override
-  public PredefinedMetric getType() {
-    return PredefinedMetric.JVM;
   }
 }

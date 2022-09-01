@@ -22,8 +22,8 @@ package org.apache.iotdb.db.service.metrics.predefined;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import com.sun.management.OperatingSystemMXBean;
@@ -46,11 +46,6 @@ public class ProcessMetrics implements IMetricSet {
     collectProcessMemInfo(metricManager);
     collectProcessStatusInfo(metricManager);
     collectThreadInfo(metricManager);
-  }
-
-  @Override
-  public PredefinedMetric getType() {
-    return PredefinedMetric.PROCESS;
   }
 
   private void collectProcessCPUInfo(AbstractMetricManager metricManager) {

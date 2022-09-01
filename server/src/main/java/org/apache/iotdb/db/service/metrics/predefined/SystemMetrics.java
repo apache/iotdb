@@ -23,8 +23,8 @@ import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import com.sun.management.OperatingSystemMXBean;
@@ -50,11 +50,6 @@ public class SystemMetrics implements IMetricSet {
     collectSystemCpuInfo(metricManager);
     collectSystemDiskInfo(metricManager);
     collectSystemMEMInfo(metricManager);
-  }
-
-  @Override
-  public PredefinedMetric getType() {
-    return PredefinedMetric.SYSTEM;
   }
 
   private void collectSystemCpuInfo(AbstractMetricManager metricManager) {

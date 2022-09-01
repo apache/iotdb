@@ -17,11 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.predefined.jvm;
+package org.apache.iotdb.metrics.metricsets.predefined.jvm;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
 public class JvmMetrics implements IMetricSet {
   @Override
@@ -40,10 +39,5 @@ public class JvmMetrics implements IMetricSet {
 
     JvmThreadMetrics jvmThreadMetrics = new JvmThreadMetrics();
     jvmThreadMetrics.bindTo(metricManager);
-  }
-
-  @Override
-  public PredefinedMetric getType() {
-    return PredefinedMetric.JVM;
   }
 }
