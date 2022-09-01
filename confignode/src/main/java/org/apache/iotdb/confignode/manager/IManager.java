@@ -354,8 +354,8 @@ public interface IManager {
   /*
    * delete timeseries
    *
-   * @param req List<String> pathPatternList
+   * @param req PathPatternTree patternTree
    * @return
    */
-  TSStatus deleteTimeSeries(List<String> req);
+  TSStatus deleteTimeSeries(PathPatternTree req);
 }

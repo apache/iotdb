@@ -380,7 +380,7 @@ struct TShowPipeResp {
 }
 
 struct TDeleteTimeSeriesReq{
-  1: required list<string> pathPatternList
+  1: required binary pathPatternTree
 }
 
 service IConfigNodeRPCService {

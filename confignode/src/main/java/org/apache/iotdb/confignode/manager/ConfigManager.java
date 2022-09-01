@@ -968,7 +968,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus deleteTimeSeries(List<String> req) {
+  public TSStatus deleteTimeSeries(PathPatternTree req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return procedureManager.deleteTimeSeries(req);

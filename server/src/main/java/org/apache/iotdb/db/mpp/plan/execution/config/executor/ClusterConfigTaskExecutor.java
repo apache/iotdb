@@ -52,6 +52,7 @@ import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
@@ -94,7 +95,10 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -752,11 +756,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> deleteTimeSeries(
       DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath pathPattern : deleteTimeSeriesStatement.getPathPatternList()) {
+      patternTree.appendPathPattern(pathPattern);
+    }
+    patternTree.constructTree();
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      patternTree.serialize(dataOutputStream);
+    } catch (IOException ignored) {
+      // memory operation, won't happen
+    }
     TDeleteTimeSeriesReq req =
-        new TDeleteTimeSeriesReq(
-            deleteTimeSeriesStatement.getPathPatternList().stream()
-                .map(PartialPath::getFullPath)
-                .collect(Collectors.toList()));
+        new TDeleteTimeSeriesReq(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       TSStatus tsStatus = client.deleteTimeSeries(req);

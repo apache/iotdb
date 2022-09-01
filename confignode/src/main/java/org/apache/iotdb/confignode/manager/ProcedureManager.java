@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -121,7 +122,7 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus deleteTimeSeries(List<String> pathPatternList){
+  public TSStatus deleteTimeSeries(PathPatternTree patternTree) {
     return null;
   }
 
