@@ -93,9 +93,12 @@ public class TsFilePlanRedoer {
   void redoDelete(DeleteDataNode deleteDataNode) throws IOException, MetadataException {
     List<PartialPath> paths = deleteDataNode.getPathList();
     for (PartialPath path : paths) {
-      // path here is device path
+      // path here is device path pattern
       recoveryMemTable.delete(
-          path, path, deleteDataNode.getDeleteStartTime(), deleteDataNode.getDeleteEndTime());
+          path,
+          path.getDevicePath(),
+          deleteDataNode.getDeleteStartTime(),
+          deleteDataNode.getDeleteEndTime());
       tsFileResource
           .getModFile()
           .write(
