@@ -43,6 +43,8 @@ import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
+import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.SyncMultiLeaderServiceClientPoolFactory;
+import org.apache.iotdb.consensus.multileader.client.SyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCService;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -75,6 +77,7 @@ public class MultiLeaderConsensus implements IConsensus {
   private final RegisterManager registerManager = new RegisterManager();
   private final MultiLeaderConfig config;
   private final IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager;
+  private final IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager;
 
   public MultiLeaderConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNode();
@@ -86,6 +89,10 @@ public class MultiLeaderConsensus implements IConsensus {
         new IClientManager.Factory<TEndPoint, AsyncMultiLeaderServiceClient>()
             .createClientManager(
                 new AsyncMultiLeaderServiceClientPoolFactory(config.getMultiLeaderConfig()));
+    this.syncClientManager =
+        new IClientManager.Factory<TEndPoint, SyncMultiLeaderServiceClient>()
+            .createClientManager(
+                new SyncMultiLeaderServiceClientPoolFactory(config.getMultiLeaderConfig()));
   }
 
   @Override
@@ -118,6 +125,7 @@ public class MultiLeaderConsensus implements IConsensus {
                   new ArrayList<>(),
                   registry.apply(consensusGroupId),
                   clientManager,
+                  syncClientManager,
                   config);
           stateMachineMap.put(consensusGroupId, consensus);
           consensus.start();
@@ -197,6 +205,7 @@ public class MultiLeaderConsensus implements IConsensus {
                   peers,
                   registry.apply(groupId),
                   clientManager,
+                  syncClientManager,
                   config);
           impl.start();
           return impl;

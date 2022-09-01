@@ -57,7 +57,7 @@ struct TBuildSyncLogChannelReq {
 }
 
 struct TBuildSyncLogChannelRes {
-  1: required list<common.TSStatus> status
+  1: required common.TSStatus status
 }
 
 service MultiLeaderConsensusIService {

@@ -22,10 +22,12 @@ package org.apache.iotdb.consensus.multileader.service;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAddPeerException;
 import org.apache.iotdb.consensus.multileader.MultiLeaderConsensus;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
 import org.apache.iotdb.consensus.multileader.thrift.MultiLeaderConsensusIService;
@@ -68,7 +70,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       if (impl == null) {
         String message =
             String.format(
-                "Unexpected consensusGroupId %s for TSyncLogReq which size is %s",
+                "unexpected consensusGroupId %s for TSyncLogReq which size is %s",
                 groupId, req.getBatches().size());
         logger.error(message);
         TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -77,7 +79,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
         return;
       }
       if (impl.isReadOnly()) {
-        String message = "Fail to sync log because system is read-only.";
+        String message = "fail to sync log because system is read-only.";
         logger.error(message);
         resultHandler.onError(
             new IoTDBException(message, TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode()));
@@ -119,7 +121,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       }
       TSStatus writeStatus = impl.getStateMachine().write(requestsInThisBatch);
       logger.debug(
-          "Execute TSyncLogReq for {} with result {}", req.consensusGroupId, writeStatus.subStatus);
+          "execute TSyncLogReq for {} with result {}", req.consensusGroupId, writeStatus.subStatus);
       resultHandler.onComplete(new TSyncLogRes(writeStatus.subStatus));
     } catch (Exception e) {
       resultHandler.onError(e);
@@ -135,7 +137,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     MultiLeaderServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format("Unexpected consensusGroupId %s for inactivatePeer request", groupId);
+          String.format("unexpected consensusGroupId %s for inactivatePeer request", groupId);
       logger.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -155,7 +157,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     MultiLeaderServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format("Unexpected consensusGroupId %s for inactivatePeer request", groupId);
+          String.format("unexpected consensusGroupId %s for inactivatePeer request", groupId);
       logger.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -170,7 +172,29 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
   @Override
   public void buildSyncLogChannel(
       TBuildSyncLogChannelReq req, AsyncMethodCallback<TBuildSyncLogChannelRes> resultHandler)
-      throws TException {}
+      throws TException {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    MultiLeaderServerImpl impl = consensus.getImpl(groupId);
+    if (impl == null) {
+      String message =
+          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+      logger.error(message);
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage(message);
+      resultHandler.onComplete(new TBuildSyncLogChannelRes(status));
+      return;
+    }
+    TSStatus responseStatus;
+    try {
+      impl.buildSyncLogChannel(new Peer(groupId, req.endPoint));
+      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (ConsensusGroupAddPeerException e) {
+      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      responseStatus.setMessage(e.getMessage());
+    }
+    resultHandler.onComplete(new TBuildSyncLogChannelRes(responseStatus));
+  }
 
   public void handleClientExit() {}
 }

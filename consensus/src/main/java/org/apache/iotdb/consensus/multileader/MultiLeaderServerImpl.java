@@ -30,13 +30,21 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAddPeerException;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
+import org.apache.iotdb.consensus.multileader.client.SyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
+import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerReq;
+import org.apache.iotdb.consensus.multileader.thrift.TActivatePeerRes;
+import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelReq;
+import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelRes;
+import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
+import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,17 +83,21 @@ public class MultiLeaderServerImpl {
   private final ConsensusReqReader reader;
   private boolean active;
 
+  private final IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager;
+
   public MultiLeaderServerImpl(
       String storageDir,
       Peer thisNode,
       List<Peer> configuration,
       IStateMachine stateMachine,
       IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager,
+      IClientManager<TEndPoint, SyncMultiLeaderServiceClient> syncClientManager,
       MultiLeaderConfig config) {
     this.active = true;
     this.storageDir = storageDir;
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
+    this.syncClientManager = syncClientManager;
     this.configuration = configuration;
     if (configuration.isEmpty()) {
       recoverConfiguration();
@@ -205,10 +217,32 @@ public class MultiLeaderServerImpl {
   }
 
   public void inactivePeer(Peer peer) throws ConsensusGroupAddPeerException {
-    // TODO: (xingtanzjr) investigate how to implement here smoothly using sync/async client
+    try (SyncMultiLeaderServiceClient client = syncClientManager.borrowClient(peer.getEndpoint())) {
+      TInactivatePeerRes res =
+          client.inactivatePeer(
+              new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId()));
+      if (!isSuccess(res.status)) {
+        throw new ConsensusGroupAddPeerException(
+            String.format("error when inactivating %s. %s", peer, res.getStatus()));
+      }
+    } catch (IOException | TException e) {
+      throw new ConsensusGroupAddPeerException(
+          String.format("error when inactivating %s", peer), e);
+    }
   }
 
-  public void activePeer(Peer peer) throws ConsensusGroupAddPeerException {}
+  public void activePeer(Peer peer) throws ConsensusGroupAddPeerException {
+    try (SyncMultiLeaderServiceClient client = syncClientManager.borrowClient(peer.getEndpoint())) {
+      TActivatePeerRes res =
+          client.activatePeer(new TActivatePeerReq(peer.getGroupId().convertToTConsensusGroupId()));
+      if (!isSuccess(res.status)) {
+        throw new ConsensusGroupAddPeerException(
+            String.format("error when activating %s. %s", peer, res.getStatus()));
+      }
+    } catch (IOException | TException e) {
+      throw new ConsensusGroupAddPeerException(String.format("error when activating %s", peer), e);
+    }
+  }
 
   public void notifyPeersToBuildSyncLogChannel(Peer targetPeer)
       throws ConsensusGroupAddPeerException {
@@ -219,8 +253,27 @@ public class MultiLeaderServerImpl {
         buildSyncLogChannel(targetPeer, index.get());
       } else {
         // use RPC to tell other peers to build sync log channel to target peer
+        try (SyncMultiLeaderServiceClient client =
+            syncClientManager.borrowClient(peer.getEndpoint())) {
+          TBuildSyncLogChannelRes res =
+              client.buildSyncLogChannel(
+                  new TBuildSyncLogChannelReq(
+                      targetPeer.getGroupId().convertToTConsensusGroupId(),
+                      targetPeer.getEndpoint()));
+          if (!isSuccess(res.status)) {
+            throw new ConsensusGroupAddPeerException(
+                String.format("build sync log channel failed from %s to %s", peer, targetPeer));
+          }
+        } catch (IOException | TException e) {
+          throw new ConsensusGroupAddPeerException(
+              String.format("error when activating %s", peer), e);
+        }
       }
     }
+  }
+
+  private boolean isSuccess(TSStatus status) {
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   /** build SyncLog channel with safeIndex as the default initial sync index */
