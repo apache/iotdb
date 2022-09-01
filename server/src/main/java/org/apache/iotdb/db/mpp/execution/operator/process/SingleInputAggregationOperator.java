@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
+import org.apache.iotdb.db.mpp.execution.operator.IWindowManager;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -49,6 +50,8 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
   protected final ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   protected TimeRange curTimeRange;
+
+  protected IWindowManager windowManager;
 
   protected final List<Aggregator> aggregators;
 
@@ -91,9 +94,14 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     return child.isBlocked();
   }
 
+  protected boolean finish;
+
   @Override
   public boolean hasNext() {
-    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
+    if (finish) {
+      return false;
+    }
+    return inputTsBlock != null || child.hasNext();
   }
 
   @Override
@@ -105,18 +113,17 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     // reset operator state
     canCallNext = true;
 
-    while (System.nanoTime() - start < maxRuntime
-        && (curTimeRange != null || timeRangeIterator.hasNextTimeRange())
-        && !resultTsBlockBuilder.isFull()) {
-      if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
-        // move to next time window
-        curTimeRange = timeRangeIterator.nextTimeRange();
+    while (System.nanoTime() - start < maxRuntime && hasNext() && !resultTsBlockBuilder.isFull()) {
 
-        // clear previous aggregation result
-        for (Aggregator aggregator : aggregators) {
-          aggregator.updateTimeRange(curTimeRange);
-        }
-      }
+      //      if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
+      //        // move to next time window
+      //        curTimeRange = timeRangeIterator.nextTimeRange();
+      //
+      //        // clear previous aggregation result
+      //        for (Aggregator aggregator : aggregators) {
+      //          aggregator.updateTimeRange(curTimeRange);
+      //        }
+      //      }
 
       // calculate aggregation result on current time window
       if (!calculateNextAggregationResult()) {
@@ -147,7 +154,8 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   protected void updateResultTsBlock() {
     curTimeRange = null;
-    appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
+    appendAggregationResult(
+        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
   }
 
   @Override

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.execution.operator.IWindow;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -221,7 +222,7 @@ public class LastValueAccumulator implements Accumulator {
     return lastValue.getDataType();
   }
 
-  protected int addIntInput(Column[] column, TimeRange timeRange) {
+  protected int addIntInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
     long curMinTime = timeRange.getMin();
     long curMaxTime = timeRange.getMax();

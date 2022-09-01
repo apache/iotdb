@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.execution.operator.IWindow;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -222,21 +223,25 @@ public class FirstValueAccumulator implements Accumulator {
     return firstValue.getDataType();
   }
 
-  protected int addIntInput(Column[] column, TimeRange timeRange) {
-    int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+  protected int addIntInput(Column[] column, IWindow curWindow) {
+    int windowControlColumnIndex = curWindow.getControlColumnIndex();
+    boolean isTimeWindow = curWindow.isTimeWindow();
+    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      if (!curWindow.satisfy(column[windowControlColumnIndex])) {
         return i;
       }
+
+      curWindow.acceptOnePoint();
       if (!column[1].isNull(i)) {
         updateIntFirstValue(column[1].getInt(i), curTime);
-        return i;
+        if (isTimeWindow) {
+          return i;
+        }
       }
     }
-    return column[0].getPositionCount();
+    return column[windowControlColumnIndex].getPositionCount();
   }
 
   protected void updateIntFirstValue(int value, long curTime) {

@@ -21,14 +21,14 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
+import org.apache.iotdb.db.mpp.execution.operator.IWindow;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
 
 /**
  * RawDataAggregationOperator is used to process raw data tsBlock input calculating using value
@@ -69,16 +69,54 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       }
     }
 
-    // update result using aggregators
-    updateResultTsBlock();
-
     return true;
   }
 
   private boolean calcFromRawData() {
-    Pair<Boolean, TsBlock> calcResult =
-        calculateAggregationFromRawData(inputTsBlock, aggregators, curTimeRange, ascending);
-    inputTsBlock = calcResult.getRight();
-    return calcResult.getLeft();
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+      return false;
+    }
+
+    if (!windowManager.isCurWindowReady()) {
+      windowManager.initCurWindow(inputTsBlock);
+      IWindow curWindow = windowManager.getCurWindow();
+      for (Aggregator aggregator : aggregators) {
+        aggregator.updateWindow(curWindow);
+      }
+    }
+
+    inputTsBlock = windowManager.skipOutOfWindowPoints(inputTsBlock);
+
+    int lastReadRowIndex = 0;
+    for (Aggregator aggregator : aggregators) {
+      // current agg method has been calculated
+      if (aggregator.hasFinalResult()) {
+        continue;
+      }
+
+      lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
+    }
+    if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
+      inputTsBlock = null;
+      if (isAllAggregatorsHasFinalResult(aggregators)) {
+        updateResultTsBlock();
+        return true;
+      }
+      return false;
+    } else {
+      inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
+      updateResultTsBlock();
+      return true;
+    }
+  }
+
+  @Override
+  protected void updateResultTsBlock() {
+    appendAggregationResult(resultTsBlockBuilder, aggregators, windowManager.currentOutputTime());
+    if (windowManager.hasNext()) {
+      windowManager.next();
+    } else {
+      finish = true;
+    }
   }
 }
