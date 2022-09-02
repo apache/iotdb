@@ -21,58 +21,59 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 
 public class PreDeleteTimeSeriesPlan extends PhysicalPlan {
 
-  private PathPatternTree patternTree;
+  private PartialPath path;
 
   public PreDeleteTimeSeriesPlan() {
     super(Operator.OperatorType.PRE_DELETE_TIMESERIES_IN_CLUSTER);
   }
 
-  public PreDeleteTimeSeriesPlan(PathPatternTree patternTree) {
+  public PreDeleteTimeSeriesPlan(PartialPath path) {
     super(Operator.OperatorType.PRE_DELETE_TIMESERIES_IN_CLUSTER);
-    this.patternTree = patternTree;
+    this.path = path;
   }
 
-  public PathPatternTree getPatternTree() {
-    return patternTree;
+  public PartialPath getPath() {
+    return path;
   }
 
-  public void setPatternTree(PathPatternTree patternTree) {
-    this.patternTree = patternTree;
+  public void setPath(PartialPath path) {
+    this.path = path;
   }
 
   @Override
   public List<? extends PartialPath> getPaths() {
-    return patternTree.getAllPathPatterns();
+    return Collections.singletonList(path);
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.write((byte) PhysicalPlanType.PRE_DELETE_TIMESERIES_IN_CLUSTER.ordinal());
-    patternTree.serialize(stream);
+    path.serialize(stream);
     stream.writeLong(index);
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.PRE_DELETE_TIMESERIES_IN_CLUSTER.ordinal());
-    patternTree.serialize(buffer);
+    path.serialize(buffer);
     buffer.putLong(index);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
-    patternTree = PathPatternTree.deserialize(buffer);
+    path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
     index = buffer.getLong();
   }
 }

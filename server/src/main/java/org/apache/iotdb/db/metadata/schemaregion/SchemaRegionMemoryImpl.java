@@ -446,7 +446,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         break;
       case PRE_DELETE_TIMESERIES_IN_CLUSTER:
         PreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan = (PreDeleteTimeSeriesPlan) plan;
-        constructSchemaBlackList(preDeleteTimeSeriesPlan.getPatternTree());
+        recoverPreDeleteTimeseries(preDeleteTimeSeriesPlan.getPath());
+        break;
+      case ROLLBACK_PRE_DELETE_TIMESERIES:
+        RollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan =
+            (RollbackPreDeleteTimeSeriesPlan) plan;
+        recoverRollbackPreDeleteTimeseries(rollbackPreDeleteTimeSeriesPlan.getPath());
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -841,25 +846,41 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      mtree.preDeleteTimeseries(pathPattern);
+      for (PartialPath path : mtree.getMeasurementPaths(pathPattern)) {
+        IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+        measurementMNode.setPreDeleted(true);
+        try {
+          writeToMLog(new PreDeleteTimeSeriesPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
     }
-    try {
-      writeToMLog(new PreDeleteTimeSeriesPlan(patternTree));
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
+  }
+
+  private void recoverPreDeleteTimeseries(PartialPath path) throws MetadataException {
+    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+    measurementMNode.setPreDeleted(true);
   }
 
   @Override
   public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      mtree.rollbackPreDeleteTimeseries(pathPattern);
+      for (PartialPath path : mtree.getMeasurementPaths(pathPattern)) {
+        IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+        measurementMNode.setPreDeleted(false);
+        try {
+          writeToMLog(new RollbackPreDeleteTimeSeriesPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
     }
-    try {
-      writeToMLog(new RollbackPreDeleteTimeSeriesPlan(patternTree));
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
+  }
+
+  private void recoverRollbackPreDeleteTimeseries(PartialPath path) throws MetadataException {
+    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+    measurementMNode.setPreDeleted(false);
   }
 
   /**
