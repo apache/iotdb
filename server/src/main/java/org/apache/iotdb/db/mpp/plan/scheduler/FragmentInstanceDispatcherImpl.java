@@ -283,19 +283,29 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
           }
         } catch (Throwable e) {
-          logger.error("dispatch locally write plan {} for region {} error, will redirect to client to try again", planNode, groupId, e);
+          logger.error(
+              "dispatch locally write plan {} for region {} error, will redirect to client to try again",
+              planNode,
+              groupId,
+              e);
           throw new FragmentInstanceDispatchException(
-                  RpcUtils.getStatus(TSStatusCode.NEED_REDIRECTION, e.getMessage()));
+              RpcUtils.getStatus(TSStatusCode.NEED_REDIRECTION, e.getMessage()));
         }
         if (writeResponse == null) {
-          logger.error("response is null when dispatch locally write plan {} for region {} error, will redirect to client to try again", planNode, groupId);
+          logger.error(
+              "response is null when dispatch locally write plan {} for region {} error, will redirect to client to try again",
+              planNode,
+              groupId);
           throw new FragmentInstanceDispatchException(
-                  RpcUtils.getStatus(TSStatusCode.NEED_REDIRECTION, "response is null"));
+              RpcUtils.getStatus(TSStatusCode.NEED_REDIRECTION, "response is null"));
         }
 
         if (!writeResponse.isSuccessful()) {
-          logger.error("dispatch locally write plan {} for region {} error. error msg: {}, will redirect to client to try again"
-                  ,planNode, groupId, writeResponse.getErrorMessage());
+          logger.error(
+              "dispatch locally write plan {} for region {} error. error msg: {}, will redirect to client to try again",
+              planNode,
+              groupId,
+              writeResponse.getErrorMessage());
           TSStatus failureStatus =
               writeResponse.getStatus() != null
                   ? writeResponse.getStatus()

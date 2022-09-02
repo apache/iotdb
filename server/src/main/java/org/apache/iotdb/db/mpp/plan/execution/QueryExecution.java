@@ -479,18 +479,21 @@ public class QueryExecution implements IQueryExecution {
     // collect redirect info to client for writing
     if (analysis.getStatement() instanceof InsertBaseStatement) {
       if (state != QueryState.FINISHED) {
-        //if insert not finished, then before redirect to client: clean partition cache and re analyse to get the current
+        // if insert not finished, then before redirect to client: clean partition cache and re
+        // analyse to get the current
         // region locations, so the redirect node is available. maybe region migrated when writing.
         partitionFetcher.invalidAllCache();
         this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
-        logger.info("insert not finished, status: {}, state: {}. so will clear partition cache then get current region locations",
-                tsstatus, state);
+        logger.info(
+            "insert not finished, status: {}, state: {}. so will clear partition cache then get current region locations",
+            tsstatus,
+            state);
       }
       InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
       List<TEndPoint> redirectNodeList;
       if (config.isClusterMode()) {
         redirectNodeList = insertStatement.collectRedirectInfo(analysis.getDataPartitionInfo());
-        logger.debug("redirect node list: {}",  redirectNodeList);
+        logger.debug("redirect node list: {}", redirectNodeList);
       } else {
         redirectNodeList = Collections.emptyList();
       }
