@@ -48,7 +48,6 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -62,7 +61,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ConfigNodeProcedureEnv {
@@ -85,9 +83,6 @@ public class ConfigNodeProcedureEnv {
   private static boolean invalidCacheResult = true;
 
   private final ReentrantLock removeConfigNodeLock;
-
-  private final Map<Long, PathPatternTree> existingDeleteTimeSeriesTasks =
-      new ConcurrentHashMap<>();
 
   public static void setSkipForTest(boolean skipForTest) {
     ConfigNodeProcedureEnv.skipForTest = skipForTest;
@@ -369,23 +364,6 @@ public class ConfigNodeProcedureEnv {
 
   public DataNodeRemoveHandler getDataNodeRemoveHandler() {
     return dataNodeRemoveHandler;
-  }
-
-  public boolean checkIsOverlapWithRunningTasks(PathPatternTree patternTree) {
-    for (PathPatternTree existingPatternTree : existingDeleteTimeSeriesTasks.values()) {
-      if (patternTree.isOverlapWith(existingPatternTree)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  public void putRunningTask(long procId, PathPatternTree patternTree) {
-    existingDeleteTimeSeriesTasks.put(procId, patternTree);
-  }
-
-  public void removeRunningTask(long procId) {
-    existingDeleteTimeSeriesTasks.remove(procId);
   }
 
   private ConsensusManager getConsensusManager() {

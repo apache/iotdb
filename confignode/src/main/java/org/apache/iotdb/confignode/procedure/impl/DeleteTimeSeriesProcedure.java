@@ -86,6 +86,10 @@ public class DeleteTimeSeriesProcedure
     return DeleteTimeSeriesState.CONSTRUCT_BLACK_LIST;
   }
 
+  public PathPatternTree getPatternTree() {
+    return patternTree;
+  }
+
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeInt(ProcedureFactory.ProcedureType.DELETE_TIMESERIES_PROCEDURE.ordinal());
