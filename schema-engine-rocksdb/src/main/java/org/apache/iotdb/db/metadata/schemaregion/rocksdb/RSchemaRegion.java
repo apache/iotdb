@@ -687,6 +687,11 @@ public class RSchemaRegion implements ISchemaRegion {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
   private void traverseOutcomeBasins(
       String[] nodes,
       int maxLevel,

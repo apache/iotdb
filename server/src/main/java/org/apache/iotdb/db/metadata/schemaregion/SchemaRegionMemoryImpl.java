@@ -74,6 +74,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.PreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.RollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -844,6 +845,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
     try {
       writeToMLog(new PreDeleteTimeSeriesPlan(patternTree));
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  @Override
+  public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      mtree.rollbackPreDeleteTimeseries(pathPattern);
+    }
+    try {
+      writeToMLog(new RollbackPreDeleteTimeSeriesPlan(patternTree));
     } catch (IOException e) {
       throw new MetadataException(e);
     }
