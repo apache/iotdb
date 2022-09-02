@@ -52,7 +52,7 @@ configuration files are under "conf" folder
   * system config module (`iotdb-datanode.properties`)
   * log config module (`logback.xml`). 
 
-For more, see [Config](../Reference/Config-Manual.md) in detail.
+For more, see [Config](../Reference/DataNode-Config-Manual.md) in detail.
 
 ## Start
 

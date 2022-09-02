@@ -511,6 +511,14 @@ START
     : S T A R T
     ;
 
+STATELESS
+    : S T A T E L E S S
+    ;
+
+STATEFUL
+    : S T A T E F U L
+    ;
+
 STOP
     : S T O P
     ;
