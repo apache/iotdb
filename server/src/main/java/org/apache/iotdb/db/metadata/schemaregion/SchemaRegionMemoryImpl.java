@@ -59,6 +59,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.MeasurementSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -72,6 +73,7 @@ import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.PreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -440,6 +442,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         ActivateTemplateInClusterPlan activateTemplateInClusterPlan =
             (ActivateTemplateInClusterPlan) plan;
         recoverActivatingSchemaTemplate(activateTemplateInClusterPlan);
+        break;
+      case PRE_DELETE_TIMESERIES_IN_CLUSTER:
+        PreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan = (PreDeleteTimeSeriesPlan) plan;
+        constructSchemaBlackList(preDeleteTimeSeriesPlan.getPatternTree());
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -828,6 +834,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       return new Pair<>(deletedNum, failedNames);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
+    }
+  }
+
+  @Override
+  public void constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      mtree.preDeleteTimeseries(pathPattern);
+    }
+    try {
+      writeToMLog(new PreDeleteTimeSeriesPlan(patternTree));
+    } catch (IOException e) {
+      throw new MetadataException(e);
     }
   }
 

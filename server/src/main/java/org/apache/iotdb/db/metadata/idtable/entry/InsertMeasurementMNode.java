@@ -99,6 +99,14 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {}
 
   @Override
+  public boolean isPreDeleted() {
+    return false;
+  }
+
+  @Override
+  public void setPreDeleted(boolean preDeleted) {}
+
+  @Override
   public IMeasurementSchema getSchema() {
     return schema;
   }

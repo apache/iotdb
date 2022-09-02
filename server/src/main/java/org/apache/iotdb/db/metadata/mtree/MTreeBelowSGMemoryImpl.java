@@ -442,6 +442,17 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         && node.getChildren().isEmpty();
   }
 
+  public void preDeleteTimeseries(PartialPath pathPattern) throws MetadataException {
+    MeasurementCollector<List<PartialPath>> collector =
+        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+            node.setPreDeleted(true);
+          }
+        };
+    collector.traverse();
+  }
+
   @Override
   public void setAlias(IMeasurementMNode measurementMNode, String alias) throws MetadataException {
     store.setAlias(measurementMNode, alias);

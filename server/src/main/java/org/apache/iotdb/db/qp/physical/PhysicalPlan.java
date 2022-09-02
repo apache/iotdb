@@ -63,6 +63,7 @@ import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
+import org.apache.iotdb.db.qp.physical.sys.PreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
@@ -491,6 +492,9 @@ public abstract class PhysicalPlan implements IConsensusRequest {
         case ACTIVATE_TEMPLATE_IN_CLUSTER:
           plan = new ActivateTemplateInClusterPlan();
           break;
+        case PRE_DELETE_TIMESERIES_IN_CLUSTER:
+          plan = new PreDeleteTimeSeriesPlan();
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -563,7 +567,8 @@ public abstract class PhysicalPlan implements IConsensusRequest {
     START_PIPE_SERVER,
     STOP_PIPE_SERVER,
     DROP_TEMPLATE,
-    ACTIVATE_TEMPLATE_IN_CLUSTER
+    ACTIVATE_TEMPLATE_IN_CLUSTER,
+    PRE_DELETE_TIMESERIES_IN_CLUSTER
   }
 
   public long getIndex() {
