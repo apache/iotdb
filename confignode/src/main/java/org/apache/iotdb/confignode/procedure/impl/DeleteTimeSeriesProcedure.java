@@ -61,10 +61,20 @@ public class DeleteTimeSeriesProcedure
     return null;
   }
 
+  private void constructBlackList(ConfigNodeProcedureEnv configNodeProcedureEnv) {}
+
+  private void invalidateCache(ConfigNodeProcedureEnv configNodeProcedureEnv) {}
+
+  private void DeleteData(ConfigNodeProcedureEnv configNodeProcedureEnv) {}
+
+  private void DeleteTimeSeries(ConfigNodeProcedureEnv configNodeProcedureEnv) {}
+
   @Override
   protected void rollbackState(
       ConfigNodeProcedureEnv configNodeProcedureEnv, DeleteTimeSeriesState deleteTimeSeriesState)
       throws IOException, InterruptedException, ProcedureException {}
+
+  private void rollbackBlackList() {}
 
   @Override
   protected boolean isRollbackSupported(DeleteTimeSeriesState deleteTimeSeriesState) {

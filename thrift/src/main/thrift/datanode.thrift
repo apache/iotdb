@@ -214,6 +214,29 @@ struct TUpdateTemplateReq{
     2: required binary templateInfo
 }
 
+struct TConstructSchemaBlackListReq{
+  1: required list<i32> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TRollbackSchemaBlackListReq{
+  1: required list<i32> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TInvalidateMatchedSchemaCacheReq{
+    1: required binary pathPatternTree
+}
+
+struct TDeleteDataForDeleteTimeSeriesReq{
+  1: required binary pathPatternTree
+}
+
+struct TDeleteTimeSeriesReq{
+  1: required list<i32> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -263,11 +286,11 @@ service IDataNodeRPCService {
   common.TSStatus invalidatePartitionCache(TInvalidateCacheReq req)
 
   /**
-       * Config node will invalidate Schema Info cache.
-       *
-       * @param bool:isStorageGroup, string:fullPath
-       */
-    common.TSStatus invalidateSchemaCache(TInvalidateCacheReq req)
+     * Config node will invalidate Schema Info cache.
+     *
+     * @param bool:isStorageGroup, string:fullPath
+     */
+  common.TSStatus invalidateSchemaCache(TInvalidateCacheReq req)
 
   /**
      * Config node will delete a data/schema region of a certain storageGroup.
@@ -392,7 +415,37 @@ service IDataNodeRPCService {
    */
   common.TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req)
 
+  /**
+   * Update template cache when template info or template set info is updated
+   */
   common.TSStatus updateTemplate(TUpdateTemplateReq req)
+
+  /**
+   * Construct schema black list in target schemaRegion to block R/W on matched timeseries
+   */
+  common.TSStatus constructSchemaBlackList(TConstructSchemaBlackListReq req)
+
+  /**
+   * Remove the schema black list to recover R/W on matched timeseries
+   */
+  common.TSStatus rollbackSchemaBlackList(TRollbackSchemaBlackListReq req)
+
+  /**
+   * Config node will invalidate Schema Info cache, which matched by given pathPatternTree.
+   *
+   * @param binary: pathPatternTree
+   */
+  common.TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req)
+
+  /**
+   * Config node inform this dataNode to execute a distribution data deleion mpp task
+   */
+  common.TSStatus deleteDataForDeleteTimeSeries(TDeleteDataForDeleteTimeSeriesReq req)
+
+ /**
+  * Delete matched timeseries and remove according schema black list in target schemRegion
+  */
+  common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 }
 
 service MPPDataExchangeService {
