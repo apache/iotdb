@@ -62,7 +62,7 @@ expressions like : time > XXX, time <= XXX, or two atomic expressions connected 
 If no "where" clause specified in a delete statement, all the data in a timeseries will be deleted.
 
 ```sql
-delete from root.ln.wf02.status
+delete from root.ln.wf02.wt02.status
 ```
 
 

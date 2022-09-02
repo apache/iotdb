@@ -192,7 +192,7 @@ struct TLoginReq {
 }
 
 struct TCheckUserPrivilegesReq {
-  1: required string username;
+  1: required string username
   2: required list<string> paths
   3: required i32 permission
 }
@@ -230,6 +230,13 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
+// Trigger
+struct TCreateTriggerReq {
+  1: required string triggerName
+  2: required binary triggerInformation
+  3: required common.TFile jarFile
+}
+
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status
@@ -259,6 +266,7 @@ struct TConfigNodeInfo {
   2: required string status
   3: required string internalAddress
   4: required i32 internalPort
+  5: required string roleType
 }
 
 struct TShowConfigNodesResp {
@@ -582,6 +590,19 @@ service IConfigNodeRPCService {
      *         EXECUTE_STATEMENT_ERROR if operations on any node failed
      */
   common.TSStatus dropFunction(TDropFunctionReq req)
+
+  // ======================================================
+  // Trigger
+  // ======================================================
+
+   /**
+      * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+      * and sync Information of it to all ConfigNodes
+      *
+      * @return SUCCESS_STATUS if the trigger was created successfully
+      *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+      */
+  common.TSStatus createTrigger(TCreateTriggerReq req)
 
   // ======================================================
   // Maintenance Tools

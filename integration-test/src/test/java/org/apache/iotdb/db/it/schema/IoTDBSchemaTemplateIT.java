@@ -271,6 +271,15 @@ public class IoTDBSchemaTemplateIT {
     statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg2.d2");
     statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3.d1");
     statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3.d2");
+    statement.execute("INSERT INTO root.sg3.d2.verify(time, show) VALUES (1, 1)");
+
+    try (ResultSet resultSet = statement.executeQuery("SHOW PATHS USING SCHEMA TEMPLATE t1")) {
+      String resultRecord;
+      while (resultSet.next()) {
+        resultRecord = resultSet.getString(1);
+        Assert.assertEquals("", resultRecord);
+      }
+    }
 
     // activate schema template
     statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d2");
@@ -316,6 +325,31 @@ public class IoTDBSchemaTemplateIT {
 
     ResultSet resultSet = statement.executeQuery("SHOW PATHS USING SCHEMA TEMPLATE t2");
     Assert.assertFalse(resultSet.next());
+  }
+
+  @Test
+  public void testSetAndActivateTemplateOnSGNode() throws SQLException {
+    statement.execute("CREATE STORAGE GROUP root.test.sg_satosg");
+    statement.execute("SET SCHEMA TEMPLATE t1 TO root.test.sg_satosg");
+    statement.execute("INSERT INTO root.test.sg_satosg(time, s1) VALUES (1, 1)");
+    statement.execute("INSERT INTO root.test.sg_satosg(time, s1) VALUES (2, 2)");
+    ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.test.sg_satosg.**");
+
+    Set<String> expRes =
+        new HashSet<>(
+            Arrays.asList(new String[] {"root.test.sg_satosg.s1", "root.test.sg_satosg.s2"}));
+    int resCnt = 0;
+    while (resultSet.next()) {
+      resCnt++;
+      expRes.remove(resultSet.getString("timeseries"));
+    }
+    Assert.assertEquals(2, resCnt);
+    Assert.assertTrue(expRes.isEmpty());
+
+    resultSet = statement.executeQuery("SELECT COUNT(s1) from root.test.sg_satosg");
+    while (resultSet.next()) {
+      Assert.assertEquals(2L, resultSet.getLong("COUNT(root.test.sg_satosg.s1)"));
+    }
   }
 
   private void prepareTemplate() throws SQLException {

@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -35,7 +34,6 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
-import org.apache.iotdb.db.utils.HandleSystemErrorStrategy;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -84,13 +82,6 @@ public class IoTDBConfig {
       "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
-
-  /** What will the system do when unrecoverable error occurs. */
-  private HandleSystemErrorStrategy handleSystemErrorStrategy =
-      HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY;
-
-  /** Status of current system. */
-  private volatile NodeStatus status = NodeStatus.Running;
 
   /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
@@ -963,6 +954,12 @@ public class IoTDBConfig {
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
 
+  /**
+   * Whether the schema memory allocation is default config. Used for cluster mode initialization
+   * judgement
+   */
+  private boolean isDefaultSchemaMemoryConfig = true;
+
   /** Memory allocated for schemaRegion */
   private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
 
@@ -1549,37 +1546,6 @@ public class IoTDBConfig {
 
   public void setSessionTimeoutThreshold(int sessionTimeoutThreshold) {
     this.sessionTimeoutThreshold = sessionTimeoutThreshold;
-  }
-
-  public HandleSystemErrorStrategy getHandleSystemErrorStrategy() {
-    return handleSystemErrorStrategy;
-  }
-
-  public void setHandleSystemErrorStrategy(HandleSystemErrorStrategy handleSystemErrorStrategy) {
-    this.handleSystemErrorStrategy = handleSystemErrorStrategy;
-  }
-
-  public boolean isReadOnly() {
-    return status == NodeStatus.ReadOnly
-        || (status == NodeStatus.Error
-            && handleSystemErrorStrategy == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY);
-  }
-
-  public NodeStatus getNodeStatus() {
-    return status;
-  }
-
-  public void setNodeStatus(NodeStatus newStatus) {
-    if (newStatus == NodeStatus.ReadOnly) {
-      logger.error(
-          "Change system status to read-only! Only query statements are permitted!",
-          new RuntimeException("System mode is set to READ_ONLY"));
-    } else if (newStatus == NodeStatus.Error) {
-      newStatus = handleSystemErrorStrategy.handle();
-    } else {
-      logger.info("Set system mode from {} to {}.", status, newStatus);
-    }
-    this.status = newStatus;
   }
 
   public String getRpcImplClassName() {
@@ -3067,6 +3033,14 @@ public class IoTDBConfig {
 
   public TEndPoint getAddressAndPort() {
     return new TEndPoint(rpcAddress, rpcPort);
+  }
+
+  boolean isDefaultSchemaMemoryConfig() {
+    return isDefaultSchemaMemoryConfig;
+  }
+
+  void setDefaultSchemaMemoryConfig(boolean defaultSchemaMemoryConfig) {
+    isDefaultSchemaMemoryConfig = defaultSchemaMemoryConfig;
   }
 
   public long getAllocateMemoryForSchemaRegion() {

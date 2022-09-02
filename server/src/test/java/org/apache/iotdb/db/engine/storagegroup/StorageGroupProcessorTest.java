@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
@@ -751,7 +752,7 @@ public class StorageGroupProcessorTest {
                   + targetTsFileResource.getTsFile().getName()
                   + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
       Assert.assertFalse(logFile.exists());
-      Assert.assertFalse(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
+      Assert.assertFalse(CommonDescriptor.getInstance().getConfig().isReadOnly());
       Assert.assertTrue(processor.getTsFileManager().isAllowCompaction());
     } finally {
       new CompactionConfigRestorer().restoreCompactionConfig();

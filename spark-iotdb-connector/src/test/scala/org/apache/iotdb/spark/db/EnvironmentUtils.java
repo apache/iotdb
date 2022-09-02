@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -112,7 +113,7 @@ public class EnvironmentUtils {
       Assert.fail();
     }
     StorageEngine.getInstance().reset();
-    IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
+    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
 
     // clean wal
     WALManager.getInstance().stop();

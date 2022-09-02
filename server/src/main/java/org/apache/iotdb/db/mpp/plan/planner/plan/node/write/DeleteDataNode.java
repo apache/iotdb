@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
@@ -31,8 +32,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -44,12 +49,21 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode.NO_CONSENSUS_INDEX;
 
-public class DeleteDataNode extends WritePlanNode {
+public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
+  /** byte: type, integer: pathList.size(), long: deleteStartTime, deleteEndTime, searchIndex */
+  private static final int FIXED_SERIALIZED_SIZE = Short.BYTES + Integer.BYTES + Long.BYTES * 3;
 
   private final List<PartialPath> pathList;
   private final long deleteStartTime;
   private final long deleteEndTime;
+
+  /**
+   * this index is used by wal search, its order should be protected by the upper layer, and the
+   * value should start from 1
+   */
+  protected long searchIndex = NO_CONSENSUS_INDEX;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -86,6 +100,15 @@ public class DeleteDataNode extends WritePlanNode {
     return deleteEndTime;
   }
 
+  public long getSearchIndex() {
+    return searchIndex;
+  }
+
+  /** Search index should start from 1 */
+  public void setSearchIndex(long searchIndex) {
+    this.searchIndex = searchIndex;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return new ArrayList<>();
@@ -107,6 +130,67 @@ public class DeleteDataNode extends WritePlanNode {
   @Override
   public List<String> getOutputColumnNames() {
     return null;
+  }
+
+  @Override
+  public int serializedSize() {
+    int size = FIXED_SERIALIZED_SIZE;
+    for (PartialPath path : pathList) {
+      size += ReadWriteIOUtils.sizeToWrite(path.getFullPath());
+    }
+    return size;
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    buffer.putShort(PlanNodeType.DELETE_DATA.getNodeType());
+    buffer.putLong(searchIndex);
+    buffer.putInt(pathList.size());
+    for (PartialPath path : pathList) {
+      WALWriteUtils.write(path.getFullPath(), buffer);
+    }
+    buffer.putLong(deleteStartTime);
+    buffer.putLong(deleteEndTime);
+  }
+
+  public static DeleteDataNode deserializeFromWAL(DataInputStream stream) throws IOException {
+    long searchIndex = stream.readLong();
+    int size = stream.readInt();
+    List<PartialPath> pathList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      try {
+        pathList.add(new PartialPath(ReadWriteIOUtils.readString(stream)));
+      } catch (IllegalPathException e) {
+        throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+      }
+    }
+    long deleteStartTime = stream.readLong();
+    long deleteEndTime = stream.readLong();
+
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(new PlanNodeId(""), pathList, deleteStartTime, deleteEndTime);
+    deleteDataNode.setSearchIndex(searchIndex);
+    return deleteDataNode;
+  }
+
+  public static DeleteDataNode deserializeFromWAL(ByteBuffer buffer) {
+    long searchIndex = buffer.getLong();
+    int size = buffer.getInt();
+    List<PartialPath> pathList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      try {
+        pathList.add(new PartialPath(ReadWriteIOUtils.readString(buffer)));
+      } catch (IllegalPathException e) {
+        throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+      }
+    }
+    long deleteStartTime = buffer.getLong();
+    long deleteEndTime = buffer.getLong();
+
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(new PlanNodeId(""), pathList, deleteStartTime, deleteEndTime);
+    deleteDataNode.setSearchIndex(searchIndex);
+    return deleteDataNode;
   }
 
   @Override
