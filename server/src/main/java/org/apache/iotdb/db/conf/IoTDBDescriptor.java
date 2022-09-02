@@ -239,6 +239,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
 
+    conf.setMaxConnectionForInternalService(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_connection_for_internal_service",
+                String.valueOf(conf.getMaxConnectionForInternalService()))));
+
+    conf.setCoreConnectionForInternalService(
+        Integer.parseInt(
+            properties.getProperty(
+                "core_connection_for_internal_service",
+                String.valueOf(conf.getCoreConnectionForInternalService()))));
+
     conf.setSelectorNumOfClientManager(
         Integer.parseInt(
             properties.getProperty(
