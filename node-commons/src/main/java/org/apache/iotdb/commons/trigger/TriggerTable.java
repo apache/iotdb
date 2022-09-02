@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 
-import net.jcip.annotations.NotThreadSafe;
+import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.HashMap;
 import java.util.Map;
