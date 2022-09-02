@@ -1359,8 +1359,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           @Override
           protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
               throws MetadataException {
-            // shall not traverse nodes inside template
-            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
+            // shall not traverse nodes inside template or measurement ones
+            if (!node.getPartialPath().equals(getCurrentPartialPath(node))
+                || node.isMeasurement()) {
               return true;
             }
 
@@ -1396,8 +1397,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
           @Override
           protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-            // shall not traverse nodes inside template
-            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
+            // shall not traverse nodes inside template or measurement ones
+            if (!node.getPartialPath().equals(getCurrentPartialPath(node))
+                || node.isMeasurement()) {
               return true;
             }
 
@@ -1544,6 +1546,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
           @Override
           protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+            if (node.isMeasurement()) {
+              return true;
+            }
             if (node.getSchemaTemplateId() != NON_TEMPLATE
                 && templateId != ALL_TEMPLATE
                 && node.getSchemaTemplateId() != templateId) {
