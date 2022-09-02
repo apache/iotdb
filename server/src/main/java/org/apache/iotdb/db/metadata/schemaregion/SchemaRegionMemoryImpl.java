@@ -878,6 +878,41 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
+  @Override
+  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (PartialPath path : mtree.getPreDeleteTimeseries(pathPattern)) {
+        try {
+          deleteSingleTimeseriesInBlackList(path);
+          writeToMLog(new DeleteTimeSeriesPlan(Collections.singletonList(path)));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+  }
+
+  private void deleteSingleTimeseriesInBlackList(PartialPath path)
+      throws MetadataException, IOException {
+    Pair<PartialPath, IMeasurementMNode> pair =
+        mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
+
+    IMeasurementMNode measurementMNode = pair.right;
+    removeFromTagInvertedIndex(measurementMNode);
+
+    IMNode node = measurementMNode.getParent();
+
+    if (node.isUseTemplate() && node.getSchemaTemplate().hasSchema(measurementMNode.getName())) {
+      // measurement represent by template doesn't affect the MTree structure and memory control
+      return;
+    }
+
+    mNodeCache.invalidate(node.getPartialPath());
+
+    schemaStatisticsManager.deleteTimeseries(1);
+    seriesNumerLimiter.deleteTimeSeries(1);
+  }
+
   private void recoverRollbackPreDeleteTimeseries(PartialPath path) throws MetadataException {
     IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
     measurementMNode.setPreDeleted(false);

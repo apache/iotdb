@@ -764,6 +764,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Delete all timeseries matching the given path pattern
    *

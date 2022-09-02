@@ -135,6 +135,14 @@ public interface ISchemaRegion {
    * @throws MetadataException
    */
   void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+
+  /**
+   * Delete timeseries in schema black list.
+   *
+   * @param patternTree
+   * @throws MetadataException
+   */
+  void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException;
   // endregion
 
   // region Interfaces for auto create device
