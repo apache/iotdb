@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
@@ -410,7 +412,7 @@ public class ImportCsv extends AbstractCsvTool {
         } else {
           writeDataAlignedByDevice(headerNames, records, failedFilePath);
         }
-      } catch (IOException e) {
+      } catch (IOException | IllegalPathException e) {
         System.out.println("CSV file read exception because: " + e.getMessage());
       }
     } else {
@@ -426,7 +428,8 @@ public class ImportCsv extends AbstractCsvTool {
    * @param failedFilePath the directory to save the failed files
    */
   private static void writeDataAlignedByTime(
-      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath) {
+      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
+      throws IllegalPathException {
     HashMap<String, List<String>> deviceAndMeasurementNames = new HashMap<>();
     HashMap<String, TSDataType> headerTypeMap = new HashMap<>();
     HashMap<String, String> headerNameMap = new HashMap<>();
@@ -538,7 +541,8 @@ public class ImportCsv extends AbstractCsvTool {
    * @param failedFilePath the directory to save the failed files
    */
   private static void writeDataAlignedByDevice(
-      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath) {
+      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
+      throws IllegalPathException {
     HashMap<String, TSDataType> headerTypeMap = new HashMap<>();
     HashMap<String, String> headerNameMap = new HashMap<>();
     parseHeaders(headerNames, null, headerTypeMap, headerNameMap);
@@ -763,7 +767,8 @@ public class ImportCsv extends AbstractCsvTool {
       List<String> headerNames,
       @Nullable HashMap<String, List<String>> deviceAndMeasurementNames,
       HashMap<String, TSDataType> headerTypeMap,
-      HashMap<String, String> headerNameMap) {
+      HashMap<String, String> headerNameMap)
+      throws IllegalPathException {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
@@ -785,9 +790,9 @@ public class ImportCsv extends AbstractCsvTool {
       } else {
         headerNameMap.put(headerName, headerName);
       }
-      String[] split = headerName.split("\\.");
-      String measurementName = split[split.length - 1];
-      String deviceName = StringUtils.join(Arrays.copyOfRange(split, 0, split.length - 1), '.');
+      String[] nodes = PathUtils.splitPathToDetachedNodes(headerNameMap.get(headerName));
+      String measurementName = nodes[nodes.length - 1];
+      String deviceName = StringUtils.join(Arrays.copyOfRange(nodes, 0, nodes.length - 1), '.');
       if (deviceAndMeasurementNames != null) {
         if (!deviceAndMeasurementNames.containsKey(deviceName)) {
           deviceAndMeasurementNames.put(deviceName, new ArrayList<>());
