@@ -61,7 +61,7 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
+  public void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigPhysicalPlanType.CreateRegionGroups.ordinal());
 
     stream.writeInt(regionGroupMap.size());
@@ -77,7 +77,7 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+  public void deserializeImpl(ByteBuffer buffer) throws IOException {
     int storageGroupNum = buffer.getInt();
     for (int i = 0; i < storageGroupNum; i++) {
       String storageGroup = BasicStructureSerDeUtil.readString(buffer);
