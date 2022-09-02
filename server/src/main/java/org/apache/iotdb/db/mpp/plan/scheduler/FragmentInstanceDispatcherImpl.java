@@ -276,19 +276,31 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           }
         }
         ConsensusWriteResponse writeResponse;
-        if (groupId instanceof DataRegionId) {
-          writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
-        } else {
-          writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
+        try {
+          if (groupId instanceof DataRegionId) {
+            writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
+          } else {
+            writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
+          }
+        } catch (Throwable e) {
+          logger.error("dispatch locally write plan {} for region {} error, will redirect to client to try again", planNode, groupId, e);
+          throw new FragmentInstanceDispatchException(
+                  RpcUtils.getStatus(TSStatusCode.NEED_REDIRECTION, e.getMessage()));
+        }
+        if (writeResponse == null) {
+          logger.error("response is null when dispatch locally write plan {} for region {} error, will redirect to client to try again", planNode, groupId);
+          throw new FragmentInstanceDispatchException(
+                  RpcUtils.getStatus(TSStatusCode.NEED_REDIRECTION, "response is null"));
         }
 
         if (!writeResponse.isSuccessful()) {
-          logger.error(writeResponse.getErrorMessage());
+          logger.error("dispatch locally write plan {} for region {} error. error msg: {}, will redirect to client to try again"
+                  ,planNode, groupId, writeResponse.getErrorMessage());
           TSStatus failureStatus =
               writeResponse.getStatus() != null
                   ? writeResponse.getStatus()
                   : RpcUtils.getStatus(
-                      TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResponse.getErrorMessage());
+                      TSStatusCode.NEED_REDIRECTION, writeResponse.getErrorMessage());
           throw new FragmentInstanceDispatchException(failureStatus);
         } else if (hasFailedMeasurement) {
           throw new FragmentInstanceDispatchException(
