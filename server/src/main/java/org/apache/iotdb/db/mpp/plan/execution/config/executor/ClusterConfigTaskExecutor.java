@@ -165,7 +165,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     int storageGroupNum;
     List<String> storageGroupPathPattern =
-        Arrays.asList(countStorageGroupStatement.getPartialPath().getNodes());
+        Arrays.asList(countStorageGroupStatement.getPathPattern().getNodes());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);

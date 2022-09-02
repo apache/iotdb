@@ -789,7 +789,8 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS'],
+							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
 						]
 					},
 					{
@@ -957,17 +958,18 @@ var config = {
 					{
 						title: 'Ecosystem Integration',
 						children: [
-							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
-							['Ecosystem Integration/Grafana Connector','Grafana Connector (Not Recommended)'],
-							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
-							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
-							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
-							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
-							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
-							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
-							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+							['Ecosystem-Integration/Grafana-Plugin','Grafana-Plugin'],
+							['Ecosystem-Integration/Grafana-Connector','Grafana-Connector (Not Recommended)'],
+							['Ecosystem-Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem-Integration/DBeaver','DBeaver-IoTDB'],
+							['Ecosystem-Integration/MapReduce TsFile','MapReduce-TsFile'],
+							['Ecosystem-Integration/Spark-TsFile','Spark-TsFile'],
+							['Ecosystem-Integration/Spark-IoTDB','Spark-IoTDB'],
+							['Ecosystem-Integration/Hive-TsFile','Hive-TsFile'],
+							['Ecosystem-Integration/Flink-IoTDB','Flink-IoTDB'],
+							['Ecosystem-Integration/Flink-TsFile','Flink-TsFile'],
+							['Ecosystem-Integration/Writing-Data-on-HDFS','Writing-Data-on-HDFS'],
+							['Ecosystem-Integration/NiFi-IoTDB','NiFi-IoTDB'],
 						]
 					},
 					{
@@ -1715,6 +1717,7 @@ var config = {
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
 							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
 						]
 					},
 					{
@@ -1882,17 +1885,18 @@ var config = {
 					{
 						title: '系统集成',
 						children: [
-							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
-							['Ecosystem Integration/Grafana Connector','Grafana Connector（不推荐）'],
-							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
-							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
-							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
-							['Ecosystem Integration/MapReduce TsFile','Hadoop-TsFile'],
-							['Ecosystem Integration/Spark IoTDB','Spark-IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive-TsFile'],
-							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
-							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
-							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+							['Ecosystem-Integration/Grafana-Plugin','Grafana-Plugin'],
+							['Ecosystem-Integration/Grafana-Connector','Grafana-Connector（不推荐）'],
+							['Ecosystem-Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem-Integration/DBeaver','DBeaver-IoTDB'],
+							['Ecosystem-Integration/Spark-TsFile','Spark-TsFile'],
+							['Ecosystem-Integration/MapReduce-TsFile','Hadoop-TsFile'],
+							['Ecosystem-Integration/Spark-IoTDB','Spark-IoTDB'],
+							['Ecosystem-Integration/Hive-TsFile','Hive-TsFile'],
+							['Ecosystem-Integration/Flink-TsFile','Flink-TsFile'],
+							['Ecosystem-Integration/Flink-IoTDB','Flink-IoTDB'],
+							['Ecosystem-Integration/Writing-Data-on-HDFS','HDFS集成'],
+							['Ecosystem-Integration/NiFi-IoTDB','NiFi-IoTDB'],
 						]
 					},
 					{

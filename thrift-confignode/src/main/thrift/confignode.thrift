@@ -192,7 +192,7 @@ struct TLoginReq {
 }
 
 struct TCheckUserPrivilegesReq {
-  1: required string username;
+  1: required string username
   2: required list<string> paths
   3: required i32 permission
 }
@@ -266,6 +266,7 @@ struct TConfigNodeInfo {
   2: required string status
   3: required string internalAddress
   4: required i32 internalPort
+  5: required string roleType
 }
 
 struct TShowConfigNodesResp {

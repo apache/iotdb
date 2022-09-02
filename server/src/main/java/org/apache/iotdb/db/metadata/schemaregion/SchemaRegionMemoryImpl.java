@@ -964,6 +964,13 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public int getAllTimeseriesCount(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getAllTimeseriesCount(pathPattern, templateMap, isPrefixMatch);
+  }
+
+  @Override
+  public int getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
       throws MetadataException {
     return mtree.getAllTimeseriesCount(

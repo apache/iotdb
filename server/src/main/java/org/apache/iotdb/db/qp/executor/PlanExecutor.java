@@ -576,7 +576,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateSetSystemMode(SetSystemModePlan plan) {
-    IoTDBDescriptor.getInstance().getConfig().setNodeStatus(plan.getStatus());
+    CommonDescriptor.getInstance().getConfig().setNodeStatus(plan.getStatus());
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
@@ -2449,7 +2449,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void settle(SettlePlan plan) throws StorageEngineException {
-    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException(
           "Current system mode is read only, does not support file settle");
     }

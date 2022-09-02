@@ -147,7 +147,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       storageGroupNum =
           LocalConfigNode.getInstance()
               .getStorageGroupNum(
-                  countStorageGroupStatement.getPartialPath(),
+                  countStorageGroupStatement.getPathPattern(),
                   countStorageGroupStatement.isPrefixPath());
       // build TSBlock
       CountStorageGroupTask.buildTSBlock(storageGroupNum, future);

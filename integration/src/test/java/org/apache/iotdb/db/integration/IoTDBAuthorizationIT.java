@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
@@ -1023,9 +1026,17 @@ public class IoTDBAuthorizationIT {
         } catch (BatchUpdateException e) {
           assertEquals(
               System.lineSeparator()
-                  + "No permissions for this operation CREATE_TIMESERIES for SQL: \"CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64\""
+                  + "No permissions for this operation, please add privilege "
+                  + PrivilegeType.values()[
+                      AuthorityChecker.translateToPermissionId(
+                          Operator.OperatorType.CREATE_TIMESERIES)]
+                  + " for SQL: \"CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64\""
                   + System.lineSeparator()
-                  + "No permissions for this operation CREATE_TIMESERIES for SQL: \"CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64\""
+                  + "No permissions for this operation, please add privilege "
+                  + PrivilegeType.values()[
+                      AuthorityChecker.translateToPermissionId(
+                          Operator.OperatorType.CREATE_TIMESERIES)]
+                  + " for SQL: \"CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64\""
                   + System.lineSeparator(),
               e.getMessage());
         }
@@ -1057,9 +1068,15 @@ public class IoTDBAuthorizationIT {
           System.out.println(e.getMessage());
           assertEquals(
               System.lineSeparator()
-                  + "No permissions for this operation INSERT for SQL: \"insert into root.sg2.d1(timestamp,s1) values (2,1)\""
+                  + "No permissions for this operation, please add privilege "
+                  + PrivilegeType.values()[
+                      AuthorityChecker.translateToPermissionId(Operator.OperatorType.INSERT)]
+                  + " for SQL: \"insert into root.sg2.d1(timestamp,s1) values (2,1)\""
                   + System.lineSeparator()
-                  + "No permissions for this operation INSERT for SQL: \"insert into root.sg2.d1(timestamp,s1) values (4,1)\""
+                  + "No permissions for this operation, please add privilege "
+                  + PrivilegeType.values()[
+                      AuthorityChecker.translateToPermissionId(Operator.OperatorType.INSERT)]
+                  + " for SQL: \"insert into root.sg2.d1(timestamp,s1) values (4,1)\""
                   + System.lineSeparator(),
               e.getMessage());
         }

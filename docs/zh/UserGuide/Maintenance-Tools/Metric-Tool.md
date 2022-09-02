@@ -87,15 +87,15 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 4.3.2. Task
 
-| Metric                  | Tag                                                                           | level     | 说明                            | 示例                                                                                               |
-| ----------------------- | ----------------------------------------------------------------------------- | --------- | ------------------------------- | -------------------------------------------------------------------------------------------------- |
-| queue                   | name="compaction_inner/compaction_cross/flush",<br />status="running/waiting" | important | 当前时间任务数                  | queue{name="flush",status="waiting",} 0.0<br/>queue{name="compaction/flush",status="running",} 0.0 |
-| cost_task_seconds_count | name="inner_compaction/cross_compaction/flush"                                | important | 任务累计发生次数                | cost_task_seconds_count{name="flush",} 1.0                                                         |
-| cost_task_seconds_max   | name="inner_compaction/cross_compaction/flush"                                | important | 到目前为止任务耗时(s)最大的一次 | cost_task_seconds_max{name="flush",} 0.363                                                         |
-| cost_task_seconds_sum   | name="inner_compaction/cross_compaction/flush"                                | important | 任务累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                                                         |
-| data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | 合并文件时写入量                | data_written{name="compaction",type="total",} 10240                                                |
-| data_read               | name="compaction"                                                             | important | 合并文件时的读取量              | data_read={name="compaction",} 10240                                                               |
-| compaction_task_count   | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross"  | important | 合并任务个数                    | compaction_task_count{name="inner_compaction",type="sequence",} 1                                  |
+| Metric                        | Tag                                                                           | level     | 说明                            | 示例                                                                                               |
+| ----------------------------- | ----------------------------------------------------------------------------- | --------- | ------------------------------- | -------------------------------------------------------------------------------------------------- |
+| queue                         | name="compaction_inner/compaction_cross/flush",<br />status="running/waiting" | important | 当前时间任务数                  | queue{name="flush",status="waiting",} 0.0<br/>queue{name="compaction/flush",status="running",} 0.0 |
+| cost_task_seconds_count       | name="inner_compaction/cross_compaction/flush"                                | important | 任务累计发生次数                | cost_task_seconds_count{name="flush",} 1.0                                                         |
+| cost_task_seconds_max         | name="inner_compaction/cross_compaction/flush"                                | important | 到目前为止任务耗时(s)最大的一次 | cost_task_seconds_max{name="flush",} 0.363                                                         |
+| cost_task_seconds_sum         | name="inner_compaction/cross_compaction/flush"                                | important | 任务累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                                                         |
+| data_written_total            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | 合并文件时写入量                | data_written_total{name="compaction",type="total",} 10240                                                |
+| data_read_total               | name="compaction"                                                             | important | 合并文件时的读取量              | data_read_total{name="compaction",} 10240                                                               |
+| compaction_task_count_total   | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross"  | important | 合并任务个数                    | compaction_task_count_total{name="inner_compaction",type="sequence",} 1                                  |
 
 #### 4.3.3. 内存占用
 
@@ -173,9 +173,9 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 | Metric                             | Tag                                           | level     | 说明                   | 示例                                                                                |
 | ---------------------------------- | --------------------------------------------- | --------- | ---------------------- | ----------------------------------------------------------------------------------- |
-| jvm_classes_unloaded_classes_total | 无                                            | important | jvm累计卸载的class数量 | jvm_classes_unloaded_classes_total 680.0                                            |
+| jvm_classes_unloaded_classes       | 无                                            | important | jvm累计卸载的class数量 | jvm_classes_unloaded_classes 680.0                                            |
 | jvm_classes_loaded_classes         | 无                                            | important | jvm累计加载的class数量 | jvm_classes_loaded_classes 5975.0                                                   |
-| jvm_compilation_time_ms_total      | {compiler="HotSpot 64-Bit Tiered Compilers",} | important | jvm耗费在编译上的时间  | jvm_compilation_time_ms_total{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
+| jvm_compilation_time_ms            | {compiler="HotSpot 64-Bit Tiered Compilers",} | important | jvm耗费在编译上的时间  | jvm_compilation_time_ms{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
 
 #### 4.4.2. 文件（File）
 
