@@ -126,7 +126,7 @@ public class ProcedureManager {
   public TSStatus deleteTimeSeries(PathPatternTree patternTree) {
     long procedureId;
     synchronized (this) {
-      if (DeleteTimeSeriesProcedure.checkIsOverlapWithRunningTasks(patternTree)) {
+      if (env.checkIsOverlapWithRunningTasks(patternTree)) {
         return RpcUtils.getStatus(
             TSStatusCode.OVERLAP_WITH_EXISTING_DELETE_TIMESERIES_TASK,
             "Some other task is deleting some target timeseries.");

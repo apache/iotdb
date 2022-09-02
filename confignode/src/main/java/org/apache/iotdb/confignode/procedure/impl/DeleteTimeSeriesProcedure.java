@@ -25,47 +25,33 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.DeleteTimeSeriesState;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DeleteTimeSeriesProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteTimeSeriesState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteTimeSeriesProcedure.class);
 
-  private static final int retryThreshold = 5;
-
-  private static Map<Long, PathPatternTree> RUNNING_TASKS = new ConcurrentHashMap<>();
+  private static final int RETRY_THRESHOLD = 5;
 
   private PathPatternTree patternTree;
 
-  public static boolean checkIsOverlapWithRunningTasks(PathPatternTree patternTree) {
-    for (PathPatternTree existingPatternTree : RUNNING_TASKS.values()) {
-      if (patternTree.isOverlapWith(existingPatternTree)) {
-        return false;
-      }
-    }
-    return true;
+  public DeleteTimeSeriesProcedure() {
+    super();
   }
-
-  public DeleteTimeSeriesProcedure() {}
 
   public DeleteTimeSeriesProcedure(PathPatternTree patternTree) {
+    super();
     this.patternTree = patternTree;
-  }
-
-  public static void putRunningTask(long procId, PathPatternTree patternTree) {
-    RUNNING_TASKS.put(procId, patternTree);
-  }
-
-  public static void removeRunningTask(long procId) {
-    RUNNING_TASKS.remove(procId);
   }
 
   @Override
@@ -81,17 +67,50 @@ public class DeleteTimeSeriesProcedure
       throws IOException, InterruptedException, ProcedureException {}
 
   @Override
+  protected boolean isRollbackSupported(DeleteTimeSeriesState deleteTimeSeriesState) {
+    return true;
+  }
+
+  @Override
   protected DeleteTimeSeriesState getState(int stateId) {
-    return null;
+    return DeleteTimeSeriesState.values()[stateId];
   }
 
   @Override
   protected int getStateId(DeleteTimeSeriesState deleteTimeSeriesState) {
-    return 0;
+    return deleteTimeSeriesState.ordinal();
   }
 
   @Override
   protected DeleteTimeSeriesState getInitialState() {
-    return null;
+    return DeleteTimeSeriesState.CONSTRUCT_BLACK_LIST;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeInt(ProcedureFactory.ProcedureType.DELETE_TIMESERIES_PROCEDURE.ordinal());
+    super.serialize(stream);
+    patternTree.serialize(stream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    patternTree = PathPatternTree.deserialize(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    DeleteTimeSeriesProcedure that = (DeleteTimeSeriesProcedure) o;
+    return this.getProcId() == that.getProcId()
+        && this.getState() == that.getState()
+        && patternTree.equals(that.patternTree);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getProcId(), getState(), patternTree);
   }
 }
