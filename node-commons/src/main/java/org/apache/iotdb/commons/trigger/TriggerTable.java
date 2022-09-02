@@ -19,42 +19,46 @@
 
 package org.apache.iotdb.commons.trigger;
 
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+
+import net.jcip.annotations.NotThreadSafe;
+
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** This Class used to save the information of Triggers and implements methods of manipulate it. */
+@NotThreadSafe
 public class TriggerTable {
   private final Map<String, TriggerInformation> triggerTable;
 
   public TriggerTable() {
-    triggerTable = new ConcurrentHashMap<>();
+    triggerTable = new HashMap<>();
   }
 
   public TriggerTable(Map<String, TriggerInformation> triggerTable) {
     this.triggerTable = triggerTable;
   }
 
+  // for createTrigger
   public void addTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
     triggerTable.put(triggerName, triggerInformation);
   }
 
+  // for dropTrigger
   public void deleteTriggerInformation(String triggerName) {
     triggerTable.remove(triggerName);
   }
 
-  public Map getAllTriggerStates() {
-    // After we get the size of TriggerTable, maybe more values has put in it before we put all
-    // TriggerStates in map of allTriggerStates.
-    // Mostly we create only one Trigger at a time, so the initial size is 'triggerTable.size() +
-    // 1' here.
-    Map allTriggerStates = new HashMap(triggerTable.size() + 1);
-    triggerTable.forEach((k, v) -> allTriggerStates.put(k, v.getTriggerState()));
+  // for showTrigger
+  public Map<String, TTriggerState> getAllTriggerStates() {
+    Map<String, TTriggerState> allTriggerStates = new HashMap<>(triggerTable.size());
 
+    triggerTable.forEach((k, v) -> allTriggerStates.put(k, v.getTriggerState()));
     return allTriggerStates;
   }
 
-  public Map getTable() {
+  // for getTriggerTable
+  public Map<String, TriggerInformation> getTable() {
     return triggerTable;
   }
 }
