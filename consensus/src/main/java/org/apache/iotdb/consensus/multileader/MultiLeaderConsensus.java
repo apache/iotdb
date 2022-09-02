@@ -274,6 +274,17 @@ public class MultiLeaderConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse removePeer(ConsensusGroupId groupId, Peer peer) {
+    MultiLeaderServerImpl impl = stateMachineMap.get(groupId);
+    if (impl == null) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new ConsensusGroupNotExistException(groupId))
+          .build();
+    }
+    try {
+      impl.notifyPeersToRemoveSyncLogChannel(peer);
+    } catch (ConsensusGroupAddPeerException e) {
+      throw new RuntimeException(e);
+    }
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 

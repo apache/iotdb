@@ -38,6 +38,8 @@ import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelRes;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
+import org.apache.iotdb.consensus.multileader.thrift.TRemoveSyncLogChannelReq;
+import org.apache.iotdb.consensus.multileader.thrift.TRemoveSyncLogChannelRes;
 import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentReq;
 import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentRes;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
@@ -198,6 +200,33 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       responseStatus.setMessage(e.getMessage());
     }
     resultHandler.onComplete(new TBuildSyncLogChannelRes(responseStatus));
+  }
+
+  @Override
+  public void removeSyncLogChannel(
+      TRemoveSyncLogChannelReq req, AsyncMethodCallback<TRemoveSyncLogChannelRes> resultHandler)
+      throws TException {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    MultiLeaderServerImpl impl = consensus.getImpl(groupId);
+    if (impl == null) {
+      String message =
+          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+      logger.error(message);
+      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage(message);
+      resultHandler.onComplete(new TRemoveSyncLogChannelRes(status));
+      return;
+    }
+    TSStatus responseStatus;
+    try {
+      impl.removeSyncLogChannel(new Peer(groupId, req.endPoint));
+      responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (ConsensusGroupAddPeerException e) {
+      responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      responseStatus.setMessage(e.getMessage());
+    }
+    resultHandler.onComplete(new TRemoveSyncLogChannelRes(responseStatus));
   }
 
   @Override

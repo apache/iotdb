@@ -39,6 +39,8 @@ import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelReq;
 import org.apache.iotdb.consensus.multileader.thrift.TBuildSyncLogChannelRes;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.multileader.thrift.TInactivatePeerRes;
+import org.apache.iotdb.consensus.multileader.thrift.TRemoveSyncLogChannelReq;
+import org.apache.iotdb.consensus.multileader.thrift.TRemoveSyncLogChannelRes;
 import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentReq;
 import org.apache.iotdb.consensus.multileader.thrift.TSendSnapshotFragmentRes;
 import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadReq;
@@ -62,6 +64,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -327,7 +330,10 @@ public class MultiLeaderServerImpl {
 
   public void notifyPeersToBuildSyncLogChannel(Peer targetPeer)
       throws ConsensusGroupAddPeerException {
-    for (Peer peer : this.configuration) {
+    // The configuration will be modified during iterating because we will add the targetPeer to
+    // configuration
+    List<Peer> currentMembers = new ArrayList<>(this.configuration);
+    for (Peer peer : currentMembers) {
       if (peer.equals(thisNode)) {
         // use searchIndex for thisNode as the initialSyncIndex because targetPeer will load the
         // snapshot produced by thisNode
@@ -347,7 +353,36 @@ public class MultiLeaderServerImpl {
           }
         } catch (IOException | TException e) {
           throw new ConsensusGroupAddPeerException(
-              String.format("error when activating %s", peer), e);
+              String.format("error when build sync log to %s", peer), e);
+        }
+      }
+    }
+  }
+
+  public void notifyPeersToRemoveSyncLogChannel(Peer targetPeer)
+      throws ConsensusGroupAddPeerException {
+    // The configuration will be modified during iterating because we will add the targetPeer to
+    // configuration
+    List<Peer> currentMembers = new ArrayList<>(this.configuration);
+    for (Peer peer : currentMembers) {
+      if (peer.equals(thisNode)) {
+        removeSyncLogChannel(targetPeer);
+      } else {
+        // use RPC to tell other peers to build sync log channel to target peer
+        try (SyncMultiLeaderServiceClient client =
+            syncClientManager.borrowClient(peer.getEndpoint())) {
+          TRemoveSyncLogChannelRes res =
+              client.removeSyncLogChannel(
+                  new TRemoveSyncLogChannelReq(
+                      targetPeer.getGroupId().convertToTConsensusGroupId(),
+                      targetPeer.getEndpoint()));
+          if (!isSuccess(res.status)) {
+            throw new ConsensusGroupAddPeerException(
+                String.format("remove sync log channel failed from %s to %s", peer, targetPeer));
+          }
+        } catch (IOException | TException e) {
+          throw new ConsensusGroupAddPeerException(
+              String.format("error when removing sync log channel to %s", peer), e);
         }
       }
     }
@@ -367,6 +402,16 @@ public class MultiLeaderServerImpl {
     // step 1, build sync channel in LogDispatcher
     logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex);
     // step 2, update configuration
+    configuration.add(targetPeer);
+    if (!persistConfigurationUpdate()) {
+      throw new ConsensusGroupAddPeerException(
+          String.format("error when build sync log channel to %s", targetPeer));
+    }
+  }
+
+  public void removeSyncLogChannel(Peer targetPeer) throws ConsensusGroupAddPeerException {
+    logDispatcher.removeLogDispatcherThread(targetPeer);
+    configuration.remove(targetPeer);
     if (!persistConfigurationUpdate()) {
       throw new ConsensusGroupAddPeerException(
           String.format("error when build sync log channel to %s", targetPeer));
