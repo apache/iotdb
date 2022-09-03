@@ -100,6 +100,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -745,6 +746,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         ctx.triggerType().STATELESS() != null ? TriggerType.STATELESS : TriggerType.STATEFUL,
         parsePrefixPath(ctx.prefixPath()),
         attributes);
+  }
+
+  @Override
+  public Statement visitDropTrigger(IoTDBSqlParser.DropTriggerContext ctx) {
+    return new DropTriggerStatement(parseIdentifier(ctx.triggerName.getText()));
   }
 
   // Show Child Paths =====================================================================

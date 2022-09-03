@@ -20,76 +20,25 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
-import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
-public class CreateTriggerStatement extends Statement implements IConfigStatement {
-
+public class DropTriggerStatement extends Statement implements IConfigStatement {
   private final String triggerName;
 
-  private final String className;
-
-  private final TriggerEvent triggerEvent;
-
-  private final TriggerType triggerType;
-
-  private final PartialPath pathPattern;
-
-  private final Map<String, String> attributes;
-
-  public CreateTriggerStatement(
-      String triggerName,
-      String className,
-      TriggerEvent triggerEvent,
-      TriggerType triggerType,
-      PartialPath pathPattern,
-      Map<String, String> attributes) {
+  public DropTriggerStatement(String triggerName) {
     super();
-    statementType = StatementType.CREATE_TRIGGER;
+    statementType = StatementType.DROP_TRIGGER;
     this.triggerName = triggerName;
-    this.className = className;
-    this.triggerEvent = triggerEvent;
-    this.triggerType = triggerType;
-    this.pathPattern = pathPattern;
-    this.attributes = attributes;
   }
 
   public String getTriggerName() {
     return triggerName;
-  }
-
-  public String getClassName() {
-    return className;
-  }
-
-  public TriggerEvent getTriggerEvent() {
-    return triggerEvent;
-  }
-
-  public TriggerType getTriggerType() {
-    return triggerType;
-  }
-
-  public PartialPath getPathPattern() {
-    return pathPattern;
-  }
-
-  public Map<String, String> getAttributes() {
-    return attributes;
-  }
-
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateTrigger(this, context);
   }
 
   @Override
