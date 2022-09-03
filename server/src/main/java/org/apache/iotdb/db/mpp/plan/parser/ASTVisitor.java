@@ -114,6 +114,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -751,6 +752,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitDropTrigger(IoTDBSqlParser.DropTriggerContext ctx) {
     return new DropTriggerStatement(parseIdentifier(ctx.triggerName.getText()));
+  }
+
+  @Override
+  public Statement visitShowTriggers(IoTDBSqlParser.ShowTriggersContext ctx) {
+    return new ShowTriggersStatement();
   }
 
   // Show Child Paths =====================================================================

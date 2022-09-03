@@ -75,6 +75,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTriggersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -893,6 +894,22 @@ public class ConfigNodeClient
         TSStatus status = client.dropTrigger(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TShowTriggersResp showTriggers() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowTriggersResp showTriggersResp = client.showTriggers();
+        if (!updateConfigNodeLeader(showTriggersResp.getStatus())) {
+          return showTriggersResp;
         }
       } catch (TException e) {
         configLeader = null;

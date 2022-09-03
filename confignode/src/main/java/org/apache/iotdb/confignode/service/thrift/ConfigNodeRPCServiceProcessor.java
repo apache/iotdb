@@ -100,6 +100,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTriggersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -481,6 +482,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TSStatus dropTrigger(TDropTriggerReq req) throws TException {
     // todo : implementation
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public TShowTriggersResp showTriggers() throws TException {
+    // todo: implementation
+    return new TShowTriggersResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), null);
   }
 
   @Override

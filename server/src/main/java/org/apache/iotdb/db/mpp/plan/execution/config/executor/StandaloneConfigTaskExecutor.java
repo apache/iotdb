@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
 import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
@@ -257,6 +259,14 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showTriggers() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // todo: get triggerTable
+    ShowTriggersTask.buildTsBlock(new TriggerTable(), future);
     return future;
   }
 

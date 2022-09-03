@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
 import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
@@ -43,6 +44,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTriggersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -60,6 +62,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowDataNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
@@ -291,6 +294,28 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (TException | IOException e) {
       future.setException(e);
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showTriggers() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TShowTriggersResp showTriggersResp = new TShowTriggersResp();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      showTriggersResp = client.showTriggers();
+      if (showTriggersResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                showTriggersResp.getStatus().message, showTriggersResp.getStatus().code));
+        return future;
+      }
+    } catch (TException | IOException e) {
+      future.setException(e);
+    }
+    // build TSBlock
+    // convert triggerTable
+    ShowTriggersTask.buildTsBlock(new TriggerTable(), future);
     return future;
   }
 
