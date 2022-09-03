@@ -47,8 +47,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class InsertRowPlan extends InsertPlan {
 
@@ -341,18 +343,25 @@ public class InsertRowPlan extends InsertPlan {
     serializeMeasurementsAndValues(stream);
   }
 
+  /**
+   * Serialize measurements and values, ignoring failed time series and null value
+   *
+   * @param stream
+   * @throws IOException
+   */
   void serializeMeasurementsAndValues(DataOutputStream stream) throws IOException {
-    stream.writeInt(measurements.length - getFailedMeasurementNumber());
+    Set<Integer> ignoredIndex = getIgnoredIndexSet();
+    stream.writeInt(measurements.length - ignoredIndex.size());
 
-    for (String m : measurements) {
-      if (m != null) {
-        putString(stream, m);
+    for (int i = 0; i < measurements.length; i++) {
+      if (!ignoredIndex.contains(i)) {
+        putString(stream, measurements[i]);
       }
     }
 
     try {
-      stream.writeInt(values.length - getFailedMeasurementNumber());
-      putValues(stream);
+      stream.writeInt(values.length - ignoredIndex.size());
+      putValues(stream, ignoredIndex);
     } catch (QueryProcessException e) {
       throw new IOException(e);
     }
@@ -364,13 +373,10 @@ public class InsertRowPlan extends InsertPlan {
     stream.write((byte) (isAligned ? 1 : 0));
   }
 
-  private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
+  private void putValues(DataOutputStream outputStream, Set<Integer> ignoredIndex)
+      throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
-      if (values[i] == null) {
-        if(measurements[i]!=null){
-          // if it is not a failed measurement
-          ReadWriteIOUtils.write(TYPE_NULL, outputStream);
-        }
+      if (ignoredIndex.contains(i)) {
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -406,13 +412,10 @@ public class InsertRowPlan extends InsertPlan {
     }
   }
 
-  private void putValues(ByteBuffer buffer) throws QueryProcessException {
+  private void putValues(ByteBuffer buffer, Set<Integer> ignoredIndex)
+      throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
-      if (values[i] == null) {
-        if(measurements[i]!=null){
-          // if it is not a failed measurement
-          ReadWriteIOUtils.write(TYPE_NULL, buffer);
-        }
+      if (ignoredIndex.contains(i)) {
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -487,6 +490,16 @@ public class InsertRowPlan extends InsertPlan {
     }
   }
 
+  private Set<Integer> getIgnoredIndexSet() {
+    Set<Integer> set = new HashSet<>(getFailedIndices());
+    for (int i = 0; i < measurements.length; i++) {
+      if (values[i] == null) {
+        set.add(i);
+      }
+    }
+    return set;
+  }
+
   @Override
   public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.INSERT.ordinal();
@@ -501,16 +514,17 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   void serializeMeasurementsAndValues(ByteBuffer buffer) {
-    buffer.putInt(measurements.length - getFailedMeasurementNumber());
+    Set<Integer> ignoredIndex = getIgnoredIndexSet();
+    buffer.putInt(measurements.length - ignoredIndex.size());
 
-    for (String measurement : measurements) {
-      if (measurement != null) {
-        putString(buffer, measurement);
+    for (int i = 0; i < measurements.length; i++) {
+      if (!ignoredIndex.contains(i)) {
+        putString(buffer, measurements[i]);
       }
     }
     try {
-      buffer.putInt(values.length - getFailedMeasurementNumber());
-      putValues(buffer);
+      buffer.putInt(values.length - ignoredIndex.size());
+      putValues(buffer, ignoredIndex);
     } catch (QueryProcessException e) {
       logger.error("Failed to serialize values for {}", this, e);
     }
