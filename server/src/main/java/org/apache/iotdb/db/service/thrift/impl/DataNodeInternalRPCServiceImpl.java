@@ -24,24 +24,18 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
@@ -52,10 +46,8 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
@@ -65,11 +57,9 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.metrics.MetricService;
@@ -123,7 +113,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -137,8 +126,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
+  private final RegionManager regionManager;
+
   public DataNodeInternalRPCServiceImpl() {
     super();
+    regionManager = new RegionManager(schemaEngine, storageEngine);
   }
 
   @Override
@@ -208,60 +200,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     LOGGER.info("receive PlanNode to group[{}]", req.getConsensusGroupId());
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-    TSendPlanNodeResp response = new TSendPlanNodeResp();
-    ConsensusWriteResponse writeResponse;
-
     PlanNode planNode = PlanNodeType.deserialize(req.planNode.body);
-    boolean hasFailedMeasurement = false;
-    String partialInsertMessage = null;
-    if (planNode instanceof InsertNode) {
-      InsertNode insertNode = (InsertNode) planNode;
-      try {
-        SchemaValidator.validate(insertNode);
-      } catch (SemanticException e) {
-        response.setAccepted(false);
-        response.setMessage(e.getMessage());
-        return response;
-      }
-      hasFailedMeasurement = insertNode.hasFailedMeasurements();
-      if (hasFailedMeasurement) {
-        partialInsertMessage =
-            String.format(
-                "Fail to insert measurements %s caused by %s",
-                insertNode.getFailedMeasurements(), insertNode.getFailedMessages());
-        LOGGER.warn(partialInsertMessage);
-      }
-    }
-    if (groupId instanceof DataRegionId) {
-      writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
-    } else {
-      writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
-    }
-    // TODO need consider more status
-    if (writeResponse.getStatus() != null) {
-      response.setAccepted(
-          !hasFailedMeasurement
-              && TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                  == writeResponse.getStatus().getCode());
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != writeResponse.getStatus().getCode()) {
-        response.setMessage(writeResponse.getStatus().message);
-        response.setStatus(writeResponse.getStatus());
-      } else if (hasFailedMeasurement) {
-        response.setMessage(partialInsertMessage);
-        response.setStatus(
-            RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
-      } else {
-        response.setMessage(writeResponse.getStatus().message);
-      }
-    } else {
-      LOGGER.error(
-          "Something wrong happened while calling consensus layer's write API.",
-          writeResponse.getException());
-      response.setAccepted(false);
-      response.setMessage(writeResponse.getException().getMessage());
-    }
-
-    return response;
+    return regionManager.executePlanNode(groupId, planNode);
   }
 
   @Override
@@ -308,73 +248,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus createSchemaRegion(TCreateSchemaRegionReq req) {
-    TSStatus tsStatus;
-    try {
-      PartialPath storageGroupPartitionPath = new PartialPath(req.getStorageGroup());
-      TRegionReplicaSet regionReplicaSet = req.getRegionReplicaSet();
-      SchemaRegionId schemaRegionId = new SchemaRegionId(regionReplicaSet.getRegionId().getId());
-      schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
-      List<Peer> peers = new ArrayList<>();
-      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-        TEndPoint endpoint =
-            new TEndPoint(
-                dataNodeLocation.getSchemaRegionConsensusEndPoint().getIp(),
-                dataNodeLocation.getSchemaRegionConsensusEndPoint().getPort());
-        peers.add(new Peer(schemaRegionId, endpoint));
-      }
-      ConsensusGenericResponse consensusGenericResponse =
-          SchemaRegionConsensusImpl.getInstance().createPeer(schemaRegionId, peers);
-      if (consensusGenericResponse.isSuccess()) {
-        tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      } else {
-        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
-        tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
-      }
-    } catch (IllegalPathException e1) {
-      LOGGER.error(
-          "Create Schema Region {} failed because path is illegal.", req.getStorageGroup());
-      tsStatus = new TSStatus(TSStatusCode.PATH_ILLEGAL.getStatusCode());
-      tsStatus.setMessage("Create Schema Region failed because storageGroup path is illegal.");
-    } catch (MetadataException e2) {
-      LOGGER.error(
-          "Create Schema Region {} failed because {}", req.getStorageGroup(), e2.getMessage());
-      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
-      tsStatus.setMessage(
-          String.format("Create Schema Region failed because of %s", e2.getMessage()));
-    }
-    return tsStatus;
+    return regionManager.createSchemaRegion(req.getRegionReplicaSet(), req.getStorageGroup());
   }
 
   @Override
   public TSStatus createDataRegion(TCreateDataRegionReq req) {
-    TSStatus tsStatus;
-    try {
-      TRegionReplicaSet regionReplicaSet = req.getRegionReplicaSet();
-      DataRegionId dataRegionId = new DataRegionId(regionReplicaSet.getRegionId().getId());
-      storageEngine.createDataRegion(dataRegionId, req.storageGroup, req.ttl);
-      List<Peer> peers = new ArrayList<>();
-      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-        TEndPoint endpoint =
-            new TEndPoint(
-                dataNodeLocation.getDataRegionConsensusEndPoint().getIp(),
-                dataNodeLocation.getDataRegionConsensusEndPoint().getPort());
-        peers.add(new Peer(dataRegionId, endpoint));
-      }
-      ConsensusGenericResponse consensusGenericResponse =
-          DataRegionConsensusImpl.getInstance().createPeer(dataRegionId, peers);
-      if (consensusGenericResponse.isSuccess()) {
-        tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      } else {
-        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
-        tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
-      }
-    } catch (DataRegionException e) {
-      LOGGER.error(
-          "Create Data Region {} failed because {}", req.getStorageGroup(), e.getMessage());
-      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
-      tsStatus.setMessage(String.format("Create Data Region failed because of %s", e.getMessage()));
-    }
-    return tsStatus;
+    return regionManager.createDataRegion(
+        req.getRegionReplicaSet(), req.getStorageGroup(), req.getTtl());
   }
 
   @Override
@@ -604,7 +484,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         return RpcUtils.getStatus(
             TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
       }
-      StorageEngineV2.getInstance().deleteDataRegion((DataRegionId) consensusGroupId);
+      return regionManager.deleteDataRegion((DataRegionId) consensusGroupId);
     } else {
       ConsensusGenericResponse response =
           SchemaRegionConsensusImpl.getInstance().deletePeer(consensusGroupId);
@@ -613,14 +493,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         return RpcUtils.getStatus(
             TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
       }
-      try {
-        SchemaEngine.getInstance().deleteSchemaRegion((SchemaRegionId) consensusGroupId);
-      } catch (MetadataException e) {
-        LOGGER.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
-        return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
-      }
+      return regionManager.deleteSchemaRegion((SchemaRegionId) consensusGroupId);
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
   }
 
   public TSStatus changeRegionLeader(TRegionLeaderChangeReq req) throws TException {
@@ -729,23 +603,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    LOGGER.info("start to create new region {}", regionId);
-    try {
-      if (regionId instanceof DataRegionId) {
-        storageEngine.createDataRegion((DataRegionId) regionId, storageGroup, ttl);
-      } else {
-        schemaEngine.createSchemaRegion(new PartialPath(storageGroup), (SchemaRegionId) regionId);
-      }
-    } catch (Exception e) {
-      LOGGER.error("create new region {} error", regionId, e);
-      status.setCode(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
-      status.setMessage("create new region " + regionId + "error,  exception:" + e.getMessage());
-      return status;
-    }
-    status.setMessage("create new region " + regionId + " succeed");
-    LOGGER.info("succeed to create new region {}", regionId);
-    return status;
+    return regionManager.createNewRegion(regionId, storageGroup, ttl);
   }
 
   @Override
