@@ -76,6 +76,10 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
     }
   }
 
+  public void serialize(DataOutputStream stream) throws IOException {
+    serializeImpl(stream);
+  }
+
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int storageGroupNum = buffer.getInt();
@@ -90,6 +94,11 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
         regionGroupMap.get(storageGroup).add(regionReplicaSet);
       }
     }
+  }
+
+  public void deserialize(ByteBuffer buffer) throws IOException {
+    buffer.getInt();
+    deserializeImpl(buffer);
   }
 
   @Override

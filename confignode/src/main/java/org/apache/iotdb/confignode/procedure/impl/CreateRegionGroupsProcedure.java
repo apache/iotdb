@@ -26,17 +26,30 @@ import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Map;
 
 public class CreateRegionGroupsProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, CreateRegionGroupsState> {
+  private static final Logger LOG = LoggerFactory.getLogger(CreateRegionGroupsProcedure.class);
 
-  private final CreateRegionGroupsPlan createRegionGroupsPlan;
+  private CreateRegionGroupsPlan createRegionGroupsPlan;
   // Map<TConsensusGroupId, Failed RegionReplicas>
   private Map<TConsensusGroupId, TRegionReplicaSet> failedRegions;
 
+  public CreateRegionGroupsProcedure() {
+    super();
+  }
+
   public CreateRegionGroupsProcedure(CreateRegionGroupsPlan createRegionGroupsPlan) {
+    super();
     this.createRegionGroupsPlan = createRegionGroupsPlan;
   }
 
@@ -131,5 +144,36 @@ public class CreateRegionGroupsProcedure
   @Override
   protected CreateRegionGroupsState getInitialState() {
     return CreateRegionGroupsState.CREATE_REGION_GROUPS;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeInt(ProcedureFactory.ProcedureType.CREATE_REGION_GROUPS.ordinal());
+    super.serialize(stream);
+
+    createRegionGroupsPlan.serialize(stream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+
+    createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    try {
+      createRegionGroupsPlan.deserialize(byteBuffer);
+    } catch (IOException e) {
+      LOG.error("Error in deserialize CreateRegionGroupsProcedure", e);
+    }
+  }
+
+  @Override
+  public boolean equals(Object that) {
+    if (that instanceof CreateRegionGroupsProcedure) {
+      CreateRegionGroupsProcedure thatProc = (CreateRegionGroupsProcedure) that;
+      return thatProc.getProcId() == this.getProcId()
+          && thatProc.getState() == this.getState()
+          && thatProc.createRegionGroupsPlan.equals(this.createRegionGroupsPlan);
+    }
+    return false;
   }
 }

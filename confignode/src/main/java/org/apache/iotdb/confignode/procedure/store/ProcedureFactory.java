@@ -56,6 +56,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case REGION_MIGRATE_PROCEDURE:
         procedure = new RegionMigrateProcedure();
         break;
+      case CREATE_REGION_GROUPS:
+        procedure = new CreateRegionGroupsProcedure();
+        break;
       default:
         throw new IOException("unknown Procedure type: " + typeNum);
     }
