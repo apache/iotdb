@@ -634,10 +634,7 @@ service IConfigNodeRPCService {
   common.TSStatus dropTrigger(TDropTriggerReq req)
 
   /**
-     * Remove a trigger on all online ConfigNodes and DataNodes
-     *
-     * @return SUCCESS_STATUS if the function was removed successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     * Return the trigger table of config leader
      */
   TShowTriggersResp showTriggers()
 
