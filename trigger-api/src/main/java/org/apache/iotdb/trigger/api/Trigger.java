@@ -23,44 +23,46 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 
 public interface Trigger {
 
-    /**
-     * This method is mainly used to validate {@link TriggerAttributes} before calling
-     * {@link Trigger#onCreate(TriggerAttributes)}.
-     * @param attributes TriggerAttributes
-     * @throws Exception e
-     */
-    default void validate(TriggerAttributes attributes) throws Exception{}
+  /**
+   * This method is mainly used to validate {@link TriggerAttributes} before calling {@link
+   * Trigger#onCreate(TriggerAttributes)}.
+   *
+   * @param attributes TriggerAttributes
+   * @throws Exception e
+   */
+  default void validate(TriggerAttributes attributes) throws Exception {}
 
-    /**
-     * This method will be called when creating a trigger after validation.
-     * @param attributes TriggerAttributes
-     * @throws Exception e
-     */
-    default void onCreate(TriggerAttributes attributes) throws Exception {}
+  /**
+   * This method will be called when creating a trigger after validation.
+   *
+   * @param attributes TriggerAttributes
+   * @throws Exception e
+   */
+  default void onCreate(TriggerAttributes attributes) throws Exception {}
 
-    /**
-     * This method will be called when dropping a trigger.
-     * @throws Exception e
-     */
-    default void onDrop() throws Exception {}
+  /**
+   * This method will be called when dropping a trigger.
+   *
+   * @throws Exception e
+   */
+  default void onDrop() throws Exception {}
 
-    /**
-     * When restarting a DataNode, Triggers that have been registered will be restored
-     * and this method will be called during the process of restoring.
-     * @throws Exception e
-     */
-    default void restore() throws Exception{}
+  /**
+   * When restarting a DataNode, Triggers that have been registered will be restored and this method
+   * will be called during the process of restoring.
+   *
+   * @throws Exception e
+   */
+  default void restore() throws Exception {}
 
-    /**
-     *
-     * @param tablet see {@link Tablet} for detailed information of data structure.
-     *               Data that is inserted will be constructed as a Tablet and you can
-     *               define process logic with {@link Tablet}.
-     * @return true if successfully fired
-     * @throws Exception e
-     */
-    default boolean fire(Tablet tablet) throws Exception{
-        return true;
-    }
-
+  /**
+   * @param tablet see {@link Tablet} for detailed information of data structure. Data that is
+   *     inserted will be constructed as a Tablet and you can define process logic with {@link
+   *     Tablet}.
+   * @return true if successfully fired
+   * @throws Exception e
+   */
+  default boolean fire(Tablet tablet) throws Exception {
+    return true;
+  }
 }
