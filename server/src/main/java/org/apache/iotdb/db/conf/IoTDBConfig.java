@@ -910,6 +910,15 @@ public class IoTDBConfig {
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
+  /** the maximum number of clients that can be applied for a node's InternalService */
+  private int maxConnectionForInternalService = 100;
+
+  /**
+   * the maximum number of clients that can be idle for a node's InternalService. When the number of
+   * idle clients on a node exceeds this number, newly returned clients will be released
+   */
+  private int coreConnectionForInternalService = 100;
+
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
@@ -2901,6 +2910,22 @@ public class IoTDBConfig {
 
   public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
+  }
+
+  public int getMaxConnectionForInternalService() {
+    return maxConnectionForInternalService;
+  }
+
+  public void setMaxConnectionForInternalService(int maxConnectionForInternalService) {
+    this.maxConnectionForInternalService = maxConnectionForInternalService;
+  }
+
+  public int getCoreConnectionForInternalService() {
+    return coreConnectionForInternalService;
+  }
+
+  public void setCoreConnectionForInternalService(int coreConnectionForInternalService) {
+    this.coreConnectionForInternalService = coreConnectionForInternalService;
   }
 
   public int getSelectorNumOfClientManager() {
