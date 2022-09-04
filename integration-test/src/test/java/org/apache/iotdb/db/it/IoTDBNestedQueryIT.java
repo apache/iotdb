@@ -94,8 +94,6 @@ public class IoTDBNestedQueryIT {
       statement.execute("CREATE TIMESERIES root.vehicle.d2.s2 with datatype=DOUBLE,encoding=PLAIN");
       statement.execute(
           "CREATE TIMESERIES root.vehicle.d2.empty with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("create TIMESERIES root.testNaN.d1 with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("create TIMESERIES root.testNaN.d2 with datatype=DOUBLE,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -112,8 +110,6 @@ public class IoTDBNestedQueryIT {
             (String.format(
                 "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
       }
-      statement.execute("insert into root.testNaN(timestamp,d1,d2) values(1,0,0)");
-      statement.execute("insert into root.testNaN(timestamp,d1,d2) values(2,1,1)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -127,25 +123,6 @@ public class IoTDBNestedQueryIT {
           "create function time_window_counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
       statement.execute(
           "create function size_window_counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @Test
-  public void testFilterNaN() {
-    String sqlStr = "select d1 from root.testNaN where d1/d2 > 0";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
-
-      int count = 0;
-      while (resultSet.next()) {
-        ++count;
-      }
-
-      // 0.0/0.0 is NaN which should not be kept.
-      assertEquals(1, count);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
