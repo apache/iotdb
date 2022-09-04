@@ -45,7 +45,6 @@ public class ProcedureFactory implements IProcedureFactory {
       throw new IOException("unrecognized log type " + typeNum);
     }
     ProcedureType type = ProcedureType.values()[typeNum];
-    LOGGER.info("ProcedureFactory, create method, typeNum:{}, type: {}", typeNum, type);
     Procedure procedure;
     switch (type) {
       case DELETE_STORAGE_GROUP_PROCEDURE:

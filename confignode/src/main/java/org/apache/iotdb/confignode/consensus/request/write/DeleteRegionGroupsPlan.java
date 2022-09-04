@@ -48,7 +48,7 @@ public class DeleteRegionGroupsPlan extends CreateRegionGroupsPlan {
   }
 
   @Override
-  public void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigPhysicalPlanType.DeleteRegionGroups.ordinal());
 
     stream.writeByte(needsDeleteInPartitionTable ? 1 : 0);
@@ -63,7 +63,7 @@ public class DeleteRegionGroupsPlan extends CreateRegionGroupsPlan {
   }
 
   @Override
-  public void deserializeImpl(ByteBuffer buffer) throws IOException {
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     needsDeleteInPartitionTable = buffer.get() > 0;
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
