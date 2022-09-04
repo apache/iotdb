@@ -108,37 +108,6 @@ public class PartitionInfo implements SnapshotProcessor {
     this.deletedRegionSet = Collections.synchronizedSet(new HashSet<>());
   }
 
-  public void addMetrics() {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            storageGroupPartitionTables,
-            ConcurrentHashMap::size,
-            Tag.NAME.toString(),
-            "storageGroup");
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.REGION.toString(),
-            MetricLevel.IMPORTANT,
-            this,
-            o -> o.updateRegionGroupMetric(TConsensusGroupType.SchemaRegion),
-            Tag.NAME.toString(),
-            "total",
-            Tag.TYPE.toString(),
-            TConsensusGroupType.SchemaRegion.toString());
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.REGION.toString(),
-            MetricLevel.IMPORTANT,
-            this,
-            o -> o.updateRegionGroupMetric(TConsensusGroupType.DataRegion),
-            Tag.NAME.toString(),
-            "total",
-            Tag.TYPE.toString(),
-            TConsensusGroupType.DataRegion.toString());
-  }
-
   public int generateNextRegionGroupId() {
     return nextRegionGroupId.incrementAndGet();
   }
@@ -648,7 +617,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param type SchemaRegion or DataRegion
    * @return the number of SchemaRegion or DataRegion
    */
-  private int updateRegionGroupMetric(TConsensusGroupType type) {
+  public int updateRegionGroupMetric(TConsensusGroupType type) {
     Set<RegionGroup> regionGroups = new HashSet<>();
     for (Map.Entry<String, StorageGroupPartitionTable> entry :
         storageGroupPartitionTables.entrySet()) {
@@ -778,6 +747,10 @@ public class PartitionInfo implements SnapshotProcessor {
         deletedRegionSet.add(regionReplicaSet);
       }
     }
+  }
+
+  public int getStorageGroupPartitionTableSize() {
+    return storageGroupPartitionTables.size();
   }
 
   public void clear() {

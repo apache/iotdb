@@ -1,0 +1,86 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.confignode.persistence.metric;
+
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
+
+public class PartitionInfoMetrics implements IMetricSet {
+  private PartitionInfo partitionInfo;
+
+  public PartitionInfoMetrics(PartitionInfo partitionInfo) {
+    this.partitionInfo = partitionInfo;
+  }
+
+  @Override
+  public void bindTo(AbstractMetricService metricService) {
+    metricService.getOrCreateAutoGauge(
+        Metric.QUANTITY.toString(),
+        MetricLevel.IMPORTANT,
+        partitionInfo,
+        PartitionInfo::getStorageGroupPartitionTableSize,
+        Tag.NAME.toString(),
+        "storageGroup");
+    metricService.getOrCreateAutoGauge(
+        Metric.REGION.toString(),
+        MetricLevel.IMPORTANT,
+        partitionInfo,
+        o -> o.updateRegionGroupMetric(TConsensusGroupType.SchemaRegion),
+        Tag.NAME.toString(),
+        "total",
+        Tag.TYPE.toString(),
+        TConsensusGroupType.SchemaRegion.toString());
+    metricService.getOrCreateAutoGauge(
+        Metric.REGION.toString(),
+        MetricLevel.IMPORTANT,
+        partitionInfo,
+        o -> o.updateRegionGroupMetric(TConsensusGroupType.DataRegion),
+        Tag.NAME.toString(),
+        "total",
+        Tag.TYPE.toString(),
+        TConsensusGroupType.DataRegion.toString());
+  }
+
+  @Override
+  public void unbindFrom(AbstractMetricService metricService) {
+    metricService.remove(
+        MetricType.GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "storageGroup");
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.REGION.toString(),
+        Tag.NAME.toString(),
+        "total",
+        Tag.TYPE.toString(),
+        TConsensusGroupType.SchemaRegion.toString());
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.REGION.toString(),
+        Tag.NAME.toString(),
+        "total",
+        Tag.TYPE.toString(),
+        TConsensusGroupType.DataRegion.toString());
+  }
+}
