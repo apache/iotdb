@@ -46,8 +46,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class TsFileMigrationLoggerTest {
-
+public class MigrationRecoverTest {
   private static File MIGRATING_LOG_DIR =
       SystemFileFactory.INSTANCE.getFile(
           Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "migrating")
@@ -113,8 +112,9 @@ public class TsFileMigrationLoggerTest {
     setupTestFiles();
 
     // test write
-    TsFileMigrationLogger.getInstance().startTask(testTaskId, testTargetDir);
-    TsFileMigrationLogger.getInstance().start(testTaskId, getTsFile());
+    MigrationTask task = new MigrationTask(testTaskId, null, testTargetDir, 0, 0);
+    task.startTask();
+    task.startFile(getTsFile());
 
     FileInputStream fileInputStream = new FileInputStream(testLogFile);
 
@@ -126,7 +126,8 @@ public class TsFileMigrationLoggerTest {
     fileInputStream.close();
 
     // test read
-    TsFileMigrationLogger.getInstance().recover();
+    MigrationRecover recover = new MigrationRecover();
+    recover.recover();
 
     for (File file : testFiles) {
       assertFalse(file.exists());
@@ -156,7 +157,9 @@ public class TsFileMigrationLoggerTest {
     ReadWriteIOUtils.write(testTargetDir.getAbsolutePath(), logOutput);
     ReadWriteIOUtils.write(missingTsFile.getAbsolutePath(), logOutput);
 
-    TsFileMigrationLogger.getInstance().recover();
+    // test read
+    MigrationRecover recover = new MigrationRecover();
+    recover.recover();
 
     assertEquals(0, testTargetDir.listFiles().length);
   }

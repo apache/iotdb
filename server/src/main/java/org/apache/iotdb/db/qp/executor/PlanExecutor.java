@@ -37,6 +37,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
+import org.apache.iotdb.db.engine.migration.MigrationOperate;
 import org.apache.iotdb.db.engine.migration.MigrationTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -196,7 +197,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -224,6 +224,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_SCHEMA_TEMPLATE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_SUBMIT_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TASK_ID;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
@@ -1286,6 +1287,7 @@ public class PlanExecutor implements IPlanExecutor {
         new ListDataSet(
             Arrays.asList(
                 new PartialPath(COLUMN_TASK_ID, false),
+                new PartialPath(COLUMN_SUBMIT_TIME, false),
                 new PartialPath(COLUMN_STORAGE_GROUP, false),
                 new PartialPath(COLUMN_MIGRATE_STATUS, false),
                 new PartialPath(COLUMN_MIGRATE_START_TIME, false),
@@ -1296,20 +1298,22 @@ public class PlanExecutor implements IPlanExecutor {
                 TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
+                TSDataType.TEXT,
                 TSDataType.INT64,
                 TSDataType.TEXT));
     Set<PartialPath> selectedSgs = new HashSet<>(showMigrationPlan.getStorageGroups());
 
-    ConcurrentHashMap<Long, MigrationTask> migrateTaskList =
+    List<MigrationTask> migrateTaskList =
         StorageEngine.getInstance().getMigrationManager().getMigrateTasks();
     int timestamp = 0;
-    for (MigrationTask task : migrateTaskList.values()) {
+    for (MigrationTask task : migrateTaskList) {
       PartialPath sgName = task.getStorageGroup();
       if (!selectedSgs.isEmpty() && !selectedSgs.contains(sgName)) {
         continue;
       }
       RowRecord rowRecord = new RowRecord(timestamp++);
       Field taskId = new Field(TSDataType.INT64);
+      Field submitTime = new Field(TSDataType.TEXT);
       Field sg = new Field(TSDataType.TEXT);
       Field status = new Field(TSDataType.TEXT);
       Field startTime;
@@ -1327,6 +1331,10 @@ public class PlanExecutor implements IPlanExecutor {
       } else {
         ttl = null;
       }
+      ZonedDateTime submitDateTime =
+          DatetimeUtils.convertMillsecondToZonedDateTime(task.getSubmitTime());
+      String submitTimeStr = DatetimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(submitDateTime);
+      submitTime.setBinaryV(new Binary(submitTimeStr));
       if (task.getStartTime() != Long.MAX_VALUE) {
         ZonedDateTime startDate =
             DatetimeUtils.convertMillsecondToZonedDateTime(task.getStartTime());
@@ -1339,6 +1347,7 @@ public class PlanExecutor implements IPlanExecutor {
 
       // add to rowRecord
       rowRecord.addField(taskId);
+      rowRecord.addField(submitTime);
       rowRecord.addField(sg);
       rowRecord.addField(status);
       rowRecord.addField(startTime);
@@ -1689,8 +1698,12 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateSetMigration(SetMigrationPlan plan) throws QueryProcessException {
     if (plan.getTargetDir() == null) {
-      // is unset plan
-      StorageEngine.getInstance().cancelMigration(plan.getTaskId(), plan.getStorageGroup());
+      // is cancel plan
+      StorageEngine.getInstance()
+          .operateMigration(
+              MigrationOperate.MigrationOperateType.CANCEL,
+              plan.getTaskId(),
+              plan.getStorageGroup());
     } else {
       try {
         List<PartialPath> storageGroupPaths =
@@ -1707,9 +1720,17 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operatePauseMigration(PauseMigrationPlan plan) {
     if (plan.isPause()) {
-      StorageEngine.getInstance().pauseMigration(plan.getTaskId(), plan.getStorageGroup());
+      StorageEngine.getInstance()
+          .operateMigration(
+              MigrationOperate.MigrationOperateType.PAUSE,
+              plan.getTaskId(),
+              plan.getStorageGroup());
     } else {
-      StorageEngine.getInstance().resumeMigration(plan.getTaskId(), plan.getStorageGroup());
+      StorageEngine.getInstance()
+          .operateMigration(
+              MigrationOperate.MigrationOperateType.RESUME,
+              plan.getTaskId(),
+              plan.getStorageGroup());
     }
   }
 

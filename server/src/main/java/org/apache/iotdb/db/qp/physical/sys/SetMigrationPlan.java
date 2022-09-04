@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.List;
 
 public class SetMigrationPlan extends PhysicalPlan {
-
   private long taskId = -1;
   private PartialPath storageGroup;
   private File targetDir;

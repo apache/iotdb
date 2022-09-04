@@ -30,7 +30,7 @@ import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.engine.migration.TsFileMigrationLogger;
+import org.apache.iotdb.db.engine.migration.MigrationManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
@@ -236,8 +236,8 @@ public class IoTDB implements IoTDBMBean {
   }
 
   private void initMigrationManager() {
-    // finished migrating the tsfiles that were in process
-    TsFileMigrationLogger.getInstance().recover();
+    // recover MigrationTasks, finish migrating unfinished tsfiles, start check threads
+    MigrationManager.getInstance().init();
   }
 
   @Override

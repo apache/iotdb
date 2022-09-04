@@ -866,7 +866,7 @@ public class IoTDBConfig {
   private int schemaQueryFetchSize = 10000000;
 
   /** number of threads given to migration tasks */
-  private int migrationThread = 2;
+  private int migrationThreadNum = 2;
 
   public IoTDBConfig() {
     // empty constructor
@@ -2769,11 +2769,11 @@ public class IoTDBConfig {
     this.schemaQueryFetchSize = schemaQueryFetchSize;
   }
 
-  public int getMigrationThread() {
-    return migrationThread;
+  public int getMigrationThreadNum() {
+    return migrationThreadNum;
   }
 
-  public void setMigrationThread(int migrationThread) {
-    this.migrationThread = migrationThread;
+  public void setMigrationThreadNum(int migrationThreadNum) {
+    this.migrationThreadNum = migrationThreadNum;
   }
 }

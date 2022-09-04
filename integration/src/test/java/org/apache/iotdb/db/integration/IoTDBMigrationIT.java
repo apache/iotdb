@@ -38,8 +38,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.ZonedDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @Category({LocalStandaloneTest.class})
@@ -94,6 +97,12 @@ public class IoTDBMigrationIT {
       statement.execute("SET STORAGE GROUP TO root.MIGRATION_SG1");
       statement.execute(
           "CREATE TIMESERIES root.MIGRATION_SG1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
+
+      try {
+        statement.execute("SET MIGRATION TO storage_group=root.MIGRATION_SG1");
+      } catch (SQLException e) {
+        assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getErrorCode());
+      }
 
       // test set when ttl is in range
 
@@ -198,7 +207,7 @@ public class IoTDBMigrationIT {
         assertEquals(0, cnt);
       }
 
-      // test unset migration
+      // test cancel migration
 
       for (int i = 0; i < 100; i++) {
         statement.execute(
@@ -250,27 +259,79 @@ public class IoTDBMigrationIT {
           DatetimeUtils.convertMillsecondToZonedDateTime(DatetimeUtils.currentTime() + 10000);
       String startTimeStr = DatetimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(startDate);
       statement.execute(
-          "SET MIGRATION TO root.MIGRATION_SG2 "
-              + startTimeStr
-              + " 100 '"
-              + testTargetDir.getPath()
-              + "'");
+          String.format(
+              "SET MIGRATION TO root.MIGRATION_SG2 %s 100 '%s'",
+              startTimeStr, testTargetDir.getPath()));
 
       ResultSet resultSet = statement.executeQuery("SHOW ALL MIGRATION");
 
       boolean flag = false;
 
       while (resultSet.next()) {
-        if (resultSet.getString(2).equals("root.MIGRATION_SG2")) {
+        if (resultSet.getString(3).equals("root.MIGRATION_SG2")) {
           flag = true;
-          assertEquals("READY", resultSet.getString(3));
-          assertEquals(startTimeStr, resultSet.getString(4));
-          assertEquals(100, resultSet.getLong(5));
-          assertEquals(testTargetDir.getPath(), resultSet.getString(6));
+          assertEquals("READY", resultSet.getString(4));
+          assertEquals(startTimeStr, resultSet.getString(5));
+          assertEquals(100, resultSet.getLong(6));
+          assertEquals(testTargetDir.getPath(), resultSet.getString(7));
         }
       }
 
       assertTrue(flag);
+    }
+  }
+
+  @Test
+  @Category({ClusterTest.class})
+  public void testSetMigration() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.MIGRATION_SG3");
+      statement.execute(
+          "CREATE TIMESERIES root.MIGRATION_SG3.s3 WITH DATATYPE=INT32, ENCODING=PLAIN");
+
+      ZonedDateTime startDate =
+          DatetimeUtils.convertMillsecondToZonedDateTime(DatetimeUtils.currentTime() + 10000);
+      String startTimeStr = DatetimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(startDate);
+
+      for (int i = 0; i < 1000; i++) {
+        // test concurrent set
+        statement.execute(
+            String.format(
+                "SET MIGRATION TO root.MIGRATION_SG3 %s %d '%s'",
+                startTimeStr, i, testTargetDir.getPath()));
+      }
+
+      ResultSet resultSet = statement.executeQuery("SHOW ALL MIGRATION");
+      Set<Integer> checkTaskId = new HashSet<>();
+      Set<Integer> checkTTL = new HashSet<>();
+
+      while (resultSet.next()) {
+        if (resultSet.getString(3).equals("root.MIGRATION_SG3")) {
+          int taskId = Integer.parseInt(resultSet.getString(1));
+          int ttl = Integer.parseInt(resultSet.getString(6));
+          assertFalse(checkTaskId.contains(taskId));
+          checkTaskId.add(taskId);
+          assertFalse(checkTTL.contains(ttl));
+          checkTTL.add(ttl);
+        }
+      }
+
+      assertEquals(1000, checkTaskId.size());
+      assertEquals(1000, checkTTL.size());
+
+      for (int i = 0; i < 1000; i++) {
+        // test concurrent cancel
+        statement.execute(String.format("CANCEL MIGRATION %d", i));
+      }
+
+      resultSet = statement.executeQuery("SHOW ALL MIGRATION");
+
+      while (resultSet.next()) {
+        if (resultSet.getString(3).equals("root.MIGRATION_SG3")) {
+          assertEquals("CANCELED", resultSet.getString(4));
+        }
+      }
     }
   }
 }

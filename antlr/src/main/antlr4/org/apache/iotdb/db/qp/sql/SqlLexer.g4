@@ -578,10 +578,6 @@ UNLOAD
     : U N L O A D
     ;
 
-UNPAUSE
-    : U N P A U S E
-    ;
-
 UNSET
     : U N S E T
     ;

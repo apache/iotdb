@@ -19,13 +19,13 @@
 package org.apache.iotdb.db.engine.migration;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.migration.MigrationTaskWriter.MigrationLog;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.slf4j.Logger;
@@ -35,12 +35,13 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * MigrationManager keep tracks of all Migration Tasks, creates the threads to check/run the
@@ -49,12 +50,29 @@ import java.util.concurrent.TimeUnit;
 public class MigrationManager {
   private static final Logger logger = LoggerFactory.getLogger(MigrationManager.class);
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private MigrationTaskWriter logWriter;
 
+  private final ReentrantLock lock = new ReentrantLock();
+  // region lock resources
+  private MigrationOperateWriter logWriter;
   // taskId -> MigrationTask
-  private ConcurrentHashMap<Long, MigrationTask> migrationTasks = new ConcurrentHashMap<>();
+  List<MigrationTask> migrationTasks = new ArrayList<>();
   // the current largest MigrationTask id + 1, used to create new tasks
   private long currentTaskId = 0;
+  // endregion
+
+  // define ordering for migrationTasks, dictionary order on (status, startTime, storageGroup, -ttl)
+  Comparator<MigrationTask> migrationTaskComparator =
+      (task1, task2) -> {
+        int statusDiff = task1.getStatus().ordinal() - task2.getStatus().ordinal();
+        if (statusDiff != 0) return statusDiff;
+        long startTimeDiff = task1.getStartTime() - task2.getStartTime();
+        if (startTimeDiff != 0) return startTimeDiff > 0 ? 1 : -1;
+        int storageGroupDiff = task1.getStorageGroup().compareTo(task2.getStorageGroup());
+        if (storageGroupDiff != 0) return storageGroupDiff;
+        long ttlDiff = task2.getTTL() - task1.getTTL();
+        return ttlDiff > 0 ? 1 : -1;
+      };
+
   // single thread to iterate through migrationTasks and check start
   private ScheduledExecutorService migrationCheckThread;
   // multiple threads to run the tasks
@@ -62,13 +80,15 @@ public class MigrationManager {
 
   private boolean initialized = false;
   private static final long MIGRATE_CHECK_INTERVAL = 60 * 1000L;
-  private static final String LOG_FILE_NAME =
-      Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "log.bin")
-          .toString();
 
-  protected MigrationManager() {
-    init();
-  }
+  private static final File LOG_FILE =
+      SystemFileFactory.INSTANCE.getFile(
+          Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "log.bin")
+              .toString());
+  private static final File MIGRATING_LOG_DIR =
+      SystemFileFactory.INSTANCE.getFile(
+          Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "migrating")
+              .toString());
 
   // singleton
   private static class MigrationManagerHolder {
@@ -81,388 +101,296 @@ public class MigrationManager {
     return MigrationManagerHolder.INSTANCE;
   }
 
-  public synchronized void init() {
-    if (initialized) {
-      return;
-    }
-
+  public void init() {
     try {
-      logWriter = new MigrationTaskWriter(LOG_FILE_NAME);
-    } catch (FileNotFoundException e) {
-      logger.error("Cannot find/create log for migration.");
-    }
+      lock.lock();
 
-    // read from logReader
-    try {
-      MigrationTaskReader logReader = new MigrationTaskReader(LOG_FILE_NAME);
-      Set<Long> errorSet = new HashSet<>();
-
-      while (logReader.hasNext()) {
-        MigrationLog log = logReader.next();
-
-        switch (log.type) {
-          case SET:
-            setMigrationFromLog(
-                log.taskId,
-                log.storageGroup,
-                FSFactoryProducer.getFSFactory().getFile(log.targetDirPath),
-                log.ttl,
-                log.startTime);
-            break;
-          case CANCEL:
-            cancelMigrationFromLog(log.taskId);
-            break;
-          case START:
-            // if task started but didn't finish, then error occurred
-            errorSet.add(log.taskId);
-            break;
-          case PAUSE:
-            errorSet.remove(log.taskId);
-            pauseMigrationFromLog(log.taskId);
-            break;
-          case RESUME:
-            resumeMigrationFromLog(log.taskId);
-            break;
-          case FINISHED:
-            // finished task => remove from list and remove from potential error task
-            errorSet.remove(log.taskId);
-            migrationTasks.remove(log.taskId);
-            finishFromLog(log.taskId);
-            break;
-          case ERROR:
-            // already put error in log
-            errorSet.remove(log.taskId);
-            errorFromLog(log.taskId);
-            break;
-          default:
-            logger.error("read migration log: unknown type");
-        }
+      if (initialized) {
+        return;
       }
 
-      // for each task in errorSet, the task started but didn't finish (an error)
-      for (long errIndex : errorSet) {
-        if (migrationTasks.containsKey(errIndex)) {
-          // write to log and set task in ERROR in memory
-          logWriter.error(migrationTasks.get(errIndex));
-          errorFromLog(errIndex);
+      // create necessary log files/dirs
+      if (MIGRATING_LOG_DIR == null) logger.error("MIGRATING_LOG_DIR is null");
+      if (!MIGRATING_LOG_DIR.exists()) {
+        if (MIGRATING_LOG_DIR.mkdirs()) {
+          logger.info("MIGRATING_LOG_DIR {} created successfully", MIGRATING_LOG_DIR);
         } else {
-          logger.error("unknown error index");
+          logger.error("MIGRATING_LOG_DIR {} create error", MIGRATING_LOG_DIR);
+        }
+      }
+      if (!MIGRATING_LOG_DIR.isDirectory())
+        logger.error("{} already exists but is not directory", MIGRATING_LOG_DIR);
+      if (!LOG_FILE.getParentFile().exists()) LOG_FILE.getParentFile().mkdirs();
+      if (!LOG_FILE.exists()) {
+        try {
+          LOG_FILE.createNewFile();
+        } catch (IOException e) {
+          logger.error("{} log file could not be created", LOG_FILE.getName());
         }
       }
 
-    } catch (IOException e) {
-      logger.error("Cannot read log for migration.");
+      // recover
+      MigrationRecover recover = new MigrationRecover();
+      recover.recover();
+      this.migrationTasks = recover.getMigrationTasks();
+      this.migrationTasks.sort(migrationTaskComparator);
+      this.currentTaskId = recover.getCurrentTaskId();
+
+      try {
+        logWriter = new MigrationOperateWriter(LOG_FILE);
+      } catch (FileNotFoundException e) {
+        logger.error("Cannot find/create log for migration.");
+      }
+
+      migrationCheckThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+              ThreadName.MIGRATION_CHECK.getName());
+      migrationCheckThread.scheduleAtFixedRate(
+          this::checkMigration,
+          MIGRATE_CHECK_INTERVAL,
+          MIGRATE_CHECK_INTERVAL,
+          TimeUnit.MILLISECONDS);
+
+      migrationTaskThreadPool =
+          IoTDBThreadPoolFactory.newFixedThreadPool(
+              config.getMigrationThreadNum(), ThreadName.MIGRATION_TASK.getName());
+      logger.info("start migration check thread successfully.");
+      initialized = true;
+    } finally {
+      lock.unlock();
     }
-
-    migrationCheckThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Migration-Check");
-    migrationCheckThread.scheduleAtFixedRate(
-        this::checkMigration,
-        MIGRATE_CHECK_INTERVAL,
-        MIGRATE_CHECK_INTERVAL,
-        TimeUnit.MILLISECONDS);
-
-    migrationTaskThreadPool =
-        IoTDBThreadPoolFactory.newFixedThreadPool(config.getMigrationThread(), "Migration-Task");
-    logger.info("start migration check thread successfully.");
-    initialized = true;
   }
 
-  /** close the log writer */
-  public void clear() {
+  /** close all resources used */
+  public void close() {
+    migrationCheckThread.shutdown();
+    migrationTaskThreadPool.shutdown();
+
     try {
       logWriter.close();
     } catch (Exception e) {
       logger.error("Cannot close migration log writer, because:", e);
     }
+
+    for (MigrationTask task : migrationTasks) {
+      task.close();
+    }
   }
 
-  /** shutdown all threads used */
-  public void shutdown() {
-    migrationCheckThread.shutdown();
-    migrationTaskThreadPool.shutdown();
-  }
-
-  /** creates a copy of migrationTask and returns */
-  public ConcurrentHashMap<Long, MigrationTask> getMigrateTasks() {
-    return new ConcurrentHashMap<>(migrationTasks);
+  /** creates a copy of migrationTasks and returns */
+  public List<MigrationTask> getMigrateTasks() {
+    return new ArrayList<>(migrationTasks);
   }
 
   /** add migration task to migrationTasks */
   public void setMigrate(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
-    MigrationTask newTask =
-        new MigrationTask(currentTaskId, storageGroup, targetDir, ttl, startTime);
     try {
-      logWriter.setMigration(newTask);
-    } catch (IOException e) {
-      logger.error("write log error");
-      return;
+      lock.lock();
+
+      // check if there is duplicates
+      for (MigrationTask migrationTask : migrationTasks) {
+        if (migrationTask.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
+            && migrationTask.getTargetDir().equals(targetDir)
+            && migrationTask.getTTL() == ttl
+            && migrationTask.getStartTime() == startTime) {
+          logger.info("set migration equals migration task {}", migrationTask.getTaskId());
+          return;
+        }
+      }
+
+      MigrationTask newTask =
+          new MigrationTask(currentTaskId, storageGroup, targetDir, ttl, startTime);
+      try {
+        logWriter.log(MigrationOperate.MigrationOperateType.SET, newTask);
+      } catch (IOException e) {
+        logger.error("write log error");
+        return;
+      }
+      migrationTasks.add(newTask);
+      migrationTasks.sort(migrationTaskComparator);
+      currentTaskId++;
+    } finally {
+      lock.unlock();
     }
-    migrationTasks.put(currentTaskId, newTask);
-    currentTaskId++;
   }
 
-  /** add migration task to migrationTasks from log, does not write to log */
-  public void setMigrationFromLog(
-      long taskId, PartialPath storageGroup, File targetDir, long ttl, long startTime) {
-    if (currentTaskId > taskId) {
-      logger.error("set migration error, current index larger than log index");
+  /** @return the status after migrationOperateType */
+  private MigrationTask.MigrationTaskStatus statusFromOperateType(
+      MigrationOperate.MigrationOperateType migrationOperateType) {
+    switch (migrationOperateType) {
+      case RESUME:
+        return MigrationTask.MigrationTaskStatus.READY;
+      case CANCEL:
+        return MigrationTask.MigrationTaskStatus.CANCELED;
+      case START:
+        return MigrationTask.MigrationTaskStatus.RUNNING;
+      case PAUSE:
+        return MigrationTask.MigrationTaskStatus.PAUSED;
+      case FINISHED:
+        return MigrationTask.MigrationTaskStatus.FINISHED;
+      case ERROR:
+        return MigrationTask.MigrationTaskStatus.ERROR;
     }
-
-    MigrationTask newTask = new MigrationTask(taskId, storageGroup, targetDir, ttl, startTime);
-    migrationTasks.put(taskId, newTask);
-    currentTaskId = taskId + 1;
+    return null;
   }
 
   /**
-   * unset migration task from migrationTasks list using taskId
+   * Operate on task (pause, cancel, resume, etc)
    *
-   * @param unsetTaskId taskId of task to remove
-   * @return true if task with taskId exists, false otherwise
+   * @param migrationOperateType the operator on task
+   * @param taskId taskId of MigrationTask to operate on
+   * @return true if exists task with taskId and operate successfully
    */
-  public boolean cancelMigration(long unsetTaskId) {
-    if (migrationTasks.containsKey(unsetTaskId)) {
-      MigrationTask task = migrationTasks.get(unsetTaskId);
-      if (task.getTaskId() == unsetTaskId
-          && (task.getStatus() == MigrationTask.MigrationTaskStatus.READY
-              || task.getStatus() == MigrationTask.MigrationTaskStatus.RUNNING)) {
-        // write to log
-        try {
-          logWriter.unsetMigration(task);
-        } catch (IOException e) {
-          logger.error("write log error");
-        }
-        // change status to unset
-        task.setStatus(MigrationTask.MigrationTaskStatus.UNSET);
-        return true;
-      }
-    }
-    return false;
-  }
+  public boolean operate(MigrationOperate.MigrationOperateType migrationOperateType, long taskId) {
+    try {
+      lock.lock();
 
-  /**
-   * Cancel migration task from migrationTasks list using storage group. If multiple tasks with such
-   * storage group exists, remove the one with the lowest taskId.
-   *
-   * @param storageGroup sg for task to remove
-   * @return true if exists task with storageGroup
-   */
-  public boolean cancelMigration(PartialPath storageGroup) {
-    for (MigrationTask task : migrationTasks.values()) {
-      if (task.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
-          && (task.getStatus() == MigrationTask.MigrationTaskStatus.READY
-              || task.getStatus() == MigrationTask.MigrationTaskStatus.RUNNING)) {
-        // write to log
-        try {
-          logWriter.unsetMigration(task);
-        } catch (IOException e) {
-          logger.error("write log error");
+      MigrationTask task = null;
+      // find matching task
+      for (MigrationTask migrationTask : migrationTasks) {
+        if (migrationTask.getTaskId() == taskId) {
+          task = migrationTask;
+          break;
         }
-        // change status to UNSET
-        task.setStatus(MigrationTask.MigrationTaskStatus.UNSET);
-        return true;
       }
-    }
-    return false;
-  }
+      if (task == null) {
+        // no matches
+        return false;
+      }
 
-  /** same as cancelMigrate using taskId except does not write to log */
-  public boolean cancelMigrationFromLog(long taskId) {
-    if (migrationTasks.containsKey(taskId)) {
-      migrationTasks.remove(taskId);
-      return true;
-    } else {
-      return false;
+      return operate(migrationOperateType, task);
+    } finally {
+      lock.unlock();
     }
   }
 
   /**
-   * pause migration task from migrationTasks list using taskId
+   * Operate on task (pause, cancel, resume, etc)
    *
-   * @param pauseTaskId taskId of task to pause
-   * @return true if task with taskId exists and pauseable
+   * @param migrationOperateType the operator on task
+   * @param storageGroup StorageGroup of MigrationTask to operate on
+   * @return true if exists task with storageGroup and operate successfully
    */
-  public boolean pauseMigration(long pauseTaskId) {
-    if (migrationTasks.containsKey(pauseTaskId)) {
-      MigrationTask task = migrationTasks.get(pauseTaskId);
-      if (task.getStatus() == MigrationTask.MigrationTaskStatus.READY
-          || task.getStatus() == MigrationTask.MigrationTaskStatus.RUNNING) {
+  public boolean operate(
+      MigrationOperate.MigrationOperateType migrationOperateType, PartialPath storageGroup) {
+    try {
+      lock.lock();
+
+      MigrationTask task = null;
+      // find matching task
+      for (MigrationTask migrationTask : migrationTasks) {
+        if (migrationTask.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())) {
+          task = migrationTask;
+          break;
+        }
+      }
+      if (task == null) {
+        // no matches
+        return false;
+      }
+
+      return operate(migrationOperateType, task);
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  private boolean operate(
+      MigrationOperate.MigrationOperateType migrationOperateType, MigrationTask task) {
+    // check if task has valid status
+    switch (migrationOperateType) {
+      case SET:
+      case START:
+      case FINISHED:
+      case ERROR:
+        return false;
+      case CANCEL:
+      case PAUSE:
+        // can cancel/pause only when status=READY/RUNNING
+        if (!(task.getStatus() == MigrationTask.MigrationTaskStatus.READY
+            || task.getStatus() == MigrationTask.MigrationTaskStatus.RUNNING)) {
+          return false;
+        }
+        break;
+      case RESUME:
+        // can resume only when status=PAUSED
+        if (!(task.getStatus() == MigrationTask.MigrationTaskStatus.PAUSED)) {
+          return false;
+        }
+        break;
+    }
+
+    // operate
+    switch (migrationOperateType) {
+      case PAUSE:
+      case CANCEL:
+      case RESUME:
         // write to log
         try {
-          logWriter.pauseMigration(task);
+          logWriter.log(migrationOperateType, task);
         } catch (IOException e) {
           logger.error("write log error");
+          return false;
         }
-        // change status to PAUSED
-        task.setStatus(MigrationTask.MigrationTaskStatus.PAUSED);
+        task.setStatus(statusFromOperateType(migrationOperateType));
         return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Pause migration task from migrationTasks list using storage group. If multiple tasks with such
-   * storage group exists (and pauseable), pause the one with the lowest taskId.
-   *
-   * @param storageGroup sg for task to pause
-   * @return true if exists task with storageGroup and pauseable
-   */
-  public boolean pauseMigration(PartialPath storageGroup) {
-    for (MigrationTask task : migrationTasks.values()) {
-      if (task.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
-          && (task.getStatus() == MigrationTask.MigrationTaskStatus.READY
-              || task.getStatus() == MigrationTask.MigrationTaskStatus.RUNNING)) {
-        // write to log
-        try {
-          logWriter.pauseMigration(task);
-        } catch (IOException e) {
-          logger.error("write log error");
-        }
-        // change status to PAUSED
-        task.setStatus(MigrationTask.MigrationTaskStatus.PAUSED);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /** same as pauseMigrate using taskId except does not write to log */
-  public boolean pauseMigrationFromLog(long pauseTaskId) {
-    if (migrationTasks.containsKey(pauseTaskId)) {
-      migrationTasks.get(pauseTaskId).setStatus(MigrationTask.MigrationTaskStatus.PAUSED);
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  /**
-   * Unpause migration task from migrationTasks list using taskId
-   *
-   * @param unpauseTaskId taskId of task to unpause
-   * @return true if task with index exists and paused
-   */
-  public boolean resumeMigration(long unpauseTaskId) {
-    if (migrationTasks.containsKey(unpauseTaskId)) {
-      MigrationTask task = migrationTasks.get(unpauseTaskId);
-      if (task.getStatus() == MigrationTask.MigrationTaskStatus.PAUSED) {
-        // write to log
-        try {
-          logWriter.unpauseMigration(task);
-        } catch (IOException e) {
-          logger.error("write log error");
-        }
-        // change status to READY
-        task.setStatus(MigrationTask.MigrationTaskStatus.READY);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Resume migration task from migrationTasks list using storage group. If multiple tasks with such
-   * storage group exists, remove the one with the lowest taskId and paused.
-   *
-   * @param storageGroup sg for task to remove
-   * @return true if exists task with storageGroup
-   */
-  public boolean resumeMigration(PartialPath storageGroup) {
-    for (MigrationTask task : migrationTasks.values()) {
-      if (task.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
-          && (task.getStatus() == MigrationTask.MigrationTaskStatus.PAUSED)) {
-        // write to log
-        try {
-          logWriter.unpauseMigration(task);
-        } catch (IOException e) {
-          logger.error("write log error");
-        }
-        // change status to READY
-        task.setStatus(MigrationTask.MigrationTaskStatus.READY);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /** same as resumeMigration using taskId except does not write to log */
-  public boolean resumeMigrationFromLog(long unpauseTaskId) {
-    if (migrationTasks.containsKey(unpauseTaskId)) {
-      migrationTasks.get(unpauseTaskId).setStatus(MigrationTask.MigrationTaskStatus.READY);
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  /** set to finish status */
-  public boolean finishFromLog(long taskId) {
-    if (migrationTasks.containsKey(taskId)) {
-      migrationTasks.get(taskId).setStatus(MigrationTask.MigrationTaskStatus.FINISHED);
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  /** set to error status */
-  public boolean errorFromLog(long index) {
-    if (migrationTasks.containsKey(index)) {
-      migrationTasks.get(index).setStatus(MigrationTask.MigrationTaskStatus.ERROR);
-      return true;
-    } else {
-      return false;
+      default:
+        return false;
     }
   }
 
   /** check if any of the migrationTasks can start */
-  public synchronized void checkMigration() {
-    logger.info("check migration");
-    for (MigrationTask task : migrationTasks.values()) {
+  public void checkMigration() {
+    try {
+      lock.lock();
 
-      if (task.getStartTime() - DatetimeUtils.currentTime() <= 0
-          && task.getStatus() == MigrationTask.MigrationTaskStatus.READY) {
+      logger.info("check migration");
+      for (MigrationTask task : migrationTasks) {
 
-        // storage group has no data
-        if (!StorageEngine.getInstance().getProcessorMap().containsKey(task.getStorageGroup())) {
-          return;
+        if (task.getStartTime() - DatetimeUtils.currentTime() <= 0
+            && task.getStatus() == MigrationTask.MigrationTaskStatus.READY) {
+
+          // storage group has no data
+          if (!StorageEngine.getInstance().getProcessorMap().containsKey(task.getStorageGroup())) {
+            return;
+          }
+
+          // set task to running
+          task.setStatus(MigrationTask.MigrationTaskStatus.RUNNING);
+
+          // push check migration to storageGroupManager, use Runnable to give task to thread pool
+          migrationTaskThreadPool.execute(
+              () -> {
+                try {
+                  logWriter.log(MigrationOperate.MigrationOperateType.START, task);
+                  task.startTask();
+                } catch (IOException e) {
+                  logger.error("write log error");
+                  task.setStatus(MigrationTask.MigrationTaskStatus.ERROR);
+                  return;
+                }
+
+                StorageEngine.getInstance()
+                    .getProcessorMap()
+                    .get(task.getStorageGroup())
+                    .checkMigration(task);
+                logger.info("check migration task successfully.");
+
+                // set state and remove
+                try {
+                  logWriter.log(MigrationOperate.MigrationOperateType.FINISHED, task);
+                  task.finish();
+                } catch (IOException e) {
+                  logger.error("write log error");
+                  task.setStatus(MigrationTask.MigrationTaskStatus.ERROR);
+                  return;
+                }
+                task.setStatus(MigrationTask.MigrationTaskStatus.FINISHED);
+              });
         }
-
-        // set task to running
-        task.setStatus(MigrationTask.MigrationTaskStatus.RUNNING);
-
-        // push check migration to storageGroupManager, use Runnable to give task to thread pool
-        migrationTaskThreadPool.execute(
-            () -> {
-              try {
-                logWriter.startMigration(task);
-                TsFileMigrationLogger.getInstance()
-                    .startTask(task.getTaskId(), task.getTargetDir());
-              } catch (IOException e) {
-                logger.error("write log error");
-                task.setStatus(MigrationTask.MigrationTaskStatus.ERROR);
-                return;
-              }
-
-              StorageEngine.getInstance()
-                  .getProcessorMap()
-                  .get(task.getStorageGroup())
-                  .checkMigration(task);
-              logger.info("check migration task successfully.");
-
-              // set state and remove
-              try {
-                logWriter.finishMigration(task);
-                TsFileMigrationLogger.getInstance().finish(task.getTaskId());
-              } catch (IOException e) {
-                logger.error("write log error");
-                task.setStatus(MigrationTask.MigrationTaskStatus.ERROR);
-                return;
-              }
-              task.setStatus(MigrationTask.MigrationTaskStatus.FINISHED);
-            });
       }
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -471,7 +399,8 @@ public class MigrationManager {
     migrationCheckThread.shutdown();
 
     migrationCheckThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Migration-Check");
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.MIGRATION_CHECK.getName());
     migrationCheckThread.scheduleAtFixedRate(
         this::checkMigration, checkThreadTime, checkThreadTime, TimeUnit.MILLISECONDS);
   }

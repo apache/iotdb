@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.migration;
 
-import org.apache.iotdb.db.engine.migration.MigrationTaskWriter.MigrationLog;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -41,15 +40,14 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class MigrationTaskWriterReaderTest {
-
+public class MigrationOperateWriterReaderTest {
   private static final String filePath = "logtest.test";
   private final String sg1 = "root.MIGRATE_SG1";
   private final String sg2 = "root.MIGRATE_SG1";
   private long startTime; // 2023-01-01
   private final long ttl = 2000;
   private final String targetDirPath = Paths.get("data", "separated").toString();
-  List<MigrationLog> migrateLogs;
+  List<MigrationOperate> migrateOperate;
   MigrationTask task1, task2;
 
   @Before
@@ -60,45 +58,51 @@ public class MigrationTaskWriterReaderTest {
     task1 = new MigrationTask(120, new PartialPath(sg1), new File(targetDirPath), startTime, ttl);
     task2 = new MigrationTask(999, new PartialPath(sg2), new File(targetDirPath), startTime, ttl);
 
-    migrateLogs = new ArrayList<>();
-    migrateLogs.add(new MigrationLog(MigrationLog.LogType.START, task1));
-    migrateLogs.add(new MigrationLog(MigrationLog.LogType.SET, task1));
-    migrateLogs.add(new MigrationLog(MigrationLog.LogType.CANCEL, task2));
-    migrateLogs.add(new MigrationLog(MigrationLog.LogType.PAUSE, task2));
-    migrateLogs.add(new MigrationLog(MigrationLog.LogType.RESUME, task2));
+    migrateOperate = new ArrayList<>();
+    migrateOperate.add(new MigrationOperate(MigrationOperate.MigrationOperateType.START, task1));
+    migrateOperate.add(new MigrationOperate(MigrationOperate.MigrationOperateType.SET, task1));
+    migrateOperate.add(new MigrationOperate(MigrationOperate.MigrationOperateType.CANCEL, task2));
+    migrateOperate.add(new MigrationOperate(MigrationOperate.MigrationOperateType.PAUSE, task2));
+    migrateOperate.add(new MigrationOperate(MigrationOperate.MigrationOperateType.RESUME, task2));
 
     startTime = DatetimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
   }
 
-  public void writeLog(MigrationTaskWriter writer) throws IOException {
-    writer.startMigration(task1);
-    writer.setMigration(task1);
-    writer.unsetMigration(task2);
-    writer.pauseMigration(task2);
-    writer.unpauseMigration(task2);
+  public void writeLog(MigrationOperateWriter writer) throws IOException {
+    writer.log(MigrationOperate.MigrationOperateType.START, task1);
+    writer.log(MigrationOperate.MigrationOperateType.SET, task1);
+    writer.log(MigrationOperate.MigrationOperateType.CANCEL, task2);
+    writer.log(MigrationOperate.MigrationOperateType.PAUSE, task2);
+    writer.log(MigrationOperate.MigrationOperateType.RESUME, task2);
   }
 
   /** check if two logs have equal fields */
-  public boolean logEquals(MigrationLog log1, MigrationLog log2) {
-    if (log1.type != log2.type) {
+  public boolean logEquals(MigrationOperate log1, MigrationOperate log2) {
+    if (log1.getType() != log2.getType()) {
       return false;
     }
-    if (log1.taskId != log2.taskId) {
+    if (log1.getTask().getTaskId() != log2.getTask().getTaskId()) {
       return false;
     }
 
-    if (log1.type == MigrationLog.LogType.SET) {
+    if (log1.getType() == MigrationOperate.MigrationOperateType.SET) {
       // check other fields only if SET
-      if (log1.startTime != log2.startTime) {
+      if (log1.getTask().getStartTime() != log2.getTask().getStartTime()) {
         return false;
       }
-      if (log1.ttl != log2.ttl) {
+      if (log1.getTask().getTTL() != log2.getTask().getTTL()) {
         return false;
       }
-      if (!log1.storageGroup.getFullPath().equals(log2.storageGroup.getFullPath())) {
+      if (!log1.getTask()
+          .getStorageGroup()
+          .getFullPath()
+          .equals(log2.getTask().getStorageGroup().getFullPath())) {
         return false;
       }
-      if (!log1.targetDirPath.equals(log2.targetDirPath)) {
+      if (!log1.getTask()
+          .getTargetDir()
+          .getPath()
+          .equals(log2.getTask().getTargetDir().getPath())) {
         return false;
       }
     }
@@ -108,17 +112,17 @@ public class MigrationTaskWriterReaderTest {
 
   @Test
   public void testWriteAndRead() throws Exception {
-    MigrationTaskWriter writer = new MigrationTaskWriter(filePath);
+    MigrationOperateWriter writer = new MigrationOperateWriter(filePath);
     writeLog(writer);
     try {
       writer.close();
-      MigrationTaskReader reader = new MigrationTaskReader(new File(filePath));
-      List<MigrationLog> res = new ArrayList<>();
+      MigrationOperateReader reader = new MigrationOperateReader(new File(filePath));
+      List<MigrationOperate> res = new ArrayList<>();
       while (reader.hasNext()) {
         res.add(reader.next());
       }
-      for (int i = 0; i < migrateLogs.size(); i++) {
-        assertTrue(logEquals(migrateLogs.get(i), res.get(i)));
+      for (int i = 0; i < migrateOperate.size(); i++) {
+        assertTrue(logEquals(migrateOperate.get(i), res.get(i)));
       }
       reader.close();
     } finally {
@@ -130,7 +134,7 @@ public class MigrationTaskWriterReaderTest {
   public void testTruncateBrokenLogs() throws Exception {
     try {
       // write normal data
-      MigrationTaskWriter writer = new MigrationTaskWriter(filePath);
+      MigrationOperateWriter writer = new MigrationOperateWriter(filePath);
       try {
         writeLog(writer);
       } finally {
@@ -156,14 +160,14 @@ public class MigrationTaskWriterReaderTest {
       }
 
       // read & check
-      MigrationTaskReader reader = new MigrationTaskReader(new File(filePath));
+      MigrationOperateReader reader = new MigrationOperateReader(new File(filePath));
       try {
-        List<MigrationLog> res = new ArrayList<>();
+        List<MigrationOperate> res = new ArrayList<>();
         while (reader.hasNext()) {
           res.add(reader.next());
         }
-        for (int i = 0; i < migrateLogs.size(); i++) {
-          assertTrue(logEquals(migrateLogs.get(i), res.get(i)));
+        for (int i = 0; i < migrateOperate.size(); i++) {
+          assertTrue(logEquals(migrateOperate.get(i), res.get(i)));
         }
       } finally {
         reader.close();

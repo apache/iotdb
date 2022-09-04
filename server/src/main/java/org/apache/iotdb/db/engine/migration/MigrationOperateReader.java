@@ -19,10 +19,7 @@
 package org.apache.iotdb.db.engine.migration;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.migration.MigrationTaskWriter.MigrationLog;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,67 +34,55 @@ import java.nio.channels.FileChannel;
  * MigrationTaskReader reads binarized MigrationLog from file using FileInputStream from head to
  * tail.
  */
-public class MigrationTaskReader implements AutoCloseable {
-  private static final Logger logger = LoggerFactory.getLogger(MigrationTaskReader.class);
-  private File logFile;
+public class MigrationOperateReader implements AutoCloseable {
+  private static final Logger logger = LoggerFactory.getLogger(MigrationOperateReader.class);
+  private final File logFile;
   private FileInputStream logFileInStream;
-  private MigrationLog log;
+  private MigrationOperate operate;
   private long unbrokenLogsSize = 0;
 
-  public MigrationTaskReader(String logFilePath) throws IOException {
-    logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+  public MigrationOperateReader(String logFilePath) throws IOException {
+    this.logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     logFileInStream = new FileInputStream(logFile);
   }
 
-  public MigrationTaskReader(File logFile) throws IOException {
+  public MigrationOperateReader(File logFile) throws IOException {
     this.logFile = logFile;
     logFileInStream = new FileInputStream(logFile);
   }
 
   /** @return MigrateLog parsed from log file, null if nothing left in file */
-  private MigrationLog readLog() throws IOException, IllegalPathException {
-    if (logFileInStream.available() == 0) {
+  private MigrationOperate readOperate() {
+    try {
+      MigrationOperate log = MigrationOperate.deserialize(logFileInStream);
+
+      unbrokenLogsSize = logFileInStream.getChannel().position();
+      return log;
+    } catch (IllegalPathException | IOException e) {
       return null;
     }
-
-    MigrationLog log = new MigrationLog();
-
-    int typeNum = ReadWriteIOUtils.readByte(logFileInStream);
-    if (typeNum >= 0 && typeNum < MigrationLog.LogType.values().length)
-      log.type = MigrationLog.LogType.values()[typeNum];
-    else throw new IOException();
-    log.taskId = ReadWriteIOUtils.readLong(logFileInStream);
-
-    if (log.type == MigrationLog.LogType.SET) {
-      log.storageGroup = new PartialPath(ReadWriteIOUtils.readString(logFileInStream));
-      log.targetDirPath = ReadWriteIOUtils.readString(logFileInStream);
-      log.startTime = ReadWriteIOUtils.readLong(logFileInStream);
-      log.ttl = ReadWriteIOUtils.readLong(logFileInStream);
-    }
-
-    unbrokenLogsSize = logFileInStream.getChannel().position();
-
-    return log;
   }
 
-  public MigrationLog next() {
-    MigrationLog ret = log;
-    log = null;
+  public MigrationOperate next() {
+    MigrationOperate ret = operate;
+    operate = null;
     return ret;
   }
 
   public boolean hasNext() {
-    if (log != null) {
+    if (operate != null) {
       return true;
     }
-    try {
-      return (log = readLog()) != null;
-    } catch (IOException | IllegalPathException e) {
-      logger.warn("Read migration log error.");
+
+    // try reading
+    operate = readOperate();
+
+    if (operate == null) {
       truncateBrokenLogs();
-      log = null;
+      operate = null;
       return false;
     }
+    return true;
   }
 
   /** Keeps 0...unbrokenLogSize bytes of the Log File and discards the rest */

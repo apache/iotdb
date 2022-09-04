@@ -164,7 +164,7 @@ public class MigrationTest {
   @Test
   public void testMigrate()
       throws StorageEngineException, WriteProcessException, QueryProcessException,
-          IllegalPathException {
+          IllegalPathException, IOException {
     prepareData();
 
     virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
@@ -214,6 +214,7 @@ public class MigrationTest {
     // create a new MigrateTask with specified params
     MigrationTask task = new MigrationTask(0, new PartialPath(sg1), targetDir, 500, 0);
     task.setStatus(MigrationTask.MigrationTaskStatus.RUNNING);
+    task.startTask();
     virtualStorageGroupProcessor.checkMigration(task);
 
     // files after migrate
@@ -267,7 +268,18 @@ public class MigrationTest {
         (SetMigrationPlan)
             planner.parseSQLToPhysicalPlan(
                 String.format(
-                    "SET MIGRATION TO " + sg1 + " 2023-01-01 10000 '%s'", targetDir.getPath()));
+                    "SET MIGRATION TO %s 2023-01-01 10000 '%s'", sg1, targetDir.getPath()));
+    assertEquals(sg1, plan.getStorageGroup().getFullPath());
+    assertEquals(10000, plan.getTTL());
+    assertEquals(startTime, plan.getStartTime());
+    assertEquals(targetDir.getPath(), plan.getTargetDir().getPath());
+
+    plan =
+        (SetMigrationPlan)
+            planner.parseSQLToPhysicalPlan(
+                String.format(
+                    "SET MIGRATION TO start_time=2023-01-01 storage_group=%s ttl=10000 target_dir='%s'",
+                    sg1, targetDir.getPath()));
     assertEquals(sg1, plan.getStorageGroup().getFullPath());
     assertEquals(10000, plan.getTTL());
     assertEquals(startTime, plan.getStartTime());
@@ -329,14 +341,14 @@ public class MigrationTest {
 
     while (queryDataSet.hasNext()) {
       RowRecord rowRecord = queryDataSet.next();
-      String sg = rowRecord.getFields().get(1).getStringValue();
+      String sg = rowRecord.getFields().get(2).getStringValue();
       if (sg.equals(sg1)) {
         ZonedDateTime startDate = DatetimeUtils.convertMillsecondToZonedDateTime(startTime);
         assertEquals(
             DatetimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(startDate),
-            rowRecord.getFields().get(3).getStringValue());
-        assertEquals(ttl, rowRecord.getFields().get(4).getLongV());
-        assertEquals(targetDir.getPath(), rowRecord.getFields().get(5).getStringValue());
+            rowRecord.getFields().get(4).getStringValue());
+        assertEquals(ttl, rowRecord.getFields().get(5).getLongV());
+        assertEquals(targetDir.getPath(), rowRecord.getFields().get(6).getStringValue());
       } else {
         fail();
       }

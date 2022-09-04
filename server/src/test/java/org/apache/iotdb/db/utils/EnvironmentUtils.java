@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
-import org.apache.iotdb.db.engine.migration.TsFileMigrationLogger;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
@@ -177,10 +176,6 @@ public class EnvironmentUtils {
 
     // clear last query executor
     LastQueryExecutor.clear();
-
-    // clear migration manager
-    StorageEngine.getInstance().getMigrationManager().clear();
-    TsFileMigrationLogger.getInstance().close();
 
     // delete all directory
     cleanAllDir();

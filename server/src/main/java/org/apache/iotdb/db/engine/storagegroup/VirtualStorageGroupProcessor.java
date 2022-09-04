@@ -34,7 +34,6 @@ import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.migration.MigrationTask;
-import org.apache.iotdb.db.engine.migration.TsFileMigrationLogger;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -1579,7 +1578,7 @@ public class VirtualStorageGroupProcessor {
         // task stopped running (eg. the task is paused), return
         return;
       }
-      checkMigrateFile(task.getTaskId(), tsFileResource, task.getTargetDir(), ttlLowerBound, true);
+      checkMigrateFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, true);
     }
 
     for (TsFileResource tsFileResource : unseqFiles) {
@@ -1587,13 +1586,17 @@ public class VirtualStorageGroupProcessor {
         // task stopped running, return
         return;
       }
-      checkMigrateFile(task.getTaskId(), tsFileResource, task.getTargetDir(), ttlLowerBound, false);
+      checkMigrateFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, false);
     }
   }
 
   /** migrate the file to targetDir */
   public void checkMigrateFile(
-      long taskId, TsFileResource resource, File targetDir, long ttlLowerBound, boolean isSeq) {
+      MigrationTask task,
+      TsFileResource resource,
+      File targetDir,
+      long ttlLowerBound,
+      boolean isSeq) {
     writeLock("checkMigrationLock");
     try {
       if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
@@ -1609,7 +1612,7 @@ public class VirtualStorageGroupProcessor {
           tsFileManager.remove(resource, isSeq);
 
           // start the migration
-          if (TsFileMigrationLogger.getInstance().start(taskId, resource.getTsFile())) {
+          if (task.startFile(resource.getTsFile())) {
             File migratedFile = resource.migrate(targetDir);
 
             logger.info(

@@ -854,7 +854,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
     } else {
       // unknown case
-      throw new SQLParserException("unset migration unknown case");
+      throw new SQLParserException("cancel migration unknown case");
     }
     return operator;
   }
@@ -884,7 +884,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
     } else {
       // unknown case
-      throw new SQLParserException("unpause migration unknown case");
+      throw new SQLParserException("resume migration unknown case");
     }
     return operator;
   }
