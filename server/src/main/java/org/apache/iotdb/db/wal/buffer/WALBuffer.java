@@ -58,6 +58,7 @@ public class WALBuffer extends AbstractWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(WALBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final int HALF_WAL_BUFFER_SIZE = config.getWalBufferSize() / 2;
+  private static final double FSYNC_BUFFER_RATIO = 0.95;
   private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
 
   /** whether close method is called */
@@ -142,9 +143,9 @@ public class WALBuffer extends AbstractWALBuffer {
 
   /** This task serializes WALEntry to workingBuffer and will call fsync at last. */
   private class SerializeTask implements Runnable {
-    private final ByteBufferView byteBufferVew = new ByteBufferView();
+    private final ByteBufferView byteBufferView = new ByteBufferView();
     private final SerializeInfo info = new SerializeInfo();
-    private int batchSize = 0;
+    private int totalSize = 0;
 
     @Override
     public void run() {
@@ -184,7 +185,7 @@ public class WALBuffer extends AbstractWALBuffer {
       }
 
       // try to get more WALEntries with non-blocking interface to enlarge write batch
-      while (walEntries.peek() != null && batchSize < QUEUE_CAPACITY) {
+      while (walEntries.peek() != null && totalSize < HALF_WAL_BUFFER_SIZE * FSYNC_BUFFER_RATIO) {
         WALEntry walEntry = walEntries.poll();
         boolean returnFlag = handleWALEntry(walEntry);
         if (returnFlag) {
@@ -193,7 +194,7 @@ public class WALBuffer extends AbstractWALBuffer {
       }
 
       // call fsync at last and set fsyncListeners
-      if (batchSize > 0) {
+      if (totalSize > 0) {
         fsyncWorkingBuffer(currentSearchIndex, currentFileStatus, info);
       }
     }
@@ -209,7 +210,6 @@ public class WALBuffer extends AbstractWALBuffer {
 
       boolean success = handleInfoEntry(walEntry);
       if (success) {
-        ++batchSize;
         info.fsyncListeners.add(walEntry.getWalFlushListener());
       }
       return false;
@@ -221,11 +221,13 @@ public class WALBuffer extends AbstractWALBuffer {
      * @return true if serialization is successful.
      */
     private boolean handleInfoEntry(WALEntry walEntry) {
-      int size = byteBufferVew.position();
+      int size = byteBufferView.position();
       try {
-        walEntry.serialize(byteBufferVew);
-        size = byteBufferVew.position() - size;
-        logger.debug("wal entry size is: {}", size);
+        walEntry.serialize(byteBufferView);
+        size = byteBufferView.position() - size;
+        if (logger.isDebugEnabled()) {
+          logger.debug("wal entry size is: {}", size);
+        }
       } catch (Exception e) {
         logger.error(
             "Fail to serialize WALEntry to wal node-{}'s buffer, discard it.", identifier, e);
@@ -245,6 +247,7 @@ public class WALBuffer extends AbstractWALBuffer {
           currentFileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
         }
       }
+      totalSize += size;
       info.metaData.add(size, searchIndex);
       return true;
     }
@@ -256,16 +259,20 @@ public class WALBuffer extends AbstractWALBuffer {
     private boolean handleSignalEntry(WALSignalEntry walSignalEntry) {
       switch (walSignalEntry.getType()) {
         case ROLL_WAL_LOG_WRITER_SIGNAL:
-          logger.debug("Handle roll log writer signal for wal node-{}.", identifier);
+          if (logger.isDebugEnabled()) {
+            logger.debug("Handle roll log writer signal for wal node-{}.", identifier);
+          }
           info.rollWALFileWriterListener = walSignalEntry.getWalFlushListener();
           fsyncWorkingBuffer(currentSearchIndex, currentFileStatus, info);
           return true;
         case CLOSE_SIGNAL:
-          logger.debug(
-              "Handle close signal for wal node-{}, there are {} entries left.",
-              identifier,
-              walEntries.size());
-          boolean dataExists = batchSize > 0;
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "Handle close signal for wal node-{}, there are {} entries left.",
+                identifier,
+                walEntries.size());
+          }
+          boolean dataExists = totalSize > 0;
           if (dataExists) {
             fsyncWorkingBuffer(currentSearchIndex, currentFileStatus, info);
           }
@@ -419,6 +426,13 @@ public class WALBuffer extends AbstractWALBuffer {
     @Override
     public void run() {
       currentWALFileWriter.updateFileStatus(fileStatus);
+
+      if (logger.isDebugEnabled()) {
+        double usedRatio = (double) syncingBuffer.position() / syncingBuffer.capacity();
+        logger.debug(
+            "Sync wal buffer, forceFlag: {}, buffer used: {} / {} = {}%",
+            forceFlag, syncingBuffer.position(), syncingBuffer.capacity(), usedRatio * 100);
+      }
 
       // flush buffer to os
       try {
