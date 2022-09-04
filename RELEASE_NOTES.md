@@ -29,10 +29,8 @@ The 0.14.0-preview2 version only contains the new cluster version.
 * Support Between expression
 * Support order by timeseries in last query
 * Support hot configuration of data_dirs
-* Support set system mode to readonly, running and error
 * Support schema template
 * Support executeBatchStatement in JDBC
-* Support clear cache
 * Support new UDF 'change_points'
 
 ## Improvements
