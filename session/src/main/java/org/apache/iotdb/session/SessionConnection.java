@@ -117,7 +117,9 @@ public class SessionConnection {
           RpcTransportFactory.INSTANCE.getTransport(
               // as there is a try-catch already, we do not need to use TSocket.wrap
               endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
-      transport.open();
+      if (!transport.isOpen()) {
+        transport.open();
+      }
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
     }

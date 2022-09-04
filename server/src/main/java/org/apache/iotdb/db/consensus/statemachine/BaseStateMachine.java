@@ -53,7 +53,7 @@ public abstract class BaseStateMachine implements IStateMachine, IStateMachine.E
     if (request instanceof ByteBufferConsensusRequest) {
       node = PlanNodeType.deserialize(request.serializeToByteBuffer());
     } else if (request instanceof MultiLeaderConsensusRequest) {
-      node = WALEntry.deserializeInsertNode(request.serializeToByteBuffer());
+      node = WALEntry.deserializeForConsensus(request.serializeToByteBuffer());
     } else if (request instanceof PlanNode) {
       node = (PlanNode) request;
     } else {

@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -1336,7 +1337,7 @@ public class LocalConfigNode {
 
   public TSStatus executeSetSystemStatus(NodeStatus status) {
     try {
-      IoTDBDescriptor.getInstance().getConfig().setNodeStatus(status);
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(status);
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }

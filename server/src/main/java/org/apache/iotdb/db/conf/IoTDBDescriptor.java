@@ -37,7 +37,6 @@ import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.utils.HandleSystemErrorStrategy;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -239,6 +238,18 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
+
+    conf.setMaxConnectionForInternalService(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_connection_for_internal_service",
+                String.valueOf(conf.getMaxConnectionForInternalService()))));
+
+    conf.setCoreConnectionForInternalService(
+        Integer.parseInt(
+            properties.getProperty(
+                "core_connection_for_internal_service",
+                String.valueOf(conf.getCoreConnectionForInternalService()))));
 
     conf.setSelectorNumOfClientManager(
         Integer.parseInt(
@@ -716,11 +727,6 @@ public class IoTDBDescriptor {
         properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
-
-    conf.setHandleSystemErrorStrategy(
-        HandleSystemErrorStrategy.valueOf(
-            properties.getProperty(
-                "handle_system_error", String.valueOf(conf.getHandleSystemErrorStrategy()))));
 
     // the num of memtables in each storage group
     conf.setConcurrentWritingTimePartition(
@@ -1623,15 +1629,10 @@ public class IoTDBDescriptor {
     int partitionCacheProportion = 0;
     int lastCacheProportion = 1;
 
-    if (conf.isClusterMode()) {
-      schemaRegionProportion = 5;
-      schemaCacheProportion = 3;
-      partitionCacheProportion = 1;
-    }
-
     String schemaMemoryAllocatePortion =
         properties.getProperty("schema_memory_allocate_proportion");
     if (schemaMemoryAllocatePortion != null) {
+      conf.setDefaultSchemaMemoryConfig(false);
       String[] proportions = schemaMemoryAllocatePortion.split(":");
       int loadedProportionSum = 0;
       for (String proportion : proportions) {
@@ -1645,6 +1646,8 @@ public class IoTDBDescriptor {
         partitionCacheProportion = Integer.parseInt(proportions[2].trim());
         lastCacheProportion = Integer.parseInt(proportions[3].trim());
       }
+    } else {
+      conf.setDefaultSchemaMemoryConfig(true);
     }
 
     conf.setAllocateMemoryForSchemaRegion(
@@ -1871,6 +1874,40 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
+  }
+
+  public void initClusterSchemaMemoryAllocate() {
+    if (!conf.isDefaultSchemaMemoryConfig()) {
+      // the config has already been updated as user config in properties file
+      return;
+    }
+
+    // process the default schema memory allocate
+
+    long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
+
+    int proportionSum = 10;
+    int schemaRegionProportion = 5;
+    int schemaCacheProportion = 3;
+    int partitionCacheProportion = 1;
+    int lastCacheProportion = 1;
+
+    conf.setAllocateMemoryForSchemaRegion(
+        schemaMemoryTotal * schemaRegionProportion / proportionSum);
+    logger.info(
+        "Cluster allocateMemoryForSchemaRegion = {}", conf.getAllocateMemoryForSchemaRegion());
+
+    conf.setAllocateMemoryForSchemaCache(schemaMemoryTotal * schemaCacheProportion / proportionSum);
+    logger.info(
+        "Cluster allocateMemoryForSchemaCache = {}", conf.getAllocateMemoryForSchemaCache());
+
+    conf.setAllocateMemoryForPartitionCache(
+        schemaMemoryTotal * partitionCacheProportion / proportionSum);
+    logger.info(
+        "Cluster allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
+
+    conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
+    logger.info("Cluster allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
   }
 
   private static class IoTDBDescriptorHolder {

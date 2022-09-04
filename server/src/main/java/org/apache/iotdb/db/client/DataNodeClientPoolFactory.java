@@ -74,7 +74,11 @@ public class DataNodeClientPoolFactory {
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build(),
               ThreadName.CONFIG_NODE_CLIENT_POOL_THREAD_NAME.getName()),
-          new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>().build().getConfig());
+          new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>()
+              .setMaxIdleClientForEachNode(conf.getCoreConnectionForInternalService())
+              .setMaxTotalClientForEachNode(conf.getMaxConnectionForInternalService())
+              .build()
+              .getConfig());
     }
   }
 
@@ -91,7 +95,11 @@ public class DataNodeClientPoolFactory {
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build()),
-          new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>().build().getConfig());
+          new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
+              .setMaxIdleClientForEachNode(conf.getCoreConnectionForInternalService())
+              .setMaxTotalClientForEachNode(conf.getMaxConnectionForInternalService())
+              .build()
+              .getConfig());
     }
   }
 

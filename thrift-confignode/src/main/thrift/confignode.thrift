@@ -230,6 +230,24 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
+// Trigger
+enum TTriggerState {
+  // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
+  INACTIVE
+  // The intermediate state of Create trigger, the trigger need to create has activated on some DataNodes.
+  PARTIAL_ACTIVE
+  // Triggers on all DataNodes are available.
+  ACTIVE
+  // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
+  DROPPING
+}
+
+struct TCreateTriggerReq {
+  1: required string triggerName
+  2: required binary triggerInformation
+  3: required common.TFile jarFile
+}
+
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status
@@ -583,6 +601,19 @@ service IConfigNodeRPCService {
      *         EXECUTE_STATEMENT_ERROR if operations on any node failed
      */
   common.TSStatus dropFunction(TDropFunctionReq req)
+
+  // ======================================================
+  // Trigger
+  // ======================================================
+
+   /**
+      * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+      * and sync Information of it to all ConfigNodes
+      *
+      * @return SUCCESS_STATUS if the trigger was created successfully
+      *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+      */
+  common.TSStatus createTrigger(TCreateTriggerReq req)
 
   // ======================================================
   // Maintenance Tools
