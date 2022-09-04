@@ -391,13 +391,13 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space compaction for sequence files */
-  private boolean enableSeqSpaceCompaction = false;
+  private boolean enableSeqSpaceCompaction = true;
 
   /** Enable inner space compaction for unsequence files */
-  private boolean enableUnseqSpaceCompaction = false;
+  private boolean enableUnseqSpaceCompaction = true;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private boolean enableCrossSpaceCompaction = false;
+  private boolean enableCrossSpaceCompaction = true;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -747,13 +747,13 @@ public class IoTDBConfig {
   private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = true;
+  private boolean enablePartition = false;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second. Default time is
    * a day.
    */
-  private long partitionInterval = 10000000;
+  private long partitionInterval = 86400;
 
   /** Max size of a {@link PlanNode}, mainly used to control memory of {@link LoadTsFileNode}. */
   private long maxPlanNodeSize = 500 * 1048576L;

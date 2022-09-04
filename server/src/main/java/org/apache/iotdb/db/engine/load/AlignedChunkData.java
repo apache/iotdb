@@ -72,7 +72,7 @@ public class AlignedChunkData implements ChunkData {
   private List<IChunkMetadata> chunkMetadataList;
 
   private List<long[]> timeBatch;
-  private int satisfiedLength;
+  private List<Integer> satisfiedTimeBatchLength;
 
   private AlignedChunkWriterImpl chunkWriter;
   private List<Chunk> chunkList;
@@ -184,6 +184,7 @@ public class AlignedChunkData implements ChunkData {
 
   private void serializeTsFileData(DataOutputStream stream, File tsFile) throws IOException {
     timeBatch = new ArrayList<>();
+    satisfiedTimeBatchLength = new ArrayList<>();
     ReadWriteIOUtils.write(needDecodeChunk(), stream);
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       int chunkSize = offset.size();
@@ -196,6 +197,7 @@ public class AlignedChunkData implements ChunkData {
       }
     }
     timeBatch = null;
+    satisfiedTimeBatchLength = null;
   }
 
   private void serializeEntireChunk(
@@ -223,7 +225,7 @@ public class AlignedChunkData implements ChunkData {
         Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
 
     reader.position(offset.get(chunkIndex));
-    int pageIndex = 0;
+    int decodePageIndex = 0; // should be 0,1 or 2
     long dataSize = this.dataSize.get(chunkIndex);
     while (dataSize > 0) {
       boolean hasStatistic = (chunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER;
@@ -235,15 +237,15 @@ public class AlignedChunkData implements ChunkData {
         if (chunkIndex == 0) {
           decodeTimePage(reader, chunkHeader, pageHeader, defaultTimeDecoder, valueDecoder, stream);
         } else {
-          decodeValuePage(reader, chunkHeader, pageHeader, pageIndex, valueDecoder, stream);
+          decodeValuePage(reader, chunkHeader, pageHeader, decodePageIndex, valueDecoder, stream);
         }
+        decodePageIndex += 1;
       } else { // entire page
         ReadWriteIOUtils.write(false, stream); // don't decode
         pageHeader.serializeTo(stream);
         ByteBuffer pageData = reader.readCompressedPage(pageHeader);
         ReadWriteIOUtils.write(pageData, stream);
       }
-      pageIndex += 1;
       dataSize -= pageDataSize;
     }
 
@@ -263,7 +265,7 @@ public class AlignedChunkData implements ChunkData {
     ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
     TimePageReader timePageReader = new TimePageReader(pageHeader, pageData, timeDecoder);
     long[] decodeTime = timePageReader.getNextTimeBatch();
-    satisfiedLength = 0;
+    int satisfiedLength = 0;
     long[] time = new long[decodeTime.length];
     for (int i = 0; i < decodeTime.length; i++) {
       if (decodeTime[i] < timePartitionSlot.getStartTime()) {
@@ -273,11 +275,12 @@ public class AlignedChunkData implements ChunkData {
       }
       time[satisfiedLength++] = decodeTime[i];
     }
-    timeBatch.add(decodeTime);
     ReadWriteIOUtils.write(satisfiedLength, stream);
     for (int i = 0; i < satisfiedLength; i++) {
       ReadWriteIOUtils.write(time[i], stream);
     }
+    timeBatch.add(decodeTime);
+    satisfiedTimeBatchLength.add(satisfiedLength);
   }
 
   private void decodeValuePage(
@@ -293,8 +296,10 @@ public class AlignedChunkData implements ChunkData {
     ValuePageReader valuePageReader =
         new ValuePageReader(pageHeader, pageData, chunkHeader.getDataType(), valueDecoder);
     long[] time = timeBatch.get(pageIndex);
-    TsPrimitiveType[] valueBatch = valuePageReader.nextValueBatch(time);
-    ReadWriteIOUtils.write(satisfiedLength, stream);
+    TsPrimitiveType[] valueBatch =
+        valuePageReader.nextValueBatch(
+            time); // should be origin time, so recording satisfied length is necessary
+    ReadWriteIOUtils.write(satisfiedTimeBatchLength.get(pageIndex), stream);
     for (int i = 0; i < valueBatch.length; i++) {
       if (time[i] < timePartitionSlot.getStartTime()) {
         continue;

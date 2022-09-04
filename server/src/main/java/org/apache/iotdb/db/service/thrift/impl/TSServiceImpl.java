@@ -607,12 +607,12 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
     String statement = req.getStatement();
+    long startTime = System.currentTimeMillis();
     try {
       if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
-      long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           serviceProvider
               .getPlanner()
@@ -640,6 +640,9 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+    } finally {
+      LOGGER.info(
+          "result sql {}, cost time {} ms.", statement, System.currentTimeMillis() - startTime);
     }
   }
 

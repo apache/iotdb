@@ -144,7 +144,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
             instance.getRegionReplicaSet().getRegionId());
     PlanNode planNode = instance.getFragment().getPlanNodeTree();
 
-    if (planNode instanceof LoadTsFilePieceNode) {
+    if (planNode instanceof LoadTsFilePieceNode) { // split
       LoadTsFilePieceNode pieceNode =
           (LoadTsFilePieceNode) PlanNodeType.deserialize(planNode.serializeToByteBuffer());
       if (pieceNode == null) {
@@ -158,7 +158,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
         throw new FragmentInstanceDispatchException(resultStatus);
       }
-    } else if (planNode instanceof LoadSingleTsFileNode) {
+    } else if (planNode instanceof LoadSingleTsFileNode) { // do not need split
       try {
         StorageEngineV2.getInstance()
             .getDataRegion((DataRegionId) groupId)

@@ -143,7 +143,7 @@ public class LoadTsFileScheduler implements IScheduler {
                     TSStatusCode.representOf(result.getFailureStatus().getCode()).name()));
             logger.error(
                 String.format("Result status message %s.", result.getFailureStatus().getMessage()));
-            if (result.getFailureStatus().getSubStatus().size() > 0) {
+            if (result.getFailureStatus().getSubStatus() != null) {
               for (TSStatus status : result.getFailureStatus().getSubStatus()) {
                 logger.error(
                     String.format(

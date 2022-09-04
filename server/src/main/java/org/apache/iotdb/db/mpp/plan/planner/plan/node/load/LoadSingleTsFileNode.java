@@ -100,6 +100,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       if (!StorageEngineV2.getTimePartitionSlot(resource.getStartTime(device))
           .equals(StorageEngineV2.getTimePartitionSlot(resource.getEndTime(device)))) {
         needDecodeTsFile = true;
+        return;
       }
       allRegionReplicaSet.addAll(dataPartition.getAllDataRegionReplicaSetForOneDevice(device));
     }
@@ -161,10 +162,6 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         isAlignedList.add(isAligned);
       }
 
-      logger.info(String.format("deviceList: %s", deviceList));
-      logger.info(String.format("measurementList: %s", measurementList));
-      logger.info(String.format("dataTypeList: %s", dataTypeList));
-      logger.info(String.format("isAlignedList: %s", isAlignedList));
       SchemaValidator.validate(deviceList, measurementList, dataTypeList, isAlignedList);
     }
   }
@@ -234,8 +231,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return "LoadSingleTsFileNode{"
         + "tsFile="
         + tsFile
-        + ", replicaSets="
-        + replicaSet2Pieces.keySet()
+        + ", needDecodeTsFile="
+        + needDecodeTsFile
         + '}';
   }
 
