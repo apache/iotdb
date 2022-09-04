@@ -179,7 +179,9 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     return results;
   }
 
-  /** @return the total row of the whole InsertTabletPlan */
+  /**
+   * @return the total row of the whole InsertTabletPlan
+   */
   public int getTotalRowCount() {
     int rowCount = 0;
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {

@@ -32,7 +32,6 @@ import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
@@ -40,7 +39,6 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -228,12 +226,6 @@ public class MLogParser {
             mLogTxtWriter.pruneTemplate((PruneTemplatePlan) plan);
           case SET_TEMPLATE:
             mLogTxtWriter.setTemplate((SetTemplatePlan) plan);
-            break;
-          case UNSET_TEMPLATE:
-            mLogTxtWriter.unsetTemplate((UnsetTemplatePlan) plan);
-            break;
-          case DROP_TEMPLATE:
-            mLogTxtWriter.dropTemplate((DropTemplatePlan) plan);
             break;
           case ACTIVATE_TEMPLATE:
             mLogTxtWriter.setUsingTemplate((ActivateTemplatePlan) plan);

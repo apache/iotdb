@@ -39,10 +39,10 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
+import org.apache.iotdb.db.query.filter.executor.PlanExecutor;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -56,7 +56,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -154,7 +154,10 @@ public class TTLTest {
     plan.setMeasurementMNodes(
         new IMeasurementMNode[] {
           MeasurementMNode.getMeasurementMNode(
-              null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
+              null,
+              "s1",
+              new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN),
+              null)
         });
     plan.transferType();
 
@@ -187,7 +190,10 @@ public class TTLTest {
     plan.setMeasurementMNodes(
         new IMeasurementMNode[] {
           MeasurementMNode.getMeasurementMNode(
-              null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
+              null,
+              "s1",
+              new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN),
+              null)
         });
     plan.transferType();
 
@@ -219,9 +225,7 @@ public class TTLTest {
     // files before ttl
     QueryDataSource dataSource =
         virtualStorageGroupProcessor.query(
-            Collections.singletonList(
-                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
-            sg1,
+            SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -235,12 +239,7 @@ public class TTLTest {
     // files after ttl
     dataSource =
         virtualStorageGroupProcessor.query(
-            Collections.singletonList(
-                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
-            sg1,
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
-            null,
-            null);
+            new PartialPath(sg1, s1), EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
@@ -252,10 +251,11 @@ public class TTLTest {
     IBatchReader reader =
         new SeriesRawDataBatchReader(
             path,
+            allSensors,
             TSDataType.INT64,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
-            seqResource,
-            unseqResource,
+            dataSource,
+            null,
             null,
             null,
             true);
@@ -275,12 +275,7 @@ public class TTLTest {
     virtualStorageGroupProcessor.setDataTTL(0);
     dataSource =
         virtualStorageGroupProcessor.query(
-            Collections.singletonList(
-                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
-            sg1,
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
-            null,
-            null);
+            new PartialPath(sg1, s1), EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertEquals(0, seqResource.size());
@@ -439,8 +434,6 @@ public class TTLTest {
     assertEquals(4, virtualStorageGroupProcessor.getUnSequenceFileList().size());
 
     virtualStorageGroupProcessor.setDataTTL(0);
-    virtualStorageGroupProcessor.checkFilesTTL();
-
     assertEquals(0, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(0, virtualStorageGroupProcessor.getUnSequenceFileList().size());
   }

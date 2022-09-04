@@ -31,7 +31,7 @@ print(long_description)
 
 setuptools.setup(
     name="apache-iotdb",  # Replace with your own username
-    version="0.13.0",
+    version="0.12.0",
     author=" Apache Software Foundation",
     author_email="dev@iotdb.apache.org",
     description="Apache IoTDB client API",
@@ -42,7 +42,6 @@ setuptools.setup(
     install_requires=[
         "thrift>=0.13.0",
         "pandas>=1.0.0,<1.99.99",
-        "numpy>=1.0.0",
         "testcontainers>=2.0.0",
     ],
     classifiers=[

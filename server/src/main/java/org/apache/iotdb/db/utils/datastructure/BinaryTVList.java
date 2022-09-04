@@ -49,20 +49,20 @@ public class BinaryTVList extends TVList {
   @Override
   public void putBinary(long timestamp, Binary value) {
     checkExpansion();
-    int arrayIndex = rowCount / ARRAY_SIZE;
-    int elementIndex = rowCount % ARRAY_SIZE;
+    int arrayIndex = size / ARRAY_SIZE;
+    int elementIndex = size % ARRAY_SIZE;
     minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
-    rowCount++;
-    if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
+    size++;
+    if (sorted && size > 1 && timestamp < getTime(size - 2)) {
       sorted = false;
     }
   }
 
   @Override
   public Binary getBinary(int index) {
-    if (index >= rowCount) {
+    if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
@@ -71,7 +71,7 @@ public class BinaryTVList extends TVList {
   }
 
   protected void set(int index, long timestamp, Binary value) {
-    if (index >= rowCount) {
+    if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
@@ -98,15 +98,15 @@ public class BinaryTVList extends TVList {
 
   @Override
   public void sort() {
-    if (sortedTimestamps == null || sortedTimestamps.length < rowCount) {
+    if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps =
-          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
+          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, size);
     }
-    if (sortedValues == null || sortedValues.length < rowCount) {
+    if (sortedValues == null || sortedValues.length < size) {
       sortedValues =
-          (Binary[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.TEXT, rowCount);
+          (Binary[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.TEXT, size);
     }
-    sort(0, rowCount);
+    sort(0, size);
     clearSortedValue();
     clearSortedTime();
     sorted = true;
@@ -219,15 +219,15 @@ public class BinaryTVList extends TVList {
 
     while (idx < end) {
       int inputRemaining = end - idx;
-      int arrayIdx = rowCount / ARRAY_SIZE;
-      int elementIdx = rowCount % ARRAY_SIZE;
+      int arrayIdx = size / ARRAY_SIZE;
+      int elementIdx = size % ARRAY_SIZE;
       int internalRemaining = ARRAY_SIZE - elementIdx;
       if (internalRemaining >= inputRemaining) {
         // the remaining inputs can fit the last array, copy all remaining inputs into last array
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
-        rowCount += inputRemaining;
+        size += inputRemaining;
         break;
       } else {
         // the remaining inputs cannot fit the last array, fill the last array and create a new
@@ -236,7 +236,7 @@ public class BinaryTVList extends TVList {
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
         idx += internalRemaining;
-        rowCount += internalRemaining;
+        size += internalRemaining;
         checkExpansion();
       }
     }
@@ -268,7 +268,7 @@ public class BinaryTVList extends TVList {
       }
     }
     minTime = Math.min(inPutMinTime, minTime);
-    sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
+    sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
     return nullCnt;
   }
 

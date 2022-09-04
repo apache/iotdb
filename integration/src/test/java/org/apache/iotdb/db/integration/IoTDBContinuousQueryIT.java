@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
@@ -29,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -42,20 +41,16 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@Ignore
 @Category({LocalStandaloneTest.class})
 public class IoTDBContinuousQueryIT {
-
-  private static final int EXPECTED_TEST_SIZE = 3;
 
   private Statement statement;
   private Connection connection;
   private volatile Exception exception = null;
-
-  private PartialPath[] partialPathArray;
 
   private final Thread dataGenerator =
       new Thread() {
@@ -66,13 +61,11 @@ public class IoTDBContinuousQueryIT {
                       Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
               Statement statement = connection.createStatement()) {
             do {
-              for (PartialPath partialPath : partialPathArray) {
+              for (String timeSeries : timeSeriesArray) {
                 statement.execute(
                     String.format(
-                        "insert into %s(timestamp, %s) values(now(), %.3f)",
-                        partialPath.getDevicePath(),
-                        partialPath.getMeasurement(),
-                        200 * Math.random()));
+                        "insert into %s(timestamp, temperature) values(now(), %.3f)",
+                        timeSeries, 200 * Math.random()));
               }
             } while (!isInterrupted());
           } catch (Exception e) {
@@ -90,23 +83,22 @@ public class IoTDBContinuousQueryIT {
     dataGenerator.join();
   }
 
-  private void createTimeSeries(String[] timeSeriesArray) throws SQLException {
-    initPartialPaths(timeSeriesArray);
-    for (PartialPath partialPath : partialPathArray) {
+  private final String[] timeSeriesArray = {
+    "root.ln.wf01.wt01.ws01",
+    "root.ln.wf01.wt01.ws02",
+    "root.ln.wf01.wt02.ws01",
+    "root.ln.wf01.wt02.ws02",
+    "root.ln.wf02.wt01.ws01",
+    "root.ln.wf02.wt01.ws02",
+    "root.ln.wf02.wt02.ws01",
+    "root.ln.wf02.wt02.ws02"
+  };
+
+  private void createTimeSeries() throws SQLException {
+    for (String timeSeries : timeSeriesArray) {
       statement.execute(
           String.format(
-              "create timeseries %s with datatype=FLOAT,encoding=RLE", partialPath.getFullPath()));
-    }
-  }
-
-  private void initPartialPaths(String[] timeSeriesArray) {
-    partialPathArray = new PartialPath[timeSeriesArray.length];
-    for (int i = 0; i < timeSeriesArray.length; ++i) {
-      try {
-        partialPathArray[i] = new PartialPath(timeSeriesArray[i]);
-      } catch (IllegalPathException e) {
-        fail(e.getMessage());
-      }
+              "create timeseries %s.temperature with datatype=FLOAT,encoding=RLE", timeSeries));
     }
   }
 
@@ -127,17 +119,7 @@ public class IoTDBContinuousQueryIT {
 
   @Test
   public void testCreateAndDropContinuousQuery() throws Exception {
-    createTimeSeries(
-        new String[] {
-          "root.ln.wf01.wt01.ws01.temperature",
-          "root.ln.wf01.wt01.ws02.temperature",
-          "root.ln.wf01.wt02.ws01.temperature",
-          "root.ln.wf01.wt02.ws02.temperature",
-          "root.ln.wf02.wt01.ws01.temperature",
-          "root.ln.wf02.wt01.ws02.temperature",
-          "root.ln.wf02.wt02.ws01.temperature",
-          "root.ln.wf02.wt02.ws02.temperature"
-        });
+    createTimeSeries();
 
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
@@ -145,12 +127,12 @@ public class IoTDBContinuousQueryIT {
             + "GROUP BY time(1s) END");
     statement.execute(
         "CREATE CONTINUOUS QUERY cq2 "
-            + "BEGIN SELECT avg(temperature) INTO temperature_cnt FROM root.ln.wf01.*.* "
+            + "BEGIN SELECT count(temperature) INTO temperature_cnt FROM root.ln.wf01.*.* "
             + " GROUP BY time(1s), level=3 END");
     statement.execute(
         "CREATE CONTINUOUS QUERY cq3 "
             + "RESAMPLE EVERY 2s FOR 2s "
-            + "BEGIN SELECT min_value(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
+            + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
     statement.execute("DROP CONTINUOUS QUERY cq1");
@@ -184,11 +166,11 @@ public class IoTDBContinuousQueryIT {
 
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
-            + "BEGIN SELECT sum(temperature) INTO temperature_max FROM root.ln.*.*.* "
+            + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
             + "GROUP BY time(1s) END");
     statement.execute(
         "CREATE CONTINUOUS QUERY cq2 "
-            + "BEGIN SELECT avg(temperature) INTO temperature_cnt FROM root.ln.wf01.*.* "
+            + "BEGIN SELECT count(temperature) INTO temperature_cnt FROM root.ln.wf01.*.* "
             + " GROUP BY time(1s), level=3 END");
 
     checkShowContinuousQueriesResult(new String[] {"cq3", "cq1", "cq2"});
@@ -199,18 +181,8 @@ public class IoTDBContinuousQueryIT {
   }
 
   @Test
-  public void testContinuousQueryResultSeriesWithLevels() throws Exception {
-    createTimeSeries(
-        new String[] {
-          "root.ln.wf01.wt01.ws01.temperature",
-          "root.ln.wf01.wt01.ws02.temperature",
-          "root.ln.wf01.wt02.ws01.temperature",
-          "root.ln.wf01.wt02.ws02.temperature",
-          "root.ln.wf02.wt01.ws01.temperature",
-          "root.ln.wf02.wt01.ws02.temperature",
-          "root.ln.wf02.wt02.ws01.temperature",
-          "root.ln.wf02.wt02.ws02.temperature"
-        });
+  public void testContinuousQueryResultSeries() throws Exception {
+    createTimeSeries();
     startDataGenerator();
 
     Thread.sleep(500);
@@ -242,162 +214,106 @@ public class IoTDBContinuousQueryIT {
   }
 
   @Test
-  public void testContinuousQueryResultSeriesWithDuplicatedTargetPaths() throws Exception {
-    createTimeSeries(
-        new String[] {
-          "root.ln.wf01.ws02.temperature",
-          "root.ln.wf01.ws01.temperature",
-          "root.ln.wf02.wt01.temperature",
-          "root.ln.wf02.wt02.temperature",
-        });
+  public void testContinuousQueryResult1() throws Exception {
+    createTimeSeries();
     startDataGenerator();
 
     Thread.sleep(500);
-
-    try {
-      statement.execute(
-          "CREATE CONTINUOUS QUERY cq1 "
-              + "BEGIN SELECT avg(temperature) INTO root.target.{2}.{3}.avg FROM root.ln.*.* "
-              + "GROUP BY time(1s) END");
-    } catch (Exception e) {
-      assertTrue(e.getMessage().contains("duplicated"));
-    } finally {
-      stopDataGenerator();
-    }
-  }
-
-  @Test
-  public void testContinuousQueryResultSeriesWithoutLevels1() throws Exception {
-    String[] timeSeriesArray = new String[30];
-    int wsIndex = 1;
-    for (int i = 1; i <= 30; ++i) {
-      timeSeriesArray[i - 1] =
-          "root.ln.wf0" + (i < 15 ? 1 : 2) + ".ws" + wsIndex++ + ".temperature";
-    }
-    createTimeSeries(timeSeriesArray);
-    startDataGenerator();
-
-    Thread.sleep(500);
-
-    statement.execute(
-        "CREATE CONTINUOUS QUERY cq1 "
-            + "BEGIN SELECT avg(temperature) INTO root.target.${2}.${3}_avg FROM root.ln.*.* "
-            + "GROUP BY time(1s) END");
-
-    Thread.sleep(5500);
-
-    checkShowTimeSeriesCount(2 * timeSeriesArray.length);
-
-    statement.execute("DROP CONTINUOUS QUERY cq1");
-
-    stopDataGenerator();
-  }
-
-  @Test
-  public void testContinuousQueryResultSeriesWithoutLevels2() throws Exception {
-    String[] timeSeriesArray = new String[30];
-    int wsIndex = 1;
-    for (int i = 1; i <= 30; ++i) {
-      timeSeriesArray[i - 1] =
-          "root.ln.wf0" + (i < 15 ? 1 : 2) + ".ws" + wsIndex++ + ".temperature";
-    }
-    createTimeSeries(timeSeriesArray);
-    startDataGenerator();
-
-    Thread.sleep(500);
-
-    statement.execute(
-        "CREATE CONTINUOUS QUERY cq1 "
-            + "BEGIN SELECT avg(temperature) INTO root.target.${2}.${3}.avg FROM root.ln.*.* "
-            + "GROUP BY time(1s) END");
-
-    Thread.sleep(5500);
-
-    checkShowTimeSeriesCount(2 * timeSeriesArray.length);
-
-    statement.execute("DROP CONTINUOUS QUERY cq1");
-
-    stopDataGenerator();
-  }
-
-  @Test
-  public void testInterval1000() throws Exception {
-    createTimeSeries(
-        new String[] {
-          "root.ln.wf01.wt01.ws01.temperature",
-          "root.ln.wf01.wt01.ws02.temperature",
-          "root.ln.wf01.wt02.ws01.temperature",
-          "root.ln.wf01.wt02.ws02.temperature",
-          "root.ln.wf02.wt01.ws01.temperature",
-          "root.ln.wf02.wt01.ws02.temperature",
-          "root.ln.wf02.wt02.ws01.temperature",
-          "root.ln.wf02.wt02.ws02.temperature"
-        });
-    startDataGenerator();
 
     statement.execute(
         "CREATE CQ cq1 "
             + "RESAMPLE EVERY 1s FOR 1s "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=1,2 END");
-    checkCQExecutionResult(1000);
-    statement.execute("DROP CQ cq1");
 
+    final long creationTime = System.currentTimeMillis();
+
+    Thread.sleep(5500);
+
+    Assert.assertTrue(statement.execute("select temperature_avg from root.ln.wf01"));
+    checkCQExecutionResult(creationTime, 0, 5000, 1000, 1000, 1000, 2);
+
+    statement.execute("DROP CQ cq1");
     stopDataGenerator();
   }
 
   @Test
-  public void testInterval2000() throws Exception {
-    createTimeSeries(
-        new String[] {
-          "root.ln.wf01.wt01.ws01.temperature",
-          "root.ln.wf01.wt01.ws02.temperature",
-          "root.ln.wf01.wt02.ws01.temperature",
-          "root.ln.wf01.wt02.ws02.temperature",
-          "root.ln.wf02.wt01.ws01.temperature",
-          "root.ln.wf02.wt01.ws02.temperature",
-          "root.ln.wf02.wt02.ws01.temperature",
-          "root.ln.wf02.wt02.ws02.temperature"
-        });
+  public void testContinuousQueryResult2() throws Exception {
+    createTimeSeries();
     startDataGenerator();
+
+    Thread.sleep(500);
 
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
             + "RESAMPLE EVERY 2s "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
-            + "GROUP BY time(2s), level=1,2 END");
-    checkCQExecutionResult(2000);
-    statement.execute("DROP CQ cq1");
+            + "GROUP BY time(1s), level=1,2 END");
 
+    final long creationTime = System.currentTimeMillis();
+
+    Thread.sleep(5500);
+
+    Assert.assertTrue(statement.execute("select temperature_avg from root.ln.wf01"));
+    checkCQExecutionResult(creationTime, 0, 5000, 1000, 2000, 1000, 2);
+
+    statement.execute("DROP CQ cq1");
     stopDataGenerator();
   }
 
   @Test
-  public void testInterval3000() throws Exception {
-    createTimeSeries(
-        new String[] {
-          "root.ln.wf01.wt01.ws01.temperature",
-          "root.ln.wf01.wt01.ws02.temperature",
-          "root.ln.wf01.wt02.ws01.temperature",
-          "root.ln.wf01.wt02.ws02.temperature",
-          "root.ln.wf02.wt01.ws01.temperature",
-          "root.ln.wf02.wt01.ws02.temperature",
-          "root.ln.wf02.wt02.ws01.temperature",
-          "root.ln.wf02.wt02.ws02.temperature"
-        });
+  public void testContinuousQueryResult3() throws Exception {
+    createTimeSeries();
     startDataGenerator();
+
+    Thread.sleep(500);
 
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
-            + "GROUP BY time(3s), level=1,2 END");
-    checkCQExecutionResult(3000);
-    statement.execute("DROP CQ cq1");
+            + "GROUP BY time(1s), level=1,2 END");
 
+    final long creationTime = System.currentTimeMillis();
+
+    Thread.sleep(5500);
+
+    Assert.assertTrue(statement.execute("select temperature_avg from root.ln.wf01"));
+    checkCQExecutionResult(creationTime, 0, 5000, 1000, 1000, 1000, 2);
+
+    statement.execute("DROP CQ cq1");
     stopDataGenerator();
   }
 
-  private void checkCQExecutionResult(long groupByInterval)
+  @Test
+  public void testContinuousQueryResult4() throws Exception {
+    statement.execute(
+        "CREATE CONTINUOUS QUERY cq1 "
+            + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
+            + "GROUP BY time(1s), level=1,2 END");
+
+    final long creationTime = System.currentTimeMillis();
+
+    Thread.sleep(4500);
+
+    createTimeSeries();
+    startDataGenerator();
+
+    Thread.sleep(6000);
+
+    checkCQExecutionResult(creationTime, 5000, 5500, 1000, 1000, 1000, 2);
+
+    statement.execute("DROP CQ cq1");
+    stopDataGenerator();
+  }
+
+  private void checkCQExecutionResult(
+      long creationTime,
+      long delay,
+      long duration,
+      long forInterval,
+      long everyInterval,
+      long groupByInterval,
+      int level)
       throws SQLException, InterruptedException {
     // IOTDB-1821
     // ignore the check when the background data generation thread's connection is broken
@@ -405,41 +321,50 @@ public class IoTDBContinuousQueryIT {
       return;
     }
 
+    final long expectedSize = (duration / everyInterval + 1) * (forInterval / groupByInterval);
     long waitMillSeconds = 0;
-    List<Pair<Long, Double>> actualResult;
+    List<Pair<Long, String>> result;
     do {
       Thread.sleep(waitMillSeconds);
       waitMillSeconds += 100;
 
       statement.execute("select temperature_avg from root.ln.wf01");
-      actualResult = collectQueryResult();
-    } while (actualResult.size() < EXPECTED_TEST_SIZE);
+      result = collectQueryResult();
+    } while (result.size() < expectedSize);
 
-    long actualWindowBegin = actualResult.get(0).left;
-    long actualWindowEnd = actualResult.get(actualResult.size() - 1).left;
-    statement.execute(
-        String.format(
-            "select avg(temperature) from root.ln.wf01.*.* GROUP BY ([%d, %d), %dms), level=1,2 without null all",
-            actualWindowBegin, actualWindowEnd + groupByInterval, groupByInterval));
-    List<Pair<Long, Double>> expectedResult = collectQueryResult();
+    final long leftMost = result.get(0).left + forInterval;
+    for (int i = 0; i < expectedSize; i++) {
+      long left = result.get(i).left;
 
-    assertEquals(expectedResult.size(), actualResult.size());
-    final int size = expectedResult.size();
-    for (int i = 0; i < size; ++i) {
-      Pair<Long, Double> expected = expectedResult.get(i);
-      Pair<Long, Double> actual = actualResult.get(i);
-      assertEquals(expected.left, actual.left);
-      assertEquals(expected.right, actual.right, 10e-6);
+      if (i == 0) {
+        assertTrue(Math.abs(creationTime + delay - forInterval - left) < 2 * forInterval);
+      } else {
+        long pointNumPerForInterval = forInterval / groupByInterval;
+        Assert.assertEquals(
+            leftMost
+                + (i / pointNumPerForInterval) * everyInterval
+                - (pointNumPerForInterval - i % pointNumPerForInterval) * groupByInterval,
+            left);
+      }
+
+      statement.execute(
+          String.format(
+              "select avg(temperature) from root.ln.wf01.*.* GROUP BY ([%d, %d), %dms), level=%d",
+              left, left + groupByInterval, groupByInterval, level));
+
+      List<Pair<Long, String>> correctAnswer = collectQueryResult();
+      Assert.assertEquals(1, correctAnswer.size());
+      Assert.assertEquals(correctAnswer.get(0).right, result.get(i).right);
     }
   }
 
-  private List<Pair<Long, Double>> collectQueryResult() {
-    List<Pair<Long, Double>> result = new ArrayList<>();
+  private List<Pair<Long, String>> collectQueryResult() {
+    List<Pair<Long, String>> result = new ArrayList<>();
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
         String timestamp = resultSet.getString(1);
         String value = resultSet.getString(2);
-        result.add(new Pair<>(Long.parseLong(timestamp), Double.parseDouble(value)));
+        result.add(new Pair<>(Long.parseLong(timestamp), value));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -487,16 +412,5 @@ public class IoTDBContinuousQueryIT {
     for (String s : timeSeriesArray) {
       Assert.assertTrue(collect.contains(s));
     }
-  }
-
-  private void checkShowTimeSeriesCount(int expected) throws SQLException {
-    Assert.assertTrue(statement.execute("show timeseries"));
-    int autual = 0;
-    try (ResultSet resultSet = statement.getResultSet()) {
-      while (resultSet.next()) {
-        ++autual;
-      }
-    }
-    Assert.assertEquals(expected, autual);
   }
 }

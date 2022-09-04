@@ -20,7 +20,6 @@ package org.apache.iotdb.integration.env;
 
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 
 import org.slf4j.Logger;
@@ -37,7 +36,6 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
 
 public abstract class ClusterEnvBase implements BaseEnv {
@@ -48,13 +46,13 @@ public abstract class ClusterEnvBase implements BaseEnv {
   public List<Integer> searchAvailablePort(int nodeNum) {
     // To search available ports and to prepare for concurrent cluster testing, so we search port in
     // batches. For example, when there are 5 nodes, the port range of the first search is
-    // 6671-6680, 10001-10010, 11001-21010. If any one of these 30 ports is occupied, it will be
+    // 6671-6680, 20001-20010, 40001-40010. If any one of these 30 ports is occupied, it will be
     // added up as a whole (add 10 to each port) to look for the next batch of ports.
 
     String cmd = "lsof -iTCP -sTCP:LISTEN -P -n | grep -E ";
     int rpcPortStart = 6671;
-    int metaPortStart = 10001;
-    int dataPortStart = 11001;
+    int metaPortStart = 20001;
+    int dataPortStart = 40001;
     boolean flag = true;
     int counter = 0;
     do {
@@ -162,9 +160,6 @@ public abstract class ClusterEnvBase implements BaseEnv {
     for (ClusterNode node : this.nodes) {
       node.stop();
     }
-    for (ClusterNode node : this.nodes) {
-      node.waitingToShutDown();
-    }
   }
 
   public void createNodeDir() {
@@ -245,31 +240,6 @@ public abstract class ClusterEnvBase implements BaseEnv {
                   System.getProperty("User", "root"),
                   System.getProperty("Password", "root"));
       connection.setQueryTimeout(queryTimeout);
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-      fail();
-    }
-    return connection;
-  }
-
-  @Override
-  public Connection getConnection(Constant.Version version) throws SQLException {
-    Connection connection = null;
-
-    try {
-      Class.forName(Config.JDBC_DRIVER_NAME);
-      connection =
-          DriverManager.getConnection(
-              Config.IOTDB_URL_PREFIX
-                  + this.nodes.get(0).getIp()
-                  + ":"
-                  + this.nodes.get(0).getPort()
-                  + "?"
-                  + VERSION
-                  + "="
-                  + version.toString(),
-              System.getProperty("User", "root"),
-              System.getProperty("Password", "root"));
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       fail();

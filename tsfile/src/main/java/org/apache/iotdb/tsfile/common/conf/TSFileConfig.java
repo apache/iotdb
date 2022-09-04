@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
 import java.io.Serializable;
 import java.nio.charset.Charset;
 
-/** TSFileConfig is a configuration class. Every variable is public and has default value. */
+/** TSFileConfig is a configure class. Every variables is public and has default value. */
 public class TSFileConfig implements Serializable {
 
   /** encoding configuration */
@@ -74,7 +74,7 @@ public class TSFileConfig implements Serializable {
   /** The memory size for each series writer to pack page, default value is 64KB. */
   private int pageSizeInByte = 64 * 1024;
   /** The maximum number of data points in a page, default value is 1024 * 1024. */
-  private int maxNumberOfPointsInPage = 1024 * 1024;
+  private int maxNumberOfPointsInPage = 1024;
   /** The maximum degree of a metadataIndex node, default value is 256 */
   private int maxDegreeOfIndexNode = 256;
   /** Data type for input timestamp, TsFile supports INT64. */
@@ -145,6 +145,20 @@ public class TSFileConfig implements Serializable {
   private double bloomFilterErrorRate = 0.05;
   /** The amount of data iterate each time */
   private int batchSize = 1000;
+  /** The constraints of Value */
+  private double xMax = Double.MAX_VALUE;
+
+  private double xmin = -Double.MAX_VALUE + 1;
+  /** The constraints of Speed */
+  private double sMax = Double.MAX_VALUE;
+
+  private double smin = -Double.MAX_VALUE + 1;
+
+  private double mussRate = 1;
+
+  private boolean usePreSpeed = false;
+
+  private boolean usePreRange = false;
 
   public TSFileConfig() {}
 
@@ -410,5 +424,61 @@ public class TSFileConfig implements Serializable {
 
   public void setBatchSize(int batchSize) {
     this.batchSize = batchSize;
+  }
+
+  public double getXMax() {
+    return xMax;
+  }
+
+  public void setXMax(double xMax) {
+    this.xMax = xMax;
+  }
+
+  public double getXMin() {
+    return xmin;
+  }
+
+  public void setXMin(double xmin) {
+    this.xmin = xmin;
+  }
+
+  public double getsMax() {
+    return sMax;
+  }
+
+  public void setsMax(double sMax) {
+    this.sMax = sMax;
+  }
+
+  public double getSmin() {
+    return smin;
+  }
+
+  public void setSmin(double smin) {
+    this.smin = smin;
+  }
+
+  public double getMussRate() {
+    return mussRate;
+  }
+
+  public void setMussRate(double mussRate) {
+    this.mussRate = mussRate;
+  }
+
+  public boolean isUsePreSpeed() {
+    return usePreSpeed;
+  }
+
+  public void setUsePreSpeed(boolean usePreSpeed) {
+    this.usePreSpeed = usePreSpeed;
+  }
+
+  public boolean isUsePreRange() {
+    return usePreRange;
+  }
+
+  public void setUsePreRange(boolean usePreRange) {
+    this.usePreRange = usePreRange;
   }
 }

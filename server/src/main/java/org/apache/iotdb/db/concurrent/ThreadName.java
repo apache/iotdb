@@ -37,11 +37,8 @@ public enum ThreadName {
   FLUSH_SERVICE("Flush"),
   FLUSH_SUB_TASK_SERVICE("Flush-SubTask"),
   COMPACTION_SERVICE("Compaction"),
-  COMPACTION_SCHEDULE("Compaction_Schedule"),
   WAL_DAEMON("WAL-Sync"),
   WAL_FORCE_DAEMON("WAL-Force"),
-  WAL_TRIM("WAL-Trim"),
-  WAL_FLUSH("WAL-Flush"),
   INDEX_SERVICE("Index"),
   SYNC_CLIENT("Sync-Client"),
   SYNC_SERVER("Sync"),
@@ -52,11 +49,6 @@ public enum ThreadName {
   SUB_RAW_QUERY_SERVICE("Sub_RawQuery"),
   INSERTION_SERVICE("MultithreadingInsertionPool"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
-  TTL_CHECK_SERVICE("TTL-CHECK"),
-  TIMED_FlUSH_SEQ_MEMTABLE("Timed-Flush-Seq-Memtable"),
-  TIMED_FlUSH_UNSEQ_MEMTABLE("Timed-Flush-Unseq-Memtable"),
-  TIMED_CLOSE_TSFILE("Timed-Close-TsFile"),
-  SETTLE_SERVICE("Settle"),
   CONTINUOUS_QUERY_SERVICE("ContinuousQueryTaskPoolManager"),
   CLUSTER_INFO_SERVICE("ClusterInfoClient"),
   CLUSTER_RPC_SERVICE("ClusterRPC"),
@@ -69,7 +61,6 @@ public enum ThreadName {
   CLUSTER_DATA_RPC_CLIENT("ClusterDataRPC-Client"),
   CLUSTER_DATA_HEARTBEAT_RPC_SERVICE("ClusterDataHeartbeatRPC"),
   CLUSTER_DATA_HEARTBEAT_RPC_CLIENT("ClusterDataHeartbeatRPC-Client"),
-  Cluster_Monitor("ClusterMonitor"),
   ;
 
   private final String name;

@@ -43,7 +43,6 @@ public class InsertTabletPlanGenerator {
   private final List<String> targetMeasurementIds;
 
   private final int tabletRowLimit;
-  private final boolean isIntoPathsAligned;
 
   // the following fields are used to construct plan
   private int rowCount;
@@ -54,15 +53,12 @@ public class InsertTabletPlanGenerator {
 
   private int numberOfInitializedColumns;
 
-  public InsertTabletPlanGenerator(
-      String targetDevice, int tabletRowLimit, boolean isIntoPathsAligned) {
+  public InsertTabletPlanGenerator(String targetDevice, int tabletRowLimit) {
     this.targetDevice = targetDevice;
     queryDataSetIndexes = new ArrayList<>();
     targetMeasurementIds = new ArrayList<>();
 
     this.tabletRowLimit = tabletRowLimit;
-
-    this.isIntoPathsAligned = isIntoPathsAligned;
   }
 
   public void collectTargetPathInformation(String targetMeasurementId, int queryDataSetIndex) {
@@ -153,6 +149,13 @@ public class InsertTabletPlanGenerator {
         initializedDataTypeIndexes.add(i);
       }
     }
+
+    for (int i = 0; i < dataTypes.length; ++i) {
+      if (dataTypes[i] == null && fields.get(i) != null && fields.get(i).getDataType() != null) {
+        dataTypes[i] = fields.get(i).getDataType();
+        initializedDataTypeIndexes.add(i);
+      }
+    }
     return initializedDataTypeIndexes;
   }
 
@@ -176,7 +179,6 @@ public class InsertTabletPlanGenerator {
           break;
         case TEXT:
           columns[i] = new Binary[tabletRowLimit];
-          Arrays.fill((Binary[]) columns[i], Binary.EMPTY_VALUE);
           break;
         default:
           throw new UnSupportedDataTypeException(
@@ -204,7 +206,7 @@ public class InsertTabletPlanGenerator {
 
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(new PartialPath(targetDevice), nonEmptyColumnNames);
-    insertTabletPlan.setAligned(isIntoPathsAligned);
+    insertTabletPlan.setAligned(false);
     insertTabletPlan.setRowCount(rowCount);
 
     if (countOfNonEmptyColumns != columns.length) {

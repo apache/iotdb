@@ -48,10 +48,8 @@ public class ClientPoolFactoryTest {
 
   private long mockMaxWaitTimeoutMs = 10 * 1000L;
   private int mockMaxClientPerMember = 10;
-  private int mockMaxIdleClientPerMember = 5;
 
   private int maxClientPerNodePerMember = clusterConfig.getMaxClientPerNodePerMember();
-  private int maxIdleClientPerNodePerMember = clusterConfig.getMaxIdleClientPerNodePerMember();
   private long waitClientTimeoutMS = clusterConfig.getWaitClientTimeoutMS();
 
   private ClientPoolFactory clientPoolFactory;
@@ -60,7 +58,6 @@ public class ClientPoolFactoryTest {
   @Before
   public void setUp() {
     clusterConfig.setMaxClientPerNodePerMember(mockMaxClientPerMember);
-    clusterConfig.setMaxIdleClientPerNodePerMember(mockMaxIdleClientPerMember);
     clusterConfig.setWaitClientTimeoutMS(mockMaxWaitTimeoutMs);
     clientPoolFactory = new ClientPoolFactory();
     mockClientManager =
@@ -83,7 +80,6 @@ public class ClientPoolFactoryTest {
   @After
   public void tearDown() {
     clusterConfig.setMaxClientPerNodePerMember(maxClientPerNodePerMember);
-    clusterConfig.setMaxIdleClientPerNodePerMember(maxIdleClientPerNodePerMember);
     clusterConfig.setWaitClientTimeoutMS(waitClientTimeoutMS);
   }
 
@@ -125,33 +121,6 @@ public class ClientPoolFactoryTest {
     for (RaftService.AsyncClient client : clientList) {
       pool.returnObject(node, client);
     }
-
-    for (int i = 0; i < pool.getMaxIdlePerKey(); i++) {
-      RaftService.AsyncClient client = pool.borrowObject(node);
-      Assert.assertNotNull(client);
-      Assert.assertTrue(clientList.contains(client));
-    }
-  }
-
-  @Test
-  public void poolIdleObjectEvictionTest() throws Exception {
-    GenericKeyedObjectPool<Node, RaftService.AsyncClient> pool =
-        clientPoolFactory.createAsyncDataPool(ClientCategory.DATA);
-
-    Node node = constructDefaultNode();
-    List<RaftService.AsyncClient> clientList = new ArrayList<>();
-    for (int i = 0; i < pool.getMaxTotalPerKey(); i++) {
-      RaftService.AsyncClient client = pool.borrowObject(node);
-      Assert.assertNotNull(client);
-      clientList.add(client);
-    }
-
-    for (RaftService.AsyncClient client : clientList) {
-      pool.returnObject(node, client);
-    }
-
-    Assert.assertEquals(0, pool.getNumActive(node));
-    Assert.assertEquals(pool.getMaxIdlePerKey(), pool.getNumIdle(node));
 
     for (int i = 0; i < pool.getMaxIdlePerKey(); i++) {
       RaftService.AsyncClient client = pool.borrowObject(node);

@@ -22,9 +22,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.executor.IPlanExecutor;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.query.filter.executor.IPlanExecutor;
+import org.apache.iotdb.db.query.filter.executor.PlanExecutor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -51,8 +51,7 @@ public class ListDataSetTest {
     "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
     "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.test.d1.\"s3+xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE ALIGNED TIMESERIES root.test.d2(s1 DOUBLE, s2 BOOLEAN)"
+    "CREATE TIMESERIES root.test.d1.\"s3+xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN"
   };
 
   public ListDataSetTest() throws QueryProcessException {}
@@ -93,7 +92,7 @@ public class ListDataSetTest {
       throws QueryProcessException, TException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           SQLException {
-    String[] results = new String[] {"0\troot.test.d0", "0\troot.test.d1", "0\troot.test.d2"};
+    String[] results = new String[] {"0\troot.test.d0", "0\troot.test.d1"};
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show child paths root.test");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ListDataSet);
@@ -111,17 +110,11 @@ public class ListDataSetTest {
       throws QueryProcessException, TException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           SQLException {
-    String[] results =
-        new String[] {
-          "0\troot.test.d0\tfalse",
-          "0\troot.test.d1\tfalse",
-          "0\troot.test.d2\ttrue",
-          "0\troot.vehicle.d0\tfalse"
-        };
+    String[] results = new String[] {"0\troot.test.d0", "0\troot.test.d1", "0\troot.vehicle.d0"};
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show devices");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ShowDevicesDataSet);
-    Assert.assertEquals("[devices, isAligned]", dataSet.getPaths().toString());
+    Assert.assertEquals("[devices]", dataSet.getPaths().toString());
     int i = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
@@ -137,17 +130,15 @@ public class ListDataSetTest {
           SQLException {
     String[] results =
         new String[] {
-          "0\troot.test.d0\troot.test\tfalse",
-          "0\troot.test.d1\troot.test\tfalse",
-          "0\troot.test.d2\troot.test\ttrue",
-          "0\troot.vehicle.d0\troot.vehicle\tfalse"
+          "0\troot.test.d0\troot.test",
+          "0\troot.test.d1\troot.test",
+          "0\troot.vehicle.d0\troot.vehicle"
         };
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show devices with storage group");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ShowDevicesDataSet);
     Assert.assertEquals("devices", dataSet.getPaths().get(0).toString());
     Assert.assertEquals("storage group", dataSet.getPaths().get(1).toString());
-    Assert.assertEquals("isAligned", dataSet.getPaths().get(2).toString());
     int i = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();

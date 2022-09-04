@@ -84,7 +84,9 @@ public enum CompressionType {
     return Byte.BYTES;
   }
 
-  /** @return byte number */
+  /**
+   * @return byte number
+   */
   public byte serialize() {
     return this.index;
   }

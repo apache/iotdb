@@ -135,16 +135,13 @@ public class InternalMNode extends MNode {
   }
 
   /**
-   * Replace a child of this mnode. New child's name must be the same as old child's name.
+   * replace a child of this mnode
    *
    * @param oldChildName measurement name
    * @param newChildNode new child node
    */
   @Override
-  public synchronized void replaceChild(String oldChildName, IMNode newChildNode) {
-    if (!oldChildName.equals(newChildNode.getName())) {
-      throw new RuntimeException("New child's name must be the same as old child's name!");
-    }
+  public void replaceChild(String oldChildName, IMNode newChildNode) {
     IMNode oldChildNode = this.getChild(oldChildName);
     if (oldChildNode == null) {
       return;
@@ -173,7 +170,8 @@ public class InternalMNode extends MNode {
 
     newChildNode.setParent(this);
 
-    children.replace(oldChildName, newChildNode);
+    this.deleteChild(oldChildName);
+    this.addChild(newChildNode.getName(), newChildNode);
   }
 
   @Override

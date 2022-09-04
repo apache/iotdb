@@ -28,6 +28,4 @@ public class Constant {
   static final String SENSOR_3 = "sensor_3";
 
   static final String DEVICE_PREFIX = "device_";
-  static final String DEVICE_1 = "root.sg.device_1";
-  static final String DEVICE_2 = "root.sg.device_2";
 }

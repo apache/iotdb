@@ -29,8 +29,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,7 +47,8 @@ public class MemTableTestUtils {
 
   static {
     schema.registerTimeseries(
-        new Path(deviceId0), new MeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
+        new Path(deviceId0),
+        new UnaryMeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
   }
 
   public static void produceData(
@@ -65,7 +66,7 @@ public class MemTableTestUtils {
       iMemTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
-              new MeasurementSchema(measurementId, dataType, TSEncoding.PLAIN)),
+              new UnaryMeasurementSchema(measurementId, dataType, TSEncoding.PLAIN)),
           l,
           new Object[] {(int) l});
     }
@@ -92,8 +93,10 @@ public class MemTableTestUtils {
     encodings[1] = TSEncoding.GORILLA;
 
     IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
-    IMeasurementSchema schema0 = new MeasurementSchema(measurements[0], dataTypes[0], encodings[0]);
-    IMeasurementSchema schema1 = new MeasurementSchema(measurements[1], dataTypes[1], encodings[1]);
+    IMeasurementSchema schema0 =
+        new UnaryMeasurementSchema(measurements[0], dataTypes[0], encodings[0]);
+    IMeasurementSchema schema1 =
+        new UnaryMeasurementSchema(measurements[1], dataTypes[1], encodings[1]);
     mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", schema0, null);
     mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema1, null);
 

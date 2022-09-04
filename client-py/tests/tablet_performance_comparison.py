@@ -24,7 +24,6 @@ import pandas as pd
 
 from iotdb.Session import Session
 from iotdb.utils.IoTDBConstants import TSDataType
-from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import Tablet
 
 # the data type specified the byte order (i.e. endian)
@@ -208,11 +207,8 @@ def performance_test(
                 for m in measurements:
                     value_array.append(csv_data.at[t, m])
                 values.append(value_array)
-            tablet = Tablet(
-                device_id, measurements, data_types, values, timestamps_
-            )
         else:
-            # Use the NEW method to construct numpy tablet
+            # Use the NEW method to construct tablet
             timestamps_ = csv_data[TIME_STR].values
             if timestamps_.dtype != FORMAT_CHAR_OF_TYPES[TSDataType.INT64]:
                 timestamps_ = timestamps_.astype(FORMAT_CHAR_OF_TYPES[TSDataType.INT64])
@@ -224,9 +220,10 @@ def performance_test(
                     if not (tstype == TSDataType.TEXT and value_array.dtype == object):
                         value_array = value_array.astype(type_char)
                 values.append(value_array)
-            tablet = NumpyTablet(
-                device_id, measurements, data_types, values, timestamps_
-            )
+
+        tablet = Tablet(
+            device_id, measurements, data_types, values, timestamps_, use_new=use_new
+        )
         cost_st = time.perf_counter()
         session.insert_tablet(tablet)
         insert_cost += time.perf_counter() - cost_st

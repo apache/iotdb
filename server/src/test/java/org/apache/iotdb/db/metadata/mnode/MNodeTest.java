@@ -27,8 +27,9 @@ import org.junit.Test;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class MNodeTest {
   private static ExecutorService service;
@@ -42,7 +43,8 @@ public class MNodeTest {
   }
 
   @Test
-  public void testReplaceChild() {
+  public void testReplaceChild() throws InterruptedException {
+    // after replacing a with c, the timeseries root.a.b becomes root.c.b
     InternalMNode rootNode = new InternalMNode(null, "root");
 
     IEntityMNode aNode = new EntityMNode(rootNode, "a");
@@ -53,14 +55,19 @@ public class MNodeTest {
     aNode.addChild(bNode.getName(), bNode);
     aNode.addAlias("aliasOfb", bNode);
 
-    IEntityMNode newANode = new EntityMNode(null, "a");
-    rootNode.replaceChild(aNode.getName(), newANode);
+    for (int i = 0; i < 500; i++) {
+      service.submit(
+          new Thread(() -> rootNode.replaceChild(aNode.getName(), new EntityMNode(null, "c"))));
+    }
+
+    if (!service.isShutdown()) {
+      service.shutdown();
+      service.awaitTermination(30, TimeUnit.SECONDS);
+    }
 
     List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);
-    assertEquals("root.a.b", multiFullPaths.get(0));
-    assertEquals("root.a.b", rootNode.getChild("a").getChild("aliasOfb").getFullPath());
-    assertNotSame(aNode, rootNode.getChild("a"));
-    assertSame(newANode, rootNode.getChild("a"));
+    assertEquals("root.c.b", multiFullPaths.get(0));
+    assertEquals("root.c.b", rootNode.getChild("c").getChild("aliasOfb").getFullPath());
   }
 
   @Test

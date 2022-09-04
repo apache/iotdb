@@ -96,7 +96,7 @@ public class LocalFileUserManagerTest {
     for (User user1 : users) {
       user = manager.getUser(user1.getName());
       assertEquals(user1.getName(), user.getName());
-      assertTrue(AuthUtils.validatePassword(user1.getPassword(), user.getPassword()));
+      assertEquals(AuthUtils.encryptPassword(user1.getPassword()), user.getPassword());
     }
 
     assertFalse(manager.createUser(users[0].getName(), users[0].getPassword()));
@@ -171,7 +171,7 @@ public class LocalFileUserManagerTest {
     assertTrue(manager.updateUserPassword(user.getName(), newPassword));
     assertFalse(manager.updateUserPassword(user.getName(), illegalPW));
     user = manager.getUser(user.getName());
-    assertTrue(AuthUtils.validatePassword(newPassword, user.getPassword()));
+    assertEquals(AuthUtils.encryptPassword(newPassword), user.getPassword());
     caught = false;
     try {
       manager.updateUserPassword("not a user", newPassword);

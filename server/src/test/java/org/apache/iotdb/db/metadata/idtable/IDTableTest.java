@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -646,6 +647,16 @@ public class IDTableTest {
           new TimeValuePair(110L, new TsPrimitiveType.TsLong(2L)), false, 0L);
       assertEquals(new TsPrimitiveType.TsLong(2L), cacheContainer.getCachedLast().getValue());
       assertEquals(110L, cacheContainer.getCachedLast().getTimestamp());
+
+      // flush time
+      TimeseriesID timeseriesID =
+          new TimeseriesID(new PartialPath("root.laptop.d1.non_aligned_device.s1"));
+      idTable.updateLatestFlushTime(timeseriesID, 10L);
+      assertEquals(10L, idTable.getLatestFlushedTime(timeseriesID));
+      idTable.updateLatestFlushTime(timeseriesID, 8L);
+      assertEquals(10L, idTable.getLatestFlushedTime(timeseriesID));
+      idTable.updateLatestFlushTime(timeseriesID, 12L);
+      assertEquals(12L, idTable.getLatestFlushedTime(timeseriesID));
 
     } catch (MetadataException e) {
       e.printStackTrace();

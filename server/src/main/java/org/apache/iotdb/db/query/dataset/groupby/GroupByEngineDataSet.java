@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -148,13 +147,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.queryId = context.getQueryId();
     this.interval = groupByTimePlan.getInterval();
     this.slidingStep = groupByTimePlan.getSlidingStep();
-    if (groupByTimePlan instanceof GroupByTimeFillPlan) {
-      this.startTime = ((GroupByTimeFillPlan) groupByTimePlan).getQueryStartTime();
-      this.endTime = ((GroupByTimeFillPlan) groupByTimePlan).getQueryEndTime();
-    } else {
-      this.startTime = groupByTimePlan.getStartTime();
-      this.endTime = groupByTimePlan.getEndTime();
-    }
+    this.startTime = groupByTimePlan.getStartTime();
+    this.endTime = groupByTimePlan.getEndTime();
     this.leftCRightO = groupByTimePlan.isLeftCRightO();
     this.ascending = groupByTimePlan.isAscending();
     this.isIntervalByMonth = groupByTimePlan.isIntervalByMonth();

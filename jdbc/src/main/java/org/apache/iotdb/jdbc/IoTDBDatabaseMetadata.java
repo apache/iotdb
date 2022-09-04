@@ -3129,7 +3129,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     return false;
   }
 
-  /** @deprecated recommend using getMetadataInJson() instead of toString() */
+  /**
+   * @deprecated recommend using getMetadataInJson() instead of toString()
+   */
   @Deprecated
   @Override
   public String toString() {

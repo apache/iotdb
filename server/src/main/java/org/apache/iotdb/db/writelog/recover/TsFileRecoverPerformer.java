@@ -70,7 +70,9 @@ public class TsFileRecoverPerformer {
   private final boolean sequence;
   private VirtualStorageGroupProcessor virtualStorageGroupProcessor;
 
-  /** @param isLastFile whether this TsFile is the last file of its partition */
+  /**
+   * @param isLastFile whether this TsFile is the last file of its partition
+   */
   public TsFileRecoverPerformer(
       String logNodePrefix,
       TsFileResource currentTsFileResource,

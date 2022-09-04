@@ -32,6 +32,8 @@ import java.util.Objects;
 public class StorageGroupMNodePlan extends MNodePlan {
   private long dataTTL;
 
+  private int alignedTimeseriesIndex;
+
   public StorageGroupMNodePlan() {
     super(Operator.OperatorType.STORAGE_GROUP_MNODE);
   }
@@ -56,12 +58,21 @@ public class StorageGroupMNodePlan extends MNodePlan {
     this.dataTTL = dataTTL;
   }
 
+  public int getAlignedTimeseriesIndex() {
+    return alignedTimeseriesIndex;
+  }
+
+  public void setAlignedTimeseriesIndex(int alignedTimeseriesIndex) {
+    this.alignedTimeseriesIndex = alignedTimeseriesIndex;
+  }
+
   @Override
   public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.STORAGE_GROUP_MNODE.ordinal());
     putString(buffer, name);
     buffer.putLong(dataTTL);
     buffer.putInt(childSize);
+    buffer.putInt(alignedTimeseriesIndex);
 
     buffer.putLong(index);
   }
@@ -72,6 +83,7 @@ public class StorageGroupMNodePlan extends MNodePlan {
     putString(stream, name);
     stream.writeLong(dataTTL);
     stream.writeInt(childSize);
+    stream.writeInt(alignedTimeseriesIndex);
 
     stream.writeLong(index);
   }
@@ -81,12 +93,25 @@ public class StorageGroupMNodePlan extends MNodePlan {
     name = readString(buffer);
     dataTTL = buffer.getLong();
     childSize = buffer.getInt();
+    if (buffer.hasRemaining()) {
+      alignedTimeseriesIndex = buffer.getInt();
+    } else {
+      alignedTimeseriesIndex = 0;
+    }
     index = buffer.getLong();
   }
 
   @Override
   public String toString() {
-    return "StorageGroupMNode{" + name + "," + dataTTL + "," + childSize + "}";
+    return "StorageGroupMNode{"
+        + name
+        + ","
+        + dataTTL
+        + ","
+        + childSize
+        + ","
+        + alignedTimeseriesIndex
+        + "}";
   }
 
   @Override
@@ -100,11 +125,12 @@ public class StorageGroupMNodePlan extends MNodePlan {
     StorageGroupMNodePlan that = (StorageGroupMNodePlan) o;
     return Objects.equals(name, that.name)
         && Objects.equals(dataTTL, that.dataTTL)
-        && Objects.equals(childSize, that.childSize);
+        && Objects.equals(childSize, that.childSize)
+        && Objects.equals(alignedTimeseriesIndex, that.alignedTimeseriesIndex);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, dataTTL, childSize);
+    return Objects.hash(name, dataTTL, childSize, alignedTimeseriesIndex);
   }
 }

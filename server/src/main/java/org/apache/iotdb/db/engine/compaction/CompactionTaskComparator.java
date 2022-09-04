@@ -34,13 +34,11 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
 
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {
-    if ((((o1 instanceof AbstractInnerSpaceCompactionTask)
-            && (o2 instanceof AbstractCrossSpaceCompactionTask))
-        || ((o2 instanceof AbstractInnerSpaceCompactionTask)
-            && (o1 instanceof AbstractCrossSpaceCompactionTask)))) {
-      if (config.getCompactionPriority() == CompactionPriority.BALANCE) {
-        return 0;
-      } else if (config.getCompactionPriority() == CompactionPriority.INNER_CROSS) {
+    if (((o1 instanceof AbstractInnerSpaceCompactionTask)
+            ^ (o2 instanceof AbstractInnerSpaceCompactionTask))
+        && config.getCompactionPriority() != CompactionPriority.BALANCE) {
+      // the two task is different type, and the compaction priority is not balance
+      if (config.getCompactionPriority() == CompactionPriority.INNER_CROSS) {
         return o1 instanceof AbstractInnerSpaceCompactionTask ? -1 : 1;
       } else {
         return o1 instanceof AbstractCrossSpaceCompactionTask ? -1 : 1;
@@ -71,13 +69,6 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
           - o2.getSumOfCompactionCount() / o2.getSelectedTsFileResourceList().size();
     }
 
-    // if the max file version of o1 and o2 are different
-    // we prefer to execute task with greater file version
-    // because we want to compact newly written files
-    if (o1.getMaxFileVersion() != o2.getMaxFileVersion()) {
-      return o2.getMaxFileVersion() > o1.getMaxFileVersion() ? 1 : -1;
-    }
-
     List<TsFileResource> selectedFilesOfO1 = o1.getSelectedTsFileResourceList();
     List<TsFileResource> selectedFilesOfO2 = o2.getSelectedTsFileResourceList();
 
@@ -92,6 +83,13 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
     // because small files can be compacted quickly
     if (o1.getSelectedFileSize() != o2.getSelectedFileSize()) {
       return (int) (o1.getSelectedFileSize() - o2.getSelectedFileSize());
+    }
+
+    // if the max file version of o1 and o2 are different
+    // we prefer to execute task with greater file version
+    // because we want to compact newly written files
+    if (o1.getMaxFileVersion() != o2.getMaxFileVersion()) {
+      return o2.getMaxFileVersion() > o1.getMaxFileVersion() ? 1 : -1;
     }
 
     return 0;

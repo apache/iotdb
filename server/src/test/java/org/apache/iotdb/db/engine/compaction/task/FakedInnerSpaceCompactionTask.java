@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 import java.io.IOException;
 import java.util.List;
@@ -36,6 +37,7 @@ public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
+      TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence,
       AtomicInteger currentTaskNum) {
@@ -44,6 +46,7 @@ public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
         virtualStorageGroupName,
         timePartition,
         tsFileManager,
+        tsFileResourceList,
         selectedTsFileResourceList,
         sequence,
         currentTaskNum);
@@ -88,7 +91,7 @@ public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
   @Override
   public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedTsFileResourceList) {
-      if (resource.isCompacting() || !resource.isClosed()) {
+      if (resource.isMerging() || !resource.isClosed()) {
         return false;
       }
     }

@@ -20,23 +20,11 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan.getTimeExpression;
 
 public class GroupByQueryOperator extends AggregationQueryOperator {
 
@@ -76,27 +64,5 @@ public class GroupByQueryOperator extends AggregationQueryOperator {
     }
 
     return groupByTimePlan;
-  }
-
-  @Override
-  protected IExpression optimizeExpression(IExpression expression, RawDataQueryPlan queryPlan)
-      throws QueryProcessException {
-    GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
-    List<PartialPath> selectedSeries = groupByTimePlan.getDeduplicatedPaths();
-    GlobalTimeExpression timeExpression = getTimeExpression(groupByTimePlan);
-
-    if (expression == null) {
-      expression = timeExpression;
-    } else {
-      expression = BinaryExpression.and(expression, timeExpression);
-    }
-
-    // optimize expression to an executable one
-    try {
-      return ExpressionOptimizer.getInstance()
-          .optimize(expression, new ArrayList<>(selectedSeries));
-    } catch (QueryFilterOptimizationException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
   }
 }

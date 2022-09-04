@@ -25,7 +25,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
-import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
@@ -41,7 +40,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 
 public interface IDTable {
@@ -75,6 +73,24 @@ public interface IDTable {
    * @throws MetadataException if insert plan's aligned value is inconsistent with device
    */
   IDeviceID getSeriesSchemas(InsertPlan plan) throws MetadataException;
+
+  /**
+   * update latest flushed time of one timeseries
+   *
+   * @param timeseriesID timeseries id
+   * @param flushTime latest flushed time
+   * @throws MetadataException throw if this timeseries is not exist
+   */
+  void updateLatestFlushTime(TimeseriesID timeseriesID, long flushTime) throws MetadataException;
+
+  /**
+   * update latest flushed time of one timeseries
+   *
+   * @param timeseriesID timeseries id
+   * @return latest flushed time of one timeseries
+   * @throws MetadataException throw if this timeseries is not exist
+   */
+  long getLatestFlushedTime(TimeseriesID timeseriesID) throws MetadataException;
 
   /**
    * register trigger to the timeseries
@@ -121,33 +137,6 @@ public interface IDTable {
 
   /** clear id table and close file */
   void clear() throws IOException;
-
-  /**
-   * get device entry from device path
-   *
-   * @param deviceName device name of the time series
-   * @return device entry of the timeseries
-   */
-  public DeviceEntry getDeviceEntry(String deviceName);
-
-  /**
-   * get all device entries
-   *
-   * @return all device entries
-   */
-  public List<DeviceEntry> getAllDeviceEntry();
-
-  /**
-   * put schema entry to id table, currently used in recover
-   *
-   * @param devicePath device path (can be device id formed path)
-   * @param measurement measurement name
-   * @param schemaEntry schema entry to put
-   * @param isAligned is the device aligned
-   */
-  public void putSchemaEntry(
-      String devicePath, String measurement, SchemaEntry schemaEntry, boolean isAligned)
-      throws MetadataException;
 
   /**
    * translate query path's device path to device id

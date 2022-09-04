@@ -19,13 +19,10 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MonitorType;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public class MetricConfig {
@@ -36,28 +33,14 @@ public class MetricConfig {
   private Integer pushPeriodInSecond = 5;
 
   /** The of monitor frame */
-  private MonitorType monitorType = MonitorType.MICROMETER;
+  private MonitorType monitorType = MonitorType.micrometer;
 
   /** provide or push metric data to remote system, could be jmx, prometheus, iotdb, etc. */
   private List<ReporterType> metricReporterList =
-      Arrays.asList(ReporterType.JMX, ReporterType.PROMETHEUS);
+      Arrays.asList(ReporterType.jmx, ReporterType.prometheus);
 
-  private MetricLevel metricLevel = MetricLevel.IMPORTANT;
-
-  private List<PredefinedMetric> predefinedMetrics =
-      Collections.singletonList(PredefinedMetric.JVM);
-
-  /** the http server's port for prometheus exporter to get metric data. */
-  private String prometheusExporterPort = "9091";
-
-  public void copy(MetricConfig newMetricConfig) {
-    enableMetric = newMetricConfig.getEnableMetric();
-    monitorType = newMetricConfig.getMonitorType();
-    metricReporterList = newMetricConfig.getMetricReporterList();
-    metricLevel = newMetricConfig.getMetricLevel();
-    predefinedMetrics = newMetricConfig.getPredefinedMetrics();
-    prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
-  }
+  /** the config of prometheus reporter */
+  private PrometheusReporterConfig prometheusReporterConfig = new PrometheusReporterConfig();
 
   public Boolean getEnableMetric() {
     return enableMetric;
@@ -91,42 +74,34 @@ public class MetricConfig {
     this.metricReporterList = metricReporterList;
   }
 
-  public MetricLevel getMetricLevel() {
-    return metricLevel;
+  public PrometheusReporterConfig getPrometheusReporterConfig() {
+    return prometheusReporterConfig;
   }
 
-  public void setMetricLevel(MetricLevel metricLevel) {
-    this.metricLevel = metricLevel;
+  public void setPrometheusReporterConfig(PrometheusReporterConfig prometheusReporterConfig) {
+    this.prometheusReporterConfig = prometheusReporterConfig;
   }
 
-  public List<PredefinedMetric> getPredefinedMetrics() {
-    return predefinedMetrics;
-  }
+  /** the following is prometheus related config. */
+  public static class PrometheusReporterConfig {
+    private String prometheusExporterUrl = "http://localhost";
+    /** the http server's port for prometheus exporter to get metric data. */
+    private String prometheusExporterPort = "9091";
 
-  public void setPredefinedMetrics(List<PredefinedMetric> predefinedMetrics) {
-    this.predefinedMetrics = predefinedMetrics;
-  }
-
-  public String getPrometheusExporterPort() {
-    return prometheusExporterPort;
-  }
-
-  public void setPrometheusExporterPort(String prometheusExporterPort) {
-    this.prometheusExporterPort = prometheusExporterPort;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof MetricConfig)) {
-      return false;
+    public String getPrometheusExporterUrl() {
+      return prometheusExporterUrl;
     }
-    MetricConfig anotherMetricConfig = (MetricConfig) obj;
-    return enableMetric.equals(anotherMetricConfig.getEnableMetric())
-        && pushPeriodInSecond.equals(anotherMetricConfig.getPushPeriodInSecond())
-        && monitorType.equals(anotherMetricConfig.getMonitorType())
-        && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
-        && metricLevel.equals(anotherMetricConfig.getMetricLevel())
-        && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
-        && prometheusExporterPort.equals(anotherMetricConfig.getPrometheusExporterPort());
+
+    public void setPrometheusExporterUrl(String prometheusExporterUrl) {
+      this.prometheusExporterUrl = prometheusExporterUrl;
+    }
+
+    public String getPrometheusExporterPort() {
+      return prometheusExporterPort;
+    }
+
+    public void setPrometheusExporterPort(String prometheusExporterPort) {
+      this.prometheusExporterPort = prometheusExporterPort;
+    }
   }
 }

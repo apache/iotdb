@@ -18,7 +18,6 @@
 package org.apache.iotdb.db.protocol.rest.impl;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.rest.RestApiService;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
@@ -29,38 +28,26 @@ import org.apache.iotdb.db.protocol.rest.handler.RequestValidationHandler;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
-import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
-import java.time.ZoneId;
-
 public class RestApiServiceImpl extends RestApiService {
 
-  public static ServiceProvider serviceProvider = IoTDB.serviceProvider;
-
-  private final Planner planner;
+  private final BasicServiceProvider basicServiceProvider;
   private final AuthorizationHandler authorizationHandler;
 
-  private final Integer defaultQueryRowLimit;
-
   public RestApiServiceImpl() throws QueryProcessException {
-    planner = serviceProvider.getPlanner();
-    authorizationHandler = new AuthorizationHandler(serviceProvider);
-
-    defaultQueryRowLimit =
-        IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit();
+    basicServiceProvider = new BasicServiceProvider();
+    authorizationHandler = new AuthorizationHandler(basicServiceProvider);
   }
 
   @Override
@@ -68,7 +55,9 @@ public class RestApiServiceImpl extends RestApiService {
     try {
       RequestValidationHandler.validateSQL(sql);
 
-      PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(sql.getSql());
+      PhysicalPlan physicalPlan =
+          basicServiceProvider.getPlanner().parseSQLToPhysicalPlan(sql.getSql());
+
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
         return response;
@@ -76,7 +65,7 @@ public class RestApiServiceImpl extends RestApiService {
 
       return Response.ok()
           .entity(
-              serviceProvider.executeNonQuery(physicalPlan)
+              basicServiceProvider.executeNonQuery(physicalPlan)
                   ? new ExecutionStatus()
                       .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .message(TSStatusCode.SUCCESS_STATUS.name())
@@ -95,11 +84,8 @@ public class RestApiServiceImpl extends RestApiService {
       RequestValidationHandler.validateSQL(sql);
 
       PhysicalPlan physicalPlan =
-          planner.parseSQLToRestQueryPlan(sql.getSql(), ZoneId.systemDefault());
-      physicalPlan.setLoginUserName(securityContext.getUserPrincipal().getName());
-      if (!(physicalPlan instanceof QueryPlan)
-          && !(physicalPlan instanceof ShowPlan)
-          && !(physicalPlan instanceof AuthorPlan)) {
+          basicServiceProvider.getPlanner().parseSQLToPhysicalPlan(sql.getSql());
+      if (!(physicalPlan instanceof QueryPlan)) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
@@ -113,25 +99,21 @@ public class RestApiServiceImpl extends RestApiService {
         return response;
       }
 
-      final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+      final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
       try {
         QueryContext queryContext =
-            serviceProvider.genQueryContext(
+            basicServiceProvider.genQueryContext(
                 queryId,
                 physicalPlan.isDebug(),
                 System.currentTimeMillis(),
                 sql.getSql(),
                 IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
         QueryDataSet queryDataSet =
-            serviceProvider.createQueryDataSet(
+            basicServiceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        // set max row limit to avoid OOM
-        return QueryDataSetHandler.fillQueryDataSet(
-            queryDataSet,
-            physicalPlan,
-            sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
+        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
       } finally {
-        ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+        BasicServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
@@ -154,7 +136,7 @@ public class RestApiServiceImpl extends RestApiService {
 
       return Response.ok()
           .entity(
-              serviceProvider.executeNonQuery(insertTabletPlan)
+              basicServiceProvider.executeNonQuery(insertTabletPlan)
                   ? new ExecutionStatus()
                       .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .message(TSStatusCode.SUCCESS_STATUS.name())

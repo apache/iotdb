@@ -29,7 +29,7 @@ public class ShowDevicesResultTest {
 
   @Test
   public void serializeTest() throws IOException {
-    ShowDevicesResult showDevicesResult = new ShowDevicesResult("root.sg1.d1", false, "root.sg1");
+    ShowDevicesResult showDevicesResult = new ShowDevicesResult("root.sg1.d1", "root.sg1");
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     showDevicesResult.serialize(outputStream);
@@ -37,7 +37,6 @@ public class ShowDevicesResultTest {
     ShowDevicesResult result = ShowDevicesResult.deserialize(byteBuffer);
 
     Assert.assertEquals("root.sg1.d1", result.getName());
-    Assert.assertFalse(result.isAligned());
     Assert.assertEquals("root.sg1", result.getSgName());
   }
 }

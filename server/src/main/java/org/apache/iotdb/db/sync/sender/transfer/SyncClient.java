@@ -63,7 +63,6 @@ import java.io.RandomAccessFile;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileLock;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -181,7 +180,6 @@ public class SyncClient implements ISyncClient {
                       try {
                         fileLock.release();
                         randomAccessFile2.close();
-                      } catch (ClosedChannelException e) {
                       } catch (Exception e) {
                         logger.error("Unable to remove lock file: {}", lockFile, e);
                       }

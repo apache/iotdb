@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -32,7 +33,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -52,7 +53,7 @@ public class SeriesAggregateReaderTest {
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<String> deviceIds = new ArrayList<>();
-  private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private List<TsFileResource> seqResources = new ArrayList<>();
   private List<TsFileResource> unseqResources = new ArrayList<>();
@@ -76,14 +77,15 @@ public class SeriesAggregateReaderTest {
           SchemaTestUtils.getMeasurementPath(SERIES_READER_TEST_SG + ".device0.sensor0");
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
+      QueryDataSource queryDataSource = new QueryDataSource(seqResources, unseqResources);
       SeriesAggregateReader seriesReader =
           new SeriesAggregateReader(
               path,
               allSensors,
               TSDataType.INT32,
               EnvironmentUtils.TEST_QUERY_CONTEXT,
-              seqResources,
-              unseqResources,
+              queryDataSource,
+              null,
               null,
               null,
               true);

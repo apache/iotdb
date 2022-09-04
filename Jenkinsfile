@@ -38,7 +38,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 2, unit: 'HOURS')
+        timeout(time: 3, unit: 'HOURS')
         // When we have test-fails e.g. we don't need to run the remaining steps
         skipStagesAfterUnstable()
     }
@@ -70,7 +70,7 @@ pipeline {
             }
             steps {
                 // Publish the site with the scm-publish plugin.
-                sh 'mvn -P site -P compile-site -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site'
+                sh 'mvn -P site -P compile-site -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site'
 
                 // Clean up the snapshots directory (freeing up more space after deploying).
                 dir("target") {

@@ -22,7 +22,7 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -59,7 +59,7 @@ public class PullMeasurementSchemaHandler implements AsyncMethodCallback<PullSch
     for (int i = 0; i < size; i++) {
       schemas.add(
           buffer.get() == 0
-              ? MeasurementSchema.partialDeserializeFrom(buffer)
+              ? UnaryMeasurementSchema.partialDeserializeFrom(buffer)
               : VectorMeasurementSchema.partialDeserializeFrom(buffer));
     }
     synchronized (timeseriesSchemas) {

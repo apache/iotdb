@@ -27,10 +27,4 @@ public class ContinuousQueryException extends StorageEngineException {
     super(message, TSStatusCode.CONTINUOUS_QUERY_ERROR.getStatusCode());
     this.isUserException = true;
   }
-
-  public ContinuousQueryException(String message, Exception e) {
-    super(message, e);
-    this.errorCode = TSStatusCode.CONTINUOUS_QUERY_ERROR.getStatusCode();
-    this.isUserException = true;
-  }
 }

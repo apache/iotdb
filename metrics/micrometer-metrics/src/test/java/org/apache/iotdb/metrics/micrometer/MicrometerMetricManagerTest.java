@@ -19,15 +19,10 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import org.apache.iotdb.metrics.DoNothingMetricService;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
-import org.apache.iotdb.metrics.config.MetricConfig;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.MonitorType;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -40,22 +35,21 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
 public class MicrometerMetricManagerTest {
-  static MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
-  static MetricService metricService = new DoNothingMetricService();
   static MetricManager metricManager;
 
   @BeforeClass
   public static void init() {
-    metricConfig.setEnableMetric(true);
-    metricConfig.setMonitorType(MonitorType.MICROMETER);
-    metricService.startService();
-    metricManager = metricService.getMetricManager();
+    System.setProperty("line.separator", "\n");
+    // set up path of yml
+    System.setProperty("IOTDB_CONF", "src/test/resources");
+    MetricService.init();
+    metricManager = MetricService.getMetricManager();
   }
 
   private void getOrCreateDifferentMetricsWithSameName() {
-    Timer timer = metricManager.getOrCreateTimer("metric", MetricLevel.IMPORTANT, "tag1", "tag2");
+    Timer timer = metricManager.getOrCreateTimer("metric", "tag1", "tag2");
     assertNotNull(timer);
-    metricManager.getOrCreateCounter("metric", MetricLevel.IMPORTANT, "tag1", "tag2");
+    metricManager.getOrCreateCounter("metric", "tag1", "tag2");
   }
 
   @Test
@@ -67,8 +61,7 @@ public class MicrometerMetricManagerTest {
   public void testAutoGauge() {
     List<Integer> list = new ArrayList<>();
     Gauge autoGauge =
-        metricManager.getOrCreateAutoGauge(
-            "autoGaugeMetric", MetricLevel.IMPORTANT, list, List::size, "tagk", "tagv");
+        metricManager.getOrCreateAutoGauge("autoGaugeMetric", list, List::size, "tagk", "tagv");
     assertEquals(0L, autoGauge.value());
     list.add(1);
     assertEquals(1L, autoGauge.value());

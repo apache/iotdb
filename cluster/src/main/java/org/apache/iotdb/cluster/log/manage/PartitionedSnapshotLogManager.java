@@ -35,7 +35,6 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.slf4j.Logger;
@@ -88,7 +87,6 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CLUSTER_UNCOMMITTED_LOG.toString(),
-              MetricLevel.IMPORTANT,
               getUnCommittedEntryManager().getAllEntries(),
               List::size,
               Tag.NAME.toString(),

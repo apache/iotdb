@@ -69,33 +69,33 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
 
   public InsertRowsOfOneDevicePlan(
       PartialPath prefixPath,
-      List<Long> insertTimes,
+      Long[] insertTimes,
       List<List<String>> measurements,
-      List<ByteBuffer> insertValues,
+      ByteBuffer[] insertValues,
       boolean isAligned)
       throws QueryProcessException {
     this();
     this.devicePath = prefixPath;
-    rowPlans = new InsertRowPlan[insertTimes.size()];
-    rowPlanIndexList = new int[insertTimes.size()];
-    for (int i = 0; i < insertTimes.size(); i++) {
+    rowPlans = new InsertRowPlan[insertTimes.length];
+    rowPlanIndexList = new int[insertTimes.length];
+    for (int i = 0; i < insertTimes.length; i++) {
       rowPlans[i] =
           new InsertRowPlan(
               prefixPath,
-              insertTimes.get(i),
+              insertTimes[i],
               measurements.get(i).toArray(new String[0]),
-              insertValues.get(i),
+              insertValues[i],
               isAligned);
       if (rowPlans[i].getMeasurements().length == 0) {
         throw new QueryProcessException(
-            "The measurements are null, deviceId:" + prefixPath + ", time:" + insertTimes.get(i));
+            "The measurements are null, deviceId:" + prefixPath + ", time:" + insertTimes[i]);
       }
       if (rowPlans[i].getValues().length == 0) {
         throw new QueryProcessException(
             "The size of values in InsertRowsOfOneDevicePlan is 0, deviceId:"
                 + prefixPath
                 + ", time:"
-                + insertTimes.get(i));
+                + insertTimes[i]);
       }
       rowPlanIndexList[i] = i;
     }

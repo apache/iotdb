@@ -25,8 +25,9 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +56,7 @@ public class TsFileTestHelper {
       }
 
       Schema schema = new Schema();
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
 
       // the number of rows to include in the tablet
       int rowNum = 1000000;
@@ -64,8 +65,8 @@ public class TsFileTestHelper {
 
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
-        MeasurementSchema measurementSchema =
-            new MeasurementSchema(
+        UnaryMeasurementSchema measurementSchema =
+            new UnaryMeasurementSchema(
                 "sensor_" + (i + 1),
                 TSDataType.INT64,
                 TSEncoding.TS_2DIFF,

@@ -23,13 +23,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -47,18 +41,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * TsFileIOWriter is used to construct metadata and write data stored in memory to output stream.
  */
-public class TsFileIOWriter implements AutoCloseable {
+public class TsFileIOWriter {
 
   protected static final byte[] MAGIC_STRING_BYTES;
   public static final byte VERSION_NUMBER_BYTE;
@@ -85,7 +73,7 @@ public class TsFileIOWriter implements AutoCloseable {
   private long markedPosition;
   private String currentChunkGroupDeviceId;
 
-  // for upgrade tool and split tool
+  // for upgrade tool
   Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
   // the two longs marks the index range of operations in current MemTable
@@ -468,7 +456,7 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   /**
-   * this function is for Upgrade Tool and Split Tool.
+   * this function is only for Upgrade Tool.
    *
    * @return DeviceTimeseriesMetadataMap
    */

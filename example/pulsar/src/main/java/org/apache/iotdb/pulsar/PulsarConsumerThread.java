@@ -18,138 +18,52 @@
  */
 package org.apache.iotdb.pulsar;
 
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
-import org.apache.pulsar.client.api.Messages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class PulsarConsumerThread implements Runnable {
+  private static final String INSERT_TEMPLATE =
+      "INSERT INTO root.vehicle.%s(timestamp,%s) VALUES (%s,'%s')";
 
   private static final Logger logger = LoggerFactory.getLogger(PulsarConsumerThread.class);
 
   private final Consumer<?> consumer;
 
-  private SessionPool pool;
-
-  public PulsarConsumerThread(Consumer<?> consumer, SessionPool pool)
-      throws ClassNotFoundException {
+  public PulsarConsumerThread(Consumer<?> consumer) throws ClassNotFoundException {
     this.consumer = consumer;
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
   }
-  /** insert data to IoTDB */
-  private void insert(String data) throws IoTDBConnectionException, StatementExecutionException {
-    String[] dataArray = data.split(",");
-    String device = dataArray[0];
-    long time = Long.parseLong(dataArray[1]);
-    List<String> measurements = Arrays.asList(dataArray[2].split(":"));
-    List<TSDataType> types = new ArrayList<>();
-    for (String type : dataArray[3].split(":")) {
-      types.add(TSDataType.valueOf(type));
-    }
 
-    List<Object> values = new ArrayList<>();
-    String[] valuesStr = dataArray[4].split(":");
-    for (int i = 0; i < valuesStr.length; i++) {
-      switch (types.get(i)) {
-        case INT64:
-          values.add(Long.parseLong(valuesStr[i]));
-          break;
-        case DOUBLE:
-          values.add(Double.parseDouble(valuesStr[i]));
-          break;
-        case INT32:
-          values.add(Integer.parseInt(valuesStr[i]));
-          break;
-        case TEXT:
-          values.add(valuesStr[i]);
-          break;
-        case FLOAT:
-          values.add(Float.parseFloat(valuesStr[i]));
-          break;
-        case BOOLEAN:
-          values.add(Boolean.parseBoolean(valuesStr[i]));
-          break;
-      }
-    }
+  /** Write data to IoTDB */
+  private void writeData(Statement statement, String message) throws SQLException {
 
-    pool.insertRecord(device, time, measurements, types, values);
-  }
+    String[] items = message.split(",");
 
-  /** insert data to IoTDB */
-  private void insertDatas(List<String> datas)
-      throws IoTDBConnectionException, StatementExecutionException {
-    int size = datas.size();
-    List<String> deviceIds = new ArrayList<>(size);
-    List<Long> times = new ArrayList<>(size);
-    List<List<String>> measurementsList = new ArrayList<>(size);
-    List<List<TSDataType>> typesList = new ArrayList<>(size);
-    List<List<Object>> valuesList = new ArrayList<>(size);
-    for (String data : datas) {
-      String[] dataArray = data.split(",");
-      String device = dataArray[0];
-      long time = Long.parseLong(dataArray[1]);
-      List<String> measurements = Arrays.asList(dataArray[2].split(":"));
-      List<TSDataType> types = new ArrayList<>();
-      for (String type : dataArray[3].split(":")) {
-        types.add(TSDataType.valueOf(type));
-      }
-
-      List<Object> values = new ArrayList<>();
-      String[] valuesStr = dataArray[4].split(":");
-      for (int i = 0; i < valuesStr.length; i++) {
-        switch (types.get(i)) {
-          case INT64:
-            values.add(Long.parseLong(valuesStr[i]));
-            break;
-          case DOUBLE:
-            values.add(Double.parseDouble(valuesStr[i]));
-            break;
-          case INT32:
-            values.add(Integer.parseInt(valuesStr[i]));
-            break;
-          case TEXT:
-            values.add(valuesStr[i]);
-            break;
-          case FLOAT:
-            values.add(Float.parseFloat(valuesStr[i]));
-            break;
-          case BOOLEAN:
-            values.add(Boolean.parseBoolean(valuesStr[i]));
-            break;
-        }
-      }
-      deviceIds.add(device);
-      times.add(time);
-      measurementsList.add(measurements);
-      typesList.add(types);
-      valuesList.add(values);
-    }
-
-    pool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
+    String sql = String.format(INSERT_TEMPLATE, items[0], items[1], items[2], items[3]);
+    statement.execute(sql);
   }
 
   @SuppressWarnings("squid:S2068")
   @Override
   public void run() {
-    try {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Constant.IOTDB_CONNECTION_URL,
+                Constant.IOTDB_CONNECTION_USER,
+                Constant.IOTDB_CONNECTION_PASSWORD);
+        Statement statement = connection.createStatement()) {
       do {
-        Messages<?> messages = consumer.batchReceive();
-        List<String> datas = new ArrayList<>(messages.size());
-        for (Message<?> message : messages) {
-          datas.add(new String(message.getData()));
-        }
-        insertDatas(datas);
-        consumer.acknowledge(messages);
+        Message<?> msg = consumer.receive();
+        writeData(statement, new String(msg.getData()));
+
+        consumer.acknowledge(msg);
       } while (true);
     } catch (Exception e) {
       logger.error(e.getMessage());

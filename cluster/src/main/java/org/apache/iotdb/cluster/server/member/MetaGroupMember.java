@@ -689,7 +689,9 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     blindNodes.add(node);
   }
 
-  /** @return whether a node wants the partition table. */
+  /**
+   * @return whether a node wants the partition table.
+   */
   public boolean isNodeBlind(Node node) {
     return blindNodes.contains(node);
   }
@@ -726,7 +728,9 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     idNodeMap.put(thisNode.getNodeIdentifier(), thisNode);
   }
 
-  /** @return Whether all nodes' identifier is known. */
+  /**
+   * @return Whether all nodes' identifier is known.
+   */
   private boolean allNodesIdKnown() {
     return idNodeMap != null && idNodeMap.size() == allNodes.size();
   }

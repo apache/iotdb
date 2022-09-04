@@ -25,5 +25,5 @@ package org.apache.iotdb.db.engine.compaction.task;
  * increase the global compaction task count.
  */
 public abstract class AbstractCompactionSelector {
-  public abstract void selectAndSubmit();
+  public abstract boolean selectAndSubmit();
 }

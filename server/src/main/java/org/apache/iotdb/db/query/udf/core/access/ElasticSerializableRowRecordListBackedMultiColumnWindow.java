@@ -36,9 +36,6 @@ public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements 
   private int endIndex;
   private int size;
 
-  private long startTime;
-  private long endTime;
-
   private final ElasticSerializableRowRecordListBackedMultiColumnRow row;
   private ElasticSerializableRowRecordListBackedMultiColumnWindowIterator rowIterator;
 
@@ -81,23 +78,10 @@ public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements 
     return rowIterator;
   }
 
-  @Override
-  public long windowStartTime() {
-    return startTime;
-  }
-
-  @Override
-  public long windowEndTime() {
-    return endTime;
-  }
-
-  public void seek(int beginIndex, int endIndex, long startTime, long endTime) {
+  public void seek(int beginIndex, int endIndex) {
     this.beginIndex = beginIndex;
     this.endIndex = endIndex;
     size = endIndex - beginIndex;
-
-    this.startTime = startTime;
-    this.endTime = endTime;
 
     rowIterator = null;
   }

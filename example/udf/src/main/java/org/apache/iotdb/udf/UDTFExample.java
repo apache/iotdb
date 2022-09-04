@@ -23,13 +23,11 @@ import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
-import java.util.Map;
 
 /** This is an internal example of the UDTF implementation. */
 public class UDTFExample implements UDTF {
@@ -41,25 +39,10 @@ public class UDTFExample implements UDTF {
    * INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (1, -2, 2);
    * INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (2, -3, 3);
    *
-   * CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample';
+   * CREATE FUNCTION example AS "org.apache.iotdb.udf.UDTFExample";
    * SHOW FUNCTIONS;
    * SELECT s1, example(s1), s2, example(s2) FROM root.sg1.d1;
    */
-  @Override
-  public void validate(UDFParameterValidator validator) throws Exception {
-    validator
-        // this udf only accepts 1 time series
-        .validateInputSeriesNumber(1)
-        // the data type of the first input time series should be INT32
-        .validateInputSeriesDataType(0, TSDataType.INT32)
-        // this udf doesn't accept any extra parameters
-        // the validation rule is not required because extra parameters will be ignored
-        .validate(
-            attributes -> ((Map) attributes).isEmpty(),
-            "extra udf parameters are not allowed",
-            validator.getParameters().getAttributes());
-  }
-
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     configurations

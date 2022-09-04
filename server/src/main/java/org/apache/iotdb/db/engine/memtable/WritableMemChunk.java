@@ -227,7 +227,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long count() {
-    return list.rowCount();
+    return list.size();
   }
 
   @Override
@@ -242,7 +242,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long getFirstPoint() {
-    if (list.rowCount() == 0) {
+    if (list.size() == 0) {
       return Long.MAX_VALUE;
     }
     return getSortedTvListForQuery().getTimeValuePair(0).getTimestamp();
@@ -250,11 +250,11 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long getLastPoint() {
-    if (list.rowCount() == 0) {
+    if (list.size() == 0) {
       return Long.MIN_VALUE;
     }
     return getSortedTvListForQuery()
-        .getTimeValuePair(getSortedTvListForQuery().rowCount() - 1)
+        .getTimeValuePair(getSortedTvListForQuery().size() - 1)
         .getTimestamp();
   }
 
@@ -270,7 +270,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public String toString() {
-    int size = list.rowCount();
+    int size = list.size();
     int firstIndex = 0;
     int lastIndex = size - 1;
     long minTime = Long.MAX_VALUE;
@@ -305,16 +305,16 @@ public class WritableMemChunk implements IWritableMemChunk {
 
     ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
 
-    for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
+    for (int sortedRowIndex = 0; sortedRowIndex < list.size(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
       // skip duplicated data
-      if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
+      if ((sortedRowIndex + 1 < list.size() && (time == list.getTime(sortedRowIndex + 1)))) {
         continue;
       }
 
       // store last point for SDT
-      if (sortedRowIndex + 1 == list.rowCount()) {
+      if (sortedRowIndex + 1 == list.size()) {
         ((ChunkWriterImpl) chunkWriterImpl).setLastPoint(true);
       }
 

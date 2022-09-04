@@ -52,4 +52,4 @@ virtual_storage_group_num
 
 Recommended value is [virtual storage group number] = [CPU core number] / [user-defined storage group number]
 
-For more information, you can refer to [this page](../Reference/Config-Manual.md).
+For more information, you can refer to [this page](../Appendix/Config-Manual.md).

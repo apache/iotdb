@@ -23,7 +23,6 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 
@@ -55,10 +54,5 @@ public class TsFileTimeGenerator extends TimeGenerator {
   @Override
   protected boolean isAscending() {
     return true;
-  }
-
-  @Override
-  public Filter getTimeFilter() {
-    return null;
   }
 }

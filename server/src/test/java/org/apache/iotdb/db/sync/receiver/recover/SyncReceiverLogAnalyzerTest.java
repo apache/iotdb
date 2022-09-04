@@ -70,6 +70,7 @@ public class SyncReceiverLogAnalyzerTest {
   @Before
   public void setUp() throws DiskSpaceInsufficientException, MetadataException {
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
+    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     dataDir =
         new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())

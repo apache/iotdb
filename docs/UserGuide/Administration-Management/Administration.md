@@ -23,7 +23,7 @@
 
 IoTDB provides users with account privilege management operations, so as to ensure data security.
 
-We will show you basic user privilege management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](../Reference/SQL-Reference.md). 
+We will show you basic user privilege management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](../Appendix/SQL-Reference.md). 
 At the same time, in the JAVA programming environment, you can use the [Java JDBC](../API/Programming-JDBC.md) to execute privilege management statements in a single or batch mode. 
 
 ## Basic Concepts
@@ -50,7 +50,7 @@ According to the [sample data](https://github.com/thulab/iotdb/files/4438687/Oth
 
 ### Create User
 
-We use `CREATE USER <userName> <password>` to create users. For example, we can create two users for ln and sgcc groups, named ln\_write\_user and sgcc\_write\_user, with both passwords being write\_pwd. The SQL statement is:
+We can create two users for ln and sgcc groups, named ln\_write\_user and sgcc\_write\_user, with both passwords being write\_pwd. The SQL statement is:
 
 ```
 CREATE USER ln_write_user 'write_pwd'
@@ -88,9 +88,7 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 Msg: 602: No permissions for this operation INSERT
 ```
 
-Now, we grant the two users write privileges to the corresponding storage groups, and try to write data again.
-
-We use `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` to grant user privileges. For example:
+Now, we grant the two users write privileges to the corresponding storage groups, and try to write data again. The SQL statement is:
 
 ```
 GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
@@ -107,165 +105,6 @@ Msg: The statement is executed successfully.
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 Msg: The statement is executed successfully.
 ```
-
-### Revoker User Privilege
-
-After granting user privileges, we could use `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` to revoke the granted user privileges. For example:
-
-```
-REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
-REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
-INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
-```
-
-The execution result is as follows:
-
-```
-REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
-Msg: The statement is executed successfully.
-REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
-Msg: The statement is executed successfully.
-INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
-Msg: 602: No permissions for this operation INSERT
-```
-
-### SQL Statements
-
-Here are all related SQL statements:
-
-* Create User
-
-```
-CREATE USER <userName> <password>;  
-Eg: IoTDB > CREATE USER thulab 'pwd';
-```
-
-* Delete User
-
-```
-DROP USER <userName>;  
-Eg: IoTDB > DROP USER xiaoming;
-```
-
-* Create Role
-
-```
-CREATE ROLE <roleName>;  
-Eg: IoTDB > CREATE ROLE admin;
-```
-
-* Delete Role
-
-```
-DROP ROLE <roleName>;  
-Eg: IoTDB > DROP ROLE admin;
-```
-
-* Grant User Privileges
-
-```
-GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
-```
-
-* Grant Role Privileges
-
-```
-GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
-```
-
-* Grant User Role
-
-```
-GRANT <roleName> TO <userName>;  
-Eg: IoTDB > GRANT temprole TO tempuser;
-```
-
-* Revoke User Privileges
-
-```
-REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;   
-Eg: IoTDB > REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
-```
-
-* Revoke Role Privileges
-
-```
-REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
-```
-
-* Revoke Role From User
-
-```
-REVOKE <roleName> FROM <userName>;
-Eg: IoTDB > REVOKE temprole FROM tempuser;
-```
-
-* List Users
-
-```
-LIST USER
-Eg: IoTDB > LIST USER
-```
-
-* List Roles
-
-```
-LIST ROLE
-Eg: IoTDB > LIST ROLE
-```
-
-* List Privileges
-
-```
-LIST PRIVILEGES USER  <username> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;
-```
-
-* List Privileges of Roles
-
-```
-LIST ROLE PRIVILEGES <roleName>
-Eg: IoTDB > LIST ROLE PRIVILEGES actor;
-```
-
-* List Privileges of Roles(On Specific Path)
-
-```
-LIST PRIVILEGES ROLE <roleName> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES ROLE wirte_role ON root.sgcc;
-```
-
-* List Privileges of Users
-
-```
-LIST USER PRIVILEGES <username> ;   
-Eg: IoTDB > LIST USER PRIVILEGES tempuser;
-```
-
-* List Roles of User
-
-```
-LIST ALL ROLE OF USER <username> ;  
-Eg: IoTDB > LIST ALL ROLE OF USER tempuser;
-```
-
-* List Users of Role
-
-```
-LIST ALL USER OF ROLE <roleName>;
-Eg: IoTDB > LIST ALL USER OF ROLE roleuser;
-```
-
-* Alter Password
-
-```
-ALTER USER <username> SET PASSWORD <password>;
-Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
-```
-
 
 ## Other Instructions
 
@@ -290,11 +129,10 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |INSERT\_TIMESERIES|insert data; path dependent|
 |READ\_TIMESERIES|query data; path dependent|
 |DELETE\_TIMESERIES|delete data or timeseries; path dependent|
-|DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|
 |CREATE\_USER|create users; path independent|
 |DELETE\_USER|delete users; path independent|
 |MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this privilege can still change their own asswords. )|
-|LIST\_USER|list all users; list a user's privileges; list a user's roles; list users of role with four kinds of operation privileges; path independent|
+|LIST\_USER|list all users; list a user's privileges; list a user's roles with three kinds of operation privileges; path independent|
 |GRANT\_USER\_PRIVILEGE|grant user privileges; path independent|
 |REVOKE\_USER\_PRIVILEGE|revoke user privileges; path independent|
 |GRANT\_USER\_ROLE|grant user roles; path independent|
@@ -306,10 +144,10 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |REVOKE\_ROLE\_PRIVILEGE|revoke role privileges; path independent|
 |CREATE_FUNCTION|register UDFs; path independent|
 |DROP_FUNCTION|deregister UDFs; path independent|
-|CREATE_TRIGGER|create triggers; path dependent|
-|DROP_TRIGGER|drop triggers; path dependent|
-|START_TRIGGER|start triggers; path dependent|
-|STOP_TRIGGER|stop triggers; path dependent|
+|CREATE_TRIGGER|create triggers; path independent|
+|DROP_TRIGGER|drop triggers; path independent|
+|START_TRIGGER|start triggers; path independent|
+|STOP_TRIGGER|stop triggers; path independent|
 |CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|
 |DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|
 

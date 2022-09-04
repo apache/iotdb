@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.rescon.CachedStringPool;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
@@ -45,6 +45,9 @@ public class DeviceTimeIndex implements ITimeIndex {
   private static final Logger logger = LoggerFactory.getLogger(DeviceTimeIndex.class);
 
   public static final int INIT_ARRAY_SIZE = 64;
+
+  protected static final Map<String, String> cachedDevicePool =
+      CachedStringPool.getInstance().getCachedPool();
 
   /** start times array. */
   protected long[] startTimes;
@@ -88,12 +91,17 @@ public class DeviceTimeIndex implements ITimeIndex {
       ReadWriteIOUtils.write(endTimes[i], outputStream);
     }
 
+    Map<String, Integer> stringMemoryReducedMap = new ConcurrentHashMap<>();
     for (Entry<String, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
       String deviceName = stringIntegerEntry.getKey();
       int index = stringIntegerEntry.getValue();
+      // To reduce the String number in memory,
+      // use the deviceId from cached pool
+      stringMemoryReducedMap.put(cachedDevicePool.computeIfAbsent(deviceName, k -> k), index);
       ReadWriteIOUtils.write(deviceName, outputStream);
       ReadWriteIOUtils.write(index, outputStream);
     }
+    deviceToIndex = stringMemoryReducedMap;
   }
 
   @Override
@@ -111,9 +119,12 @@ public class DeviceTimeIndex implements ITimeIndex {
     }
 
     for (int i = 0; i < deviceNum; i++) {
-      String path = ReadWriteIOUtils.readString(inputStream).intern();
+      String path = ReadWriteIOUtils.readString(inputStream);
+      // To reduce the String number in memory,
+      // use the deviceId from memory instead of the deviceId read from disk
+      String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
       int index = ReadWriteIOUtils.readInt(inputStream);
-      deviceToIndex.put(path, index);
+      deviceToIndex.put(cachedPath, index);
     }
     return this;
   }
@@ -132,9 +143,12 @@ public class DeviceTimeIndex implements ITimeIndex {
     }
 
     for (int i = 0; i < deviceNum; i++) {
-      String path = SerializeUtils.deserializeString(buffer).intern();
+      String path = SerializeUtils.deserializeString(buffer);
+      // To reduce the String number in memory,
+      // use the deviceId from memory instead of the deviceId read from disk
+      String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
       int index = buffer.getInt();
-      deviceToIndex.put(path, index);
+      deviceToIndex.put(cachedPath, index);
     }
     return this;
   }
@@ -146,7 +160,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
+  public Set<String> getDevices(String tsFilePath) {
     return deviceToIndex.keySet();
   }
 
@@ -187,7 +201,7 @@ public class DeviceTimeIndex implements ITimeIndex {
       index = deviceToIndex.get(deviceId);
     } else {
       index = deviceToIndex.size();
-      deviceToIndex.put(deviceId.intern(), index);
+      deviceToIndex.put(deviceId, index);
       if (startTimes.length <= index) {
         startTimes = enLargeArray(startTimes, Long.MAX_VALUE);
         endTimes = enLargeArray(endTimes, Long.MIN_VALUE);
@@ -220,7 +234,9 @@ public class DeviceTimeIndex implements ITimeIndex {
     }
   }
 
-  /** @return the time partition id, if spans multi time partitions, return -1. */
+  /**
+   * @return the time partition id, if spans multi time partitions, return -1.
+   */
   private long getTimePartitionWithCheck() {
     long partitionId = SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
     for (int index : deviceToIndex.values()) {
@@ -331,10 +347,5 @@ public class DeviceTimeIndex implements ITimeIndex {
       logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
       throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
     }
-  }
-
-  @Override
-  public boolean mayContainsDevice(String device) {
-    return deviceToIndex.containsKey(device);
   }
 }

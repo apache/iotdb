@@ -49,7 +49,7 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
     // There is no need to apply modifications to these, because we already do that while generating
     // it in TSP
-    List<IChunkMetadata> chunkMetadataList = resource.getChunkMetadataList(seriesPath);
+    List<IChunkMetadata> chunkMetadataList = resource.getChunkMetadataList();
 
     // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is
     // very cheap.
@@ -62,7 +62,7 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
           }
         });
 
-    List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk(seriesPath);
+    List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
     if (memChunks != null) {
       for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
         if (!memChunks.isEmpty()) {

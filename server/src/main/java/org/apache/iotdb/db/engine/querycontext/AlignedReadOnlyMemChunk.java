@@ -95,7 +95,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         new ChunkMetadata(measurementUid, TSDataType.VECTOR, 0, timeStatistics);
     List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
     // update time chunk
-    for (int row = 0; row < alignedChunkData.rowCount(); row++) {
+    for (int row = 0; row < alignedChunkData.size(); row++) {
       timeStatistics.update(alignedChunkData.getTime(row));
     }
     timeStatistics.setEmpty(false);
@@ -110,7 +110,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         valueStatistics.setEmpty(true);
         continue;
       }
-      for (int row = 0; row < alignedChunkData.rowCount(); row++) {
+      for (int row = 0; row < alignedChunkData.size(); row++) {
         long time = alignedChunkData.getTime(row);
         int originRowIndex = alignedChunkData.getValueIndex(row);
         boolean isNull = alignedChunkData.isValueMarked(originRowIndex, column);

@@ -27,7 +27,7 @@ import java.util.function.Function;
 
 /** factory to build device id according to configured algorithm */
 public class DeviceIDFactory {
-  Function<String, IDeviceID> getDeviceIDFunction;
+  Function<PartialPath, IDeviceID> getDeviceIDFunction;
 
   // region DeviceIDFactory Singleton
   private static class DeviceIDFactoryHolder {
@@ -54,9 +54,9 @@ public class DeviceIDFactory {
             .getConfig()
             .getDeviceIDTransformationMethod()
             .equals("SHA256")) {
-      getDeviceIDFunction = SHA256DeviceID::new;
+      getDeviceIDFunction = partialPath -> new SHA256DeviceID(partialPath.toString());
     } else {
-      getDeviceIDFunction = PlainDeviceID::new;
+      getDeviceIDFunction = partialPath -> new PlainDeviceID(partialPath.toString());
     }
   }
   // endregion
@@ -68,16 +68,6 @@ public class DeviceIDFactory {
    * @return device id of the timeseries
    */
   public IDeviceID getDeviceID(PartialPath devicePath) {
-    return getDeviceIDFunction.apply(devicePath.toString());
-  }
-
-  /**
-   * get device id by full path
-   *
-   * @param devicePath device path of the timeseries
-   * @return device id of the timeseries
-   */
-  public IDeviceID getDeviceID(String devicePath) {
     return getDeviceIDFunction.apply(devicePath);
   }
 
@@ -89,9 +79,9 @@ public class DeviceIDFactory {
             .getConfig()
             .getDeviceIDTransformationMethod()
             .equals("SHA256")) {
-      getDeviceIDFunction = SHA256DeviceID::new;
+      getDeviceIDFunction = partialPath -> new SHA256DeviceID(partialPath.toString());
     } else {
-      getDeviceIDFunction = PlainDeviceID::new;
+      getDeviceIDFunction = partialPath -> new PlainDeviceID(partialPath.toString());
     }
   }
 }

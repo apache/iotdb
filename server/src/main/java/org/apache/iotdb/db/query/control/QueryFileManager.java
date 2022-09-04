@@ -21,13 +21,9 @@ package org.apache.iotdb.db.query.control;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -36,8 +32,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  */
 public class QueryFileManager {
-
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   /** Map<queryId, Map<filePath,filePath>> */
   private Map<Long, Map<TsFileResource, TsFileResource>> sealedFilePathsMap;
@@ -131,28 +125,5 @@ public class QueryFileManager {
               FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
               return k;
             });
-  }
-
-  public void writeQueryFileInfo() {
-    DEBUG_LOGGER.info("[Query Sealed File Info]\n");
-    for (Map.Entry<Long, Map<TsFileResource, TsFileResource>> entry :
-        sealedFilePathsMap.entrySet()) {
-      long queryId = entry.getKey();
-      Set<TsFileResource> tsFileResources = entry.getValue().keySet();
-      DEBUG_LOGGER.info(String.format("\t[queryId: %d]\n", queryId));
-      for (TsFileResource tsFileResource : tsFileResources) {
-        DEBUG_LOGGER.info(String.format("\t\t%s\n", tsFileResource.getTsFile().getAbsolutePath()));
-      }
-    }
-    DEBUG_LOGGER.info("[Query Unsealed File Info]\n");
-    for (Map.Entry<Long, Map<TsFileResource, TsFileResource>> entry :
-        unsealedFilePathsMap.entrySet()) {
-      long queryId = entry.getKey();
-      Set<TsFileResource> tsFileResources = entry.getValue().keySet();
-      DEBUG_LOGGER.info(String.format("\t[queryId: %d]\n", queryId));
-      for (TsFileResource tsFileResource : tsFileResources) {
-        DEBUG_LOGGER.info(String.format("\t\t%s\n", tsFileResource.getTsFile().getAbsolutePath()));
-      }
-    }
   }
 }

@@ -49,10 +49,6 @@ public class TracingManager {
     getTracingInfo(queryId).addTsFileSet(seqResources, unseqResources);
   }
 
-  public void addTsFile(long queryId, TsFileResource tsFileResource, boolean isSeq) {
-    getTracingInfo(queryId).addTsFile(tsFileResource, isSeq);
-  }
-
   public void addChunkInfo(long queryId, int chunkNum, long pointsNum, boolean seq) {
     getTracingInfo(queryId).addChunkInfo(chunkNum, pointsNum, seq);
   }

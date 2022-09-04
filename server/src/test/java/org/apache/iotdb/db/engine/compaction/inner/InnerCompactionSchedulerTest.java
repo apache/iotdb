@@ -19,11 +19,12 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.FakedInnerSpaceCompactionTaskFactory;
+import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -35,24 +36,16 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.List;
 
-public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
+public class InnerCompactionSchedulerTest {
 
   private long originFileSize;
   long MAX_WAITING_TIME = 120_000L;
-  boolean oldEnableSeqSpaceCompaction =
-      IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
-  boolean oldEnableUnSeqSpaceCompaction =
-      IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-  int oldConcurrentCompactionThread =
-      IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
-  int oldMaxCompactionCandidateFileNum =
-      IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     CompactionTaskManager.getInstance().start();
-    super.setUp();
     originFileSize = IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(90);
   }
@@ -61,60 +54,62 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   public void tearDown() throws IOException, StorageEngineException {
     CompactionTaskManager.getInstance().stop();
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(originFileSize);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(oldEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(oldEnableUnSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(oldConcurrentCompactionThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxInnerCompactionCandidateFileNum(oldMaxCompactionCandidateFileNum);
-    super.tearDown();
   }
 
   @Test
-  public void testFileSelector1() throws IOException, MetadataException, WriteProcessException {
+  public void testFileSelector1() {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(4);
-    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(1000000);
-    createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
-    registerTimeseriesInMManger(2, 3, false);
-    createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
-    registerTimeseriesInMManger(3, 5, false);
-    createFiles(2, 5, 5, 50, 600, 800, 50, 50, false, true);
-    registerTimeseriesInMManger(5, 5, false);
-    TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
-    tsFileManager.addAll(seqResources, true);
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(50);
+    TsFileResourceList tsFileResources = new TsFileResourceList();
+    tsFileResources.add(new FakedTsFileResource(30, "0-0-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(30, "1-1-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(30, "2-2-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(100, "3-3-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(30, "4-4-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(40, "5-5-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(40, "6-6-0-0.tsfile"));
 
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        "testSG", "0", 0L, tsFileManager, true, new FakedInnerSpaceCompactionTaskFactory());
+        "testSG",
+        "0",
+        0L,
+        new TsFileManager("testSG", "0", "tmp"),
+        tsFileResources,
+        true,
+        new FakedInnerSpaceCompactionTaskFactory());
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
     try {
       Thread.sleep(5000);
     } catch (Exception e) {
 
     }
-    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(3, tsFileResources.size());
+
+    List<TsFileResource> resources = tsFileResources.getArrayList();
+    Assert.assertEquals(90L, resources.get(0).getTsFileSize());
+    Assert.assertEquals(100L, resources.get(1).getTsFileSize());
+    Assert.assertEquals(110L, resources.get(2).getTsFileSize());
   }
 
   @Test
-  public void testFileSelector2() throws IOException, MetadataException, WriteProcessException {
+  public void testFileSelector2() {
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(50);
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
-    createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
-    createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
-    seqResources.get(0).setCompacting(true);
-    TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
-    tsFileManager.addAll(seqResources, true);
+    tsFileResources.add(new FakedTsFileResource(30, "0-0-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(40, true, true, "1-1-0-0.tsfile"));
+    tsFileResources.add(new FakedTsFileResource(40, "2-2-0-0.tsfile"));
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        "testSG", "0", 0L, tsFileManager, true, new FakedInnerSpaceCompactionTaskFactory());
+        "testSG",
+        "0",
+        0L,
+        new TsFileManager("testSG", "0", "tmp"),
+        tsFileResources,
+        true,
+        new FakedInnerSpaceCompactionTaskFactory());
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
 
     long waitingTime = 0;
@@ -130,6 +125,11 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
         e.printStackTrace();
       }
     }
-    Assert.assertEquals(4, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(3, tsFileResources.size());
+
+    List<TsFileResource> resources = tsFileResources.getArrayList();
+    Assert.assertEquals(30L, resources.get(0).getTsFileSize());
+    Assert.assertEquals(40L, resources.get(1).getTsFileSize());
+    Assert.assertEquals(40L, resources.get(2).getTsFileSize());
   }
 }

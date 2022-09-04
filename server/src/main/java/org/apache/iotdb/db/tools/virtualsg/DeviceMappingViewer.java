@@ -43,7 +43,7 @@ public class DeviceMappingViewer {
     MManager mManager = MManager.getInstance();
     mManager.init();
 
-    Set<PartialPath> partialPathSet = mManager.getMatchedDevices(new PartialPath("root.**"), false);
+    Set<PartialPath> partialPathSet = mManager.getMatchedDevices(new PartialPath("root.**"));
 
     if (partialPathSet.isEmpty() && args.length == 1) {
       System.out.println("no mlog in given system schema dir: " + args[0] + " please have a check");

@@ -84,7 +84,9 @@ public class TimeRange implements Comparable<TimeRange> {
     this.max = max;
   }
 
-  /** @return true if the given range lies in this range, inclusively */
+  /**
+   * @return true if the given range lies in this range, inclusively
+   */
   public boolean contains(TimeRange r) {
     return min <= r.min && max >= r.max;
   }
@@ -111,12 +113,16 @@ public class TimeRange implements Comparable<TimeRange> {
     this.max = max;
   }
 
-  /** @return The lower range boundary */
+  /**
+   * @return The lower range boundary
+   */
   public long getMin() {
     return min;
   }
 
-  /** @return The upper range boundary */
+  /**
+   * @return The upper range boundary
+   */
   public long getMax() {
     return max;
   }

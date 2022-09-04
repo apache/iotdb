@@ -19,8 +19,6 @@ package org.apache.iotdb.db.protocol.rest.impl;
 
 import org.apache.iotdb.db.protocol.rest.PingApiService;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
-import org.apache.iotdb.db.service.RPCService;
-import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;
@@ -28,19 +26,8 @@ import javax.ws.rs.core.SecurityContext;
 
 public class PingApiServiceImpl extends PingApiService {
 
-  private static final String UNAVAILABLE_SERVICE = "thrift service is unavailable";
-
   @Override
   public Response tryPing(SecurityContext securityContext) {
-    if (RPCService.getInstance().getRPCServiceStatus().equals(ThriftService.STATUS_DOWN)) {
-      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-          .entity(
-              new ExecutionStatus()
-                  .code(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-                  .message(UNAVAILABLE_SERVICE))
-          .build();
-    }
-
     return Response.ok()
         .entity(
             new ExecutionStatus()

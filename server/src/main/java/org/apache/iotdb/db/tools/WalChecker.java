@@ -120,7 +120,9 @@ public class WalChecker {
     }
   }
 
-  /** @param args walRootDirectory */
+  /**
+   * @param args walRootDirectory
+   */
   public static void main(String[] args) throws SystemCheckException {
     if (args.length < 1) {
       logger.error("No enough args: require the walRootDirectory");

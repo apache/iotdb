@@ -64,14 +64,12 @@ public class RawQueryInputLayer {
       List<TSDataType> dataTypes,
       TimeGenerator timeGenerator,
       List<IReaderByTimestamp> readers,
-      List<List<Integer>> readerToIndexList,
       List<Boolean> cached)
       throws QueryProcessException {
     construct(
         queryId,
         memoryBudgetInMB,
-        new RawQueryDataSetWithValueFilter(
-            paths, dataTypes, timeGenerator, readers, readerToIndexList, cached, true));
+        new RawQueryDataSetWithValueFilter(paths, dataTypes, timeGenerator, readers, cached, true));
   }
 
   public RawQueryInputLayer(long queryId, float memoryBudgetInMB, IUDFInputDataSet queryDataSet)
@@ -131,12 +129,11 @@ public class RawQueryInputLayer {
 
       for (int i = currentRowIndex + 1; i < rowRecordList.size(); ++i) {
         Object[] rowRecordCandidate = rowRecordList.getRowRecord(i);
-        // If any field in the current row are null, we should treat this row as valid.
-        // Because in a GROUP BY time query, we must return every time window record even if there's
-        // no data.
-        // Under the situation, if hasCachedRowRecord is false, this row will be
+        // It all fields except the timestamp in the current row are null, we should treat this row
+        // be valid. Because in a GROUP BY time query, we must return every time window record even
+        // if there's no data. Under the situation, if hasCachedRowRecord is false, this row will be
         // skipped and the result is not as our expected.
-        if (rowRecordCandidate[columnIndex] != null || rowRecordList.fieldsHasAnyNull(i)) {
+        if (rowRecordCandidate[columnIndex] != null || rowRecordList.fieldsAllNull(i)) {
           hasCachedRowRecord = true;
           cachedRowRecord = rowRecordCandidate;
           currentRowIndex = i;
@@ -149,7 +146,7 @@ public class RawQueryInputLayer {
           Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
           rowRecordList.put(rowRecordCandidate);
           if (rowRecordCandidate[columnIndex] != null
-              || rowRecordList.fieldsHasAnyNull(rowRecordList.size() - 1)) {
+              || rowRecordList.fieldsAllNull(rowRecordList.size() - 1)) {
             hasCachedRowRecord = true;
             cachedRowRecord = rowRecordCandidate;
             currentRowIndex = rowRecordList.size() - 1;

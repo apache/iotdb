@@ -269,15 +269,6 @@ struct TSInsertRecordsOfOneDeviceReq {
     6: optional bool isAligned
 }
 
-struct TSInsertStringRecordsOfOneDeviceReq {
-    1: required i64 sessionId
-    2: required string prefixPath
-    3: required list<list<string>> measurementsList
-    4: required list<list<string>> valuesList
-    5: required list<i64> timestamps
-    6: optional bool isAligned
-}
-
 struct TSInsertStringRecordsReq {
   1: required i64 sessionId
   2: required list<string> prefixPaths
@@ -411,11 +402,6 @@ struct TSUnsetSchemaTemplateReq {
   3: required string templateName
 }
 
-struct TSDropSchemaTemplateReq {
-  1: required i64 sessionId
-  2: required string templateName
-}
-
 service TSIService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -467,8 +453,6 @@ service TSIService {
 
   TSStatus insertRecordsOfOneDevice(1:TSInsertRecordsOfOneDeviceReq req);
 
-  TSStatus insertStringRecordsOfOneDevice(1:TSInsertStringRecordsOfOneDeviceReq req);
-
   TSStatus insertStringRecords(1:TSInsertStringRecordsReq req);
 
   TSStatus testInsertTablet(1:TSInsertTabletReq req);
@@ -504,6 +488,4 @@ service TSIService {
   TSStatus setSchemaTemplate(1:TSSetSchemaTemplateReq req);
 
   TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
-
-  TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
 }

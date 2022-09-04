@@ -42,7 +42,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -291,7 +291,7 @@ public class ClientMain {
       for (int i = 0; i < MEASUREMENTS.length; i++) {
         String measurement = MEASUREMENTS[i];
         schemas.add(
-            new MeasurementSchema(
+            new UnaryMeasurementSchema(
                 device + IoTDBConstant.PATH_SEPARATOR + measurement, DATA_TYPES[i]));
       }
     }

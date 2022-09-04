@@ -43,6 +43,7 @@ public class FakedInnerSpaceCompactionTaskFactory extends InnerSpaceCompactionTa
         virtualStorageGroupName,
         timePartition,
         tsFileManager,
+        tsFileResourceList,
         selectedTsFileResourceList,
         sequence,
         CompactionTaskManager.currentTaskNum);

@@ -19,9 +19,9 @@
 
 -->
 
-# Schema Template
+## Schema Template
 
-## Problem scenario
+### Problem scenario
 
 When faced with a large number of entities of the same type and the measurements of these entities are the same, registering time series for each measurent will result in the following problems. On the one hand, the metadata of time series will occupy a lot of memory resources; on the other hand, the maintenance of a large number of time series will be very complex.
 
@@ -31,7 +31,7 @@ The following picture illustrates the data model of petrol vehicle scenario. The
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_without_template.png?raw=true" alt="example without template">
 
-## Concept
+### Concept
 
 Supported from v0.13
 
@@ -39,14 +39,46 @@ In the actual scenario, many entities collect the same measurements, that is, th
 
 Currently you can only set one schema template on a specific path. If there's one schema template on one node, it will be forbidden to set any schema template on the ancestors or descendants of this node. An entity will use it's own schema template or ancestor's schema template.
 
-**Please notice that, we strongly recommend not setting templates on the nodes above the storage group to accommodate future updates and collaboration between modules.**
-
 In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to schema template will be introduced one by one.
 
 After applying schema template, the following picture illustrates the new data model of petrol vehicle scenario. All petrol vehicles share the schemas defined in template. There are no redundancy storage of measurement schemas.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_with_template.png?raw=true" alt="example with template">
 
-## Usage
+### Usage
 
-Java Native API, C++ Native API, and IoTDB-SQL have supported Schema Template usage.
+Currently, only Session API supports Schema Template usage.
+
+* Create a schema template
+```
+
+* name: template name
+* measurements: List of measurements, if it is a single measurement, just put it's name
+*     into a list and add to measurements if it is a vector measurement, put all measurements of
+*     the vector into a list and add to measurements
+* dataTypes: List of datatypes, if it is a single measurement, just put it's type into a
+*     list and add to dataTypes if it is a vector measurement, put all types of the vector
+*     into a list and add to dataTypes
+* encodings: List of encodings, if it is a single measurement, just put it's encoding into
+*     a list and add to encodings if it is a vector measurement, put all encodings of the
+*     vector into a list and add to encodings
+* compressors: List of compressors                            
+void createSchemaTemplate(
+      String templateName,
+      List<String> schemaName,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+```
+* Set the device template named `templateName` at path `prefixPath`. You should firstly create the template using
+
+``` 
+
+void setSchemaTemplate(String templateName, String prefixPath)
+
+```
+
+After setting schema template，data could be inserted directly to the according timeseries. For example, suppose there's storage group root.sg and template t1(s1,s2) has been set to root.sg.car，then timeseries like root.sg.car.d1.s1 and root.sg.car.d1.s2 are available and data can be inserted。
+
+For examples of schema template, you can refer to example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java

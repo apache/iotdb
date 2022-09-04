@@ -38,7 +38,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/** @Author: Architect @Date: 2021-07-13 16:32 */
+/**
+ * @Author: Architect @Date: 2021-07-13 16:32
+ */
 @Category({LocalStandaloneTest.class})
 public class IoTDBInsertWithoutTimeIT {
   private static List<String> sqls = new ArrayList<>();
@@ -46,6 +48,7 @@ public class IoTDBInsertWithoutTimeIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvironmentUtils.closeStatMonitor();
     initCreateSQLStatement();
     EnvironmentUtils.envSetUp();
     insertData();

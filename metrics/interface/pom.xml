@@ -24,12 +24,12 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-metrics</artifactId>
-        <version>0.13.0</version>
+        <version>0.13.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>metrics-interface</artifactId>
     <name>metric interface</name>
-    <version>0.13.0</version>
+    <version>0.13.0-SNAPSHOT</version>
     <description>Metrics interface for IoTDB</description>
     <url>https://github.com/thulab/iotdb/tree/master/tsfile</url>
     <dependencies>

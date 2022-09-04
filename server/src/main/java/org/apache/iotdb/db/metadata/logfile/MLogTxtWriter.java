@@ -27,13 +27,11 @@ import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -334,28 +332,6 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
-  public void unsetTemplate(UnsetTemplatePlan plan) throws IOException {
-    StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.UNSET_TEMPLATE));
-    buf.append(",");
-    buf.append(plan.getTemplateName());
-    buf.append(",");
-    buf.append(plan.getPrefixPath());
-    buf.append(LINE_SEPARATOR);
-    ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
-    channel.write(buff);
-    lineNumber.incrementAndGet();
-  }
-
-  public void dropTemplate(DropTemplatePlan plan) throws IOException {
-    StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.DROP_TEMPLATE));
-    buf.append(",");
-    buf.append(plan.getName());
-    buf.append(LINE_SEPARATOR);
-    ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
-    channel.write(buff);
-    lineNumber.incrementAndGet();
-  }
-
   public void setUsingTemplate(ActivateTemplatePlan plan) throws IOException {
     StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.SET_USING_TEMPLATE));
     buf.append(",");
@@ -371,7 +347,6 @@ public class MLogTxtWriter implements AutoCloseable {
     // OperationType,templateName[,measurementPath,isAlign,dataType,encoding,compressor]
     StringBuilder buf = new StringBuilder();
     buf.append(MetadataOperationType.CREATE_TEMPLATE);
-    buf.append(",");
     buf.append(plan.getName());
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       for (int j = 0; j < plan.getMeasurements().get(i).size(); j++) {

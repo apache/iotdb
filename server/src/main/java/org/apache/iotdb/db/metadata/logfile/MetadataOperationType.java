@@ -40,9 +40,7 @@ public class MetadataOperationType {
   public static final String AUTO_CREATE_DEVICE = "4";
   public static final String CREATE_TEMPLATE = "5";
   public static final String SET_TEMPLATE = "6";
-  public static final String UNSET_TEMPLATE = "69";
   public static final String SET_USING_TEMPLATE = "61";
   public static final String APPEND_TEMPLATE = "51";
   public static final String PRUNE_TEMPLATE = "52";
-  public static final String DROP_TEMPLATE = "59";
 }

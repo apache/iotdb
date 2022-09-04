@@ -76,27 +76,35 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
+    long[] timeBatch = timePageReader.nexTimeBatch();
+
+    // if the vector contains more than on sub sensor, the BatchData's DataType is Vector
+    List<TsPrimitiveType[]> valueBatchList = new ArrayList<>(valueCount);
+    for (ValuePageReader valuePageReader : valuePageReaderList) {
+      valueBatchList.add(
+          valuePageReader == null ? null : valuePageReader.nextValueBatch(timeBatch));
+    }
     BatchData pageData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
-    int timeIndex = -1;
-    while (timePageReader.hasNextTime()) {
-      long timestamp = timePageReader.nextTime();
-      timeIndex++;
-      // if all the sub sensors' value are null in current row, just discard it
-      boolean isNull = true;
-      Object notNullObject = null;
+    boolean isNull;
+    // save the first not null value of each row
+    Object firstNotNullObject = null;
+    for (int i = 0; i < timeBatch.length; i++) {
+      // used to record whether the sub sensors are all null in current time
+      isNull = true;
       TsPrimitiveType[] v = new TsPrimitiveType[valueCount];
-      for (int i = 0; i < v.length; i++) {
-        ValuePageReader pageReader = valuePageReaderList.get(i);
-        v[i] = pageReader == null ? null : pageReader.nextValue(timestamp, timeIndex);
-        if (v[i] != null) {
+      for (int j = 0; j < v.length; j++) {
+        v[j] = valueBatchList.get(j) == null ? null : valueBatchList.get(j)[i];
+        if (v[j] != null) {
           isNull = false;
-          notNullObject = v[i].getValue();
+          firstNotNullObject = v[j].getValue();
         }
       }
-      // Currently, if it's a value filter, it will only accept AlignedPath with only one sub
-      // sensor
-      if (!isNull && (filter == null || filter.satisfy(timestamp, notNullObject))) {
-        pageData.putVector(timestamp, v);
+      // if all the sub sensors' value are null in current time
+      // or current row is not satisfied with the filter, just discard it
+      // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will only
+      // accept AlignedPath with only one sub sensor
+      if (!isNull && (filter == null || filter.satisfy(timeBatch[i], firstNotNullObject))) {
+        pageData.putVector(timeBatch[i], v);
       }
     }
     return pageData.flip();

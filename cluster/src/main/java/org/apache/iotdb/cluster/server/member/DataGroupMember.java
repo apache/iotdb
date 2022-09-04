@@ -83,12 +83,12 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
+import org.apache.iotdb.db.query.filter.executor.PlanExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -606,12 +606,16 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     }
   }
 
-  /** @return a directory that stores the information of ongoing pulling snapshot tasks. */
+  /**
+   * @return a directory that stores the information of ongoing pulling snapshot tasks.
+   */
   public String getPullSnapshotTaskDir() {
     return getMemberDir() + "snapshot_task" + File.separator;
   }
 
-  /** @return the path of the directory that is provided exclusively for the member. */
+  /**
+   * @return the path of the directory that is provided exclusively for the member.
+   */
   private String getMemberDir() {
     return IoTDBDescriptor.getInstance().getConfig().getSystemDir()
         + File.separator

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.api.access;
 
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
@@ -61,42 +59,4 @@ public interface RowWindow {
    * @return an iterator used to access this window
    */
   RowIterator getRowIterator();
-
-  /**
-   * For different types of windows, the definition of the window start time is different.
-   *
-   * <p>For sliding size window: the window start time is equal to the timestamp of the first row.
-   *
-   * <p>For sliding time window: The window start time is determined by displayWindowBegin {@link
-   * SlidingTimeWindowAccessStrategy#getDisplayWindowBegin()} and slidingStep {@link
-   * SlidingTimeWindowAccessStrategy#getSlidingStep()}. <br>
-   * The window start time for the i-th window (i starts at 0) can be calculated as {@code
-   * displayWindowBegin + i * slidingStep}.
-   *
-   * @return the start time of the window
-   * @since 0.13.0
-   * @see SlidingSizeWindowAccessStrategy
-   * @see SlidingTimeWindowAccessStrategy
-   */
-  long windowStartTime();
-
-  /**
-   * For different types of windows, the definition of the window end time is different.
-   *
-   * <p>For sliding size window: the window end time is equal to the timestamp of the last row.
-   *
-   * <p>For sliding time window: The window end time is determined by displayWindowBegin {@link
-   * SlidingTimeWindowAccessStrategy#getDisplayWindowBegin()}, timeInterval {@link
-   * SlidingTimeWindowAccessStrategy#getTimeInterval()} and slidingStep {@link
-   * SlidingTimeWindowAccessStrategy#getSlidingStep()}. <br>
-   * The window end time for the i-th window (i starts at 0) can be calculated as {@code
-   * displayWindowBegin + i * slidingStep + timeInterval - 1} or {@code windowStartTime(i) +
-   * timeInterval - 1}.
-   *
-   * @return the end time of the window
-   * @since 0.13.0
-   * @see SlidingSizeWindowAccessStrategy
-   * @see SlidingTimeWindowAccessStrategy
-   */
-  long windowEndTime();
 }

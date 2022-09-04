@@ -29,9 +29,6 @@ public class IoTDBConnectionParams {
   private String username = Config.DEFAULT_USER;
   private String password = Config.DEFAULT_PASSWORD;
 
-  // The version number of the client which used for compatibility in the server
-  private Constant.Version version = Config.DEFAULT_VERSION;
-
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
   private int thriftMaxFrameSize = RpcUtils.THRIFT_FRAME_MAX_SIZE;
 
@@ -101,13 +98,5 @@ public class IoTDBConnectionParams {
 
   public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
-  }
-
-  public Constant.Version getVersion() {
-    return version;
-  }
-
-  public void setVersion(Constant.Version version) {
-    this.version = version;
   }
 }

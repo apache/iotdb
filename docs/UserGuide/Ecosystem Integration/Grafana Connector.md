@@ -24,16 +24,16 @@
 
 Grafana is an open source volume metrics monitoring and visualization tool, which can be used to display time series data and application runtime analysis. Grafana supports Graphite, InfluxDB and other major time series databases as data sources. IoTDB-Grafana-Connector is a connector which we developed to show time series data in IoTDB by reading data from IoTDB and sends to Grafana(https://grafana.com/). Before using this tool, make sure Grafana and IoTDB are correctly installed and started.
 
-### Installation and deployment
+### Grafana installation and deployment
 
 #### Install Grafana
 
 * Download url: https://grafana.com/grafana/download
-* Version >= 4.4.1
+* version >= 4.4.1
 
 #### Install data source plugin
 
-* Plugin name: simple-json-datasource
+* plugin name: simple-json-datasource
 * Download url: https://github.com/grafana/simple-json-datasource
 
 After downloading this plugin, use the grafana-cli tool to install SimpleJson from the commandline:

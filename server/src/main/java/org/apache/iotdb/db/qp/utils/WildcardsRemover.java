@@ -47,14 +47,7 @@ public class WildcardsRemover {
   /** Records the path number that the MManager totally returned. */
   private int consumed = 0;
 
-  /**
-   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
-   * DML use prefixMatch.
-   */
-  private boolean isPrefixMatch;
-
   public WildcardsRemover(QueryOperator queryOperator) {
-    isPrefixMatch = queryOperator.isPrefixMatchPath();
     if (queryOperator.getSpecialClauseComponent() != null) {
       soffset = queryOperator.getSpecialClauseComponent().getSeriesOffset();
       currentOffset = soffset;
@@ -63,16 +56,13 @@ public class WildcardsRemover {
     }
   }
 
-  private WildcardsRemover(boolean isPrefixMatch) {
-    this.isPrefixMatch = isPrefixMatch;
-  }
+  public WildcardsRemover() {}
 
   public List<MeasurementPath> removeWildcardFrom(PartialPath path)
       throws LogicalOptimizeException {
     try {
       Pair<List<MeasurementPath>, Integer> pair =
-          IoTDB.metaManager.getMeasurementPathsWithAlias(
-              path, currentLimit, currentOffset, isPrefixMatch);
+          IoTDB.metaManager.getMeasurementPathsWithAlias(path, currentLimit, currentOffset);
       consumed += pair.right;
       currentOffset -= Math.min(currentOffset, pair.right);
       currentLimit -= pair.left.size();
@@ -90,7 +80,7 @@ public class WildcardsRemover {
     List<List<Expression>> extendedExpressions = new ArrayList<>();
     for (Expression originExpression : expressions) {
       List<Expression> actualExpressions = new ArrayList<>();
-      originExpression.removeWildcards(new WildcardsRemover(isPrefixMatch), actualExpressions);
+      originExpression.removeWildcards(new WildcardsRemover(), actualExpressions);
       if (actualExpressions.isEmpty()) {
         // Let's ignore the eval of the function which has at least one non-existence series as
         // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101
@@ -123,7 +113,9 @@ public class WildcardsRemover {
     return remainingExpressions;
   }
 
-  /** @return should break the loop or not */
+  /**
+   * @return should break the loop or not
+   */
   public boolean checkIfPathNumberIsOverLimit(List<ResultColumn> resultColumns)
       throws PathNumOverLimitException {
     if (resultColumns.size()

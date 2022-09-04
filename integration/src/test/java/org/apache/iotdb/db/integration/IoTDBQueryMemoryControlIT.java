@@ -44,21 +44,21 @@ public class IoTDBQueryMemoryControlIT {
   private static final String[] sqls =
       new String[] {
         "set storage group to root.ln",
-        "create timeseries root.ln.wf01.wt01 with datatype=INT32,encoding=PLAIN",
-        "create timeseries root.ln.wf01.wt02 with datatype=INT32,encoding=PLAIN",
-        "create timeseries root.ln.wf01.wt03 with datatype=INT32,encoding=PLAIN",
-        "create timeseries root.ln.wf01.wt04 with datatype=INT32,encoding=PLAIN",
-        "create timeseries root.ln.wf01.wt05 with datatype=INT32,encoding=PLAIN",
+        "create timeseries root.ln.wf01.wt01 with datatype=BOOLEAN,encoding=PLAIN",
+        "create timeseries root.ln.wf01.wt02 with datatype=BOOLEAN,encoding=PLAIN",
+        "create timeseries root.ln.wf01.wt03 with datatype=BOOLEAN,encoding=PLAIN",
+        "create timeseries root.ln.wf01.wt04 with datatype=BOOLEAN,encoding=PLAIN",
+        "create timeseries root.ln.wf01.wt05 with datatype=BOOLEAN,encoding=PLAIN",
         "create timeseries root.ln.wf02.wt01 with datatype=FLOAT,encoding=RLE",
         "create timeseries root.ln.wf02.wt02 with datatype=FLOAT,encoding=RLE",
         "create timeseries root.ln.wf02.wt03 with datatype=FLOAT,encoding=RLE",
         "create timeseries root.ln.wf02.wt04 with datatype=FLOAT,encoding=RLE",
         "create timeseries root.ln.wf02.wt05 with datatype=FLOAT,encoding=RLE",
-        "create timeseries root.ln.wf03.wt01 with datatype=DOUBLE,encoding=PLAIN",
-        "create timeseries root.ln.wf03.wt02 with datatype=DOUBLE,encoding=PLAIN",
-        "create timeseries root.ln.wf03.wt03 with datatype=DOUBLE,encoding=PLAIN",
-        "create timeseries root.ln.wf03.wt04 with datatype=DOUBLE,encoding=PLAIN",
-        "create timeseries root.ln.wf03.wt05 with datatype=DOUBLE,encoding=PLAIN",
+        "create timeseries root.ln.wf03.wt01 with datatype=TEXT,encoding=PLAIN",
+        "create timeseries root.ln.wf03.wt02 with datatype=TEXT,encoding=PLAIN",
+        "create timeseries root.ln.wf03.wt03 with datatype=TEXT,encoding=PLAIN",
+        "create timeseries root.ln.wf03.wt04 with datatype=TEXT,encoding=PLAIN",
+        "create timeseries root.ln.wf03.wt05 with datatype=TEXT,encoding=PLAIN",
       };
 
   @BeforeClass

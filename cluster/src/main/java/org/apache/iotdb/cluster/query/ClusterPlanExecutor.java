@@ -45,7 +45,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -53,6 +52,7 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.filter.executor.PlanExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -127,14 +127,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected int getDevicesNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
-    // adapt to prefix match of IoTDB v0.12
-    return getDevicesNum(path)
-        + (isPrefixMatch
-            ? getDevicesNum(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD))
-            : 0);
-  }
-
   protected int getDevicesNum(PartialPath path) throws MetadataException {
     // make sure this node knows all storage groups
     try {
@@ -298,22 +290,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected int getPathsNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
-    return getNodesNumInGivenLevel(path, -1, isPrefixMatch);
+  protected int getPathsNum(PartialPath path) throws MetadataException {
+    return getNodesNumInGivenLevel(path, -1);
   }
 
   @Override
-  protected int getNodesNumInGivenLevel(PartialPath path, int level, boolean isPrefixMatch)
-      throws MetadataException {
-    int result = getNodesNumInGivenLevel(path, level);
-    if (isPrefixMatch) {
-      // adapt to prefix match of IoTDB v0.12
-      result +=
-          getNodesNumInGivenLevel(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD), level);
-    }
-    return result;
-  }
-
   protected int getNodesNumInGivenLevel(PartialPath path, int level) throws MetadataException {
     // make sure this node knows all storage groups
     try {

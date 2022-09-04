@@ -166,6 +166,6 @@ A: Hadoop 2.x and Hadoop 3.x 均可以支持。
 ERROR org.apache.iotdb.tsfile.fileSystem.fsFactory.HDFSFactory:62 - Failed to get Hadoop file system. Please check your dependency of Hadoop module.
 ```
 
-A: 这表明你没有将 Hadoop 模块的依赖放到 IoTDB server 中。你可以这样解决：
+A: 这表明你没有将 Hadoop 模块的以来放到 IoTDB server 中。你可以这样解决：
 * 使用 Maven 打包 Hadoop 模块：`mvn clean package -pl hadoop -am -Dmaven.test.skip=true -P get-jar-with-dependencies`
 * 将 Hadoop 模块的 target jar 包`hadoop-tsfile-X.X.X-jar-with-dependencies.jar`复制到 server 模块的 target lib 文件夹 `.../server/target/iotdb-server-X.X.X/lib`下。

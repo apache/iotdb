@@ -163,7 +163,6 @@ public class HeartbeatThreadTest {
     }
     member.setAllNodes(partitionGroup);
     member.setThisNode(TestUtils.getNode(0));
-    member.setSkipElection(false);
     receivedNodes.clear();
   }
 

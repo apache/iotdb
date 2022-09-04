@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -32,7 +31,6 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -40,14 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.stream.Collectors.toList;
@@ -92,14 +83,7 @@ public class TagManager {
     tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
   }
 
-  public void recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
-    addIndex(tagLogFile.readTag(config.getTagAttributeTotalSize(), offset), measurementMNode);
-  }
-
   public void addIndex(String tagKey, String tagValue, IMeasurementMNode measurementMNode) {
-    if (tagKey == null || tagValue == null || measurementMNode == null) {
-      return;
-    }
     tagIndex
         .computeIfAbsent(tagKey, k -> new ConcurrentHashMap<>())
         .computeIfAbsent(tagValue, v -> Collections.synchronizedSet(new HashSet<>()))
@@ -124,11 +108,11 @@ public class TagManager {
   public List<IMeasurementMNode> getMatchedTimeseriesInIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     if (!tagIndex.containsKey(plan.getKey())) {
-      return Collections.emptyList();
+      throw new MetadataException("The key " + plan.getKey() + " is not a tag.", true);
     }
     Map<String, Set<IMeasurementMNode>> value2Node = tagIndex.get(plan.getKey());
     if (value2Node.isEmpty()) {
-      return Collections.emptyList();
+      throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
     }
 
     List<IMeasurementMNode> allMatchedNodes = new ArrayList<>();
@@ -159,40 +143,23 @@ public class TagManager {
     if (plan.isOrderByHeat()) {
       List<VirtualStorageGroupProcessor> list;
       try {
-        Pair<
-                List<VirtualStorageGroupProcessor>,
-                Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-            lockListAndProcessorToSeriesMapPair =
-                StorageEngine.getInstance()
-                    .mergeLock(
-                        allMatchedNodes.stream()
-                            .map(IMeasurementMNode::getMeasurementPath)
-                            .collect(toList()));
-        list = lockListAndProcessorToSeriesMapPair.left;
-        Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
-            lockListAndProcessorToSeriesMapPair.right;
-
+        list =
+            StorageEngine.getInstance()
+                .mergeLock(allMatchedNodes.stream().map(IMNode::getPartialPath).collect(toList()));
         try {
-          // init QueryDataSource cache
-          QueryResourceManager.getInstance()
-              .initQueryDataSourceCache(processorToSeriesMap, context, null);
-        } catch (Exception e) {
-          logger.error("Meet error when init QueryDataSource ", e);
-          throw new QueryProcessException("Meet error when init QueryDataSource.", e);
+          allMatchedNodes =
+              allMatchedNodes.stream()
+                  .sorted(
+                      Comparator.comparingLong(
+                              (IMeasurementMNode mNode) ->
+                                  LastCacheManager.getLastTimeStamp(mNode, context))
+                          .reversed()
+                          .thenComparing(IMNode::getFullPath))
+                  .collect(toList());
         } finally {
           StorageEngine.getInstance().mergeUnLock(list);
         }
-
-        allMatchedNodes =
-            allMatchedNodes.stream()
-                .sorted(
-                    Comparator.comparingLong(
-                            (IMeasurementMNode mNode) ->
-                                LastCacheManager.getLastTimeStamp(mNode, context))
-                        .reversed()
-                        .thenComparing(IMNode::getFullPath))
-                .collect(toList());
-      } catch (StorageEngineException | QueryProcessException e) {
+      } catch (StorageEngineException e) {
         throw new MetadataException(e);
       }
     } else {

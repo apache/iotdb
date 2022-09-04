@@ -40,23 +40,4 @@ public class InputRowUtils {
     }
     return true;
   }
-
-  /**
-   * this method checks whether the row returned by IUDFInputDataSet.nextRowInObjects() has any null
-   * fields except the timestamp
-   *
-   * @param row the returned row by calling {@link IUDFInputDataSet#nextRowInObjects()}
-   * @return true if any row field is null.
-   */
-  public static boolean hasNullField(Object[] row) {
-    if (row == null) {
-      return true;
-    }
-    for (int i = 0; i < row.length - 1; i++) {
-      if (row[i] == null) {
-        return true;
-      }
-    }
-    return false;
-  }
 }

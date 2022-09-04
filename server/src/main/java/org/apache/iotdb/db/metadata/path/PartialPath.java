@@ -34,7 +34,6 @@ import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -87,7 +86,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     this.nodes = MetaUtils.splitPathToDetachedPath(fullPath);
   }
 
-  /** @param partialNodes nodes of a time series path */
+  /**
+   * @param partialNodes nodes of a time series path
+   */
   public PartialPath(String[] partialNodes) {
     nodes = partialNodes;
   }
@@ -124,6 +125,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     this.nodes = Arrays.copyOf(nodes, nodes.length + otherNodes.length);
     System.arraycopy(otherNodes, 0, nodes, len, otherNodes.length);
     fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
+  }
+
+  public PartialPath concat(String[] otherNodes) {
+    int len = nodes.length;
+    String[] newNodes = Arrays.copyOf(nodes, nodes.length + otherNodes.length);
+    System.arraycopy(otherNodes, 0, newNodes, len, otherNodes.length);
+    PartialPath partialPath = new PartialPath(newNodes);
+    partialPath.fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
+    return partialPath;
   }
 
   public PartialPath concatNode(String node) {
@@ -292,34 +302,6 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       }
     }
     return isMatch;
-  }
-
-  /**
-   * Test if this PartialPath matches a full path's prefix. This partialPath acts as a prefix path
-   * pattern. rPath is supposed to be a full timeseries path without wildcards. e.g. "root.sg" or
-   * "root.*" both match path "root.sg.device.s1", "root.sg.device" and "root.sg.vehicle.s1"
-   *
-   * @param rPath a plain full path of a timeseries
-   * @return true if a successful match, otherwise return false
-   */
-  public boolean matchPrefixPath(PartialPath rPath) {
-    String[] rNodes = rPath.getNodes();
-    if (this.nodes.length > rNodes.length) {
-      return false;
-    }
-    for (int i = 0; i < this.nodes.length; i++) {
-      if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        return true;
-      }
-      if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
-        continue;
-      }
-      if (!nodes[i].equals(rNodes[i])) {
-        return false;
-      }
-    }
-
-    return true;
   }
 
   @Override
@@ -521,12 +503,6 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<IChunkMetadata> chunkMetadataList,
       TsFileResource originTsFileResource)
-      throws IOException {
-    throw new UnsupportedOperationException("Should call exact sub class!");
-  }
-
-  public ITimeSeriesMetadata generateTimeSeriesMetadata(
-      List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
       throws IOException {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }

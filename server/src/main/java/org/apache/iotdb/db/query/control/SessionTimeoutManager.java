@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
+import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,10 +69,10 @@ public class SessionTimeoutManager {
 
   public boolean unregister(long sessionId) {
     if (SESSION_TIMEOUT == 0) {
-      return ServiceProvider.SESSION_MANAGER.releaseSessionResource(sessionId);
+      return BasicServiceProvider.sessionManager.releaseSessionResource(sessionId);
     }
 
-    if (ServiceProvider.SESSION_MANAGER.releaseSessionResource(sessionId)) {
+    if (BasicServiceProvider.sessionManager.releaseSessionResource(sessionId)) {
       return sessionIdToLastActiveTime.remove(sessionId) != null;
     }
 

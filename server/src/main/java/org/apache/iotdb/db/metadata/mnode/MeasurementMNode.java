@@ -60,7 +60,9 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
     return new MeasurementMNode(parent, measurementName, schema, alias);
   }
 
-  /** @param alias alias of measurementName */
+  /**
+   * @param alias alias of measurementName
+   */
   MeasurementMNode(IMNode parent, String name, IMeasurementSchema schema, String alias) {
     super(parent, name);
     this.schema = schema;

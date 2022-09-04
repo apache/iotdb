@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -86,17 +85,6 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
         setColumnNameToDatasetOutputIndex(columnForDisplay, datasetOutputIndex);
         setDatasetOutputIndexToResultColumnIndex(datasetOutputIndex, originalIndex);
         columnForDisplaySet.add(columnForDisplay);
-      }
-    }
-
-    // Aligned timeseries is not supported in current query for now.
-    // To judge whether an aligned timeseries is used, we need to traversal all the paths in
-    // deduplicatedPaths.
-    for (PartialPath path : getDeduplicatedPaths()) {
-      MeasurementPath measurementPath = (MeasurementPath) path;
-      if (measurementPath.isUnderAlignedEntity()) {
-        throw new MetadataException(
-            "Aligned timeseries is not supported in current query for now.");
       }
     }
   }

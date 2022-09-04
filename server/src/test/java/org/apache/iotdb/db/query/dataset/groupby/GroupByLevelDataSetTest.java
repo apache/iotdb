@@ -20,9 +20,9 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.executor.IPlanExecutor;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.query.filter.executor.IPlanExecutor;
+import org.apache.iotdb.db.query.filter.executor.PlanExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -143,19 +143,10 @@ public class GroupByLevelDataSetTest {
     queryPlan =
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
-                "select count(`\"s3+xy\"`) from root.test.* group by level=2");
+                "select count(\"s3+xy\") from root.test.* group by level=2");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t1", dataSet.next().toString());
-
-    // with value filter
-    queryPlan =
-        (QueryPlan)
-            processor.parseSQLToPhysicalPlan(
-                "select count(s1),sum(s0),last_value(s0),first_value(s0) from root.** where s0!=0 or time<10 group by level=3");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    assertTrue(dataSet.hasNext());
-    assertEquals("0\t590.0\t106\t120\t4", dataSet.next().toString());
   }
 }

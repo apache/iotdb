@@ -152,11 +152,8 @@ public class LinearFill extends IFill {
 
   protected TimeValuePair calculatePrecedingPoint()
       throws QueryProcessException, StorageEngineException, IOException {
-    // for the parameter "ascending": true or false both ok here,
-    // because LastPointReader will do itself sort logic instead of depending on fillOrderIndex.
     QueryDataSource dataSource =
-        QueryResourceManager.getInstance()
-            .getQueryDataSource(seriesPath, context, beforeFilter, false);
+        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, beforeFilter);
     LastPointReader lastReader =
         new LastPointReader(
             seriesPath,
@@ -186,8 +183,7 @@ public class LinearFill extends IFill {
         dataType,
         aggregateResultList,
         null,
-        null,
-        true);
+        null);
 
     return convertToResult(minTimeResult, firstValueResult);
   }

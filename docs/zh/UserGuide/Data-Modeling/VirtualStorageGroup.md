@@ -50,4 +50,4 @@ virtual_storage_group_num
 
 推荐值为[virtual storage group number] = [CPU core number] / [user-defined storage group number]
 
-参考[配置手册](../Reference/Config-Manual.md)以获取更多信息。
+参考[配置手册](../Appendix/Config-Manual.md)以获取更多信息。

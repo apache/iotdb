@@ -20,9 +20,11 @@
 package org.apache.iotdb.metrics.utils;
 
 public enum ReporterType {
-  JMX,
-  PROMETHEUS,
-  IOTDB;
+  // The name of ReporterType should same as value of metricReporterList in iotdb-metric.yml, that's
+  // why all below are in lower case.
+  jmx,
+  prometheus,
+  internal;
 
   @Override
   public String toString() {

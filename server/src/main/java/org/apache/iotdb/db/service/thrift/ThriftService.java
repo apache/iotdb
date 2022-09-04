@@ -33,10 +33,8 @@ import java.util.concurrent.CountDownLatch;
 public abstract class ThriftService implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(ThriftService.class);
-
-  public static final String STATUS_UP = "UP";
-  public static final String STATUS_DOWN = "DOWN";
-
+  private static final String STATUS_UP = "UP";
+  private static final String STATUS_DOWN = "DOWN";
   protected final String mbeanName =
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());

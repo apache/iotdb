@@ -22,22 +22,11 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
-import java.util.HashSet;
-import java.util.Set;
-
-//
-
-/**
- * This Traverser implements node count function. On finding a path matching the given pattern, if
- * the path is longer than the specified level, MNodeLevelCounter finds the node of the specified
- * level on the path and counts it. The same node will not be counted more than once.
- */
+// This node implements node count function.
 public class MNodeLevelCounter extends CounterTraverser {
 
   // level query option
   protected int targetLevel;
-
-  private Set<IMNode> processedNodes = new HashSet<>();
 
   public MNodeLevelCounter(IMNode startNode, PartialPath path, int targetLevel)
       throws MetadataException {
@@ -52,19 +41,11 @@ public class MNodeLevelCounter extends CounterTraverser {
 
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    // move the cursor the given level when matched
-    if (level < targetLevel) {
+    if (level == targetLevel) {
+      count++;
+      return true;
+    } else {
       return false;
     }
-    while (level > targetLevel) {
-      node = node.getParent();
-      level--;
-    }
-    // record processed node so they will not be processed twice
-    if (!processedNodes.contains(node)) {
-      processedNodes.add(node);
-      count++;
-    }
-    return true;
   }
 }

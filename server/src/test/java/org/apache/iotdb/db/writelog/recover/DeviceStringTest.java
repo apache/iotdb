@@ -37,8 +37,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -70,7 +70,7 @@ public class DeviceStringTest {
     schema = new Schema();
     schema.registerTimeseries(
         new Path("root.sg.device99"),
-        new MeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
+        new UnaryMeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
     mManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor4"),
         TSDataType.INT64,
@@ -79,7 +79,7 @@ public class DeviceStringTest {
         Collections.emptyMap());
     schema.registerTimeseries(
         new Path("root.sg.device99"),
-        new MeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
+        new UnaryMeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
     mManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor2"),
         TSDataType.INT64,
@@ -88,7 +88,7 @@ public class DeviceStringTest {
         Collections.emptyMap());
     schema.registerTimeseries(
         new Path(("root.sg.device99")),
-        new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
+        new UnaryMeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
     mManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor1"),
         TSDataType.INT64,

@@ -39,12 +39,6 @@ public interface WriteLogNode {
   /** Sync and close streams. */
   void close() throws IOException;
 
-  /**
-   * Release the resource it occupies. After this method is invoked, this node should be no longer
-   * to used
-   */
-  void release();
-
   /** Write what in cache to disk. */
   void forceSync() throws IOException;
 

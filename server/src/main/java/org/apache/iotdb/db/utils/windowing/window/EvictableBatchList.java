@@ -143,7 +143,9 @@ public class EvictableBatchList {
         .getBinaryByIndex(index % internalBatchSize);
   }
 
-  /** @param evictionUpperBound valid elements [evictionUpperBound, size) */
+  /**
+   * @param evictionUpperBound valid elements [evictionUpperBound, size)
+   */
   public void setEvictionUpperBound(int evictionUpperBound) {
     int outerEvictionUpperBound = evictionUpperBound / internalBatchSize;
     if (actualOuterIndexAt0 < outerEvictionUpperBound) {

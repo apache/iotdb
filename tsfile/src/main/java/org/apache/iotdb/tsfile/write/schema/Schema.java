@@ -50,7 +50,7 @@ public class Schema implements Serializable {
   }
 
   // This method can only register nonAligned timeseries.
-  public void registerTimeseries(Path devicePath, MeasurementSchema measurementSchema) {
+  public void registerTimeseries(Path devicePath, UnaryMeasurementSchema measurementSchema) {
     MeasurementGroup group =
         registeredTimeseries.getOrDefault(devicePath, new MeasurementGroup(false));
     group.getMeasurementSchemaMap().put(measurementSchema.getMeasurementId(), measurementSchema);
@@ -69,7 +69,7 @@ public class Schema implements Serializable {
   }
 
   /** If template does not exist, an nonAligned timeseries is created by default */
-  public void extendTemplate(String templateName, MeasurementSchema descriptor) {
+  public void extendTemplate(String templateName, UnaryMeasurementSchema descriptor) {
     if (schemaTemplates == null) {
       schemaTemplates = new HashMap<>();
     }
@@ -84,7 +84,7 @@ public class Schema implements Serializable {
     if (!schemaTemplates.containsKey(templateName)) {
       return;
     }
-    Map<String, MeasurementSchema> template =
+    Map<String, UnaryMeasurementSchema> template =
         schemaTemplates.get(templateName).getMeasurementSchemaMap();
     boolean isAligned = schemaTemplates.get(templateName).isAligned();
     registerMeasurementGroup(new Path(deviceId), new MeasurementGroup(isAligned, template));

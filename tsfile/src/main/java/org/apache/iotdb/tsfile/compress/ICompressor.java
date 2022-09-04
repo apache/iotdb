@@ -273,7 +273,9 @@ public interface ICompressor extends Serializable {
       return GZIPCompress.compress(dataBefore);
     }
 
-    /** @exception GZIPCompressOverflowException if compressed byte array is too small. */
+    /**
+     * @exception GZIPCompressOverflowException if compressed byte array is too small.
+     */
     @Override
     public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
       byte[] dataBefore = new byte[length];
@@ -286,7 +288,9 @@ public interface ICompressor extends Serializable {
       return res.length;
     }
 
-    /** @exception GZIPCompressOverflowException if compressed ByteBuffer is too small. */
+    /**
+     * @exception GZIPCompressOverflowException if compressed ByteBuffer is too small.
+     */
     @Override
     public int compress(ByteBuffer data, ByteBuffer compressed) throws IOException {
       int length = data.remaining();

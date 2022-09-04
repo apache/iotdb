@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
 
 import org.slf4j.Logger;
@@ -46,20 +46,19 @@ public class TsFileForceAppendWrite {
     if (f.exists()) {
       Files.delete(f.toPath());
     }
-
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
 
       // add measurements into file schema
       for (int i = 0; i < 4; i++) {
         tsFileWriter.registerTimeseries(
             new Path(Constant.DEVICE_PREFIX + i),
-            new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
+            new UnaryMeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
         tsFileWriter.registerTimeseries(
             new Path(Constant.DEVICE_PREFIX + i),
-            new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
+            new UnaryMeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
         tsFileWriter.registerTimeseries(
             new Path(Constant.DEVICE_PREFIX + i),
-            new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
+            new UnaryMeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
       }
 
       // construct TSRecord
@@ -87,13 +86,13 @@ public class TsFileForceAppendWrite {
       for (int i = 0; i < 4; i++) {
         tsFileWriter1.registerTimeseries(
             new Path(Constant.DEVICE_PREFIX + i),
-            new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
+            new UnaryMeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
         tsFileWriter1.registerTimeseries(
             new Path(Constant.DEVICE_PREFIX + i),
-            new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
+            new UnaryMeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
         tsFileWriter1.registerTimeseries(
             new Path(Constant.DEVICE_PREFIX + i),
-            new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
+            new UnaryMeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
       }
       // construct TSRecord
       for (int i = 100; i < 120; i++) {

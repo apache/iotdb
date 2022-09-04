@@ -24,98 +24,73 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.0</version>
+        <version>0.13.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-grafana-plugin</artifactId>
     <name>IoTDB Grafana plugin</name>
     <description>IoTDB Grafana plugin</description>
     <packaging>pom</packaging>
-    <profiles>
-        <profile>
-            <id>compile-grafana-plugin</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.rat</groupId>
-                        <artifactId>apache-rat-plugin</artifactId>
-                        <version>0.13</version>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.rat</groupId>
+                <artifactId>apache-rat-plugin</artifactId>
+                <version>0.13</version>
+                <configuration>
+                    <excludes>
+                        <exclude>yarn.lock</exclude>
+                        <exclude>package.json</exclude>
+                        <exclude>tsconfig.json</exclude>
+                        <exclude>src/plugin.json</exclude>
+                    </excludes>
+                    <consoleOutput>false</consoleOutput>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>license-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.6</version>
+                <executions>
+                    <execution>
+                        <id>install node and yarn</id>
+                        <goals>
+                            <goal>install-node-and-yarn</goal>
+                        </goals>
                         <configuration>
-                            <excludes>
-                                <exclude>yarn.lock</exclude>
-                                <exclude>package.json</exclude>
-                                <exclude>tsconfig.json</exclude>
-                                <exclude>src/plugin.json</exclude>
-                            </excludes>
-                            <consoleOutput>false</consoleOutput>
+                            <nodeVersion>v12.22.1</nodeVersion>
+                            <yarnVersion>v1.22.10</yarnVersion>
                         </configuration>
-                        <executions>
-                            <execution>
-                                <id>license-check</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>check</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>com.github.eirslett</groupId>
-                        <artifactId>frontend-maven-plugin</artifactId>
-                        <version>1.12.1</version>
-                        <executions>
-                            <execution>
-                                <id>install node and yarn</id>
-                                <goals>
-                                    <goal>install-node-and-yarn</goal>
-                                </goals>
-                                <configuration>
-                                    <nodeVersion>v16.13.1</nodeVersion>
-                                    <yarnVersion>v1.22.17</yarnVersion>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>yarn install</id>
-                                <goals>
-                                    <goal>yarn</goal>
-                                </goals>
-                                <configuration>
-                                    <arguments>install</arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>yarn build</id>
-                                <goals>
-                                    <goal>yarn</goal>
-                                </goals>
-                                <configuration>
-                                    <arguments>build</arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-clean-plugin</artifactId>
+                    </execution>
+                    <execution>
+                        <id>yarn install</id>
+                        <goals>
+                            <goal>yarn</goal>
+                        </goals>
                         <configuration>
-                            <filesets>
-                                <fileset>
-                                    <directory>${basedir}/node</directory>
-                                </fileset>
-                                <fileset>
-                                    <directory>${basedir}/node_modules</directory>
-                                </fileset>
-                                <fileset>
-                                    <directory>${basedir}/dist</directory>
-                                </fileset>
-                                <fileset>
-                                    <directory>${basedir}/coverage</directory>
-                                </fileset>
-                            </filesets>
+                            <arguments>install</arguments>
                         </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
+                    </execution>
+                    <execution>
+                        <id>yarn build</id>
+                        <goals>
+                            <goal>yarn</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>build</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

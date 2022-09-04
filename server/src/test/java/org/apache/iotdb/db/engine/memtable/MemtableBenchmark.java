@@ -23,7 +23,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.util.Collections;
 
@@ -52,9 +52,9 @@ public class MemtableBenchmark {
         memTable.write(
             DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
             Collections.singletonList(
-                new MeasurementSchema(measurementId[j], tsDataType, TSEncoding.PLAIN)),
+                new UnaryMeasurementSchema(measurementId[j], tsDataType, TSEncoding.PLAIN)),
             System.nanoTime(),
-            new Object[] {System.currentTimeMillis()});
+            new Object[] {String.valueOf(System.currentTimeMillis())});
       }
     }
 

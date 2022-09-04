@@ -17,12 +17,10 @@
 #
 
 # Uncomment the following line to use apache-iotdb module installed by pip3
-import numpy as np
 
 from iotdb.Session import Session
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.Tablet import Tablet
-from iotdb.utils.NumpyTablet import NumpyTablet
 
 # creating session connection.
 ip = "127.0.0.1"
@@ -50,16 +48,6 @@ session.create_time_series(
 session.create_time_series(
     "root.sg_test_01.d_01.s_03", TSDataType.INT64, TSEncoding.PLAIN, Compressor.SNAPPY
 )
-session.create_time_series(
-    "root.sg_test_01.d_02.s_01",
-    TSDataType.BOOLEAN,
-    TSEncoding.PLAIN,
-    Compressor.SNAPPY,
-    None,
-    {"tag1": "v1"},
-    {"description": "v1"},
-    "temperature"
-)
 
 # setting multiple time series once.
 ts_path_lst_ = [
@@ -84,30 +72,6 @@ session.create_multi_time_series(
     ts_path_lst_, data_type_lst_, encoding_lst_, compressor_lst_
 )
 
-ts_path_lst_ = [
-    "root.sg_test_01.d_02.s_04",
-    "root.sg_test_01.d_02.s_05",
-    "root.sg_test_01.d_02.s_06",
-    "root.sg_test_01.d_02.s_07",
-    "root.sg_test_01.d_02.s_08",
-    "root.sg_test_01.d_02.s_09",
-]
-data_type_lst_ = [
-    TSDataType.FLOAT,
-    TSDataType.DOUBLE,
-    TSDataType.TEXT,
-    TSDataType.FLOAT,
-    TSDataType.DOUBLE,
-    TSDataType.TEXT,
-]
-encoding_lst_ = [TSEncoding.PLAIN for _ in range(len(data_type_lst_))]
-compressor_lst_ = [Compressor.SNAPPY for _ in range(len(data_type_lst_))]
-tags_lst_ = [{"tag2": "v2"} for _ in range(len(data_type_lst_))]
-attributes_lst_ = [{"description": "v2"} for _ in range(len(data_type_lst_))]
-session.create_multi_time_series(
-    ts_path_lst_, data_type_lst_, encoding_lst_, compressor_lst_, None, tags_lst_, attributes_lst_, None
-)
-
 # delete time series
 session.delete_time_series(
     [
@@ -125,14 +89,6 @@ print(
 print(
     "s_03 expecting True, checking result: ",
     session.check_time_series_exists("root.sg_test_01.d_01.s_03"),
-)
-print(
-    "d_02.s_01 expecting True, checking result: ",
-    session.check_time_series_exists("root.sg_test_01.d_02.s_01"),
-)
-print(
-    "d_02.s_06 expecting True, checking result: ",
-    session.check_time_series_exists("root.sg_test_01.d_02.s_06"),
 )
 
 # insert one record into the database.
@@ -175,21 +131,6 @@ tablet_ = Tablet(
     "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
 )
 session.insert_tablet(tablet_)
-
-# insert one numpy tablet into the database.
-np_values_ = [
-    np.array([False, True, False, True], np.dtype('>?')),
-    np.array([10, 100, 100, 0], np.dtype('>i4')),
-    np.array([11, 11111, 1, 0], np.dtype('>i8')),
-    np.array([1.1, 1.25, 188.1, 0], np.dtype('>f4')),
-    np.array([10011.1, 101.0, 688.25, 6.25], np.dtype('>f8')),
-    ["test01", "test02", "test03", "test04"],
-]
-np_timestamps_ = np.array([1, 2, 3, 4], np.dtype('>i8'))
-np_tablet_ = NumpyTablet(
-    "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
-)
-session.insert_tablet(np_tablet_)
 
 # insert multiple tablets into database
 tablet_01 = Tablet(
@@ -239,13 +180,6 @@ session.execute_non_query_statement(
 # execute sql query statement
 with session.execute_query_statement(
     "select * from root.sg_test_01.d_01"
-) as session_data_set:
-    session_data_set.set_fetch_size(1024)
-    while session_data_set.has_next():
-        print(session_data_set.next())
-# execute sql query statement
-with session.execute_query_statement(
-    "select s_01, s_02, s_03, s_04, s_05, s_06 from root.sg_test_01.d_02"
 ) as session_data_set:
     session_data_set.set_fetch_size(1024)
     while session_data_set.has_next():

@@ -76,23 +76,16 @@ public class TsFileSequenceRead {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
-          case MetaMarker.TIME_CHUNK_HEADER:
-          case MetaMarker.VALUE_CHUNK_HEADER:
+          case (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
+          case (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
-          case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
-          case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
+          case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
+          case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
             System.out.println("\t[Chunk]");
             System.out.println("\tchunk type: " + marker);
             System.out.println("\tposition: " + reader.position());
             ChunkHeader header = reader.readChunkHeader(marker);
             System.out.println("\tMeasurement: " + header.getMeasurementID());
-            if (header.getDataSize() == 0) {
-              // empty value chunk
-              System.out.println("\t-- Empty Chunk ");
-              break;
-            }
-            System.out.println(
-                "\tChunk Size: " + (header.getDataSize() + header.getSerializedSize()));
             Decoder defaultTimeDecoder =
                 Decoder.getDecoderByType(
                     TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -141,8 +134,8 @@ public class TsFileSequenceRead {
                   System.out.println("\t\tpoints in the page: " + valueBatch.length);
                 }
                 if (printDetail) {
-                  for (TsPrimitiveType batch : valueBatch) {
-                    System.out.println("\t\t\tvalue: " + batch);
+                  for (int i = 0; i < valueBatch.length; i++) {
+                    System.out.println("\t\t\tvalue: " + valueBatch[i]);
                   }
                 }
               } else { // NonAligned Chunk

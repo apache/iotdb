@@ -75,7 +75,7 @@
       </p>
     </div>
 
-    <p style="text-align: center; color: #909399; font-size: 12px">Copyright © 2022 The Apache Software Foundation.<br>
+    <p style="text-align: center; color: #909399; font-size: 12px">Copyright © 2021 The Apache Software Foundation.<br>
         Apache and the Apache feather logo are trademarks of The Apache Software Foundation</p>
     <p style="text-align: center; margin-top: 10px; color: #909399; font-size: 12px">
         <strong>Have a question?</strong> Connect with us on QQ, WeChat, or Slack. <a href="https://github.com/apache/iotdb/issues/1995">Join the community</a> now.</p>

@@ -18,19 +18,18 @@
  */
 package org.apache.iotdb.db.qp;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.protocol.rest.handler.PhysicalPlanValidationHandler;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.strategy.LogicalChecker;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -38,6 +37,7 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
@@ -50,73 +50,50 @@ public class Planner {
     // do nothing
   }
 
-  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr) throws QueryProcessException {
-    return parseSQLToPhysicalPlan(
-        sqlStr, ZoneId.systemDefault(), IoTDBConstant.ClientVersion.V_0_13);
-  }
-
-  public PhysicalPlan parseSQLToPhysicalPlan(
-      String sqlStr, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion)
-      throws QueryProcessException {
-    // from SQL to logical operator
-    Operator operator = LogicalGenerator.generate(sqlStr, zoneId, clientVersion);
-    return generatePhysicalPlanFromOperator(operator, clientVersion);
-  }
-
-  /** convert raw data query to physical plan directly */
-  public PhysicalPlan rawDataQueryReqToPhysicalPlan(
-      TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion)
-      throws IllegalPathException, QueryProcessException {
-    // from TSRawDataQueryReq to logical operator
-    Operator operator = LogicalGenerator.generate(rawDataQueryReq, zoneId);
-    return generatePhysicalPlanFromOperator(operator, clientVersion);
-  }
-
-  /** convert last data query to physical plan directly */
-  public PhysicalPlan lastDataQueryReqToPhysicalPlan(
-      TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion)
-      throws QueryProcessException, IllegalPathException {
-    // from TSLastDataQueryReq to logical operator
-    Operator operator = LogicalGenerator.generate(lastDataQueryReq, zoneId);
-    return generatePhysicalPlanFromOperator(operator, clientVersion);
-  }
-
-  public PhysicalPlan parseSQLToRestQueryPlan(String sqlStr, ZoneId zoneId)
+  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
       throws QueryProcessException {
     // from SQL to logical operator
     Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
-    // extra check for rest query
-    PhysicalPlanValidationHandler.checkRestQuery(operator);
-    return generatePhysicalPlanFromOperator(operator, IoTDBConstant.ClientVersion.V_0_13);
-  }
-
-  public PhysicalPlan parseSQLToGrafanaQueryPlan(String sqlStr, ZoneId zoneId)
-      throws QueryProcessException {
-    // from SQL to logical operator
-    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
-    // extra check for grafana query
-    PhysicalPlanValidationHandler.checkGrafanaQuery(operator);
-    return generatePhysicalPlanFromOperator(operator, IoTDBConstant.ClientVersion.V_0_13);
-  }
-
-  public PhysicalPlan operatorToPhysicalPlan(Operator operator) throws QueryProcessException {
-    return generatePhysicalPlanFromOperator(operator, IoTDBConstant.ClientVersion.V_0_13);
-  }
-
-  private PhysicalPlan generatePhysicalPlanFromOperator(
-      Operator operator, IoTDBConstant.ClientVersion clientVersion) throws QueryProcessException {
-    // if client version is before 0.13, match path with prefix
-    operator.setPrefixMatchPath(IoTDBConstant.ClientVersion.V_0_12.equals(clientVersion));
     // check if there are logical errors
     LogicalChecker.check(operator);
     // optimize the logical operator
     operator = logicalOptimize(operator);
     // from logical operator to physical plan
-    return generatePhysicalPlanFromOperator(operator);
+    return new PhysicalGenerator().transformToPhysicalPlan(operator);
   }
 
-  protected PhysicalPlan generatePhysicalPlanFromOperator(Operator operator)
+  public GroupByTimePlan cqQueryOperatorToGroupByTimePlan(QueryOperator operator)
       throws QueryProcessException {
+    // optimize the logical operator (no need to check since the operator has been checked
+    // beforehand)
+    operator = (QueryOperator) logicalOptimize(operator);
+    return (GroupByTimePlan) new PhysicalGenerator().transformToPhysicalPlan(operator);
+  }
+
+  /** convert raw data query to physical plan directly */
+  public PhysicalPlan rawDataQueryReqToPhysicalPlan(
+      TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
+      throws IllegalPathException, QueryProcessException {
+    // from TSRawDataQueryReq to logical operator
+    Operator operator = LogicalGenerator.generate(rawDataQueryReq, zoneId);
+    // check if there are logical errors
+    LogicalChecker.check(operator);
+    // optimize the logical operator
+    operator = logicalOptimize(operator);
+    // from logical operator to physical plan
+    return new PhysicalGenerator().transformToPhysicalPlan(operator);
+  }
+
+  /** convert last data query to physical plan directly */
+  public PhysicalPlan lastDataQueryReqToPhysicalPlan(
+      TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId)
+      throws QueryProcessException, IllegalPathException {
+    // from TSLastDataQueryReq to logical operator
+    Operator operator = LogicalGenerator.generate(lastDataQueryReq, zoneId);
+    // check if there are logical errors
+    LogicalChecker.check(operator);
+    // optimize the logical operator
+    operator = logicalOptimize(operator);
     // from logical operator to physical plan
     return new PhysicalGenerator().transformToPhysicalPlan(operator);
   }
@@ -169,5 +146,10 @@ public class Planner {
       throws PathNumOverLimitException, LogicalOperatorException {
     operator.setQueryOperator(optimizeQueryOperator(operator.getQueryOperator()));
     return operator;
+  }
+
+  @TestOnly
+  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr) throws QueryProcessException {
+    return parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault());
   }
 }

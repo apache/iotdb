@@ -26,35 +26,104 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FileUtils;
-import org.apache.iotdb.metrics.MetricService;
+import org.apache.iotdb.metrics.CompositeReporter;
+import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.Reporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.ServiceLoader;
 import java.util.stream.Stream;
 
-public class MetricsService extends MetricService implements MetricsServiceMBean, IService {
+public class MetricsService implements MetricsServiceMBean, IService {
   private static final Logger logger = LoggerFactory.getLogger(MetricsService.class);
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   private final String mbeanName =
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
-  private MetricsService() {}
+  private MetricManager metricManager;
+
+  private CompositeReporter compositeReporter;
+
+  private MetricsService() {
+    logger.info("Init metric service");
+    // load manager
+    loadManager();
+  }
+
+  private void loadManager() {
+    logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
+    ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
+    int size = 0;
+    for (MetricManager mf : metricManagers) {
+      size++;
+      if (mf.getClass()
+          .getName()
+          .toLowerCase()
+          .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
+        metricManager = mf;
+        break;
+      }
+    }
+
+    // if no more implementations, we use nothingManager.
+    if (size == 0 || metricManager == null) {
+      metricManager = new DoNothingMetricManager();
+    } else if (size > 1) {
+      logger.warn(
+          "detect more than one MetricManager, will use {}", metricManager.getClass().getName());
+    }
+  }
+
+  private void loadReporter() {
+    logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
+    compositeReporter = new CompositeReporter();
+
+    ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
+    for (Reporter reporter : reporters) {
+      if (metricConfig.getMetricReporterList() != null
+          && metricConfig.getMetricReporterList().contains(reporter.getReporterType())
+          && reporter
+              .getClass()
+              .getName()
+              .toLowerCase()
+              .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
+        reporter.setMetricManager(metricManager);
+        compositeReporter.addReporter(reporter);
+      }
+    }
+  }
+
+  /** start reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
+  public void start(ReporterType reporter) {
+    if (!isEnable()) {
+      return;
+    }
+    compositeReporter.start(reporter);
+  }
+
+  /** stop reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
+  public void stop(ReporterType reporter) {
+    if (!isEnable()) {
+      return;
+    }
+    compositeReporter.stop(reporter);
+  }
 
   @Override
   public void start() throws StartupException {
     try {
-      if (isEnable()) {
-        logger.info("Start to start metric Service.");
+      if (metricConfig.getEnableMetric()) {
         JMXService.registerMBean(getInstance(), mbeanName);
         startService();
-        logger.info("Finish start metric Service");
       }
     } catch (Exception e) {
       logger.error("Failed to start {} because: ", this.getID().getName(), e);
@@ -64,36 +133,37 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
 
   @Override
   public void stop() {
-    if (isEnable()) {
-      logger.info("Stop metric Service.");
+    if (metricConfig.getEnableMetric()) {
       stopService();
       JMXService.deregisterMBean(mbeanName);
-      logger.info("Finish stop metric Service");
     }
   }
 
   @Override
-  public void restartService() throws StartupException {
-    stopService();
-    startService();
+  /** Start all reporter. if is disabled, do nothing */
+  public void startService() {
+    // load reporter
+    loadReporter();
+    // do some init work
+    metricManager.init();
+    // start reporter
+    compositeReporter.startAll();
+
+    enablePredefinedMetric(PredefinedMetric.JVM);
+    enablePredefinedMetric(PredefinedMetric.LOGBACK);
+
+    collectFileSystemInfo();
   }
 
-  @Override
-  public void collectFileSystemInfo() {
+  private void collectFileSystemInfo() {
     logger.info("start collecting fileSize and fileCount of wal/seq/unseq");
     String walDir = DirectoryManager.getInstance().getWALFolder();
     metricManager.getOrCreateAutoGauge(
-        Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        walDir,
-        FileUtils::getDirSize,
-        Tag.NAME.toString(),
-        "wal");
+        Metric.FILE_SIZE.toString(), walDir, FileUtils::getDirSize, Tag.NAME.toString(), "wal");
 
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
         dataDirs,
         value ->
             Stream.of(value)
@@ -107,7 +177,6 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "seq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
         dataDirs,
         value ->
             Stream.of(value)
@@ -121,7 +190,6 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "unseq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
         walDir,
         value -> {
           File walFolder = new File(value);
@@ -134,7 +202,6 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "wal");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
         dataDirs,
         value ->
             Stream.of(value)
@@ -150,7 +217,6 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         "seq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
         dataDirs,
         value ->
             Stream.of(value)
@@ -167,38 +233,31 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
   }
 
   @Override
-  public void reloadProperties(ReloadLevel reloadLevel) {
-    logger.info("Reload properties of metric service");
-    synchronized (this) {
-      try {
-        switch (reloadLevel) {
-          case START_METRIC:
-            isEnableMetric = true;
-            start();
-            break;
-          case STOP_METRIC:
-            stop();
-            isEnableMetric = false;
-            break;
-          case RESTART_METRIC:
-            stop();
-            isEnableMetric = true;
-            start();
-            break;
-          case RESTART_REPORTER:
-            compositeReporter.restartAll();
-            logger.info("Finish restart metric reporters.");
-            break;
-          case NOTHING:
-            logger.debug("There are nothing change in metric module.");
-            break;
-          default:
-            break;
-        }
-      } catch (StartupException startupException) {
-        logger.error("Failed to start metric when reload properties");
-      }
-    }
+  public void restartService() throws StartupException {
+    stopService();
+    startService();
+  }
+
+  @Override
+  /** Stop metric service. if is disabled, do nothing */
+  public void stopService() {
+    compositeReporter.stopAll();
+  }
+
+  /**
+   * Enable some predefined metric, now support jvm, logback. Notice: In dropwizard mode, logback
+   * metrics are not supported
+   */
+  public void enablePredefinedMetric(PredefinedMetric metric) {
+    metricManager.enablePredefinedMetric(metric);
+  }
+
+  public MetricManager getMetricManager() {
+    return metricManager;
+  }
+
+  public boolean isEnable() {
+    return metricConfig.getEnableMetric();
   }
 
   @Override

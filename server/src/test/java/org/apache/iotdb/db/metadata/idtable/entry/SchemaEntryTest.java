@@ -48,6 +48,12 @@ public class SchemaEntryTest {
           schemaEntry.getCompressionType(),
           TSFileDescriptor.getInstance().getConfig().getCompressor());
 
+      // flush time
+      schemaEntry.updateLastedFlushTime(100);
+      assertEquals(schemaEntry.getFlushTime(), 100);
+      schemaEntry.updateLastedFlushTime(50);
+      assertEquals(schemaEntry.getFlushTime(), 100);
+
       // last cache
       schemaEntry.updateCachedLast(
           new TimeValuePair(100L, new TsPrimitiveType.TsLong(1L)), false, 0L);

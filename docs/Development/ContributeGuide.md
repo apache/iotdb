@@ -182,12 +182,7 @@ org.apache.maven.wagon.TransferFailedException: Transfer failed for https://gith
       * https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-ubuntu
 
       * https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-MacOS
-
+ 
  * Put the file to thrift/target/tools/
 
  * Re-run maven command like `mvn compile`
-
-
-## Recommended Debug Tool 
-
-The initial committer of IoTDB is using this  [Java profiler](https://www.ej-technologies.com/products/jprofiler/overview.html) to debug. Welcome all IoTDB contributors to use it.

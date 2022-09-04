@@ -28,7 +28,6 @@ import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -98,11 +97,9 @@ public class TimeSeriesMetadataCache {
                                 + RamUsageEstimator.shallowSizeOf(value)
                                 + RamUsageEstimator.sizeOf(value.getMeasurementId())
                                 + RamUsageEstimator.shallowSizeOf(value.getStatistics())
-                                + (value.getChunkMetadataList().get(0) == null
-                                        ? 0
-                                        : ((ChunkMetadata) value.getChunkMetadataList().get(0))
-                                                .calculateRamSize()
-                                            + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+                                + (((ChunkMetadata) value.getChunkMetadataList().get(0))
+                                            .calculateRamSize()
+                                        + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
                                     * value.getChunkMetadataList().size()
                                 + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList())))
             .recordStats()
@@ -114,7 +111,6 @@ public class TimeSeriesMetadataCache {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CACHE_HIT.toString(),
-              MetricLevel.IMPORTANT,
               lruCache,
               l -> (long) (l.stats().hitRate() * 100),
               Tag.NAME.toString(),
@@ -124,7 +120,6 @@ public class TimeSeriesMetadataCache {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CACHE_HIT.toString(),
-              MetricLevel.IMPORTANT,
               bloomFilterPreventCount,
               prevent -> {
                 if (bloomFilterRequestCount.get() == 0L) {
@@ -158,11 +153,7 @@ public class TimeSeriesMetadataCache {
           && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
         return null;
       }
-      TimeseriesMetadata timeseriesMetadata =
-          reader.readTimeseriesMetadata(new Path(key.device, key.measurement), false);
-      return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
-          ? null
-          : timeseriesMetadata;
+      return reader.readTimeseriesMetadata(new Path(key.device, key.measurement), false);
     }
 
     TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);
@@ -202,11 +193,9 @@ public class TimeSeriesMetadataCache {
             TimeSeriesMetadataCacheKey k =
                 new TimeSeriesMetadataCacheKey(
                     key.filePath, key.device, metadata.getMeasurementId());
-            if (metadata.getStatistics().getCount() != 0) {
-              lruCache.put(k, metadata);
-            }
+            lruCache.put(k, metadata);
             if (metadata.getMeasurementId().equals(key.measurement)) {
-              timeseriesMetadata = metadata.getStatistics().getCount() == 0 ? null : metadata;
+              timeseriesMetadata = metadata;
             }
           }
         }

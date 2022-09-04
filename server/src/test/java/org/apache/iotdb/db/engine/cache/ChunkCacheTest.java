@@ -40,7 +40,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -69,7 +69,7 @@ public class ChunkCacheTest {
   long flushInterval = 20;
 
   String[] deviceIds;
-  MeasurementSchema[] measurementSchemas;
+  UnaryMeasurementSchema[] measurementSchemas;
 
   List<TsFileResource> seqResources = new ArrayList<>();
   List<TsFileResource> unseqResources = new ArrayList<>();
@@ -135,10 +135,10 @@ public class ChunkCacheTest {
   }
 
   void prepareSeries() throws MetadataException {
-    measurementSchemas = new MeasurementSchema[measurementNum];
+    measurementSchemas = new UnaryMeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] =
-          new MeasurementSchema(
+          new UnaryMeasurementSchema(
               "sensor" + i, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED);
     }
     deviceIds = new String[deviceNum];
@@ -147,7 +147,7 @@ public class ChunkCacheTest {
     }
     IoTDB.metaManager.setStorageGroup(new PartialPath(TEST_SG));
     for (String device : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
         IoTDB.metaManager.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
@@ -188,7 +188,7 @@ public class ChunkCacheTest {
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }

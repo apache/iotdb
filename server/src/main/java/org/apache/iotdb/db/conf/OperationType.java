@@ -32,7 +32,6 @@ public enum OperationType {
   SET_TIME_ZONE("setTimeZone"),
   INSERT_RECORDS("insertRecords"),
   INSERT_RECORDS_OF_ONE_DEVICE("insertRecordsOfOneDevice"),
-  INSERT_STRING_RECORDS_OF_ONE_DEVICE("insertStringRecordsOfOneDevice"),
   INSERT_STRING_RECORDS("insertStringRecords"),
   INSERT_RECORD("insertRecord"),
   INSERT_STRING_RECORD("insertStringRecord"),

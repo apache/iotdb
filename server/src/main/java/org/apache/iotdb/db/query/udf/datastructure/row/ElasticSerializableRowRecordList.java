@@ -45,9 +45,7 @@ public class ElasticSerializableRowRecordList {
 
   protected LRUCache cache;
   protected List<SerializableRowRecordList> rowRecordLists;
-  /** Mark bitMaps of correct index when one row has at least one null field */
   protected List<BitMap> bitMaps;
-
   protected int size;
   protected int evictionUpperBound;
 
@@ -148,26 +146,26 @@ public class ElasticSerializableRowRecordList {
         .getRowRecord(index % internalRowRecordListCapacity);
   }
 
-  /** true if any field except the timestamp in the current row is null */
-  public boolean fieldsHasAnyNull(int index) {
+  /** true if all fields except the timestamp in the current row are null */
+  public boolean fieldsAllNull(int index) {
     return bitMaps
         .get(index / internalRowRecordListCapacity)
         .isMarked(index % internalRowRecordListCapacity);
   }
 
   public void put(Object[] rowRecord) throws IOException, QueryProcessException {
-    put(rowRecord, InputRowUtils.hasNullField(rowRecord));
+    put(rowRecord, InputRowUtils.isAllNull(rowRecord));
   }
 
   /**
-   * Put the row in the list with an any-field-null marker, this method is faster than calling put
+   * Put the row in the list with an all-fields-null marker, this method is faster than calling put
    * directly
    */
-  private void put(Object[] rowRecord, boolean hasNullField)
+  private void put(Object[] rowRecord, boolean fieldsAllNull)
       throws IOException, QueryProcessException {
     checkExpansion();
     cache.get(size / internalRowRecordListCapacity).put(rowRecord);
-    if (hasNullField) {
+    if (fieldsAllNull) {
       bitMaps.get(size / internalRowRecordListCapacity).mark(size % internalRowRecordListCapacity);
     }
     ++size;
@@ -258,7 +256,7 @@ public class ElasticSerializableRowRecordList {
       newElasticSerializableRowRecordList.put(null);
     }
     for (int i = evictionUpperBound; i < size; ++i) {
-      newElasticSerializableRowRecordList.put(getRowRecord(i), fieldsHasAnyNull(i));
+      newElasticSerializableRowRecordList.put(getRowRecord(i), fieldsAllNull(i));
     }
 
     internalRowRecordListCapacity = newInternalRowRecordListCapacity;

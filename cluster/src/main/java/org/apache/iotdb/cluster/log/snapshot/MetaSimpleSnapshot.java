@@ -48,7 +48,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.locks.Lock;
 
 /** MetaSimpleSnapshot also records all storage groups. */
 public class MetaSimpleSnapshot extends Snapshot {
@@ -219,63 +218,53 @@ public class MetaSimpleSnapshot extends Snapshot {
      * authentication info, and last log term/index in the snapshot.
      */
     private void installSnapshot(MetaSimpleSnapshot snapshot) {
-      Lock lock = metaGroupMember.getSnapshotApplyLock();
-      if (lock.tryLock()) {
-        try {
-          // 1.  register all storage groups
-          for (Map.Entry<PartialPath, Long> entry : snapshot.getStorageGroupTTLMap().entrySet()) {
-            PartialPath sgPath = entry.getKey();
-            try {
-              IoTDB.metaManager.setStorageGroup(sgPath);
-            } catch (StorageGroupAlreadySetException e) {
-              // ignore
-            } catch (MetadataException e) {
-              logger.error(
-                  "{}: Cannot add storage group {} in snapshot, errMessage:{}",
-                  metaGroupMember.getName(),
-                  entry.getKey(),
-                  e.getMessage());
-            }
-
-            // 2. register ttl in the snapshot
-            try {
-              IoTDB.metaManager.setTTL(sgPath, entry.getValue());
-              StorageEngine.getInstance().setTTL(sgPath, entry.getValue());
-            } catch (MetadataException | IOException e) {
-              logger.error(
-                  "{}: Cannot set ttl in storage group {} , errMessage: {}",
-                  metaGroupMember.getName(),
-                  entry.getKey(),
-                  e.getMessage());
-            }
-          }
-
-          // 3. replace all users and roles
+      synchronized (metaGroupMember.getSnapshotApplyLock()) {
+        // 1.  register all storage groups
+        for (Map.Entry<PartialPath, Long> entry : snapshot.getStorageGroupTTLMap().entrySet()) {
+          PartialPath sgPath = entry.getKey();
           try {
-            IAuthorizer authorizer = BasicAuthorizer.getInstance();
-            installSnapshotUsers(authorizer, snapshot);
-            installSnapshotRoles(authorizer, snapshot);
-          } catch (AuthException e) {
+            IoTDB.metaManager.setStorageGroup(sgPath);
+          } catch (StorageGroupAlreadySetException e) {
+            // ignore
+          } catch (MetadataException e) {
             logger.error(
-                "{}: Cannot get authorizer instance, error is: ", metaGroupMember.getName(), e);
+                "{}: Cannot add storage group {} in snapshot, errMessage:{}",
+                metaGroupMember.getName(),
+                entry.getKey(),
+                e.getMessage());
           }
-          // 4. accept template map
-          TemplateManager.getInstance().setTemplateMap(snapshot.templateMap);
 
-          // 5. accept partition table
-          metaGroupMember.acceptVerifiedPartitionTable(snapshot.getPartitionTableBuffer(), true);
-
-          synchronized (metaGroupMember.getLogManager()) {
-            metaGroupMember.getLogManager().applySnapshot(snapshot);
+          // 2. register ttl in the snapshot
+          try {
+            IoTDB.metaManager.setTTL(sgPath, entry.getValue());
+            StorageEngine.getInstance().setTTL(sgPath, entry.getValue());
+          } catch (MetadataException | IOException e) {
+            logger.error(
+                "{}: Cannot set ttl in storage group {} , errMessage: {}",
+                metaGroupMember.getName(),
+                entry.getKey(),
+                e.getMessage());
           }
-        } finally {
-          lock.unlock();
         }
-      } else {
-        logger.info(
-            "{}: is under snapshot installation now. This request is omitted. MetaSimpleSnapshot: {}",
-            metaGroupMember.getName(),
-            snapshot);
+
+        // 3. replace all users and roles
+        try {
+          IAuthorizer authorizer = BasicAuthorizer.getInstance();
+          installSnapshotUsers(authorizer, snapshot);
+          installSnapshotRoles(authorizer, snapshot);
+        } catch (AuthException e) {
+          logger.error(
+              "{}: Cannot get authorizer instance, error is: ", metaGroupMember.getName(), e);
+        }
+        // 4. accept template map
+        TemplateManager.getInstance().setTemplateMap(snapshot.templateMap);
+
+        // 5. accept partition table
+        metaGroupMember.acceptVerifiedPartitionTable(snapshot.getPartitionTableBuffer(), true);
+
+        synchronized (metaGroupMember.getLogManager()) {
+          metaGroupMember.getLogManager().applySnapshot(snapshot);
+        }
       }
     }
 

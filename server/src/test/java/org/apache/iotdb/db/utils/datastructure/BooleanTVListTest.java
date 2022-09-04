@@ -37,11 +37,11 @@ public class BooleanTVListTest {
     for (int i = 50; i < 100; i++) {
       tvList.putBoolean(i, false);
     }
-    for (int i = 0; i < tvList.rowCount / 2; i++) {
+    for (int i = 0; i < tvList.size / 2; i++) {
       Assert.assertTrue(tvList.getBoolean(i));
       Assert.assertEquals(i, tvList.getTime(i));
     }
-    for (int i = tvList.rowCount / 2 + 1; i < tvList.rowCount; i++) {
+    for (int i = tvList.size / 2 + 1; i < tvList.size; i++) {
       Assert.assertFalse(tvList.getBoolean(i));
       Assert.assertEquals(i, tvList.getTime(i));
     }
@@ -62,8 +62,8 @@ public class BooleanTVListTest {
         null,
         0,
         1000);
-    for (long i = 0; i < tvList.rowCount; i++) {
-      Assert.assertEquals(tvList.rowCount - i, tvList.getTime((int) i));
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
     }
   }
 
@@ -119,7 +119,7 @@ public class BooleanTVListTest {
         1000);
     tvList.sort();
     BooleanTVList clonedTvList = tvList.clone();
-    for (long i = 0; i < tvList.rowCount; i++) {
+    for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.getBoolean((int) i), clonedTvList.getBoolean((int) i));
       Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));
     }

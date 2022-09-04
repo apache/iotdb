@@ -67,7 +67,7 @@ public class Chunk {
     this.deleteIntervalList = list;
   }
 
-  public void mergeChunkByAppendPage(Chunk chunk) throws IOException {
+  public void mergeChunk(Chunk chunk) throws IOException {
     int dataSize = 0;
     // from where the page data of the merged chunk starts, if -1, it means the merged chunk has
     // more than one page

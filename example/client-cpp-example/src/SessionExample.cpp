@@ -26,15 +26,15 @@ Session *session;
 void createTimeseries() {
     if (!session->checkTimeseriesExists("root.sg1.d1.s1")) {
         session->createTimeseries("root.sg1.d1.s1", TSDataType::INT64, TSEncoding::RLE,
-                                  CompressionType::SNAPPY);
+        CompressionType::SNAPPY);
     }
     if (!session->checkTimeseriesExists("root.sg1.d1.s2")) {
         session->createTimeseries("root.sg1.d1.s2", TSDataType::INT64, TSEncoding::RLE,
-                                  CompressionType::SNAPPY);
+        CompressionType::SNAPPY);
     }
     if (!session->checkTimeseriesExists("root.sg1.d1.s3")) {
         session->createTimeseries("root.sg1.d1.s3", TSDataType::INT64, TSEncoding::RLE,
-                                  CompressionType::SNAPPY);
+        CompressionType::SNAPPY);
     }
 
     // create timeseries with tags and attributes
@@ -44,15 +44,15 @@ void createTimeseries() {
         map<string, string> attributes;
         attributes["description"] = "v1";
         session->createTimeseries("root.sg1.d1.s4", TSDataType::INT64, TSEncoding::RLE,
-                                  CompressionType::SNAPPY, nullptr, &tags, &attributes, "temperature");
+            CompressionType::SNAPPY, NULL, &tags, &attributes, "temperature");
     }
 }
 
 void createMultiTimeseries() {
     if (!session->checkTimeseriesExists("root.sg1.d2.s1") && !session->checkTimeseriesExists("root.sg1.d2.s1")) {
         vector<string> paths;
-        paths.emplace_back("root.sg1.d2.s1");
-        paths.emplace_back("root.sg1.d2.s2");
+        paths.push_back("root.sg1.d2.s1");
+        paths.push_back("root.sg1.d2.s2");
         vector<TSDataType::TSDataType> tsDataTypes;
         tsDataTypes.push_back(TSDataType::INT64);
         tsDataTypes.push_back(TSDataType::INT64);
@@ -63,80 +63,38 @@ void createMultiTimeseries() {
         compressionTypes.push_back(CompressionType::SNAPPY);
         compressionTypes.push_back(CompressionType::SNAPPY);
 
-        vector<map<string, string>> tagsList;
-        map<string, string> tags;
+        vector<map<string,string>> tagsList;
+        map<string,string> tags;
         tags["unit"] = "kg";
         tagsList.push_back(tags);
         tagsList.push_back(tags);
 
-        vector<map<string, string>> attributesList;
-        map<string, string> attributes;
+        vector<map<string,string>> attributesList;
+        map<string,string> attributes;
         attributes["minValue"] = "1";
         attributes["maxValue"] = "100";
         attributesList.push_back(attributes);
         attributesList.push_back(attributes);
 
         vector<string> alias;
-        alias.emplace_back("weight1");
-        alias.emplace_back("weight2");
+        alias.push_back("weight1");
+        alias.push_back("weight2");
 
-        session->createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, nullptr, &tagsList,
-                                       &attributesList, &alias);
+        session->createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, NULL, &tagsList, &attributesList, &alias);
     }
-}
-
-void createSchemaTemplate() {
-    Template temp("template1", false);
-
-    InternalNode iNodeD99("d99", false);
-
-    MeasurementNode mNodeS1("s1", TSDataType::INT32, TSEncoding::RLE, CompressionType::SNAPPY);
-    MeasurementNode mNodeS2("s2", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
-    MeasurementNode mNodeD99S1("s1", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
-    MeasurementNode mNodeD99S2("s2", TSDataType::BOOLEAN, TSEncoding::RLE, CompressionType::SNAPPY);
-
-    iNodeD99.addChild(mNodeD99S1);
-    iNodeD99.addChild(mNodeD99S2);
-
-    temp.addToTemplate(iNodeD99);
-    temp.addToTemplate(mNodeS1);
-    temp.addToTemplate(mNodeS2);
-
-    session->createSchemaTemplate(temp);
-    session->setSchemaTemplate("template1", "root.sg2");
-}
-
-void ActivateTemplate() {
-    session->executeNonQueryStatement("insert into root.sg2.d1(timestamp,s1, s2) values(200, 1, 1);");
-}
-
-void showTimeseries() {
-    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show timeseries");
-    for (const string &name: dataSet->getColumnNames()) {
-        cout << name << "  ";
-    }
-    cout << endl;
-
-    dataSet->setBatchSize(1024);
-    while (dataSet->hasNext()) {
-        cout << dataSet->next()->toString();
-    }
-    cout << endl;
-
-    dataSet->closeOperationHandle();
 }
 
 void insertRecord() {
     string deviceId = "root.sg1.d1";
     vector<string> measurements;
-    measurements.emplace_back("s1");
-    measurements.emplace_back("s2");
-    measurements.emplace_back("s3");
-    for (int64_t time = 0; time < 10; time++) {
+    measurements.push_back("s1");
+    measurements.push_back("s2");
+    measurements.push_back("s3");
+    for (int64_t time = 0; time < 100; time++) {
         vector<string> values;
-        values.emplace_back("1");
-        values.emplace_back("2");
-        values.emplace_back("3");
+        values.push_back("11");
+        values.push_back("22");
+        values.push_back("33");
         session->insertRecord(deviceId, time, measurements, values);
     }
 }
@@ -150,9 +108,9 @@ void insertTablet() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet("root.sg1.d1", schemas, 10);
+    Tablet tablet("root.sg1.d1", schemas, 100);
 
-    for (int64_t time = 10; time < 20; time++) {
+    for (int64_t time = 0; time < 100; time++) {
         int row = tablet.rowSize++;
         tablet.timestamps[row] = time;
         for (int i = 0; i < 3; i++) {
@@ -170,40 +128,6 @@ void insertTablet() {
     }
 }
 
-void insertRecords() {
-    string deviceId = "root.sg1.d1";
-    vector<string> measurements;
-    measurements.emplace_back("s1");
-    measurements.emplace_back("s2");
-    measurements.emplace_back("s3");
-
-    vector<string> deviceIds;
-    vector<vector<string>> measurementsList;
-    vector<vector<string>> valuesList;
-    vector<int64_t> timestamps;
-
-    for (int64_t time = 20; time < 30; time++) {
-        vector<string> values;
-        values.emplace_back("1");
-        values.emplace_back("2");
-        values.emplace_back("3");
-
-        deviceIds.push_back(deviceId);
-        measurementsList.push_back(measurements);
-        valuesList.push_back(values);
-        timestamps.push_back(time);
-        if (time != 20 && time % 10 == 0) {
-            session->insertRecords(deviceIds, timestamps, measurementsList, valuesList);
-            deviceIds.clear();
-            measurementsList.clear();
-            valuesList.clear();
-            timestamps.clear();
-        }
-    }
-
-    session->insertRecords(deviceIds, timestamps, measurementsList, valuesList);
-}
-
 void insertTablets() {
     pair<string, TSDataType::TSDataType> pairA("s1", TSDataType::INT64);
     pair<string, TSDataType::TSDataType> pairB("s2", TSDataType::INT64);
@@ -213,16 +137,16 @@ void insertTablets() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet1("root.sg1.d1", schemas, 10);
-    Tablet tablet2("root.sg1.d2", schemas, 10);
-    Tablet tablet3("root.sg1.d3", schemas, 10);
+    Tablet tablet1("root.sg1.d1", schemas, 100);
+    Tablet tablet2("root.sg1.d2", schemas, 100);
+    Tablet tablet3("root.sg1.d3", schemas, 100);
 
-    unordered_map<string, Tablet *> tabletMap;
+    map<string, Tablet*> tabletMap;
     tabletMap["root.sg1.d1"] = &tablet1;
     tabletMap["root.sg1.d2"] = &tablet2;
     tabletMap["root.sg1.d3"] = &tablet3;
 
-    for (int64_t time = 30; time < 40; time++) {
+    for (int64_t time = 0; time < 100; time++) {
         int row1 = tablet1.rowSize++;
         int row2 = tablet2.rowSize++;
         int row3 = tablet3.rowSize++;
@@ -232,8 +156,8 @@ void insertTablets() {
 
         for (int i = 0; i < 3; i++) {
             tablet1.values[i][row1] = to_string(i);
-            tablet2.values[i][row2] = to_string(i);
-            tablet3.values[i][row3] = to_string(i);
+            tablet2.values[i][row1] = to_string(i);
+            tablet3.values[i][row1] = to_string(i);
         }
         if (tablet1.rowSize == tablet1.maxRowNumber) {
             session->insertTablets(tabletMap, true);
@@ -252,64 +176,55 @@ void insertTablets() {
     }
 }
 
-void insertTabletWithNullValues() {
-    /*
-     * A Tablet example:
-     *      device1
-     * time s1,   s2,   s3
-     * 1,   null, 1,    1
-     * 2,   2,    null, 2
-     * 3,   3,    3,    null
-     */
-    pair<string, TSDataType::TSDataType> pairA("s1", TSDataType::INT64);
-    pair<string, TSDataType::TSDataType> pairB("s2", TSDataType::INT64);
-    pair<string, TSDataType::TSDataType> pairC("s3", TSDataType::INT64);
-    vector<pair<string, TSDataType::TSDataType>> schemas;
-    schemas.push_back(pairA);
-    schemas.push_back(pairB);
-    schemas.push_back(pairC);
+void insertRecords() {
+    string deviceId = "root.sg1.d1";
+    vector<string> measurements;
+    measurements.push_back("s1");
+    measurements.push_back("s2");
+    measurements.push_back("s3");
 
-    Tablet tablet("root.sg1.d1", schemas, 10);
+    vector<string> deviceIds;
+    vector<vector<string>> measurementsList;
+    vector<vector<string>> valuesList;
+    vector<int64_t> timestamps;
 
-    for (int64_t time = 40; time < 50; time++) {
-        int row = tablet.rowSize++;
-        tablet.timestamps[row] = time;
-        for (int i = 0; i < 3; i++) {
-            tablet.values[i][row] = to_string(i);
-            // mark null value
-            if (row % 3 == i) {
-                tablet.bitMaps[i]->mark(row);
-            }
-        }
-        if (tablet.rowSize == tablet.maxRowNumber) {
-            session->insertTablet(tablet, true);
-            tablet.reset();
+    for (int64_t time = 0; time < 500; time++) {
+        vector<string> values;
+        values.push_back("1");
+        values.push_back("2");
+        values.push_back("3");
+
+        deviceIds.push_back(deviceId);
+        measurementsList.push_back(measurements);
+        valuesList.push_back(values);
+        timestamps.push_back(time);
+        if (time != 0 && time % 100 == 0) {
+            session->insertRecords(deviceIds, timestamps, measurementsList, valuesList);
+            deviceIds.clear();
+            measurementsList.clear();
+            valuesList.clear();
+            timestamps.clear();
         }
     }
 
-    if (tablet.rowSize != 0) {
-        session->insertTablet(tablet);
-        tablet.reset();
-    }
+    session->insertRecords(deviceIds, timestamps, measurementsList, valuesList);
 }
 
 void nonQuery() {
-    session->executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(100, 1);");
+    session->executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1);");
 }
 
 void query() {
-    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select s1, s2, s3 from root.sg1.d1");
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.sg1.d1");
     cout << "timestamp" << "  ";
-    for (const string &name: dataSet->getColumnNames()) {
-        cout << name << "  ";
+    for (string name : dataSet->getColumnNames()) {
+      cout << name << "  ";
     }
     cout << endl;
-
     dataSet->setBatchSize(1024);
     while (dataSet->hasNext()) {
-        cout << dataSet->next()->toString();
+      cout << dataSet->next()->toString();
     }
-    cout << endl;
 
     dataSet->closeOperationHandle();
 }
@@ -323,31 +238,29 @@ void deleteData() {
 void deleteTimeseries() {
     vector<string> paths;
     if (session->checkTimeseriesExists("root.sg1.d1.s1")) {
-        paths.emplace_back("root.sg1.d1.s1");
+      paths.push_back("root.sg1.d1.s1");
     }
     if (session->checkTimeseriesExists("root.sg1.d1.s2")) {
-        paths.emplace_back("root.sg1.d1.s2");
+      paths.push_back("root.sg1.d1.s2");
     }
     if (session->checkTimeseriesExists("root.sg1.d1.s3")) {
-        paths.emplace_back("root.sg1.d1.s3");
+      paths.push_back("root.sg1.d1.s3");
     }
     if (session->checkTimeseriesExists("root.sg1.d1.s4")) {
-        paths.emplace_back("root.sg1.d1.s4");
+      paths.push_back("root.sg1.d1.s4");
     }
     session->deleteTimeseries(paths);
 }
 
 void queryLast() {
     unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select last s1,s2,s3 from root.sg1.d1");
-    for (const string &name: dataSet->getColumnNames()) {
+    for (string name: dataSet->getColumnNames()) {
         cout << name << "  ";
     }
     cout << endl;
-
     while (dataSet->hasNext()) {
         cout << dataSet->next()->toString();
     }
-    cout << endl;
 
     dataSet->closeOperationHandle();
 }
@@ -356,80 +269,42 @@ int main() {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session->open(false);
 
-    cout << "setStorageGroup: root.sg1\n" << endl;
+    cout << "setStorageGroup\n";
     try {
-        session->setStorageGroup("root.sg1");
+      session->setStorageGroup("root.sg1");
     }
-    catch (IoTDBConnectionException &e) {
-        string errorMessage(e.what());
-        if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
-            cout << errorMessage << endl;
-        }
+    catch (IoTDBConnectionException e){
+      string errorMessage(e.what());
+      if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
         throw e;
+      }
     }
 
-    cout << "setStorageGroup: root.sg2\n" << endl;
-    try {
-        session->setStorageGroup("root.sg2");
-    }
-    catch (IoTDBConnectionException &e) {
-        string errorMessage(e.what());
-        if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
-            cout << errorMessage << endl;
-        }
-        throw e;
-    }
-
-    cout << "createTimeseries\n" << endl;
     createTimeseries();
 
-    cout << "createMultiTimeseries\n" << endl;
     createMultiTimeseries();
 
-    cout << "createSchemaTemplate\n" << endl;
-    createSchemaTemplate();
-
-    cout << "ActivateTemplate\n" << endl;
-    ActivateTemplate();
-
-    cout << "showTimeseries\n" << endl;
-    showTimeseries();
-
-    cout << "insertRecord\n" << endl;
     insertRecord();
 
-    cout << "insertTablet\n" << endl;
-    insertTablet();
-
-    cout << "insertRecords\n" << endl;
-    insertRecords();
-
-    cout << "insertTablets\n" << endl;
-    insertTablets();
-
-    cout << "insertTabletWithNullValues\n" << endl;
-    insertTabletWithNullValues();
-
-    cout << "nonQuery\n" << endl;
-    nonQuery();
-
-    cout << "queryLast\n" << endl;
     queryLast();
 
-    cout << "query\n" << endl;
+    insertTablet();
+
+    insertRecords();
+
+    insertTablets();
+
+    nonQuery();
+
     query();
 
-    cout << "deleteData\n" << endl;
     deleteData();
 
-    cout << "deleteTimeseries\n" << endl;
     deleteTimeseries();
 
-    cout << "session close\n" << endl;
     session->close();
 
     delete session;
 
-    cout << "finished!\n" << endl;
     return 0;
 }

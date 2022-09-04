@@ -40,8 +40,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.query.filter.executor.PlanExecutor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -56,8 +56,8 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.io.File;
 import java.io.IOException;
@@ -210,7 +210,7 @@ public class TestUtils {
   public static IMeasurementSchema getTestMeasurementSchema(int seriesNum) {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
-    return new MeasurementSchema(
+    return new UnaryMeasurementSchema(
         TestUtils.getTestMeasurement(seriesNum),
         dataType,
         encoding,
@@ -222,7 +222,7 @@ public class TestUtils {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
     IMeasurementSchema measurementSchema =
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             TestUtils.getTestMeasurement(seriesNum),
             dataType,
             encoding,
@@ -407,7 +407,7 @@ public class TestUtils {
       file.getParentFile().mkdirs();
       try (TsFileWriter writer = new TsFileWriter(file)) {
         for (int k = 0; k < seriesNum; k++) {
-          MeasurementSchema schema = (MeasurementSchema) getTestMeasurementSchema(k);
+          UnaryMeasurementSchema schema = (UnaryMeasurementSchema) getTestMeasurementSchema(k);
           writer.registerTimeseries(new Path(getTestSg(sgNum)), schema);
         }
 

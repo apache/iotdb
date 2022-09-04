@@ -27,8 +27,9 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.*;
@@ -161,15 +162,17 @@ public class BloomFilterCacheTest {
       int rowNum = 1000000;
       // the number of values to include in the tablet
       int sensorNum = 10;
-      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
-        MeasurementSchema measurementSchema =
-            new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
+        IMeasurementSchema measurementSchema =
+            new UnaryMeasurementSchema(
+                sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
         measurementSchemas.add(measurementSchema);
         schema.registerTimeseries(
             new Path(device),
-            new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
+            new UnaryMeasurementSchema(
+                sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
       // add measurements into TSFileWriter
       try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {

@@ -50,7 +50,7 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
     // There is no need to apply modifications to these, because we already do that while generating
     // it in TSP
-    List<IChunkMetadata> chunkMetadataList = resource.getChunkMetadataList(seriesPath);
+    List<IChunkMetadata> chunkMetadataList = resource.getChunkMetadataList();
 
     chunkMetadataList.forEach(
         chunkMetadata -> {
@@ -63,7 +63,7 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
     // There is no need to set IChunkLoader for it, because the MemChunkLoader has already been set
     // while creating ReadOnlyMemChunk
-    List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk(seriesPath);
+    List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
     if (memChunks != null) {
       for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
         if (!memChunks.isEmpty()) {

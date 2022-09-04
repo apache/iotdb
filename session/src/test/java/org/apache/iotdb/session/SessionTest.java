@@ -26,14 +26,14 @@ import org.apache.iotdb.session.template.InternalNode;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.template.TemplateNode;
-import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -45,10 +45,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -62,6 +59,7 @@ public class SessionTest {
   @Before
   public void setUp() {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
+    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
 
@@ -80,8 +78,8 @@ public class SessionTest {
     !!!
      */
     session = new Session("127.0.0.1", 6667, "root", "root", null);
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     // insert three rows data
     Tablet tablet = new Tablet("root.sg1.d1", schemaList, 3);
     long[] timestamps = tablet.timestamps;
@@ -146,11 +144,11 @@ public class SessionTest {
     session.createTimeseries(
         deviceId + ".s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
 
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
-    schemaList.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.PLAIN));
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
+    schemaList.add(new UnaryMeasurementSchema("s4", TSDataType.INT64, TSEncoding.PLAIN));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList, 10);
 
@@ -269,115 +267,6 @@ public class SessionTest {
   }
 
   @Test
-  public void createSchemaTemplateWithFlatMeasurement()
-      throws IoTDBConnectionException, StatementExecutionException, IOException {
-    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
-    session.open();
-    String tempName = "flatTemplate";
-    List<String> measurements = Arrays.asList("x", "y", "speed");
-    List<TSDataType> dataTypes =
-        Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.DOUBLE);
-    List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.RLE, TSEncoding.GORILLA);
-    List<CompressionType> compressors =
-        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4);
-
-    session.createSchemaTemplate(tempName, measurements, dataTypes, encodings, compressors, true);
-    assertEquals("[x, y, speed]", session.showMeasurementsInTemplate("flatTemplate").toString());
-
-    try {
-      session.addAlignedMeasurementsInTemplate(
-          "flatTemplate",
-          Arrays.asList("temp", "x", "humidity"),
-          dataTypes,
-          encodings,
-          compressors);
-      fail();
-    } catch (Exception e) {
-      assertEquals("315: Path duplicated: x is not a legal path", e.getMessage());
-    }
-    try {
-      session.addUnalignedMeasurementsInTemplate(
-          "flatTemplate",
-          Arrays.asList("temp", "velocity", "heartbeat"),
-          dataTypes,
-          encodings,
-          compressors);
-      fail();
-    } catch (Exception e) {
-      assertEquals(
-          "315: temp is not a legal path, because path already exists and aligned", e.getMessage());
-    }
-
-    session.addAlignedMeasurementsInTemplate(
-        "flatTemplate",
-        Arrays.asList("turbine.temp", "turbine.rounds", "turbine.velocity"),
-        dataTypes,
-        encodings,
-        compressors);
-    assertEquals(6, session.countMeasurementsInTemplate("flatTemplate"));
-    assertEquals(false, session.isMeasurementInTemplate("flatTemplate", "turbine"));
-    assertEquals(true, session.isMeasurementInTemplate("flatTemplate", "speed"));
-    assertEquals(true, session.isPathExistInTemplate("flatTemplate", "turbine"));
-
-    session.deleteNodeInTemplate("flatTemplate", "turbine");
-    assertEquals(3, session.countMeasurementsInTemplate("flatTemplate"));
-  }
-
-  @Test
-  public void testCompatibleInterfaceCreateSchemaTemplate()
-      throws IoTDBConnectionException, StatementExecutionException, IOException {
-    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
-    session.open();
-
-    List<List<String>> measurementList = new ArrayList<>();
-    measurementList.add(Arrays.asList("s1", "s11", "s12"));
-    measurementList.add(Collections.singletonList("s2"));
-    measurementList.add(Collections.singletonList("s3"));
-
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Arrays.asList(TSDataType.FLOAT, TSDataType.DOUBLE, TSDataType.INT64));
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    encodingList.add(Arrays.asList(TSEncoding.GORILLA, TSEncoding.RLE, TSEncoding.GORILLA_V1));
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
-    }
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("s1");
-    schemaNames.add("s2");
-    schemaNames.add("s3");
-
-    session.createSchemaTemplate(
-        "cptTemplate", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
-    session.setSchemaTemplate("cptTemplate", "root.sg1");
-
-    List<TSDataType> dataTypes =
-        Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.DOUBLE);
-    List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.RLE, TSEncoding.GORILLA);
-    List<CompressionType> compressors =
-        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4);
-    try {
-      session.addAlignedMeasurementsInTemplate(
-          "cptTemplate", Arrays.asList("temp", "x", "humidity"), dataTypes, encodings, compressors);
-      // fail();
-    } catch (Exception e) {
-      assertEquals(
-          "315:  is not a legal path, because path already exists but not aligned", e.getMessage());
-    }
-
-    assertEquals(3, session.countMeasurementsInTemplate("cptTemplate"));
-    assertEquals(false, session.isPathExistInTemplate("cptTemplate", "s11"));
-    assertEquals(false, session.isPathExistInTemplate("cptTemplate", "s12"));
-    assertEquals(true, session.isMeasurementInTemplate("cptTemplate", "s1"));
-  }
-
-  @Test
   public void treeStructuredSchemaTemplateTest()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
@@ -420,7 +309,6 @@ public class SessionTest {
     try {
       session.addAlignedMeasurementsInTemplate(
           "treeTemplate", measurementPaths, dataTypes, encodings, compressionTypeList);
-      fail();
     } catch (Exception e) {
       assertEquals(
           "315: GPS is not a legal path, because path already exists but not aligned",
@@ -433,7 +321,6 @@ public class SessionTest {
     try {
       session.addUnalignedMeasurementInTemplate(
           "treeTemplate", "GPS.X", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
-      fail();
     } catch (Exception e) {
       assertEquals("315: Path duplicated: GPS.X is not a legal path", e.getMessage());
     }
@@ -483,46 +370,7 @@ public class SessionTest {
     template.addToTemplate(iNodeVector);
 
     session.createSchemaTemplate(template);
-    session.setSchemaTemplate("template1", "root.sg.d1");
-
-    session.createTimeseries(
-        "root.sg2.d1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
-    session.createTimeseries(
-        "root.sg2.d2", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
-    session.createTimeseries(
-        "root.sg2.d3", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
-
-    try {
-      session.setSchemaTemplate("template1", "root.sg2.*");
-    } catch (StatementExecutionException e) {
-      assertEquals(
-          "315: [PATH_ILLEGAL(315)] Exception occurred: executeStatement failed. root.sg2.* is not a legal path, because template cannot be set on a path with wildcard.",
-          e.getMessage());
-    }
-
-    session.setSchemaTemplate("template1", "root.sg.d2");
-    session.setSchemaTemplate("template1", "root.sg.d3");
-    session.setSchemaTemplate("template1", "root.sg.d4");
-
-    try {
-      session.unsetSchemaTemplate("root.sg2.*", "template1");
-    } catch (StatementExecutionException e) {
-      assertEquals(
-          "315: [PATH_ILLEGAL(315)] Exception occurred: executeStatement failed. root.sg2.* is not a legal path, because template cannot be unset on a path with wildcard.",
-          e.getMessage());
-    }
-
-    Set<String> checkSet = new HashSet<>();
-    checkSet.add("root.sg.d1");
-    checkSet.add("root.sg.d2");
-    checkSet.add("root.sg.d3");
-    checkSet.add("root.sg.d4");
-    List<String> res = session.showPathsTemplateSetOn("template1");
-    assertEquals(checkSet.size(), res.size());
-    for (String s : res) {
-      checkSet.remove(s);
-    }
-    assertTrue(checkSet.isEmpty());
+    session.setSchemaTemplate("template1", "root.sg.1");
   }
 
   @Test
@@ -538,16 +386,8 @@ public class SessionTest {
     Template template = new Template("emptyTemplate");
     session.createSchemaTemplate(template);
 
-    session.addUnalignedMeasurementInTemplate(
+    session.addAlignedMeasurementInTemplate(
         "emptyTemplate", "speed", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
-    try {
-      session.addAlignedMeasurementInTemplate(
-          "emptyTemplate", "speed2", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
-      fail();
-    } catch (Exception e) {
-      assertEquals(
-          "315:  is not a legal path, because path already exists but not aligned", e.getMessage());
-    }
   }
 
   @Test
@@ -563,7 +403,6 @@ public class SessionTest {
             .thriftMaxFrameSize(3)
             .enableCacheLeader(true)
             .zoneId(ZoneOffset.UTC)
-            .version(Version.V_0_12)
             .build();
 
     assertEquals(1, session.fetchSize);
@@ -573,11 +412,9 @@ public class SessionTest {
     assertEquals(3, session.thriftMaxFrameSize);
     assertEquals(ZoneOffset.UTC, session.zoneId);
     assertTrue(session.enableCacheLeader);
-    assertEquals(Version.V_0_12, session.version);
 
     session = new Session.Builder().nodeUrls(Arrays.asList("aaa.com:12", "bbb.com:12")).build();
     assertEquals(Arrays.asList("aaa.com:12", "bbb.com:12"), session.nodeUrls);
-    assertEquals(Version.V_0_13, session.version);
 
     try {
       session =

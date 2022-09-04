@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -38,7 +39,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -65,36 +66,45 @@ abstract class MergeTest {
   TSEncoding encoding = TSEncoding.PLAIN;
 
   String[] deviceIds;
-  MeasurementSchema[] measurementSchemas;
+  UnaryMeasurementSchema[] measurementSchemas;
 
   List<TsFileResource> seqResources = new ArrayList<>();
   List<TsFileResource> unseqResources = new ArrayList<>();
+
+  private int prevMergeChunkThreshold;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
     IoTDB.metaManager.init();
+    prevMergeChunkThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
+    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(-1);
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
+    MergeManager.getINSTANCE().start();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    new CompactionConfigRestorer().restoreCompactionConfig();
     removeFiles(seqResources, unseqResources);
     seqResources.clear();
     unseqResources.clear();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMergeChunkPointNumberThreshold(prevMergeChunkThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanEnv();
+    MergeManager.getINSTANCE().stop();
   }
 
   private void prepareSeries() throws MetadataException {
-    measurementSchemas = new MeasurementSchema[measurementNum];
+    measurementSchemas = new UnaryMeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] =
-          new MeasurementSchema(
+          new UnaryMeasurementSchema(
               "sensor" + i, TSDataType.DOUBLE, encoding, CompressionType.UNCOMPRESSED);
     }
     deviceIds = new String[deviceNum];
@@ -103,7 +113,7 @@ abstract class MergeTest {
     }
     IoTDB.metaManager.setStorageGroup(new PartialPath(MERGE_TEST_SG));
     for (String device : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
         IoTDB.metaManager.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
@@ -169,7 +179,7 @@ abstract class MergeTest {
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }

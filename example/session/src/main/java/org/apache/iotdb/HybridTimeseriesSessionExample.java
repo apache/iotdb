@@ -24,7 +24,8 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +37,7 @@ import java.util.List;
 public class HybridTimeseriesSessionExample {
 
   private static Session session;
-  private static final String ROOT_SG1_ALIGNEDDEVICE = "root.sg_1.aligned_device";
+  private static final String ROOT_SG1_D1_VECTOR1 = "root.sg_1.d1.vector";
   private static final String ROOT_SG1_D1 = "root.sg_1.d1";
   private static final String ROOT_SG1_D2 = "root.sg_1.d2";
 
@@ -58,7 +59,7 @@ public class HybridTimeseriesSessionExample {
   }
 
   private static void selectTest() throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet = session.executeQueryStatement("select ** from root.sg_1");
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -71,21 +72,23 @@ public class HybridTimeseriesSessionExample {
       throws IoTDBConnectionException, StatementExecutionException {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
 
-    Tablet tablet = new Tablet(ROOT_SG1_ALIGNEDDEVICE, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
+    tablet.setAligned(true);
     long timestamp = minTime;
 
     for (long row = minTime; row < maxTime; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, row * 10 + 1L);
-      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (int) (row * 10 + 2));
+      tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(0), rowIndex, row * 10 + 1L);
+      tablet.addValue(
+          schemaList.get(0).getSubMeasurementsList().get(1), rowIndex, (int) (row * 10 + 2));
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertAlignedTablet(tablet, true);
+        session.insertTablet(tablet, true);
         tablet.reset();
       }
       timestamp++;

@@ -28,10 +28,10 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.query.filter.executor.PlanExecutor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -68,8 +68,6 @@ public class QueryWithIDTableTest {
   private boolean isEnableIDTable = false;
 
   private String originalDeviceIDTransformationMethod = null;
-
-  private boolean isEnableIDTableLogFile = false;
 
   Set<String> retSet =
       new HashSet<>(
@@ -142,11 +140,9 @@ public class QueryWithIDTableTest {
     isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
     originalDeviceIDTransformationMethod =
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
-    isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
     IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
     EnvironmentUtils.envSetUp();
   }
 
@@ -156,7 +152,6 @@ public class QueryWithIDTableTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(isEnableIDTableLogFile);
     EnvironmentUtils.cleanEnv();
   }
 

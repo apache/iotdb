@@ -69,11 +69,8 @@ public class ImportCsvTestIT extends AbstractScript {
             "-pw",
             "root",
             "-f",
-            "./",
-            "&",
-            "exit",
-            "%^errorlevel%");
-    testOutput(builder, output, 1);
+            "./");
+    testOutput(builder, output);
   }
 
   @Override
@@ -100,6 +97,6 @@ public class ImportCsvTestIT extends AbstractScript {
             "root",
             "-f",
             "./");
-    testOutput(builder, output, 1);
+    testOutput(builder, output);
   }
 }

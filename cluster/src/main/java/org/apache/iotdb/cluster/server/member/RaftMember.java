@@ -68,7 +68,6 @@ import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.IoTThreadFactory;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
@@ -78,9 +77,9 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
+import org.apache.iotdb.db.query.filter.executor.PlanExecutor;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -112,8 +111,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 
@@ -144,7 +141,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    */
   private final Object waitLeaderCondition = new Object();
   /** the lock is to make sure that only one thread can apply snapshot at the same time */
-  private final Lock snapshotApplyLock = new ReentrantLock();
+  private final Object snapshotApplyLock = new Object();
 
   private final Object heartBeatWaitObject = new Object();
 
@@ -237,11 +234,8 @@ public abstract class RaftMember implements RaftMemberMBean {
    */
   private LogDispatcher logDispatcher;
 
-  /**
-   * If this node can not be the leader, this parameter will be set true. This field must be true
-   * only after all necessary threads are ready
-   */
-  private volatile boolean skipElection = true;
+  /** If this node can not be the leader, this parameter will be set true. */
+  private volatile boolean skipElection = false;
 
   /**
    * localExecutor is used to directly execute plans like load configuration in the underlying IoTDB
@@ -265,7 +259,6 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
 
     startBackGroundThreads();
-    setSkipElection(false);
     logger.info("{} started", name);
   }
 
@@ -400,12 +393,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         // tell the leader the local log progress so it may decide whether to perform a catch up
         response.setLastLogIndex(logManager.getLastLogIndex());
         response.setLastLogTerm(logManager.getLastLogTerm());
-        // if the snapshot apply lock is held, it means that a snapshot is installing now.
-        boolean isFree = snapshotApplyLock.tryLock();
-        if (isFree) {
-          snapshotApplyLock.unlock();
-        }
-        response.setInstallingSnapshot(!isFree);
+
         if (logger.isDebugEnabled()) {
           logger.debug(
               "{}: log commit log index = {}, max have applied commit index = {}",
@@ -995,7 +983,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     // if a single log exceeds the threshold
     // we need to return error code to the client as in server mode
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
-        && log.serialize().capacity() + Integer.BYTES
+        & log.serialize().capacity() + Integer.BYTES
             >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
@@ -1003,32 +991,16 @@ public abstract class RaftMember implements RaftMemberMBean {
       return StatusUtils.INTERNAL_ERROR;
     }
 
-    long startWaitingTime = System.currentTimeMillis();
-    while (true) {
-      // assign term and index to the new log and append it
-      synchronized (logManager) {
-        if (logManager.getLastLogIndex() - logManager.getCommitLogIndex()
-            <= config.getUnCommittedRaftLogNumForRejectThreshold()) {
-          if (!(plan instanceof LogPlan)) {
-            plan.setIndex(logManager.getLastLogIndex() + 1);
-          }
-          log.setCurrLogTerm(getTerm().get());
-          log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-          logManager.append(log);
-          break;
-        }
+    // assign term and index to the new log and append it
+    synchronized (logManager) {
+      if (!(plan instanceof LogPlan)) {
+        plan.setIndex(logManager.getLastLogIndex() + 1);
       }
-      try {
-        TimeUnit.MILLISECONDS.sleep(
-            IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
-        if (System.currentTimeMillis() - startWaitingTime
-            > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
-          return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
+      log.setCurrLogTerm(getTerm().get());
+      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+      logManager.append(log);
     }
+
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);
 
     try {
@@ -1064,47 +1036,32 @@ public abstract class RaftMember implements RaftMemberMBean {
 
     // just like processPlanLocally,we need to check the size of log
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
-        && log.serialize().capacity() + Integer.BYTES
+        & log.serialize().capacity() + Integer.BYTES
             >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
               + "or reduce the size of requests you send.");
       return StatusUtils.INTERNAL_ERROR;
     }
+
     long startTime =
         Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
-    long startWaitingTime = System.currentTimeMillis();
-    while (true) {
-      synchronized (logManager) {
-        if (!IoTDBDescriptor.getInstance().getConfig().isEnableMemControl()
-            || (logManager.getLastLogIndex() - logManager.getCommitLogIndex()
-                <= config.getUnCommittedRaftLogNumForRejectThreshold())) {
-          Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
-              startTime);
-          if (!(plan instanceof LogPlan)) {
-            plan.setIndex(logManager.getLastLogIndex() + 1);
-          }
-          log.setCurrLogTerm(getTerm().get());
-          log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-          startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
-          logManager.append(log);
-          Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
-          startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
-          sendLogRequest = buildSendLogRequest(log);
-          Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
-          break;
-        }
+    synchronized (logManager) {
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
+          startTime);
+
+      if (!(plan instanceof LogPlan)) {
+        plan.setIndex(logManager.getLastLogIndex() + 1);
       }
-      try {
-        TimeUnit.MILLISECONDS.sleep(
-            IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
-        if (System.currentTimeMillis() - startWaitingTime
-            > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
-          return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
+      log.setCurrLogTerm(getTerm().get());
+      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+      startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
+      logManager.append(log);
+      Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
+      startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
+      sendLogRequest = buildSendLogRequest(log);
+      Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
     }
 
     startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
@@ -1241,7 +1198,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     return peerMap;
   }
 
-  /** @return true if there is a log whose index is "index" and term is "term", false otherwise */
+  /**
+   * @return true if there is a log whose index is "index" and term is "term", false otherwise
+   */
   public boolean matchLog(long index, long term) {
     boolean matched = logManager.matchTerm(term, index);
     logger.debug("Log {}-{} matched: {}", index, term, matched);
@@ -1716,7 +1675,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     this.thisNode = thisNode;
   }
 
-  /** @return the header of the data raft group or null if this is in a meta group. */
+  /**
+   * @return the header of the data raft group or null if this is in a meta group.
+   */
   public RaftNode getHeader() {
     return null;
   }
@@ -1977,18 +1938,16 @@ public abstract class RaftMember implements RaftMemberMBean {
     this.appendLogThreadPool = appendLogThreadPool;
   }
 
-  public Lock getSnapshotApplyLock() {
+  public Object getSnapshotApplyLock() {
     return snapshotApplyLock;
   }
 
   /**
    * Find the local previous log of "log". If such log is found, discard all local logs behind it
-   * and append "log" to it. Otherwise report a log mismatch. If too many committed logs have not
-   * been applied, reject the appendEntry request.
+   * and append "log" to it. Otherwise report a log mismatch.
    *
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
-   *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found or Response
-   *     .RESPONSE_TOO_BUSY if too many committed logs have not been applied.
+   *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
   protected long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
     long resp = checkPrevLogIndex(prevLogIndex);
@@ -1997,27 +1956,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
 
     long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
-    long startWaitingTime = System.currentTimeMillis();
     long success;
-    while (true) {
-      synchronized (logManager) {
-        // TODO: Consider memory footprint to execute a precise rejection
-        if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
-            <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
-          success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
-          break;
-        }
-        try {
-          TimeUnit.MILLISECONDS.sleep(
-              IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
-          if (System.currentTimeMillis() - startWaitingTime
-              > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
-            return Response.RESPONSE_TOO_BUSY;
-          }
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        }
-      }
+    synchronized (logManager) {
+      success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
     }
     Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
     if (success != -1) {
@@ -2073,13 +2014,11 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   /**
    * Find the local previous log of "log". If such log is found, discard all local logs behind it
-   * and append "log" to it. Otherwise report a log mismatch. If too many committed logs have not
-   * been applied, reject the appendEntry request.
+   * and append "log" to it. Otherwise report a log mismatch.
    *
    * @param logs append logs
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
-   *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found Response
-   *     .RESPONSE_TOO_BUSY if too many committed logs have not been applied.
+   *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
   private long appendEntries(
       long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs) {
@@ -2098,36 +2037,18 @@ public abstract class RaftMember implements RaftMemberMBean {
       return resp;
     }
 
-    long startWaitingTime = System.currentTimeMillis();
-    while (true) {
-      synchronized (logManager) {
-        // TODO: Consider memory footprint to execute a precise rejection
-        if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
-            <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
-          long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
-          resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, logs);
-          Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
-          if (resp != -1) {
-            if (logger.isDebugEnabled()) {
-              logger.debug("{} append a new log list {}, commit to {}", name, logs, leaderCommit);
-            }
-            resp = Response.RESPONSE_AGREE;
-          } else {
-            // the incoming log points to an illegal position, reject it
-            resp = Response.RESPONSE_LOG_MISMATCH;
-          }
-          break;
+    synchronized (logManager) {
+      long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
+      resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, logs);
+      Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
+      if (resp != -1) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("{} append a new log list {}, commit to {}", name, logs, leaderCommit);
         }
-      }
-      try {
-        TimeUnit.MILLISECONDS.sleep(
-            IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
-        if (System.currentTimeMillis() - startWaitingTime
-            > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
-          return Response.RESPONSE_TOO_BUSY;
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+        resp = Response.RESPONSE_AGREE;
+      } else {
+        // the incoming log points to an illegal position, reject it
+        resp = Response.RESPONSE_LOG_MISMATCH;
       }
     }
     return resp;

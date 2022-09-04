@@ -114,11 +114,8 @@ public class PreviousFill extends IFill {
   @Override
   public TimeValuePair getFillResult()
       throws IOException, QueryProcessException, StorageEngineException {
-    // for the parameter "ascending": true or false both ok here,
-    // because LastPointReader will do itself sort logic instead of depending on fillOrderIndex.
     QueryDataSource dataSource =
-        QueryResourceManager.getInstance()
-            .getQueryDataSource(seriesPath, context, timeFilter, false);
+        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, timeFilter);
     // update filter by TTL
     timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
     LastPointReader lastReader =

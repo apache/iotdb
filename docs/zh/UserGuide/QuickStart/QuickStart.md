@@ -236,7 +236,7 @@ IoTDB> quit
 IoTDB> exit
 ```
 
-想要浏览更多 IoTDB 数据库支持的命令，请浏览 [SQL Reference](../Reference/SQL-Reference.md).
+想要浏览更多 IoTDB 数据库支持的命令，请浏览 [SQL Reference](../Appendix/SQL-Reference.md).
 
 ### 停止 IoTDB
 

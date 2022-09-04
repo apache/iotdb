@@ -53,8 +53,6 @@ public class IoTDBRestServiceConfig {
   /** init number of users stored in cache */
   private int cacheInitNum = 10;
 
-  private int restQueryDefaultRowSizeLimit = 10000;
-
   public String getTrustStorePwd() {
     return trustStorePwd;
   }
@@ -141,13 +139,5 @@ public class IoTDBRestServiceConfig {
 
   public void setCacheInitNum(int cacheInitNum) {
     this.cacheInitNum = cacheInitNum;
-  }
-
-  public int getRestQueryDefaultRowSizeLimit() {
-    return restQueryDefaultRowSizeLimit;
-  }
-
-  public void setRestQueryDefaultRowSizeLimit(int restQueryDefaultRowSizeLimit) {
-    this.restQueryDefaultRowSizeLimit = restQueryDefaultRowSizeLimit;
   }
 }

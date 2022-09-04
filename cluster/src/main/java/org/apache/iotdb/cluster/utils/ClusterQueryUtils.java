@@ -28,7 +28,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +74,8 @@ public class ClusterQueryUtils {
     try {
       MeasurementPath matchedPath = new MeasurementPath(pathString);
       matchedPath.setMeasurementSchema(
-          new MeasurementSchema(matchedPath.getMeasurement(), TSDataType.deserialize(dataType)));
+          new UnaryMeasurementSchema(
+              matchedPath.getMeasurement(), TSDataType.deserialize(dataType)));
       return matchedPath;
     } catch (IllegalPathException e) {
       logger.error("Failed to create partial path, fullPath is {}.", pathString, e);

@@ -28,6 +28,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.awt.*;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -82,6 +83,7 @@ public class ImportCsvTestIT extends AbstractScript {
   @Before
   public void setUp() {
     // start an IotDB server environment
+    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     // choose an execute command by system.
     String os = System.getProperty("os.name").toLowerCase();
@@ -168,6 +170,7 @@ public class ImportCsvTestIT extends AbstractScript {
    */
   @Test
   public void test() throws IOException, ClassNotFoundException {
+    createSchema();
     assertTrue(generateTestCSV(false, false, false, false, false));
     String[] params = {"-f", CSV_FILE};
     testMethod(params, null);

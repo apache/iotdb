@@ -36,22 +36,16 @@ public class SelectIntoPlan extends PhysicalPlan {
   private QueryPlan queryPlan;
   private PartialPath fromPath;
   private List<PartialPath> intoPaths;
-  private boolean isIntoPathsAligned;
 
   public SelectIntoPlan() {
     super(OperatorType.SELECT_INTO);
   }
 
-  public SelectIntoPlan(
-      QueryPlan queryPlan,
-      PartialPath fromPath,
-      List<PartialPath> intoPaths,
-      boolean isIntoPathsAligned) {
+  public SelectIntoPlan(QueryPlan queryPlan, PartialPath fromPath, List<PartialPath> intoPaths) {
     super(OperatorType.SELECT_INTO);
     this.queryPlan = queryPlan;
     this.fromPath = fromPath;
     this.intoPaths = intoPaths;
-    this.isIntoPathsAligned = isIntoPathsAligned;
   }
 
   @Override
@@ -71,8 +65,6 @@ public class SelectIntoPlan extends PhysicalPlan {
     for (PartialPath intoPath : intoPaths) {
       putString(outputStream, intoPath.getFullPath());
     }
-
-    outputStream.writeByte(isIntoPathsAligned ? 1 : 0);
   }
 
   @Override
@@ -87,8 +79,6 @@ public class SelectIntoPlan extends PhysicalPlan {
     for (PartialPath intoPath : intoPaths) {
       putString(buffer, intoPath.getFullPath());
     }
-
-    buffer.put((byte) (isIntoPathsAligned ? 1 : 0));
   }
 
   @Override
@@ -102,8 +92,6 @@ public class SelectIntoPlan extends PhysicalPlan {
     for (int i = 0; i < intoPathsSize; ++i) {
       intoPaths.add(new PartialPath(readString(buffer)));
     }
-
-    isIntoPathsAligned = buffer.get() == (byte) 1;
   }
 
   /** mainly for query auth. */
@@ -122,9 +110,5 @@ public class SelectIntoPlan extends PhysicalPlan {
 
   public List<PartialPath> getIntoPaths() {
     return intoPaths;
-  }
-
-  public boolean isIntoPathsAligned() {
-    return isIntoPathsAligned;
   }
 }

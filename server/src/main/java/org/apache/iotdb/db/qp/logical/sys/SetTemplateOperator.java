@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -56,10 +55,6 @@ public class SetTemplateOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    try {
-      return new SetTemplatePlan(templateName, prefixPath.toString());
-    } catch (IllegalPathException e) {
-      throw new QueryProcessException(e);
-    }
+    return new SetTemplatePlan(templateName, prefixPath.toString());
   }
 }

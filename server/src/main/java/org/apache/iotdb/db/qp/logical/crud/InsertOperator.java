@@ -27,7 +27,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-import java.util.List;
+import java.util.Arrays;
 
 /** this class extends {@code RootOperator} and process insert statement. */
 public class InsertOperator extends Operator {
@@ -36,7 +36,7 @@ public class InsertOperator extends Operator {
 
   private long[] times;
   private String[] measurementList;
-  private List<String[]> valueLists;
+  private String[] valueList;
 
   private boolean isAligned;
 
@@ -61,12 +61,12 @@ public class InsertOperator extends Operator {
     this.measurementList = measurementList;
   }
 
-  public List<String[]> getValueLists() {
-    return valueLists;
+  public String[] getValueList() {
+    return valueList;
   }
 
-  public void setValueLists(List<String[]> valueLists) {
-    this.valueLists = valueLists;
+  public void setValueList(String[] insertValue) {
+    this.valueList = insertValue;
   }
 
   public long[] getTimes() {
@@ -88,29 +88,33 @@ public class InsertOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    int measurementsNum = measurementList.length;
-    if (times.length == 1) {
-      if (measurementsNum != valueLists.get(0).length) {
-        throw new SQLParserException(
-            String.format(
-                "the measurementList's size %d is not consistent with the valueList's size %d",
-                measurementsNum, valueLists.get(0).length));
+    int measurementsNum = 0;
+    for (String measurement : measurementList) {
+      if (measurement.startsWith("(") && measurement.endsWith(")")) {
+        measurementsNum += measurement.replace("(", "").replace(")", "").split(",").length;
+      } else {
+        measurementsNum++;
       }
-      InsertRowPlan insertRowPlan =
-          new InsertRowPlan(device, times[0], measurementList, valueLists.get(0));
+    }
+    if (measurementsNum == 0 || (valueList.length % measurementsNum != 0)) {
+      throw new SQLParserException(
+          String.format(
+              "the measurementList's size %d is not consistent with the valueList's size %d",
+              measurementsNum, valueList.length));
+    }
+    if (measurementsNum == valueList.length) {
+      InsertRowPlan insertRowPlan = new InsertRowPlan(device, times[0], measurementList, valueList);
       insertRowPlan.setAligned(isAligned);
       return insertRowPlan;
     }
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < times.length; i++) {
-      if (measurementsNum != valueLists.get(i).length) {
-        throw new SQLParserException(
-            String.format(
-                "the measurementList's size %d is not consistent with the valueList's size %d",
-                measurementsNum, valueLists.get(i).length));
-      }
       InsertRowPlan insertRowPlan =
-          new InsertRowPlan(device, times[i], measurementList.clone(), valueLists.get(i));
+          new InsertRowPlan(
+              device,
+              times[i],
+              measurementList,
+              Arrays.copyOfRange(valueList, i * measurementsNum, (i + 1) * measurementsNum));
       insertRowPlan.setAligned(isAligned);
       insertRowsPlan.addOneInsertRowPlan(insertRowPlan, i);
     }

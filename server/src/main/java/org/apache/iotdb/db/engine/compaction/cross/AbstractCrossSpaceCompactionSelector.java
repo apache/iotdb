@@ -19,19 +19,15 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
-import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-
-import java.util.List;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompactionSelector {
   protected String logicalStorageGroupName;
   protected String virtualGroupId;
   protected String storageGroupDir;
   protected long timePartition;
-  protected TsFileManager tsFileManager;
-  protected List<TsFileResource> sequenceFileList;
-  protected List<TsFileResource> unsequenceFileList;
+  protected TsFileResourceList sequenceFileList;
+  protected TsFileResourceList unsequenceFileList;
   protected CrossSpaceCompactionTaskFactory taskFactory;
 
   public AbstractCrossSpaceCompactionSelector(
@@ -39,18 +35,18 @@ public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompa
       String virtualGroupId,
       String storageGroupDir,
       long timePartition,
-      TsFileManager tsFileManager,
+      TsFileResourceList sequenceFileList,
+      TsFileResourceList unsequenceFileList,
       CrossSpaceCompactionTaskFactory taskFactory) {
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.virtualGroupId = virtualGroupId;
     this.storageGroupDir = storageGroupDir;
     this.timePartition = timePartition;
-    this.sequenceFileList = tsFileManager.getSequenceListByTimePartition(timePartition);
-    this.unsequenceFileList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
+    this.sequenceFileList = sequenceFileList;
+    this.unsequenceFileList = unsequenceFileList;
     this.taskFactory = taskFactory;
-    this.tsFileManager = tsFileManager;
   }
 
   @Override
-  public abstract void selectAndSubmit();
+  public abstract boolean selectAndSubmit();
 }

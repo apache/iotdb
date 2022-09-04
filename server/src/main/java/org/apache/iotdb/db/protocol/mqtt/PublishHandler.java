@@ -18,11 +18,11 @@
 package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
+import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -42,7 +42,7 @@ import java.util.List;
 /** PublishHandler handle the messages from MQTT clients. */
 public class PublishHandler extends AbstractInterceptHandler {
 
-  private final ServiceProvider serviceProvider = IoTDB.serviceProvider;
+  private final BasicServiceProvider basicServiceProvider;
   private long sessionId;
 
   private static final Logger LOG = LoggerFactory.getLogger(PublishHandler.class);
@@ -51,9 +51,19 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   public PublishHandler(IoTDBConfig config) {
     this.payloadFormat = PayloadFormatManager.getPayloadFormat(config.getMqttPayloadFormatter());
+    try {
+      this.basicServiceProvider = new BasicServiceProvider();
+    } catch (QueryProcessException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   protected PublishHandler(PayloadFormatter payloadFormat) {
+    try {
+      this.basicServiceProvider = new BasicServiceProvider();
+    } catch (QueryProcessException e) {
+      throw new RuntimeException(e);
+    }
     this.payloadFormat = payloadFormat;
   }
 
@@ -66,7 +76,7 @@ public class PublishHandler extends AbstractInterceptHandler {
   public void onConnect(InterceptConnectMessage msg) {
     try {
       BasicOpenSessionResp basicOpenSessionResp =
-          serviceProvider.openSession(
+          basicServiceProvider.openSession(
               msg.getUsername(),
               new String(msg.getPassword()),
               ZoneId.systemDefault().toString(),
@@ -79,7 +89,7 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onDisconnect(InterceptDisconnectMessage msg) {
-    serviceProvider.closeSession(sessionId);
+    basicServiceProvider.closeSession(sessionId);
   }
 
   @Override
@@ -119,11 +129,11 @@ public class PublishHandler extends AbstractInterceptHandler {
                 event.getTimestamp(),
                 event.getMeasurements().toArray(new String[0]),
                 event.getValues().toArray(new String[0]));
-        TSStatus tsStatus = serviceProvider.checkAuthority(plan, sessionId);
+        TSStatus tsStatus = basicServiceProvider.checkAuthority(plan, sessionId);
         if (tsStatus != null) {
           LOG.warn(tsStatus.message);
         } else {
-          status = serviceProvider.executeNonQuery(plan);
+          status = basicServiceProvider.executeNonQuery(plan);
         }
       } catch (Exception e) {
         LOG.warn(

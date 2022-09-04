@@ -65,11 +65,6 @@ public class IoTDBRestServiceDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "rest_service_port", Integer.toString(conf.getRestServicePort()))));
-      conf.setRestQueryDefaultRowSizeLimit(
-          Integer.parseInt(
-              properties.getProperty(
-                  "rest_query_default_row_size_limit",
-                  Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
 
       conf.setEnableHttps(
           Boolean.parseBoolean(

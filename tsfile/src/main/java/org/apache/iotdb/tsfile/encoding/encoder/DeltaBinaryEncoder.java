@@ -150,8 +150,8 @@ public abstract class DeltaBinaryEncoder extends Encoder {
       return width;
     }
 
-    private void calcDelta(int value) {
-      int delta = value - previousValue; // calculate delta
+    private void calcDelta(Integer value) {
+      Integer delta = value - previousValue; // calculate delta
       if (delta < minDeltaBase) {
         minDeltaBase = delta;
       }
@@ -249,8 +249,8 @@ public abstract class DeltaBinaryEncoder extends Encoder {
       reset();
     }
 
-    private void calcDelta(long value) {
-      long delta = value - previousValue; // calculate delta
+    private void calcDelta(Long value) {
+      Long delta = value - previousValue; // calculate delta
       if (delta < minDeltaBase) {
         minDeltaBase = delta;
       }
@@ -268,7 +268,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
       }
     }
 
-    private int getValueWidth(long v) {
+    private int getValueWidth(Long v) {
       return 64 - Long.numberOfLeadingZeros(v);
     }
 

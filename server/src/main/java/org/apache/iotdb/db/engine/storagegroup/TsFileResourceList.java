@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -31,6 +32,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileResourceList implements List<TsFileResource> {
@@ -40,6 +42,44 @@ public class TsFileResourceList implements List<TsFileResource> {
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   private int count = 0;
 
+  public void readLock() {
+    lock.readLock().lock();
+  }
+
+  public void readUnlock() {
+    lock.readLock().unlock();
+  }
+
+  public void writeLock() {
+    lock.writeLock().lock();
+  }
+
+  public boolean tryWriteLock() {
+    return lock.writeLock().tryLock();
+  }
+
+  /**
+   * Acquire write lock with timeout, {@link WriteLockFailedException} will be thrown after timeout.
+   * The unit of timeout is ms.
+   */
+  public void writeLockWithTimeout(long timeout) throws WriteLockFailedException {
+    try {
+      if (lock.writeLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
+      } else {
+        throw new WriteLockFailedException(
+            String.format("cannot get write lock in %d ms", timeout));
+      }
+    } catch (InterruptedException e) {
+      LOGGER.warn(e.getMessage(), e);
+      Thread.interrupted();
+      throw new WriteLockFailedException("thread is interrupted");
+    }
+  }
+
+  public void writeUnlock() {
+    lock.writeLock().unlock();
+  }
+
   /**
    * Insert a new node before an existing node
    *
@@ -47,15 +87,20 @@ public class TsFileResourceList implements List<TsFileResource> {
    * @param newNode the file to insert
    */
   public void insertBefore(TsFileResource node, TsFileResource newNode) {
-    newNode.prev = node.prev;
-    newNode.next = node;
-    if (node.prev == null) {
-      header = newNode;
-    } else {
-      node.prev.next = newNode;
+    writeLock();
+    try {
+      newNode.prev = node.prev;
+      newNode.next = node;
+      if (node.prev == null) {
+        header = newNode;
+      } else {
+        node.prev.next = newNode;
+      }
+      node.prev = newNode;
+      count++;
+    } finally {
+      writeUnlock();
     }
-    node.prev = newNode;
-    count++;
   }
 
   /**
@@ -65,15 +110,20 @@ public class TsFileResourceList implements List<TsFileResource> {
    * @param newNode the file to insert
    */
   public void insertAfter(TsFileResource node, TsFileResource newNode) {
-    newNode.prev = node;
-    newNode.next = node.next;
-    if (node.next == null) {
-      tail = newNode;
-    } else {
-      node.next.prev = newNode;
+    writeLock();
+    try {
+      newNode.prev = node;
+      newNode.next = node.next;
+      if (node.next == null) {
+        tail = newNode;
+      } else {
+        node.next.prev = newNode;
+      }
+      node.next = newNode;
+      count++;
+    } finally {
+      writeUnlock();
     }
-    node.next = newNode;
-    count++;
   }
 
   @Override
@@ -88,19 +138,24 @@ public class TsFileResourceList implements List<TsFileResource> {
 
   @Override
   public boolean contains(Object o) {
-    if (!(o instanceof TsFileResource)) {
-      return false;
-    }
-    boolean contain = false;
-    TsFileResource current = header;
-    while (current != null) {
-      if (current.equals(o)) {
-        contain = true;
-        break;
+    readLock();
+    try {
+      if (!(o instanceof TsFileResource)) {
+        return false;
       }
-      current = current.next;
+      boolean contain = false;
+      TsFileResource current = header;
+      while (current != null) {
+        if (current.equals(o)) {
+          contain = true;
+          break;
+        }
+        current = current.next;
+      }
+      return contain;
+    } finally {
+      readUnlock();
     }
-    return contain;
   }
 
   @Override
@@ -115,18 +170,23 @@ public class TsFileResourceList implements List<TsFileResource> {
   /** Insert a new tsFileResource node to the end of List */
   @Override
   public boolean add(TsFileResource newNode) {
-    if (newNode.prev != null || newNode.next != null) {
-      // this node already in a list
-      return false;
+    writeLock();
+    try {
+      if (newNode.prev != null || newNode.next != null) {
+        // this node already in a list
+        return false;
+      }
+      if (tail == null) {
+        header = newNode;
+        tail = newNode;
+        count++;
+      } else {
+        insertAfter(tail, newNode);
+      }
+      return true;
+    } finally {
+      writeUnlock();
     }
-    if (tail == null) {
-      header = newNode;
-      tail = newNode;
-      count++;
-    } else {
-      insertAfter(tail, newNode);
-    }
-    return true;
   }
 
   /**
@@ -135,51 +195,56 @@ public class TsFileResourceList implements List<TsFileResource> {
    * node's, the new node will be inserted to the tail of the list.
    */
   public boolean keepOrderInsert(TsFileResource newNode) throws IOException {
-    if (newNode.prev != null || newNode.next != null) {
-      // this node already in a list
-      return false;
-    }
-    if (tail == null) {
-      header = newNode;
-      tail = newNode;
-      count++;
-    } else {
-      // find the position to insert of this node
-      // the list should be ordered by file timestamp
-      long timeOfNewNode =
-          TsFileNameGenerator.getTsFileName(newNode.getTsFile().getName()).getTime();
-
-      if (TsFileNameGenerator.getTsFileName(header.getTsFile().getName()).getTime()
-          > timeOfNewNode) {
-        // the timestamp of head node is greater than the new node
-        // insert it before the head
-        insertBefore(header, newNode);
-      } else if (TsFileNameGenerator.getTsFileName(tail.getTsFile().getName()).getTime()
-          < timeOfNewNode) {
-        // the timestamp of new node is greater than the tail node
-        // insert it after the tail
-        insertAfter(tail, newNode);
+    writeLock();
+    try {
+      if (newNode.prev != null || newNode.next != null) {
+        // this node already in a list
+        return false;
+      }
+      if (tail == null) {
+        header = newNode;
+        tail = newNode;
+        count++;
       } else {
-        // the timestamp of new node is between the timestamp of head and tail node
-        // find the first node whose timestamp is greater than new node
-        // and insert the new node before this node
-        TsFileResource currNode = header;
-        while (currNode.next != null) {
-          if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getTime()
-              > timeOfNewNode) {
-            break;
-          }
-          currNode = currNode.next;
-        }
-        if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getTime()
+        // find the position to insert of this node
+        // the list should be ordered by file timestamp
+        long timeOfNewNode =
+            TsFileNameGenerator.getTsFileName(newNode.getTsFile().getName()).getTime();
+
+        if (TsFileNameGenerator.getTsFileName(header.getTsFile().getName()).getTime()
+            > timeOfNewNode) {
+          // the timestamp of head node is greater than the new node
+          // insert it before the head
+          insertBefore(header, newNode);
+        } else if (TsFileNameGenerator.getTsFileName(tail.getTsFile().getName()).getTime()
             < timeOfNewNode) {
-          LOGGER.error("Cannot find an appropriate place to insert {}", newNode);
+          // the timestamp of new node is greater than the tail node
+          // insert it after the tail
+          insertAfter(tail, newNode);
         } else {
-          insertBefore(currNode, newNode);
+          // the timestamp of new node is between the timestamp of head and tail node
+          // find the first node whose timestamp is greater than new node
+          // and insert the new node before this node
+          TsFileResource currNode = header;
+          while (currNode.next != null) {
+            if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getTime()
+                > timeOfNewNode) {
+              break;
+            }
+            currNode = currNode.next;
+          }
+          if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getTime()
+              < timeOfNewNode) {
+            LOGGER.error("Cannot find an appropriate place to insert {}", newNode);
+          } else {
+            insertBefore(currNode, newNode);
+          }
         }
       }
+      return true;
+    } finally {
+      writeUnlock();
     }
-    return true;
   }
 
   /**
@@ -188,37 +253,42 @@ public class TsFileResourceList implements List<TsFileResource> {
    */
   @Override
   public boolean remove(Object o) {
-    TsFileResource tsFileResource = (TsFileResource) o;
-    if (!contains(o)) {
-      // the tsFileResource does not exist in this list
-      return false;
-    }
-    if (tsFileResource.prev == null) {
-      // remove header
-      header = header.next;
-      if (header != null) {
-        header.prev = null;
-      } else {
-        // if list contains only one item, remove the header and the tail
-        tail = null;
+    writeLock();
+    try {
+      TsFileResource tsFileResource = (TsFileResource) o;
+      if (!contains(o)) {
+        // the tsFileResource does not exist in this list
+        return false;
       }
-    } else if (tsFileResource.next == null) {
-      // remove tail
-      tail = tail.prev;
-      if (tail != null) {
-        tail.next = null;
+      if (tsFileResource.prev == null) {
+        // remove header
+        header = header.next;
+        if (header != null) {
+          header.prev = null;
+        } else {
+          // if list contains only one item, remove the header and the tail
+          tail = null;
+        }
+      } else if (tsFileResource.next == null) {
+        // remove tail
+        tail = tail.prev;
+        if (tail != null) {
+          tail.next = null;
+        } else {
+          // if list contains only one item, remove the header and the tail
+          header = null;
+        }
       } else {
-        // if list contains only one item, remove the header and the tail
-        header = null;
+        tsFileResource.prev.next = tsFileResource.next;
+        tsFileResource.next.prev = tsFileResource.prev;
       }
-    } else {
-      tsFileResource.prev.next = tsFileResource.next;
-      tsFileResource.next.prev = tsFileResource.prev;
+      tsFileResource.prev = null;
+      tsFileResource.next = null;
+      count--;
+      return true;
+    } finally {
+      writeUnlock();
     }
-    tsFileResource.prev = null;
-    tsFileResource.next = null;
-    count--;
-    return true;
   }
 
   @Override
@@ -229,20 +299,30 @@ public class TsFileResourceList implements List<TsFileResource> {
   /** Only List type parameter is legal, because it is in order. */
   @Override
   public boolean addAll(Collection<? extends TsFileResource> c) {
-    if (c instanceof List) {
-      for (TsFileResource resource : c) {
-        add(resource);
+    writeLock();
+    try {
+      if (c instanceof List) {
+        for (TsFileResource resource : c) {
+          add(resource);
+        }
+        return true;
       }
-      return true;
+      throw new NotImplementedException();
+    } finally {
+      writeUnlock();
     }
-    throw new NotImplementedException();
   }
 
   @Override
   public void clear() {
-    header = null;
-    tail = null;
-    count = 0;
+    writeLock();
+    try {
+      header = null;
+      tail = null;
+      count = 0;
+    } finally {
+      writeUnlock();
+    }
   }
 
   @Override
@@ -353,17 +433,22 @@ public class TsFileResourceList implements List<TsFileResource> {
   }
 
   public List<TsFileResource> getArrayList() {
-    List<TsFileResource> list = new ArrayList<>();
-    if (header == null) {
-      return list;
-    }
-    TsFileResource current = header;
-    while (current.next != null) {
+    readLock();
+    try {
+      List<TsFileResource> list = new ArrayList<>();
+      if (header == null) {
+        return list;
+      }
+      TsFileResource current = header;
+      while (current.next != null) {
+        list.add(current);
+        current = current.next;
+      }
       list.add(current);
-      current = current.next;
+      return list;
+    } finally {
+      readUnlock();
     }
-    list.add(current);
-    return list;
   }
 
   private class TsFileIterator implements Iterator<TsFileResource> {

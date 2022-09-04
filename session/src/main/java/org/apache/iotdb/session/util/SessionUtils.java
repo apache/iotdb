@@ -28,7 +28,8 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,9 +57,19 @@ public class SessionUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static ByteBuffer getValueBuffer(Tablet tablet) {
     ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getTotalValueOccupation());
+    int indexOfValues = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
-      MeasurementSchema schema = tablet.getSchemas().get(i);
-      getValueBufferOfDataType(schema.getType(), tablet, i, valueBuffer);
+      IMeasurementSchema schema = tablet.getSchemas().get(i);
+      if (schema instanceof UnaryMeasurementSchema) {
+        getValueBufferOfDataType(schema.getType(), tablet, indexOfValues, valueBuffer);
+        indexOfValues++;
+      } else {
+        for (int j = 0; j < schema.getSubMeasurementsTSDataTypeList().size(); j++) {
+          getValueBufferOfDataType(
+              schema.getSubMeasurementsTSDataTypeList().get(j), tablet, indexOfValues, valueBuffer);
+          indexOfValues++;
+        }
+      }
     }
     if (tablet.bitMaps != null) {
       for (BitMap bitMap : tablet.bitMaps) {

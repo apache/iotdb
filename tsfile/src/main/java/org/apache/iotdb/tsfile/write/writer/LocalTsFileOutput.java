@@ -19,6 +19,8 @@
 package org.apache.iotdb.tsfile.write.writer;
 
 import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -28,51 +30,40 @@ import java.nio.ByteBuffer;
  * a TsFileOutput implementation with FileOutputStream. If the file is not existed, it will be
  * created. Otherwise the file will be written from position 0.
  */
-public class LocalTsFileOutput extends OutputStream implements TsFileOutput {
+public class LocalTsFileOutput implements TsFileOutput {
 
   private FileOutputStream outputStream;
   private BufferedOutputStream bufferedStream;
-  private long position;
+
+  LocalTsFileOutput(File file, boolean append) throws FileNotFoundException {
+    this.outputStream = new FileOutputStream(file, append);
+    this.bufferedStream = new BufferedOutputStream(outputStream);
+  }
 
   public LocalTsFileOutput(FileOutputStream outputStream) {
     this.outputStream = outputStream;
     this.bufferedStream = new BufferedOutputStream(outputStream);
-    position = 0;
   }
 
   @Override
-  public synchronized void write(int b) throws IOException {
+  public void write(byte[] b) throws IOException {
     bufferedStream.write(b);
-    position++;
   }
 
   @Override
-  public synchronized void write(byte[] b) throws IOException {
+  public void write(byte b) throws IOException {
     bufferedStream.write(b);
-    position += b.length;
   }
 
   @Override
-  public synchronized void write(byte b) throws IOException {
-    bufferedStream.write(b);
-    position++;
-  }
-
-  @Override
-  public synchronized void write(byte[] buf, int start, int offset) throws IOException {
-    bufferedStream.write(buf, start, offset);
-    position += offset;
-  }
-
-  @Override
-  public synchronized void write(ByteBuffer b) throws IOException {
+  public void write(ByteBuffer b) throws IOException {
     bufferedStream.write(b.array());
-    position += b.array().length;
   }
 
   @Override
-  public long getPosition() {
-    return position;
+  public long getPosition() throws IOException {
+    bufferedStream.flush();
+    return outputStream.getChannel().position();
   }
 
   @Override
@@ -83,7 +74,7 @@ public class LocalTsFileOutput extends OutputStream implements TsFileOutput {
 
   @Override
   public OutputStream wrapAsStream() {
-    return this;
+    return bufferedStream;
   }
 
   @Override
@@ -93,8 +84,6 @@ public class LocalTsFileOutput extends OutputStream implements TsFileOutput {
 
   @Override
   public void truncate(long size) throws IOException {
-    bufferedStream.flush();
     outputStream.getChannel().truncate(size);
-    position = outputStream.getChannel().position();
   }
 }

@@ -28,7 +28,6 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
@@ -45,9 +44,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
+import org.apache.iotdb.db.query.filter.executor.PlanExecutor;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
@@ -283,11 +282,11 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void getAllMeasurementSchema(
-      MeasurementSchemaRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
+      RaftNode header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(
             () -> {
-              new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
-                  .getAllMeasurementSchema(request, resultHandler);
+              new DataAsyncService(dataGroupMemberMap.get(header))
+                  .getAllMeasurementSchema(header, planBinary, resultHandler);
             })
         .start();
   }

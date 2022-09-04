@@ -80,8 +80,8 @@ public class AlignedTVList extends TVList {
   @Override
   public void putAlignedValue(long timestamp, Object[] value, int[] columnIndexArray) {
     checkExpansion();
-    int arrayIndex = rowCount / ARRAY_SIZE;
-    int elementIndex = rowCount % ARRAY_SIZE;
+    int arrayIndex = size / ARRAY_SIZE;
+    int elementIndex = size % ARRAY_SIZE;
     minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     for (int i = 0; i < values.size(); i++) {
@@ -119,9 +119,9 @@ public class AlignedTVList extends TVList {
           break;
       }
     }
-    indices.get(arrayIndex)[elementIndex] = rowCount;
-    rowCount++;
-    if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
+    indices.get(arrayIndex)[elementIndex] = size;
+    size++;
+    if (sorted && size > 1 && timestamp < getTime(size - 2)) {
       sorted = false;
     }
   }
@@ -139,7 +139,7 @@ public class AlignedTVList extends TVList {
 
   private Object getAlignedValueForQuery(
       int index, Integer floatPrecision, List<TSEncoding> encodingList) {
-    if (index >= rowCount) {
+    if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
@@ -169,22 +169,24 @@ public class AlignedTVList extends TVList {
       int[] validIndexesForTimeDuplicatedRows,
       Integer floatPrecision,
       List<TSEncoding> encodingList) {
-    if (valueIndex >= rowCount) {
+    if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
       List<Object> columnValues = values.get(columnIndex);
-      int validValueIndex;
-      if (validIndexesForTimeDuplicatedRows != null) {
-        validValueIndex = validIndexesForTimeDuplicatedRows[columnIndex];
-      } else {
-        validValueIndex = valueIndex;
-      }
-      int arrayIndex = validValueIndex / ARRAY_SIZE;
-      int elementIndex = validValueIndex % ARRAY_SIZE;
-      if (columnValues == null || isValueMarked(validValueIndex, columnIndex)) {
+      if (validIndexesForTimeDuplicatedRows == null
+          && (columnValues == null
+              || bitMaps != null
+                  && bitMaps.get(columnIndex) != null
+                  && isValueMarked(valueIndex, columnIndex))) {
         continue;
+      }
+      if (validIndexesForTimeDuplicatedRows != null) {
+        arrayIndex = validIndexesForTimeDuplicatedRows[columnIndex] / ARRAY_SIZE;
+        elementIndex = validIndexesForTimeDuplicatedRows[columnIndex] % ARRAY_SIZE;
       }
       switch (dataTypes.get(columnIndex)) {
         case TEXT:
@@ -261,7 +263,7 @@ public class AlignedTVList extends TVList {
     alignedTvList.indices = this.indices;
     alignedTvList.values = values;
     alignedTvList.bitMaps = bitMaps;
-    alignedTvList.rowCount = this.rowCount;
+    alignedTvList.size = this.size;
     return alignedTvList;
   }
 
@@ -300,7 +302,7 @@ public class AlignedTVList extends TVList {
       BitMap bitMap = new BitMap(ARRAY_SIZE);
       // last bitmap should be marked to the tslist size's position
       if (i == timestamps.size() - 1) {
-        for (int j = 0; j < rowCount % ARRAY_SIZE; j++) {
+        for (int j = 0; j < size % ARRAY_SIZE; j++) {
           bitMap.mark(j);
         }
       } else {
@@ -405,7 +407,7 @@ public class AlignedTVList extends TVList {
    * @return boolean
    */
   public boolean isValueMarked(int rowIndex, int columnIndex) {
-    if (rowIndex >= rowCount) {
+    if (rowIndex >= size) {
       return false;
     }
     if (bitMaps == null
@@ -447,7 +449,7 @@ public class AlignedTVList extends TVList {
   public Pair<Integer, Boolean> delete(long lowerBound, long upperBound, int columnIndex) {
     int deletedNumber = 0;
     boolean deleteColumn = true;
-    for (int i = 0; i < rowCount; i++) {
+    for (int i = 0; i < size; i++) {
       long time = getTime(i);
       if (time >= lowerBound && time <= upperBound) {
         int originRowIndex = getValueIndex(i);
@@ -459,16 +461,15 @@ public class AlignedTVList extends TVList {
         deleteColumn = false;
       }
     }
-    return new Pair<>(deletedNumber, deleteColumn);
-  }
-
-  public void deleteColumn(int columnIndex) {
-    dataTypes.remove(columnIndex);
-    for (Object array : values.get(columnIndex)) {
-      PrimitiveArrayManager.release(array);
+    if (deleteColumn) {
+      dataTypes.remove(columnIndex);
+      for (Object array : values.get(columnIndex)) {
+        PrimitiveArrayManager.release(array);
+      }
+      values.remove(columnIndex);
+      bitMaps.remove(columnIndex);
     }
-    values.remove(columnIndex);
-    bitMaps.remove(columnIndex);
+    return new Pair<>(deletedNumber, deleteColumn);
   }
 
   private void set(int index, long timestamp, int value) {
@@ -557,15 +558,14 @@ public class AlignedTVList extends TVList {
 
   @Override
   public void sort() {
-    if (sortedTimestamps == null || sortedTimestamps.length < rowCount) {
+    if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps =
-          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
+          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, size);
     }
-    if (sortedIndices == null || sortedIndices.length < rowCount) {
-      sortedIndices =
-          (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
+    if (sortedIndices == null || sortedIndices.length < size) {
+      sortedIndices = (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, size);
     }
-    sort(0, rowCount);
+    sort(0, size);
     clearSortedValue();
     clearSortedTime();
     sorted = true;
@@ -661,7 +661,7 @@ public class AlignedTVList extends TVList {
    */
   @Override
   public int getValueIndex(int index) {
-    if (index >= rowCount) {
+    if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
@@ -731,15 +731,15 @@ public class AlignedTVList extends TVList {
 
     while (idx < end) {
       int inputRemaining = end - idx;
-      int arrayIdx = rowCount / ARRAY_SIZE;
-      int elementIdx = rowCount % ARRAY_SIZE;
+      int arrayIdx = size / ARRAY_SIZE;
+      int elementIdx = size % ARRAY_SIZE;
       int internalRemaining = ARRAY_SIZE - elementIdx;
       if (internalRemaining >= inputRemaining) {
         // the remaining inputs can fit the last array, copy all remaining inputs into last array
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining, columnIndexArray);
         for (int i = 0; i < inputRemaining; i++) {
-          indices.get(arrayIdx)[elementIdx + i] = rowCount;
+          indices.get(arrayIdx)[elementIdx + i] = size;
           for (int j = 0; j < values.size(); j++) {
             if (columnIndexArray[j] < 0
                 || bitMaps != null
@@ -748,7 +748,7 @@ public class AlignedTVList extends TVList {
               markNullValue(j, arrayIdx, elementIdx + i);
             }
           }
-          rowCount++;
+          size++;
         }
         break;
       } else {
@@ -757,7 +757,7 @@ public class AlignedTVList extends TVList {
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining, columnIndexArray);
         for (int i = 0; i < internalRemaining; i++) {
-          indices.get(arrayIdx)[elementIdx + i] = rowCount;
+          indices.get(arrayIdx)[elementIdx + i] = size;
           for (int j = 0; j < values.size(); j++) {
             if (columnIndexArray[j] < 0
                 || bitMaps != null
@@ -766,7 +766,7 @@ public class AlignedTVList extends TVList {
               markNullValue(j, arrayIdx, elementIdx + i);
             }
           }
-          rowCount++;
+          size++;
         }
         idx += internalRemaining;
         checkExpansion();
@@ -857,20 +857,14 @@ public class AlignedTVList extends TVList {
    */
   public static long alignedTvListArrayMemCost(TSDataType[] types) {
     long size = 0;
-    // value array mem size
-    for (TSDataType type : types) {
-      if (type != null) {
-        size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
-      }
-    }
-    // size is 0 when all types are null
-    if (size == 0) {
-      return size;
-    }
     // time array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
     // index array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
+    // value array mem size
+    for (TSDataType type : types) {
+      size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    }
     // array headers mem size
     size += NUM_BYTES_ARRAY_HEADER * (2 + types.length);
     // Object references size in ArrayList
@@ -879,7 +873,7 @@ public class AlignedTVList extends TVList {
   }
 
   public void clear() {
-    rowCount = 0;
+    size = 0;
     sorted = true;
     minTime = Long.MAX_VALUE;
     clearTime();
@@ -942,7 +936,7 @@ public class AlignedTVList extends TVList {
       List<Integer> timeDuplicatedAlignedRowIndexList = null;
       while (cur < iteSize) {
         long time = getTime(cur);
-        if (cur + 1 < rowCount() && (time == getTime(cur + 1))) {
+        if (cur + 1 < size() && (time == getTime(cur + 1))) {
           if (timeDuplicatedAlignedRowIndexList == null) {
             timeDuplicatedAlignedRowIndexList = new ArrayList<>();
             timeDuplicatedAlignedRowIndexList.add(getValueIndex(cur));

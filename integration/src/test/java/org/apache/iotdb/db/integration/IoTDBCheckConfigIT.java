@@ -64,19 +64,20 @@ public class IoTDBCheckConfigIT {
 
   @Before
   public void setUp() {
+    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
 
     bytes = new ByteArrayOutputStream();
     console = System.out;
     System.setOut(new PrintStream(bytes));
 
-    systemProperties.put("partition_interval", "9223372036854775807");
+    systemProperties.put("partition_interval", "604800");
     systemProperties.put("timestamp_precision", "ms");
     systemProperties.put("tsfile_storage_fs", "LOCAL");
     systemProperties.put("enable_partition", "false");
     systemProperties.put("max_degree_of_index_node", "256");
     systemProperties.put("tag_attribute_total_size", "700");
-    systemProperties.put("iotdb_version", "0.13.0");
+    systemProperties.put("iotdb_version", "0.11.2");
     systemProperties.put("virtual_storage_group_num", "1");
   }
 

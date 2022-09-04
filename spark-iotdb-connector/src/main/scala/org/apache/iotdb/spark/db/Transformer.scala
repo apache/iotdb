@@ -36,7 +36,7 @@ object Transformer {
     *              +---------+-------------+-------------+-------------+-------------+-------------+-------------+
     * @return tansferred data frame
     *         +---------+-----------+---+---+----+
-    *         |timestamp|Device| m1| m2|  m3|
+    *         |timestamp|device_name| m1| m2|  m3|
     *         +---------+-----------+---+---+----+
     *         |        1| root.ln.d2| 21| 22|  23|
     *         |        1| root.ln.d1| 11| 12|null|
@@ -49,7 +49,7 @@ object Transformer {
     // use to record all the measurement, prepare for the union
     var mMap = scala.collection.mutable.HashMap[String, DataType]()
 
-    // this step is to record Device and measurement_name
+    // this step is to record device_name and measurement_name
     df.schema.foreach(f => {
       if (!SQLConstant.TIMESTAMP_STR.equals(f.name)) {
         val pos = f.name.lastIndexOf('.')
@@ -69,7 +69,7 @@ object Transformer {
 
     // we first get each device's measurement data and then union them to get what we want, means:
     // +---------+-----------+---+---+----+
-    // |timestamp|Device| m1| m2|  m3|
+    // |timestamp|device_name| m1| m2|  m3|
     // +---------+-----------+---+---+----+
     // |        1| root.ln.d2| 21| 22|  23|
     // |        1| root.ln.d1| 11| 12|null|
@@ -77,7 +77,7 @@ object Transformer {
     var res: org.apache.spark.sql.DataFrame = null
     map.keys.foreach { deviceName =>
       // build query
-      var query = "select " + SQLConstant.TIMESTAMP_STR + ", \"" + deviceName + "\" as Device"
+      var query = "select " + SQLConstant.TIMESTAMP_STR + ", \"" + deviceName + "\" as device_name"
       val measurementName = map(deviceName)
       mMap.keySet.foreach { m =>
         val pos = measurementName.indexOf(m)
@@ -111,7 +111,7 @@ object Transformer {
     * @param spark your SparkSession
     * @param df    dataFrame need to be tansfer
     *              +---------+-----------+---+---+----+
-    *              |timestamp|Device| m1| m2|  m3|
+    *              |timestamp|device_name| m1| m2|  m3|
     *              +---------+-----------+---+---+----+
     *              |        1| root.ln.d2| 21| 22|  23|
     *              |        1| root.ln.d1| 11| 12|null|
@@ -126,8 +126,8 @@ object Transformer {
     */
   def toWideForm(spark: SparkSession, df: DataFrame): DataFrame = {
     df.createOrReplaceTempView("tsfle_narrow_form")
-    // get all Device
-    val deviceNames = spark.sql("select distinct Device from tsfle_narrow_form").collect()
+    // get all device_name
+    val deviceNames = spark.sql("select distinct device_name from tsfle_narrow_form").collect()
     val tableDF = spark.sql("select * from tsfle_narrow_form")
 
     import scala.collection.mutable.ListBuffer
@@ -135,7 +135,7 @@ object Transformer {
     val measurementNames = new ListBuffer[String]()
 
     tableDF.schema.foreach(f => {
-      if (!SQLConstant.TIMESTAMP_STR.equals(f.name) && !"Device".equals(f.name)) {
+      if (!SQLConstant.TIMESTAMP_STR.equals(f.name) && !"device_name".equals(f.name)) {
         measurementNames += f.name
       }
     })
@@ -155,7 +155,7 @@ object Transformer {
         query = query + ", " + measurementName + " as `" + deviceName(0) + "." + measurementName + "`"
       })
 
-      query = query + " from tsfle_narrow_form where Device = \"" + deviceName(0) + "\""
+      query = query + " from tsfle_narrow_form where device_name = \"" + deviceName(0) + "\""
       val curDF = spark.sql(query)
 
       if (res == null) {

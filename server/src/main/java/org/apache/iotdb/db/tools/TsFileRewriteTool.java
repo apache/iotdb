@@ -49,7 +49,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -181,8 +181,8 @@ public class TsFileRewriteTool implements AutoCloseable {
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
             chunkHeaderOffset = reader.position() - 1;
             ChunkHeader header = reader.readChunkHeader(marker);
-            MeasurementSchema measurementSchema =
-                new MeasurementSchema(
+            UnaryMeasurementSchema measurementSchema =
+                new UnaryMeasurementSchema(
                     header.getMeasurementID(),
                     header.getDataType(),
                     header.getEncodingType(),
@@ -265,7 +265,7 @@ public class TsFileRewriteTool implements AutoCloseable {
    * false.
    */
   protected boolean checkIfNeedToDecode(
-      MeasurementSchema schema, String deviceId, PageHeader pageHeader, long chunkHeaderOffset)
+      UnaryMeasurementSchema schema, String deviceId, PageHeader pageHeader, long chunkHeaderOffset)
       throws IllegalPathException {
     if (pageHeader.getStatistics() == null) {
       return true;
@@ -299,7 +299,7 @@ public class TsFileRewriteTool implements AutoCloseable {
   protected void reWriteChunk(
       String deviceId,
       boolean firstChunkInChunkGroup,
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       List<PageHeader> pageHeadersInChunk,
       List<ByteBuffer> pageDataInChunk,
       List<Boolean> needToDecodeInfoInChunk,
@@ -369,7 +369,7 @@ public class TsFileRewriteTool implements AutoCloseable {
   }
 
   protected void writePage(
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       PageHeader pageHeader,
       ByteBuffer pageData,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
@@ -383,7 +383,7 @@ public class TsFileRewriteTool implements AutoCloseable {
 
   protected void decodeAndWritePage(
       String deviceId,
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       ByteBuffer pageData,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap,
       long chunkHeaderOffset)
@@ -400,7 +400,7 @@ public class TsFileRewriteTool implements AutoCloseable {
   }
 
   private List<TimeRange> getOldSortedDeleteIntervals(
-      String deviceId, MeasurementSchema schema, long chunkHeaderOffset)
+      String deviceId, UnaryMeasurementSchema schema, long chunkHeaderOffset)
       throws IllegalPathException {
     if (oldModification != null) {
       ChunkMetadata chunkMetadata = new ChunkMetadata();
@@ -424,7 +424,7 @@ public class TsFileRewriteTool implements AutoCloseable {
 
   protected void rewritePageIntoFiles(
       BatchData batchData,
-      MeasurementSchema schema,
+      UnaryMeasurementSchema schema,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap) {
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();

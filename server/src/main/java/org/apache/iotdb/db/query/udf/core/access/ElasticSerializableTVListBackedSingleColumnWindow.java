@@ -32,9 +32,6 @@ public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWin
   private int endIndex;
   private int size;
 
-  private long startTime;
-  private long endTime;
-
   private final ElasticSerializableTVListBackedSingleColumnRow row;
   private ElasticSerializableTVListBackedSingleColumnWindowIterator rowIterator;
 
@@ -75,23 +72,10 @@ public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWin
     return rowIterator;
   }
 
-  @Override
-  public long windowStartTime() {
-    return startTime;
-  }
-
-  @Override
-  public long windowEndTime() {
-    return endTime;
-  }
-
-  public void seek(int beginIndex, int endIndex, long startTime, long endTime) {
+  public void seek(int beginIndex, int endIndex) {
     this.beginIndex = beginIndex;
     this.endIndex = endIndex;
     size = endIndex - beginIndex;
-
-    this.startTime = startTime;
-    this.endTime = endTime;
 
     row.seek(beginIndex);
     rowIterator = null;

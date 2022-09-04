@@ -29,6 +29,38 @@ public class PulsarProducer {
   private static final String SERVICE_URL = "pulsar://localhost:6650";
   private final Producer<String> producer;
   private final PulsarClient client = PulsarClient.builder().serviceUrl(SERVICE_URL).build();
+  protected static final String[] ALL_DATA = {
+    "device1,sensor1,2017/10/24 19:30:00,606162908",
+    "device1,sensor2,2017/10/24 19:30:00,160161162",
+    "device2,sensor1,2017/10/24 19:30:00,360361362",
+    "device2,sensor2,2017/10/24 19:30:00,818182346",
+    "device3,sensor1,2017/10/24 19:30:00,296150221",
+    "device3,sensor2,2017/10/24 19:30:00,360361362",
+    "device1,sensor1,2017/10/24 19:31:00,752187168",
+    "device1,sensor2,2017/10/24 19:31:00,201286412",
+    "device2,sensor1,2017/10/24 19:31:00,280281282",
+    "device2,sensor2,2017/10/24 19:31:00,868159192",
+    "device3,sensor1,2017/10/24 19:31:00,260261262",
+    "device3,sensor2,2017/10/24 19:31:00,380381382",
+    "device1,sensor1,2017/10/24 19:32:00,505152421",
+    "device1,sensor2,2017/10/24 19:32:00,150151152",
+    "device2,sensor1,2017/10/24 19:32:00,250251252",
+    "device2,sensor2,2017/10/24 19:32:00,350351352",
+    "device3,sensor1,2017/10/24 19:32:00,404142234",
+    "device3,sensor2,2017/10/24 19:32:00,140141142",
+    "deivce1,sensor1,2017/10/24 19:33:00,240241242",
+    "device1,sensor2,2017/10/24 19:33:00,340341342",
+    "device2,sensor1,2017/10/24 19:33:00,404142234",
+    "device2,sensor2,2017/10/24 19:33:00,140141142",
+    "device3,sensor1,2017/10/24 19:33:00,957190242",
+    "device3,sensor2,2017/10/24 19:33:00,521216677",
+    "device1,sensor1,2017/10/24 19:34:00,101112567",
+    "device1,sensor2,2017/10/24 19:34:00,110111112",
+    "device2,sensor1,2017/10/24 19:34:00,615126321",
+    "device2,sensor2,2017/10/24 19:34:00,350351352",
+    "device3,sensor1,2017/10/24 19:34:00,122618247",
+    "device3,sensor2,2017/10/24 19:34:00,782148991"
+  };
 
   public PulsarProducer() throws PulsarClientException {
     this.producer =
@@ -41,9 +73,9 @@ public class PulsarProducer {
   }
 
   public void produce() throws PulsarClientException {
-    for (String sql : Constant.ALL_DATA) {
-      String[] line = sql.split(",");
-      producer.newMessage().key(line[0]).value(sql).send();
+    for (String s : ALL_DATA) {
+      String[] line = s.split(",");
+      producer.newMessage().key(line[0]).value(s).send();
     }
   }
 

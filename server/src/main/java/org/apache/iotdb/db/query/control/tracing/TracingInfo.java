@@ -105,14 +105,6 @@ public class TracingInfo {
     this.unSeqFileSet.addAll(unSeqResources);
   }
 
-  public void addTsFile(TsFileResource tsFileResource, boolean isSeq) {
-    if (isSeq) {
-      this.seqFileSet.add(tsFileResource);
-    } else {
-      this.unSeqFileSet.add(tsFileResource);
-    }
-  }
-
   public int getTotalPageNum() {
     return totalPageNum;
   }

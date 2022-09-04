@@ -22,6 +22,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -33,15 +34,12 @@ import java.util.List;
 public class CreateContinuousQueryPlan extends PhysicalPlan {
 
   private String querySql;
-  private String querySqlBeforeGroupByClause;
-  private String querySqlAfterGroupByClause;
   private String continuousQueryName;
   private PartialPath targetPath;
   private long everyInterval;
   private long forInterval;
-  private long groupByTimeInterval;
-  private String groupByTimeIntervalString;
-  private long firstExecutionTimeBoundary;
+  private QueryOperator queryOperator;
+  private long creationTimestamp;
 
   public CreateContinuousQueryPlan() {
     super(Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
@@ -53,39 +51,27 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
       PartialPath targetPath,
       long everyInterval,
       long forInterval,
-      long groupByTimeIntervalUnit,
-      String groupByTimeIntervalString,
-      Long firstExecutionTimeBoundary) {
+      QueryOperator queryOperator) {
     super(Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
     this.querySql = querySql;
-    String querySqlLowerCase = querySql.toLowerCase();
-    int indexOfGroupBy = querySqlLowerCase.indexOf("group by");
-    this.querySqlBeforeGroupByClause =
-        indexOfGroupBy == -1 ? querySql : querySql.substring(0, indexOfGroupBy);
-    int indexOfLevel = querySqlLowerCase.indexOf("level");
-    this.querySqlAfterGroupByClause = indexOfLevel == -1 ? "" : querySql.substring(indexOfLevel);
     this.continuousQueryName = continuousQueryName;
     this.targetPath = targetPath;
     this.everyInterval = everyInterval;
     this.forInterval = forInterval;
-    this.groupByTimeInterval = groupByTimeIntervalUnit;
-    this.groupByTimeIntervalString = groupByTimeIntervalString;
-    this.firstExecutionTimeBoundary =
-        firstExecutionTimeBoundary != null
-            ? firstExecutionTimeBoundary
-            : DatetimeUtils.currentTime();
+    this.queryOperator = queryOperator;
+    this.creationTimestamp = DatetimeUtils.currentTime();
+  }
+
+  public void setQuerySql(String querySql) {
+    this.querySql = querySql;
   }
 
   public String getQuerySql() {
     return querySql;
   }
 
-  public String getQuerySqlBeforeGroupByClause() {
-    return querySqlBeforeGroupByClause;
-  }
-
-  public String getQuerySqlAfterGroupByClause() {
-    return querySqlAfterGroupByClause;
+  public void setContinuousQueryName(String continuousQueryName) {
+    this.continuousQueryName = continuousQueryName;
   }
 
   public String getContinuousQueryName() {
@@ -100,24 +86,36 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     return targetPath;
   }
 
+  public void setEveryInterval(long everyInterval) {
+    this.everyInterval = everyInterval;
+  }
+
   public long getEveryInterval() {
     return everyInterval;
+  }
+
+  public void setForInterval(long forInterval) {
+    this.forInterval = forInterval;
   }
 
   public long getForInterval() {
     return forInterval;
   }
 
-  public long getGroupByTimeInterval() {
-    return groupByTimeInterval;
+  public void setQueryOperator(QueryOperator queryOperator) {
+    this.queryOperator = queryOperator;
   }
 
-  public String getGroupByTimeIntervalString() {
-    return groupByTimeIntervalString;
+  public QueryOperator getQueryOperator() {
+    return queryOperator;
   }
 
-  public long getFirstExecutionTimeBoundary() {
-    return firstExecutionTimeBoundary;
+  public void setCreationTimestamp(long creationTimestamp) {
+    this.creationTimestamp = creationTimestamp;
+  }
+
+  public long getCreationTimestamp() {
+    return creationTimestamp;
   }
 
   @Override
@@ -130,27 +128,19 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     buffer.put((byte) PhysicalPlanType.CREATE_CONTINUOUS_QUERY.ordinal());
     ReadWriteIOUtils.write(continuousQueryName, buffer);
     ReadWriteIOUtils.write(querySql, buffer);
-    ReadWriteIOUtils.write(querySqlBeforeGroupByClause, buffer);
-    ReadWriteIOUtils.write(querySqlAfterGroupByClause, buffer);
     ReadWriteIOUtils.write(targetPath.getFullPath(), buffer);
     buffer.putLong(everyInterval);
     buffer.putLong(forInterval);
-    buffer.putLong(groupByTimeInterval);
-    ReadWriteIOUtils.write(groupByTimeIntervalString, buffer);
-    buffer.putLong(firstExecutionTimeBoundary);
+    buffer.putLong(creationTimestamp);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     continuousQueryName = ReadWriteIOUtils.readString(buffer);
     querySql = ReadWriteIOUtils.readString(buffer);
-    querySqlBeforeGroupByClause = ReadWriteIOUtils.readString(buffer);
-    querySqlAfterGroupByClause = ReadWriteIOUtils.readString(buffer);
     targetPath = new PartialPath(ReadWriteIOUtils.readString(buffer));
     everyInterval = ReadWriteIOUtils.readLong(buffer);
     forInterval = ReadWriteIOUtils.readLong(buffer);
-    groupByTimeInterval = ReadWriteIOUtils.readLong(buffer);
-    groupByTimeIntervalString = ReadWriteIOUtils.readString(buffer);
-    firstExecutionTimeBoundary = ReadWriteIOUtils.readLong(buffer);
+    creationTimestamp = ReadWriteIOUtils.readLong(buffer);
   }
 }

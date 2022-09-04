@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -168,9 +167,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   private int[] checkColumnsInInsertPlan(List<IMeasurementSchema> schemaListInInsertPlan) {
-    Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
+    List<String> measurementIdsInInsertPlan = new ArrayList<>();
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
-      measurementIdsInInsertPlan.put(schemaListInInsertPlan.get(i).getMeasurementId(), i);
+      measurementIdsInInsertPlan.add(schemaListInInsertPlan.get(i).getMeasurementId());
       if (!containsMeasurement(schemaListInInsertPlan.get(i).getMeasurementId())) {
         this.measurementIndexMap.put(
             schemaListInInsertPlan.get(i).getMeasurementId(), measurementIndexMap.size());
@@ -181,7 +180,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     int[] columnIndexArray = new int[measurementIndexMap.size()];
     measurementIndexMap.forEach(
         (measurementId, i) -> {
-          columnIndexArray[i] = measurementIdsInInsertPlan.getOrDefault(measurementId, -1);
+          columnIndexArray[i] = measurementIdsInInsertPlan.indexOf(measurementId);
         });
     return columnIndexArray;
   }
@@ -193,11 +192,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long count() {
-    return (long) list.rowCount() * measurementIndexMap.size();
+    return (long) list.size() * measurementIndexMap.size();
   }
 
   public long alignedListSize() {
-    return list.rowCount();
+    return list.size();
   }
 
   @Override
@@ -252,10 +251,14 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return list.delete(lowerBound, upperBound, measurementIndexMap.get(measurementId));
   }
 
-  public void removeColumn(String measurementId) {
-    list.deleteColumn(measurementIndexMap.get(measurementId));
-    IMeasurementSchema schemaToBeRemoved = schemaList.get(measurementIndexMap.get(measurementId));
-    schemaList.remove(schemaToBeRemoved);
+  public void removeColumns(List<String> measurements) {
+    List<IMeasurementSchema> schemasToBeRemoved = new ArrayList<>();
+    for (String measurement : measurements) {
+      schemasToBeRemoved.add(schemaList.get(measurementIndexMap.get(measurement)));
+    }
+    for (IMeasurementSchema schema : schemasToBeRemoved) {
+      schemaList.remove(schema);
+    }
     measurementIndexMap.clear();
     for (int i = 0; i < schemaList.size(); i++) {
       measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
@@ -271,11 +274,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   public void encode(IChunkWriter chunkWriter) {
     AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
     List<Integer> timeDuplicateAlignedRowIndexList = null;
-    for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
+    for (int sortedRowIndex = 0; sortedRowIndex < list.size(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
       // skip duplicated data
-      if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
+      if ((sortedRowIndex + 1 < list.size() && (time == list.getTime(sortedRowIndex + 1)))) {
         // record the time duplicated row index list for vector type
         if (timeDuplicateAlignedRowIndexList == null) {
           timeDuplicateAlignedRowIndexList = new ArrayList<>();
@@ -341,7 +344,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long getFirstPoint() {
-    if (list.rowCount() == 0) {
+    if (list.size() == 0) {
       return Long.MAX_VALUE;
     }
     return getSortedTvListForQuery().getTimeValuePair(0).getTimestamp();
@@ -349,11 +352,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long getLastPoint() {
-    if (list.rowCount() == 0) {
+    if (list.size() == 0) {
       return Long.MIN_VALUE;
     }
     return getSortedTvListForQuery()
-        .getTimeValuePair(getSortedTvListForQuery().rowCount() - 1)
+        .getTimeValuePair(getSortedTvListForQuery().size() - 1)
         .getTimestamp();
   }
 }

@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -158,46 +157,7 @@ public class TsFileNameGenerator {
             + TSFILE_SUFFIX);
   }
 
-  /**
-   * Create tmp target file for cross space compaction, in which each sequence source file has its
-   * own tmp target file.
-   *
-   * @param seqResources
-   * @return tmp target file list, which is xxx.cross
-   * @throws IOException
-   */
-  public static List<TsFileResource> getCrossCompactionTargetFileResources(
-      List<TsFileResource> seqResources) throws IOException {
-    List<TsFileResource> targetFileResources = new ArrayList<>();
-    for (TsFileResource resource : seqResources) {
-      TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
-      tsFileName.setCrossCompactionCnt(tsFileName.getCrossCompactionCnt() + 1);
-      targetFileResources.add(
-          new TsFileResource(
-              new File(
-                  resource.getTsFile().getParent(),
-                  tsFileName.time
-                      + FILE_NAME_SEPARATOR
-                      + tsFileName.version
-                      + FILE_NAME_SEPARATOR
-                      + tsFileName.innerCompactionCnt
-                      + FILE_NAME_SEPARATOR
-                      + tsFileName.crossCompactionCnt
-                      + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)));
-    }
-    return targetFileResources;
-  }
-
-  /**
-   * Create tmp target file for inner space compaction, in which all source files has only one tmp
-   * target file.
-   *
-   * @param tsFileResources
-   * @param sequence
-   * @return tmp target file, which is xxx.target
-   * @throws IOException
-   */
-  public static TsFileResource getInnerCompactionTargetFileResource(
+  public static File getInnerCompactionFileName(
       List<TsFileResource> tsFileResources, boolean sequence) throws IOException {
     long minTime = Long.MAX_VALUE;
     long maxTime = Long.MIN_VALUE;
@@ -215,28 +175,26 @@ public class TsFileNameGenerator {
       maxCrossMergeCount = Math.max(tsFileName.crossCompactionCnt, maxCrossMergeCount);
     }
     return sequence
-        ? new TsFileResource(
-            new File(
-                tsFileResources.get(0).getTsFile().getParent(),
-                minTime
-                    + FILE_NAME_SEPARATOR
-                    + minVersion
-                    + FILE_NAME_SEPARATOR
-                    + (maxInnerMergeCount + 1)
-                    + FILE_NAME_SEPARATOR
-                    + maxCrossMergeCount
-                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX))
-        : new TsFileResource(
-            new File(
-                tsFileResources.get(0).getTsFile().getParent(),
-                maxTime
-                    + FILE_NAME_SEPARATOR
-                    + maxVersion
-                    + FILE_NAME_SEPARATOR
-                    + (maxInnerMergeCount + 1)
-                    + FILE_NAME_SEPARATOR
-                    + maxCrossMergeCount
-                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX));
+        ? new File(
+            tsFileResources.get(0).getTsFile().getParent(),
+            minTime
+                + FILE_NAME_SEPARATOR
+                + minVersion
+                + FILE_NAME_SEPARATOR
+                + (maxInnerMergeCount + 1)
+                + FILE_NAME_SEPARATOR
+                + maxCrossMergeCount
+                + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)
+        : new File(
+            tsFileResources.get(0).getTsFile().getParent(),
+            maxTime
+                + FILE_NAME_SEPARATOR
+                + maxVersion
+                + FILE_NAME_SEPARATOR
+                + (maxInnerMergeCount + 1)
+                + FILE_NAME_SEPARATOR
+                + maxCrossMergeCount
+                + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX);
   }
 
   public static class TsFileName {

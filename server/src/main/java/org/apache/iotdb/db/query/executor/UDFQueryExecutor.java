@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.UDFInputDataSet;
@@ -32,12 +31,10 @@ import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator.markFilterdPaths;
 
@@ -58,21 +55,16 @@ public class UDFQueryExecutor extends RawDataQueryExecutor {
 
   public QueryDataSet executeWithValueFilterAlignByTime(QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
-    // transfer to MeasurementPath to AlignedPath if it's under an aligned entity
-    queryPlan.setDeduplicatedPaths(
-        queryPlan.getDeduplicatedPaths().stream()
-            .map(p -> ((MeasurementPath) p).transformToExactPath())
-            .collect(Collectors.toList()));
     TimeGenerator timestampGenerator = getTimeGenerator(context, udtfPlan);
     List<Boolean> cached =
         markFilterdPaths(
             udtfPlan.getExpression(),
             new ArrayList<>(udtfPlan.getDeduplicatedPaths()),
             timestampGenerator.hasOrNode());
-    Pair<List<IReaderByTimestamp>, List<List<Integer>>> pair =
-        initSeriesReaderByTimestamp(context, udtfPlan, cached, timestampGenerator.getTimeFilter());
+    List<IReaderByTimestamp> readersOfSelectedSeries =
+        initSeriesReaderByTimestamp(context, udtfPlan, cached);
     return new UDTFAlignByTimeDataSet(
-        context, udtfPlan, timestampGenerator, pair.left, pair.right, cached);
+        context, udtfPlan, timestampGenerator, readersOfSelectedSeries, cached);
   }
 
   public QueryDataSet executeWithoutValueFilterNonAlign(QueryContext context)
@@ -83,21 +75,16 @@ public class UDFQueryExecutor extends RawDataQueryExecutor {
 
   public QueryDataSet executeWithValueFilterNonAlign(QueryContext context)
       throws QueryProcessException, StorageEngineException, IOException {
-    // transfer to MeasurementPath to AlignedPath if it's under an aligned entity
-    queryPlan.setDeduplicatedPaths(
-        queryPlan.getDeduplicatedPaths().stream()
-            .map(p -> ((MeasurementPath) p).transformToExactPath())
-            .collect(Collectors.toList()));
     TimeGenerator timestampGenerator = getTimeGenerator(context, udtfPlan);
     List<Boolean> cached =
         markFilterdPaths(
             udtfPlan.getExpression(),
             new ArrayList<>(udtfPlan.getDeduplicatedPaths()),
             timestampGenerator.hasOrNode());
-    Pair<List<IReaderByTimestamp>, List<List<Integer>>> pair =
-        initSeriesReaderByTimestamp(context, udtfPlan, cached, timestampGenerator.getTimeFilter());
+    List<IReaderByTimestamp> readersOfSelectedSeries =
+        initSeriesReaderByTimestamp(context, udtfPlan, cached);
     return new UDTFNonAlignDataSet(
-        context, udtfPlan, timestampGenerator, pair.left, pair.right, cached);
+        context, udtfPlan, timestampGenerator, readersOfSelectedSeries, cached);
   }
 
   public final QueryDataSet executeFromAlignedDataSet(

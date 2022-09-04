@@ -33,7 +33,7 @@ INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.14.1/lib/cpp/src)
 
 find_package(Boost REQUIRED)
 IF (DEFINED BOOST_INCLUDEDIR)
-    include_directories("${Boost_INCLUDE_DIR}")
+    include_directories(SYSTEM "${BOOST_INCLUDEDIR}")
 ENDIF()
 
 # Link directories are different for Windows and Linux/Mac

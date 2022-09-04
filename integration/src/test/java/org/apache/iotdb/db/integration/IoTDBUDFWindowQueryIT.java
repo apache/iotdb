@@ -93,8 +93,6 @@ public class IoTDBUDFWindowQueryIT {
           "create function size_window_0 as 'org.apache.iotdb.db.query.udf.example.SlidingSizeWindowConstructorTester0'");
       statement.execute(
           "create function size_window_1 as 'org.apache.iotdb.db.query.udf.example.SlidingSizeWindowConstructorTester1'");
-      statement.execute(
-          "create function window_start_end as 'org.apache.iotdb.db.query.udf.example.WindowStartEnd'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -197,39 +195,6 @@ public class IoTDBUDFWindowQueryIT {
         }
 
         assertEquals(expectedAccumulation, (int) (Double.parseDouble(resultSet.getString(2))));
-        ++count;
-      }
-    } catch (SQLException throwable) {
-      if (0 < windowSize || !throwable.getMessage().contains(String.valueOf(windowSize))) {
-        fail(throwable.getMessage());
-      }
-    }
-
-    sql =
-        String.format(
-            "select window_start_end(s1, '%s'='%s', '%s'='%s') from root.vehicle.d1",
-            ExampleUDFConstant.ACCESS_STRATEGY_KEY,
-            ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_SIZE,
-            ExampleUDFConstant.WINDOW_SIZE_KEY,
-            windowSize);
-
-    try (Connection conn = EnvFactory.getEnv().getConnection();
-        Statement statement = conn.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sql);
-      assertEquals(2, resultSet.getMetaData().getColumnCount());
-
-      int count = 0;
-      while (resultSet.next()) {
-        int expectedWindowSize =
-            (count < ITERATION_TIMES / windowSize)
-                ? windowSize
-                : ITERATION_TIMES - (ITERATION_TIMES / windowSize) * windowSize;
-
-        assertEquals(count * windowSize, (int) (Long.parseLong(resultSet.getString(1))));
-        assertEquals(
-            expectedWindowSize - 1,
-            Long.parseLong(resultSet.getString(2)) - Long.parseLong(resultSet.getString(1)));
-
         ++count;
       }
     } catch (SQLException throwable) {
@@ -368,42 +333,6 @@ public class IoTDBUDFWindowQueryIT {
         fail(throwable.getMessage());
       }
     }
-
-    sql =
-        String.format(
-            "select window_start_end(s1, s1, s1, '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s') from root.vehicle.d1",
-            ExampleUDFConstant.ACCESS_STRATEGY_KEY,
-            ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_TIME,
-            ExampleUDFConstant.TIME_INTERVAL_KEY,
-            timeInterval,
-            ExampleUDFConstant.SLIDING_STEP_KEY,
-            slidingStep,
-            ExampleUDFConstant.DISPLAY_WINDOW_BEGIN_KEY,
-            displayWindowBegin,
-            ExampleUDFConstant.DISPLAY_WINDOW_END_KEY,
-            displayWindowEnd);
-
-    try (Connection conn = EnvFactory.getEnv().getConnection();
-        Statement statement = conn.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sql);
-      assertEquals(2, resultSet.getMetaData().getColumnCount());
-
-      int count = 0;
-      while (resultSet.next()) {
-        int begin = displayWindowBegin + count * slidingStep;
-
-        assertEquals(begin, (int) (Long.parseLong(resultSet.getString(1))));
-        assertEquals(
-            timeInterval - 1,
-            Long.parseLong(resultSet.getString(2)) - Long.parseLong(resultSet.getString(1)));
-
-        ++count;
-      }
-    } catch (SQLException throwable) {
-      if (slidingStep > 0 && timeInterval > 0 && displayWindowEnd >= displayWindowBegin) {
-        fail(throwable.getMessage());
-      }
-    }
   }
 
   @Test
@@ -436,7 +365,7 @@ public class IoTDBUDFWindowQueryIT {
     testSlidingTimeWindowWithTimeIntervalOnly(-ITERATION_TIMES);
   }
 
-  private void testSlidingTimeWindowWithTimeIntervalOnly(int timeInterval) {
+  public void testSlidingTimeWindowWithTimeIntervalOnly(int timeInterval) {
     String sql =
         String.format(
             "select time_window_tester(s1, '%s'='%s') from root.vehicle.d1",
@@ -463,33 +392,6 @@ public class IoTDBUDFWindowQueryIT {
         }
 
         assertEquals(expectedAccumulation, (int) (Double.parseDouble(resultSet.getString(2))));
-        ++count;
-      }
-    } catch (SQLException throwable) {
-      if (timeInterval > 0) {
-        fail(throwable.getMessage());
-      }
-    }
-
-    sql =
-        String.format(
-            "select window_start_end(s1, '%s'='%s') from root.vehicle.d1",
-            ExampleUDFConstant.TIME_INTERVAL_KEY, timeInterval);
-
-    try (Connection conn = EnvFactory.getEnv().getConnection();
-        Statement statement = conn.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sql);
-      assertEquals(2, resultSet.getMetaData().getColumnCount());
-
-      int count = 0;
-      while (resultSet.next()) {
-        int begin = displayWindowBegin + count * timeInterval;
-
-        assertEquals(begin, (int) (Long.parseLong(resultSet.getString(1))));
-        assertEquals(
-            timeInterval - 1,
-            Long.parseLong(resultSet.getString(2)) - Long.parseLong(resultSet.getString(1)));
-
         ++count;
       }
     } catch (SQLException throwable) {
@@ -581,7 +483,7 @@ public class IoTDBUDFWindowQueryIT {
         (int) (1.5 * ITERATION_TIMES));
   }
 
-  private void testSlidingSizeWindowWithSlidingStep(
+  public void testSlidingSizeWindowWithSlidingStep(
       int windowSize, int slidingStep, int consumptionPoint) {
     String sql =
         String.format(
@@ -603,7 +505,7 @@ public class IoTDBUDFWindowQueryIT {
         if (ITERATION_TIMES < windowSize) {
           String actual = resultSet.getString(2);
           if (actual != null) {
-            assertEquals(ITERATION_TIMES - (long) count * slidingStep, Integer.parseInt(actual));
+            assertEquals(ITERATION_TIMES - count * slidingStep, Integer.parseInt(actual));
             ++count;
           }
         } else if (count * slidingStep + windowSize < ITERATION_TIMES) {
@@ -616,66 +518,7 @@ public class IoTDBUDFWindowQueryIT {
           String actual = resultSet.getString(2);
           if (actual != null) {
             assertEquals(
-                ITERATION_TIMES - (long) count * slidingStep,
-                Integer.parseInt(resultSet.getString(2)));
-            ++count;
-          }
-        }
-      }
-      assertEquals((int) Math.ceil(ITERATION_TIMES / (double) slidingStep), count);
-    } catch (SQLException throwable) {
-      if (windowSize > 0) {
-        fail(throwable.getMessage());
-      }
-    }
-
-    sql =
-        String.format(
-            "select window_start_end(s1, '%s'='%s', '%s'='%s', '%s'='%s'), size_window_1(s1, '%s'='%s') from root.vehicle.d1",
-            ExampleUDFConstant.ACCESS_STRATEGY_KEY,
-            ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_SIZE,
-            ExampleUDFConstant.WINDOW_SIZE_KEY,
-            windowSize,
-            ExampleUDFConstant.SLIDING_STEP_KEY,
-            slidingStep,
-            "consumptionPoint",
-            consumptionPoint);
-
-    try (Connection conn = EnvFactory.getEnv().getConnection();
-        Statement statement = conn.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sql);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
-
-      int count = 0;
-      while (resultSet.next()) {
-
-        if (ITERATION_TIMES < windowSize) {
-          String actual = resultSet.getString(2);
-          if (actual != null) {
-            assertEquals(count * slidingStep, Integer.parseInt(resultSet.getString(1)));
-            assertEquals(
-                ITERATION_TIMES - (long) count * slidingStep - 1,
-                Integer.parseInt(actual) - Integer.parseInt(resultSet.getString(1)));
-            ++count;
-          }
-        } else if (count * slidingStep + windowSize < ITERATION_TIMES) {
-          String actual = resultSet.getString(2);
-          if (actual != null) {
-            assertEquals(count * slidingStep, Integer.parseInt(resultSet.getString(1)));
-            assertEquals(
-                windowSize - 1,
-                Integer.parseInt(resultSet.getString(2))
-                    - Integer.parseInt(resultSet.getString(1)));
-            ++count;
-          }
-        } else {
-          String actual = resultSet.getString(2);
-          if (actual != null) {
-            assertEquals(count * slidingStep, Integer.parseInt(resultSet.getString(1)));
-            assertEquals(
-                ITERATION_TIMES - (long) count * slidingStep - 1,
-                Integer.parseInt(resultSet.getString(2))
-                    - Integer.parseInt(resultSet.getString(1)));
+                ITERATION_TIMES - count * slidingStep, Integer.parseInt(resultSet.getString(2)));
             ++count;
           }
         }

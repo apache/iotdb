@@ -28,29 +28,34 @@ public class ShowContinuousQueriesResult extends ShowResult {
   private PartialPath targetPath;
   private long everyInterval;
   private long forInterval;
-  private long boundary;
 
   public ShowContinuousQueriesResult(
       String querySql,
       String continuousQueryName,
       PartialPath targetPath,
       long everyInterval,
-      long forInterval,
-      long boundary) {
+      long forInterval) {
     this.querySql = querySql;
     this.continuousQueryName = continuousQueryName;
     this.targetPath = targetPath;
     this.everyInterval = everyInterval;
     this.forInterval = forInterval;
-    this.boundary = boundary;
   }
 
   public String getQuerySql() {
     return querySql;
   }
 
+  public void setQuerySql(String querySql) {
+    this.querySql = querySql;
+  }
+
   public String getContinuousQueryName() {
     return continuousQueryName;
+  }
+
+  public void setContinuousQueryName(String continuousQueryName) {
+    this.continuousQueryName = continuousQueryName;
   }
 
   public PartialPath getTargetPath() {
@@ -65,11 +70,15 @@ public class ShowContinuousQueriesResult extends ShowResult {
     return everyInterval;
   }
 
+  public void setEveryInterval(long everyInterval) {
+    this.everyInterval = everyInterval;
+  }
+
   public long getForInterval() {
     return forInterval;
   }
 
-  public long getBoundary() {
-    return boundary;
+  public void setForInterval(long forInterval) {
+    this.forInterval = forInterval;
   }
 }

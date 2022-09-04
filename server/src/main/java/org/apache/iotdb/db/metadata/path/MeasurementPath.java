@@ -39,8 +39,8 @@ import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -48,7 +48,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -56,10 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class MeasurementPath extends PartialPath {
 
@@ -80,7 +77,7 @@ public class MeasurementPath extends PartialPath {
 
   public MeasurementPath(String measurementPath, TSDataType type) throws IllegalPathException {
     super(measurementPath);
-    this.measurementSchema = new MeasurementSchema(getMeasurement(), type);
+    this.measurementSchema = new UnaryMeasurementSchema(getMeasurement(), type);
   }
 
   public MeasurementPath(PartialPath measurementPath, IMeasurementSchema measurementSchema) {
@@ -92,6 +89,17 @@ public class MeasurementPath extends PartialPath {
       throws IllegalPathException {
     super(device, measurement);
     this.measurementSchema = measurementSchema;
+  }
+
+  public MeasurementPath concat(String[] otherNodes) {
+    int len = nodes.length;
+    String[] newNodes = Arrays.copyOf(nodes, nodes.length + otherNodes.length);
+    System.arraycopy(otherNodes, 0, newNodes, len, otherNodes.length);
+    MeasurementPath measurementPath = new MeasurementPath();
+    measurementPath.nodes = newNodes;
+    measurementPath.fullPath = this.fullPath;
+    measurementPath.fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
+    return measurementPath;
   }
 
   public IMeasurementSchema getMeasurementSchema() {
@@ -137,15 +145,12 @@ public class MeasurementPath extends PartialPath {
     isUnderAlignedEntity = underAlignedEntity;
   }
 
-  @Override
   public PartialPath copy() {
     MeasurementPath result = new MeasurementPath();
     result.nodes = nodes;
     result.fullPath = fullPath;
     result.device = device;
     result.measurementAlias = measurementAlias;
-    result.measurementSchema = measurementSchema;
-    result.isUnderAlignedEntity = isUnderAlignedEntity;
     return result;
   }
 
@@ -220,9 +225,9 @@ public class MeasurementPath extends PartialPath {
       TsFileResource originTsFileResource)
       throws IOException {
     TsFileResource tsFileResource =
-        new TsFileResource(this, readOnlyMemChunk, chunkMetadataList, originTsFileResource);
+        new TsFileResource(readOnlyMemChunk, chunkMetadataList, originTsFileResource);
     tsFileResource.setTimeSeriesMetadata(
-        this, generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
+        generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
     return tsFileResource;
   }
 
@@ -230,7 +235,7 @@ public class MeasurementPath extends PartialPath {
    * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
-  public ITimeSeriesMetadata generateTimeSeriesMetadata(
+  private TimeseriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
       throws IOException {
     TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();
@@ -269,7 +274,7 @@ public class MeasurementPath extends PartialPath {
     IWritableMemChunk memChunk = memTableMap.get(deviceID).getMemChunkMap().get(getMeasurement());
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
-    int curSize = chunkCopy.rowCount();
+    int curSize = chunkCopy.size();
     List<TimeRange> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);

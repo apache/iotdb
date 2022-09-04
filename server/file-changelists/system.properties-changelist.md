@@ -18,16 +18,6 @@
     under the License.
 
 -->
-
-# 0.12.x -> 0.13.x
-
-Last updated on 2022-2-14 by Haonan Hou
-
-## Update：
-| Latest Changes                                                                       |
-|--------------------------------------------------------------------------------------|
-| Change `iotdb_version=0.12.x` to `0.13.x`                                            |
-
 # 0.11.x -> 0.12.x
 
 Last updated on 2021-2-25 by Haonan Hou

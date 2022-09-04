@@ -37,7 +37,8 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -471,9 +472,15 @@ public abstract class Cases {
 
     // try to read data on each node. SHOW TIMESERIES root.ln.wf01.* where tag3=v1"
     for (Statement readStatement : readStatements) {
-      try (ResultSet rs =
-          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag3=v1")) {
-        Assert.assertFalse(rs.next());
+      ResultSet resultSet = null;
+      try {
+        resultSet = readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag3=v1");
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("The key tag3 is not a tag"));
+      } finally {
+        if (resultSet != null) {
+          resultSet.close();
+        }
       }
     }
   }
@@ -673,10 +680,10 @@ public abstract class Cases {
       session.insertRecords(deviceList, timeList, measurementsList, typesList, valuesList);
     }
 
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64));
 
     Map<String, Tablet> tabletMap = new HashMap<>();
     for (int i = 0; i < 5; i++) {
@@ -689,7 +696,7 @@ public abstract class Cases {
         tablet.addValue("s3", rowIndex, 3L);
       }
       session.insertTablet(tablet);
-      tablet.setDeviceId(String.format("root.sg%s.d4", i));
+      tablet.setPrefixPath(String.format("root.sg%s.d4", i));
       tabletMap.put(String.format("root.sg%s.d4", i), tablet);
     }
 
@@ -728,7 +735,7 @@ public abstract class Cases {
         tablet.addValue("s3", rowIndex, 3L);
       }
       session.insertTablet(tablet);
-      tablet.setDeviceId(String.format("root.sg%s.d4", i));
+      tablet.setPrefixPath(String.format("root.sg%s.d4", i));
       tabletMap.put(String.format("root.sg%s.d4", i), tablet);
     }
 
@@ -872,12 +879,13 @@ public abstract class Cases {
     session.insertAlignedRecordsOfOneDevice(
         "root.sg5.d1.v1", times, multiMeasurementComponentsList, typeList, valueList);
 
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.FLOAT));
 
     Tablet tablet = new Tablet("root.sg6.d1.v1", schemaList);
+    tablet.setAligned(true);
 
     for (long row = 1; row <= 3; row++) {
       int rowIndex = tablet.rowSize++;
@@ -886,25 +894,28 @@ public abstract class Cases {
       tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, 2);
       tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, 3.0f);
     }
-    session.insertAlignedTablet(tablet, true);
+    session.insertTablet(tablet, true);
     tablet.reset();
 
-    List<MeasurementSchema> schemaList1 = new ArrayList<>();
-    schemaList1.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList1.add(new MeasurementSchema("s2", TSDataType.INT32));
-    schemaList1.add(new MeasurementSchema("s3", TSDataType.FLOAT));
-    List<MeasurementSchema> schemaList2 = new ArrayList<>();
-    schemaList2.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList2.add(new MeasurementSchema("s2", TSDataType.INT32));
-    schemaList2.add(new MeasurementSchema("s3", TSDataType.FLOAT));
-    List<MeasurementSchema> schemaList3 = new ArrayList<>();
-    schemaList3.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList3.add(new MeasurementSchema("s2", TSDataType.INT32));
-    schemaList3.add(new MeasurementSchema("s3", TSDataType.FLOAT));
+    List<IMeasurementSchema> schemaList1 = new ArrayList<>();
+    schemaList1.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList1.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList1.add(new UnaryMeasurementSchema("s3", TSDataType.FLOAT));
+    List<IMeasurementSchema> schemaList2 = new ArrayList<>();
+    schemaList2.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList2.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList2.add(new UnaryMeasurementSchema("s3", TSDataType.FLOAT));
+    List<IMeasurementSchema> schemaList3 = new ArrayList<>();
+    schemaList3.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList3.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList3.add(new UnaryMeasurementSchema("s3", TSDataType.FLOAT));
 
     Tablet tablet1 = new Tablet("root.sg7.d1.v1", schemaList1, 100);
     Tablet tablet2 = new Tablet("root.sg8.d1.v1", schemaList2, 100);
     Tablet tablet3 = new Tablet("root.sg9.d1.v1", schemaList3, 100);
+    tablet1.setAligned(true);
+    tablet2.setAligned(true);
+    tablet3.setAligned(true);
 
     Map<String, Tablet> tabletMap = new HashMap<>();
     tabletMap.put("root.sg7.d1.v1", tablet1);
@@ -924,7 +935,7 @@ public abstract class Cases {
         tablet3.addValue(schemaList3.get(i).getMeasurementId(), row3, values.get(i));
       }
     }
-    session.insertAlignedTablets(tabletMap, true);
+    session.insertTablets(tabletMap, true);
 
     tabletMap.clear();
 
@@ -946,13 +957,13 @@ public abstract class Cases {
   @Test
   public void testInsertTabletWithNullValues()
       throws IoTDBConnectionException, StatementExecutionException, SQLException {
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.RLE));
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s5", TSDataType.TEXT, TSEncoding.RLE));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList);
     for (long time = 0; time < 10; time++) {

@@ -46,6 +46,7 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   private List<String> aggregations = new ArrayList<>();
   private List<String> deduplicatedAggregations = new ArrayList<>();
+  private List<Map<String, String>> parameters = new ArrayList<>();
 
   private int[] levels;
   private GroupByLevelController groupByLevelController;
@@ -67,9 +68,7 @@ public class AggregationPlan extends RawDataQueryPlan {
 
       for (Map.Entry<String, AggregateResult> groupPathResult :
           getGroupPathsResultMap().entrySet()) {
-        String resultColumnName = groupPathResult.getKey();
-        String aliasName = groupByLevelController.getAlias(resultColumnName);
-        respColumns.add(aliasName != null ? aliasName : resultColumnName);
+        respColumns.add(groupPathResult.getKey());
         columnsTypes.add(groupPathResult.getValue().getResultDataType().toString());
       }
       resp.setColumns(respColumns);
@@ -99,10 +98,6 @@ public class AggregationPlan extends RawDataQueryPlan {
     return seriesTypes;
   }
 
-  public GroupByLevelController getGroupByLevelController() {
-    return groupByLevelController;
-  }
-
   @Override
   public List<String> getAggregations() {
     return aggregations;
@@ -110,6 +105,14 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   public void setAggregations(List<String> aggregations) {
     this.aggregations = aggregations;
+  }
+
+  public List<Map<String, String>> getParameters() {
+    return parameters;
+  }
+
+  public void setParameters(List<Map<String, String>> parameters) {
+    this.parameters = parameters;
   }
 
   public List<String> getDeduplicatedAggregations() {
@@ -169,9 +172,7 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   @Override
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
-    return isGroupByLevel()
-        ? resultColumns.get(pathIndex).getExpressionString()
-        : resultColumns.get(pathIndex).getResultColumnName();
+    return resultColumns.get(pathIndex).getResultColumnName();
   }
 
   @Override

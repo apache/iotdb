@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.reader.series;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -35,7 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Assert;
 
@@ -60,7 +61,7 @@ public class SeriesReaderTestUtil {
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
 
   public static void setUp(
-      List<MeasurementSchema> measurementSchemas,
+      List<UnaryMeasurementSchema> measurementSchemas,
       List<String> deviceIds,
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources)
@@ -79,12 +80,13 @@ public class SeriesReaderTestUtil {
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
+    MergeManager.getINSTANCE().stop();
   }
 
   private static void prepareFiles(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      List<MeasurementSchema> measurementSchemas,
+      List<UnaryMeasurementSchema> measurementSchemas,
       List<String> deviceIds)
       throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
@@ -132,7 +134,7 @@ public class SeriesReaderTestUtil {
       long timeOffset,
       long ptNum,
       long valueOffset,
-      List<MeasurementSchema> measurementSchemas,
+      List<UnaryMeasurementSchema> measurementSchemas,
       List<String> deviceIds)
       throws IOException, WriteProcessException {
     File file = tsFileResource.getTsFile();
@@ -140,8 +142,8 @@ public class SeriesReaderTestUtil {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
     TsFileWriter fileWriter = new TsFileWriter(file);
-    Map<String, MeasurementSchema> template = new HashMap<>();
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
+    Map<String, UnaryMeasurementSchema> template = new HashMap<>();
+    for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
       template.put(measurementSchema.getMeasurementId(), measurementSchema);
     }
     fileWriter.registerSchemaTemplate("template0", template, false);
@@ -151,7 +153,7 @@ public class SeriesReaderTestUtil {
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (String deviceId : deviceIds) {
         TSRecord record = new TSRecord(i, deviceId);
-        for (MeasurementSchema measurementSchema : measurementSchemas) {
+        for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
           record.addTuple(
               DataPoint.getDataPoint(
                   measurementSchema.getType(),
@@ -170,10 +172,11 @@ public class SeriesReaderTestUtil {
   }
 
   private static void prepareSeries(
-      List<MeasurementSchema> measurementSchemas, List<String> deviceIds) throws MetadataException {
+      List<UnaryMeasurementSchema> measurementSchemas, List<String> deviceIds)
+      throws MetadataException {
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas.add(
-          new MeasurementSchema(
+          new UnaryMeasurementSchema(
               "sensor" + i, TSDataType.INT32, encoding, CompressionType.UNCOMPRESSED));
     }
     for (int i = 0; i < deviceNum; i++) {
@@ -181,7 +184,7 @@ public class SeriesReaderTestUtil {
     }
     IoTDB.metaManager.setStorageGroup(new PartialPath(SERIES_READER_TEST_SG));
     for (String device : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
         IoTDB.metaManager.createTimeseries(
             new PartialPath(device + PATH_SEPARATOR + measurementSchema.getMeasurementId()),
             measurementSchema.getType(),

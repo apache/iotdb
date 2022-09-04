@@ -67,9 +67,4 @@ public abstract class Snapshot {
    * @param minIndex
    */
   public void truncateBefore(long minIndex) {}
-
-  @Override
-  public String toString() {
-    return String.format("%d-%d", lastLogIndex, lastLogTerm);
-  }
 }

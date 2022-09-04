@@ -34,7 +34,7 @@ public class SHA256DeviceID implements IDeviceID {
   long l3;
   long l4;
 
-  private static final String SEPARATOR = "#";
+  private static final String SEPERATOR = "#";
 
   /** using lots of message digest for improving parallelism */
   private static MessageDigest[] md;
@@ -71,7 +71,7 @@ public class SHA256DeviceID implements IDeviceID {
    * @param deviceID a sha 256 string
    */
   private void fromSHA256String(String deviceID) {
-    String[] part = deviceID.split(SEPARATOR);
+    String[] part = deviceID.split(SEPERATOR);
     l1 = Long.parseLong(part[0]);
     l2 = Long.parseLong(part[1]);
     l3 = Long.parseLong(part[2]);
@@ -143,6 +143,6 @@ public class SHA256DeviceID implements IDeviceID {
 
   @Override
   public String toStringID() {
-    return l1 + SEPARATOR + l2 + SEPARATOR + l3 + SEPARATOR + l4;
+    return l1 + SEPERATOR + l2 + SEPERATOR + l3 + SEPERATOR + l4;
   }
 }

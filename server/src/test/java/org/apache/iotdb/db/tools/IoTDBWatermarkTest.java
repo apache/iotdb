@@ -60,6 +60,7 @@ public class IoTDBWatermarkTest {
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.closeStatMonitor();
     IoTDBDescriptor.getInstance().getConfig().setEnableWatermark(true); // default false
     IoTDBDescriptor.getInstance().getConfig().setWatermarkSecretKey(secretKey);
     IoTDBDescriptor.getInstance().getConfig().setWatermarkBitString(watermarkBitString);

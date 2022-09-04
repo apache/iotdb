@@ -18,28 +18,22 @@
     under the License.
 
 -->
-## Spark-IoTDB
-
-### Version
+# Spark-IoTDB
+### version
 
 The versions required for Spark and Java are as follow:
 
 | Spark Version | Scala Version | Java Version | TsFile |
 | :-------------: | :-------------: | :------------: |:------------: |
-| `2.4.0-3.2.0`        | `2.12`        | `1.8`        | `0.13.0`|
+| `2.4.3`        | `2.11`        | `1.8`        | `0.13.0-SNAPSHOT`|
 
-### Notice
 
-1. `Spark IoTDB Connector` only supports Spark `2.4.5` to `3.2.0` with `Scala 2.12`.
-If you need to support other versions, you can modify the Scala version of the POM file in the module `spark-iotdb-connector` in the source code and then recompile it.
-2. There is a conflict of thrift version between IoTDB and Spark.
-   Therefore, if you want to debug in spark-shell, you need to execute `rm -f $SPARK_HOME/jars/libthrift*` and `cp $IOTDB_HOME/lib/libthrift* $SPARK_HOME/jars/` to resolve it.
-   Otherwise, you can only debug the code in IDE. If you want to run your task by `spark-submit`, you must package with dependency.
+> Currently we only support spark version 2.4.3 and there are some known issue on 2.4.7, do no use it
+
 
 ### Install
-```shell
 mvn clean scala:compile compile install
-```
+
 
 #### Maven Dependency
 
@@ -47,14 +41,16 @@ mvn clean scala:compile compile install
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>spark-iotdb-connector</artifactId>
-      <version>0.13.0</version>
+      <version>0.13.0-SNAPSHOT</version>
     </dependency>
 ```
 
-#### spark-shell user guide
+## Read Data from IoTDB
+
+### spark-shell user guide
 
 ```
-spark-shell --jars spark-iotdb-connector-0.13.0.jar,iotdb-jdbc-0.13.0-jar-with-dependencies.jar,iotdb-session-0.13.0-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
@@ -68,7 +64,7 @@ df.show()
 To partition rdd:
 
 ```
-spark-shell --jars spark-iotdb-connector-0.13.0.jar,iotdb-jdbc-0.13.0-jar-with-dependencies.jar,iotdb-session-0.13.0-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
@@ -81,7 +77,7 @@ df.printSchema()
 df.show()
 ```
 
-#### Schema Inference
+### Schema Inference
 
 Take the following TsFile structure as an example: There are three Measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is as follows:
 
@@ -119,32 +115,26 @@ You can also use narrow table form which as follows: (You can see part 4 about h
 |    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |
 |    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |
 
-#### Transform between wide and narrow table
+### Get narrow form of data
+```
+spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
 
-* from wide to narrow
-
-```scala
 import org.apache.iotdb.spark.db._
 
-val wide_df = spark.read.format("org.apache.iotdb.spark.db").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 1100 and time > 1000").load
-val narrow_df = Transformer.toNarrowForm(spark, wide_df)
+val df = spark.read.format("org.apache.iotdb.spark.db").option("url","jdbc:iotdb://127.0.0.1:6667/").option("sql","select * from root align by device").load
+
+df.printSchema()
+
+df.show()
 ```
 
-* from narrow to wide
+### Java user guide
 
-```scala
-import org.apache.iotdb.spark.db._
-
-val wide_df = Transformer.toWideForm(spark, narrow_df)
 ```
-
-#### Java user guide
-
-```java
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.apache.iotdb.spark.db.*;
+import org.apache.iotdb.spark.db.*
 
 public class Example {
 
@@ -163,15 +153,15 @@ public class Example {
 
     df.show();
     
-    Dataset<Row> narrowTable = Transformer.toNarrowForm(spark, df);
-    narrowTable.show();
+    Dataset<Row> narrowTable = Transformer.toNarrowForm(spark, df)
+    narrowTable.show()
   }
 }
 ```
 
-### Write Data to IoTDB
+## Write Data to IoTDB
 
-#### User Guide
+### User Guide
 ``` scala
 // import narrow table
 val df = spark.createDataFrame(List(
@@ -206,10 +196,8 @@ val dfWithColumn = df.withColumnRenamed("_1", "Time")
     .withColumnRenamed("_7", "root.test.d0.s5")
 dfWithColumn.write.format("org.apache.iotdb.spark.db")
     .option("url", "jdbc:iotdb://127.0.0.1:6667/")
-    .option("numPartition", "10")
     .save
 ```
 
-#### Notes
+### Notes
 1. You can directly write data to IoTDB whatever the dataframe contains a wide table or a narrow table.
-2. The parameter `numPartition` is used to set the number of partitions. The dataframe that you want to save will be repartition based on this parameter before  writing data. Each partition will open a session to write data to increase the number of concurrent requests.

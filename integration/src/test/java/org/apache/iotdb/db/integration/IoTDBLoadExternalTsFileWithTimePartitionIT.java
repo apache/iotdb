@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.junit.After;
@@ -84,6 +84,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   public void setUp() throws Exception {
     originalIsEnablePartition = config.isEnablePartition();
     originalPartitionInterval = config.getPartitionInterval();
+    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -127,7 +128,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
         for (String measurement : measurements) {
           tsFileWriter.registerTimeseries(
               new Path(STORAGE_GROUP + DOT + deviceId),
-              new MeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
+              new UnaryMeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
         }
       }
     } catch (WriteProcessException e) {

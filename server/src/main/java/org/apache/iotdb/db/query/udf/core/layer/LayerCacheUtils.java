@@ -32,7 +32,9 @@ public class LayerCacheUtils {
 
   private LayerCacheUtils() {}
 
-  /** @return number of actually collected, which may be less than or equals to pointNumber */
+  /**
+   * @return number of actually collected, which may be less than or equals to pointNumber
+   */
   public static int cachePoints(
       TSDataType dataType,
       LayerPointReader source,
@@ -84,7 +86,9 @@ public class LayerCacheUtils {
     return true;
   }
 
-  /** @return number of actually collected, which may be less than or equals to rowsNumber */
+  /**
+   * @return number of actually collected, which may be less than or equals to rowsNumber
+   */
   public static int cacheRows(
       IUDFInputDataSet source, ElasticSerializableRowRecordList target, int rowsNumber)
       throws QueryProcessException, IOException {

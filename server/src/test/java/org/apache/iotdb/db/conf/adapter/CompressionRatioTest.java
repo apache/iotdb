@@ -46,6 +46,7 @@ public class CompressionRatioTest {
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     FileUtils.forceMkdir(new File(directory));
     compressionRatio.reset();

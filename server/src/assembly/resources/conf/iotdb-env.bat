@@ -130,17 +130,6 @@ IF "%1" equ "printgc" (
 	)
 )
 
-@REM Add args for Java 11 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
-IF "%JAVA_VERSION%" == "8" (
-    set ILLEGAL_ACCESS_PARAMS=
-) ELSE (
-    set ILLEGAL_ACCESS_PARAMS=--add-opens=java.base/java.util.concurrent=ALL-UNNAMED^
-     --add-opens=java.base/java.lang=ALL-UNNAMED^
-     --add-opens=java.base/java.util=ALL-UNNAMED^
-     --add-opens=java.base/java.nio=ALL-UNNAMED^
-     --add-opens=java.base/java.io=ALL-UNNAMED^
-     --add-opens=java.base/java.net=ALL-UNNAMED
-)
 
 echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
 echo If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).

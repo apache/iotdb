@@ -36,13 +36,6 @@ public interface IDiskSchemaManager {
   public long serialize(DiskSchemaEntry schemaEntry);
 
   /**
-   * recover id table from log file
-   *
-   * @param idTable id table need to be recovered
-   */
-  public void recover(IDTable idTable);
-
-  /**
    * get all disk schema entries from file
    *
    * @return collection of all disk schema entires

@@ -28,7 +28,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowContinuousQueriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTemplatesPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class ShowOperator extends Operator {
@@ -54,8 +53,6 @@ public class ShowOperator extends Operator {
         return new ShowQueryProcesslistPlan(ShowContentType.QUERY_PROCESSLIST);
       case SQLConstant.TOK_SHOW_CONTINUOUS_QUERIES:
         return new ShowContinuousQueriesPlan();
-      case SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW:
-        return new ShowTemplatesPlan();
       default:
         throw new LogicalOperatorException(
             String.format("not supported operator type %s in show operation.", operatorType));

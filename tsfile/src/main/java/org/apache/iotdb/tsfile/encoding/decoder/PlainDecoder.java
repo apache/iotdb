@@ -78,7 +78,7 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public BigDecimal readBigDecimal(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readBigDecimal is not supported by PlainDecoder");
+    throw new TsFileDecodingException("Method readBigDecimal is not supproted by PlainDecoder");
   }
 
   @Override

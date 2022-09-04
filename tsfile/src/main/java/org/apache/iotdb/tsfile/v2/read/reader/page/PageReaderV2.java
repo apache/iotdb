@@ -53,7 +53,9 @@ public class PageReaderV2 extends PageReader {
     super(pageHeader, pageData, dataType, valueDecoder, timeDecoder, filter);
   }
 
-  /** @return the returned BatchData may be empty, but never be null */
+  /**
+   * @return the returned BatchData may be empty, but never be null
+   */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {

@@ -71,8 +71,7 @@ public class GroupByLevelDataSet extends QueryDataSet {
       if (paths.isEmpty()) {
         for (Map.Entry<String, AggregateResult> entry : groupPathResultMap.entrySet()) {
           try {
-            String alias = plan.getGroupByLevelController().getAlias(entry.getKey());
-            this.paths.add(new PartialPath(alias != null ? alias : entry.getKey()));
+            this.paths.add(new PartialPath(entry.getKey()));
           } catch (IllegalPathException e) {
             logger.error("Query result IllegalPathException occurred: {}.", entry.getKey());
           }

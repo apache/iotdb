@@ -1096,7 +1096,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_value(temperature) from "
                   + "root.ln.wf01.wt01 "
-                  + "WHERE temperature <= 25 "
+                  + "WHERE temperature <= 25"
                   + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast)");
       assertTrue(hasResultSet);
       int cnt;
@@ -1117,7 +1117,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_value(temperature) from "
                   + "root.ln.wf01.wt01 "
-                  + "WHERE temperature <= 25 "
+                  + "WHERE temperature <= 25"
                   + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -2340,7 +2340,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_value(temperature) from "
                   + "root.ln.wf01.wt01 "
-                  + "WHERE temperature > 25 "
+                  + "WHERE temperature > 25"
                   + "GROUP BY ([17, 55), 5ms) FILL(linear)");
       assertTrue(hasResultSet);
       int cnt;
@@ -2361,7 +2361,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_value(temperature) from "
                   + "root.ln.wf01.wt01 "
-                  + "WHERE temperature > 25 "
+                  + "WHERE temperature > 25"
                   + "GROUP BY ([17, 55), 5ms) FILL(linear) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {

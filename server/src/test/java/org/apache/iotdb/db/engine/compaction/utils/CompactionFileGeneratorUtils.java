@@ -32,7 +32,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.File;
@@ -59,21 +59,7 @@ public class CompactionFileGeneratorUtils {
                     + (tsFileName.getInnerCompactionCnt() + 1)
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + tsFileName.getCrossCompactionCnt()
-                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
-  }
-
-  public static List<TsFileResource> getInnerCompactionTargetTsFileResources(
-      List<TsFileResource> fileResources, boolean seq) throws IOException {
-    List<TsFileResource> resources = new ArrayList<>();
-    resources.add(
-        new TsFileResource(
-            TsFileNameGenerator.getInnerCompactionTargetFileResource(fileResources, seq)));
-    return resources;
-  }
-
-  public static List<TsFileResource> getCrossCompactionTargetTsFileResources(
-      List<TsFileResource> seqFileResources) throws IOException {
-    return TsFileNameGenerator.getCrossCompactionTargetFileResources(seqFileResources);
+                    + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
   }
 
   public static TsFileResource generateTsFileResource(boolean sequence, int index) {
@@ -104,55 +90,6 @@ public class CompactionFileGeneratorUtils {
     }
   }
 
-  public static TsFileResource generateTsFileResource(
-      boolean sequence, int index, String storageGroupName) {
-    if (sequence) {
-      return new TsFileResource(
-          new File(
-              TestConstant.BASE_OUTPUT_PATH
-                  .concat(File.separator)
-                  .concat("sequence")
-                  .concat(File.separator)
-                  .concat(storageGroupName)
-                  .concat(File.separator)
-                  .concat("0")
-                  .concat(File.separator)
-                  .concat("0")
-                  .concat(File.separator)
-                  .concat(
-                      index
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + index
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + ".tsfile")));
-    } else {
-      return new TsFileResource(
-          new File(
-              TestConstant.BASE_OUTPUT_PATH
-                  .concat(File.separator)
-                  .concat("unsequence")
-                  .concat(File.separator)
-                  .concat(storageGroupName)
-                  .concat(File.separator)
-                  .concat("0")
-                  .concat(File.separator)
-                  .concat("0")
-                  .concat(File.separator)
-                  .concat(
-                      (index + 10000)
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + (index + 10000)
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + ".tsfile")));
-    }
-  }
-
   /**
    * Generate a new file. For each time series, insert a point (+1 for each point) into the file
    * from the start time util each sequence of the last file meets the target Chunk and Page size,
@@ -174,9 +111,6 @@ public class CompactionFileGeneratorUtils {
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(Integer.MAX_VALUE);
 
-    if (!newTsFileResource.getTsFile().getParentFile().exists()) {
-      newTsFileResource.getTsFile().getParentFile().mkdirs();
-    }
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
     Map<String, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
@@ -192,7 +126,7 @@ public class CompactionFileGeneratorUtils {
         long currTime = startTime;
         for (List<Long> chunk : chunkPagePointsNum) {
           ChunkWriterImpl chunkWriter =
-              new ChunkWriterImpl(new MeasurementSchema(sensor, TSDataType.INT64), true);
+              new ChunkWriterImpl(new UnaryMeasurementSchema(sensor, TSDataType.INT64), true);
           for (Long page : chunk) {
             for (long i = 0; i < page; i++) {
               chunkWriter.write(currTime, currTime);
@@ -249,7 +183,7 @@ public class CompactionFileGeneratorUtils {
       for (String sensor : deviceMeasurementEntry.getValue()) {
         List<long[][]> chunks = chunkPagePointsNum.get(currChunksIndex);
         ChunkWriterImpl chunkWriter =
-            new ChunkWriterImpl(new MeasurementSchema(sensor, TSDataType.INT64), true);
+            new ChunkWriterImpl(new UnaryMeasurementSchema(sensor, TSDataType.INT64), true);
         for (long[][] pages : chunks) {
           for (long[] starEndTime : pages) {
             for (long i = starEndTime[0]; i < starEndTime[1]; i++) {

@@ -29,7 +29,6 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
@@ -294,11 +293,10 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public Set<String> getAllDevices(RaftNode header, List<String> path, boolean isPrefixMatch)
-      throws TException {
+  public Set<String> getAllDevices(RaftNode header, List<String> path) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getAllDevices(path, isPrefixMatch);
+      return ((CMManager) IoTDB.metaManager).getAllDevices(path);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
     }
@@ -344,9 +342,10 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public ByteBuffer getAllMeasurementSchema(MeasurementSchemaRequest request) throws TException {
+  public ByteBuffer getAllMeasurementSchema(RaftNode header, ByteBuffer planBinary)
+      throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(request);
+      return dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(planBinary);
     } catch (CheckConsistencyException | IOException | MetadataException e) {
       throw new TException(e);
     }
@@ -416,7 +415,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         | QueryProcessException
         | IOException
         | StorageEngineException
-        | MetadataException e) {
+        | IllegalPathException e) {
       throw new TException(e);
     }
   }

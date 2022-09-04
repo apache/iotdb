@@ -44,9 +44,6 @@ public class Config {
   public static final int DEFAULT_FETCH_SIZE = 5000;
   static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
-  public static final String VERSION = "version";
-  static final Constant.Version DEFAULT_VERSION = Constant.Version.V_0_13;
-
   public static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
 
   public static boolean rpcThriftCompressionEnable = false;

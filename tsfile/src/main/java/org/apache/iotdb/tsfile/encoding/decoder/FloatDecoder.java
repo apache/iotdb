@@ -41,7 +41,7 @@ public class FloatDecoder extends Decoder {
   private static final Logger logger = LoggerFactory.getLogger(FloatDecoder.class);
   private Decoder decoder;
 
-  /** maxPointValue = 10^(maxPointNumber). maxPointNumber can be read from the stream. */
+  /** maxPointValue = 10^(maxPointNumer). maxPointNumber can be read from the stream. */
   private double maxPointValue;
 
   /** flag that indicates whether we have read maxPointNumber and calculated maxPointValue. */
@@ -115,27 +115,27 @@ public class FloatDecoder extends Decoder {
 
   @Override
   public Binary readBinary(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readBinary is not supported by FloatDecoder");
+    throw new TsFileDecodingException("Method readBinary is not supproted by FloatDecoder");
   }
 
   @Override
   public boolean readBoolean(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readBoolean is not supported by FloatDecoder");
+    throw new TsFileDecodingException("Method readBoolean is not supproted by FloatDecoder");
   }
 
   @Override
   public short readShort(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readShort is not supported by FloatDecoder");
+    throw new TsFileDecodingException("Method readShort is not supproted by FloatDecoder");
   }
 
   @Override
   public int readInt(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readInt is not supported by FloatDecoder");
+    throw new TsFileDecodingException("Method readInt is not supproted by FloatDecoder");
   }
 
   @Override
   public long readLong(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readLong is not supported by FloatDecoder");
+    throw new TsFileDecodingException("Method readLong is not supproted by FloatDecoder");
   }
 
   @Override

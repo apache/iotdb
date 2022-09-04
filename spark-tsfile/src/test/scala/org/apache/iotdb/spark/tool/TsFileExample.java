@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 /** Write an example TsFile as shown in README. */
 public class TsFileExample {
@@ -45,16 +45,16 @@ public class TsFileExample {
     // add measurements into file schema
     tsFileWriter.registerTimeseries(
         new Path("root.ln.wf01.wt01"),
-        new MeasurementSchema("status", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+        new UnaryMeasurementSchema("status", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     tsFileWriter.registerTimeseries(
         new Path("root.ln.wf01.wt01"),
-        new MeasurementSchema("temperature", TSDataType.FLOAT, TSEncoding.RLE));
+        new UnaryMeasurementSchema("temperature", TSDataType.FLOAT, TSEncoding.RLE));
     tsFileWriter.registerTimeseries(
         new Path("root.ln.wf02.wt02"),
-        new MeasurementSchema("temperature", TSDataType.FLOAT, TSEncoding.RLE));
+        new UnaryMeasurementSchema("temperature", TSDataType.FLOAT, TSEncoding.RLE));
     tsFileWriter.registerTimeseries(
         new Path("root.ln.wf02.wt02"),
-        new MeasurementSchema("hardware", TSDataType.TEXT, TSEncoding.PLAIN));
+        new UnaryMeasurementSchema("hardware", TSDataType.TEXT, TSEncoding.PLAIN));
 
     // construct TSRecord
     TSRecord tsRecord = new TSRecord(1, "root.ln.wf01.wt01");

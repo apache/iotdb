@@ -20,10 +20,7 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -42,18 +39,8 @@ public class UnsetTemplatePlan extends PhysicalPlan {
     super(Operator.OperatorType.UNSET_TEMPLATE);
   }
 
-  public UnsetTemplatePlan(String prefixPath, String templateName) throws IllegalPathException {
+  public UnsetTemplatePlan(String prefixPath, String templateName) {
     super(Operator.OperatorType.UNSET_TEMPLATE);
-
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(prefixPath);
-    for (String s : pathNodes) {
-      if (s.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
-          || s.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-        throw new IllegalPathException(
-            prefixPath, "template cannot be unset on a path with wildcard.");
-      }
-    }
-
     this.prefixPath = prefixPath;
     this.templateName = templateName;
   }

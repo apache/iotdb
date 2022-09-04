@@ -25,9 +25,9 @@ SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../target/client/include)
 
-FIND_PACKAGE(Boost REQUIRED)
+find_package(Boost REQUIRED)
 IF (DEFINED BOOST_INCLUDEDIR)
-    INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
+    include_directories(SYSTEM "${BOOST_INCLUDEDIR}")
 ENDIF()
 
 IF(MSVC)
@@ -36,12 +36,8 @@ ENDIF()
 LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../target/client/lib)
 
 ADD_EXECUTABLE(SessionExample SessionExample.cpp)
-ADD_EXECUTABLE(AlignedTimeseriesSessionExample AlignedTimeseriesSessionExample.cpp)
-
 IF(MSVC)
     TARGET_LINK_LIBRARIES(SessionExample iotdb_session thriftmd)
-    TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample iotdb_session thriftmd)
 ELSE()
     TARGET_LINK_LIBRARIES(SessionExample iotdb_session pthread)
-    TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample iotdb_session pthread)
 ENDIF()

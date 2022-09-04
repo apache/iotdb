@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
-        <version>0.13.0</version>
+        <version>0.13.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp-example</artifactId>
@@ -106,10 +106,6 @@
                                         <fileSet>
                                             <sourceFile>${project.basedir}/src/SessionExample.cpp</sourceFile>
                                             <destinationFile>${project.build.directory}/SessionExample.cpp</destinationFile>
-                                        </fileSet>
-                                        <fileSet>
-                                            <sourceFile>${project.basedir}/src/AlignedTimeseriesSessionExample.cpp</sourceFile>
-                                            <destinationFile>${project.build.directory}/AlignedTimeseriesSessionExample.cpp</destinationFile>
                                         </fileSet>
                                         <fileSet>
                                             <sourceFile>${project.basedir}/src/CMakeLists.txt</sourceFile>

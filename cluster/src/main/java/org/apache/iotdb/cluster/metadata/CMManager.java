@@ -29,10 +29,8 @@ import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
-import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.handlers.caller.ShowTimeSeriesHandler;
@@ -41,7 +39,6 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -178,19 +175,18 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
+  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
     cacheLock.writeLock().lock();
-    mRemoteMetaCache.removeItem(pathPattern, isPrefixMatch);
+    mRemoteMetaCache.removeItem(pathPattern);
     cacheLock.writeLock().unlock();
-    return super.deleteTimeseries(pathPattern, isPrefixMatch);
+    return super.deleteTimeseries(pathPattern);
   }
 
   @Override
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     cacheLock.writeLock().lock();
     for (PartialPath storageGroup : storageGroups) {
-      mRemoteMetaCache.removeItem(storageGroup, true);
+      mRemoteMetaCache.removeItem(storageGroup);
     }
     cacheLock.writeLock().unlock();
     super.deleteStorageGroups(storageGroups);
@@ -290,9 +286,8 @@ public class CMManager extends MManager {
   }
 
   /**
-   * the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier,
-   * VirtualStorageGroupProcessor)} will call this to get schema after restart we should retry to
-   * get schema util we get the schema.
+   * the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier)} will call
+   * this to get schema after restart we should retry to get schema util we get the schema.
    *
    * @param deviceId the device id.
    * @param measurements the measurements.
@@ -327,7 +322,9 @@ public class CMManager extends MManager {
     }
   }
 
-  /** @return -1 if all schemas are found, or the first index of the non-exist schema */
+  /**
+   * @return -1 if all schemas are found, or the first index of the non-exist schema
+   */
   private int getMNodesLocally(
       PartialPath deviceId, String[] measurements, IMeasurementMNode[] measurementMNodes) {
     int failedMeasurementIndex = -1;
@@ -466,13 +463,9 @@ public class CMManager extends MManager {
       return null;
     }
 
-    public synchronized void removeItem(PartialPath key, boolean isPrefixMatch) {
-      cache.keySet().removeIf(s -> isPrefixMatch ? key.matchPrefixPath(s) : key.matchFullPath(s));
-    }
-
     @Override
     public synchronized void removeItem(PartialPath key) {
-      removeItem(key, false);
+      cache.keySet().removeIf(s -> s.getFullPath().startsWith(key.getFullPath()));
     }
 
     @Override
@@ -925,15 +918,12 @@ public class CMManager extends MManager {
   /**
    * Get all devices after removing wildcards in the path
    *
-   * @param originPath a path potentially with wildcard.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return all paths after removing wildcards in the path.
+   * @param originPath a path potentially with wildcard
+   * @return all paths after removing wildcards in the path
    */
-  @Override
-  public Set<PartialPath> getMatchedDevices(PartialPath originPath, boolean isPrefixMatch)
-      throws MetadataException {
+  public Set<PartialPath> getMatchedDevices(PartialPath originPath) throws MetadataException {
     Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(originPath);
-    Set<PartialPath> ret = getMatchedDevices(sgPathMap, isPrefixMatch);
+    Set<PartialPath> ret = getMatchedDevices(sgPathMap);
     logger.debug("The devices of path {} are {}", originPath, ret);
     return ret;
   }
@@ -1002,7 +992,7 @@ public class CMManager extends MManager {
     if (!withAlias) {
       return getMeasurementPaths(partialPath);
     } else {
-      return super.getMeasurementPathsWithAlias(partialPath, -1, -1, false).left;
+      return super.getMeasurementPathsWithAlias(partialPath, -1, -1).left;
     }
   }
 
@@ -1080,9 +1070,6 @@ public class CMManager extends MManager {
         if (withAlias && matchedPath != null) {
           matchedPath.setMeasurementAlias(result.aliasList.get(i));
         }
-        if (matchedPath != null) {
-          matchedPath.setUnderAlignedEntity(result.getUnderAlignedEntity().get(i));
-        }
       }
       return measurementPaths;
     } else {
@@ -1096,11 +1083,10 @@ public class CMManager extends MManager {
    *
    * @param sgPathMap the key is the storage group name and the value is the path pattern to be
    *     queried with storage group added
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return a collection of all queried devices
    */
-  private Set<PartialPath> getMatchedDevices(
-      Map<String, List<PartialPath>> sgPathMap, boolean isPrefixMatch) throws MetadataException {
+  private Set<PartialPath> getMatchedDevices(Map<String, List<PartialPath>> sgPathMap)
+      throws MetadataException {
     Set<PartialPath> result = new HashSet<>();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
@@ -1122,7 +1108,7 @@ public class CMManager extends MManager {
         }
         Set<PartialPath> allDevices = new HashSet<>();
         for (PartialPath path : paths) {
-          allDevices.addAll(super.getMatchedDevices(path, isPrefixMatch));
+          allDevices.addAll(super.getMatchedDevices(path));
         }
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
@@ -1145,21 +1131,19 @@ public class CMManager extends MManager {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
       List<String> pathsToQuery = partitionGroupPathEntry.getValue();
 
-      result.addAll(getMatchedDevices(partitionGroup, pathsToQuery, isPrefixMatch));
+      result.addAll(getMatchedDevices(partitionGroup, pathsToQuery));
     }
 
     return result;
   }
 
   private Set<PartialPath> getMatchedDevices(
-      PartitionGroup partitionGroup, List<String> pathsToQuery, boolean isPrefixMatch)
-      throws MetadataException {
+      PartitionGroup partitionGroup, List<String> pathsToQuery) throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        Set<String> paths =
-            getMatchedDevices(node, partitionGroup.getHeader(), pathsToQuery, isPrefixMatch);
+        Set<String> paths = getMatchedDevices(node, partitionGroup.getHeader(), pathsToQuery);
         logger.debug(
             "{}: get matched paths of {} from {}, result {} for {}",
             metaGroupMember.getName(),
@@ -1186,15 +1170,14 @@ public class CMManager extends MManager {
     return Collections.emptySet();
   }
 
-  private Set<String> getMatchedDevices(
-      Node node, RaftNode header, List<String> pathsToQuery, boolean isPrefixMatch)
+  private Set<String> getMatchedDevices(Node node, RaftNode header, List<String> pathsToQuery)
       throws IOException, TException, InterruptedException {
     Set<String> paths;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           ClusterIoTDB.getInstance()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-      paths = SyncClientAdaptor.getAllDevices(client, header, pathsToQuery, isPrefixMatch);
+      paths = SyncClientAdaptor.getAllDevices(client, header, pathsToQuery);
     } else {
       SyncDataClient syncDataClient = null;
       try {
@@ -1202,7 +1185,7 @@ public class CMManager extends MManager {
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         try {
-          paths = syncDataClient.getAllDevices(header, pathsToQuery, isPrefixMatch);
+          paths = syncDataClient.getAllDevices(header, pathsToQuery);
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
           syncDataClient.close();
@@ -1226,31 +1209,8 @@ public class CMManager extends MManager {
    */
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
-      throws MetadataException {
+      PartialPath pathPattern, int limit, int offset) throws MetadataException {
     Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(pathPattern);
-
-    if (isPrefixMatch) {
-      // adapt to prefix match of IoTDB v0.12
-      Map<String, List<PartialPath>> prefixSgPathMap =
-          groupPathByStorageGroup(pathPattern.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
-      List<PartialPath> originPaths;
-      List<PartialPath> addedPaths;
-      for (String sg : prefixSgPathMap.keySet()) {
-        originPaths = sgPathMap.get(sg);
-        addedPaths = prefixSgPathMap.get(sg);
-        if (originPaths == null) {
-          sgPathMap.put(sg, addedPaths);
-        } else {
-          for (PartialPath path : addedPaths) {
-            if (!originPaths.contains(path)) {
-              originPaths.add(path);
-            }
-          }
-        }
-      }
-    }
-
     List<MeasurementPath> result = getMatchedPaths(sgPathMap, true);
 
     int skippedOffset = 0;
@@ -1333,15 +1293,12 @@ public class CMManager extends MManager {
   /**
    * Get the local devices that match any path in "paths". The result is deduplicated.
    *
-   * @param paths paths potentially contain wildcards.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
-   * @return A HashSet instance which stores devices paths matching the given path pattern.
+   * @param paths paths potentially contain wildcards
    */
-  public Set<String> getAllDevices(List<String> paths, boolean isPrefixMatch)
-      throws MetadataException {
+  public Set<String> getAllDevices(List<String> paths) throws MetadataException {
     Set<String> results = new HashSet<>();
     for (String path : paths) {
-      this.getMatchedDevices(new PartialPath(path), isPrefixMatch).stream()
+      this.getMatchedDevices(new PartialPath(path)).stream()
           .map(PartialPath::getFullPath)
           .forEach(results::add);
     }
@@ -1548,7 +1505,7 @@ public class CMManager extends MManager {
     if (group.contains(metaGroupMember.getThisNode())) {
       showLocalTimeseries(group, plan, context, handler);
     } else {
-      showRemoteTimeseries(group, plan, context, handler);
+      showRemoteTimeseries(group, plan, handler);
     }
   }
 
@@ -1595,14 +1552,11 @@ public class CMManager extends MManager {
   }
 
   private void showRemoteTimeseries(
-      PartitionGroup group,
-      ShowTimeSeriesPlan plan,
-      QueryContext context,
-      ShowTimeSeriesHandler handler) {
+      PartitionGroup group, ShowTimeSeriesPlan plan, ShowTimeSeriesHandler handler) {
     ByteBuffer resultBinary = null;
     for (Node node : group) {
       try {
-        resultBinary = showRemoteTimeseries(context, node, group, plan);
+        resultBinary = showRemoteTimeseries(node, group, plan);
         if (resultBinary != null) {
           break;
         }
@@ -1611,9 +1565,6 @@ public class CMManager extends MManager {
       } catch (InterruptedException e) {
         logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
         Thread.currentThread().interrupt();
-      } finally {
-        // record the queried node to release resources later
-        ((RemoteQueryContext) context).registerRemoteNode(node, group.getHeader());
       }
     }
 
@@ -1661,41 +1612,32 @@ public class CMManager extends MManager {
     }
   }
 
-  private ByteBuffer showRemoteTimeseries(
-      QueryContext context, Node node, PartitionGroup group, ShowTimeSeriesPlan plan)
+  private ByteBuffer showRemoteTimeseries(Node node, PartitionGroup group, ShowTimeSeriesPlan plan)
       throws IOException, TException, InterruptedException {
     ByteBuffer resultBinary;
 
-    // prepare request
-    MeasurementSchemaRequest request;
-    try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-      plan.serialize(dataOutputStream);
-      request =
-          new MeasurementSchemaRequest(
-              context.getQueryId(),
-              group.getHeader(),
-              node,
-              ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-    }
-
-    // execute remote query
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           ClusterIoTDB.getInstance()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-      resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, request);
+      resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(), plan);
     } else {
       SyncDataClient syncDataClient = null;
-      try {
+      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
         syncDataClient =
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-        resultBinary = syncDataClient.getAllMeasurementSchema(request);
-      } catch (TException e) {
-        // the connection may be broken, close it to avoid it being reused
-        syncDataClient.close();
-        throw e;
+        try {
+          plan.serialize(dataOutputStream);
+          resultBinary =
+              syncDataClient.getAllMeasurementSchema(
+                  group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.close();
+          throw e;
+        }
       } finally {
         if (syncDataClient != null) {
           syncDataClient.returnSelf();
@@ -1742,18 +1684,16 @@ public class CMManager extends MManager {
     List<String> retPaths = new ArrayList<>();
     List<Byte> dataTypes = new ArrayList<>();
     List<String> alias = withAlias ? new ArrayList<>() : null;
-    List<Boolean> underAlignedEntity = new ArrayList<>();
 
     for (String path : paths) {
       List<MeasurementPath> allTimeseriesPathWithAlias =
-          super.getMeasurementPathsWithAlias(new PartialPath(path), -1, -1, false).left;
+          super.getMeasurementPathsWithAlias(new PartialPath(path), -1, -1).left;
       for (MeasurementPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
         retPaths.add(timeseriesPathWithAlias.getFullPath());
         dataTypes.add(timeseriesPathWithAlias.getSeriesTypeInByte());
         if (withAlias) {
           alias.add(timeseriesPathWithAlias.getMeasurementAlias());
         }
-        underAlignedEntity.add(timeseriesPathWithAlias.isUnderAlignedEntity());
       }
     }
 
@@ -1761,7 +1701,6 @@ public class CMManager extends MManager {
     getAllPathsResult.setPaths(retPaths);
     getAllPathsResult.setDataTypes(dataTypes);
     getAllPathsResult.setAliasList(alias);
-    getAllPathsResult.setUnderAlignedEntity(underAlignedEntity);
     return getAllPathsResult;
   }
 

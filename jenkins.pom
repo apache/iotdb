@@ -55,7 +55,6 @@
                         <configuration>
                             <fromDir>${project.basedir}/local-snapshots-dir</fromDir>
                             <includes>**</includes>
-                            <excludes>library-udf</excludes>
                             <serverId>apache.snapshots.https</serverId>
                             <url>${distMgmtSnapshotsUrl}</url>
                         </configuration>

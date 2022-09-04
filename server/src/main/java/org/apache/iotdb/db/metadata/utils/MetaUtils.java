@@ -59,54 +59,10 @@ public class MetaUtils {
         if (startIndex == path.length()) {
           throw new IllegalPathException(path);
         }
-      } else if (path.charAt(i) == '"') {
-        if (i > 0 && path.charAt(i - 1) == '\\') {
-          continue;
-        }
-        int endIndex = path.indexOf('"', i + 1);
-        // if a double quotes with escape character
-        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
-          endIndex = path.indexOf('"', endIndex + 1);
-        }
-        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
-          String node = path.substring(startIndex, endIndex + 1);
-          if (node.isEmpty()) {
-            throw new IllegalPathException(path);
-          }
-          nodes.add(node);
-          i = endIndex + 1;
-          startIndex = endIndex + 2;
-        } else {
-          throw new IllegalPathException(path);
-        }
-      } else if (path.charAt(i) == '\'') {
-        if (i > 0 && path.charAt(i - 1) == '\\') {
-          continue;
-        }
-        int endIndex = path.indexOf('\'', i + 1);
-        // if a double quotes with escape character
-        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
-          endIndex = path.indexOf('\'', endIndex + 1);
-        }
-        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
-          String node = path.substring(startIndex, endIndex + 1);
-          if (node.isEmpty()) {
-            throw new IllegalPathException(path);
-          }
-          nodes.add(node);
-          i = endIndex + 1;
-          startIndex = endIndex + 2;
-        } else {
-          throw new IllegalPathException(path);
-        }
       }
     }
     if (startIndex <= path.length() - 1) {
-      String node = path.substring(startIndex);
-      if (node.isEmpty()) {
-        throw new IllegalPathException(path);
-      }
-      nodes.add(node);
+      nodes.add(path.substring(startIndex));
     }
     return nodes.toArray(new String[0]);
   }
@@ -226,7 +182,7 @@ public class MetaUtils {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
         AlignedPath groupPath = temp.get(seriesPath.getFullPath());
         if (groupPath == null) {
-          groupPath = (AlignedPath) seriesPath.copy();
+          groupPath = (AlignedPath) seriesPath;
           temp.put(groupPath.getFullPath(), groupPath);
           alignedPathToAggrIndexesMap
               .computeIfAbsent(groupPath, key -> new ArrayList<>())

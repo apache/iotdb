@@ -67,7 +67,7 @@ public class AuthorityChecker {
       return true;
     }
 
-    if (paths != null && !paths.isEmpty()) {
+    if (!paths.isEmpty()) {
       for (PartialPath path : paths) {
         if (!checkOnePath(username, path, permission)) {
           return false;
@@ -125,7 +125,6 @@ public class AuthorityChecker {
       case DELETE:
       case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
-      case SHOW:
       case QUERY:
       case GROUP_BY_TIME:
       case QUERY_INDEX:

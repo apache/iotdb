@@ -31,7 +31,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.util.Map;
 
@@ -54,7 +54,7 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
       String measurementId, SchemaEntry schemaEntry, TriggerExecutor executor) {
     this.schemaEntry = schemaEntry;
     schema =
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             measurementId,
             schemaEntry.getTSDataType(),
             schemaEntry.getTSEncoding(),

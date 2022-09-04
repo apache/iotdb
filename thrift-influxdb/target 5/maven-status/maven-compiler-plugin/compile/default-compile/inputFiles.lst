@@ -1,0 +1,8 @@
+/Users/dq/Documents/毕业设计/IoTDB-CODE/iotdb/thrift-influxdb/target/generated-sources/thrift/org/apache/iotdb/protocol/influxdb/rpc/thrift/TSCloseSessionReq.java
+/Users/dq/Documents/毕业设计/IoTDB-CODE/iotdb/thrift-influxdb/target/generated-sources/thrift/org/apache/iotdb/protocol/influxdb/rpc/thrift/TSCreateDatabaseReq.java
+/Users/dq/Documents/毕业设计/IoTDB-CODE/iotdb/thrift-influxdb/target/generated-sources/thrift/org/apache/iotdb/protocol/influxdb/rpc/thrift/TSWritePointsReq.java
+/Users/dq/Documents/毕业设计/IoTDB-CODE/iotdb/thrift-influxdb/target/generated-sources/thrift/org/apache/iotdb/protocol/influxdb/rpc/thrift/TSStatus.java
+/Users/dq/Documents/毕业设计/IoTDB-CODE/iotdb/thrift-influxdb/target/generated-sources/thrift/org/apache/iotdb/protocol/influxdb/rpc/thrift/EndPoint.java
+/Users/dq/Documents/毕业设计/IoTDB-CODE/iotdb/thrift-influxdb/target/generated-sources/thrift/org/apache/iotdb/protocol/influxdb/rpc/thrift/InfluxDBService.java
+/Users/dq/Documents/毕业设计/IoTDB-CODE/iotdb/thrift-influxdb/target/generated-sources/thrift/org/apache/iotdb/protocol/influxdb/rpc/thrift/TSOpenSessionReq.java
+/Users/dq/Documents/毕业设计/IoTDB-CODE/iotdb/thrift-influxdb/target/generated-sources/thrift/org/apache/iotdb/protocol/influxdb/rpc/thrift/TSOpenSessionResp.java

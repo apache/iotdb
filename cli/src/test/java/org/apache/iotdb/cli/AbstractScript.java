@@ -20,22 +20,16 @@ package org.apache.iotdb.cli;
 
 import org.apache.thrift.annotation.Nullable;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public abstract class AbstractScript {
 
-  protected void testOutput(ProcessBuilder builder, @Nullable String[] output, int statusCode)
-      throws IOException {
+  protected void testOutput(ProcessBuilder builder, @Nullable String[] output) throws IOException {
     builder.redirectErrorStream(true);
     Process p = builder.start();
     BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -67,15 +61,6 @@ public abstract class AbstractScript {
         assertEquals(output[output.length - 1 - i], outputList.get(outputList.size() - 1 - i));
       }
     }
-    while (p.isAlive()) {
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-        fail();
-      }
-    }
-    assertEquals(statusCode, p.exitValue());
   }
 
   protected String getCliPath() {

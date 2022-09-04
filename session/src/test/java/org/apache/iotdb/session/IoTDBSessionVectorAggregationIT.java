@@ -27,7 +27,8 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -215,11 +216,12 @@ public class IoTDBSessionVectorAggregationIT {
       throws IoTDBConnectionException, StatementExecutionException {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
+    tablet.setAligned(true);
 
     for (long row = 1; row <= 100; row++) {
       int rowIndex = tablet.rowSize++;
@@ -228,7 +230,7 @@ public class IoTDBSessionVectorAggregationIT {
       tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (int) (row + 2));
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertAlignedTablet(tablet, true);
+        session.insertTablet(tablet, true);
         tablet.reset();
       }
     }

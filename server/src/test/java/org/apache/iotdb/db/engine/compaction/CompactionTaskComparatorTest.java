@@ -18,16 +18,12 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import com.google.common.collect.MinMaxPriorityQueue;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -43,22 +39,17 @@ import static org.junit.Assert.assertTrue;
 public class CompactionTaskComparatorTest {
   private final Logger LOGGER = LoggerFactory.getLogger(CompactionTaskComparatorTest.class);
   private final AtomicInteger taskNum = new AtomicInteger(0);
-  private FixedPriorityBlockingQueue<AbstractCompactionTask> compactionTaskQueue =
-      new FixedPriorityBlockingQueue<>(1024, new CompactionTaskComparator());
+  private MinMaxPriorityQueue<AbstractCompactionTask> compactionTaskQueue =
+      MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator()).create();
 
   @Before
   public void setUp() {
     compactionTaskQueue.clear();
   }
 
-  @After
-  public void tearDown() {
-    new CompactionConfigRestorer().restoreCompactionConfig();
-  }
-
   /** Test comparation of tasks with different file num */
   @Test
-  public void testFileNumCompare() throws InterruptedException {
+  public void testFileNumCompare() {
     AbstractCompactionTask[] compactionTasks = new AbstractCompactionTask[100];
     for (int i = 0; i < 100; ++i) {
       List<TsFileResource> resources = new ArrayList<>();
@@ -67,18 +58,18 @@ public class CompactionTaskComparatorTest {
             new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), j));
       }
       compactionTasks[i] = new FakedInnerSpaceCompactionTask("fakeSg", 0, taskNum, true, resources);
-      compactionTaskQueue.put(compactionTasks[i]);
+      compactionTaskQueue.add(compactionTasks[i]);
     }
 
     for (int i = 0; i < 100; ++i) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.take();
-      assertTrue(currentTask == compactionTasks[99 - i]);
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
+      assertTrue(currentTask == compactionTasks[i]);
     }
   }
 
   /** Test comparation of task with same file num and different file size */
   @Test
-  public void testFileSizeCompare() throws InterruptedException {
+  public void testFileSizeCompare() {
     AbstractCompactionTask[] compactionTasks = new AbstractCompactionTask[100];
     for (int i = 0; i < 100; ++i) {
       List<TsFileResource> resources = new ArrayList<>();
@@ -88,18 +79,18 @@ public class CompactionTaskComparatorTest {
                 new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), j - i + 101));
       }
       compactionTasks[i] = new FakedInnerSpaceCompactionTask("fakeSg", 0, taskNum, true, resources);
-      compactionTaskQueue.put(compactionTasks[i]);
+      compactionTaskQueue.add(compactionTasks[i]);
     }
 
     for (int i = 0; i < 100; ++i) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.take();
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
       assertTrue(currentTask == compactionTasks[99 - i]);
     }
   }
 
   /** Test comparation of task with same file num and file size, different compaction count */
   @Test
-  public void testFileCompactCountCompare() throws InterruptedException {
+  public void testFileCompactCountCompare() {
     AbstractCompactionTask[] compactionTasks = new AbstractCompactionTask[100];
     for (int i = 0; i < 100; ++i) {
       List<TsFileResource> resources = new ArrayList<>();
@@ -109,11 +100,11 @@ public class CompactionTaskComparatorTest {
                 new File(String.format("%d-%d-%d-0.tsfile", i + j, i + j, j - i + 101)), 1));
       }
       compactionTasks[i] = new FakedInnerSpaceCompactionTask("fakeSg", 0, taskNum, true, resources);
-      compactionTaskQueue.put(compactionTasks[i]);
+      compactionTaskQueue.add(compactionTasks[i]);
     }
 
     for (int i = 0; i < 100; ++i) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.take();
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
       assertTrue(currentTask == compactionTasks[99 - i]);
     }
   }
@@ -142,7 +133,7 @@ public class CompactionTaskComparatorTest {
 
   /** Test comparation with same file num, file size, compaction count and different file version */
   @Test
-  public void testFileVersionCompare() throws InterruptedException {
+  public void testFileVersionCompare() {
     AbstractCompactionTask[] compactionTasks = new AbstractCompactionTask[100];
     for (int i = 0; i < 100; ++i) {
       List<TsFileResource> resources = new ArrayList<>();
@@ -152,19 +143,18 @@ public class CompactionTaskComparatorTest {
                 new File(String.format("%d-%d-0-0.tsfile", i + j, i + j, j - i + 101)), 1));
       }
       compactionTasks[i] = new FakedInnerSpaceCompactionTask("fakeSg", 0, taskNum, true, resources);
-      compactionTaskQueue.put(compactionTasks[i]);
+      compactionTaskQueue.add(compactionTasks[i]);
     }
 
     for (int i = 0; i < 100; ++i) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.take();
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
       assertTrue(currentTask == compactionTasks[99 - i]);
     }
   }
 
   /** Test the comparation of different type of compaction task */
   @Test
-  public void testComparationOfDifferentTaskType() throws InterruptedException {
-    IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
+  public void testComparationOfDifferentTaskType() {
     AbstractCompactionTask[] innerCompactionTasks = new AbstractCompactionTask[100];
     AbstractCompactionTask[] crossCompactionTasks = new AbstractCompactionTask[100];
     for (int i = 0; i < 100; ++i) {
@@ -194,24 +184,24 @@ public class CompactionTaskComparatorTest {
     }
 
     for (int i = 0; i < 100; i++) {
-      compactionTaskQueue.put(innerCompactionTasks[i]);
-      compactionTaskQueue.put(crossCompactionTasks[i]);
+      compactionTaskQueue.add(innerCompactionTasks[i]);
+      compactionTaskQueue.add(crossCompactionTasks[i]);
     }
 
     for (int i = 0; i < 100; i++) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.take();
-      assertTrue(currentTask == innerCompactionTasks[99 - i]);
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
+      assertTrue(currentTask == innerCompactionTasks[i]);
     }
 
     for (int i = 0; i < 100; i++) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.take();
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
       assertTrue(currentTask == crossCompactionTasks[99 - i]);
     }
   }
 
   /** Test the comparation of cross space compaction task */
   @Test
-  public void testComparationOfCrossSpaceTask() throws InterruptedException {
+  public void testComparationOfCrossSpaceTask() {
     // the priority of the tasks in this array are created from highest to lowest
     AbstractCompactionTask[] crossCompactionTasks = new AbstractCompactionTask[200];
     for (int i = 0; i < 100; ++i) {
@@ -228,7 +218,7 @@ public class CompactionTaskComparatorTest {
       crossCompactionTasks[i] =
           new FakeCrossSpaceCompactionTask(
               "fakeSg", 0, taskNum, sequenceResources, unsequenceResources);
-      compactionTaskQueue.put(crossCompactionTasks[i]);
+      compactionTaskQueue.add(crossCompactionTasks[i]);
     }
     for (int i = 100; i < 200; ++i) {
       List<TsFileResource> sequenceResources = new ArrayList<>();
@@ -244,11 +234,11 @@ public class CompactionTaskComparatorTest {
       crossCompactionTasks[i] =
           new FakeCrossSpaceCompactionTask(
               "fakeSg", 0, taskNum, sequenceResources, unsequenceResources);
-      compactionTaskQueue.put(crossCompactionTasks[i]);
+      compactionTaskQueue.add(crossCompactionTasks[i]);
     }
 
     for (int i = 0; i < 200; ++i) {
-      AbstractCompactionTask currentTask = compactionTaskQueue.take();
+      AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
       assertTrue(currentTask == crossCompactionTasks[i]);
     }
   }

@@ -24,9 +24,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 public class GroupByFillQueryOperator extends GroupByQueryOperator {
 
@@ -59,13 +57,5 @@ public class GroupByFillQueryOperator extends GroupByQueryOperator {
     groupByTimeFillPlan.setFillType(groupByFillClauseComponent.getFillTypes());
 
     return groupByTimeFillPlan;
-  }
-
-  @Override
-  protected IExpression optimizeExpression(IExpression expression, RawDataQueryPlan queryPlan)
-      throws QueryProcessException {
-    GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) queryPlan;
-    groupByFillPlan.initFillRange();
-    return super.optimizeExpression(expression, queryPlan);
   }
 }

@@ -48,6 +48,9 @@ public class IoTDBInsertWithQueryIT {
 
   @Before
   public void setUp() {
+
+    EnvironmentUtils.closeStatMonitor();
+
     EnvironmentUtils.envSetUp();
   }
 

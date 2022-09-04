@@ -141,7 +141,7 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
     const Authorization = 'Basic ' + Buffer.from(this.username + ':' + this.password).toString('base64');
     myHeader.append('Authorization', Authorization);
     const response = getBackendSrv().datasourceRequest({
-      url: this.url + '/grafana/v1/login',
+      url: this.url + '/ping',
       method: 'GET',
       headers: myHeader,
     });

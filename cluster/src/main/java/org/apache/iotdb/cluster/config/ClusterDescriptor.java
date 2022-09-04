@@ -215,11 +215,11 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "max_num_of_logs_in_mem", String.valueOf(config.getMaxNumOfLogsInMem()))));
 
-    config.setRaftLogMemoryProportion(
-        Double.parseDouble(
+    config.setMaxMemorySizeForRaftLog(
+        Long.parseLong(
             properties.getProperty(
-                "raft_log_memory_proportion",
-                String.valueOf(config.getRaftLogMemoryProportion()))));
+                "max_memory_size_for_raft_log",
+                String.valueOf(config.getMaxMemorySizeForRaftLog()))));
 
     config.setLogDeleteCheckIntervalSecond(
         Integer.parseInt(
@@ -269,18 +269,6 @@ public class ClusterDescriptor {
                 "max_raft_log_index_size_in_memory",
                 String.valueOf(config.getMaxRaftLogIndexSizeInMemory()))));
 
-    config.setUnCommittedRaftLogNumForRejectThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "uncommitted_raft_log_num_for_reject_threshold",
-                String.valueOf(config.getUnCommittedRaftLogNumForRejectThreshold()))));
-
-    config.setUnAppliedRaftLogNumForRejectThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "unapplied_raft_log_num_for_reject_threshold",
-                String.valueOf(config.getUnAppliedRaftLogNumForRejectThreshold()))));
-
     config.setMaxRaftLogPersistDataSizePerFile(
         Integer.parseInt(
             properties.getProperty(
@@ -324,12 +312,6 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "max_client_pernode_permember_number",
                 String.valueOf(config.getMaxClientPerNodePerMember()))));
-
-    config.setMaxIdleClientPerNodePerMember(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_idle_client_pernode_permember_number",
-                String.valueOf(config.getMaxIdleClientPerNodePerMember()))));
 
     config.setWaitClientTimeoutMS(
         Long.parseLong(

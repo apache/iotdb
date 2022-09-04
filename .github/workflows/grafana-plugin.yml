@@ -4,11 +4,9 @@ on:
   push:
     branches:
       - master
-      - "new_*"
   pull_request:
     branches:
       - master
-      - "new_*"
 jobs:
   build:
     runs-on: ubuntu-latest

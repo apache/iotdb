@@ -32,8 +32,8 @@ public class MetadataIndexNodeV2 {
   private MetadataIndexNodeV2() {}
 
   public static MetadataIndexNode deserializeFrom(ByteBuffer buffer) {
+    List<MetadataIndexEntry> children = new ArrayList<>();
     int size = ReadWriteIOUtils.readInt(buffer);
-    List<MetadataIndexEntry> children = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       children.add(MetadataIndexEntryV2.deserializeFrom(buffer));
     }

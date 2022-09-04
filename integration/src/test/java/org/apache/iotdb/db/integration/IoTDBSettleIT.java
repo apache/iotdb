@@ -43,6 +43,7 @@ public class IoTDBSettleIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvironmentUtils.closeStatMonitor();
     initCreateSQLStatement();
     EnvironmentUtils.envSetUp();
     executeSql();

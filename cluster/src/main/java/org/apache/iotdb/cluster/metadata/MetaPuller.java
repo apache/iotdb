@@ -40,8 +40,8 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.thrift.TException;
@@ -247,7 +247,7 @@ public class MetaPuller {
         for (int i = 0; i < size; i++) {
           schemas.add(
               buffer.get() == 0
-                  ? MeasurementSchema.partialDeserializeFrom(buffer)
+                  ? UnaryMeasurementSchema.partialDeserializeFrom(buffer)
                   : VectorMeasurementSchema.partialDeserializeFrom(buffer));
         }
       } catch (TException e) {

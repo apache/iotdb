@@ -230,7 +230,7 @@ time                address name phone sex socre
    ```
 
 
-4. 查询student中name=A或score>97，由于tag存储在路径中，因此没有办法用一次查询同时完成tag和field的**或**语义查询，因此需要多次查询进行或运算求并集，对应到IoTDB的查询为：
+4. 查询student中name=A或score>97，由于tag存储在路径中，因此没有办法用一次查询同时完成tag和field的*或*语义查询，因此需要多次查询进行或运算求并集，对应到IoTDB的查询为：
 
    ```sql
    select * from root.monitor.student.A 

@@ -19,9 +19,9 @@
 
 -->
 
-# 0.12.x -> 0.13.x
+# 0.12.x(version-1) -> 0.13.x(version-SNAPSHOT)
 
-Last Updated on 2022.1.17 by Xin Zhao.
+Last Updated on 2021.11.16 by Minghui Liu.
 
 ## 1. Delete Old
 
@@ -30,22 +30,17 @@ Last Updated on 2022.1.17 by Xin Zhao.
 
 ## 2. Add New
 
-| Latest Changes                                                                                                                                                                                                                                                                                                                                        | Related Committers |
-|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------|
-| Add TSTracingInfo                                                                                                                                                                                                                                                                                                                                     | Minghui Liu        |
+| Latest Changes                                               | Related Committers |
+| ------------------------------------------------------------ | ------------------ |
+| Add TSTracingInfo                                            | Minghui Liu        |
 | Add structs and interfaces to append, prune, query and unset Schema Template (detail: TSAppendSchemaTemplateReq, TSPruneSchemaTemplateReq, TSQueryTemplateReq, TSQueryTemplateResp, TSUnsetSchemaTemplateReq, appendSchemaTemplate, pruneSchemaTemplate, querySchemaTemplate, unsetSchemaTemplate), and serializedTemplate in TSCreateSchemaTemplateReq | Xin Zhao           |
-| Add struct TSInsertStringRecordsOfOneDeviceReq                                                                                                                                                                                                                                                                                                        | Hang Zhang         |
-| Add method TSStatus insertStringRecordsOfOneDevice(1:TSInsertStringRecordsOfOneDeviceReq req)                                                                                                                                                                                                                                                         | Hang Zhang         |
-| Add TSDropSchemaTemplateReq, TSStatus dropSchemaTemplate                                                                                                                                                                                                                                                                                              | Xin Zhao           |
-| Add TSCreateAlignedTimeseriesReq                                                                                                                                                                                                                                                                                                                        | Haonan Hou         |
 
 ## 3. Update
 
-| Latest Changes                                                                       | Related Committers |
-|--------------------------------------------------------------------------------------|--------------------|
-| Add Optional field `isAligned` for all TSInsertReqs                                    | Haonan Hou         |
-| Change schemaNames from required to optional in TSCreateSchemaTemplateReq            | Xin Zhao           |
-| Change TSCreateAlignedTimeseriesReq, from `i32 compressor` to `List<i32> compressors` | Minghui Liu        |
+| Latest Changes                                               | Related Committers |
+| ------------------------------------------------------------ | ------------------ |
+| Change schemaNames from required to optional in TSCreateSchemaTemplateReq | Xin Zhao           |
+| Change TSCreateAlignedTimeseriesReq, from `i32 compressor` to `List<i32> compressors`  | Minghui Liu|
 
 # 0.11.x(version-2) -> 0.12.x(version-1)
 

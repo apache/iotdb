@@ -48,6 +48,7 @@ public class IoTDBDeleteTimeseriesIT {
   @Before
   public void setUp() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
+    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     memtableSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(16);

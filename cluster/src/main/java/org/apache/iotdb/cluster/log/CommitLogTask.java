@@ -41,7 +41,9 @@ public class CommitLogTask implements Runnable {
   /** listener field */
   private AsyncMethodCallback<Void> callback;
 
-  /** @param callback the event listener */
+  /**
+   * @param callback the event listener
+   */
   public void registerCallback(AsyncMethodCallback<Void> callback) {
     this.callback = callback;
   }

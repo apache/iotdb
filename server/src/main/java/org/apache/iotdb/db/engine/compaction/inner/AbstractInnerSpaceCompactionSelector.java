@@ -20,15 +20,13 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-
-import java.util.List;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 public abstract class AbstractInnerSpaceCompactionSelector extends AbstractCompactionSelector {
   protected String logicalStorageGroupName;
   protected String virtualStorageGroupName;
   protected long timePartition;
-  protected List<TsFileResource> tsFileResources;
+  protected TsFileResourceList tsFileResources;
   protected boolean sequence;
   protected InnerSpaceCompactionTaskFactory taskFactory;
   protected TsFileManager tsFileManager;
@@ -38,22 +36,18 @@ public abstract class AbstractInnerSpaceCompactionSelector extends AbstractCompa
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
+      TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.virtualStorageGroupName = virtualStorageGroupName;
     this.timePartition = timePartition;
+    this.tsFileResources = tsFileResources;
     this.tsFileManager = tsFileManager;
     this.sequence = sequence;
     this.taskFactory = taskFactory;
-    if (sequence) {
-      tsFileResources = tsFileManager.getSequenceListByTimePartition(timePartition).getArrayList();
-    } else {
-      tsFileResources =
-          tsFileManager.getUnsequenceListByTimePartition(timePartition).getArrayList();
-    }
   }
 
   @Override
-  public abstract void selectAndSubmit();
+  public abstract boolean selectAndSubmit();
 }

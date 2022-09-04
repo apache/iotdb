@@ -201,39 +201,6 @@ public class IoTDBWithoutAnyNullIT {
     }
   }
 
-  @Test
-  public void withoutAnyNull_withValueFilterQueryTest() {
-    String[] retArray1 = new String[] {"9,29,true,99.9", "10,20,true,10.0", "19,29,true,99.9"};
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select * from root.testWithoutAnyNull.d1 where s2 = true WITHOUT NULL ANY");
-
-      assertTrue(hasResultSet);
-      int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString("root.testWithoutAnyNull.d1.s1")
-                  + ","
-                  + resultSet.getString("root.testWithoutAnyNull.d1.s2")
-                  + ","
-                  + resultSet.getString("root.testWithoutAnyNull.d1.s3");
-          assertEquals(retArray1[cnt], ans);
-          cnt++;
-        }
-        assertEquals(retArray1.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
   private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

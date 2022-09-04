@@ -33,8 +33,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,7 +119,7 @@ public class SchemaUtils {
     TSEncoding encoding = schema.getEncodingType();
     CompressionType compressionType = schema.getCompressor();
     IMeasurementSchema measurementSchema =
-        new MeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
+        new UnaryMeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
 
     IMeasurementMNode measurementMNode =
         MeasurementMNode.getMeasurementMNode(null, path.getMeasurement(), measurementSchema, null);

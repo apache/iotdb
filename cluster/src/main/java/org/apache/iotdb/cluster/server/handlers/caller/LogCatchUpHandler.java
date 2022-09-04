@@ -29,7 +29,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.iotdb.cluster.server.Response.*;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
 
 /**
  * LogCatchUpHandler checks the result of appending a log in a catch-up task and decides to abort
@@ -61,14 +62,6 @@ public class LogCatchUpHandler implements AsyncMethodCallback<Long> {
       logger.debug("{}: Log mismatch occurred when sending log {}", memberName, log);
       synchronized (appendSucceed) {
         appendSucceed.set(true);
-        appendSucceed.notifyAll();
-      }
-    } else if (resp == RESPONSE_TOO_BUSY) {
-      // this may occur when the follower has too many logs unapplied, so we abort the
-      // catch-up task
-      logger.info("{}: Catchup task rejected by receiver {}", memberName, follower);
-      synchronized (appendSucceed) {
-        appendSucceed.set(false);
         appendSucceed.notifyAll();
       }
     } else {

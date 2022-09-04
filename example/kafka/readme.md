@@ -26,21 +26,21 @@ The example is to show how to send data from localhost to IoTDB through Kafka.
 ## Usage
 ### Version usage
 IoTDB: 0.13.0-SNAPSHOT  
-Kafka: 2.8.0
+Kafka: 0.8.2.0
 ### Dependencies with Maven
 
 ```
 <dependencies>
-         <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka_2.13</artifactId>
-            <version>2.8.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-session</artifactId>
-            <version>0.13.0-SNAPSHOT</version>
-        </dependency>
+    <dependency>
+    	<groupId>org.apache.kafka</groupId>
+    	<artifactId>kafka_2.10</artifactId>
+    	<version>0.8.2.0</version>
+    </dependency>
+    <dependency>
+	    <groupId>org.apache.iotdb</groupId>
+	    <artifactId>iotdb-jdbc</artifactId>
+	    <version>0.13.0-SNAPSHOT</version>
+    </dependency>
 </dependencies>
 ```
 
@@ -51,7 +51,7 @@ Kafka: 2.8.0
   For details, please refer to http://kafka.apache.org/081/documentation.html#quickstart
 ```
 
-### Run Producer.java
+### Run KafkaProducer.java
 
 ```
   The class is to send data from localhost to Kafka clusters.
@@ -62,13 +62,13 @@ Kafka: 2.8.0
   Finally, run KafkaProducer.java
 ```
 
-### Run Consumer.java
+### Run KafkaConsumer.java
 
 ```
   The class is to show how to consume data from kafka through multi-threads.
   The data is sent by class KafkaProducer.
-  You can set the parameter of CONSUMER_THREAD_NUM in Constant.java to make sure the number of consumer threads:(for example: "3")
-  > private final static int CONSUMER_THREAD_NUM = 3;
+  You can set the parameter of CONSUMER_THREAD_NUM in Constant.java to make sure the number of consumer threads:(for example: "5")
+  > private final static int CONSUMER_THREAD_NUM = 5;
 ```
 
 #### Notice 

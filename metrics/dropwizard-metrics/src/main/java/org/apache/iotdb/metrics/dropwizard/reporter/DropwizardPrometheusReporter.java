@@ -20,24 +20,19 @@
 package org.apache.iotdb.metrics.dropwizard.reporter;
 
 import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.Reporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager;
-import org.apache.iotdb.metrics.reporter.Reporter;
+import org.apache.iotdb.metrics.dropwizard.reporter.prometheus.PrometheusReporter;
+import org.apache.iotdb.metrics.dropwizard.reporter.prometheus.PushGateway;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
-import com.codahale.metrics.MetricRegistry;
-import io.netty.channel.ChannelOption;
+import com.codahale.metrics.MetricFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
-import reactor.netty.DisposableServer;
-import reactor.netty.http.server.HttpServer;
 
-import java.io.IOException;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 public class DropwizardPrometheusReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(DropwizardPrometheusReporter.class);
@@ -45,72 +40,46 @@ public class DropwizardPrometheusReporter implements Reporter {
       MetricConfigDescriptor.getInstance().getMetricConfig();
 
   private MetricManager dropwizardMetricManager = null;
-  private DisposableServer httpServer = null;
+  private PrometheusReporter prometheusReporter = null;
 
   @Override
   public boolean start() {
-    if (httpServer != null) {
+    if (prometheusReporter != null) {
       LOGGER.warn("Dropwizard Prometheus Reporter already start!");
       return false;
     }
-    httpServer =
-        HttpServer.create()
-            .idleTimeout(Duration.ofMillis(30_000L))
-            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
-            .port(Integer.parseInt(metricConfig.getPrometheusExporterPort()))
-            .route(
-                routes ->
-                    routes.get(
-                        "/metrics",
-                        (request, response) -> response.sendString(Mono.just(scrape()))))
-            .bindNow();
-
-    LOGGER.info(
-        "http server for metrics started, listen on {}", metricConfig.getPrometheusExporterPort());
-    return true;
-  }
-
-  private String scrape() {
-    MetricRegistry metricRegistry =
-        ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry();
-    Writer writer = new StringWriter();
-    PrometheusTextWriter prometheusTextWriter = new PrometheusTextWriter(writer);
-    DropwizardMetricsExporter dropwizardMetricsExporter =
-        new DropwizardMetricsExporter(metricRegistry, prometheusTextWriter);
-    String result = "";
+    String url = metricConfig.getPrometheusReporterConfig().getPrometheusExporterUrl();
+    String port = metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort();
+    PushGateway pushgateway = new PushGateway(url + ":" + port, "IoTDB-Metric{Dropwizard}");
     try {
-      dropwizardMetricsExporter.scrape();
-      result = writer.toString();
-    } catch (IOException e) {
-      // This actually never happens since StringWriter::write() doesn't throw any IOException
-      throw new RuntimeException(e);
-    } finally {
-      try {
-        writer.close();
-      } catch (IOException e) {
-        // do nothing
-      }
+      prometheusReporter =
+          PrometheusReporter.forRegistry(
+                  ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
+              .prefixedWith("dropwizard:")
+              .filter(MetricFilter.ALL)
+              .build(pushgateway);
+      prometheusReporter.start(metricConfig.getPushPeriodInSecond(), TimeUnit.SECONDS);
+    } catch (Exception e) {
+      LOGGER.error("Failed to start Dropwizard JmxReporter, because {}", e.getMessage());
+      return false;
     }
-    return result;
+    return true;
   }
 
   @Override
   public boolean stop() {
-    if (httpServer != null) {
-      try {
-        httpServer.disposeNow();
-        httpServer = null;
-      } catch (Exception e) {
-        LOGGER.error("failed to stop server", e);
-        return false;
-      }
+    if (prometheusReporter == null) {
+      LOGGER.warn("Dropwizard Prometheus Reporter already stop!");
+      return false;
     }
+    prometheusReporter.stop();
+    prometheusReporter = null;
     return true;
   }
 
   @Override
   public ReporterType getReporterType() {
-    return ReporterType.PROMETHEUS;
+    return ReporterType.prometheus;
   }
 
   @Override

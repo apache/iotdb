@@ -396,41 +396,14 @@ public class IoTDBDeletionIT {
   }
 
   @Test
-  public void testDeleteAll() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.lz.dev.GPS(time, latitude, longitude) values(9,3.2,9.8)");
-      statement.execute("insert into root.lz.dev.GPS(time, latitude) values(11,4.5)");
-
-      try (ResultSet resultSet = statement.executeQuery("select * from root.lz.dev.GPS")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        Assert.assertEquals(2, cnt);
-      }
-
-      statement.execute("delete from root.lz.**");
-
-      try (ResultSet resultSet = statement.executeQuery("select * from root.lz.dev.GPS")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        Assert.assertEquals(0, cnt);
-      }
-    }
-  }
-
-  @Test
   @Category({ClusterTest.class})
   public void testDelSeriesWithSpecialSymbol() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "CREATE TIMESERIES root.ln.d1.\"status,01\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-      statement.execute("INSERT INTO root.ln.d1(timestamp,\"status,01\") VALUES(300, true)");
-      statement.execute("INSERT INTO root.ln.d1(timestamp,\"status,01\") VALUES(500, false)");
+          "CREATE TIMESERIES root.ln.d1.`\"status,01\"` WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.ln.d1(timestamp,`\"status,01\"`) VALUES(300, true)");
+      statement.execute("INSERT INTO root.ln.d1(timestamp,`\"status,01\"`) VALUES(500, false)");
 
       try (ResultSet resultSet = statement.executeQuery("select `\"status,01\"` from root.ln.d1")) {
         int cnt = 0;
@@ -440,7 +413,7 @@ public class IoTDBDeletionIT {
         Assert.assertEquals(2, cnt);
       }
 
-      statement.execute("DELETE FROM root.ln.d1.\"status,01\" WHERE time <= 400");
+      statement.execute("DELETE FROM root.ln.d1.`\"status,01\"` WHERE time <= 400");
 
       try (ResultSet resultSet = statement.executeQuery("select `\"status,01\"` from root.ln.d1")) {
         int cnt = 0;
@@ -450,7 +423,7 @@ public class IoTDBDeletionIT {
         Assert.assertEquals(1, cnt);
       }
 
-      statement.execute("DELETE FROM root.ln.d1.\"status,01\"");
+      statement.execute("DELETE FROM root.ln.d1.`\"status,01\"`");
 
       try (ResultSet resultSet = statement.executeQuery("select `\"status,01\"` from root.ln.d1")) {
         int cnt = 0;

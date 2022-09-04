@@ -45,13 +45,10 @@ public class TypeInferenceUtilsTest {
       "123.",
       "123a",
       TsFileConstant.PATH_SEPARATOR,
-      "123.1.23",
-      "77123 ",
-      " 7112324 "
+      "123.1.23"
     };
     boolean[] results = {
-      true, true, true, true, true, true, true, true, true, false, true, false, false, false, true,
-      true
+      true, true, true, true, true, true, true, true, true, false, true, false, false, false
     };
 
     for (int i = 0; i < values.length; i++) {
@@ -62,17 +59,7 @@ public class TypeInferenceUtilsTest {
   @Test
   public void testInferType() {
     Object[] values = {
-      123,
-      "abc",
-      123.123d,
-      true,
-      123.1f,
-      "123",
-      "12.2",
-      "9999999999999999",
-      "true",
-      "77123 ",
-      " 7112324 "
+      123, "abc", 123.123d, true, 123.1f, "123", "12.2", "9999999999999999", "true"
     };
     TSDataType[] encodings = {
       IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
@@ -83,9 +70,7 @@ public class TypeInferenceUtilsTest {
       IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
       IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
       IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType()
+      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType()
     };
 
     for (int i = 0; i < values.length; i++) {

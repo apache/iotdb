@@ -66,29 +66,17 @@ public class Cli extends AbstractCli {
               + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
       println("For more information, please check the following hint.");
       hf.printHelp(SCRIPT_HINT, options, true);
-      System.exit(CODE_ERROR);
+      return;
     }
     init();
     String[] newArgs = removePasswordArgs(args);
     String[] newArgs2 = processExecuteArgs(newArgs);
     boolean continues = parseCommandLine(options, newArgs2, hf);
     if (!continues) {
-      System.exit(CODE_ERROR);
+      return;
     }
 
-    try {
-      host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
-      port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
-      username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
-    } catch (ArgsErrorException e) {
-      println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
-      System.exit(CODE_ERROR);
-    } catch (Exception e) {
-      println(IOTDB_CLI_PREFIX + "> exit cli with error " + e.getMessage());
-      System.exit(CODE_ERROR);
-    }
-
-    lineReader = JlineUtils.getLineReader(username, host, port);
+    lineReader = JlineUtils.getLineReader();
     serve();
   }
 
@@ -127,6 +115,10 @@ public class Cli extends AbstractCli {
 
   private static void serve() {
     try {
+      host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
+      port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
+      username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
+
       password = commandLine.getOptionValue(PASSWORD_ARGS);
       if (hasExecuteSQL && password != null) {
         try (IoTDBConnection connection =
@@ -137,19 +129,19 @@ public class Cli extends AbstractCli {
           timestampPrecision = properties.getTimestampPrecision();
           AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
           processCommand(execute, connection);
-          System.exit(lastProcessStatus);
+          return;
         } catch (SQLException e) {
           println(IOTDB_CLI_PREFIX + "> can't execute sql because" + e.getMessage());
-          System.exit(CODE_ERROR);
         }
       }
       if (password == null) {
         password = lineReader.readLine("please input your password:", '\0');
       }
       receiveCommands(lineReader);
+    } catch (ArgsErrorException e) {
+      println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
     } catch (Exception e) {
       println(IOTDB_CLI_PREFIX + "> exit cli with error " + e.getMessage());
-      System.exit(CODE_ERROR);
     }
   }
 
@@ -178,18 +170,17 @@ public class Cli extends AbstractCli {
           try {
             reader.readLine("Press CTRL+C again to exit, or press ENTER to continue", '\0');
           } catch (UserInterruptException | EndOfFileException e2) {
-            System.exit(CODE_OK);
+            System.exit(0);
           }
         } catch (EndOfFileException e) {
           // Exit on EOF (usually by pressing CTRL+D).
-          System.exit(CODE_OK);
+          System.exit(0);
         }
       }
     } catch (SQLException e) {
       println(
           String.format(
               "%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
-      System.exit(CODE_ERROR);
     }
   }
 }

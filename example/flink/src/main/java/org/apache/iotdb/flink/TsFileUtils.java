@@ -30,8 +30,8 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,13 +57,14 @@ public class TsFileUtils {
       Files.delete(f.toPath());
       Schema schema = new Schema();
       schema.extendTemplate(
-          DEFAULT_TEMPLATE, new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+          DEFAULT_TEMPLATE,
+          new UnaryMeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
       schema.extendTemplate(
           DEFAULT_TEMPLATE,
-          new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+          new UnaryMeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
       schema.extendTemplate(
           DEFAULT_TEMPLATE,
-          new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+          new UnaryMeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
       try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
 

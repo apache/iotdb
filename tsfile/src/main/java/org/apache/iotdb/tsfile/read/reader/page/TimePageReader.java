@@ -53,15 +53,7 @@ public class TimePageReader {
     this.timeBuffer = pageData;
   }
 
-  public boolean hasNextTime() throws IOException {
-    return timeDecoder.hasNext(timeBuffer);
-  }
-
-  public long nextTime() {
-    return timeDecoder.readLong(timeBuffer);
-  }
-
-  public long[] nextTimeBatch() throws IOException {
+  public long[] nexTimeBatch() throws IOException {
     long[] timeBatch = new long[(int) pageHeader.getStatistics().getCount()];
     int index = 0;
     while (timeDecoder.hasNext(timeBuffer)) {
@@ -76,7 +68,7 @@ public class TimePageReader {
    */
   public long[] getNextTimeBatch() throws IOException {
     if (pageHeader.getStatistics() != null) {
-      return nextTimeBatch();
+      return nexTimeBatch();
     } else {
       List<Long> timeList = new ArrayList<>();
       while (timeDecoder.hasNext(timeBuffer)) {

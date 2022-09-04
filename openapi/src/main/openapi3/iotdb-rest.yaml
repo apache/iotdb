@@ -95,17 +95,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/QueryDataSet'
 
-  /grafana/v1/login:
-    get:
-      responses:
-        "200":
-          description: ExecutionStatus
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExecutionStatus'
-      operationId: login
-
   /grafana/v1/query/expression:
     post:
       summary: expression
@@ -150,8 +139,6 @@ components:
       properties:
         sql:
           type: string
-        rowLimit:
-          type: Integer
 
     InsertTabletRequest:
       title: InsertTabletRequest
@@ -192,10 +179,6 @@ components:
       type: object
       properties:
         expressions:
-          type: array
-          items:
-            type: string
-        columnNames:
           type: array
           items:
             type: string

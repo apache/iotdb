@@ -24,13 +24,11 @@ import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,7 +38,9 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   private final List<ValueChunkWriter> valueChunkWriterList;
   private int valueIndex;
 
-  /** @param schema schema of this measurement */
+  /**
+   * @param schema schema of this measurement
+   */
   public AlignedChunkWriterImpl(VectorMeasurementSchema schema) {
     timeChunkWriter =
         new TimeChunkWriter(
@@ -117,37 +117,6 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
-  public void write(long time, TsPrimitiveType[] points) {
-    valueIndex = 0;
-    for (TsPrimitiveType point : points) {
-      ValueChunkWriter writer = valueChunkWriterList.get(valueIndex++);
-      switch (writer.getDataType()) {
-        case INT64:
-          writer.write(time, point != null ? point.getLong() : Long.MAX_VALUE, point == null);
-          break;
-        case INT32:
-          writer.write(time, point != null ? point.getInt() : Integer.MAX_VALUE, point == null);
-          break;
-        case FLOAT:
-          writer.write(time, point != null ? point.getFloat() : Float.MAX_VALUE, point == null);
-          break;
-        case DOUBLE:
-          writer.write(time, point != null ? point.getDouble() : Double.MAX_VALUE, point == null);
-          break;
-        case BOOLEAN:
-          writer.write(time, point != null ? point.getBoolean() : false, point == null);
-          break;
-        case TEXT:
-          writer.write(
-              time,
-              point != null ? point.getBinary() : new Binary("".getBytes(StandardCharsets.UTF_8)),
-              point == null);
-          break;
-      }
-    }
-    write(time);
-  }
-
   public void write(long time) {
     valueIndex = 0;
     timeChunkWriter.write(time);
@@ -218,22 +187,5 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       valueChunkWriter.clearPageWriter();
     }
-  }
-
-  /** Used for compaction to control the target chunk size. */
-  public boolean checkIsChunkSizeOverThreshold(long threshold) {
-    if (timeChunkWriter.estimateMaxSeriesMemSize() > threshold) {
-      return true;
-    }
-    for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
-      if (valueChunkWriter.estimateMaxSeriesMemSize() > threshold) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public TSDataType getCurrentValueChunkType() {
-    return valueChunkWriterList.get(valueIndex).getDataType();
   }
 }

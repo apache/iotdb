@@ -36,7 +36,6 @@ public class PhysicalGenerator {
   public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
     PhysicalPlan physicalPlan = operator.generatePhysicalPlan(this);
     physicalPlan.setDebug(operator.isDebug());
-    physicalPlan.setPrefixMatch(operator.isPrefixMatchPath());
     return physicalPlan;
   }
 

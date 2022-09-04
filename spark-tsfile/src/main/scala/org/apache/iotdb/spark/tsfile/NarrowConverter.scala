@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.read.expression.{IExpression, QueryExpression}
 import org.apache.iotdb.tsfile.read.filter.{TimeFilter, ValueFilter}
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
-import org.apache.iotdb.tsfile.write.schema.{IMeasurementSchema, MeasurementSchema, Schema}
+import org.apache.iotdb.tsfile.write.schema.{IMeasurementSchema, UnaryMeasurementSchema, Schema}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
@@ -527,7 +527,7 @@ object NarrowConverter extends Converter {
     * @param options encoding options
     * @return MeasurementSchema
     */
-  def getSeriesSchema(field: StructField, options: Map[String, String]): MeasurementSchema = {
+  def getSeriesSchema(field: StructField, options: Map[String, String]): UnaryMeasurementSchema = {
     val dataType = getTsDataType(field.dataType)
     val encodingStr = dataType match {
       case TSDataType.BOOLEAN => options.getOrElse(QueryConstant.BOOLEAN, TSEncoding.PLAIN.toString)
@@ -539,7 +539,7 @@ object NarrowConverter extends Converter {
       case other => throw new UnsupportedOperationException(s"Unsupported type $other")
     }
     val encoding = TSEncoding.valueOf(encodingStr)
-    new MeasurementSchema(field.name, dataType, encoding)
+    new UnaryMeasurementSchema(field.name, dataType, encoding)
   }
 
   /**

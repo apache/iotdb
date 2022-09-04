@@ -113,7 +113,6 @@ public class FirstValueAggrResult extends AggregateResult {
       return;
     }
     if (valueIterator.hasNext()) {
-      timestamp = timestamps[valueIterator.getCurPos()];
       setValue(valueIterator.next());
     }
   }

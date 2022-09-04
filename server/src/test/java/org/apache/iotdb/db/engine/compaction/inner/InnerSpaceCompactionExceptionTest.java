@@ -20,15 +20,14 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
-import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.h2.store.fs.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -36,7 +35,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.channels.FileChannel;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -52,17 +50,21 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
   public void testWhenAllSourceExistsAndTargetNotComplete() throws Exception {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+    String targetFileName =
+        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
     TsFileResource targetResource =
-        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
+        new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
         new File(
-            targetResource.getTsFile().getPath()
-                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
-    CompactionLogger compactionLogger = new CompactionLogger(logFile);
-    compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
-    compactionLogger.logFiles(
-        Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
+            targetResource.getTsFile().getPath() + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
+    SizeTieredCompactionLogger compactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
+    for (TsFileResource source : seqResources) {
+      compactionLogger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, source.getTsFile());
+    }
+    compactionLogger.logSequence(true);
+    compactionLogger.logFileInfo(
+        SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     try (FileOutputStream os = new FileOutputStream(targetResource.getTsFile(), true);
         FileChannel channel = os.getChannel()) {
@@ -97,17 +99,21 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
   public void testWhenAllSourceExistsAndTargetComplete() throws Exception {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+    String targetFileName =
+        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
     TsFileResource targetResource =
-        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
+        new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
         new File(
-            targetResource.getTsFile().getPath()
-                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
-    CompactionLogger compactionLogger = new CompactionLogger(logFile);
-    compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
-    compactionLogger.logFiles(
-        Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
+            targetResource.getTsFile().getPath() + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
+    SizeTieredCompactionLogger compactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
+    for (TsFileResource source : seqResources) {
+      compactionLogger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, source.getTsFile());
+    }
+    compactionLogger.logSequence(true);
+    compactionLogger.logFileInfo(
+        SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     compactionLogger.close();
     InnerSpaceCompactionExceptionHandler.handleException(
@@ -138,27 +144,24 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
   public void testWhenSomeSourceLostAndTargetComplete() throws Exception {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+    String targetFileName =
+        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
     TsFileResource targetResource =
-        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
+        new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
         new File(
-            targetResource.getTsFile().getPath()
-                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
-    CompactionLogger compactionLogger = new CompactionLogger(logFile);
-    compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
-    compactionLogger.logFiles(
-        Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
-    InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
-    for (TsFileResource resource : seqResources) {
-      tsFileManager.getSequenceListByTimePartition(0).remove(resource);
+            targetResource.getTsFile().getPath() + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
+    SizeTieredCompactionLogger compactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
+    for (TsFileResource source : seqResources) {
+      compactionLogger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, source.getTsFile());
     }
-    tsFileManager.getSequenceListByTimePartition(0).keepOrderInsert(targetResource);
-    FileUtils.delete(seqResources.get(0).getTsFile().getPath());
+    compactionLogger.logSequence(true);
+    compactionLogger.logFileInfo(
+        SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     seqResources.get(0).remove();
     compactionLogger.close();
-    Assert.assertTrue(targetResource.getTsFile().exists());
-    Assert.assertTrue(targetResource.resourceFileExists());
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -190,17 +193,21 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
   public void testWhenSomeSourceLostAndTargetNotComplete() throws Exception {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+    String targetFileName =
+        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
     TsFileResource targetResource =
-        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
+        new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
         new File(
-            targetResource.getTsFile().getPath()
-                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
-    CompactionLogger compactionLogger = new CompactionLogger(logFile);
-    compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
-    compactionLogger.logFiles(
-        Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
+            targetResource.getTsFile().getPath() + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
+    SizeTieredCompactionLogger compactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
+    for (TsFileResource source : seqResources) {
+      compactionLogger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, source.getTsFile());
+    }
+    compactionLogger.logSequence(true);
+    compactionLogger.logFileInfo(
+        SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     seqResources.get(0).remove();
     try (FileOutputStream os = new FileOutputStream(targetResource.getTsFile(), true);
@@ -208,7 +215,6 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
       channel.truncate(targetResource.getTsFileSize() - 10);
     }
     compactionLogger.close();
-    Assert.assertTrue(targetResource.getTsFile().exists());
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -240,17 +246,21 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
   public void testHandleWithCompactionMods() throws Exception {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+    String targetFileName =
+        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
     TsFileResource targetResource =
-        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
+        new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
         new File(
-            targetResource.getTsFile().getPath()
-                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
-    CompactionLogger compactionLogger = new CompactionLogger(logFile);
-    compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
-    compactionLogger.logFiles(
-        Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
+            targetResource.getTsFile().getPath() + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
+    SizeTieredCompactionLogger compactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
+    for (TsFileResource source : seqResources) {
+      compactionLogger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, source.getTsFile());
+    }
+    compactionLogger.logSequence(true);
+    compactionLogger.logFileInfo(
+        SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -264,7 +274,6 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     seqResources.get(0).remove();
     compactionLogger.close();
 
-    Assert.assertTrue(targetResource.getTsFile().exists());
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -303,16 +312,20 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
   public void testHandleWithNormalMods() throws Exception {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+    String targetFileName =
+        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
     TsFileResource targetResource =
-        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
+        new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
         new File(
-            targetResource.getTsFile().getPath()
-                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
-    CompactionLogger compactionLogger = new CompactionLogger(logFile);
-    compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
-    compactionLogger.logFiles(
-        Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
+            targetResource.getTsFile().getPath() + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
+    SizeTieredCompactionLogger compactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
+    for (TsFileResource source : seqResources) {
+      compactionLogger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, source.getTsFile());
+    }
+    compactionLogger.logSequence(true);
+    compactionLogger.logFileInfo(
+        SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
 
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -321,12 +334,11 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
           new Pair<>(i * ptNum, i * ptNum + 10));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     seqResources.get(0).remove();
     compactionLogger.close();
 
-    Assert.assertTrue(targetResource.getTsFile().exists());
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -359,16 +371,20 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
   public void testHandleWithCompactionModsAndNormalMods() throws Exception {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+    String targetFileName =
+        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
     TsFileResource targetResource =
-        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
+        new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
         new File(
-            targetResource.getTsFile().getPath()
-                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
-    CompactionLogger compactionLogger = new CompactionLogger(logFile);
-    compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
-    compactionLogger.logFiles(
-        Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
+            targetResource.getTsFile().getPath() + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
+    SizeTieredCompactionLogger compactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
+    for (TsFileResource source : seqResources) {
+      compactionLogger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, source.getTsFile());
+    }
+    compactionLogger.logSequence(true);
+    compactionLogger.logFileInfo(
+        SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
@@ -376,7 +392,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
           new Pair<>(i * ptNum, i * ptNum + 5));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -384,7 +400,6 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
           deviceIds[0] + "." + measurementSchemas[0].getMeasurementId(),
           new Pair<>(i * ptNum + 10, i * ptNum + 15));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
-      CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
     compactionLogger.close();
 

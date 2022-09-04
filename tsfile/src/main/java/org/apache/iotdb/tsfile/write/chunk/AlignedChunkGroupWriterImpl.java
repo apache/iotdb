@@ -30,19 +30,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   private static final Logger LOG = LoggerFactory.getLogger(AlignedChunkGroupWriterImpl.class);
@@ -70,7 +65,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void tryToAddSeriesWriter(MeasurementSchema measurementSchema) {
+  public void tryToAddSeriesWriter(IMeasurementSchema measurementSchema) {
     if (!valueChunkWriterMap.containsKey(measurementSchema.getMeasurementId())) {
       ValueChunkWriter valueChunkWriter =
           new ValueChunkWriter(
@@ -85,8 +80,8 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void tryToAddSeriesWriter(List<MeasurementSchema> measurementSchemas) {
-    for (MeasurementSchema schema : measurementSchemas) {
+  public void tryToAddSeriesWriter(List<IMeasurementSchema> measurementSchemas) {
+    for (IMeasurementSchema schema : measurementSchemas) {
       if (!valueChunkWriterMap.containsKey(schema.getMeasurementId())) {
         ValueChunkWriter valueChunkWriter =
             new ValueChunkWriter(
@@ -145,7 +140,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   @Override
   public int write(Tablet tablet) throws WriteProcessException, IOException {
     int pointCount = 0;
-    List<MeasurementSchema> measurementSchemas = tablet.getSchemas();
+    List<IMeasurementSchema> measurementSchemas = tablet.getSchemas();
     for (int row = 0; row < tablet.rowSize; row++) {
       long time = tablet.timestamps[row];
       checkIsHistoryData("", time);
@@ -155,7 +150,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
         // check isNull by bitMap in tablet
         if (tablet.bitMaps != null
             && tablet.bitMaps[columnIndex] != null
-            && tablet.bitMaps[columnIndex].isMarked(row)) {
+            && !tablet.bitMaps[columnIndex].isMarked(row)) {
           isNull = true;
         }
         ValueChunkWriter valueChunkWriter =

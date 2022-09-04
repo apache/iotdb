@@ -49,5 +49,5 @@ public interface IWritableMemChunkGroup {
   int delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp);
 
-  long getCurrentTVListSize(String measurement);
+  long getCurrentChunkPointNum(String measurement);
 }

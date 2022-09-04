@@ -19,10 +19,6 @@
 
 -->
 
-# 0.12.x -> 0.13.x
-
-No change. Updated by Haonan Hou.
-
 # 0.11.x -> 0.12.x
 
 from txt format to binary format, updated by Chao Wang

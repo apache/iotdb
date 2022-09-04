@@ -822,7 +822,7 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      List<String> exps = Arrays.asList("root.sg1.d1,false", "root.sg1.d2,false");
+      List<String> exps = Arrays.asList("root.sg1.d1", "root.sg1.d2");
 
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
@@ -832,8 +832,7 @@ public class IoTDBSimpleQueryIT {
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show devices limit 2 offset 1")) {
         while (resultSet.next()) {
-          Assert.assertEquals(
-              exps.get(count), resultSet.getString(1) + "," + resultSet.getString(2));
+          Assert.assertEquals(exps.get(count), resultSet.getString(1));
           ++count;
         }
       }
@@ -847,7 +846,7 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      List<String> exps = Arrays.asList("root.sg1.d0,false", "root.sg1.d1,false");
+      List<String> exps = Arrays.asList("root.sg1.d0", "root.sg1.d1");
 
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
@@ -857,8 +856,7 @@ public class IoTDBSimpleQueryIT {
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show devices limit 2")) {
         while (resultSet.next()) {
-          Assert.assertEquals(
-              exps.get(count), resultSet.getString(1) + "," + resultSet.getString(2));
+          Assert.assertEquals(exps.get(count), resultSet.getString(1));
           ++count;
         }
       }

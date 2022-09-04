@@ -26,7 +26,6 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@grafana/runtime": "^8.3.2",
-    "node-sass": "^6.0.1"
+    "@grafana/runtime": "^8.3.2"
   }
 }

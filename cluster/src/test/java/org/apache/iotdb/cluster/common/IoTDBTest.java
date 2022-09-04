@@ -31,20 +31,20 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.filter.executor.PlanExecutor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -68,6 +68,7 @@ public abstract class IoTDBTest {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     prevEnableAutoSchema = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     planExecutor = new PlanExecutor();
     prepareSchema();
@@ -164,7 +165,8 @@ public abstract class IoTDBTest {
     List<PartialPath> paths = new ArrayList<>();
     for (String pathStr : pathStrs) {
       MeasurementPath path = new MeasurementPath(pathStr);
-      path.setMeasurementSchema(new MeasurementSchema(path.getMeasurement(), TSDataType.DOUBLE));
+      path.setMeasurementSchema(
+          new UnaryMeasurementSchema(path.getMeasurement(), TSDataType.DOUBLE));
       paths.add(path);
     }
     queryPlan.setDeduplicatedPathsAndUpdate(paths);

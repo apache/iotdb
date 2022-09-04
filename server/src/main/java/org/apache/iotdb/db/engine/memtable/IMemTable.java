@@ -65,10 +65,14 @@ public interface IMemTable {
 
   void writeAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end);
 
-  /** @return the number of points */
+  /**
+   * @return the number of points
+   */
   long size();
 
-  /** @return memory usage */
+  /**
+   * @return memory usage
+   */
   long memSize();
 
   /** only used when mem control enabled */
@@ -155,7 +159,7 @@ public interface IMemTable {
   boolean checkIfChunkDoesNotExist(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
-  long getCurrentTVListSize(IDeviceID deviceId, String measurement);
+  long getCurrentChunkPointNum(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
   void addTextDataSize(long textDataIncrement);

@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -993,8 +992,11 @@ public class IoTDBTagIT {
         statement.execute(sql);
       }
 
-      try (ResultSet rs = statement.executeQuery("show timeseries where H_Alarm=90")) {
-        assertFalse(rs.next());
+      try {
+        statement.execute("show timeseries where H_Alarm=90");
+        fail();
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("The key H_Alarm is not a tag"));
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1057,8 +1059,11 @@ public class IoTDBTagIT {
       assertEquals(ret.size(), count);
 
       statement.execute("delete storage group root.turbine");
-      try (ResultSet rs = statement.executeQuery("show timeseries where tag1=v1")) {
-        assertFalse(rs.next());
+      try {
+        statement.execute("show timeseries where tag1=v1");
+        fail();
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("The key tag1 is not a tag"));
       }
     } catch (Exception e) {
       e.printStackTrace();

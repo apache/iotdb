@@ -30,7 +30,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -51,6 +52,7 @@ public class IoTDBSessionDisableMemControlIT {
   @Before
   public void setUp() {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
+    EnvironmentUtils.closeStatMonitor();
     IoTDBDescriptor.getInstance().getConfig().setEnableMemControl(false);
     EnvironmentUtils.envSetUp();
   }
@@ -80,10 +82,10 @@ public class IoTDBSessionDisableMemControlIT {
       session.createTimeseries(
           "root.sg.d.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     }
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.DOUBLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
 
     Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
 
@@ -152,10 +154,10 @@ public class IoTDBSessionDisableMemControlIT {
     }
     session.createAlignedTimeseries(
         "root.sg.d", multiMeasurementComponents, dataTypes, encodings, compressors, null);
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.DOUBLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
 
     Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
 

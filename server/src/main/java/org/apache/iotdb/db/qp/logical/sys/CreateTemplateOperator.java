@@ -34,6 +34,7 @@ import java.util.List;
 public class CreateTemplateOperator extends Operator {
 
   String name;
+  List<String> schemaNames = new ArrayList<>();
   List<List<String>> measurements = new ArrayList<>();
   List<List<TSDataType>> dataTypes = new ArrayList<>();
   List<List<TSEncoding>> encodings = new ArrayList<>();
@@ -50,6 +51,18 @@ public class CreateTemplateOperator extends Operator {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public List<String> getSchemaNames() {
+    return schemaNames;
+  }
+
+  public void setSchemaNames(List<String> schemaNames) {
+    this.schemaNames = schemaNames;
+  }
+
+  public void addSchemaName(String schemaName) {
+    this.schemaNames.add(schemaName);
   }
 
   public List<List<String>> getMeasurements() {
@@ -103,6 +116,7 @@ public class CreateTemplateOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new CreateTemplatePlan(name, measurements, dataTypes, encodings, compressors);
+    return new CreateTemplatePlan(
+        name, schemaNames, measurements, dataTypes, encodings, compressors);
   }
 }

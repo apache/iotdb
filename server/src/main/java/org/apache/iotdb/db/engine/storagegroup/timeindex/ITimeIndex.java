@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 
 import java.io.IOException;
@@ -63,9 +62,11 @@ public interface ITimeIndex {
    *
    * @return device names
    */
-  Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource);
+  Set<String> getDevices(String tsFilePath);
 
-  /** @return whether end time is empty (Long.MIN_VALUE) */
+  /**
+   * @return whether end time is empty (Long.MIN_VALUE)
+   */
   boolean endTimeEmpty();
 
   /**
@@ -74,7 +75,9 @@ public interface ITimeIndex {
    */
   boolean stillLives(long ttlLowerBound);
 
-  /** @return Calculate file index ram size */
+  /**
+   * @return Calculate file index ram size
+   */
   long calculateRamSize();
 
   /**
@@ -180,10 +183,4 @@ public interface ITimeIndex {
    *     larger than 0 if the priority of this timeIndex is less than the argument
    */
   int compareDegradePriority(ITimeIndex timeIndex);
-
-  /**
-   * Whether this TsFile contains this device, if false, it must not contain this device, if true,
-   * it may or may not contain this device
-   */
-  boolean mayContainsDevice(String device);
 }

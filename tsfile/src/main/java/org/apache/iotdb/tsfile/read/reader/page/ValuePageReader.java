@@ -57,6 +57,10 @@ public class ValuePageReader {
 
   private int deleteCursor = 0;
 
+  public ValuePageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder) {
+    this(null, pageData, dataType, valueDecoder);
+  }
+
   public ValuePageReader(
       PageHeader pageHeader, ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder) {
     this.dataType = dataType;
@@ -131,55 +135,6 @@ public class ValuePageReader {
       }
     }
     return pageData.flip();
-  }
-
-  public TsPrimitiveType nextValue(long timestamp, int timeIndex) {
-    TsPrimitiveType resultValue = null;
-    if (valueBuffer == null || ((bitmap[timeIndex / 8] & 0xFF) & (MASK >>> (timeIndex % 8))) == 0) {
-      return null;
-    }
-    switch (dataType) {
-      case BOOLEAN:
-        boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
-        if (!isDeleted(timestamp)) {
-          resultValue = new TsPrimitiveType.TsBoolean(aBoolean);
-        }
-        break;
-      case INT32:
-        int anInt = valueDecoder.readInt(valueBuffer);
-        if (!isDeleted(timestamp)) {
-          resultValue = new TsPrimitiveType.TsInt(anInt);
-        }
-        break;
-      case INT64:
-        long aLong = valueDecoder.readLong(valueBuffer);
-        if (!isDeleted(timestamp)) {
-          resultValue = new TsPrimitiveType.TsLong(aLong);
-        }
-        break;
-      case FLOAT:
-        float aFloat = valueDecoder.readFloat(valueBuffer);
-        if (!isDeleted(timestamp)) {
-          resultValue = new TsPrimitiveType.TsFloat(aFloat);
-        }
-        break;
-      case DOUBLE:
-        double aDouble = valueDecoder.readDouble(valueBuffer);
-        if (!isDeleted(timestamp)) {
-          resultValue = new TsPrimitiveType.TsDouble(aDouble);
-        }
-        break;
-      case TEXT:
-        Binary aBinary = valueDecoder.readBinary(valueBuffer);
-        if (!isDeleted(timestamp)) {
-          resultValue = new TsPrimitiveType.TsBinary(aBinary);
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
-    }
-
-    return resultValue;
   }
 
   /**

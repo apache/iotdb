@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
@@ -28,7 +27,6 @@ import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -37,7 +35,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TemplateManager {
@@ -84,10 +81,6 @@ public class TemplateManager {
       // already have template
       throw new MetadataException("Duplicated template name: " + plan.getName());
     }
-  }
-
-  public void dropSchemaTemplate(DropTemplatePlan plan) {
-    templateMap.remove(plan.getName());
   }
 
   public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
@@ -146,11 +139,8 @@ public class TemplateManager {
     return templateMap;
   }
 
-  public Set<String> getAllTemplateName() {
-    return templateMap.keySet();
-  }
-
-  public void checkTemplateCompatible(Template template, IMNode node) throws MetadataException {
+  public void checkIsTemplateAndMNodeCompatible(Template template, IMNode node)
+      throws MetadataException {
     if (node.getSchemaTemplate() != null) {
       if (node.getSchemaTemplate().equals(template)) {
         throw new DuplicatedTemplateException(template.getName());
@@ -159,7 +149,6 @@ public class TemplateManager {
       }
     }
 
-    // check overlap
     for (String measurementPath : template.getSchemaMap().keySet()) {
       String directNodeName = MetaUtils.splitPathToDetachedPath(measurementPath)[0];
       if (node.hasChild(directNodeName)) {
@@ -168,19 +157,6 @@ public class TemplateManager {
                 + directNodeName
                 + " in template has conflict with node's child "
                 + (node.getFullPath() + "." + directNodeName));
-      }
-    }
-
-    // check alignment
-    if (node.isEntity() && (node.getAsEntityMNode().isAligned() != template.isDirectAligned())) {
-      for (IMNode dNode : template.getDirectNodes()) {
-        if (dNode.isMeasurement()) {
-          throw new MetadataException(
-              String.format(
-                  "Template[%s] and mounted node[%s] has different alignment.",
-                  template.getName(),
-                  node.getFullPath() + IoTDBConstant.PATH_SEPARATOR + dNode.getFullPath()));
-        }
       }
     }
   }

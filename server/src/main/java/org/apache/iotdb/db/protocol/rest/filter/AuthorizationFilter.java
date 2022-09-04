@@ -51,24 +51,11 @@ public class AuthorizationFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext containerRequestContext) throws IOException {
     if ("OPTIONS".equals(containerRequestContext.getMethod())
-        || "swagger.json".equals(containerRequestContext.getUriInfo().getPath())
-        || "ping".equals(containerRequestContext.getUriInfo().getPath())) {
+        || "swagger.json".equals(containerRequestContext.getUriInfo().getPath())) {
       return;
     }
 
     String authorizationHeader = containerRequestContext.getHeaderString("authorization");
-    if (authorizationHeader == null) {
-      Response resp =
-          Response.status(Status.UNAUTHORIZED)
-              .type(MediaType.APPLICATION_JSON)
-              .entity(
-                  new ExecutionStatus()
-                      .code(TSStatusCode.UNINITIALIZED_AUTH_ERROR.getStatusCode())
-                      .message(TSStatusCode.UNINITIALIZED_AUTH_ERROR.name()))
-              .build();
-      containerRequestContext.abortWith(resp);
-      return;
-    }
     User user = userCache.getUser(authorizationHeader);
     if (user == null) {
       user = checkLogin(containerRequestContext, authorizationHeader);
@@ -110,7 +97,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
     try {
       if (!authorizer.login(split[0], split[1])) {
         Response resp =
-            Response.status(Status.UNAUTHORIZED)
+            Response.status(Status.OK)
                 .type(MediaType.APPLICATION_JSON)
                 .entity(
                     new ExecutionStatus()

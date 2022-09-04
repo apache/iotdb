@@ -31,7 +31,6 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -163,7 +162,6 @@ public class MemTableFlushTask {
               System.currentTimeMillis() - start,
               TimeUnit.MILLISECONDS,
               Metric.COST_TASK.toString(),
-              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               "flush");
     }

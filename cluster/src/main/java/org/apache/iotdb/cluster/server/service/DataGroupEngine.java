@@ -460,7 +460,9 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
     this.partitionTable = partitionTable;
   }
 
-  /** @return The reports of every DataGroupMember in this node. */
+  /**
+   * @return The reports of every DataGroupMember in this node.
+   */
   public List<DataMemberReport> genMemberReports() {
     List<DataMemberReport> dataMemberReports = new ArrayList<>();
     for (DataGroupMember value : headerGroupMap.values()) {

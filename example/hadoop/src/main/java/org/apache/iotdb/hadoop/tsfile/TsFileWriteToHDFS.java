@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,13 +50,13 @@ public class TsFileWriteToHDFS {
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       tsFileWriter.registerTimeseries(
           new Path(Constant.DEVICE_1),
-          new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
+          new UnaryMeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter.registerTimeseries(
           new Path(Constant.DEVICE_1),
-          new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
+          new UnaryMeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter.registerTimeseries(
           new Path(Constant.DEVICE_1),
-          new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
+          new UnaryMeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
 
       // construct TSRecord
       for (int i = 0; i < 100; i++) {

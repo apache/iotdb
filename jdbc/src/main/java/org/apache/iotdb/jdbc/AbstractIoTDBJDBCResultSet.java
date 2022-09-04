@@ -722,7 +722,9 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
     return false;
   }
 
-  /** @return true means has results */
+  /**
+   * @return true means has results
+   */
   abstract boolean fetchResults() throws SQLException;
 
   abstract boolean hasCachedResults();

@@ -26,7 +26,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -60,8 +59,6 @@ public class IoTDBSelectIntoIT {
     "insert into root.sg.d1(time, s1, s2, s4, s5, s6) values (2, 2, 2, 2, true, '2')",
     "insert into root.sg.d1(time, s1, s2, s3, s5, s6) values (3, 3, 3, 3, false, '3')",
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6) values (4, 4, 4, 4, 4, true, '4')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s6) values (5, 5, 5, 5, 5, '5')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5) values (6, 6, 6, 6, 6, true)",
   };
 
   @BeforeClass
@@ -120,13 +117,6 @@ public class IoTDBSelectIntoIT {
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.sg.d2.s1"),
         TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-
-    IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.sg.d1.datatype"),
-        TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
@@ -371,78 +361,6 @@ public class IoTDBSelectIntoIT {
   }
 
   @Test
-  public void testSelectIntoAlignedTimeSeriesCorrectly() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "select s1, s1 "
-              + "into aligned root.sg.`aligned`.s1s2, root.sg.`aligned`.s1s3 "
-              + "from root.sg.d1 "
-              + "where time <= 2");
-      statement.execute(
-          "select s1, s1 "
-              + "into aligned root.sg.`aligned`.s1s2, root.sg.`aligned`.s1s3 "
-              + "from root.sg.d1 "
-              + "where time > 2");
-
-      try (ResultSet resultSet =
-          statement.executeQuery("select s1s2, s1s3 from root.sg.`aligned`")) {
-        assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
-
-        for (int i = 1; i < INSERTION_SQLS.length; ++i) {
-          assertTrue(resultSet.next());
-          for (int j = 0; j < 2 + 1; ++j) {
-            assertEquals(resultSet.getString(2), resultSet.getString(3));
-          }
-        }
-
-        assertFalse(resultSet.next());
-      }
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @Test
-  public void testSourceAndTargetPathDataTypeUnmatched() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("select s1 " + "into root.sg.d1.`datatype` " + "from root.sg.d1");
-      fail();
-    } catch (SQLException throwable) {
-      assertTrue(
-          throwable
-              .getMessage()
-              .contains(Integer.toString(TSStatusCode.MULTIPLE_ERROR.getStatusCode())));
-      assertTrue(throwable.getMessage().contains("mismatch"));
-    }
-  }
-
-  @Test
-  public void testSelectIntoAlignedTimeSeriesWithUnmatchedTypes() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("create aligned timeseries root.sg.`aligned`(s1 TEXT, s2 TEXT)");
-      statement.execute(
-          "select s1, s1 "
-              + "into aligned root.sg.`aligned`.s1, root.sg.`aligned`.s2 "
-              + "from root.sg.d1");
-      fail();
-    } catch (SQLException throwable) {
-      assertTrue(
-          throwable
-              .getMessage()
-              .contains("failed to insert measurements [s1, s2] caused by DataType mismatch"));
-    }
-  }
-
-  @Test
   public void testGroupByQuery() {
     try (Connection connection =
             DriverManager.getConnection(
@@ -453,7 +371,7 @@ public class IoTDBSelectIntoIT {
       try (ResultSet resultSet = statement.executeQuery("select count_s1 from root.sg.d1")) {
         assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
 
-        for (int i = 1; i < INSERTION_SQLS.length - 2; ++i) {
+        for (int i = 1; i < INSERTION_SQLS.length; ++i) {
           assertTrue(resultSet.next());
           for (int j = 0; j < 1 + 1; ++j) {
             assertEquals(String.valueOf(i), resultSet.getString(1));
@@ -488,8 +406,6 @@ public class IoTDBSelectIntoIT {
           }
         }
 
-        assertTrue(resultSet.next());
-        assertTrue(resultSet.next());
         assertFalse(resultSet.next());
       }
     } catch (SQLException throwable) {
@@ -511,7 +427,7 @@ public class IoTDBSelectIntoIT {
 
         assertTrue(resultSet.next());
         assertEquals("10", resultSet.getString(1));
-        assertEquals("6", resultSet.getString(2));
+        assertEquals("4", resultSet.getString(2));
 
         assertFalse(resultSet.next());
       }
@@ -752,39 +668,6 @@ public class IoTDBSelectIntoIT {
           assertFalse(resultSet.next());
         }
       }
-    }
-  }
-
-  // This case tests whether select into clause functions correctly when multiple columns are
-  // selected.
-  // It is possible that in the first few rows, some columns are null.
-  @Test
-  public void testSelectMultiColumnsWithTopKCase() throws SQLException {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "select -s1, sin(cos(tan(s1+s1*s2))) + cos(s1), top_k(s1,'k'='1') "
-              + "into k1,k2,k3 from root.sg.d1;");
-
-      try (ResultSet resultSet = statement.executeQuery("select k1 from root.sg.d1")) {
-        assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
-        for (int i = 1; i <= 6; ++i) {
-          assertTrue(resultSet.next());
-        }
-        assertFalse(resultSet.next());
-      }
-
-      // verify that only one row is selected into k3.
-      try (ResultSet resultSet = statement.executeQuery("select k3 from root.sg.d1")) {
-        assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
-        assertTrue(resultSet.next());
-        assertFalse(resultSet.next());
-      }
-
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
     }
   }
 }

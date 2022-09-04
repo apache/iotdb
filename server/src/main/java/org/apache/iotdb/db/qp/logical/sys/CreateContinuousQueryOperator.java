@@ -35,9 +35,6 @@ public class CreateContinuousQueryOperator extends Operator {
   private PartialPath targetPath;
   private long everyInterval;
   private long forInterval;
-  private long groupByTimeInterval;
-  private String groupByTimeIntervalString;
-  private Long firstExecutionTimeBoundary;
 
   public CreateContinuousQueryOperator(int tokenIntType) {
     super(tokenIntType);
@@ -48,12 +45,24 @@ public class CreateContinuousQueryOperator extends Operator {
     this.querySql = querySql;
   }
 
+  public String getQuerySql() {
+    return querySql;
+  }
+
   public void setContinuousQueryName(String continuousQueryName) {
     this.continuousQueryName = continuousQueryName;
   }
 
+  public String getContinuousQueryName() {
+    return continuousQueryName;
+  }
+
   public void setTargetPath(PartialPath targetPath) {
     this.targetPath = targetPath;
+  }
+
+  public PartialPath getTargetPath() {
+    return targetPath;
   }
 
   public void setEveryInterval(long everyInterval) {
@@ -72,18 +81,6 @@ public class CreateContinuousQueryOperator extends Operator {
     return forInterval;
   }
 
-  public void setGroupByTimeInterval(long groupByTimeInterval) {
-    this.groupByTimeInterval = groupByTimeInterval;
-  }
-
-  public void setGroupByTimeIntervalString(String groupByTimeIntervalString) {
-    this.groupByTimeIntervalString = groupByTimeIntervalString;
-  }
-
-  public void setFirstExecutionTimeBoundary(long firstExecutionTimeBoundary) {
-    this.firstExecutionTimeBoundary = firstExecutionTimeBoundary;
-  }
-
   public void setQueryOperator(QueryOperator queryOperator) {
     this.queryOperator = queryOperator;
   }
@@ -96,13 +93,6 @@ public class CreateContinuousQueryOperator extends Operator {
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     return new CreateContinuousQueryPlan(
-        querySql,
-        continuousQueryName,
-        targetPath,
-        everyInterval,
-        forInterval,
-        groupByTimeInterval,
-        groupByTimeIntervalString,
-        firstExecutionTimeBoundary);
+        querySql, continuousQueryName, targetPath, everyInterval, forInterval, queryOperator);
   }
 }

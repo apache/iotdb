@@ -56,7 +56,6 @@ struct HeartBeatResponse {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   7: optional Node header
-  8: required bool installingSnapshot // whether the follower is installing snapshot now
 }
 
 struct RequestCommitIndexResponse {
@@ -267,14 +266,6 @@ struct GetAllPathsResult {
   1: required list<string> paths
   2: required list<byte> dataTypes
   3: optional list<string> aliasList
-  4: required list<bool> underAlignedEntity
-}
-
-struct MeasurementSchemaRequest {
-  1: required long queryId
-  2: required RaftNode header
-  3: required Node requester
-  4: required binary planBinary
 }
 
 
@@ -411,7 +402,7 @@ service TSDataService extends RaftService {
   /**
    * Given path patterns (paths with wildcard), return all devices they match.
    **/
-  set<string> getAllDevices(1:RaftNode header, 2:list<string> path, 3: bool isPrefixMatch)
+  set<string> getAllDevices(1:RaftNode header, 2:list<string> path)
 
   /**
    * Get the devices from the header according to the showDevicesPlan
@@ -427,7 +418,7 @@ service TSDataService extends RaftService {
 
   set<string> getChildNodePathInNextLevel(1: RaftNode header, 2: string path)
 
-  binary getAllMeasurementSchema(1:MeasurementSchemaRequest request)
+  binary getAllMeasurementSchema(1: RaftNode header, 2: binary planBinary)
 
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 

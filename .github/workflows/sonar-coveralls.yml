@@ -8,21 +8,20 @@ on:
     branches:
       - master
       - "rel/*"
-      - "new_*"
     paths-ignore:
       - "docs/**"
   pull_request:
     branches:
       - master
       - "rel/*"
-      - "new_*"
+      - cluster_new
     paths-ignore:
       - "docs/**"
   pull_request_target:
     branches:
       - master
       - "rel/*"
-      - "new_*"
+      - cluster_new
     paths-ignore:
       - "docs/**"
   # allow manually run the action:

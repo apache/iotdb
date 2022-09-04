@@ -164,7 +164,6 @@ fi
 
 version_arr=(${JVM_VERSION//./ })
 
-illegal_access_params=""
 #GC log path has to be defined here because it needs to access IOTDB_HOME
 if [ "${version_arr[0]}" = "1" ] ; then
     # Java 8
@@ -190,13 +189,6 @@ else
             IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xlog:gc=info,heap*=info,age*=info,safepoint=info,promotion*=info:file=${IOTDB_HOME}/logs/gc.log:time,uptime,pid,tid,level:filecount=10,filesize=10485760"
         fi
     fi
-    # Add argLine for Java 11 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.util.concurrent=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.lang=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.util=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.nio=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.io=ALL-UNNAMED"
-    illegal_access_params="$illegal_access_params --add-opens=java.base/java.net=ALL-UNNAMED"
 fi
 
 

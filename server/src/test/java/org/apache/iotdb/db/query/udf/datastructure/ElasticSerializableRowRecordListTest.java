@@ -150,9 +150,9 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
     try {
       for (int i = 0; i < ITERATION_TIMES; ++i) {
         if (i % 7 == 0) {
-          assertTrue(rowRecordList.fieldsHasAnyNull(i));
+          assertTrue(rowRecordList.fieldsAllNull(i));
         } else {
-          assertFalse(rowRecordList.fieldsHasAnyNull(i));
+          assertFalse(rowRecordList.fieldsAllNull(i));
           testRowRecord(rowRecordList.getRowRecord(i), i);
         }
       }
@@ -181,9 +181,9 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
       rowRecordList.setEvictionUpperBound(rowRecordList.size());
       for (int i = 0; i < ITERATION_TIMES; i++) {
         if (i % 7 == 0) {
-          assertTrue(rowRecordList.fieldsHasAnyNull(i));
+          assertTrue(rowRecordList.fieldsAllNull(i));
         } else {
-          assertFalse(rowRecordList.fieldsHasAnyNull(i));
+          assertFalse(rowRecordList.fieldsAllNull(i));
         }
       }
 
@@ -200,9 +200,9 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
       rowRecordList.setEvictionUpperBound(rowRecordList.size());
       for (int i = 0; i < ITERATION_TIMES; i++) {
         if (i % 7 == 0) {
-          assertTrue(rowRecordList.fieldsHasAnyNull(i + ITERATION_TIMES));
+          assertTrue(rowRecordList.fieldsAllNull(i + ITERATION_TIMES));
         } else {
-          assertFalse(rowRecordList.fieldsHasAnyNull(i + ITERATION_TIMES));
+          assertFalse(rowRecordList.fieldsAllNull(i + ITERATION_TIMES));
         }
       }
 
@@ -219,9 +219,9 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
       rowRecordList.setEvictionUpperBound(rowRecordList.size());
       for (int i = 0; i < ITERATION_TIMES; i++) {
         if (i % 7 == 0) {
-          assertTrue(rowRecordList.fieldsHasAnyNull(i + 2 * ITERATION_TIMES));
+          assertTrue(rowRecordList.fieldsAllNull(i + 2 * ITERATION_TIMES));
         } else {
-          assertFalse(rowRecordList.fieldsHasAnyNull(i + 2 * ITERATION_TIMES));
+          assertFalse(rowRecordList.fieldsAllNull(i + 2 * ITERATION_TIMES));
         }
       }
 
@@ -237,9 +237,9 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
 
       for (int i = 0; i < ITERATION_TIMES; i++) {
         if (i % 7 == 0) {
-          assertTrue(rowRecordList.fieldsHasAnyNull(i + 3 * ITERATION_TIMES));
+          assertTrue(rowRecordList.fieldsAllNull(i + 3 * ITERATION_TIMES));
         } else {
-          assertFalse(rowRecordList.fieldsHasAnyNull(i + 3 * ITERATION_TIMES));
+          assertFalse(rowRecordList.fieldsAllNull(i + 3 * ITERATION_TIMES));
         }
       }
 

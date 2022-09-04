@@ -27,7 +27,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -126,8 +127,8 @@ public class DataMigrationExample {
     @Override
     public Void call() {
 
-      List<MeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema(measurement, dataType));
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new UnaryMeasurementSchema(measurement, dataType));
       tablet = new Tablet(device, schemaList, 300000);
       SessionDataSetWrapper dataSet = null;
 

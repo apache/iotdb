@@ -353,7 +353,7 @@ public abstract class Statistics<T extends Serializable> {
     return endTime;
   }
 
-  public long getCount() {
+  public int getCount() {
     return count;
   }
 

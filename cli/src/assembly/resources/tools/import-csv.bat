@@ -25,7 +25,7 @@ echo ````````````````````````````````````````````````
 if "%OS%" == "Windows_NT" setlocal
 
 pushd %~dp0..
-if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
+if NOT DEFINED IOTDB_CLI_HOME set IOTDB_CLI_HOME=%CD%
 popd
 
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.ImportCsv
@@ -34,21 +34,20 @@ if NOT DEFINED JAVA_HOME goto :err
 @REM -----------------------------------------------------------------------------
 @REM JVM Opts we'll use in legacy run or installation
 set JAVA_OPTS=-ea^
- -DIOTDB_HOME=%IOTDB_HOME%
+ -DIOTDB_CLI_HOME=%IOTDB_CLI_HOME%
 
 @REM ***** CLASSPATH library setting *****
-set CLASSPATH=%IOTDB_HOME%\lib\*
+set CLASSPATH=%IOTDB_CLI_HOME%\lib\*
 
 REM -----------------------------------------------------------------------------
 
-"%JAVA_HOME%\bin\java" -DIOTDB_HOME=%IOTDB_HOME% %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %*
-set ret_code=%ERRORLEVEL%
+"%JAVA_HOME%\bin\java" -DIOTDB_CLI_HOME=%IOTDB_CLI_HOME% %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %*
+
 goto finally
 
 
 :err
 echo JAVA_HOME environment variable must be set!
-set ret_code=1
 pause
 
 
@@ -56,5 +55,3 @@ pause
 :finally
 
 ENDLOCAL
-
-EXIT /B %ret_code%

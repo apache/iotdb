@@ -37,7 +37,6 @@ public class SelectIntoOperator extends Operator {
   private QueryOperator queryOperator;
 
   private List<PartialPath> intoPaths;
-  private boolean isIntoPathsAligned;
 
   public SelectIntoOperator() {
     super(SQLConstant.TOK_SELECT_INTO);
@@ -53,10 +52,7 @@ public class SelectIntoOperator extends Operator {
           "select into: the number of source paths and the number of target paths should be the same.");
     }
     return new SelectIntoPlan(
-        queryPlan,
-        queryOperator.getFromComponent().getPrefixPaths().get(0),
-        intoPaths,
-        isIntoPathsAligned);
+        queryPlan, queryOperator.getFromComponent().getPrefixPaths().get(0), intoPaths);
   }
 
   public void check() throws LogicalOperatorException {
@@ -110,9 +106,5 @@ public class SelectIntoOperator extends Operator {
 
   public void setIntoPaths(List<PartialPath> intoPaths) {
     this.intoPaths = intoPaths;
-  }
-
-  public void setIntoPathsAligned(boolean isIntoPathsAligned) {
-    this.isIntoPathsAligned = isIntoPathsAligned;
   }
 }

@@ -20,9 +20,7 @@ package org.apache.iotdb.cli;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,6 +29,7 @@ public class StartClientScriptIT extends AbstractScript {
 
   @Before
   public void setUp() {
+    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
 
@@ -67,11 +66,8 @@ public class StartClientScriptIT extends AbstractScript {
             "-u",
             "root",
             "-pw",
-            "root",
-            "&",
-            "exit",
-            "%^errorlevel%");
-    testOutput(builder, output, 1);
+            "root");
+    testOutput(builder, output);
 
     final String[] output2 = {"Msg: The statement is executed successfully."};
     ProcessBuilder builder2 =
@@ -82,11 +78,8 @@ public class StartClientScriptIT extends AbstractScript {
             "-maxPRC",
             "0",
             "-e",
-            "\"flush\"",
-            "&",
-            "exit",
-            "%^errorlevel%");
-    testOutput(builder2, output2, 0);
+            "\"flush\"");
+    testOutput(builder2, output2);
 
     final String[] output3 = {
       "IoTDB> error format of max print row count, it should be an integer number"
@@ -97,11 +90,8 @@ public class StartClientScriptIT extends AbstractScript {
             "/c",
             dir + File.separator + "sbin" + File.separator + "start-cli.bat",
             "-maxPRC",
-            "-1111111111111111111111111111",
-            "&",
-            "exit",
-            "%^errorlevel%");
-    testOutput(builder3, output3, 1);
+            "-1111111111111111111111111111");
+    testOutput(builder3, output3);
   }
 
   @Override
@@ -122,7 +112,7 @@ public class StartClientScriptIT extends AbstractScript {
             "root",
             "-pw",
             "root");
-    testOutput(builder, output, 1);
+    testOutput(builder, output);
 
     final String[] output2 = {"Msg: The statement is executed successfully."};
     ProcessBuilder builder2 =
@@ -133,7 +123,7 @@ public class StartClientScriptIT extends AbstractScript {
             "0",
             "-e",
             "\"flush\"");
-    testOutput(builder2, output2, 0);
+    testOutput(builder2, output2);
 
     final String[] output3 = {
       "IoTDB> error format of max print row count, it should be an integer number"
@@ -144,6 +134,6 @@ public class StartClientScriptIT extends AbstractScript {
             dir + File.separator + "sbin" + File.separator + "start-cli.sh",
             "-maxPRC",
             "-1111111111111111111111111111");
-    testOutput(builder3, output3, 1);
+    testOutput(builder3, output3);
   }
 }

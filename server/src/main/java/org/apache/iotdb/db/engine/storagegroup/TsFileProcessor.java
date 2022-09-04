@@ -75,10 +75,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -369,7 +367,7 @@ public class TsFileProcessor {
       } else {
         // here currentChunkPointNum >= 1
         long currentChunkPointNum =
-            workMemTable.getCurrentTVListSize(deviceID, insertRowPlan.getMeasurements()[i]);
+            workMemTable.getCurrentChunkPointNum(deviceID, insertRowPlan.getMeasurements()[i]);
         memTableIncrement +=
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
                 ? TVList.tvListArrayMemCost(insertRowPlan.getDataTypes()[i])
@@ -409,7 +407,7 @@ public class TsFileProcessor {
     } else {
       // here currentChunkPointNum >= 1
       long currentChunkPointNum =
-          workMemTable.getCurrentTVListSize(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
+          workMemTable.getCurrentChunkPointNum(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
       memTableIncrement +=
           (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
               ? AlignedTVList.alignedTvListArrayMemCost(insertRowPlan.getDataTypes())
@@ -518,7 +516,7 @@ public class TsFileProcessor {
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * TVList.tvListArrayMemCost(dataType);
     } else {
-      long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurement);
+      long currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId, measurement);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
@@ -558,7 +556,7 @@ public class TsFileProcessor {
               * AlignedTVList.alignedTvListArrayMemCost(dataTypes);
     } else {
       int currentChunkPointNum =
-          (int) workMemTable.getCurrentTVListSize(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+          (int) workMemTable.getCurrentChunkPointNum(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
@@ -1055,7 +1053,6 @@ public class TsFileProcessor {
     }
 
     try {
-      flushQueryLock.writeLock().lock();
       Iterator<Pair<Modification, IMemTable>> iterator = modsToMemtable.iterator();
       while (iterator.hasNext()) {
         Pair<Modification, IMemTable> entry = iterator.next();
@@ -1076,8 +1073,6 @@ public class TsFileProcessor {
           "Meet error when writing into ModificationFile file of {} ",
           tsFileResource.getTsFile().getName(),
           e);
-    } finally {
-      flushQueryLock.writeLock().unlock();
     }
 
     if (logger.isDebugEnabled()) {
@@ -1265,49 +1260,47 @@ public class TsFileProcessor {
    * get the chunk(s) in the memtable (one from work memtable and the other ones in flushing
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
    * ChunkMetadata of data on disk.
-   *
-   * @param seriesPaths selected paths
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void query(
-      List<PartialPath> seriesPaths,
-      QueryContext context,
-      List<TsFileResource> tsfileResourcesForQuery)
-      throws IOException {
-    Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
-    Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
-
+      PartialPath fullPath, QueryContext context, List<TsFileResource> tsfileResourcesForQuery)
+      throws IOException, MetadataException {
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "{}: {} get flushQueryLock and hotCompactionMergeLock read lock",
+          storageGroupName,
+          tsFileResource.getTsFile().getName());
+    }
     flushQueryLock.readLock().lock();
     try {
-      for (PartialPath seriesPath : seriesPaths) {
-        List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
-        for (IMemTable flushingMemTable : flushingMemTables) {
-          if (flushingMemTable.isSignalMemTable()) {
-            continue;
-          }
-          ReadOnlyMemChunk memChunk =
-              flushingMemTable.query(seriesPath, context.getQueryTimeLowerBound(), modsToMemtable);
-          if (memChunk != null) {
-            readOnlyMemChunks.add(memChunk);
-          }
+      List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
+      for (IMemTable flushingMemTable : flushingMemTables) {
+        if (flushingMemTable.isSignalMemTable()) {
+          continue;
         }
-        if (workMemTable != null) {
-          ReadOnlyMemChunk memChunk =
-              workMemTable.query(seriesPath, context.getQueryTimeLowerBound(), null);
-          if (memChunk != null) {
-            readOnlyMemChunks.add(memChunk);
-          }
-        }
-
-        List<IChunkMetadata> chunkMetadataList =
-            seriesPath.getVisibleMetadataListFromWriter(writer, tsFileResource, context);
-
-        // get in memory data
-        if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
-          pathToReadOnlyMemChunkMap.put(seriesPath, readOnlyMemChunks);
-          pathToChunkMetadataListMap.put(seriesPath, chunkMetadataList);
+        ReadOnlyMemChunk memChunk =
+            flushingMemTable.query(fullPath, context.getQueryTimeLowerBound(), modsToMemtable);
+        if (memChunk != null) {
+          readOnlyMemChunks.add(memChunk);
         }
       }
-    } catch (QueryProcessException | MetadataException e) {
+      if (workMemTable != null) {
+        ReadOnlyMemChunk memChunk =
+            workMemTable.query(fullPath, context.getQueryTimeLowerBound(), null);
+        if (memChunk != null) {
+          readOnlyMemChunks.add(memChunk);
+        }
+      }
+
+      List<IChunkMetadata> chunkMetadataList =
+          fullPath.getVisibleMetadataListFromWriter(writer, tsFileResource, context);
+
+      // get in memory data
+      if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
+        tsfileResourcesForQuery.add(
+            fullPath.createTsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
+      }
+    } catch (QueryProcessException e) {
       logger.error(
           "{}: {} get ReadOnlyMemChunk has error",
           storageGroupName,
@@ -1321,12 +1314,6 @@ public class TsFileProcessor {
             storageGroupName,
             tsFileResource.getTsFile().getName());
       }
-    }
-
-    if (!pathToReadOnlyMemChunkMap.isEmpty() || !pathToChunkMetadataListMap.isEmpty()) {
-      tsfileResourcesForQuery.add(
-          new TsFileResource(
-              pathToReadOnlyMemChunkMap, pathToChunkMetadataListMap, tsFileResource));
     }
   }
 

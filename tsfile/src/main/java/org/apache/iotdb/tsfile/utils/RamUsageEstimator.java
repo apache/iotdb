@@ -864,7 +864,9 @@ public final class RamUsageEstimator {
     public static final String OS_VERSION = System.getProperty("os.version");
     public static final String JAVA_VENDOR = System.getProperty("java.vendor");
 
-    /** @deprecated With Lucene 4.0, we are always on Java 6 */
+    /**
+     * @deprecated With Lucene 4.0, we are always on Java 6
+     */
     @Deprecated
     public static final boolean JRE_IS_MINIMUM_JAVA6 =
         Boolean.TRUE; // prevent inlining in foreign class files

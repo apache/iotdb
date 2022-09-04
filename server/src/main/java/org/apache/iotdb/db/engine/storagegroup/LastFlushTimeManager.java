@@ -60,38 +60,38 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
 
   // region set
   @Override
-  public void setMultiDeviceLastTime(long timePartitionId, Map<String, Long> lastTimeMap) {
+  public void setLastTimeAll(long timePartitionId, Map<String, Long> lastTimeMap) {
     latestTimeForEachDevice
         .computeIfAbsent(timePartitionId, l -> new HashMap<>())
         .putAll(lastTimeMap);
   }
 
   @Override
-  public void setOneDeviceLastTime(long timePartitionId, String path, long time) {
+  public void setLastTime(long timePartitionId, String path, long time) {
     latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>()).put(path, time);
   }
 
   @Override
-  public void setMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap) {
+  public void setFlushedTimeAll(long timePartitionId, Map<String, Long> flushedTimeMap) {
     partitionLatestFlushedTimeForEachDevice
         .computeIfAbsent(timePartitionId, l -> new HashMap<>())
         .putAll(flushedTimeMap);
   }
 
   @Override
-  public void setOneDeviceFlushedTime(long timePartitionId, String path, long time) {
+  public void setFlushedTime(long timePartitionId, String path, long time) {
     partitionLatestFlushedTimeForEachDevice
         .computeIfAbsent(timePartitionId, l -> new HashMap<>())
         .put(path, time);
   }
 
   @Override
-  public void setMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap) {
+  public void setGlobalFlushedTimeAll(Map<String, Long> globalFlushedTimeMap) {
     globalLatestFlushedTimeForEachDevice.putAll(globalFlushedTimeMap);
   }
 
   @Override
-  public void setOneDeviceGlobalFlushedTime(String path, long time) {
+  public void setGlobalFlushedTime(String path, long time) {
     globalLatestFlushedTimeForEachDevice.put(path, time);
   }
 

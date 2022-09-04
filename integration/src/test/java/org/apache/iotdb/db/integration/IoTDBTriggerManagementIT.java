@@ -195,48 +195,13 @@ public class IoTDBTriggerManagementIT {
       statement.execute(
           "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
       statement.execute(
-          "create trigger trigger_1 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_1 after insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
     } catch (SQLException throwable) {
       assertTrue(
           throwable
               .getMessage()
               .contains(
                   "a trigger with the same trigger name and the class name has already been registered"));
-    }
-  }
-
-  @Test
-  public void testRegisterOnSameTimeseries() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-
-      try {
-        statement.execute(
-            "create trigger trigger_2 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-      } catch (SQLException throwable) {
-        assertTrue(
-            throwable
-                .getMessage()
-                .contains(
-                    "because a trigger trigger_1(org.apache.iotdb.db.engine.trigger.example.Accumulator) has already been registered on the timeseries root.vehicle.d1.s1"));
-      }
-
-      try {
-        statement.execute(
-            "create trigger trigger_3 after insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-      } catch (SQLException throwable) {
-        assertTrue(
-            throwable
-                .getMessage()
-                .contains(
-                    "because a trigger trigger_1(org.apache.iotdb.db.engine.trigger.example.Accumulator) has already been registered on the timeseries root.vehicle.d1.s1"));
-      }
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
     }
   }
 
@@ -492,16 +457,15 @@ public class IoTDBTriggerManagementIT {
       assertFalse(trigger2Info.isStopped());
 
       statement.execute("drop trigger trigger_2");
-      statement.execute("drop trigger trigger_1");
       statement.execute(
           "create trigger trigger_2 after insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+      statement.execute("drop trigger trigger_1");
       statement.execute(
           "create trigger trigger_1 before insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k5'='v5')");
       statement.execute("stop trigger trigger_2");
       statement.execute(
           "create trigger trigger_3 before insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
     } catch (Exception e) {
-      e.printStackTrace();
       fail(e.getMessage());
     }
 

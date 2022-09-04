@@ -38,7 +38,6 @@ public class IoTDBConstant {
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
-  public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
 
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
@@ -79,7 +78,6 @@ public class IoTDBConstant {
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
-  public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
 
@@ -104,11 +102,8 @@ public class IoTDBConstant {
   public static final String COLUMN_CONTINUOUS_QUERY_NAME = "cq name";
   public static final String COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL = "every interval";
   public static final String COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL = "for interval";
-  public static final String COLUMN_CONTINUOUS_QUERY_BOUNDARY = "boundary";
   public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
   public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
-
-  public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
 
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
@@ -175,21 +170,6 @@ public class IoTDBConstant {
   public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
   public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
 
-  // inner space compaction
-  public static final String INNER_COMPACTION_TMP_FILE_SUFFIX = ".inner";
-
-  // cross space compaction
-  public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".cross";
-
-  // cross space compaction of previous version (<0.13)
-  public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD = ".merge";
-
-  // compaction mods of previous version (<0.13)
-  public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
-
-  // client version number
-  public enum ClientVersion {
-    V_0_12,
-    V_0_13
-  }
+  // compaction
+  public static final String COMPACTION_TMP_FILE_SUFFIX = ".target";
 }

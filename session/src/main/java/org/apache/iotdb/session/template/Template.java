@@ -32,16 +32,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * The template instance constructed within session is SUGGESTED to be a flat measurement template,
- * which has no internal nodes inside a template.
- *
- * <p>For example, template(s1, s2, s3) is a flat measurement template, while template2(GPS.x,
- * GPS.y, s1) is not.
- *
- * <p>Tree-structured template, which is contrary to flat measurement template, may not be supported
- * in further version of IoTDB
- */
 public class Template {
   private String name;
   private Map<String, TemplateNode> children;

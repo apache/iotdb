@@ -29,9 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public abstract class InsertPlan extends PhysicalPlan {
 
@@ -199,17 +197,10 @@ public abstract class InsertPlan extends PhysicalPlan {
     if (measurements == null) {
       throw new QueryProcessException("Measurements are null");
     }
-    Set<String> deduplicatedMeasurements = new HashSet<>();
     for (String measurement : measurements) {
       if (measurement == null || measurement.isEmpty()) {
         throw new QueryProcessException(
             "Measurement contains null or empty string: " + Arrays.toString(measurements));
-      }
-      if (deduplicatedMeasurements.contains(measurement)) {
-        throw new QueryProcessException(
-            "Insertion contains duplicated measurement: " + measurement);
-      } else {
-        deduplicatedMeasurements.add(measurement);
       }
     }
   }

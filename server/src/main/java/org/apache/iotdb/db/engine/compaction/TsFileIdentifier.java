@@ -36,24 +36,16 @@ public class TsFileIdentifier {
   private final boolean sequence;
   private final String filename;
   public static final String INFO_SEPARATOR = " ";
-  // Notice: Do not change the offset of info
   public static final int FILE_NAME_OFFSET_IN_PATH = 1;
   public static final int TIME_PARTITION_OFFSET_IN_PATH = 2;
   public static final int VIRTUAL_SG_OFFSET_IN_PATH = 3;
   public static final int LOGICAL_SG_OFFSET_IN_PATH = 4;
   public static final int SEQUENCE_OFFSET_IN_PATH = 5;
-
-  public static final int SEQUENCE_OFFSET_IN_LOG = 0;
-  public static final int LOGICAL_SG_OFFSET_IN_LOG = 1;
-  public static final int VIRTUAL_SG_OFFSET_IN_LOG = 2;
-  public static final int TIME_PARTITION_OFFSET_IN_LOG = 3;
+  public static final int LOGICAL_SG_OFFSET_IN_LOG = 0;
+  public static final int VIRTUAL_SG_OFFSET_IN_LOG = 1;
+  public static final int TIME_PARTITION_OFFSET_IN_LOG = 2;
+  public static final int SEQUENCE_OFFSET_IN_LOG = 3;
   public static final int FILE_NAME_OFFSET_IN_LOG = 4;
-
-  private static final int LOGICAL_SG_OFFSET_IN_LOG_FROM_OLD = 0;
-  private static final int VIRTUAL_SG_OFFSET_IN_LOG_FROM_OLD = 1;
-  private static final int TIME_PARTITION_OFFSET_IN_LOG_FROM_OLD = 2;
-  private static final int FILE_NAME_OFFSET_IN_LOG_FROM_OLD = 3;
-  private static final int SEQUENCE_OFFSET_IN_LOG_FROM_OLD = 4;
 
   private TsFileIdentifier(
       String logicalStorageGroupName,
@@ -100,8 +92,7 @@ public class TsFileIdentifier {
 
   /**
    * This function generates an instance of CompactionFileIdentifier by parsing the info string of a
-   * tsfile(usually recorded in a compaction.log), such as “sequence root.test.sg 0 0
-   * 0-0-0-0.tsfile"
+   * tsfile(usually recorded in a compaction.log), such as “root.test.sg 0 0 true 1-1-0-0.tsfile"
    */
   public static TsFileIdentifier getFileIdentifierFromInfoString(String infoString) {
     String[] splittedFileInfo = infoString.split(INFO_SEPARATOR);
@@ -114,45 +105,21 @@ public class TsFileIdentifier {
         splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG],
         splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG],
         splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG],
-        splittedFileInfo[SEQUENCE_OFFSET_IN_LOG].equals("sequence"),
+        Boolean.parseBoolean(splittedFileInfo[SEQUENCE_OFFSET_IN_LOG]),
         splittedFileInfo[FILE_NAME_OFFSET_IN_LOG]);
-  }
-
-  /**
-   * This function generates an instance of CompactionFileIdentifier by parsing the old info string
-   * from previous version (<0.13) of a tsfile(usually recorded in a compaction.log). Such as
-   * “root.test.sg 0 0 1-1-0-0.tsfile true" from old cross space compaction log and "root.test.sg 0
-   * 0 1-1-0-0.tsfile sequence" from old inner space compaction log.
-   */
-  public static TsFileIdentifier getFileIdentifierFromOldInfoString(String oldInfoString) {
-    String[] splittedFileInfo = oldInfoString.split(INFO_SEPARATOR);
-    int length = splittedFileInfo.length;
-    if (length != 5) {
-      throw new RuntimeException(
-          String.format(
-              "String %s is not a legal file info string from previous version (<0.13)",
-              oldInfoString));
-    }
-    return new TsFileIdentifier(
-        splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG_FROM_OLD],
-        splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG_FROM_OLD],
-        splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG_FROM_OLD],
-        splittedFileInfo[SEQUENCE_OFFSET_IN_LOG_FROM_OLD].equals("true")
-            || splittedFileInfo[SEQUENCE_OFFSET_IN_LOG_FROM_OLD].equals("sequence"),
-        splittedFileInfo[FILE_NAME_OFFSET_IN_LOG_FROM_OLD]);
   }
 
   @Override
   public String toString() {
     return String.format(
         "%s%s%s%s%s%s%s%s%s",
-        sequence ? "sequence" : "unsequence",
-        INFO_SEPARATOR,
         logicalStorageGroupName,
         INFO_SEPARATOR,
         virtualStorageGroupId,
         INFO_SEPARATOR,
         timePartitionId,
+        INFO_SEPARATOR,
+        sequence,
         INFO_SEPARATOR,
         filename);
   }

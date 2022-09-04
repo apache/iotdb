@@ -19,10 +19,7 @@
 
 -->
 
-# Encoding
-
-
-## Encoding Methods
+## Encoding 
 
 To improve the efficiency of data storage, it is necessary to encode data during data writing, thereby reducing the amount of disk space used. In the process of writing and reading data, the amount of data involved in the I/O operations can be reduced to improve performance. IoTDB supports the following encoding methods for different data types:
 
@@ -55,11 +52,11 @@ Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure 
 DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinality (i.e. low number of distinct values). It is not recommended to use it for high-cardinality data. 
 
 
-## Correspondence between data type and encoding
+### Correspondence between data type and encoding
 
 The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
 
-<div style="text-align: center;"> 
+<center> 
 
 **The correspondence between the data type and its supported encodings**
 
@@ -72,4 +69,4 @@ The five encodings described in the previous sections are applicable to differen
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |TEXT	|PLAIN, DICTIONARY|
 
-</div>
+</center>

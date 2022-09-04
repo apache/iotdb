@@ -75,6 +75,7 @@ public class IoTDBEngineTimeGeneratorIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvironmentUtils.closeStatMonitor();
 
     // use small page setting
     // origin value

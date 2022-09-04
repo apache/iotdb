@@ -19,13 +19,8 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
-import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
 
 import org.apache.thrift.TException;
 
@@ -112,27 +107,5 @@ public class GroupByTimePlan extends AggregationPlan {
 
   public void setLeftCRightO(boolean leftCRightO) {
     this.leftCRightO = leftCRightO;
-  }
-
-  public static GlobalTimeExpression getTimeExpression(GroupByTimePlan plan)
-      throws QueryProcessException {
-    if (plan.isSlidingStepByMonth() || plan.isIntervalByMonth()) {
-      if (!plan.isAscending()) {
-        throw new QueryProcessException("Group by month doesn't support order by time desc now.");
-      }
-      return new GlobalTimeExpression(
-          (new GroupByMonthFilter(
-              plan.getInterval(),
-              plan.getSlidingStep(),
-              plan.getStartTime(),
-              plan.getEndTime(),
-              plan.isSlidingStepByMonth(),
-              plan.isIntervalByMonth(),
-              SessionManager.getInstance().getCurrSessionTimeZone())));
-    } else {
-      return new GlobalTimeExpression(
-          new GroupByFilter(
-              plan.getInterval(), plan.getSlidingStep(), plan.getStartTime(), plan.getEndTime()));
-    }
   }
 }

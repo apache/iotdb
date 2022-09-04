@@ -3,12 +3,14 @@ name: Cluster Test
 on:
   push:
     branches:
-      - test_cluster
+      - master
+      - 'rel/*'
     paths-ignore:
       - 'docs/**'
   pull_request:
     branches:
-      - test_cluster
+      - master
+      - 'rel/*'
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:

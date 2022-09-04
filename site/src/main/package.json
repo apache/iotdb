@@ -39,7 +39,6 @@
     "vue-tabs-component": "^1.5.0",
     "vuepress": "^1.7.1",
     "vuepress-plugin-tabs": "^0.3.0",
-    "vue-router": "3.4.5",
-    "@vuepress/plugin-html-redirect": "0.1.4"
+    "vue-router": "3.4.5"
   }
 }

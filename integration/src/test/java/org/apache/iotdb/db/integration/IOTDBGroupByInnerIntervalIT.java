@@ -300,7 +300,7 @@ public class IOTDBGroupByInnerIntervalIT {
                   + "GROUP BY ([1, 30), -1ms)");
       fail();
     } catch (Exception e) {
-      assertTrue(e instanceof IoTDBSQLException);
+      assertTrue(e instanceof SQLException);
     }
   }
 

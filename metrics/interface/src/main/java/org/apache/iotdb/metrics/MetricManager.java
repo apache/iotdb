@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.metrics;
 
-import org.apache.iotdb.metrics.type.*;
-import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import java.util.List;
@@ -34,7 +37,7 @@ public interface MetricManager {
    *
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags);
+  Counter getOrCreateCounter(String metric, String... tags);
 
   /**
    * Get Gauge If exists, then return or create one to return
@@ -46,51 +49,62 @@ public interface MetricManager {
    * @param obj which will be monitored automatically
    * @param mapper use which to map the obj to a long value
    */
-  <T> Gauge getOrCreateAutoGauge(
-      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags);
+  <T> Gauge getOrCreateAutoGauge(String metric, T obj, ToLongFunction<T> mapper, String... tags);
 
   /**
    * Get Gauge If exists, then return or create one to return
    *
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags);
+  Gauge getOrCreateGauge(String metric, String... tags);
 
   /**
    * Get Rate If exists, then return or create one to return
    *
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags);
+  Rate getOrCreateRate(String metric, String... tags);
 
   /**
    * Get Histogram If exists, then return or create one to return
    *
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags);
+  Histogram getOrCreateHistogram(String metric, String... tags);
 
   /**
    * Get Timer If exists, then return or create one to return
    *
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Timer getOrCreateTimer(String metric, MetricLevel metricLevel, String... tags);
+  Timer getOrCreateTimer(String metric, String... tags);
 
-  /** update Counter. Create if not exists */
-  void count(long delta, String metric, MetricLevel metricLevel, String... tags);
+  /** Update Counter */
+  void count(int delta, String metric, String... tags);
 
-  /** set init value of Gauge. Create if not exists */
-  void gauge(long value, String metric, MetricLevel metricLevel, String... tags);
+  /** Update Counter */
+  void count(long delta, String metric, String... tags);
 
-  /** update Rate. Create if not exists */
-  void rate(long value, String metric, MetricLevel metricLevel, String... tags);
+  /** update Gauge */
+  void gauge(int value, String metric, String... tags);
 
-  /** update Histogram. Create if not exists */
-  void histogram(long value, String metric, MetricLevel metricLevel, String... tags);
+  /** update Gauge */
+  void gauge(long value, String metric, String... tags);
 
-  /** update Timer. Create if not exists */
-  void timer(long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags);
+  /** update Rate */
+  void rate(int value, String metric, String... tags);
+
+  /** update Rate */
+  void rate(long value, String metric, String... tags);
+
+  /** update Histogram */
+  void histogram(int value, String metric, String... tags);
+
+  /** update Histogram */
+  void histogram(long value, String metric, String... tags);
+
+  /** update Timer */
+  void timer(long delta, TimeUnit timeUnit, String metric, String... tags);
 
   /** remove counter */
   void removeCounter(String metric, String... tags);
@@ -151,9 +165,6 @@ public interface MetricManager {
 
   /** whether is enabled monitor */
   boolean isEnable();
-
-  /** whether is enabled monitor in specific level */
-  boolean isEnable(MetricLevel metricLevel);
 
   /**
    * enable pre-defined metric set.

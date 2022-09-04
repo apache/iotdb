@@ -18,29 +18,23 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -88,8 +82,8 @@ public class TemplateTest {
     IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
     node = manager.setUsingSchemaTemplate(node);
 
-    MeasurementSchema s11 =
-        new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    UnaryMeasurementSchema s11 =
+        new UnaryMeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     assertNotNull(node.getSchemaTemplate());
 
     Set<IMeasurementSchema> allSchema =
@@ -197,8 +191,8 @@ public class TemplateTest {
     measurementList.add(Arrays.asList("GPS.x", "GPS.y"));
 
     List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
     dataTypeList.add(Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT));
 
     List<List<TSEncoding>> encodingList = new ArrayList<>();
@@ -207,7 +201,7 @@ public class TemplateTest {
     encodingList.add(Arrays.asList(TSEncoding.RLE, TSEncoding.RLE));
 
     List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Collections.singletonList(CompressionType.UNCOMPRESSED));
+    compressionTypes.add(Collections.singletonList(CompressionType.SDT));
     compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
 
@@ -254,216 +248,5 @@ public class TemplateTest {
 
     return new CreateTemplatePlan(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
-  }
-
-  private CreateTemplatePlan getDirectAlignedTemplate() {
-    List<List<String>> measurementList = new ArrayList<>();
-    List<String> measurements = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      measurements.add("vs" + i);
-    }
-    measurementList.add(measurements);
-
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      dataTypes.add(TSDataType.INT64);
-    }
-    dataTypeList.add(dataTypes);
-
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    List<TSEncoding> encodings = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      encodings.add(TSEncoding.RLE);
-    }
-    encodingList.add(encodings);
-
-    List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    List<CompressionType> compressorList = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      compressorList.add(CompressionType.SNAPPY);
-    }
-    compressionTypes.add(compressorList);
-
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("vector");
-
-    return new CreateTemplatePlan(
-        "templateDA", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
-  }
-
-  /**
-   * Test for show templates, including all templates, paths set or using designated template
-   *
-   * @throws MetadataException
-   */
-  @Test
-  public void testShowTemplates() throws MetadataException, QueryProcessException {
-    MManager manager = IoTDB.metaManager;
-    assertEquals(0, manager.getAllTemplates().size());
-    CreateTemplatePlan plan1 = getTreeTemplatePlan();
-    CreateTemplatePlan plan2 = getCreateTemplatePlan();
-    manager.createSchemaTemplate(plan1);
-    manager.createSchemaTemplate(plan2);
-
-    assertEquals("[template1, treeTemplate]", manager.getAllTemplates().toString());
-
-    for (int i = 0; i < 3; i++) {
-      SetTemplatePlan setTemplatePlan =
-          new SetTemplatePlan("template1", String.format("root.sg%d.d%d", i, i + 1));
-      manager.setSchemaTemplate(setTemplatePlan);
-    }
-
-    assertEquals(
-        new HashSet<>(Arrays.asList("root.sg1.d2", "root.sg0.d1", "root.sg2.d3")),
-        manager.getPathsSetTemplate("*"));
-    assertEquals(new HashSet<>(Arrays.asList()), manager.getPathsSetTemplate("treeTemplate"));
-
-    for (int i = 0; i < 3; i++) {
-      SetTemplatePlan setTemplatePlan =
-          new SetTemplatePlan("treeTemplate", String.format("root.tsg%d.d%d", i + 9, i + 10));
-      manager.setSchemaTemplate(setTemplatePlan);
-    }
-
-    assertEquals(
-        new HashSet<>(Arrays.asList("root.tsg10.d11", "root.tsg11.d12", "root.tsg9.d10")),
-        manager.getPathsSetTemplate("treeTemplate"));
-    assertEquals(
-        new HashSet<>(
-            Arrays.asList(
-                "root.tsg10.d11",
-                "root.tsg11.d12",
-                "root.tsg9.d10",
-                "root.sg1.d2",
-                "root.sg0.d1",
-                "root.sg2.d3")),
-        manager.getPathsSetTemplate("*"));
-
-    PlanExecutor exe1 = new PlanExecutor();
-    exe1.insert(getInsertRowPlan("root.sg0.d1", "s11"));
-    exe1.insert(getInsertRowPlan("root.sg1.d2", "s11"));
-    exe1.insert(getInsertRowPlan("root.tsg10.d11.d1", "s1"));
-
-    assertEquals(
-        new HashSet<>(Arrays.asList("root.tsg10.d11", "root.sg1.d2", "root.sg0.d1")),
-        manager.getPathsUsingTemplate("*"));
-
-    try {
-      manager.createSchemaTemplate(plan1);
-      fail();
-    } catch (MetadataException e) {
-      assertEquals("Duplicated template name: treeTemplate", e.getMessage());
-    }
-
-    try {
-      manager.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
-      fail();
-    } catch (MetadataException e) {
-      assertEquals(
-          "Template [treeTemplate] has been set on MTree, cannot be dropped now.", e.getMessage());
-    }
-  }
-
-  @Test
-  public void testShowAllSchemas() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
-    CreateTemplatePlan plan1 = getTreeTemplatePlan();
-    CreateTemplatePlan plan2 = getCreateTemplatePlan();
-    manager.createSchemaTemplate(plan1);
-    manager.createSchemaTemplate(plan2);
-    assertEquals(4, manager.getSchemasInTemplate("treeTemplate", "").size());
-    assertEquals(2, manager.getSchemasInTemplate("treeTemplate", "GPS").size());
-    assertEquals(11, manager.getSchemasInTemplate("template1", "").size());
-    assertEquals(10, manager.getSchemasInTemplate("template1", "vector").size());
-  }
-
-  @Test
-  public void testDropTemplate() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
-    CreateTemplatePlan plan1 = getTreeTemplatePlan();
-    CreateTemplatePlan plan2 = getCreateTemplatePlan();
-    manager.createSchemaTemplate(plan1);
-    manager.createSchemaTemplate(plan2);
-
-    assertEquals("[template1, treeTemplate]", manager.getAllTemplates().toString());
-
-    try {
-      manager.createSchemaTemplate(plan2);
-      fail();
-    } catch (MetadataException e) {
-      assertEquals("Duplicated template name: template1", e.getMessage());
-    }
-
-    SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg.d0");
-    manager.setSchemaTemplate(setTemplatePlan);
-
-    try {
-      manager.dropSchemaTemplate(new DropTemplatePlan("template1"));
-      fail();
-    } catch (MetadataException e) {
-      assertEquals(
-          "Template [template1] has been set on MTree, cannot be dropped now.", e.getMessage());
-    }
-
-    UnsetTemplatePlan unsetPlan = new UnsetTemplatePlan("root.sg.d0", "template1");
-    manager.unsetSchemaTemplate(unsetPlan);
-
-    manager.dropSchemaTemplate(new DropTemplatePlan("template1"));
-    assertEquals("[treeTemplate]", manager.getAllTemplates().toString());
-    manager.createSchemaTemplate(plan2);
-    assertEquals("[template1, treeTemplate]", manager.getAllTemplates().toString());
-    manager.dropSchemaTemplate(new DropTemplatePlan("template1"));
-    manager.dropSchemaTemplate(new DropTemplatePlan("treeTemplate"));
-  }
-
-  @Test
-  public void testTemplateAlignment() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
-    manager.createTimeseries(
-        new PartialPath("root.laptop.d0"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null);
-    manager.createTimeseries(
-        new PartialPath("root.laptop.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null);
-    manager.createTimeseries(
-        new PartialPath("root.laptop.d1.s2"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null);
-    manager.createTimeseries(
-        new PartialPath("root.laptop.d1.ss.t1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null);
-
-    manager.createSchemaTemplate(getDirectAlignedTemplate());
-    try {
-      manager.setSchemaTemplate(new SetTemplatePlan("templateDA", "root.laptop.d1"));
-      fail();
-    } catch (Exception e) {
-      assertEquals(
-          "Template[templateDA] and mounted node[root.laptop.d1.vs0] has different alignment.",
-          e.getMessage());
-    }
-  }
-
-  private InsertRowPlan getInsertRowPlan(String prefixPath, String measurement)
-      throws IllegalPathException {
-    long time = 110L;
-    TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT64};
-
-    String[] columns = new String[1];
-    columns[0] = "1";
-
-    return new InsertRowPlan(
-        new PartialPath(prefixPath), time, new String[] {measurement}, dataTypes, columns);
   }
 }

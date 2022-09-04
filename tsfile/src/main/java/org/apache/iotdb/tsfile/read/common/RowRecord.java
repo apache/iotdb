@@ -38,14 +38,6 @@ public class RowRecord {
     this.fields = new ArrayList<>();
   }
 
-  public RowRecord(long timestamp, int nums) {
-    this.timestamp = timestamp;
-    this.fields = new ArrayList<>(nums);
-    for (int i = 0; i < nums; i++) {
-      this.fields.add(null);
-    }
-  }
-
   public RowRecord(long timestamp, List<Field> fields) {
     this.timestamp = timestamp;
     this.fields = fields;
@@ -67,26 +59,8 @@ public class RowRecord {
     }
   }
 
-  public void setField(int index, Field f) {
-    this.fields.set(index, f);
-    if (f == null || f.getDataType() == null) {
-      hasNullField = true;
-    } else {
-      allNull = false;
-    }
-  }
-
   public void addField(Object value, TSDataType dataType) {
     this.fields.add(Field.getField(value, dataType));
-    if (value == null || dataType == null) {
-      hasNullField = true;
-    } else {
-      allNull = false;
-    }
-  }
-
-  public void setField(int index, Object value, TSDataType dataType) {
-    this.fields.set(index, Field.getField(value, dataType));
     if (value == null || dataType == null) {
       hasNullField = true;
     } else {

@@ -46,17 +46,10 @@ import java.util.function.Supplier;
 public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(MultiFileLogNodeManager.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  // if OOM occurs when registering bytebuffer, getNode method will sleep awhile and then try again
-  private static final long REGISTER_BUFFER_SLEEP_INTERVAL_IN_MS =
-      config.getRegisterBufferSleepIntervalInMs();
-  // if total sleep time exceeds this, getNode method will reject this write
-  private static final long REGISTER_BUFFER_REJECT_THRESHOLD_IN_MS =
-      config.getRegisterBufferRejectThresholdInMs();
-
   private final Map<String, WriteLogNode> nodeMap;
 
   private ScheduledExecutorService executorService;
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   // For fixing too many warn logs when system changes to read-only mode
   private boolean firstReadOnly = true;
@@ -99,34 +92,9 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       node = new ExclusiveWriteLogNode(identifier);
       WriteLogNode oldNode = nodeMap.putIfAbsent(identifier, node);
       if (oldNode != null) {
-        node = oldNode;
+        return oldNode;
       } else {
-        ByteBuffer[] buffers = supplier.get();
-        int sleepTimeInMs = 0;
-        while (buffers == null) {
-          // log error if this is the first time
-          if (sleepTimeInMs == 0) {
-            logger.error(
-                "Cannot allocate bytebuffer for wal, please reduce wal_buffer_size or storage groups number");
-          }
-          // sleep awhile and then try again
-          try {
-            Thread.sleep(REGISTER_BUFFER_SLEEP_INTERVAL_IN_MS);
-            sleepTimeInMs += REGISTER_BUFFER_SLEEP_INTERVAL_IN_MS;
-          } catch (InterruptedException e) {
-            nodeMap.remove(identifier);
-          }
-          // sleep too long, throw exception
-          if (sleepTimeInMs >= REGISTER_BUFFER_REJECT_THRESHOLD_IN_MS) {
-            nodeMap.remove(identifier);
-            throw new RuntimeException(
-                "Cannot allocate bytebuffer for wal, please reduce wal_buffer_size or storage groups number");
-          }
-          // try to get bytebuffer repeatedly
-          buffers = supplier.get();
-        }
-        // initialize node with bytebuffers
-        node.initBuffer(buffers);
+        node.initBuffer(supplier.get());
       }
     }
     return node;
@@ -149,7 +117,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       } catch (IOException e) {
         logger.error("failed to close {}", node, e);
       }
-      node.release();
     }
     nodeMap.clear();
     logger.info("LogNodeManager closed.");

@@ -66,13 +66,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -656,10 +655,11 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(
-            new Path("root.vehicle.d1", "s1"),
-            new OrFilter(
-                new AndFilter(TimeFilter.gt(50), TimeFilter.ltEq(100)), ValueFilter.lt(10.0)));
+        new GlobalTimeExpression(FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L)));
+    expect =
+        BinaryExpression.or(
+            expect,
+            new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.lt(10.0)));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
@@ -670,10 +670,9 @@ public class PhysicalPlanTest {
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
 
     IExpression expect =
-        new SingleSeriesExpression(
-            new Path("root.vehicle.d1", "s1"),
-            new AndFilter(
-                ValueFilter.lt(10.0), new AndFilter(TimeFilter.gt(50), TimeFilter.ltEq(100))));
+        BinaryExpression.and(
+            new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.lt(10.0)),
+            new GlobalTimeExpression(FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L))));
 
     assertEquals(expect.toString(), queryFilter.toString());
 

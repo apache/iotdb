@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -60,16 +59,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     return memChunk.count();
   }
 
-  /**
-   * Check whether this MemChunkGroup contains a measurement. If a VECTOR_PLACEHOLDER passed from
-   * outer, always return true because AlignedMemChunkGroup existing.
-   */
   @Override
   public boolean contains(String measurement) {
-    // used for calculate memtable size
-    if (AlignedPath.VECTOR_PLACEHOLDER.equals(measurement)) {
-      return true;
-    }
     return memChunk.containsMeasurement(measurement);
   }
 
@@ -80,9 +71,6 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   @Override
   public Map<String, IWritableMemChunk> getMemChunkMap() {
-    if (memChunk.count() == 0) {
-      return Collections.emptyMap();
-    }
     return Collections.singletonMap("", memChunk);
   }
 
@@ -103,15 +91,15 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
         }
       }
     }
-    for (String columnToBeRemoved : columnsToBeRemoved) {
-      memChunk.removeColumn(columnToBeRemoved);
+    if (!columnsToBeRemoved.isEmpty()) {
+      memChunk.removeColumns(columnsToBeRemoved);
     }
     return deletedPointsNumber;
   }
 
   @Override
-  public long getCurrentTVListSize(String measurement) {
-    return memChunk.getTVList().rowCount();
+  public long getCurrentChunkPointNum(String measurement) {
+    return memChunk.count();
   }
 
   public AlignedWritableMemChunk getAlignedMemChunk() {

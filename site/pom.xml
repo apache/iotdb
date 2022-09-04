@@ -23,7 +23,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.13.0</version>
+        <version>0.13.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -438,70 +438,6 @@
                             </execution>
                         </executions>
                     </plugin>-->
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>compile-site-0.13</id>
-            <build>
-                <plugins>
-                    <!-- download 0.13 docs from iotdb repo -->
-                    <plugin>
-                        <groupId>com.googlecode.maven-download-plugin</groupId>
-                        <artifactId>download-maven-plugin</artifactId>
-                        <version>1.6.7</version>
-                        <executions>
-                            <execution>
-                                <id>get-0.13-docs</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>wget</goal>
-                                </goals>
-                                <configuration>
-                                    <url>https://github.com/apache/iotdb/archive/rel/0.13.zip</url>
-                                    <skipCache>true</skipCache>
-                                    <overwrite>true</overwrite>
-                                    <outputDirectory>${project.build.directory}/download</outputDirectory>
-                                    <outputFileName>0.13.x.zip</outputFileName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- unpack 0.13 docs from the zip files-->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>truezip-maven-plugin</artifactId>
-                        <version>1.2</version>
-                        <inherited>false</inherited>
-                        <executions>
-                            <execution>
-                                <id>copy-0.13-documentation</id>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <fileset>
-                                        <directory>${project.build.directory}/download/0.13.x.zip/iotdb-rel-0.13/docs/UserGuide</directory>
-                                        <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.13.x</outputDirectory>
-                                    </fileset>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>copy-0.13-zh-documentation</id>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <fileset>
-                                        <directory>${project.build.directory}/download/0.13.x.zip/iotdb-rel-0.13/docs/zh/UserGuide</directory>
-                                        <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.13.x</outputDirectory>
-                                    </fileset>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
                 </plugins>
             </build>
         </profile>

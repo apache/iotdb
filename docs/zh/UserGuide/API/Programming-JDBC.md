@@ -200,9 +200,3 @@ public class JDBCExample {
   }
 }
 ```
-
-可以在 url 中指定 version 参数：
-```java
-String url = "jdbc:iotdb://127.0.0.1:6667?version=V_0_12";
-```
-version 表示客户端使用的 SQL 语义版本，用于升级 0.13 时兼容 0.12 的 SQL 语义，可能取值有：`V_0_12`、`V_0_13`。

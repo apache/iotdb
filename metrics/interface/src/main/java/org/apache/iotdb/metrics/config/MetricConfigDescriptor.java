@@ -65,8 +65,8 @@ public class MetricConfigDescriptor {
     return url;
   }
 
-  /** Load a property file and set MetricConfig variables. If not found file, use default value. */
-  public void loadProps() {
+  /** Load an property file and set MetricConfig variables. If not found file, use default value. */
+  private void loadProps() {
     String url = getPropsUrl();
     Constructor constructor = new Constructor(MetricConfig.class);
     Yaml yaml = new Yaml(constructor);
@@ -76,52 +76,12 @@ public class MetricConfigDescriptor {
         metricConfig = (MetricConfig) yaml.load(inputStream);
         return;
       } catch (IOException e) {
-        logger.warn("Fail to find config file : {}, use default config.", url, e);
-      }
-    } else {
-      logger.warn("Fail to find config file, use default");
-    }
-    metricConfig = new MetricConfig();
-  }
-
-  public ReloadLevel loadHotProperties() {
-    String url = getPropsUrl();
-    Constructor constructor = new Constructor(MetricConfig.class);
-    Yaml yaml = new Yaml(constructor);
-    MetricConfig newMetricConfig = null;
-    if (url != null) {
-      try (InputStream inputStream = new FileInputStream(new File(url))) {
-        logger.info("Start to read config file {}", url);
-        newMetricConfig = (MetricConfig) yaml.load(inputStream);
-      } catch (IOException e) {
         logger.warn("Fail to find config file : {}, use default", url, e);
       }
     } else {
       logger.warn("Fail to find config file, use default");
     }
-    ReloadLevel reloadLevel = ReloadLevel.NOTHING;
-    if (newMetricConfig != null && !metricConfig.equals(newMetricConfig)) {
-      if (!metricConfig.getEnableMetric().equals(newMetricConfig.getEnableMetric())) {
-        // start service or stop service.
-        reloadLevel =
-            (newMetricConfig.getEnableMetric())
-                ? ReloadLevel.START_METRIC
-                : ReloadLevel.STOP_METRIC;
-      } else if (metricConfig.getEnableMetric()) {
-        // restart reporters or restart service
-        if (!metricConfig.getMonitorType().equals(newMetricConfig.getMonitorType())
-            || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
-            || !metricConfig
-                .getPredefinedMetrics()
-                .equals(newMetricConfig.getPredefinedMetrics())) {
-          reloadLevel = ReloadLevel.RESTART_METRIC;
-        } else {
-          reloadLevel = ReloadLevel.RESTART_REPORTER;
-        }
-      }
-      metricConfig.copy(newMetricConfig);
-    }
-    return reloadLevel;
+    metricConfig = new MetricConfig();
   }
 
   private static class MetricConfigDescriptorHolder {

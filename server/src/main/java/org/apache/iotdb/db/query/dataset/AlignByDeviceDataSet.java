@@ -36,8 +36,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
-import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -47,8 +45,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
-import static org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan.getTimeExpression;
 
 /** This QueryDataSet is used for ALIGN_BY_DEVICE query result. */
 public class AlignByDeviceDataSet extends QueryDataSet {
@@ -66,7 +62,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
   private GroupByTimePlan groupByTimePlan;
   private GroupByTimeFillPlan groupByFillPlan;
-  private IExpression timeExpression;
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
   private RawDataQueryPlan rawDataQueryPlan;
@@ -79,8 +74,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private int pathsNum = 0;
 
   public AlignByDeviceDataSet(
-      AlignByDevicePlan alignByDevicePlan, QueryContext context, IQueryRouter queryRouter)
-      throws QueryProcessException {
+      AlignByDevicePlan alignByDevicePlan, QueryContext context, IQueryRouter queryRouter) {
     super(null, null);
     // align by device's column number is different from other datasets
     // TODO I don't know whether it's right or not in AlignedPath, remember to check here while
@@ -100,14 +94,11 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         this.dataSetType = DataSetType.GROUP_BY_FILL;
         this.groupByFillPlan = alignByDevicePlan.getGroupByFillPlan();
         this.groupByFillPlan.setAscending(alignByDevicePlan.isAscending());
-        this.groupByFillPlan.initFillRange();
-        this.timeExpression = getTimeExpression(groupByFillPlan);
         break;
       case GROUP_BY_TIME:
         this.dataSetType = DataSetType.GROUP_BY_TIME;
         this.groupByTimePlan = alignByDevicePlan.getGroupByTimePlan();
         this.groupByTimePlan.setAscending(alignByDevicePlan.isAscending());
-        this.timeExpression = getTimeExpression(groupByTimePlan);
         break;
       case AGGREGATION:
         this.dataSetType = DataSetType.AGGREGATE;
@@ -162,18 +153,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       if (deviceToFilterMap != null) {
         this.expression = deviceToFilterMap.get(currentDevice);
       }
-      if (dataSetType == DataSetType.GROUP_BY_TIME || dataSetType == DataSetType.GROUP_BY_FILL) {
-        this.expression =
-            expression == null ? timeExpression : BinaryExpression.and(expression, timeExpression);
-      }
-      if (expression != null) {
-        try {
-          this.expression =
-              ExpressionOptimizer.getInstance().optimize(expression, new ArrayList<>(executePaths));
-        } catch (QueryFilterOptimizationException e) {
-          throw new IOException(e.getMessage());
-        }
-      }
 
       // for tracing: try to calculate the number of series paths
       if (context.isEnableTracing()) {
@@ -206,8 +185,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
             break;
           case QUERY:
             // Group all the subSensors of one vector into one VectorPartialPath
+            executePaths = MetaUtils.groupAlignedPaths(executePaths);
             rawDataQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
-            rawDataQueryPlan.setDeduplicatedVectorPaths(MetaUtils.groupAlignedPaths(executePaths));
             rawDataQueryPlan.setExpression(expression);
             currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
             break;

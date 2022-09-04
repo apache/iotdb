@@ -39,7 +39,7 @@ public class TriggerLogWriter implements AutoCloseable {
   private final ILogWriter logWriter;
 
   public TriggerLogWriter(String logFilePath) throws IOException {
-    logBuffer = ByteBuffer.allocate(IoTDBDescriptor.getInstance().getConfig().getTlogBufferSize());
+    logBuffer = ByteBuffer.allocate(IoTDBDescriptor.getInstance().getConfig().getMlogBufferSize());
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     logWriter = new LogWriter(logFile, false);
   }

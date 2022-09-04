@@ -81,9 +81,6 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       statement.execute("CREATE TIMESERIES root.vehicle.d3.s2 with datatype=DOUBLE,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d4.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d4.s2 with datatype=INT32,encoding=PLAIN");
-      // create aligned timeseries
-      statement.execute(("CREATE STORAGE GROUP root.sg1"));
-      statement.execute("CREATE ALIGNED TIMESERIES root.sg1(s1 INT32, s2 INT32)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -110,9 +107,6 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         statement.execute(
             (String.format(
                 "insert into root.vehicle.d4(timestamp,s1) values(%d,%d)", 2 * i, 3 * i)));
-        statement.execute(
-            (String.format(
-                "insert into root.sg1(timestamp,s1, s2) aligned values(%d,%d,%d)", i, i, i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -824,25 +818,6 @@ public class IoTDBUDTFAlignByTimeQueryIT {
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-  }
-
-  // Aligned timeseries is not supported in UDF/Arithmetic expressions/nested expressions queries
-  // for now.
-  // This case can be removed once aligned timeseries is supported in above queries.
-  @Test
-  public void testAlignedTimeseriesNotSupported() {
-    try (Connection connection = EnvFactory.getEnv().getConnection()) {
-      try (Statement statement = connection.createStatement();
-          ResultSet resultSet = statement.executeQuery("select sin(s1) + cos(s2) from root.sg1")) {
-        fail();
-      } catch (SQLException e) {
-        assertTrue(
-            e.getMessage()
-                .contains("Aligned timeseries is not supported in current query for now."));
-      }
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
     }
   }
 }

@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,11 +37,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.apache.iotdb.tsfile.Constant.DEVICE_1;
-import static org.apache.iotdb.tsfile.Constant.SENSOR_1;
-import static org.apache.iotdb.tsfile.Constant.SENSOR_2;
-import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
 
 public class TsFileWriteAlignedWithTSRecord {
   private static final Logger logger =
@@ -52,22 +47,21 @@ public class TsFileWriteAlignedWithTSRecord {
     if (f.exists() && !f.delete()) {
       throw new RuntimeException("can not delete " + f.getAbsolutePath());
     }
-
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(new MeasurementSchema(SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
-      measurementSchemas.add(new MeasurementSchema(SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
-      measurementSchemas.add(new MeasurementSchema(SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
+      List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
+      measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+      measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+      measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
       // register timeseries
-      tsFileWriter.registerAlignedTimeseries(new Path(DEVICE_1), measurementSchemas);
+      tsFileWriter.registerAlignedTimeseries(new Path("root.sg.d1"), measurementSchemas);
 
       List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
       // example1
       writeMeasurementScheams.add(measurementSchemas.get(0));
       writeMeasurementScheams.add(measurementSchemas.get(1));
       writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeAligned(tsFileWriter, DEVICE_1, writeMeasurementScheams, 1000000, 0, 0);
+      writeAligned(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 1000000, 0, 0);
     } catch (WriteProcessException e) {
       logger.error("write TSRecord failed", e);
     }

@@ -234,17 +234,9 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
             return false;
           }
 
-          window.seek(
-              beginIndex,
-              rowRecordList.size(),
-              rowRecordList.getTime(beginIndex),
-              rowRecordList.getTime(rowRecordList.size() - 1));
+          window.seek(beginIndex, rowRecordList.size());
         } else {
-          window.seek(
-              beginIndex,
-              endIndex,
-              rowRecordList.getTime(beginIndex),
-              rowRecordList.getTime(endIndex - 1));
+          window.seek(beginIndex, endIndex);
         }
 
         hasCached = true;
@@ -337,11 +329,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
             break;
           }
         }
-        window.seek(
-            nextIndexBegin,
-            nextIndexEnd,
-            nextWindowTimeBegin,
-            nextWindowTimeBegin + timeInterval - 1);
+        window.seek(nextIndexBegin, nextIndexEnd);
 
         hasCached = nextIndexBegin != nextIndexEnd;
         return hasCached;

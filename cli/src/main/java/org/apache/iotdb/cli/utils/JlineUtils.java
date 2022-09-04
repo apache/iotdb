@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cli.utils;
 
-import org.apache.iotdb.db.qp.sql.SqlLexer;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlLexer;
 
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReader.Option;
@@ -44,17 +44,14 @@ public class JlineUtils {
 
   public static final Pattern SQL_KEYWORD_PATTERN = Pattern.compile("([A-Z_]+)");
   public static final Set<String> SQL_KEYWORDS =
-      IntStream.range(0, SqlLexer.VOCABULARY.getMaxTokenType())
-          .mapToObj(SqlLexer.VOCABULARY::getDisplayName)
+      IntStream.range(0, IoTDBSqlLexer.VOCABULARY.getMaxTokenType())
+          .mapToObj(IoTDBSqlLexer.VOCABULARY::getDisplayName)
           .filter(Objects::nonNull)
           .filter(w -> SQL_KEYWORD_PATTERN.matcher(w).matches())
           .collect(Collectors.toSet());
 
-  public static LineReader getLineReader(String username, String host, String port)
-      throws IOException {
-    // Defaulting to a dumb terminal when a supported terminal can not be correctly created
-    // see https://github.com/jline/jline3/issues/291
-    Terminal terminal = TerminalBuilder.builder().dumb(true).build();
+  public static LineReader getLineReader() throws IOException {
+    Terminal terminal = TerminalBuilder.builder().build();
     if (terminal.getWidth() == 0 || terminal.getHeight() == 0) {
       // Hard coded terminal size when redirecting.
       terminal.setSize(new Size(120, 40));
@@ -70,17 +67,8 @@ public class JlineUtils {
     // Handle the command history. By default, the number of commands will not exceed 500 and the
     // size of the history fill will be less than 10 KB. See:
     // org.jline.reader.impl.history#DefaultHistory
-    String historyFile = ".iotdb_history";
-    String historyFilePath =
-        System.getProperty("user.home")
-            + File.separator
-            + historyFile
-            + "-"
-            + host.hashCode()
-            + "-"
-            + port
-            + "-"
-            + username.hashCode();
+    String historyFile = ".iotdb.history";
+    String historyFilePath = System.getProperty("user.home") + File.separator + historyFile;
     builder.variable(LineReader.HISTORY_FILE, new File(historyFilePath));
 
     // TODO: since the lexer doesn't produce tokens for quotation marks, disable the highlighter to

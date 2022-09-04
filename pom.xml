@@ -28,7 +28,7 @@
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>iotdb-parent</artifactId>
-    <version>0.13.0</version>
+    <version>0.13.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Apache IoTDB Project Parent POM</name>
     <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration libs.</description>
@@ -42,7 +42,7 @@
         <connection>scm:git:ssh://git@github.com/apache/iotdb.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/apache/iotdb.git</developerConnection>
         <url>ssh://git@github.com:apache/iotdb.git</url>
-        <tag>v0.13.0</tag>
+        <tag>rel/0.10</tag>
     </scm>
     <!-- Only configure the site distribution as the rest is handled by the apache parent -->
     <distributionManagement>
@@ -92,24 +92,24 @@
         <module>openapi</module>
         <module>server</module>
         <module>example</module>
-        <module>grafana-plugin</module>
-        <module>grafana-connector</module>
-        <module>spark-tsfile</module>
-        <module>hadoop</module>
-        <module>spark-iotdb-connector</module>
-        <module>flink-tsfile-connector</module>
-        <module>flink-iotdb-connector</module>
+        <!--         <module>grafana-plugin</module> -->
+        <!--         <module>grafana-connector</module> -->
+        <!--        <module>spark-tsfile</module>-->
+        <!--        <module>hadoop</module>-->
+        <!--        <module>spark-iotdb-connector</module>-->
+        <!--        <module>flink-tsfile-connector</module>-->
+        <!--        <module>flink-iotdb-connector</module>-->
         <module>distribution</module>
-        <module>hive-connector</module>
+        <!--        <module>hive-connector</module>-->
         <module>cluster</module>
         <module>cross-tests</module>
-        <module>zeppelin-interpreter</module>
+        <!--        <module>zeppelin-interpreter</module>-->
         <module>client-py</module>
         <module>compile-tools</module>
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
-        <!--        <module>library-udf</module>-->
+        <module>library-udf</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -118,13 +118,13 @@
         <maven.assembly.version>3.1.0</maven.assembly.version>
         <scala.library.version>2.11</scala.library.version>
         <scala.version>2.11.12</scala.version>
-        <hadoop2.version>2.10.1</hadoop2.version>
+        <hadoop2.version>2.10.0</hadoop2.version>
         <hive2.version>2.3.6</hive2.version>
         <junit.version>4.13.2</junit.version>
         <slf4j.version>1.7.12</slf4j.version>
         <logback.version>1.2.10</logback.version>
         <joda.version>2.9.9</joda.version>
-        <spark.version>2.4.5</spark.version>
+        <spark.version>2.4.3</spark.version>
         <flink.version>1.14.0</flink.version>
         <common.io.version>2.11.0</common.io.version>
         <commons.collections4>4.4</commons.collections4>
@@ -143,7 +143,7 @@
         <guava.version>24.1.1</guava.version>
         <jline.version>3.21.0</jline.version>
         <jetty.version>9.4.35.v20201120</jetty.version>
-        <metrics.version>4.2.7</metrics.version>
+        <metrics.version>4.2.4</metrics.version>
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
         <felix.version>5.1.1</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
@@ -683,14 +683,8 @@
                             <exclude>.pytest_cache/**</exclude>
                             <exclude>venv/**</exclude>
                             <exclude>apache_iotdb.egg-info/**</exclude>
-                            <exclude>**/iotdb/thrift/__init__.py</exclude>
-                            <exclude>**/iotdb/thrift/rpc/__init__.py</exclude>
                             <!-- Java SPI uses files in resources/META-INF/services-->
                             <exclude>**/resources/META-INF/services/**</exclude>
-                            <!-- grafana plugin -->
-                            <exclude>**/yarn.lock</exclude>
-                            <!-- site-->
-                            <exclude>**/redirects</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
@@ -701,7 +695,7 @@
                     <configuration>
                         <java>
                             <googleJavaFormat>
-                                <version>1.7</version>
+                                <version>1.15.0</version>
                                 <style>GOOGLE</style>
                             </googleJavaFormat>
                             <importOrder>
@@ -761,7 +755,7 @@
                     <dependency>
                         <groupId>com.sun.xml.bind</groupId>
                         <artifactId>jaxb-impl</artifactId>
-                        <version>2.3.6</version>
+                        <version>2.3.0</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -1056,7 +1050,7 @@
             </activation>
             <properties>
                 <os.classifier>windows-x86_64</os.classifier>
-                <thrift.download-url>http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
+                <thrift.download-url>http://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
                 <thrift.executable>thrift-${thrift.version}-win-x86_64.exe</thrift.executable>
                 <thrift.skip-making-executable>true</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>echo</thrift.exec-cmd.executable>

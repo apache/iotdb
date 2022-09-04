@@ -47,7 +47,7 @@ public class VectorTVListTest {
       }
       tvList.putAlignedValue(i, value, columnOrder);
     }
-    for (int i = 0; i < tvList.rowCount; i++) {
+    for (int i = 0; i < tvList.size; i++) {
       StringBuilder builder = new StringBuilder("[");
       builder.append(String.valueOf(i));
       for (int j = 1; j < 5; j++) {
@@ -84,7 +84,7 @@ public class VectorTVListTest {
       tvList.putAlignedValue(i, value, columnOrder);
     }
     tvList.sort();
-    for (int i = 0; i < tvList.rowCount; i++) {
+    for (int i = 0; i < tvList.size; i++) {
       StringBuilder builder = new StringBuilder("[");
       builder.append("false, 100, 1000, 0.1, 0.2, Test");
       builder.append("]");
@@ -118,8 +118,8 @@ public class VectorTVListTest {
         columnOrder,
         0,
         1000);
-    for (long i = 0; i < tvList.rowCount; i++) {
-      Assert.assertEquals(tvList.rowCount - i, tvList.getTime((int) i));
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
     }
   }
 
@@ -153,8 +153,8 @@ public class VectorTVListTest {
         columnOrder,
         0,
         1000);
-    for (long i = 0; i < tvList.rowCount; i++) {
-      Assert.assertEquals(tvList.rowCount - i, tvList.getTime((int) i));
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
       if (i % 100 == 0) {
         Assert.assertEquals(
             "[null, null, null, null, null]", tvList.getAlignedValue((int) i).toString());
@@ -194,7 +194,7 @@ public class VectorTVListTest {
         1000);
 
     AlignedTVList clonedTvList = tvList.clone();
-    for (long i = 0; i < tvList.rowCount; i++) {
+    for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));
       Assert.assertEquals(
           tvList.getAlignedValue((int) i).toString(),

@@ -20,23 +20,23 @@
 # whether enable the module
 enableMetric: false
 
-# Multiple reporter, options: [JMX, PROMETHEUS, IOTDB], IOTDB is off by default
+# can be multiple reporter, e.g., jmx, prometheus
 metricReporterList:
-  - JMX
-  - PROMETHEUS
+  - jmx
+  - prometheus
 
-# Type of monitor frame, options: [MICROMETER, DROPWIZARD]
-monitorType: MICROMETER
+# you can check choose one type of monitor frame, such as dropwizard, micrometer
+monitorType: micrometer
 
-# Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
-metricLevel: IMPORTANT
-
-# Predefined metric, options: [JVM, LOGBACK], LOGBACK are not supported in dropwizard
-predefinedMetrics:
-  - JVM
-
-# Period time of push, only used by IoTDB Reporter
+# you can set the period time of push
 pushPeriodInSecond: 5
 
-# The http server's port for prometheus exporter to get metric data.
-prometheusExporterPort: 9091
+########################################################
+#                                                      #
+# if the reporter is prometheus,                       #
+# then the following must be set                       #
+#                                                      #
+########################################################
+prometheusReporterConfig:
+  prometheusExporterUrl: http://localhost
+  prometheusExporterPort: 9091

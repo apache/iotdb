@@ -52,7 +52,7 @@ configuration files are under "conf" folder
   * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`). 
 
-For more, see [Config](../Reference/Config-Manual.md) in detail.
+For more, see [Config](../Appendix/Config-Manual.md) in detail.
 
 ## Start
 
@@ -215,7 +215,7 @@ or
 IoTDB> exit
 ```
 
-For more on what commands are supported by IoTDB SQL, see [SQL Reference](../Reference/SQL-Reference.md).
+For more on what commands are supported by IoTDB SQL, see [SQL Reference](../Appendix/SQL-Reference.md).
 
 ### Stop IoTDB
 

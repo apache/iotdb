@@ -20,14 +20,12 @@ package org.apache.iotdb.integration.env;
 
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.Constant;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
 
 public class RemoteServerEnv implements BaseEnv {
@@ -74,30 +72,6 @@ public class RemoteServerEnv implements BaseEnv {
       connection =
           DriverManager.getConnection(
               Config.IOTDB_URL_PREFIX + ip_addr + ":" + port, user, password);
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-      fail();
-    }
-    return connection;
-  }
-
-  @Override
-  public Connection getConnection(Constant.Version version) throws SQLException {
-    Connection connection = null;
-    try {
-      Class.forName(Config.JDBC_DRIVER_NAME);
-      connection =
-          DriverManager.getConnection(
-              Config.IOTDB_URL_PREFIX
-                  + ip_addr
-                  + ":"
-                  + port
-                  + "?"
-                  + VERSION
-                  + "="
-                  + version.toString(),
-              user,
-              password);
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       fail();

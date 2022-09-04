@@ -74,7 +74,9 @@ public class TagLogFile implements AutoCloseable {
     this.fileChannel.position(fileChannel.size());
   }
 
-  /** @return tags map, attributes map */
+  /**
+   * @return tags map, attributes map
+   */
   public Pair<Map<String, String>, Map<String, String>> read(int size, long position)
       throws IOException {
     if (position < 0) {

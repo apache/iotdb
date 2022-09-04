@@ -270,7 +270,9 @@ public class Timer {
       }
     }
 
-    /** @return System.nanoTime() if the ENABLE_INSTRUMENTING is true, else zero */
+    /**
+     * @return System.nanoTime() if the ENABLE_INSTRUMENTING is true, else zero
+     */
     public long getOperationStartTime() {
       if (ENABLE_INSTRUMENTING) {
         return System.nanoTime();

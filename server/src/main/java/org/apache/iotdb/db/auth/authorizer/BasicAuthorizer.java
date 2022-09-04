@@ -106,7 +106,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     User user = userManager.getUser(username);
     return user != null
         && password != null
-        && AuthUtils.validatePassword(password, user.getPassword());
+        && user.getPassword().equals(AuthUtils.encryptPassword(password));
   }
 
   @Override

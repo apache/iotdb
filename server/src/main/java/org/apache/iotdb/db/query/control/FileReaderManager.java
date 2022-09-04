@@ -41,16 +41,9 @@ public class FileReaderManager {
 
   private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   /** max number of file streams being cached, must be lower than 65535. */
   private static final int MAX_CACHED_FILE_SIZE = 30000;
-
-  /**
-   * When number of file streams reached MAX_CACHED_FILE_SIZE, then we will print a warning log each
-   * PRINT_INTERVAL
-   */
-  private static final int PRINT_INTERVAL = 10000;
 
   /**
    * the key of closedFileReaderMap is the file path and the value of closedFileReaderMap is the
@@ -115,9 +108,8 @@ public class FileReaderManager {
     Map<String, TsFileSequenceReader> readerMap =
         !isClosed ? unclosedFileReaderMap : closedFileReaderMap;
     if (!readerMap.containsKey(filePath)) {
-      int currentOpenedReaderCount = readerMap.size();
-      if (currentOpenedReaderCount >= MAX_CACHED_FILE_SIZE
-          && (currentOpenedReaderCount % PRINT_INTERVAL == 0)) {
+
+      if (readerMap.size() >= MAX_CACHED_FILE_SIZE) {
         logger.warn("Query has opened {} files !", readerMap.size());
       }
 
@@ -148,7 +140,7 @@ public class FileReaderManager {
    * Increase the reference count of the reader specified by filePath. Only when the reference count
    * of a reader equals zero, the reader can be closed and removed.
    */
-  public void increaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
+  void increaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     tsFile.readLock();
     synchronized (this) {
       if (!isClosed) {
@@ -167,7 +159,7 @@ public class FileReaderManager {
    * Decrease the reference count of the reader specified by filePath. This method is latch-free.
    * Only when the reference count of a reader equals zero, the reader can be closed and removed.
    */
-  public void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
+  void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     synchronized (this) {
       if (!isClosed && unclosedReferenceMap.containsKey(tsFile.getTsFilePath())) {
         if (unclosedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet() == 0) {
@@ -240,17 +232,6 @@ public class FileReaderManager {
   public synchronized boolean contains(TsFileResource tsFile, boolean isClosed) {
     return (isClosed && closedFileReaderMap.containsKey(tsFile.getTsFilePath()))
         || (!isClosed && unclosedFileReaderMap.containsKey(tsFile.getTsFilePath()));
-  }
-
-  public synchronized void writeFileReferenceInfo() {
-    DEBUG_LOGGER.info("[closedReferenceMap]\n");
-    for (Map.Entry<String, AtomicInteger> entry : closedReferenceMap.entrySet()) {
-      DEBUG_LOGGER.info(String.format("\t%s: %d\n", entry.getKey(), entry.getValue().get()));
-    }
-    DEBUG_LOGGER.info("[unclosedReferenceMap]\n");
-    for (Map.Entry<String, AtomicInteger> entry : unclosedReferenceMap.entrySet()) {
-      DEBUG_LOGGER.info(String.format("\t%s: %d", entry.getKey(), entry.getValue().get()));
-    }
   }
 
   private static class FileReaderManagerHelper {

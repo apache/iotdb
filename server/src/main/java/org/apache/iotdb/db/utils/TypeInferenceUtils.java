@@ -24,8 +24,6 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.apache.commons.lang3.StringUtils;
-
 public class TypeInferenceUtils {
 
   private static TSDataType booleanStringInferType =
@@ -75,7 +73,7 @@ public class TypeInferenceUtils {
         return booleanStringInferType;
       } else if (isNumber(strValue)) {
         if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
-          if (isConvertFloatPrecisionLack(StringUtils.trim(strValue))) {
+          if (isConvertFloatPrecisionLack(strValue)) {
             return longStringInferType;
           }
           return integerStringInferType;

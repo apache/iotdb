@@ -32,7 +32,6 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -53,16 +52,14 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -116,7 +113,7 @@ public class SyncClientAdaptorTest {
     snapshotMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
       snapshotMap.put(i, new SimpleSnapshot(i, i));
-      measurementSchemas.add(new MeasurementSchema(String.valueOf(i), TSDataType.INT64));
+      measurementSchemas.add(new UnaryMeasurementSchema(String.valueOf(i), TSDataType.INT64));
       timeseriesSchemas.add(new TimeseriesSchema(String.valueOf(i), TSDataType.INT64));
     }
     lastResult = ByteBuffer.wrap("last".getBytes());
@@ -198,7 +195,9 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getAllMeasurementSchema(
-              MeasurementSchemaRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
+              RaftNode header,
+              ByteBuffer planBinary,
+              AsyncMethodCallback<ByteBuffer> resultHandler) {
             resultHandler.onComplete(getAllMeasurementSchemaResult);
           }
 
@@ -247,12 +246,10 @@ public class SyncClientAdaptorTest {
               boolean withAlias,
               AsyncMethodCallback<GetAllPathsResult> resultHandler) {
             List<Byte> dataTypes = new ArrayList<>();
-            List<Boolean> underAlignedEntity = new ArrayList<>();
             for (int i = 0; i < path.size(); i++) {
               dataTypes.add(TSDataType.DOUBLE.serialize());
-              underAlignedEntity.add(false);
             }
-            resultHandler.onComplete(new GetAllPathsResult(path, dataTypes, underAlignedEntity));
+            resultHandler.onComplete(new GetAllPathsResult(path, dataTypes));
           }
 
           @Override
@@ -266,10 +263,7 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getAllDevices(
-              RaftNode header,
-              List<String> path,
-              boolean isPrefixMatch,
-              AsyncMethodCallback<Set<String>> resultHandler) {
+              RaftNode header, List<String> path, AsyncMethodCallback<Set<String>> resultHandler) {
             resultHandler.onComplete(new HashSet<>(path));
           }
 
@@ -383,21 +377,12 @@ public class SyncClientAdaptorTest {
     assertEquals(
         new HashSet<>(Arrays.asList("1", "2", "3")),
         SyncClientAdaptor.getNextChildren(dataClient, TestUtils.getRaftNode(0, 0), "root"));
-
-    MeasurementSchemaRequest request;
-    try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-      new ShowTimeSeriesPlan(new PartialPath("root")).serialize(dataOutputStream);
-      request =
-          new MeasurementSchemaRequest(
-              0,
-              TestUtils.getRaftNode(0, 0),
-              TestUtils.getNode(1),
-              ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-    }
     assertEquals(
         getAllMeasurementSchemaResult,
-        SyncClientAdaptor.getAllMeasurementSchema(dataClient, request));
+        SyncClientAdaptor.getAllMeasurementSchema(
+            dataClient,
+            TestUtils.getRaftNode(0, 0),
+            new ShowTimeSeriesPlan(new PartialPath("root"))));
     assertEquals(
         measurementSchemas,
         SyncClientAdaptor.pullMeasurementSchema(dataClient, new PullSchemaRequest()));
@@ -420,7 +405,7 @@ public class SyncClientAdaptorTest {
         (int) SyncClientAdaptor.getPathCount(dataClient, TestUtils.getRaftNode(0, 0), paths, 0));
     assertEquals(
         new HashSet<>(paths),
-        SyncClientAdaptor.getAllDevices(dataClient, TestUtils.getRaftNode(0, 0), paths, false));
+        SyncClientAdaptor.getAllDevices(dataClient, TestUtils.getRaftNode(0, 0), paths));
     assertEquals(1L, (long) SyncClientAdaptor.getGroupByExecutor(dataClient, new GroupByRequest()));
     assertEquals(fillResult, SyncClientAdaptor.previousFill(dataClient, new PreviousFillRequest()));
     assertEquals(readFileResult, SyncClientAdaptor.readFile(dataClient, "a file", 0, 1000));

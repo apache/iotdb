@@ -31,7 +31,6 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -56,6 +55,7 @@ import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -216,13 +216,18 @@ public class SyncClientAdaptor {
   }
 
   public static ByteBuffer getAllMeasurementSchema(
-      AsyncDataClient client, MeasurementSchemaRequest request)
+      AsyncDataClient client, RaftNode header, ShowTimeSeriesPlan plan)
       throws IOException, InterruptedException, TException {
     GetTimeseriesSchemaHandler handler = new GetTimeseriesSchemaHandler();
     AtomicReference<ByteBuffer> response = new AtomicReference<>(null);
     handler.setResponse(response);
     handler.setContact(client.getNode());
-    client.getAllMeasurementSchema(request, handler);
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    plan.serialize(dataOutputStream);
+
+    client.getAllMeasurementSchema(
+        header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()), handler);
     synchronized (response) {
       if (response.get() == null) {
         response.wait(ClusterConstant.getReadOperationTimeoutMS());
@@ -376,12 +381,12 @@ public class SyncClientAdaptor {
   }
 
   public static Set<String> getAllDevices(
-      AsyncDataClient client, RaftNode header, List<String> pathsToQuery, boolean isPrefixMatch)
+      AsyncDataClient client, RaftNode header, List<String> pathsToQuery)
       throws InterruptedException, TException {
     AtomicReference<Set<String>> remoteResult = new AtomicReference<>();
     GenericHandler<Set<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
-    client.getAllDevices(header, pathsToQuery, isPrefixMatch, handler);
+    client.getAllDevices(header, pathsToQuery, handler);
     return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
 

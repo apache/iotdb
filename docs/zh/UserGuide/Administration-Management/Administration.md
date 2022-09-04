@@ -49,7 +49,7 @@ IoTDB 为用户提供了权限管理操作，从而为用户提供对于数据�
 
 ### 创建用户
 
-使用 `CREATE USER <userName> <password>` 创建用户。我们可以为 ln 和 sgcc 集团创建两个用户角色，名为 ln_write_user, sgcc_write_user，密码均为 write_pwd。SQL 语句为：
+我们可以为 ln 和 sgcc 集团创建两个用户角色，名为 ln_write_user, sgcc_write_user，密码均为 write_pwd。SQL 语句为：
 
 ```
 CREATE USER ln_write_user 'write_pwd'
@@ -94,9 +94,7 @@ INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 Msg: 602: No permissions for this operation INSERT
 ```
 
-现在，我们分别赋予他们向对应存储组数据的写入权限，并再次尝试向对应的存储组进行数据写入。
-
-我们 `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` 语句赋予用户权限，例如：
+现在，我们分别赋予他们向对应存储组数据的写入权限，并再次尝试向对应的存储组进行数据写入。SQL 语句为：
 ```
 GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
 GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
@@ -112,165 +110,6 @@ Msg: The statement is executed successfully.
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 Msg: The statement is executed successfully.
 ```
-
-### 撤销用户权限
-
-授予用户权限后，我们可以使用 `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` 来撤销已授予的用户权限。 例如：
-
-```
-REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
-REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
-INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
-```
-
-执行状态如下所示：
-
-```
-REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
-Msg: The statement is executed successfully.
-REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
-Msg: The statement is executed successfully.
-INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
-Msg: 602: No permissions for this operation INSERT
-```
-
-### SQL 语句
-
-与权限相关的语句包括：
-
-* 创建用户
-
-```
-CREATE USER <userName> <password>;  
-Eg: IoTDB > CREATE USER thulab 'passwd';
-```
-
-* 删除用户
-
-```
-DROP USER <userName>;  
-Eg: IoTDB > DROP USER xiaoming;
-```
-
-* 创建角色
-
-```
-CREATE ROLE <roleName>;  
-Eg: IoTDB > CREATE ROLE admin;
-```
-
-* 删除角色
-
-```
-DROP ROLE <roleName>;  
-Eg: IoTDB > DROP ROLE admin;
-```
-
-* 赋予用户权限
-
-```
-GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
-```
-
-* 赋予角色权限
-
-```
-GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
-```
-
-* 赋予用户角色
-
-```
-GRANT <roleName> TO <userName>;  
-Eg: IoTDB > GRANT temprole TO tempuser;
-```
-
-* 撤销用户权限
-
-```
-REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;   
-Eg: IoTDB > REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
-```
-
-* 撤销角色权限
-
-```
-REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
-```
-
-* 撤销用户角色
-
-```
-REVOKE <roleName> FROM <userName>;
-Eg: IoTDB > REVOKE temprole FROM tempuser;
-```
-
-* 列出用户
-
-```
-LIST USER
-Eg: IoTDB > LIST USER
-```
-
-* 列出角色
-
-```
-LIST ROLE
-Eg: IoTDB > LIST ROLE
-```
-
-* 列出权限
-
-```
-LIST PRIVILEGES USER  <username> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;
-```
-
-* 列出角色权限
-
-```
-LIST ROLE PRIVILEGES <roleName>
-Eg: IoTDB > LIST ROLE PRIVILEGES actor;
-```
-
-* 列出角色在具体路径上的权限
-
-```
-LIST PRIVILEGES ROLE <roleName> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES ROLE wirte_role ON root.sgcc;
-```
-
-* 列出用户权限
-
-```
-LIST USER PRIVILEGES <username> ;   
-Eg: IoTDB > LIST USER PRIVILEGES tempuser;
-```
-
-* 列出用户所有的角色
-
-```
-LIST ALL ROLE OF USER <username> ;  
-Eg: IoTDB > LIST ALL ROLE OF USER tempuser;
-```
-
-* 列出所有用户的角色
-
-```
-LIST ALL USER OF ROLE <roleName>;
-Eg: IoTDB > LIST ALL USER OF ROLE roleuser;
-```
-
-* 更新密码
-
-```
-ALTER USER <username> SET PASSWORD <password>;
-Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
-```
-
 
 ## 其他说明
 
@@ -295,11 +134,10 @@ Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 |INSERT\_TIMESERIES|插入数据。路径相关|
 |READ\_TIMESERIES|查询数据。路径相关|
 |DELETE\_TIMESERIES|删除数据或时间序列。路径相关|
-|DELETE\_STORAGE\_GROUP|删除存储组。路径相关|
 |CREATE\_USER|创建用户。路径无关|
 |DELETE\_USER|删除用户。路径无关|
 |MODIFY\_PASSWORD|修改所有用户的密码。路径无关。（没有该权限者仍然能够修改自己的密码。)|
-|LIST\_USER|列出所有用户，列出某用户权限，列出某用户具有的角色以及列出所有用户的角色四种操作的权限。路径无关|
+|LIST\_USER|列出所有用户，列出某用户权限，列出某用户具有的角色三种操作的权限。路径无关|
 |GRANT\_USER\_PRIVILEGE|赋予用户权限。路径无关|
 |REVOKE\_USER\_PRIVILEGE|撤销用户权限。路径无关|
 |GRANT\_USER\_ROLE|赋予用户角色。路径无关|
@@ -311,10 +149,10 @@ Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 |REVOKE\_ROLE\_PRIVILEGE|撤销角色权限。路径无关|
 |CREATE_FUNCTION|注册 UDF。路径无关|
 |DROP_FUNCTION|卸载 UDF。路径无关|
-|CREATE_TRIGGER|创建触发器。路径相关|
-|DROP_TRIGGER|卸载触发器。路径相关|
-|START_TRIGGER|启动触发器。路径相关|
-|STOP_TRIGGER|停止触发器。路径相关|
+|CREATE_TRIGGER|创建触发器。路径无关|
+|DROP_TRIGGER|卸载触发器。路径无关|
+|START_TRIGGER|启动触发器。路径无关|
+|STOP_TRIGGER|停止触发器。路径无关|
 |CREATE_CONTINUOUS_QUERY|创建连续查询。路径无关|
 |DROP_CONTINUOUS_QUERY|卸载连续查询。路径无关|
 
@@ -324,7 +162,7 @@ IoTDB 规定用户名的字符长度不小于 4，其中用户名不能包含空
 
 ### 密码限制
 
-IoTDB 规定密码的字符长度不小于 4，其中密码不能包含空格，密码默认采用 MD5 进行加密。
+IoTDB 规定密码的字符长度不小于 4，其中密码不能包含空格，密码采用 MD5 进行加密。
 
 ### 角色名限制
 

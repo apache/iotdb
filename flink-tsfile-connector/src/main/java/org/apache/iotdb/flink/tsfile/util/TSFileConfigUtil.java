@@ -60,5 +60,12 @@ public class TSFileConfigUtil {
     globalConfig.setTSFileStorageFs(config.getTSFileStorageFs());
     globalConfig.setUseKerberos(config.isUseKerberos());
     globalConfig.setValueEncoder(config.getValueEncoder());
+    globalConfig.setXMin(config.getXMin());
+    globalConfig.setXMax(config.getXMax());
+    globalConfig.setsMax(config.getsMax());
+    globalConfig.setSmin(config.getSmin());
+    globalConfig.setUsePreRange(config.isUsePreRange());
+    globalConfig.setMussRate(config.getMussRate());
+    globalConfig.setUsePreSpeed(config.isUsePreSpeed());
   }
 }

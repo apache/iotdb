@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
@@ -299,11 +298,7 @@ public class SyncServiceImpl implements SyncService.Iface {
             if (plan == null) {
               continue;
             }
-            if (plan.getOperatorType() != Operator.OperatorType.CREATE_CONTINUOUS_QUERY
-                && plan.getOperatorType() != Operator.OperatorType.DROP_CONTINUOUS_QUERY
-                && plan.getOperatorType() != Operator.OperatorType.CHANGE_TAG_OFFSET) {
-              IoTDB.metaManager.operation(plan);
-            }
+            IoTDB.metaManager.operation(plan);
           } catch (Exception e) {
             logger.error(
                 "Can not operate metadata operation {} for err:{}",

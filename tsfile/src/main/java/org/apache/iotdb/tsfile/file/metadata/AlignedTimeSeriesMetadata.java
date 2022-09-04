@@ -116,11 +116,7 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
       // only at least one sensor exits, we add the AlignedChunkMetadata to the list
       boolean exits = false;
       for (List<IChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-        IChunkMetadata v =
-            chunkMetadata == null
-                    || chunkMetadata.get(i).getStatistics().getCount() == 0 // empty chunk
-                ? null
-                : chunkMetadata.get(i);
+        IChunkMetadata v = chunkMetadata == null ? null : chunkMetadata.get(i);
         exits = (exits || v != null);
         chunkMetadataList.add(v);
       }

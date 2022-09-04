@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.tsfile.file;
 
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-
 import java.io.IOException;
 
 /** MetaMarker denotes the type of headers and footers. Enum is not used for space saving. */
@@ -45,22 +43,6 @@ public class MetaMarker {
 
   /** Chunk header marker and this chunk has only one page. */
   public static final byte ONLY_ONE_PAGE_CHUNK_HEADER = 5;
-
-  /** Time Chunk header marker and this chunk has more than one page. */
-  public static final byte TIME_CHUNK_HEADER =
-      (byte) (CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK);
-
-  /** Value Chunk header marker and this chunk has more than one page. */
-  public static final byte VALUE_CHUNK_HEADER =
-      (byte) (CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK);
-
-  /** Time Chunk header marker and this chunk has only one page. */
-  public static final byte ONLY_ONE_PAGE_TIME_CHUNK_HEADER =
-      (byte) (ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK);
-
-  /** Value Chunk header marker and this chunk has only one page. */
-  public static final byte ONLY_ONE_PAGE_VALUE_CHUNK_HEADER =
-      (byte) (ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK);
 
   private MetaMarker() {}
 

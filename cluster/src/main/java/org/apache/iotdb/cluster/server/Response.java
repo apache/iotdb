@@ -52,10 +52,9 @@ public class Response {
   public static final long RESPONSE_NODE_IS_NOT_IN_GROUP = -11;
   // the request is not executed locally anc should be forwarded
   public static final long RESPONSE_NULL = Long.MIN_VALUE;
+
   // the meta engine is not ready (except for the partitionTable is ready)
   public static final long RESPONSE_META_NOT_READY = -12;
-  // the cluster is too busy to reject new committed logs
-  public static final long RESPONSE_TOO_BUSY = -13;
 
   private Response() {
     // enum-like class

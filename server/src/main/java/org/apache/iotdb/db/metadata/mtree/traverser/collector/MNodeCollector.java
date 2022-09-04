@@ -23,24 +23,14 @@ import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
-import java.util.HashSet;
-import java.util.Set;
-
-/**
- * This class defines any node in MTree as potential target node. On finding a path matching the
- * given pattern, if a level is specified and the path is longer than the specified level,
- * MNodeLevelCounter finds the node of the specified level on the path and process it. The same node
- * will not be processed more than once. If a level is not given, the current node is processed.
- */
+// This class defines any node in MTree as potential target node.
 public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
 
   // traverse for specific storage group
   protected StorageGroupFilter storageGroupFilter = null;
 
   // level query option
-  protected int targetLevel = -1;
-
-  private Set<IMNode> processedNodes = new HashSet<>();
+  protected int targetLevel;
 
   public MNodeCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
@@ -63,21 +53,11 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
 
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (targetLevel >= 0) {
-      // move the cursor the given level when matched
-      if (level < targetLevel) {
-        return false;
-      }
-      while (level > targetLevel) {
-        node = node.getParent();
-        level--;
-      }
-      // record processed node so they will not be processed twice
-      if (!processedNodes.contains(node)) {
-        processedNodes.add(node);
+    if (targetLevel > 0) {
+      if (level == targetLevel) {
         transferToResult(node);
+        return true;
       }
-      return true;
     } else {
       transferToResult(node);
     }
