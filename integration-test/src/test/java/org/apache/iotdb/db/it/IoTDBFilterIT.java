@@ -100,7 +100,7 @@ public class IoTDBFilterIT {
 
   @Test
   public void testFilterNaN() {
-    String sqlStr = "select d1 from root.testNaN where d1/d2 > 0";
+    String sqlStr = "select d1 from root.vehicle.testNaN where d1/d2 > 0";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
@@ -111,7 +111,7 @@ public class IoTDBFilterIT {
       }
 
       // 0.0/0.0 is NaN which should not be kept.
-      assertEquals(1, count);
+      assertEquals(ITERATION_TIMES - 1, count);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
