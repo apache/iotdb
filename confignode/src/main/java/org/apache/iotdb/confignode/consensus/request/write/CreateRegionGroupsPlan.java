@@ -60,8 +60,18 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
         .add(regionReplicaSet);
   }
 
+  public void serializeForProcedure(DataOutputStream stream) throws IOException {
+    this.serializeImpl(stream);
+  }
+
+  public void deserializeForProcedure(ByteBuffer buffer) throws IOException {
+    // to remove the ordinal of ConfigPhysicalPlanType
+    buffer.getInt();
+    this.deserializeImpl(buffer);
+  }
+
   @Override
-  public void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigPhysicalPlanType.CreateRegionGroups.ordinal());
 
     stream.writeInt(regionGroupMap.size());
@@ -77,7 +87,7 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  public void deserializeImpl(ByteBuffer buffer) throws IOException {
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int storageGroupNum = buffer.getInt();
     for (int i = 0; i < storageGroupNum; i++) {
       String storageGroup = BasicStructureSerDeUtil.readString(buffer);

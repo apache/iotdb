@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
@@ -44,10 +45,7 @@ public class CreateRegionGroupsProcedure
 
   private CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
 
-  /**
-   * key: TConsensusGroupId
-   * value: Failed RegionReplicas
-   */
+  /** key: TConsensusGroupId value: Failed RegionReplicas */
   private Map<TConsensusGroupId, TRegionReplicaSet> failedRegions = new HashMap<>();
 
   public CreateRegionGroupsProcedure() {
@@ -56,6 +54,13 @@ public class CreateRegionGroupsProcedure
 
   public CreateRegionGroupsProcedure(CreateRegionGroupsPlan createRegionGroupsPlan) {
     this.createRegionGroupsPlan = createRegionGroupsPlan;
+  }
+
+  public CreateRegionGroupsProcedure(
+      CreateRegionGroupsPlan createRegionGroupsPlan,
+      Map<TConsensusGroupId, TRegionReplicaSet> failedRegions) {
+    this.createRegionGroupsPlan = createRegionGroupsPlan;
+    this.failedRegions = failedRegions;
   }
 
   @Override
@@ -156,16 +161,29 @@ public class CreateRegionGroupsProcedure
     // must serialize CREATE_REGION_GROUPS.ordinal() firstly
     stream.writeInt(ProcedureFactory.ProcedureType.CREATE_REGION_GROUPS.ordinal());
     super.serialize(stream);
-    createRegionGroupsPlan.serializeImpl(stream);
-
-
+    createRegionGroupsPlan.serializeForProcedure(stream);
+    stream.writeInt(failedRegions.size());
+    failedRegions.forEach(
+        (groupId, replica) -> {
+          ThriftCommonsSerDeUtils.serializeTConsensusGroupId(groupId, stream);
+          ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(replica, stream);
+        });
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     try {
-      createRegionGroupsPlan.deserializeImpl(byteBuffer);
+      createRegionGroupsPlan.deserializeForProcedure(byteBuffer);
+      failedRegions.clear();
+      int failedRegionsSize = byteBuffer.getInt();
+      while (failedRegionsSize-- > 0) {
+        TConsensusGroupId groupId =
+            ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer);
+        TRegionReplicaSet replica =
+            ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
+        failedRegions.put(groupId, replica);
+      }
     } catch (Exception e) {
       LOGGER.error("Deserialize meets error in CreateRegionGroupsProcedure", e);
       throw new RuntimeException(e);
