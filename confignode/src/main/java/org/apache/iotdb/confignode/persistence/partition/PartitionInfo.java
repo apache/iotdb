@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.persistence.metric.StorageGroupPartitionTableMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -124,8 +125,11 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     String storageGroupName = plan.getSchema().getName();
-    storageGroupPartitionTables.put(
-        storageGroupName, new StorageGroupPartitionTable(storageGroupName));
+    StorageGroupPartitionTable storageGroupPartitionTable =
+        new StorageGroupPartitionTable(storageGroupName);
+    storageGroupPartitionTables.put(storageGroupName, storageGroupPartitionTable);
+    MetricService.getInstance()
+        .addMetricSet(new StorageGroupPartitionTableMetrics(storageGroupPartitionTable));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
