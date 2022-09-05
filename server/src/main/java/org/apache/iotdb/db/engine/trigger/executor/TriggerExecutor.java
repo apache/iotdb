@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.engine.trigger.executor;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
-import org.apache.iotdb.db.engine.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationInformation;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
