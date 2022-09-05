@@ -17,10 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.commons.trigger.exception;
 
-public enum RemoveConfigNodeState {
-  REMOVE_PEER,
-  REMOVE_CONSENSUS_GROUP,
-  STOP_CONFIG_NODE
+public class TriggerRegistrationException extends RuntimeException {
+  public TriggerRegistrationException(String message) {
+    super(message);
+  }
+
+  public TriggerRegistrationException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

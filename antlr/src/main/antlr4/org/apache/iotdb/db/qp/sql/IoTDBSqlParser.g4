@@ -126,7 +126,7 @@ uri
 
 // Create Trigger
 createTrigger
-    : CREATE triggerType? TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL triggerAttributeClause?
+    : CREATE triggerType? TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL jarLocation? triggerAttributeClause?
     ;
 
 triggerType
@@ -135,6 +135,10 @@ triggerType
 
 triggerEventClause
     : (BEFORE | AFTER) (INSERT | DELETE)
+    ;
+
+jarLocation
+    : USING ((FILE fileName=STRING_LITERAL) | URI uri)
     ;
 
 triggerAttributeClause

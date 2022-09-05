@@ -255,6 +255,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> createTrigger(
       String triggerName,
       String className,
+      String jarPath,
+      boolean usingURI,
       TriggerEvent triggerEvent,
       TriggerType triggerType,
       PartialPath pathPattern) {

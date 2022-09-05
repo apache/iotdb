@@ -149,5 +149,5 @@ public enum StatementType {
   STOP_PIPE,
   DROP_PIPE,
 
-  SHOW_TRIGGERS
+  SHOW_TRIGGERS,
 }

@@ -38,6 +38,11 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
 
   private final String className;
 
+  private final String jarPath;
+
+  /** usingURI == true indicates that jarPath is a URI */
+  private final boolean usingURI;
+
   private final TriggerEvent triggerEvent;
 
   private final TriggerType triggerType;
@@ -49,6 +54,8 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
   public CreateTriggerStatement(
       String triggerName,
       String className,
+      String jarPath,
+      boolean usingURI,
       TriggerEvent triggerEvent,
       TriggerType triggerType,
       PartialPath pathPattern,
@@ -57,6 +64,8 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
     statementType = StatementType.CREATE_TRIGGER;
     this.triggerName = triggerName;
     this.className = className;
+    this.jarPath = jarPath;
+    this.usingURI = usingURI;
     this.triggerEvent = triggerEvent;
     this.triggerType = triggerType;
     this.pathPattern = pathPattern;
@@ -85,6 +94,19 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
 
   public Map<String, String> getAttributes() {
     return attributes;
+  }
+
+  public String getJarPath() {
+    return jarPath;
+  }
+
+  public boolean isUsingURI() {
+    return usingURI;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitCreateTrigger(this, context);
   }
 
   @Override
