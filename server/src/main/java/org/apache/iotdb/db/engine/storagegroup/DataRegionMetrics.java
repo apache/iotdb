@@ -51,7 +51,8 @@ public class DataRegionMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     MetricService.getInstance()
-        .remove(MetricType.GAUGE,
+        .remove(
+            MetricType.GAUGE,
             Metric.MEM.toString(),
             Tag.NAME.toString(),
             "storageGroup_" + storageGroupName);

@@ -86,8 +86,8 @@ public class ChunkCache {
     MetricService.getInstance().addMetricSet(new ChunkCacheMetrics());
   }
 
-  public long getHitRate() {
-    return (long) lruCache.stats().hitRate() * 100;
+  public double getHitRate() {
+    return lruCache.stats().hitRate() * 100;
   }
 
   public static ChunkCache getInstance() {

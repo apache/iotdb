@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.cache;
+package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -26,23 +26,23 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class ChunkCacheMetrics implements IMetricSet {
-  private ChunkCache chunkCache = ChunkCache.getInstance();
+public class DataNodeSchemaCacheMetrics implements IMetricSet {
+  private DataNodeSchemaCache dataNodeSchemaCache = DataNodeSchemaCache.getInstance();
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     metricService.getOrCreateAutoGauge(
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
-        chunkCache,
+        dataNodeSchemaCache,
         o -> (long) o.getHitRate(),
         Tag.NAME.toString(),
-        "chunk");
+        "schemaCache");
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "chunk");
+        MetricType.GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "schemaCache");
   }
 }
