@@ -702,7 +702,6 @@ public class RatisConfig {
     }
   }
 
-
   public static class LeaderLogAppender {
     private final SizeInBytes bufferByteLimit;
     private final SizeInBytes snapshotChunkSizeMax;
