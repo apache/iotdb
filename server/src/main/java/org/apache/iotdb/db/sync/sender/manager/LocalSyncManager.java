@@ -75,7 +75,7 @@ public class LocalSyncManager implements ISyncManager {
     // TODO(sync): parse to delete operation and sync
     // 1、get timeseries
     // 2、get time partition
-    //    syncPipe.collectRealTimeDeletion();
+    // 3、syncPipe.collectRealTimeDeletion();
   }
 
   public static List<PartialPath> splitPathPatternByDevice(PartialPath pathPattern)

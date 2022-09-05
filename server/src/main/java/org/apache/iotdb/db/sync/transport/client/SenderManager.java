@@ -147,7 +147,7 @@ public class SenderManager {
   }
 
   public void registerDataRegion(String dataRegionId) {
-    ISyncClient syncClient = SyncClientFactory.createSyncClient(pipe, pipeSink);
+    ISyncClient syncClient = SyncClientFactory.createSyncClient(pipe, pipeSink, dataRegionId);
     clientMap.put(dataRegionId, syncClient);
     if (isRunning) {
       transportFutureMap.put(
@@ -168,7 +168,6 @@ public class SenderManager {
   /** test */
   @TestOnly
   public void setSyncClient(ISyncClient syncClient) {
-    //    this.syncClient = syncClient;
     // TODO: update test env
   }
 }

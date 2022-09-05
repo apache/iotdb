@@ -555,7 +555,7 @@ public class SyncService implements IService {
   }
 
   /** This method will be called before deleting dataRegion */
-  public void unregisterDataRegion(String dataRegionId) {
+  public synchronized void unregisterDataRegion(String dataRegionId) {
     if (runningPipe != null) {
       runningPipe.unregisterDataRegion(dataRegionId);
     }
