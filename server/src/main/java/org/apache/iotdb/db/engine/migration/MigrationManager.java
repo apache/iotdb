@@ -140,6 +140,7 @@ public class MigrationManager {
         logWriter = new MigrationOperateWriter(LOG_FILE);
       } catch (FileNotFoundException e) {
         logger.error("Cannot find/create log for migration.");
+        return;
       }
 
       migrationCheckThread =
@@ -179,7 +180,12 @@ public class MigrationManager {
 
   /** creates a copy of migrationTasks and returns */
   public List<MigrationTask> getMigrateTasks() {
-    return new ArrayList<>(migrationTasks);
+    try {
+      lock.lock();
+      return new ArrayList<>(migrationTasks);
+    } finally {
+      lock.unlock();
+    }
   }
 
   /** add migration task to migrationTasks */

@@ -2750,6 +2750,7 @@ public class IoTDBConfig {
 
   public void setMigrationThreadNum(int migrationThreadNum) {
     this.migrationThreadNum = migrationThreadNum;
+  }
 
   public Properties getCustomizedProperties() {
     return customizedProperties;
