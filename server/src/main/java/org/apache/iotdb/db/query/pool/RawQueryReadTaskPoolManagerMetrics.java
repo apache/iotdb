@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.pool;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -38,45 +37,41 @@ public class RawQueryReadTaskPoolManagerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUEUE.toString(),
-            MetricLevel.IMPORTANT,
-            rawQueryReadTaskPoolManager,
-            RawQueryReadTaskPoolManager::getActiveCount,
-            Tag.NAME.toString(),
-            ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
-            Tag.STATUS.toString(),
-            "running");
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUEUE.toString(),
-            MetricLevel.IMPORTANT,
-            rawQueryReadTaskPoolManager,
-            RawQueryReadTaskPoolManager::getWaitingCount,
-            Tag.NAME.toString(),
-            ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
-            Tag.STATUS.toString(),
-            "waiting");
+    metricService.getOrCreateAutoGauge(
+        Metric.QUEUE.toString(),
+        MetricLevel.IMPORTANT,
+        rawQueryReadTaskPoolManager,
+        RawQueryReadTaskPoolManager::getActiveCount,
+        Tag.NAME.toString(),
+        ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
+        Tag.STATUS.toString(),
+        "running");
+    metricService.getOrCreateAutoGauge(
+        Metric.QUEUE.toString(),
+        MetricLevel.IMPORTANT,
+        rawQueryReadTaskPoolManager,
+        RawQueryReadTaskPoolManager::getWaitingCount,
+        Tag.NAME.toString(),
+        ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
+        Tag.STATUS.toString(),
+        "waiting");
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    MetricService.getInstance()
-        .remove(
-            MetricType.GAUGE,
-            Metric.QUEUE.toString(),
-            Tag.NAME.toString(),
-            ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
-            Tag.STATUS.toString(),
-            "running");
-    MetricService.getInstance()
-        .remove(
-            MetricType.GAUGE,
-            Metric.QUEUE.toString(),
-            Tag.NAME.toString(),
-            ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
-            Tag.STATUS.toString(),
-            "waiting");
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.QUEUE.toString(),
+        Tag.NAME.toString(),
+        ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
+        Tag.STATUS.toString(),
+        "running");
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.QUEUE.toString(),
+        Tag.NAME.toString(),
+        ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
+        Tag.STATUS.toString(),
+        "waiting");
   }
 }

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,9 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.service;
 
-package org.apache.iotdb.db.engine.storagegroup;
-
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.service.AbstractThriftServiceThread;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -26,32 +28,32 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class DataRegionMetrics implements IMetricSet {
-  private DataRegion dataRegion;
-  private String storageGroupName;
+public class RPCServiceMetrics implements IMetricSet {
+  private AbstractThriftServiceThread thriftServiceThread;
 
-  public DataRegionMetrics(DataRegion dataRegion) {
-    this.dataRegion = dataRegion;
-    this.storageGroupName = dataRegion.getStorageGroupName();
+  public RPCServiceMetrics(AbstractThriftServiceThread thriftServiceThread) {
+    this.thriftServiceThread = thriftServiceThread;
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
-        Metric.MEM.toString(),
-        MetricLevel.IMPORTANT,
-        dataRegion,
-        DataRegion::getMemCost,
-        Tag.NAME.toString(),
-        "storageGroup_" + storageGroupName);
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.THRIFT_ACTIVE_THREADS.toString(),
+            MetricLevel.CORE,
+            thriftServiceThread,
+            AbstractThriftServiceThread::getActiveThreadCount,
+            Tag.NAME.toString(),
+            ThreadName.RPC_SERVICE.getName());
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.GAUGE,
-        Metric.MEM.toString(),
-        Tag.NAME.toString(),
-        "storageGroup_" + storageGroupName);
+    MetricService.getInstance()
+        .remove(
+            MetricType.GAUGE,
+            Metric.THRIFT_ACTIVE_THREADS.toString(),
+            Tag.NAME.toString(),
+            ThreadName.RPC_SERVICE.getName());
   }
 }
