@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -100,8 +101,14 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
       writer.sortAndFlushChunkMetadata();
       writer.tempOutput.flush();
 
+      ChunkMetadataExternalSortWindow window =
+          writer
+          .new ChunkMetadataExternalSortWindow(
+              0,
+              writer.chunkMetadataTempFile.length(),
+              new LocalTsFileInput(writer.chunkMetadataTempFile.toPath()));
       for (int i = 0; i < originChunkMetadataList.size(); ++i) {
-        Pair<String, IChunkMetadata> chunkMetadataPair = writer.readNextChunkMetadata();
+        Pair<String, IChunkMetadata> chunkMetadataPair = window.getNextSeriesNameAndChunkMetadata();
         Assert.assertEquals("root.sg.d" + i / 5 + ".s" + i % 5, chunkMetadataPair.left);
         Assert.assertEquals(
             originChunkMetadataList.get(i).getStartTime(), chunkMetadataPair.right.getStartTime());
@@ -150,8 +157,14 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
             new AlignedChunkMetadata(currentTimeChunkMetadata, currentValueChunkMetadata));
       }
 
+      ChunkMetadataExternalSortWindow window =
+          writer
+          .new ChunkMetadataExternalSortWindow(
+              0,
+              writer.chunkMetadataTempFile.length(),
+              new LocalTsFileInput(writer.chunkMetadataTempFile.toPath()));
       for (int i = 0; i < alignedChunkMetadata.size(); ++i) {
-        Pair<String, IChunkMetadata> chunkMetadataPair = writer.readNextChunkMetadata();
+        Pair<String, IChunkMetadata> chunkMetadataPair = window.getNextSeriesNameAndChunkMetadata();
         Assert.assertEquals("root.sg.d" + i, chunkMetadataPair.left);
         Assert.assertEquals(
             alignedChunkMetadata.get(i).getStartTime(), chunkMetadataPair.right.getStartTime());
@@ -213,8 +226,14 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
       writer.sortAndFlushChunkMetadata();
       writer.tempOutput.flush();
 
+      ChunkMetadataExternalSortWindow window =
+          writer
+          .new ChunkMetadataExternalSortWindow(
+              0,
+              writer.chunkMetadataTempFile.length(),
+              new LocalTsFileInput(writer.chunkMetadataTempFile.toPath()));
       for (int i = 0, deviceCnt = 0; i < originChunkMetadataList.size(); ++i) {
-        Pair<String, IChunkMetadata> chunkMetadataPair = writer.readNextChunkMetadata();
+        Pair<String, IChunkMetadata> chunkMetadataPair = window.getNextSeriesNameAndChunkMetadata();
         if (originChunkMetadataList.get(i) instanceof ChunkMetadata) {
           Assert.assertEquals(
               "root.sg.d" + deviceCnt + "." + originChunkMetadataList.get(i).getMeasurementUid(),
