@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.executable;
 
+import org.apache.iotdb.commons.trigger.exception.TriggerJarToLargeException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
@@ -127,9 +128,15 @@ public class ExecutableManager {
 
   public static ByteBuffer transferToBytebuffer(String filePath) throws IOException {
     try (FileChannel fileChannel = FileChannel.open(Paths.get(filePath), StandardOpenOption.READ)) {
+      long size = fileChannel.size();
+      if(size > Integer.MAX_VALUE){
+        // Max length of Thrift Binary is Integer.MAX_VALUE bytes.
+        throw new TriggerJarToLargeException(String.format("Size of file exceed %d bytes",Integer.MAX_VALUE));
+      }
+      ByteBuffer byteBuffer = ByteBuffer.allocate(size);
 
-    } catch (IOException e) {
-      LOGGER.warn("Error occurred during transferring file{} to ByteBuffer", filePath);
+    } catch (Exception e) {
+      LOGGER.warn("Error occurred during transferring file{} to ByteBuffer, the cause is {}", filePath,e.getMessage());
       throw e;
     }
   }
