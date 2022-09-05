@@ -48,7 +48,7 @@ public class TriggerClassLoaderManager implements IService {
     activeClassLoader = null;
   }
 
-  /** Call this method to get up-to-date ClassLoader before registering trigger */
+  /** Call this method to get up-to-date ClassLoader before registering triggers */
   public TriggerClassLoader updateAndGetActiveClassLoader() throws IOException {
     TriggerClassLoader deprecatedClassLoader = activeClassLoader;
     activeClassLoader = new TriggerClassLoader(libRoot);
