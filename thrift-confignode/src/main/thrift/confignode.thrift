@@ -244,8 +244,12 @@ enum TTriggerState {
 
 struct TCreateTriggerReq {
   1: required string triggerName
-  2: required binary triggerInformation
-  3: required common.TFile jarFile
+  2: required string className,
+  3: required string jarPath,
+  4: required bool usingURI,
+  5: required byte triggerEvent,
+  6: required byte triggerType
+  7: optional binary jarFile
 }
 
 // Show cluster

@@ -259,9 +259,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      // todo : createTriggerReq
+
       final TSStatus executionStatus =
-          client.createTrigger(new TCreateTriggerReq(triggerName, null, null));
+          client.createTrigger(new TCreateTriggerReq(triggerName,className,jarPath,usingURI,triggerEvent.getId(),
+                  triggerType.getId()));
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.error(
