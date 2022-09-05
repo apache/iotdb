@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -86,8 +87,6 @@ import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
@@ -100,7 +99,6 @@ import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -109,8 +107,6 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -348,14 +344,7 @@ public class DataRegion {
       recover();
     }
 
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.MEM.toString(),
-            MetricLevel.IMPORTANT,
-            storageGroupInfo,
-            StorageGroupInfo::getMemCost,
-            Tag.NAME.toString(),
-            "storageGroup_" + getStorageGroupName());
+    MetricService.getInstance().addMetricSet(new DataRegionMetrics(this));
   }
 
   @TestOnly
@@ -3795,6 +3784,10 @@ public class DataRegion {
     } finally {
       writeUnlock();
     }
+  }
+
+  public long getMemCost() {
+    return storageGroupInfo.getMemCost();
   }
 
   @TestOnly
