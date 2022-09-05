@@ -110,11 +110,6 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateTrigger(this, context);
-  }
-
-  @Override
   public QueryType getQueryType() {
     return QueryType.WRITE;
   }
