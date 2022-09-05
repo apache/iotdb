@@ -60,6 +60,16 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
         .add(regionReplicaSet);
   }
 
+  public void serializeForProcedure(DataOutputStream stream) throws IOException {
+    this.serializeImpl(stream);
+  }
+
+  public void deserializeForProcedure(ByteBuffer buffer) throws IOException {
+    // to remove the ordinal of ConfigPhysicalPlanType
+    buffer.getInt();
+    this.deserializeImpl(buffer);
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigPhysicalPlanType.CreateRegionGroups.ordinal());

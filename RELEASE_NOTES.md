@@ -19,6 +19,31 @@
 
 -->
 
+# Apache IoTDB 0.14.0-preview2
+The 0.14.0-preview2 version only contains the new cluster version.
+## New Features
+
+* Support RestApi
+* Support removing data node using Ratis consensus
+* Support having clause in query
+* Support Between expression
+* Support order by timeseries in last query
+* Support hot configuration of data_dirs
+* Support schema template
+* Support executeBatchStatement in JDBC
+* Support new UDF 'change_points'
+
+## Improvements
+
+* Add memory control for query
+* Balance write load of MultiLeader consensus
+* Optimize python client query performance
+* Optimize c++ client tablet insert performance
+* Print detailed info when failed opening session
+* Improve the performance of aligned series tsfile compaction
+* Improve the performance of group by query by returning batch result in one TsBlock instead of one row
+* Improve the performance of expression evaluation
+
 # Apache IoTDB 0.14.0-preview1
 The 0.14.0-preview1 version only contains the new cluster version.
 ## New Features
