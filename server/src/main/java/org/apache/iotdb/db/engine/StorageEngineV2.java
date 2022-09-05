@@ -50,6 +50,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.wal.WALManager;
@@ -665,6 +666,7 @@ public class StorageEngineV2 implements IService {
               .deleteWALNode(
                   region.getStorageGroupName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
         }
+        SyncService.getInstance().deleteSyncManager(region.getDataRegionId());
       } catch (Exception e) {
         logger.error(
             "Error occurs when deleting data region {}-{}",
@@ -680,6 +682,10 @@ public class StorageEngineV2 implements IService {
 
   public DataRegion getDataRegion(DataRegionId regionId) {
     return dataRegionMap.get(regionId);
+  }
+
+  public List<DataRegion> getAllDataRegions() {
+    return new ArrayList<>(dataRegionMap.values());
   }
 
   public List<DataRegionId> getAllDataRegionIds() {

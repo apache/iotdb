@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -178,6 +179,10 @@ public abstract class StatementVisitor<R, C> {
   // Trigger
   public R visitCreateTrigger(CreateTriggerStatement createTriggerStatement, C context) {
     return visitStatement(createTriggerStatement, context);
+  }
+
+  public R visitDropTrigger(DropTriggerStatement dropTriggerStatement, C context) {
+    return visitStatement(dropTriggerStatement, context);
   }
 
   /** Data Manipulation Language (DML) */

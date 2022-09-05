@@ -75,6 +75,7 @@ keyWords
     | EVERY
     | EXPLAIN
     | FILL
+    | FILE
     | FLUSH
     | FOR
     | FROM
@@ -169,6 +170,7 @@ keyWords
     | UNSET
     | UPDATE
     | UPSERT
+    | URI
     | USER
     | USING
     | VALUES
