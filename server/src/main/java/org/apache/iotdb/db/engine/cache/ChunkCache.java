@@ -83,7 +83,7 @@ public class ChunkCache {
                 });
 
     // add metrics
-    MetricService.getInstance().addMetricSet(new ChunkCacheMetrics());
+    MetricService.getInstance().addMetricSet(new ChunkCacheMetrics(this));
   }
 
   public double getHitRate() {

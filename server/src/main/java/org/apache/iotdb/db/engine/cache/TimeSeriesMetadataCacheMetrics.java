@@ -28,7 +28,11 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
 
-  private TimeSeriesMetadataCache timeSeriesMetadataCache = TimeSeriesMetadataCache.getInstance();
+  private TimeSeriesMetadataCache timeSeriesMetadataCache;
+
+  public TimeSeriesMetadataCacheMetrics(TimeSeriesMetadataCache timeSeriesMetadataCache) {
+    this.timeSeriesMetadataCache = timeSeriesMetadataCache;
+  }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {

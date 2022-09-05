@@ -27,7 +27,11 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class SchemaStatisticsManagerMetrics implements IMetricSet {
-  private SchemaStatisticsManager schemaStatisticsManager = SchemaStatisticsManager.getInstance();
+  private SchemaStatisticsManager schemaStatisticsManager;
+
+  public SchemaStatisticsManagerMetrics(SchemaStatisticsManager schemaStatisticsManager) {
+    this.schemaStatisticsManager = schemaStatisticsManager;
+  }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {

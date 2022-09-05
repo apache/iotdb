@@ -27,7 +27,11 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class ChunkCacheMetrics implements IMetricSet {
-  private ChunkCache chunkCache = ChunkCache.getInstance();
+  private ChunkCache chunkCache;
+
+  public ChunkCacheMetrics(ChunkCache chunkCache) {
+    this.chunkCache = chunkCache;
+  }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {

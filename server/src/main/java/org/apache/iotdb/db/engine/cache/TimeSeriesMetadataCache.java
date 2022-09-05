@@ -104,7 +104,7 @@ public class TimeSeriesMetadataCache {
             .recordStats()
             .build();
     // add metrics
-    MetricService.getInstance().addMetricSet(new TimeSeriesMetadataCacheMetrics());
+    MetricService.getInstance().addMetricSet(new TimeSeriesMetadataCacheMetrics(this));
   }
 
   public static TimeSeriesMetadataCache getInstance() {

@@ -27,7 +27,11 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class DataNodeSchemaCacheMetrics implements IMetricSet {
-  private DataNodeSchemaCache dataNodeSchemaCache = DataNodeSchemaCache.getInstance();
+  private DataNodeSchemaCache dataNodeSchemaCache;
+
+  public DataNodeSchemaCacheMetrics(DataNodeSchemaCache dataNodeSchemaCache) {
+    this.dataNodeSchemaCache = dataNodeSchemaCache;
+  }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {

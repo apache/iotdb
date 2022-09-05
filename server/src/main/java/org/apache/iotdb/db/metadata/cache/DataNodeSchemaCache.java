@@ -53,7 +53,7 @@ public class DataNodeSchemaCache {
                 (PartialPath key, SchemaCacheEntry value) ->
                     PartialPath.estimateSize(key) + SchemaCacheEntry.estimateSize(value))
             .build();
-    MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics());
+    MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics(this));
   }
 
   public double getHitRate() {
