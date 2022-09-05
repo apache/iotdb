@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.metric;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.partition.StorageGroupPartitionTable;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -82,5 +83,96 @@ public class PartitionInfoMetrics implements IMetricSet {
         "total",
         Tag.TYPE.toString(),
         TConsensusGroupType.DataRegion.toString());
+  }
+
+  public static class StorageGroupPartitionTableMetrics implements IMetricSet {
+    private StorageGroupPartitionTable storageGroupPartitionTable;
+
+    public StorageGroupPartitionTableMetrics(
+        StorageGroupPartitionTable storageGroupPartitionTable) {
+      this.storageGroupPartitionTable = storageGroupPartitionTable;
+    }
+
+    @Override
+    public void bindTo(AbstractMetricService metricService) {
+      metricService.getOrCreateAutoGauge(
+          Metric.REGION.toString(),
+          MetricLevel.NORMAL,
+          storageGroupPartitionTable,
+          o -> o.getRegionGroupCount(TConsensusGroupType.SchemaRegion),
+          Tag.NAME.toString(),
+          storageGroupPartitionTable.getStorageGroupName(),
+          Tag.TYPE.toString(),
+          TConsensusGroupType.SchemaRegion.toString());
+      metricService.getOrCreateAutoGauge(
+          Metric.REGION.toString(),
+          MetricLevel.NORMAL,
+          storageGroupPartitionTable,
+          o -> o.getRegionGroupCount(TConsensusGroupType.DataRegion),
+          Tag.NAME.toString(),
+          storageGroupPartitionTable.getStorageGroupName(),
+          Tag.TYPE.toString(),
+          TConsensusGroupType.DataRegion.toString());
+      // TODO slot will be updated in the future
+      metricService.getOrCreateAutoGauge(
+          Metric.SLOT.toString(),
+          MetricLevel.NORMAL,
+          storageGroupPartitionTable,
+          StorageGroupPartitionTable::getSchemaPartitionMapSize,
+          Tag.NAME.toString(),
+          storageGroupPartitionTable.getStorageGroupName(),
+          Tag.TYPE.toString(),
+          "schemaSlotNumber");
+      metricService.getOrCreateAutoGauge(
+          Metric.SLOT.toString(),
+          MetricLevel.NORMAL,
+          storageGroupPartitionTable,
+          StorageGroupPartitionTable::getDataPartitionMapSize,
+          Tag.NAME.toString(),
+          storageGroupPartitionTable.getStorageGroupName(),
+          Tag.TYPE.toString(),
+          "dataSlotNumber");
+    }
+
+    @Override
+    public void unbindFrom(AbstractMetricService metricService) {
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.REGION.toString(),
+          Tag.NAME.toString(),
+          storageGroupPartitionTable.getStorageGroupName(),
+          Tag.TYPE.toString(),
+          TConsensusGroupType.SchemaRegion.toString());
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.REGION.toString(),
+          Tag.NAME.toString(),
+          storageGroupPartitionTable.getStorageGroupName(),
+          Tag.TYPE.toString(),
+          TConsensusGroupType.DataRegion.toString());
+      // TODO slot will be updated in the future
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.SLOT.toString(),
+          Tag.NAME.toString(),
+          storageGroupPartitionTable.getStorageGroupName(),
+          Tag.TYPE.toString(),
+          "schemaSlotNumber");
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.SLOT.toString(),
+          Tag.NAME.toString(),
+          storageGroupPartitionTable.getStorageGroupName(),
+          Tag.TYPE.toString(),
+          "dataSlotNumber");
+    }
+  }
+
+  public static class RegionGroupMetrics implements IMetricSet {
+    @Override
+    public void bindTo(AbstractMetricService metricService) {}
+
+    @Override
+    public void unbindFrom(AbstractMetricService metricService) {}
   }
 }
