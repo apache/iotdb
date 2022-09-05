@@ -176,7 +176,7 @@ struct TcreateTriggerInstanceReq {
   2: required binary jarFile
 }
 
-struct TremoveTriggerInstanceReq {
+struct TDropTriggerInstanceReq {
   1: required string triggerName
   2: required bool needToDeleteJarFile
 }
@@ -353,6 +353,13 @@ service IDataNodeRPCService {
     * @param TriggerInformation, jar file.
     **/
   common.TSStatus createTriggerInstance(TcreateTriggerInstanceReq req)
+
+  /**
+     * Config node will drop a trigger on all online config nodes and data nodes.
+     *
+     * @param trigger name, whether need to delete jar
+     **/
+    common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
 
   /**
    * Config node will invalidate permission Info cache.

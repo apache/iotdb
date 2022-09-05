@@ -252,6 +252,10 @@ struct TCreateTriggerReq {
   7: optional binary jarFile
 }
 
+struct TDropTriggerReq {
+  1: required string triggerName
+}
+
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status
@@ -618,6 +622,14 @@ service IConfigNodeRPCService {
       *         EXECUTE_STATEMENT_ERROR if operations on any node failed
       */
   common.TSStatus createTrigger(TCreateTriggerReq req)
+
+  /**
+       * Remove a trigger on all online ConfigNodes and DataNodes
+       *
+       * @return SUCCESS_STATUS if the function was removed successfully
+       *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+       */
+    common.TSStatus dropTrigger(TDropTriggerReq req)
 
   // ======================================================
   // Maintenance Tools

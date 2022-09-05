@@ -126,14 +126,11 @@ public class ExecutableManager {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public static ByteBuffer transferToBytebuffer(String filePath) throws IOException {
-    try( FileChannel fileChannel = FileChannel.open(Paths.get(filePath), StandardOpenOption.READ)){
+    try (FileChannel fileChannel = FileChannel.open(Paths.get(filePath), StandardOpenOption.READ)) {
 
-    }catch (IOException e){
+    } catch (IOException e) {
       LOGGER.warn("Error occurred during transferring file{} to ByteBuffer", filePath);
       throw e;
     }
-
-
   }
-
 }
