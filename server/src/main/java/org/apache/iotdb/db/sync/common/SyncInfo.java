@@ -22,8 +22,9 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.common.persistence.SyncLogReader;
@@ -144,7 +145,7 @@ public class SyncInfo {
   // endregion
 
   // region Implement of Pipe
-
+  // TODO: delete this in new-standalone version
   public void addPipe(CreatePipePlan plan, long createTime) throws PipeException, IOException {
     // common check
     if (runningPipe != null && runningPipe.getStatus() != Pipe.PipeStatus.DROP) {
@@ -163,10 +164,32 @@ public class SyncInfo {
     syncLogWriter.addPipe(plan, createTime);
   }
 
-  public void operatePipe(String pipeName, Operator.OperatorType operatorType)
+  public void addPipe(CreatePipeStatement createPipeStatement, long createTime)
+      throws PipeException, IOException {
+    // common check
+    if (runningPipe != null && runningPipe.getStatus() != Pipe.PipeStatus.DROP) {
+      throw new PipeException(
+          String.format(
+              "Pipe %s is %s, please retry after drop it.",
+              runningPipe.getPipeName(), runningPipe.getStatus().name()));
+    }
+    if (!isPipeSinkExist(createPipeStatement.getPipeSinkName())) {
+      throw new PipeException(
+          String.format("Can not find pipeSink %s.", createPipeStatement.getPipeSinkName()));
+    }
+
+    PipeSink runningPipeSink = getPipeSink(createPipeStatement.getPipeSinkName());
+    runningPipe =
+        SyncPipeUtil.parseCreatePipePlanAsPipeInfo(
+            createPipeStatement, runningPipeSink, createTime);
+    pipes.add(runningPipe);
+    syncLogWriter.addPipe(createPipeStatement, createTime);
+  }
+
+  public void operatePipe(String pipeName, StatementType statementType)
       throws PipeException, IOException {
     checkIfPipeExistAndRunning(pipeName);
-    switch (operatorType) {
+    switch (statementType) {
       case START_PIPE:
         runningPipe.start();
         break;
@@ -177,9 +200,9 @@ public class SyncInfo {
         runningPipe.drop();
         break;
       default:
-        throw new PipeException("Unknown operatorType " + operatorType);
+        throw new PipeException("Unknown operatorType " + statementType);
     }
-    syncLogWriter.operatePipe(pipeName, operatorType);
+    syncLogWriter.operatePipe(pipeName, statementType);
   }
 
   public List<PipeInfo> getAllPipeInfos() {

@@ -364,6 +364,21 @@ struct TGetPathsSetTemplatesResp {
   2: optional list<string> pathList
 }
 
+// Show pipe
+struct TPipeInfo {
+  1: required i64 createTime
+  2: required string pipeName
+  3: required string role
+  4: required string remote
+  5: required string status
+  6: required string message
+}
+
+struct TShowPipeResp {
+  1: required common.TSStatus status
+  2: optional list<TPipeInfo> pipeInfoList
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
