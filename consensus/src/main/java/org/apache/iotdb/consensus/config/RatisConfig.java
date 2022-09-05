@@ -33,6 +33,7 @@ public class RatisConfig {
   private final Snapshot snapshot;
   private final ThreadPool threadPool;
   private final Log log;
+  private final LeaderLogAppender leaderLogAppender;
   private final Grpc grpc;
 
   private RatisConfig(
@@ -41,12 +42,14 @@ public class RatisConfig {
       Snapshot snapshot,
       ThreadPool threadPool,
       Log log,
+      LeaderLogAppender leaderLogAppender,
       Grpc grpc) {
     this.rpc = rpc;
     this.leaderElection = leaderElection;
     this.snapshot = snapshot;
     this.threadPool = threadPool;
     this.log = log;
+    this.leaderLogAppender = leaderLogAppender;
     this.grpc = grpc;
   }
 
@@ -70,6 +73,10 @@ public class RatisConfig {
     return log;
   }
 
+  public LeaderLogAppender getLeaderLogAppender() {
+    return leaderLogAppender;
+  }
+
   public Grpc getGrpc() {
     return grpc;
   }
@@ -84,6 +91,7 @@ public class RatisConfig {
     private Snapshot snapshot;
     private ThreadPool threadPool;
     private Log log;
+    private LeaderLogAppender leaderLogAppender;
     private Grpc grpc;
 
     public RatisConfig build() {
@@ -93,6 +101,7 @@ public class RatisConfig {
           snapshot != null ? snapshot : Snapshot.newBuilder().build(),
           threadPool != null ? threadPool : ThreadPool.newBuilder().build(),
           log != null ? log : Log.newBuilder().build(),
+          leaderLogAppender != null ? leaderLogAppender : LeaderLogAppender.newBuilder().build(),
           grpc != null ? grpc : Grpc.newBuilder().build());
     }
 
@@ -688,6 +697,66 @@ public class RatisConfig {
 
       public Grpc.Builder setLeaderOutstandingAppendsMax(int leaderOutstandingAppendsMax) {
         this.leaderOutstandingAppendsMax = leaderOutstandingAppendsMax;
+        return this;
+      }
+    }
+  }
+
+
+  public static class LeaderLogAppender {
+    private final SizeInBytes bufferByteLimit;
+    private final SizeInBytes snapshotChunkSizeMax;
+    private final boolean installSnapshotEnabled;
+
+    private LeaderLogAppender(
+        SizeInBytes bufferByteLimit,
+        SizeInBytes snapshotChunkSizeMax,
+        boolean installSnapshotEnabled) {
+      this.bufferByteLimit = bufferByteLimit;
+      this.snapshotChunkSizeMax = snapshotChunkSizeMax;
+      this.installSnapshotEnabled = installSnapshotEnabled;
+    }
+
+    public SizeInBytes getBufferByteLimit() {
+      return bufferByteLimit;
+    }
+
+    public SizeInBytes getSnapshotChunkSizeMax() {
+      return snapshotChunkSizeMax;
+    }
+
+    public boolean isInstallSnapshotEnabled() {
+      return installSnapshotEnabled;
+    }
+
+    public static LeaderLogAppender.Builder newBuilder() {
+      return new LeaderLogAppender.Builder();
+    }
+
+    public static class Builder {
+      private SizeInBytes bufferByteLimit =
+          RaftServerConfigKeys.Log.Appender.BUFFER_BYTE_LIMIT_DEFAULT;
+      private SizeInBytes snapshotChunkSizeMax =
+          RaftServerConfigKeys.Log.Appender.SNAPSHOT_CHUNK_SIZE_MAX_DEFAULT;
+      private boolean installSnapshotEnabled =
+          RaftServerConfigKeys.Log.Appender.INSTALL_SNAPSHOT_ENABLED_DEFAULT;
+
+      public LeaderLogAppender build() {
+        return new LeaderLogAppender(bufferByteLimit, snapshotChunkSizeMax, installSnapshotEnabled);
+      }
+
+      LeaderLogAppender.Builder setBufferByteLimit(SizeInBytes bufferByteLimit) {
+        this.bufferByteLimit = bufferByteLimit;
+        return this;
+      }
+
+      LeaderLogAppender.Builder setSnapshotChunkSizeMax(SizeInBytes snapshotChunkSizeMax) {
+        this.snapshotChunkSizeMax = snapshotChunkSizeMax;
+        return this;
+      }
+
+      LeaderLogAppender.Builder setInstallSnapshotEnabled(boolean installSnapshotEnabled) {
+        this.installSnapshotEnabled = installSnapshotEnabled;
         return this;
       }
     }
