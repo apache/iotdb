@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class CreateRegionGroupsProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, CreateRegionGroupsState> {
@@ -200,5 +201,12 @@ public class CreateRegionGroupsProcedure
           && thatProc.failedRegions.equals(this.failedRegions);
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = createRegionGroupsPlan.hashCode();
+    result = 31 * result + Objects.hash(failedRegions);
+    return result;
   }
 }

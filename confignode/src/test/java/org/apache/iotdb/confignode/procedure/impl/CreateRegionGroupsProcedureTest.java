@@ -102,6 +102,7 @@ public class CreateRegionGroupsProcedureTest {
       buffer.getInt();
       procedure1.deserialize(buffer);
       assertEquals(procedure0, procedure1);
+      assertEquals(procedure0.hashCode(), procedure1.hashCode());
     } catch (IOException e) {
       fail();
     }
