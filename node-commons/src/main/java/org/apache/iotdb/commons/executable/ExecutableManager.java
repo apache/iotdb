@@ -22,16 +22,24 @@ package org.apache.iotdb.commons.executable;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ExecutableManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ExecutableManager.class);
 
   protected final String temporaryLibRoot;
   protected final String libRoot;
@@ -112,4 +120,20 @@ public class ExecutableManager {
   public String getDirStringByName(String name) {
     return libRoot + File.separator + name + File.separator;
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // transfer jar file to bytebuffer for thrift
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public static ByteBuffer transferToBytebuffer(String filePath) throws IOException {
+    try( FileChannel fileChannel = FileChannel.open(Paths.get(filePath), StandardOpenOption.READ)){
+
+    }catch (IOException e){
+      LOGGER.warn("Error occurred during transferring file{} to ByteBuffer", filePath);
+      throw e;
+    }
+
+
+  }
+
 }
