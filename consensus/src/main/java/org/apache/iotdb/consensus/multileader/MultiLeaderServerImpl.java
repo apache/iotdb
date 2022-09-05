@@ -370,6 +370,10 @@ public class MultiLeaderServerImpl {
     // configuration
     List<Peer> currentMembers = new ArrayList<>(this.configuration);
     for (Peer peer : currentMembers) {
+      if (peer.equals(targetPeer)) {
+        // if the targetPeer is the same as current peer, skip it because removing itself is illegal
+        continue;
+      }
       if (peer.equals(thisNode)) {
         removeSyncLogChannel(targetPeer);
       } else {
@@ -561,6 +565,7 @@ public class MultiLeaderServerImpl {
   }
 
   public void setActive(boolean active) {
+    logger.info("set {} active status to {}", this.thisNode, active);
     this.active = active;
   }
 }
