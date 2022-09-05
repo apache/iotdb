@@ -116,6 +116,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -178,6 +179,10 @@ public class VirtualStorageGroupProcessor {
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
 
   private final ReadWriteLock flushingTimeLock = new ReentrantReadWriteLock();
+
+  private final Lock flushingTimeReadLock = flushingTimeLock.readLock();
+
+  private final Lock flushingTimeWriteLock = flushingTimeLock.writeLock();
   /** time partition id in the storage group -> tsFileProcessor for this time partition */
   private final SortedMap<Long, TsFileProcessor> workSequenceTsFileProcessors =
       Collections.synchronizedSortedMap(new TreeMap<>());
@@ -963,6 +968,7 @@ public class VirtualStorageGroupProcessor {
             beforeTimePartition, insertTabletPlan.getDevicePath().getFullPath(), Long.MIN_VALUE);
     // if is sequence
     boolean isSequence = false;
+
     while (loc < insertTabletPlan.getRowCount()) {
       long time = insertTabletPlan.getTimes()[loc];
       long curTimePartition = StorageEngine.getTimePartition(time);
@@ -990,8 +996,6 @@ public class VirtualStorageGroupProcessor {
       // still in this partition
       else {
         // judge if we should insert sequence
-        lastFlushTimeManager.getFlushedTime(
-            curTimePartition, insertTabletPlan.getDevicePath().getFullPath());
         if (!isSequence && time > lastFlushTime) {
           // insert into unsequence and then start sequence
           if (!IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
@@ -1006,7 +1010,6 @@ public class VirtualStorageGroupProcessor {
         loc++;
       }
     }
-
     // do not forget last part
     if (before < loc
         && (isSequence
@@ -1016,6 +1019,7 @@ public class VirtualStorageGroupProcessor {
                   insertTabletPlan, before, loc, isSequence, results, beforeTimePartition)
               && noFailure;
     }
+
     long globalLatestFlushedTime =
         lastFlushTimeManager.getGlobalFlushedTime(insertTabletPlan.getDevicePath().getFullPath());
     tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
@@ -1058,8 +1062,15 @@ public class VirtualStorageGroupProcessor {
       return true;
     }
     TsFileProcessor tsFileProcessor;
-    flushingTimeLock.readLock().lock();
+    flushingTimeReadLock.lock();
     try {
+      if (sequence) {
+        long lastFlushTime =
+            lastFlushTimeManager.getFlushedTime(
+                timePartitionId, insertTabletPlan.getDevicePath().getFullPath());
+        sequence = insertTabletPlan.getTimes()[start] > lastFlushTime;
+      }
+
       tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
       if (tsFileProcessor == null) {
         for (int i = start; i < end; i++) {
@@ -1078,9 +1089,8 @@ public class VirtualStorageGroupProcessor {
       logger.error("insert to TsFileProcessor error ", e);
       return false;
     } finally {
-      flushingTimeLock.readLock().unlock();
+      flushingTimeReadLock.unlock();
     }
-
     lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
     // try to update the latest time of the device of this tsRecord
     if (sequence) {
@@ -1128,7 +1138,7 @@ public class VirtualStorageGroupProcessor {
       InsertRowPlan insertRowPlan, boolean sequence, long timePartitionId)
       throws WriteProcessException {
     TsFileProcessor tsFileProcessor;
-    flushingTimeLock.readLock().lock();
+    flushingTimeReadLock.lock();
     try {
       sequence =
           insertRowPlan.getTime()
@@ -1140,7 +1150,7 @@ public class VirtualStorageGroupProcessor {
       }
       tsFileProcessor.insert(insertRowPlan);
     } finally {
-      flushingTimeLock.readLock().unlock();
+      flushingTimeReadLock.unlock();
     }
 
     // try to update the latest time of the device of this tsRecord
@@ -1249,7 +1259,7 @@ public class VirtualStorageGroupProcessor {
 
     TsFileProcessor res = tsFileProcessorTreeMap.get(timeRangeId);
     if (null == res) {
-      synchronized (tsFileProcessorTreeMap) {
+      synchronized (this) {
         res = tsFileProcessorTreeMap.get(timeRangeId);
         if (null != res) return res;
         // build new processor, memory control module will control the number of memtables
@@ -2093,7 +2103,7 @@ public class VirtualStorageGroupProcessor {
 
   private boolean updateLatestFlushTimeCallback(TsFileProcessor processor) {
 
-    flushingTimeLock.writeLock().lock();
+    flushingTimeWriteLock.lock();
     boolean res;
     try {
       res = lastFlushTimeManager.updateLatestFlushTime(processor.getTimeRangeId());
@@ -2105,7 +2115,7 @@ public class VirtualStorageGroupProcessor {
             processor.getTsFileResource().getTsFile());
       }
     } finally {
-      flushingTimeLock.writeLock().unlock();
+      flushingTimeWriteLock.unlock();
     }
 
     return res;
@@ -3105,48 +3115,44 @@ public class VirtualStorageGroupProcessor {
    */
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws WriteProcessException, TriggerExecutionException {
-    writeLock("InsertRowsOfOneDevice");
-    try {
-      boolean isSequence = false;
-      InsertRowPlan[] rowPlans = insertRowsOfOneDevicePlan.getRowPlans();
-      for (int i = 0, rowPlansLength = rowPlans.length; i < rowPlansLength; i++) {
 
-        InsertRowPlan plan = rowPlans[i];
-        if (!isAlive(plan.getTime()) || insertRowsOfOneDevicePlan.isExecuted(i)) {
-          // we do not need to write these part of data, as they can not be queried
-          // or the sub-plan has already been executed, we are retrying other sub-plans
-          continue;
-        }
-        // init map
-        long timePartitionId = StorageEngine.getTimePartition(plan.getTime());
+    boolean isSequence = false;
+    InsertRowPlan[] rowPlans = insertRowsOfOneDevicePlan.getRowPlans();
+    for (int i = 0, rowPlansLength = rowPlans.length; i < rowPlansLength; i++) {
 
-        lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
-        // as the plans have been ordered, and we have get the write lock,
-        // So, if a plan is sequenced, then all the rest plans are sequenced.
-        //
-        if (!isSequence) {
-          isSequence =
-              plan.getTime()
-                  > lastFlushTimeManager.getFlushedTime(
-                      timePartitionId, plan.getDevicePath().getFullPath());
-        }
-        // is unsequence and user set config to discard out of order data
-        if (!isSequence
-            && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
-          return;
-        }
-
-        lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
-
-        // fire trigger before insertion
-        TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, plan);
-        // insert to sequence or unSequence file
-        insertToTsFileProcessor(plan, isSequence, timePartitionId);
-        // fire trigger before insertion
-        TriggerEngine.fire(TriggerEvent.AFTER_INSERT, plan);
+      InsertRowPlan plan = rowPlans[i];
+      if (!isAlive(plan.getTime()) || insertRowsOfOneDevicePlan.isExecuted(i)) {
+        // we do not need to write these part of data, as they can not be queried
+        // or the sub-plan has already been executed, we are retrying other sub-plans
+        continue;
       }
-    } finally {
-      writeUnlock();
+      // init map
+      long timePartitionId = StorageEngine.getTimePartition(plan.getTime());
+
+      lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
+      // as the plans have been ordered, and we have get the write lock,
+      // So, if a plan is sequenced, then all the rest plans are sequenced.
+      //
+      if (!isSequence) {
+        isSequence =
+            plan.getTime()
+                > lastFlushTimeManager.getFlushedTime(
+                    timePartitionId, plan.getDevicePath().getFullPath());
+      }
+      // is unsequence and user set config to discard out of order data
+      if (!isSequence
+          && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+        return;
+      }
+
+      lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
+
+      // fire trigger before insertion
+      TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, plan);
+      // insert to sequence or unSequence file
+      insertToTsFileProcessor(plan, isSequence, timePartitionId);
+      // fire trigger before insertion
+      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, plan);
     }
   }
 
