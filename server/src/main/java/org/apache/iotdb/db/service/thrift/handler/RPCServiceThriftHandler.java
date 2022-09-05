@@ -18,6 +18,7 @@ package org.apache.iotdb.db.service.thrift.handler;
 
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.IClientRPCServiceWithHandler;
+
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
@@ -32,7 +33,8 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
 
   public RPCServiceThriftHandler(IClientRPCServiceWithHandler eventHandler) {
     this.eventHandler = eventHandler;
-    MetricService.getInstance().addMetricSet(new RPCServiceThriftHandlerMetrics(thriftConnectionNumber));
+    MetricService.getInstance()
+        .addMetricSet(new RPCServiceThriftHandlerMetrics(thriftConnectionNumber));
   }
 
   @Override
