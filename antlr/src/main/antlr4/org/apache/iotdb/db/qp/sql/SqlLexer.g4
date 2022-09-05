@@ -215,6 +215,10 @@ FILL
     : F I L L
     ;
 
+FILE
+    : F I L E
+    ;
+
 FLUSH
     : F L U S H
     ;
@@ -601,6 +605,10 @@ UPDATE
 
 UPSERT
     : U P S E R T
+    ;
+
+URI
+    : U R I
     ;
 
 USER

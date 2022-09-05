@@ -16,11 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.consensus.exception;
 
-package org.apache.iotdb.confignode.procedure.state;
+import org.apache.ratis.protocol.RaftPeer;
 
-public enum RemoveConfigNodeState {
-  REMOVE_PEER,
-  REMOVE_CONSENSUS_GROUP,
-  STOP_CONFIG_NODE
+public class NodeReadOnlyException extends ConsensusException {
+  public NodeReadOnlyException(RaftPeer peer) {
+    super(
+        String.format(
+            "Current Peer %s in Address %s is in Read Only State",
+            peer.getId(), peer.getAddress()));
+  }
 }

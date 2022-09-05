@@ -17,10 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.commons.executable;
 
-public enum RemoveConfigNodeState {
-  REMOVE_PEER,
-  REMOVE_CONSENSUS_GROUP,
-  STOP_CONFIG_NODE
+public class ExecutableResource {
+
+  private final long requestId;
+  private final String resourceDir;
+
+  public ExecutableResource(long requestId, String resourceDir) {
+    this.requestId = requestId;
+    this.resourceDir = resourceDir;
+  }
+
+  public long getRequestId() {
+    return requestId;
+  }
+
+  public String getResourceDir() {
+    return resourceDir;
+  }
 }
