@@ -333,7 +333,12 @@ public class MultiLeaderServerImpl {
     // The configuration will be modified during iterating because we will add the targetPeer to
     // configuration
     List<Peer> currentMembers = new ArrayList<>(this.configuration);
+    logger.info(
+        "notify current peers to build sync log. group member: {}, target: {}",
+        currentMembers,
+        targetPeer);
     for (Peer peer : currentMembers) {
+      logger.info("build sync log channel from {}", peer);
       if (peer.equals(thisNode)) {
         // use searchIndex for thisNode as the initialSyncIndex because targetPeer will load the
         // snapshot produced by thisNode
@@ -400,22 +405,25 @@ public class MultiLeaderServerImpl {
   public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex)
       throws ConsensusGroupAddPeerException {
     // step 1, build sync channel in LogDispatcher
+    logger.info(
+        "start to build sync log channel to {} with initialSyncIndex {}",
+        targetPeer,
+        initialSyncIndex);
     logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex);
+    logger.info(
+        "[complete] add LogDispatcherThread to {} with initialSyncIndex {}",
+        targetPeer,
+        initialSyncIndex);
     // step 2, update configuration
     configuration.add(targetPeer);
-    if (!persistConfigurationUpdate()) {
-      throw new ConsensusGroupAddPeerException(
-          String.format("error when build sync log channel to %s", targetPeer));
-    }
+    persistConfigurationUpdate();
+    logger.info("[complete] persist new configuration: {}", configuration);
   }
 
   public void removeSyncLogChannel(Peer targetPeer) throws ConsensusGroupAddPeerException {
     logDispatcher.removeLogDispatcherThread(targetPeer);
     configuration.remove(targetPeer);
-    if (!persistConfigurationUpdate()) {
-      throw new ConsensusGroupAddPeerException(
-          String.format("error when build sync log channel to %s", targetPeer));
-    }
+    persistConfigurationUpdate();
   }
 
   public void persistConfiguration() {
@@ -433,7 +441,7 @@ public class MultiLeaderServerImpl {
     }
   }
 
-  public boolean persistConfigurationUpdate() {
+  public void persistConfigurationUpdate() throws ConsensusGroupAddPeerException {
     try (PublicBAOS publicBAOS = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
       serializeConfigurationTo(outputStream);
@@ -444,10 +452,9 @@ public class MultiLeaderServerImpl {
       Files.write(tmpConfigurationPath, publicBAOS.getBuf());
       Files.delete(configurationPath);
       Files.move(tmpConfigurationPath, configurationPath);
-      return true;
     } catch (IOException e) {
-      logger.error("Unexpected error occurs when update configuration", e);
-      return false;
+      throw new ConsensusGroupAddPeerException(
+          "Unexpected error occurs when update configuration", e);
     }
   }
 
