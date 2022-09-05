@@ -30,6 +30,9 @@ import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -124,6 +127,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
     try {
       StorageEngineV2.getInstance()
           .setDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())), region);
+      ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
+      BloomFilterCache.getInstance().clear();
     } catch (Exception e) {
       logger.error("Exception occurs when replacing data region in storage engine.", e);
     }

@@ -249,27 +249,27 @@ public class MultiLeaderConsensus implements IConsensus {
     }
     try {
       // step 1: inactive new Peer to prepare for following steps
-      logger.info("inactivate new peer: {}", peer);
+      logger.info("[MultiLeaderConsensus] inactivate new peer: {}", peer);
       impl.inactivePeer(peer);
 
       // step 2: notify all the other Peers to build the sync connection to newPeer
-      logger.info("notify current peers to build sync log...");
+      logger.info("[MultiLeaderConsensus] notify current peers to build sync log...");
       impl.notifyPeersToBuildSyncLogChannel(peer);
 
       // step 3: take snapshot
-      logger.info("start to take snapshot...");
+      logger.info("[MultiLeaderConsensus] start to take snapshot...");
       impl.takeSnapshot();
 
       // step 4: transit snapshot
-      logger.info("start to transit snapshot...");
+      logger.info("[MultiLeaderConsensus] start to transit snapshot...");
       impl.transitSnapshot(peer);
 
       // step 5: let the new peer load snapshot
-      logger.info("trigger new peer to load snapshot...");
+      logger.info("[MultiLeaderConsensus] trigger new peer to load snapshot...");
       impl.triggerSnapshotLoad(peer);
 
       // step 6: active new Peer
-      logger.info("activate new peer...");
+      logger.info("[MultiLeaderConsensus] activate new peer...");
       impl.activePeer(peer);
 
     } catch (ConsensusGroupAddPeerException e) {
@@ -293,9 +293,12 @@ public class MultiLeaderConsensus implements IConsensus {
     try {
       impl.notifyPeersToRemoveSyncLogChannel(peer);
     } catch (ConsensusGroupAddPeerException e) {
-      throw new RuntimeException(e);
+      return ConsensusGenericResponse.newBuilder()
+          .setSuccess(false)
+          .setException(new ConsensusException(e.getMessage()))
+          .build();
     }
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }
 
   @Override

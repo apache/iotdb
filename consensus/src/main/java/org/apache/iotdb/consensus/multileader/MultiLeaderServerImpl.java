@@ -334,11 +334,11 @@ public class MultiLeaderServerImpl {
     // configuration
     List<Peer> currentMembers = new ArrayList<>(this.configuration);
     logger.info(
-        "notify current peers to build sync log. group member: {}, target: {}",
+        "[MultiLeaderConsensus] notify current peers to build sync log. group member: {}, target: {}",
         currentMembers,
         targetPeer);
     for (Peer peer : currentMembers) {
-      logger.info("build sync log channel from {}", peer);
+      logger.info("[MultiLeaderConsensus] build sync log channel from {}", peer);
       if (peer.equals(thisNode)) {
         // use searchIndex for thisNode as the initialSyncIndex because targetPeer will load the
         // snapshot produced by thisNode
@@ -410,24 +410,26 @@ public class MultiLeaderServerImpl {
       throws ConsensusGroupAddPeerException {
     // step 1, build sync channel in LogDispatcher
     logger.info(
-        "start to build sync log channel to {} with initialSyncIndex {}",
+        "[MultiLeaderConsensus] build sync log channel to {} with initialSyncIndex {}",
         targetPeer,
         initialSyncIndex);
     logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex);
-    logger.info(
-        "[complete] add LogDispatcherThread to {} with initialSyncIndex {}",
-        targetPeer,
-        initialSyncIndex);
     // step 2, update configuration
     configuration.add(targetPeer);
+    logger.info("[MultiLeaderConsensus] persist new configuration: {}", configuration);
     persistConfigurationUpdate();
-    logger.info("[complete] persist new configuration: {}", configuration);
   }
 
   public void removeSyncLogChannel(Peer targetPeer) throws ConsensusGroupAddPeerException {
-    logDispatcher.removeLogDispatcherThread(targetPeer);
-    configuration.remove(targetPeer);
-    persistConfigurationUpdate();
+    try {
+      logDispatcher.removeLogDispatcherThread(targetPeer);
+      logger.info("[MultiLeaderConsensus] log dispatcher to {} removed and cleanup", targetPeer);
+      configuration.remove(targetPeer);
+      persistConfigurationUpdate();
+      logger.info("[MultiLeaderConsensus] configuration updated to {}", this.configuration);
+    } catch (IOException e) {
+      throw new ConsensusGroupAddPeerException("error when remove LogDispatcherThread", e);
+    }
   }
 
   public void persistConfiguration() {

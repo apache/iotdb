@@ -118,7 +118,7 @@ public class LogDispatcher {
     executorService.submit(thread);
   }
 
-  public synchronized void removeLogDispatcherThread(Peer peer) {
+  public synchronized void removeLogDispatcherThread(Peer peer) throws IOException {
     if (stopped) {
       return;
     }
@@ -133,6 +133,7 @@ public class LogDispatcher {
       return;
     }
     threads.get(threadIndex).stop();
+    threads.get(threadIndex).cleanup();
     threads.remove(threadIndex);
   }
 
@@ -220,6 +221,10 @@ public class LogDispatcher {
 
     public void stop() {
       stopped = true;
+    }
+
+    public void cleanup() throws IOException {
+      this.controller.cleanupVersionFiles();
     }
 
     public boolean isStopped() {
