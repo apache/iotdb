@@ -22,6 +22,8 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import com.google.common.collect.ImmutableMap;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,6 +36,10 @@ import static com.google.common.base.Preconditions.checkState;
 public class TypeProvider {
 
   private final Map<String, TSDataType> typeMap;
+
+  public static TypeProvider empty() {
+    return new TypeProvider(ImmutableMap.of());
+  }
 
   public TypeProvider() {
     this.typeMap = new HashMap<>();
