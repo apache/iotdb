@@ -247,6 +247,22 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> dropTrigger(String triggerName) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      // todo: implementation
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } catch (Exception e) {
+      final String message =
+          String.format("Failed to drop trigger %s, because %s.", triggerName, e.getMessage());
+      LOGGER.error(message, e);
+      future.setException(
+          new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
