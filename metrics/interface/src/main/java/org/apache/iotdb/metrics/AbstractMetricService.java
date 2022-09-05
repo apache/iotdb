@@ -77,22 +77,37 @@ public abstract class AbstractMetricService {
     if (!isFirstInitialization.getAndSet(false)) {
       startAllReporter();
     }
+    logger.info("Start predefined metrics: {}", metricConfig.getPredefinedMetrics());
     for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
       enablePredefinedMetrics(predefinedMetric);
     }
-    logger.info("Start predefined metrics: {}", metricConfig.getPredefinedMetrics());
+  }
+
+  /** restart metric service */
+  public void restartService() {
+    stopCoreModule();
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.unbindFrom(this);
+      metricSet.bindTo(this);
+    }
+    startService();
   }
 
   /** stop metric service */
   public void stopService() {
-    compositeReporter.stopAll();
     for (IMetricSet metricSet : metricSets) {
       unbindMetricSet(metricSet);
     }
+    metricSets = new ArrayList<>();
+    stopCoreModule();
+  }
+
+  /** stop metric core module */
+  private void stopCoreModule() {
+    compositeReporter.stopAll();
     metricManager.stop();
     metricManager = new DoNothingMetricManager();
     compositeReporter = new CompositeReporter();
-    metricSets = new ArrayList<>();
   }
 
   /** Load metric manager according to configuration */
@@ -264,14 +279,6 @@ public abstract class AbstractMetricService {
   public void addMetricSet(IMetricSet metricSet) {
     metricSet.bindTo(this);
     metricSets.add(metricSet);
-  }
-
-  /** reload all metric sets that stored */
-  public void reloadMetricSet() {
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.unbindFrom(this);
-      metricSet.bindTo(this);
-    }
   }
 
   /** remove metrics and metric set */

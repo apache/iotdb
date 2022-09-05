@@ -71,12 +71,6 @@ public class MetricService extends AbstractMetricService implements MetricServic
   }
 
   @Override
-  public void restartService() throws StartupException {
-    stopService();
-    startService();
-  }
-
-  @Override
   public void enablePredefinedMetrics(PredefinedMetric metric) {
     IMetricSet metricSet;
     switch (metric) {
