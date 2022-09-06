@@ -47,7 +47,7 @@ struct TRegionLeaderChangeReq {
     2: required common.TDataNodeLocation newLeaderNode
 }
 
-struct TAddConsensusGroup {
+struct TCreatePeerReq {
     1: required common.TConsensusGroupId regionId
     2: required list<common.TDataNodeLocation> regionLocations
     3: required string storageGroup
@@ -171,6 +171,16 @@ struct TDropFunctionRequest {
   1: required string udfName
 }
 
+struct TcreateTriggerInstanceReq {
+  1: required binary triggerInformation
+  2: required binary jarFile
+}
+
+struct TDropTriggerInstanceReq {
+  1: required string triggerName
+  2: required bool needToDeleteJarFile
+}
+
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
@@ -184,9 +194,10 @@ struct THeartbeatReq {
 
 struct THeartbeatResp {
   1: required i64 heartbeatTimestamp
-  2: optional map<common.TConsensusGroupId, bool> judgedLeaders
-  3: optional i16 cpu
-  4: optional i16 memory
+  2: required string status
+  3: optional map<common.TConsensusGroupId, bool> judgedLeaders
+  4: optional i16 cpu
+  5: optional i16 memory
 }
 
 struct TRegionRouteReq {
@@ -273,10 +284,10 @@ service IDataNodeRPCService {
   common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req);
 
   /**
-   * Config node will add Data nodes to the region consensus group
-   * @param region id and it's expect locations
+   * Create new peer in the given data node for region consensus group
+   * @param region id and it's expected locations
    */
-  common.TSStatus addToRegionConsensusGroup(TAddConsensusGroup req);
+  common.TSStatus createPeerToConsensusGroup(TCreatePeerReq req);
 
   /**
    * Config node will add a region peer to a region group
@@ -291,11 +302,11 @@ service IDataNodeRPCService {
   common.TSStatus removeRegionPeer(TMigrateRegionReq req);
 
   /**
-   * Config node will remove a region group from this node to newNode. Usually a region group has
+   * Delete the datanode peer for the given consensus group. Usually a region group has
    * multiple replicas, thus relates to multiple nodes.
-   * @param remove consensus group req which region from one node to other node
+   * @param TMigrateRegionReq which contains the dest datanode to be removed
   */
-  common.TSStatus removeToRegionConsensusGroup(TMigrateRegionReq req);
+  common.TSStatus deletePeerToConsensusGroup(TMigrateRegionReq req);
 
   /**
   * Config node will disable the Data node, the Data node will not accept read/write request when disabled
@@ -336,6 +347,20 @@ service IDataNodeRPCService {
    **/
   common.TSStatus dropFunction(TDropFunctionRequest req)
 
+   /**
+    * Config node will create a trigger instance on data node.
+    *
+    * @param TriggerInformation, jar file.
+    **/
+  common.TSStatus createTriggerInstance(TcreateTriggerInstanceReq req)
+
+  /**
+     * Config node will drop a trigger on all online config nodes and data nodes.
+     *
+     * @param trigger name, whether need to delete jar
+     **/
+    common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
+
   /**
    * Config node will invalidate permission Info cache.
    *
@@ -352,6 +377,8 @@ service IDataNodeRPCService {
   common.TSStatus clearCache()
 
   common.TSStatus loadConfiguration()
+
+  common.TSStatus setSystemStatus(string status)
 
   /**
    * Config node will Set the TTL for the storage group on a list of data nodes.

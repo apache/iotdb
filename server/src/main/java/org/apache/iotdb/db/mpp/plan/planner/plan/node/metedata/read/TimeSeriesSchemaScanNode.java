@@ -21,7 +21,8 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -35,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
 
@@ -45,7 +47,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private final boolean orderByHeat;
 
-  private Map<Integer, Template> templateMap;
+  private final Map<Integer, Template> templateMap;
 
   public TimeSeriesSchemaScanNode(
       PlanNodeId id,
@@ -197,7 +199,9 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return HeaderConstant.showTimeSeriesHeader.getRespColumns();
+    return ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
+        .map(ColumnHeader::getColumnName)
+        .collect(Collectors.toList());
   }
 
   @Override

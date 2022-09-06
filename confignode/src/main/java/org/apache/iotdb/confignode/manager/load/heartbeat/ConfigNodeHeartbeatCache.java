@@ -22,23 +22,12 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.manager.NodeManager;
 
-import java.util.LinkedList;
-
-public class ConfigNodeHeartbeatCache implements INodeCache {
-
-  // Cache heartbeat samples
-  private static final int maximumWindowSize = 100;
-  private final LinkedList<NodeHeartbeatSample> slidingWindow;
+public class ConfigNodeHeartbeatCache extends BaseNodeCache {
 
   private final TConfigNodeLocation configNodeLocation;
 
-  // For showing cluster
-  private volatile NodeStatus status;
-
   public ConfigNodeHeartbeatCache(TConfigNodeLocation configNodeLocation) {
     this.configNodeLocation = configNodeLocation;
-    this.slidingWindow = new LinkedList<>();
-    this.status = NodeStatus.Unknown;
   }
 
   @Override
@@ -51,14 +40,14 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
         slidingWindow.add(newHeartbeatSample);
       }
 
-      if (slidingWindow.size() > maximumWindowSize) {
+      if (slidingWindow.size() > MAXIMUM_WINDOW_SIZE) {
         slidingWindow.removeFirst();
       }
     }
   }
 
   @Override
-  public boolean updateLoadStatistic() {
+  public boolean updateNodeStatus() {
     if (configNodeLocation.getInternalEndPoint().equals(NodeManager.CURRENT_NODE)) {
       this.status = NodeStatus.Running;
       return false;
@@ -71,47 +60,26 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
       }
     }
 
-    NodeStatus originStatus;
-    switch (status) {
-      case Running:
-        originStatus = NodeStatus.Running;
-        break;
-      case Unknown:
-      default:
-        originStatus = NodeStatus.Unknown;
-    }
+    String originStatus = status.getStatus();
 
     // TODO: Optimize judge logic
-    if (System.currentTimeMillis() - lastSendTime > 20_000) {
+    if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
       status = NodeStatus.Unknown;
     } else {
       status = NodeStatus.Running;
     }
-    return !status.getStatus().equals(originStatus.getStatus());
+    return !status.getStatus().equals(originStatus);
   }
 
   @Override
   public long getLoadScore() {
-    // Return a copy of loadScore
-    switch (status) {
-      case Running:
-        return 0;
-      case Unknown:
-      default:
-        // The Unknown Node will get the highest loadScore
-        return Long.MAX_VALUE;
-    }
+    // The ConfigNode whose status isn't Running will get the highest loadScore
+    return status == NodeStatus.Running ? 0 : Long.MAX_VALUE;
   }
 
   @Override
   public NodeStatus getNodeStatus() {
     // Return a copy of status
-    switch (status) {
-      case Running:
-        return NodeStatus.Running;
-      case Unknown:
-      default:
-        return NodeStatus.Unknown;
-    }
+    return NodeStatus.parse(status.getStatus());
   }
 }

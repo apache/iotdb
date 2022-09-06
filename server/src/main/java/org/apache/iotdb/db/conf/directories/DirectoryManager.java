@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.conf.directories;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -146,7 +148,7 @@ public class DirectoryManager {
       return sequenceFileFolders.get(sequenceStrategy.nextFolderIndex());
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All disks of wal folders are full, change system mode to read-only.", e);
-      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw e;
     }
   }
@@ -160,7 +162,7 @@ public class DirectoryManager {
       return unsequenceFileFolders.get(unsequenceStrategy.nextFolderIndex());
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All disks of wal folders are full, change system mode to read-only.", e);
-      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw e;
     }
   }
@@ -173,6 +175,22 @@ public class DirectoryManager {
     List<String> folders = new ArrayList<>(sequenceFileFolders);
     folders.addAll(unsequenceFileFolders);
     return folders;
+  }
+
+  @TestOnly
+  public void resetFolders() {
+    sequenceFileFolders =
+        new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+    for (int i = 0; i < sequenceFileFolders.size(); i++) {
+      sequenceFileFolders.set(
+          i, sequenceFileFolders.get(i) + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME);
+    }
+    unsequenceFileFolders =
+        new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+    for (int i = 0; i < unsequenceFileFolders.size(); i++) {
+      unsequenceFileFolders.set(
+          i, unsequenceFileFolders.get(i) + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME);
+    }
   }
 
   private static class DirectoriesHolder {

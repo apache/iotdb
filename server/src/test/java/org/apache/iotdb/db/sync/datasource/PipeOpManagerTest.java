@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.sync.externalpipe.operation.DeleteOperation;
 import org.apache.iotdb.db.sync.externalpipe.operation.InsertOperation;
 import org.apache.iotdb.db.sync.externalpipe.operation.Operation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -46,7 +47,9 @@ import java.util.LinkedList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class PipeOpManagerTest {
@@ -236,9 +239,9 @@ public class PipeOpManagerTest {
     String sgName2 = "root2";
 
     TsFileOpBlock tsFileOpBlock1 = new TsFileOpBlock(sgName1, seqTsFileName1, 1);
-    pipeOpManager.appendDataSrc(sgName1, tsFileOpBlock1);
+    pipeOpManager.appendOpBlock(sgName1, tsFileOpBlock1);
     TsFileOpBlock tsFileOpBlock2 = new TsFileOpBlock(sgName2, unSeqTsFileName1, 2);
-    pipeOpManager.appendDataSrc(sgName2, tsFileOpBlock2);
+    pipeOpManager.appendOpBlock(sgName2, tsFileOpBlock2);
 
     long count1 = tsFileOpBlock1.getDataCount();
     assertEquals(8, count1);
@@ -270,7 +273,7 @@ public class PipeOpManagerTest {
     assertEquals("333", insertOperation.getDataList().get(0).right.get(0).getValue().toString());
   }
 
-  @Test // (timeout = 10_000L)
+  @Test(timeout = 10_000L)
   public void testOpManager_Mods() throws IOException {
     PipeOpManager pipeOpManager = new PipeOpManager(null);
 
@@ -278,10 +281,10 @@ public class PipeOpManagerTest {
     // String sgName2 = "root2";
 
     TsFileOpBlock tsFileOpBlock1 = new TsFileOpBlock(sgName1, seqTsFileName1, seqModsFileName1, 1);
-    pipeOpManager.appendDataSrc(sgName1, tsFileOpBlock1);
+    pipeOpManager.appendOpBlock(sgName1, tsFileOpBlock1);
     TsFileOpBlock tsFileOpBlock2 =
         new TsFileOpBlock(sgName1, unSeqTsFileName1, unSeqModsFileName1, 2);
-    pipeOpManager.appendDataSrc(sgName1, tsFileOpBlock2);
+    pipeOpManager.appendOpBlock(sgName1, tsFileOpBlock2);
 
     long count1 = tsFileOpBlock1.getDataCount();
     assertEquals(8, count1);
@@ -391,5 +394,62 @@ public class PipeOpManagerTest {
         "root2.lemming.device3.sensor3", insertOperation.getDataList().get(i).left.getFullPath());
     assertEquals(1617206403004L, insertOperation.getDataList().get(i).right.get(0).getTimestamp());
     assertEquals("443", insertOperation.getDataList().get(i).right.get(0).getValue().toString());
+  }
+
+  @Test(timeout = 10_000L)
+  public void testOpManager_deletion() throws IOException, IllegalPathException {
+    PipeOpManager pipeOpManager = new PipeOpManager(null);
+
+    String sgName1 = "root1";
+    String sgName2 = "root2";
+
+    TsFileOpBlock tsFileOpBlock1 = new TsFileOpBlock(sgName1, seqTsFileName1, seqModsFileName1, 1);
+    pipeOpManager.appendOpBlock(sgName1, tsFileOpBlock1);
+    TsFileOpBlock tsFileOpBlock2 =
+        new TsFileOpBlock(sgName1, unSeqTsFileName1, unSeqModsFileName1, 2);
+    pipeOpManager.appendOpBlock(sgName2, tsFileOpBlock2);
+
+    pipeOpManager.commitData(sgName1, tsFileOpBlock1.getDataCount() - 1);
+    pipeOpManager.commitData(sgName2, tsFileOpBlock2.getDataCount() - 1);
+    assertTrue(pipeOpManager.isEmpty());
+
+    PartialPath partialPath = new PartialPath("root.a.**");
+    DeletionOpBlock deletionOpBlock = new DeletionOpBlock("root.a", partialPath, -100, 200, 5);
+
+    // == test pipeOpManager.appendOpBlock etc.
+    pipeOpManager.appendOpBlock(sgName1, deletionOpBlock);
+
+    long beginIndex = pipeOpManager.getFirstAvailableIndex(sgName1);
+    assertEquals(8, beginIndex);
+
+    Operation operation = pipeOpManager.getOperation(sgName1, beginIndex, 10);
+    assertEquals(beginIndex, operation.getStartIndex());
+    assertEquals(1, operation.getDataCount());
+
+    DeleteOperation deleteOperation = (DeleteOperation) operation;
+    assertNotNull(deleteOperation);
+
+    assertEquals(partialPath, deleteOperation.getDeletePath());
+    assertEquals(-100, deleteOperation.getStartTime());
+    assertEquals(200, deleteOperation.getEndTime());
+
+    // == test pipeOpManager.appendDeletionOpBlock etc.
+    String sgName = "root.a";
+    Deletion deletion = new Deletion(partialPath, 0, -200, 400);
+    pipeOpManager.appendDeletionOpBlock(sgName, deletion, 4);
+
+    beginIndex = pipeOpManager.getFirstAvailableIndex(sgName);
+    assertEquals(0, beginIndex);
+
+    operation = pipeOpManager.getOperation(sgName, beginIndex, 10);
+    assertEquals(beginIndex, operation.getStartIndex());
+    assertEquals(1, operation.getDataCount());
+
+    deleteOperation = (DeleteOperation) operation;
+    assertNotNull(deleteOperation);
+
+    assertEquals(partialPath, deleteOperation.getDeletePath());
+    assertEquals(-200, deleteOperation.getStartTime());
+    assertEquals(400, deleteOperation.getEndTime());
   }
 }

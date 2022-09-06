@@ -21,20 +21,27 @@ package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class ProcedureFactory implements IProcedureFactory {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureFactory.class);
+
   @Override
   public Procedure create(ByteBuffer buffer) throws IOException {
     int typeNum = buffer.getInt();
     if (typeNum >= ProcedureType.values().length) {
+      LOGGER.error("unrecognized log type " + typeNum);
       throw new IOException("unrecognized log type " + typeNum);
     }
     ProcedureType type = ProcedureType.values()[typeNum];
@@ -55,7 +62,11 @@ public class ProcedureFactory implements IProcedureFactory {
       case REGION_MIGRATE_PROCEDURE:
         procedure = new RegionMigrateProcedure();
         break;
+      case CREATE_REGION_GROUPS:
+        procedure = new CreateRegionGroupsProcedure();
+        break;
       default:
+        LOGGER.error("unknown Procedure type: " + typeNum);
         throw new IOException("unknown Procedure type: " + typeNum);
     }
     procedure.deserialize(buffer);
@@ -73,6 +84,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.REMOVE_DATA_NODE_PROCEDURE;
     } else if (procedure instanceof RegionMigrateProcedure) {
       return ProcedureType.REGION_MIGRATE_PROCEDURE;
+    } else if (procedure instanceof CreateRegionGroupsProcedure) {
+      return ProcedureType.CREATE_REGION_GROUPS;
     }
     return null;
   }
@@ -82,7 +95,8 @@ public class ProcedureFactory implements IProcedureFactory {
     ADD_CONFIG_NODE_PROCEDURE,
     REMOVE_CONFIG_NODE_PROCEDURE,
     REMOVE_DATA_NODE_PROCEDURE,
-    REGION_MIGRATE_PROCEDURE
+    REGION_MIGRATE_PROCEDURE,
+    CREATE_REGION_GROUPS
   }
 
   private static class ProcedureFactoryHolder {

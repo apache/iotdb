@@ -21,27 +21,32 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
-  private String key;
-  private String value;
-  private boolean isContains;
+  private final String key;
+  private final String value;
+  private final boolean isContains;
 
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
-  private boolean orderByHeat;
+  private final boolean orderByHeat;
 
-  private Map<Integer, Template> templateMap;
+  private final Map<Integer, Template> templateMap;
+
+  private final List<TSDataType> outputDataTypes;
 
   public TimeSeriesSchemaScanOperator(
       PlanNodeId planNodeId,
@@ -61,6 +66,10 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
     this.value = value;
     this.orderByHeat = orderByHeat;
     this.templateMap = templateMap;
+    this.outputDataTypes =
+        ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
   }
 
   public String getKey() {
@@ -81,8 +90,7 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
 
   @Override
   protected TsBlock createTsBlock() {
-    TsBlockBuilder builder =
-        new TsBlockBuilder(HeaderConstant.showTimeSeriesHeader.getRespDataTypes());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     try {
       ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
           .getSchemaRegion()

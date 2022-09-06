@@ -471,9 +471,8 @@ public class LogicalPlanBuilder {
         constructAggregationDescriptorList(aggregationExpressions, curStep);
     if (curStep.isOutputPartial()) {
       aggregationDescriptorList.forEach(
-          aggregationDescriptor -> {
-            updateTypeProviderByPartialAggregation(aggregationDescriptor, typeProvider);
-          });
+          aggregationDescriptor ->
+              updateTypeProviderByPartialAggregation(aggregationDescriptor, typeProvider));
     }
     this.root =
         new AggregationNode(
@@ -763,10 +762,21 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planTimeSeriesCountSource(
-      PartialPath partialPath, boolean prefixPath, String key, String value, boolean isContains) {
+      PartialPath partialPath,
+      boolean prefixPath,
+      String key,
+      String value,
+      boolean isContains,
+      Map<Integer, Template> templateMap) {
     this.root =
         new TimeSeriesCountNode(
-            context.getQueryId().genPlanNodeId(), partialPath, prefixPath, key, value, isContains);
+            context.getQueryId().genPlanNodeId(),
+            partialPath,
+            prefixPath,
+            key,
+            value,
+            isContains,
+            templateMap);
     return this;
   }
 

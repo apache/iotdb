@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.logfile;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -124,7 +125,7 @@ public class MLogWriter implements AutoCloseable {
         } else {
           logger.error(
               "MLog {} sync failed, change system mode to error", logFile.getAbsoluteFile(), e);
-          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
+          CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
           break;
         }
       }

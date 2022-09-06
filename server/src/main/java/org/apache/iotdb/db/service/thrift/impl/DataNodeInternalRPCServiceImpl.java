@@ -27,6 +27,8 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -77,16 +79,17 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
-import org.apache.iotdb.mpp.rpc.thrift.TAddConsensusGroup;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
@@ -104,6 +107,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TcreateTriggerInstanceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -271,7 +275,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TCancelResp cancelQuery(TCancelQueryReq req) {
     try (SetThreadName threadName = new SetThreadName(req.getQueryId())) {
-      LOGGER.info("start cancelling query.");
       List<FragmentInstanceId> taskIds =
           req.getFragmentInstanceIds().stream()
               .map(FragmentInstanceId::fromThrift)
@@ -279,7 +282,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       for (FragmentInstanceId taskId : taskIds) {
         FragmentInstanceManager.getInstance().cancelTask(taskId);
       }
-      LOGGER.info("finish cancelling query.");
       return new TCancelResp(true);
     }
   }
@@ -386,6 +388,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req) throws TException {
     THeartbeatResp resp = new THeartbeatResp();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
+    resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
 
     // Judging leader if necessary
     if (req.isNeedJudgeLeader()) {
@@ -516,6 +519,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus setSystemStatus(String status) throws TException {
+    try {
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.parse(status));
+    } catch (Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
     return storageEngine.setTTL(req);
   }
@@ -626,7 +639,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus addToRegionConsensusGroup(TAddConsensusGroup req) throws TException {
+  public TSStatus createPeerToConsensusGroup(TCreatePeerReq req) throws TException {
     ConsensusGroupId regionId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
     List<Peer> peers =
@@ -664,7 +677,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus removeToRegionConsensusGroup(TMigrateRegionReq req) throws TException {
+  public TSStatus deletePeerToConsensusGroup(TMigrateRegionReq req) throws TException {
     TConsensusGroupId regionId = req.getRegionId();
     String fromNodeIp = req.getFromNode().getInternalEndPoint().getIp();
     boolean submitSucceed =
@@ -729,6 +742,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
+  }
+
+  @Override
+  public TSStatus createTriggerInstance(TcreateTriggerInstanceReq req) throws TException {
+    // todo: implementation
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TSStatus dropTriggerInstance(TDropTriggerInstanceReq req) throws TException {
+    // todo: implementation
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

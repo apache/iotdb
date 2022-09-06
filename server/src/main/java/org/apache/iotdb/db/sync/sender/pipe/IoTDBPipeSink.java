@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class IoTDBPipeSink implements PipeSink {
@@ -46,6 +47,28 @@ public class IoTDBPipeSink implements PipeSink {
     for (Pair<String, String> pair : params) {
       String attr = pair.left;
       String value = pair.right;
+
+      attr = attr.toLowerCase();
+      if (attr.equals("ip")) {
+        ip = value;
+      } else if (attr.equals("port")) {
+        try {
+          port = Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+          throw new PipeSinkException(attr, value, TSDataType.INT32.name());
+        }
+      } else {
+        throw new PipeSinkException(
+            "There is No attribute " + attr + " in " + PipeSinkType.IoTDB + " pipeSink.");
+      }
+    }
+  }
+
+  @Override
+  public void setAttribute(Map<String, String> params) throws PipeSinkException {
+    for (Map.Entry<String, String> entry : params.entrySet()) {
+      String attr = entry.getKey();
+      String value = entry.getValue();
 
       attr = attr.toLowerCase();
       if (attr.equals("ip")) {

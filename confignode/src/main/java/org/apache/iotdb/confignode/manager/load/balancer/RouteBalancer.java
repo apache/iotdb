@@ -42,8 +42,8 @@ import java.util.Map;
  */
 public class RouteBalancer {
 
-  public static final String leaderPolicy = "leader";
-  public static final String greedyPolicy = "greedy";
+  public static final String LEADER_POLICY = "leader";
+  public static final String GREEDY_POLICY = "greedy";
 
   private final IManager configManager;
 
@@ -84,7 +84,7 @@ public class RouteBalancer {
     String policy = ConfigNodeDescriptor.getInstance().getConf().getRoutingPolicy();
     switch (groupType) {
       case SchemaRegion:
-        if (policy.equals(leaderPolicy)) {
+        if (LEADER_POLICY.equals(policy)) {
           return new LeaderRouter(
               getPartitionManager().getAllLeadership(), getNodeManager().getAllLoadScores());
         } else {
@@ -97,10 +97,15 @@ public class RouteBalancer {
             .getDataRegionConsensusProtocolClass()
             .equals(ConsensusFactory.MultiLeaderConsensus)) {
           // Latent router for MultiLeader consensus protocol
-          lazyGreedyRouter.updateUnknownDataNodes(
-              getNodeManager().filterDataNodeThroughStatus(NodeStatus.Unknown));
+          lazyGreedyRouter.updateDisabledDataNodes(
+              getNodeManager()
+                  .filterDataNodeThroughStatus(
+                      NodeStatus.Unknown,
+                      NodeStatus.Removing,
+                      NodeStatus.Error,
+                      NodeStatus.ReadOnly));
           return lazyGreedyRouter;
-        } else if (policy.equals(leaderPolicy)) {
+        } else if (LEADER_POLICY.equals(policy)) {
           return new LeaderRouter(
               getPartitionManager().getAllLeadership(), getNodeManager().getAllLoadScores());
         } else {

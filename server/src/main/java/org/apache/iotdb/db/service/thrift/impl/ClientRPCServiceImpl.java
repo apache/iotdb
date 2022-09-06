@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -289,7 +290,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMarkRate());
     properties.setWatermarkParamMaxRightBit(
         IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMaxRightBit());
-    properties.setIsReadOnly(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
+    properties.setIsReadOnly(CommonDescriptor.getInstance().getConfig().isReadOnly());
     properties.setThriftMaxFrameSize(
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
     return properties;
@@ -383,17 +384,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
-      }
-
-      // if measurements.size() == 1, convert to create timeseries
-      if (req.measurements.size() == 1) {
-        return createTimeseries(
-            new TSCreateTimeseriesReq(
-                req.sessionId,
-                req.prefixPath + "." + req.measurements.get(0),
-                req.dataTypes.get(0),
-                req.encodings.get(0),
-                req.compressors.get(0)));
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -733,6 +723,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -784,6 +778,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -835,6 +833,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -884,6 +886,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       PathUtils.isLegalSingleMeasurements(req.getMeasurements());
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -926,6 +932,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement =
           (InsertMultiTabletsStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -968,6 +978,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement =
           (InsertTabletStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -1017,6 +1031,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -1473,15 +1491,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
-      throws TException {
-    return SyncService.getInstance().transportData(metaInfo, buff, digest);
+  public TSStatus sendPipeData(ByteBuffer buff) throws TException {
+    return SyncService.getInstance().transportPipeData(buff);
   }
 
   @Override
-  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
-      throws TException {
-    return SyncService.getInstance().checkFileDigest(metaInfo, digest);
+  public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
+    return SyncService.getInstance().transportFile(metaInfo, buff);
   }
 
   @Override

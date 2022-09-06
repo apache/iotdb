@@ -20,10 +20,13 @@ package org.apache.iotdb.db.sync.common.persistence;
 
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
+import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -54,11 +57,22 @@ public class SyncLogWriter {
     }
   }
 
+  // TODO(sync): delete this in new-standalone version
   public synchronized void addPipeSink(CreatePipeSinkPlan plan) throws IOException {
     getBufferedWriter();
     pipeInfoWriter.write(Operator.OperatorType.CREATE_PIPESINK.name());
     pipeInfoWriter.newLine();
     pipeInfoWriter.write(plan.toString());
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.flush();
+  }
+
+  public synchronized void addPipeSink(CreatePipeSinkStatement createPipeSinkStatement)
+      throws IOException {
+    getBufferedWriter();
+    pipeInfoWriter.write(createPipeSinkStatement.getType().name());
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.write(createPipeSinkStatement.toString());
     pipeInfoWriter.newLine();
     pipeInfoWriter.flush();
   }
@@ -72,6 +86,7 @@ public class SyncLogWriter {
     pipeInfoWriter.flush();
   }
 
+  // TODO(sync): delete this in new-standalone version
   public synchronized void addPipe(CreatePipePlan plan, long pipeCreateTime) throws IOException {
     getBufferedWriter();
     pipeInfoWriter.write(Operator.OperatorType.CREATE_PIPE.name());
@@ -83,8 +98,19 @@ public class SyncLogWriter {
     pipeInfoWriter.flush();
   }
 
-  public synchronized void operatePipe(String pipeName, Operator.OperatorType type)
+  public synchronized void addPipe(CreatePipeStatement createPipeStatement, long pipeCreateTime)
       throws IOException {
+    getBufferedWriter();
+    pipeInfoWriter.write(createPipeStatement.getType().name());
+    pipeInfoWriter.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
+    pipeInfoWriter.write(String.valueOf(pipeCreateTime));
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.write(createPipeStatement.toString());
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.flush();
+  }
+
+  public synchronized void operatePipe(String pipeName, StatementType type) throws IOException {
     getBufferedWriter();
     pipeInfoWriter.write(type.name());
     pipeInfoWriter.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);

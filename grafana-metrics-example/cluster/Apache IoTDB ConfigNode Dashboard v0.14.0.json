@@ -60,7 +60,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1656333428851,
+  "iteration": 1661505070918,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -89,7 +89,7 @@
         "x": 0,
         "y": 0
       },
-      "id": 38,
+      "id": 47,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -113,8 +113,10 @@
           },
           "exemplar": true,
           "expr": "config_node{instance=~\"$instance\"}",
+          "format": "time_series",
+          "instant": false,
           "interval": "",
-          "legendFormat": "Online ConfigNode",
+          "legendFormat": "{{status}} ConfigNode",
           "refId": "A"
         },
         {
@@ -126,7 +128,7 @@
           "expr": "data_node{instance=~\"$instance\"}",
           "hide": false,
           "interval": "",
-          "legendFormat": "Online DataNode",
+          "legendFormat": "{{status}} DataNode",
           "refId": "B"
         },
         {
@@ -169,7 +171,7 @@
       "title": "Overview",
       "type": "stat"
     },
-	{
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -183,153 +185,6 @@
       "type": "row"
     },
     {
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 0,
-        "y": 9
-      },
-      "id": 34,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "vertical",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": true,
-          "expr": "config_node{status=\"Online\"}",
-          "legendFormat": "ConfigNode",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": true,
-          "expr": "data_node{status=\"Online\"}",
-          "hide": false,
-          "legendFormat": "DataNode",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "Total number of online nodes",
-      "type": "stat"
-    },
-    {
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "blue",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 6,
-        "y": 9
-      },
-      "id": 32,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "vertical",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": true,
-          "expr": "config_node{status=\"Unknown\"}",
-          "hide": false,
-          "legendFormat": "ConfigNode",
-          "range": true,
-          "refId": "AA"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": true,
-          "expr": "data_node{status=\"Unknown\"}",
-          "hide": false,
-          "legendFormat": "DataNode",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "Total number of offline nodes",
-      "type": "stat"
-    },
-	{
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -384,7 +239,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           }
@@ -395,7 +251,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 9
       },
       "id": 30,
       "options": {
@@ -433,7 +289,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 27
+        "y": 19
       },
       "id": 28,
       "panels": [],
@@ -441,10 +297,6 @@
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -467,7 +319,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 20
       },
       "id": 26,
       "options": {
@@ -493,8 +345,9 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "cluster_node_leader_count{}",
-          "legendFormat": "{{name}} total leaders",
+          "expr": "max(cluster_node_leader_count{}) by (name) ",
+          "interval": "",
+          "legendFormat": "Total leaders on {{name}} ",
           "range": true,
           "refId": "A"
         }
@@ -508,7 +361,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 28
       },
       "id": 24,
       "panels": [],
@@ -566,7 +419,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 37
+        "y": 29
       },
       "id": 22,
       "options": {
@@ -647,7 +500,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 37
+        "y": 29
       },
       "id": 20,
       "options": {
@@ -728,7 +581,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 45
+        "y": 37
       },
       "id": 20,
       "options": {
@@ -809,7 +662,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 45
+        "y": 37
       },
       "id": 18,
       "options": {
@@ -845,7 +698,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 53
+        "y": 45
       },
       "id": 16,
       "panels": [],
@@ -903,7 +756,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 54
+        "y": 46
       },
       "id": 10,
       "options": {
@@ -997,7 +850,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 54
+        "y": 46
       },
       "id": 8,
       "options": {
@@ -1091,7 +944,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 62
+        "y": 54
       },
       "id": 6,
       "options": {
@@ -1221,7 +1074,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 62
+        "y": 54
       },
       "id": 4,
       "options": {
@@ -1302,7 +1155,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 70
+        "y": 62
       },
       "id": 2,
       "options": {
@@ -1396,7 +1249,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 70
+        "y": 62
       },
       "id": 26,
       "options": {
@@ -1426,7 +1279,7 @@
       "title": "The time consumed of interface",
       "type": "timeseries"
     },
-	{
+    {
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1472,7 +1325,7 @@
               }
             ]
           },
-		  "unit": "percent"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -1480,7 +1333,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 78
+        "y": 70
       },
       "id": 42,
       "options": {
@@ -1562,7 +1415,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 78
+        "y": 70
       },
       "id": 44,
       "options": {
@@ -1657,7 +1510,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 86
+        "y": 78
       },
       "id": 46,
       "options": {
@@ -1773,6 +1626,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB ConfigNode Dashboard",
   "uid": "TbEVYRw7g",
-  "version": 19,
+  "version": 4,
   "weekStart": ""
 }

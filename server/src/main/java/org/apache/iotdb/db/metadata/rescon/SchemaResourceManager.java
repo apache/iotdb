@@ -30,7 +30,7 @@ public class SchemaResourceManager {
   private SchemaResourceManager() {}
 
   public static void initSchemaResource() {
-    TimeseriesStatistics.getInstance().init();
+    SchemaStatisticsManager.getInstance().init();
     MemoryStatistics.getInstance().init();
     if (IoTDBDescriptor.getInstance()
         .getConfig()
@@ -41,7 +41,7 @@ public class SchemaResourceManager {
   }
 
   public static void clearSchemaResource() {
-    TimeseriesStatistics.getInstance().clear();
+    SchemaStatisticsManager.getInstance().clear();
     MemoryStatistics.getInstance().clear();
     if (IoTDBDescriptor.getInstance()
         .getConfig()

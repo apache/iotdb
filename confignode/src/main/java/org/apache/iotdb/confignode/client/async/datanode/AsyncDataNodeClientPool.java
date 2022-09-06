@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.client.async.datanode;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -36,6 +37,7 @@ import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.client.async.handlers.LoadConfigurationHandler;
 import org.apache.iotdb.confignode.client.async.handlers.MergeHandler;
+import org.apache.iotdb.confignode.client.async.handlers.SetSystemStatusHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
@@ -50,6 +52,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -62,7 +65,7 @@ public class AsyncDataNodeClientPool {
 
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager;
 
-  private final int retryNum = 6;
+  private static final int MAX_RETRY_NUM = 6;
 
   private AsyncDataNodeClientPool() {
     clientManager =
@@ -88,7 +91,7 @@ public class AsyncDataNodeClientPool {
     if (dataNodeLocationMap.isEmpty()) {
       return;
     }
-    for (int retry = 0; retry < retryNum; retry++) {
+    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
       for (TDataNodeLocation targetDataNode : dataNodeLocationMap.values()) {
         AbstractRetryHandler handler;
@@ -138,6 +141,15 @@ public class AsyncDataNodeClientPool {
           case LOAD_CONFIGURATION:
             handler =
                 new LoadConfigurationHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
+          case SET_SYSTEM_STATUS:
+            handler =
+                new SetSystemStatusHandler(
                     countDownLatch,
                     requestType,
                     targetDataNode,
@@ -208,6 +220,9 @@ public class AsyncDataNodeClientPool {
         case LOAD_CONFIGURATION:
           client.loadConfiguration((LoadConfigurationHandler) handler);
           break;
+        case SET_SYSTEM_STATUS:
+          client.setSystemStatus((String) req, (SetSystemStatusHandler) handler);
+          break;
         case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);
           break;
@@ -231,18 +246,18 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Execute CreateRegionsReq asynchronously
+   * Execute CreateRegionGroupsPlan asynchronously
    *
-   * @param createRegionGroupsPlan CreateRegionsReq
    * @param ttlMap Map<StorageGroupName, TTL>
+   * @return Those RegionGroups that failed to create
    */
-  public void createRegions(
+  public Map<TConsensusGroupId, TRegionReplicaSet> createRegionGroups(
       CreateRegionGroupsPlan createRegionGroupsPlan, Map<String, Long> ttlMap) {
     // Because different requests will be sent to the same node when createRegions,
     // so for CreateRegions use Map<index, TDataNodeLocation>
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
     int index = 0;
-    // Count the datanodes to be sent
+    // Count the DataNodes to be sent
     for (List<TRegionReplicaSet> regionReplicaSets :
         createRegionGroupsPlan.getRegionGroupMap().values()) {
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
@@ -252,9 +267,9 @@ public class AsyncDataNodeClientPool {
       }
     }
     if (dataNodeLocationMap.isEmpty()) {
-      return;
+      return new HashMap<>();
     }
-    for (int retry = 0; retry < retryNum; retry++) {
+    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
       index = 0;
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
       for (Map.Entry<String, List<TRegionReplicaSet>> entry :
@@ -298,7 +313,7 @@ public class AsyncDataNodeClientPool {
                       retry);
                   break;
                 default:
-                  return;
+                  break;
               }
             } else {
               index++;
@@ -317,6 +332,43 @@ public class AsyncDataNodeClientPool {
         break;
       }
     }
+
+    // Filter RegionGroups that weren't created successfully
+    index = 0;
+    Map<TConsensusGroupId, TRegionReplicaSet> failedRegions = new HashMap<>();
+    for (List<TRegionReplicaSet> regionReplicaSets :
+        createRegionGroupsPlan.getRegionGroupMap().values()) {
+      for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+          if (dataNodeLocationMap.containsKey(index)) {
+            failedRegions
+                .computeIfAbsent(
+                    regionReplicaSet.getRegionId(),
+                    empty -> new TRegionReplicaSet().setRegionId(regionReplicaSet.getRegionId()))
+                .addToDataNodeLocations(dataNodeLocation);
+          }
+          index += 1;
+        }
+      }
+    }
+    return failedRegions;
+  }
+
+  private TCreateSchemaRegionReq genCreateSchemaRegionReq(
+      String storageGroup, TRegionReplicaSet regionReplicaSet) {
+    TCreateSchemaRegionReq req = new TCreateSchemaRegionReq();
+    req.setStorageGroup(storageGroup);
+    req.setRegionReplicaSet(regionReplicaSet);
+    return req;
+  }
+
+  private TCreateDataRegionReq genCreateDataRegionReq(
+      String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
+    TCreateDataRegionReq req = new TCreateDataRegionReq();
+    req.setStorageGroup(storageGroup);
+    req.setRegionReplicaSet(regionReplicaSet);
+    req.setTtl(TTL);
+    return req;
   }
 
   /**
@@ -339,23 +391,6 @@ public class AsyncDataNodeClientPool {
           null);
       LOGGER.info("Broadcast the latest configNodeGroup finished.");
     }
-  }
-
-  private TCreateSchemaRegionReq genCreateSchemaRegionReq(
-      String storageGroup, TRegionReplicaSet regionReplicaSet) {
-    TCreateSchemaRegionReq req = new TCreateSchemaRegionReq();
-    req.setStorageGroup(storageGroup);
-    req.setRegionReplicaSet(regionReplicaSet);
-    return req;
-  }
-
-  private TCreateDataRegionReq genCreateDataRegionReq(
-      String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
-    TCreateDataRegionReq req = new TCreateDataRegionReq();
-    req.setStorageGroup(storageGroup);
-    req.setRegionReplicaSet(regionReplicaSet);
-    req.setTtl(TTL);
-    return req;
   }
 
   /**

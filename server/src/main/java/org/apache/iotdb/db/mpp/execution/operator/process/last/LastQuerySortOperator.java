@@ -36,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil.compareTimeSeries;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 // collect all last query result in the same data region and sort them according to the
 // time-series's alphabetical order
@@ -188,6 +189,32 @@ public class LastQuerySortOperator implements ProcessOperator {
   @Override
   public boolean isFinished() {
     return !hasNext();
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    long maxPeekMemory = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + cachedTsBlock.getRetainedSizeInBytes();
+    long res = 0;
+    for (Operator child : children) {
+      res = Math.max(res, maxPeekMemory + child.calculateMaxPeekMemory());
+    }
+    return res;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long childrenMaxReturnSize = 0;
+    long childrenSumRetainedSize = 0;
+    for (Operator child : children) {
+      childrenMaxReturnSize = Math.max(childrenMaxReturnSize, child.calculateMaxReturnSize());
+      childrenSumRetainedSize += child.calculateRetainedSizeAfterCallingNext();
+    }
+    return cachedTsBlock.getRetainedSizeInBytes() + childrenMaxReturnSize + childrenSumRetainedSize;
   }
 
   private int getEndIndex() {
