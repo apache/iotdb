@@ -765,6 +765,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
+  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
     throw new UnsupportedOperationException();
   }

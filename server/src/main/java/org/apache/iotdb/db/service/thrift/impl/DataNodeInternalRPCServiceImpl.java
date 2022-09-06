@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
@@ -122,6 +123,9 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -346,7 +350,35 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TFetchSchemaBlackListResp fetchSchemaBlackList(TFetchSchemaBlackListReq req)
       throws TException {
-    return null;
+    PathPatternTree patternTree = PathPatternTree.deserialize(req.pathPatternTree);
+    TFetchSchemaBlackListResp resp = new TFetchSchemaBlackListResp();
+    PathPatternTree result = new PathPatternTree();
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      // todo implement as consensus layer read request
+      try {
+        for (PartialPath path :
+            schemaEngine
+                .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                .fetchSchemaBlackList(patternTree)) {
+          result.appendPathPattern(path);
+        }
+      } catch (MetadataException e) {
+        LOGGER.error(e.getMessage(), e);
+        resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        return resp;
+      }
+    }
+    resp.setStatus(RpcUtils.SUCCESS_STATUS);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
+    result.constructTree();
+    try {
+      result.serialize(dataOutputStream);
+    } catch (IOException ignored) {
+      // won't reach here
+    }
+    resp.setPathPatternTree(outputStream.toByteArray());
+    return resp;
   }
 
   @Override

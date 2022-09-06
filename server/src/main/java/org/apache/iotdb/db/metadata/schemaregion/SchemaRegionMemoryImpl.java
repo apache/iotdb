@@ -879,6 +879,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
+  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+      throws MetadataException {
+    List<PartialPath> pathList = new ArrayList<>();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      pathList.addAll(mtree.getPreDeleteTimeseries(pathPattern));
+    }
+    return pathList;
+  }
+
+  @Override
   public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       for (PartialPath path : mtree.getPreDeleteTimeseries(pathPattern)) {

@@ -234,7 +234,7 @@ struct TFetchSchemaBlackListReq{
 }
 
 struct TFetchSchemaBlackListResp{
-  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  1: required common.TSStatus status
   2: required binary pathPatternTree
 }
 

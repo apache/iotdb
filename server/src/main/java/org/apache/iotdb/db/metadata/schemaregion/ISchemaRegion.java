@@ -136,6 +136,8 @@ public interface ISchemaRegion {
    */
   void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
+  List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+
   /**
    * Delete timeseries in schema black list.
    *
