@@ -21,7 +21,6 @@ package org.apache.iotdb.consensus.multileader.service;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
@@ -87,15 +86,15 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       if (impl.isReadOnly()) {
         String message = "fail to sync log because system is read-only.";
         logger.error(message);
-        resultHandler.onError(
-            new IoTDBException(message, TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode()));
+        TSStatus status = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
+        status.setMessage(message);
+        resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
         return;
       }
       if (!impl.isActive()) {
-        resultHandler.onError(
-            new IoTDBException(
-                "peer is inactive and not ready to receive sync log request",
-                TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()));
+        TSStatus status = new TSStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode());
+        status.setMessage("peer is inactive and not ready to receive sync log request");
+        resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
         return;
       }
       BatchIndexedConsensusRequest requestsInThisBatch = new BatchIndexedConsensusRequest();
