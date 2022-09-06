@@ -87,7 +87,7 @@ public class PublishHandler extends AbstractInterceptHandler {
   public void onDisconnect(InterceptDisconnectMessage msg) {
     Long sessionId = clientIdToSessionIdMap.remove(msg.getClientID());
     if (null != sessionId) {
-      serviceProvider.closeSession(clientIdToSessionIdMap.get(msg.getClientID()));
+      serviceProvider.closeSession(sessionId);
     }
   }
 
