@@ -329,7 +329,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req)
       throws TException {
-    return null;
+    DataNodeSchemaCache cache = DataNodeSchemaCache.getInstance();
+    cache.takeWriteLock();
+    try {
+      for (PartialPath pathPattern :
+          PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()))
+              .getAllPathPatterns()) {
+        cache.invalidateMatchedSchema(pathPattern);
+      }
+    } finally {
+      cache.releaseWriteLock();
+    }
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override

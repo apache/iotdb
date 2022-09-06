@@ -37,6 +37,8 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 /**
  * This class takes the responsibility of metadata cache management of all DataRegions under
  * StorageEngine
@@ -47,6 +49,8 @@ public class DataNodeSchemaCache {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Cache<PartialPath, SchemaCacheEntry> cache;
+
+  private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
   private DataNodeSchemaCache() {
     cache =
@@ -73,6 +77,23 @@ public class DataNodeSchemaCache {
   /** singleton pattern. */
   private static class DataNodeSchemaCacheHolder {
     private static final DataNodeSchemaCache INSTANCE = new DataNodeSchemaCache();
+  }
+
+  public void takeReadLock() {
+    readWriteLock.readLock().lock();
+  }
+
+  public void releaseReadLock() {
+    readWriteLock.readLock().unlock();
+  }
+
+  public void takeWriteLock() {
+    readWriteLock.writeLock().lock();
+    ;
+  }
+
+  public void releaseWriteLock() {
+    readWriteLock.writeLock().unlock();
   }
 
   /**
@@ -180,6 +201,17 @@ public class DataNodeSchemaCache {
   public void invalidate(PartialPath partialPath) {
     resetLastCache(partialPath);
     cache.invalidate(partialPath);
+  }
+
+  public void invalidateMatchedSchema(PartialPath pathPattern) {
+    cache
+        .asMap()
+        .forEach(
+            (k, v) -> {
+              if (pathPattern.matchFullPath(k)) {
+                cache.invalidate(k);
+              }
+            });
   }
 
   public long estimatedSize() {
