@@ -35,7 +35,6 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.ReporterType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,7 +95,7 @@ public abstract class AbstractMetricService {
   /** stop metric service */
   public void stopService() {
     for (IMetricSet metricSet : metricSets) {
-      unbindMetricSet(metricSet);
+      metricSet.unbindFrom(this);
     }
     metricSets = new ArrayList<>();
     stopCoreModule();
@@ -279,11 +278,5 @@ public abstract class AbstractMetricService {
   public void addMetricSet(IMetricSet metricSet) {
     metricSet.bindTo(this);
     metricSets.add(metricSet);
-  }
-
-  /** remove metrics and metric set */
-  public void unbindMetricSet(IMetricSet metricSet) {
-    metricSets.remove(metricSet);
-    metricSet.unbindFrom(this);
   }
 }

@@ -38,12 +38,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.UncheckedIOException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class FileMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(FileMetrics.class);
+  private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
   private long walFileTotalSize = 0L;
   private long walFileTotalCount = 0L;
@@ -98,18 +100,23 @@ public class FileMetrics implements IMetricSet {
         "unseq");
 
     // finally start to update the value of some metrics in async way
-    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-        service,
-        this::collect,
-        1,
-        MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
-        TimeUnit.SECONDS);
+    if (null != currentServiceFuture) {
+      currentServiceFuture = ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+          service,
+          this::collect,
+          1,
+          MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
+          TimeUnit.SECONDS);
+    }
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     // first stop to update the value of some metrics in async way
-    service.shutdown();
+    if (currentServiceFuture != null) {
+      currentServiceFuture.cancel(false);
+      currentServiceFuture = null;
+    }
 
     metricService.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "wal");
     metricService.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "seq");
