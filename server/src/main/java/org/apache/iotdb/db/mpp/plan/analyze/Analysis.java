@@ -460,4 +460,8 @@ public class Analysis {
   public void setRelatedTemplateInfo(Map<Integer, Template> relatedTemplateInfo) {
     this.relatedTemplateInfo = relatedTemplateInfo;
   }
+
+  public void addTypes(Map<NodeRef<Expression>, TSDataType> types) {
+    this.expressionTypes.putAll(types);
+  }
 }

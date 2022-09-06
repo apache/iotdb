@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.expression.binary;
 
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.nio.ByteBuffer;
@@ -46,5 +47,10 @@ public abstract class LogicBinaryExpression extends BinaryExpression {
       typeProvider.setType(expressionString, TSDataType.BOOLEAN);
     }
     return TSDataType.BOOLEAN;
+  }
+
+  @Override
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitLogicBinaryExpression(this, context);
   }
 }
