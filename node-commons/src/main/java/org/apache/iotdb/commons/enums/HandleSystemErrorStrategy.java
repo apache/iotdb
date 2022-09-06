@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.enums;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,19 +32,17 @@ public enum HandleSystemErrorStrategy {
 
   private static final Logger logger = LoggerFactory.getLogger(HandleSystemErrorStrategy.class);
 
-  public NodeStatus handle() {
-    NodeStatus status = NodeStatus.Error;
+  public void handle() {
     if (this == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY) {
       logger.error(
           "Unrecoverable error occurs! Change system status to read-only because handle_system_error is CHANGE_TO_READ_ONLY. Only query statements are permitted!",
           new RuntimeException("System mode is set to READ_ONLY"));
-      status = NodeStatus.ReadOnly;
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
     } else if (this == HandleSystemErrorStrategy.SHUTDOWN) {
       logger.error(
           "Unrecoverable error occurs! Shutdown system directly because handle_system_error is SHUTDOWN.",
-          new RuntimeException("System mode is set to ERROR"));
+          new RuntimeException("Unrecoverable error occurs! Shutdown system directly."));
       System.exit(-1);
     }
-    return status;
   }
 }

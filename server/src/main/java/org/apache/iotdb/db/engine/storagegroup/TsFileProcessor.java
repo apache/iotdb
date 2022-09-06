@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -1246,7 +1245,7 @@ public class TsFileProcessor {
               storageGroupName,
               tsFileResource.getTsFile().getName(),
               e);
-          CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
           try {
             logger.error(
                 "{}: {} IOTask meets error, truncate the corrupted data",
@@ -1376,7 +1375,7 @@ public class TsFileProcessor {
               storageGroupName,
               tsFileResource.getTsFile().getAbsolutePath(),
               e);
-          CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
           break;
         }
       }
