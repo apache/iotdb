@@ -18,8 +18,8 @@
     under the License.
 
 -->
-
-## 1.切换方案
+## InfluxDB-Protocol
+### 1.切换方案
 
 假如您原先接入 InfluxDB 的业务代码如下：
 
@@ -33,9 +33,9 @@ InfluxDB influxDB = InfluxDBFactory.connect(openurl, username, password);
 InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 ```
 
-## 2.方案设计
+### 2.方案设计
 
-### 2.1 InfluxDB-Protocol适配器
+#### 2.1 InfluxDB-Protocol适配器
 
 该适配器以 IoTDB Java Session 接口为底层基础，实现了 InfluxDB 的 Java 接口 `interface InfluxDB`，对用户提供了所有 InfluxDB 的接口方法，最终用户可以无感知地使用 InfluxDB 协议向 IoTDB 发起写入和读取请求。
 
@@ -44,11 +44,11 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 ![class-diagram](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/class-diagram.png?raw=true)
 
 
-### 2.2 元数据格式转换
+#### 2.2 元数据格式转换
 
 InfluxDB 的元数据是 tag-field 模型，IoTDB 的元数据是树形模型。为了使适配器能够兼容 InfluxDB 协议，需要把 InfluxDB 的元数据模型转换成 IoTDB 的元数据模型。
 
-#### 2.2.1 InfluxDB 元数据
+##### 2.2.1 InfluxDB 元数据
 
 1. database: 数据库名。
 2. measurement: 测量指标名。
@@ -57,7 +57,7 @@ InfluxDB 的元数据是 tag-field 模型，IoTDB 的元数据是树形模型。
 
 ![influxdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-data.png?raw=true)
 
-#### 2.2.2 IoTDB 元数据
+##### 2.2.2 IoTDB 元数据
 
 1. storage group： 存储组。
 2. path(time series ID)：存储路径。
@@ -65,7 +65,7 @@ InfluxDB 的元数据是 tag-field 模型，IoTDB 的元数据是树形模型。
 
 ![iotdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/iotdb-data.png?raw=true)
 
-#### 2.2.3 两者映射关系
+##### 2.2.3 两者映射关系
 
 InfluxDB 元数据和 IoTDB 元数据有着如下的映射关系：
 1. InfluxDB 中的 database 和 measurement 组合起来作为 IoTDB 中的 storage group。
@@ -84,7 +84,7 @@ InfluxDB 元数据向 IoTDB 元数据的转换关系可以由下面的公示表�
 
 storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag key 的数量为 N，那么 storage group 和 measurement 之间的路径的层数就是 N。我们对 storage group 和 measurement 之间的每一层进行顺序编号，每一个序号都和一个 tag key 一一对应。同时，我们使用 storage group 和 measurement 之间每一层 **路径的名字** 来记 tag value，tag key 可以通过自身的序号找到对应路径层级下的 tag value.
 
-#### 2.2.4 关键问题
+##### 2.2.4 关键问题
 
 在 InfluxDB 的 SQL 语句中，tag 出现的顺序的不同并不会影响实际的执行结果。
 
@@ -132,9 +132,9 @@ storage group 和 measurement 之间的每一层都代表一个 tag。如果 tag
 
 
 
-### 2.3 实例
+#### 2.3 实例
 
-#### 2.3.1 插入数据
+##### 2.3.1 插入数据
 
 1. 假定按照以下的顺序插入三条数据到 InfluxDB 中 (database=monitor)：
    
@@ -209,7 +209,7 @@ time                address name phone sex socre
 
    但是这样实际并不会影响查询的正确性，因为一旦Influxdb的Tag顺序确定之后，查询也会按照这个顺序表记录的顺序进行Tag值过滤。所以并不会影响查询的正确性。
 
-#### 2.3.2 查询数据
+##### 2.3.2 查询数据
 
 1. 查询student中phone=B的数据。在database=monitor,measurement=student中tag=phone的顺序为1，order最大值是3，对应到IoTDB的查询为：
  

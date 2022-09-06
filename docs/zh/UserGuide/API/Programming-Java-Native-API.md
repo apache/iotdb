@@ -18,10 +18,10 @@
     under the License.
 
 -->
+# 应用编程接口
+## Java 原生接口
 
-# Java 原生接口
-
-## 安装
+### 安装
 
 ### 依赖
 
@@ -48,7 +48,7 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
-## 语法说明
+### 语法说明
 
  - 对于 IoTDB-SQL 接口：传入的 SQL 参数需要符合 [语法规范](../Reference/Syntax-Conventions.md) ，并且针对 JAVA 字符串进行反转义，如双引号前需要加反斜杠。（即：经 JAVA 转义之后与命令行执行的 SQL 语句一致。） 
  - 对于其他接口： 
@@ -58,11 +58,11 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
      - 对于 `checkTimeseriesExists` 接口，由于内部调用了 IoTDB-SQL 接口，因此需要和 SQL 语法规范保持一致，并且针对 JAVA 字符串进行反转义。
    - 经参数传入的标识符（如模板名）：在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。
 
-## 基本接口说明
+### 基本接口说明
 
 下面将给出 Session 对应的接口的简要介绍和对应参数：
 
-### 初始化
+#### 初始化
 
 * 初始化 Session
 
@@ -118,9 +118,9 @@ void open(boolean enableRPCCompression)
 void close()
 ```
 
-### 数据定义接口 DDL
+#### 数据定义接口 DDL
 
-#### 存储组管理
+##### 存储组管理
 
 * 设置存储组
 
@@ -134,7 +134,7 @@ void setStorageGroup(String storageGroupId)
 void deleteStorageGroup(String storageGroup)
 void deleteStorageGroups(List<String> storageGroups)
 ```
-#### 时间序列管理
+##### 时间序列管理
 
 * 创建单个或多个时间序列
 
@@ -172,7 +172,7 @@ void deleteTimeseries(List<String> paths)
 boolean checkTimeseriesExists(String path)
 ```
 
-#### 元数据模版
+##### 元数据模版
 
 * 创建元数据模板，可以通过先后创建`Template`、`MeasurementNode`的对象，描述模板内物理量结构与类型、编码方式、压缩方式等信息，并通过以下接口创建模板
 
@@ -323,9 +323,9 @@ public void deactivateTemplateOn(String templateName, String prefixPath);
 * 解除模板接口会删除对应节点按照模板中的序列写入的数据。
 
 
-### 数据操作接口 DML
+#### 数据操作接口 DML
 
-#### 数据写入
+##### 数据写入
 
 推荐使用 insertTablet 帮助提高写入效率
 
@@ -398,7 +398,7 @@ void insertRecordsOfOneDevice(String deviceId, List<Long> times,
     List<List<Object>> valuesList)
 ```
 
-#### 带有类型推断的写入
+##### 带有类型推断的写入
 
 当数据均是 String 类型时，我们可以使用如下接口，根据 value 的值进行类型推断。例如：value 为 "true" ，就可以自动推断为布尔类型。value 为 "3.2" ，就可以自动推断为数值类型。服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢
 
@@ -422,7 +422,7 @@ void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
     List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
-#### 对齐时间序列的写入
+##### 对齐时间序列的写入
 
 对齐时间序列的写入使用 insertAlignedXXX 接口，其余与上述接口类似：
 
@@ -433,7 +433,7 @@ void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
 * insertAlignedTablet
 * insertAlignedTablets
 
-#### 数据删除
+##### 数据删除
 
 * 删除一个或多个时间序列在某个时间点前或这个时间点的数据
 
@@ -442,7 +442,7 @@ void deleteData(String path, long endTime)
 void deleteData(List<String> paths, long endTime)
 ```
 
-#### 数据查询
+##### 数据查询
 
 * 原始数据查询。时间间隔包含开始时间，不包含结束时间
 
@@ -456,7 +456,7 @@ SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endT
 SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
 ```
 
-### IoTDB-SQL 接口
+#### IoTDB-SQL 接口
 
 * 执行查询语句
 
@@ -470,7 +470,7 @@ SessionDataSet executeQueryStatement(String sql)
 void executeNonQueryStatement(String sql)
 ```
 
-### 写入测试接口 (用于分析网络带宽)
+#### 写入测试接口 (用于分析网络带宽)
 
 不实际写入数据，只将数据传输到 server 即返回
 
@@ -506,7 +506,7 @@ void testInsertTablet(Tablet tablet)
 void testInsertTablets(Map<String, Tablet> tablets)
 ```
 
-### 示例代码
+##### 示例代码
 
 浏览上述接口的详细信息，请参阅代码 ```session/src/main/java/org/apache/iotdb/session/Session.java```
 
@@ -514,7 +514,7 @@ void testInsertTablets(Map<String, Tablet> tablets)
 
 使用对齐时间序列和元数据模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
 
-## 针对原生接口的连接池
+###### 针对原生接口的连接池
 
 我们提供了一个针对原生接口的连接池 (`SessionPool`)，使用该接口时，你只需要指定连接池的大小，就可以在使用时从池中获取连接。
 如果超过 60s 都没得到一个连接的话，那么会打印一条警告日志，但是程序仍将继续等待。
@@ -534,7 +534,7 @@ void testInsertTablets(Map<String, Tablet> tablets)
 
 或 `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
-## 集群信息相关的接口 （仅在集群模式下可用）
+###### 集群信息相关的接口 （仅在集群模式下可用）
 
 集群信息相关的接口允许用户获取如数据分区情况、节点是否当机等信息。
 要使用该 API，需要增加依赖：

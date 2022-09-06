@@ -19,9 +19,9 @@
 
 -->
 
-# SQL 参考文档
+## SQL 参考文档
 
-## 显示版本号
+### 显示版本号
 
 ```sql
 show version
@@ -37,7 +37,7 @@ Total line number = 1
 It costs 0.417s
 ```
 
-## Schema 语句
+### Schema 语句
 
 * 设置存储组
 
@@ -360,7 +360,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 CREATE SNAPSHOT FOR SCHEMA
 ```
 
-## 数据管理语句
+### 数据管理语句
 
 * 插入记录语句
 
@@ -796,7 +796,7 @@ Eg. select * from root.sg.d1 where s1 like 'abc\%'
 |  200 | root.sg.d1.s1| abc%  |
 ```
 
-## 数据库管理语句
+### 数据库管理语句
 
 * 创建用户
 
@@ -962,7 +962,7 @@ password:=string
 Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 ```
 
-## 功能
+### 功能
 
 * COUNT
 
@@ -1106,7 +1106,7 @@ Eg DELETE PARTITION root.sg1 0,1,2
 ```
 partitionId 可以通过查看数据文件夹获取，或者是计算 `timestamp / partitionInterval`得到。 
 
-## 中止查询
+### 中止查询
 
 - 显示正在执行的查询列表
 
@@ -1123,7 +1123,7 @@ E.g. KILL QUERY 2
 ```
 
 
-## 设置系统为只读/可写入模式
+### 设置系统为只读/可写入模式
 
 
 ```
@@ -1131,7 +1131,7 @@ IoTDB> SET SYSTEM TO READONLY
 IoTDB> SET SYSTEM TO WRITABLE
 ```
 
-## 标识符列表
+### 标识符列表
 
 ```
 QUOTE := '\'';
@@ -1185,7 +1185,7 @@ eg. _abc123
 
 ```
 
-## 常量列表
+### 常量列表
 
 ```
 PointValue : Integer | Float | StringLiteral | Boolean

@@ -19,14 +19,14 @@
 
 -->
 
-# 查询结果分页
+## 查询结果分页
 
 当查询结果集数据量很大，放在一个页面不利于显示，可以使用  `LIMIT/SLIMIT` 子句和 `OFFSET/SOFFSET `子句进行分页控制。
 
 - `LIMIT` 和 `SLIMIT` 子句用于控制查询结果的行数和列数。
 - `OFFSET` 和 `SOFFSET` 子句用于控制结果显示的起始位置。
 
-## 按行分页
+### 按行分页
 
 通过使用 `LIMIT` 和 `OFFSET` 子句，用户可以以与行相关的方式控制查询结果。 我们将通过以下示例演示如何使用 `LIMIT` 和 `OFFSET` 子句。
 
@@ -158,7 +158,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 Msg: 401: Error occured while parsing SQL to physical plan: line 1:101 mismatched input 'limit' expecting {<EOF>, ';'}
 ```
 
-## 按列分页
+### 按列分页
 
 通过使用 `SLIMIT` 和 `SOFFSET` 子句，用户可以与列相关的方式控制查询结果。 我们将通过以下示例演示如何使用 `SLIMIT` 和 `SOFFSET` 子句。
 
@@ -266,7 +266,7 @@ Total line number = 1
 It costs 0.007s
 ```
 
-## 行和列混合分页
+### 行和列混合分页
 
 除了对查询结果进行行或列控制之外，IoTDB 还允许用户控制查询结果的行和列。 这是同时包含 `LIMIT` 子句和 `SLIMIT` 子句的完整示例。
 
@@ -301,7 +301,7 @@ Total line number = 10
 It costs 0.009s
 ```
 
-## 错误处理
+### 错误处理
 
 当 `LIMIT / SLIMIT` 的参数 `N / SN` 超过结果集的大小时，IoTDB 将按预期返回所有结果。 例如，原始 SQL 语句的查询结果由六行组成，我们通过 `LIMIT` 子句选择前 100 行：
 
