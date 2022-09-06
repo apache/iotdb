@@ -177,7 +177,6 @@ public class SnapshotTaker {
     }
 
     Files.createLink(target.getAbsoluteFile().toPath(), source.getAbsoluteFile().toPath());
-    LOGGER.info("Taking snapshot for {} to {}", source, target);
     snapshotLogger.logFile(source.getAbsolutePath(), target.getAbsolutePath());
   }
 
