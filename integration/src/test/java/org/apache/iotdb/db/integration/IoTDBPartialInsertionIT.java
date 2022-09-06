@@ -84,9 +84,10 @@ public class IoTDBPartialInsertionIT {
       statement.execute("SET STORAGE GROUP TO root.sg");
       statement.execute("CREATE TIMESERIES root.sg.d1.s1 datatype=text");
       statement.execute("CREATE TIMESERIES root.sg.d1.s2 datatype=double");
+      statement.execute("CREATE TIMESERIES root.sg.d1.s3 datatype=text");
 
       try {
-        statement.execute("INSERT INTO root.sg.d1(time,s1,s2) VALUES(100,'test','test')");
+        statement.execute("INSERT INTO root.sg.d1(time,s1,s2,s3) VALUES(100,'test','test','test')");
       } catch (IoTDBSQLException e) {
         // ignore
       }
@@ -123,6 +124,16 @@ public class IoTDBPartialInsertionIT {
       }
       hasResultSet = statement.execute("SELECT s2 FROM root.sg.d1");
       assertTrue(hasResultSet);
+      hasResultSet = statement.execute("SELECT s3 FROM root.sg.d1");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+          assertEquals("test", resultSet.getString("root.sg.d1.s3"));
+        }
+        assertEquals(1, cnt);
+      }
       try (ResultSet resultSet = statement.getResultSet()) {
         assertFalse(resultSet.next());
       }

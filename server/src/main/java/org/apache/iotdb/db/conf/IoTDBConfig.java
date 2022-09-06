@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,7 +50,6 @@ public class IoTDBConfig {
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
   static final String CONFIG_NAME = "iotdb-engine.properties";
-  public static final String EXTERNAL_CONFIG_NAME = "iotdb-engine-external.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
@@ -251,16 +251,6 @@ public class IoTDBConfig {
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
-
-  /** External lib directory for properties loader, stores user-uploaded JAR files */
-  private String externalPropertiesLoaderDir =
-      IoTDBConstant.EXT_FOLDER_NAME
-          + File.separator
-          + IoTDBConstant.EXT_PROPERTIES_LOADER_FOLDER_NAME;
-
-  /** External lib directory for limiter, stores user uploaded JAR files */
-  private String externalLimiterDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_LIMITER;
 
   /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {"data" + File.separator + "data"};
@@ -871,6 +861,9 @@ public class IoTDBConfig {
   // The max record num returned in one schema query.
   private int schemaQueryFetchSize = 10000000;
 
+  // customizedProperties, this should be empty by default.
+  private Properties customizedProperties = new Properties();
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1005,8 +998,6 @@ public class IoTDBConfig {
     udfDir = addHomeDir(udfDir);
     triggerDir = addHomeDir(triggerDir);
     operationSyncLogDir = addHomeDir(operationSyncLogDir);
-    externalPropertiesLoaderDir = addHomeDir(externalPropertiesLoaderDir);
-    externalLimiterDir = addHomeDir(externalLimiterDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1229,22 +1220,6 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
-  }
-
-  public String getExternalPropertiesLoaderDir() {
-    return externalPropertiesLoaderDir;
-  }
-
-  public void setExternalPropertiesLoaderDir(String externalPropertiesLoaderDir) {
-    this.externalPropertiesLoaderDir = externalPropertiesLoaderDir;
-  }
-
-  public String getExternalLimiterDir() {
-    return externalLimiterDir;
-  }
-
-  public void setExternalLimiterDir(String externalLimiterDir) {
-    this.externalLimiterDir = externalLimiterDir;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -2778,5 +2753,12 @@ public class IoTDBConfig {
 
   public void setCompactionProportion(double compactionProportion) {
     this.compactionProportion = compactionProportion;
+
+  public Properties getCustomizedProperties() {
+    return customizedProperties;
+  }
+
+  public void setCustomizedProperties(Properties customizedProperties) {
+    this.customizedProperties = customizedProperties;
   }
 }

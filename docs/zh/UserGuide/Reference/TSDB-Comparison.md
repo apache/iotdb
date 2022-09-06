@@ -19,15 +19,15 @@
 
 -->
 
-# 时间序列数据库比较
+## 时间序列数据库比较
 
-## Overview
+### Overview
 
 ![TSDB Comparison](https://user-images.githubusercontent.com/33376433/119833923-182ffc00-bf32-11eb-8b3f-9f95d3729ad2.png)
 
 **表格外观启发自 [Andriy Zabavskyy: How to Select Time Series DB](https://towardsdatascience.com/how-to-select-time-series-db-123b0eb4ab82)*
 
-## 1. 已知的时间序列数据库
+### 1. 已知的时间序列数据库
 
 随着时间序列数据变得越来越重要，一些开源的时间序列数据库（Time Series Databases，or TSDB）诞生了。
 
@@ -55,11 +55,11 @@
 
 Prometheus 和 Druid 也因为时间序列数据管理而闻名，但是 Prometheus 聚焦在数据采集、可视化和报警，Druid 聚焦在 OLAP 负载的数据分析，因此本文省略了 Prometheus 和 Druid。
 
-## 2. 比较
+### 2. 比较
 
 本文将从以下两个角度比较时间序列数据库：功能比较、性能比较。
 
-### 2.1 功能比较
+#### 2.1 功能比较
 
 以下两节分别是时间序列数据库的基础功能比较（2.1.1）和高级功能比较（2.1.2）。
 
@@ -71,7 +71,7 @@ Prometheus 和 Druid 也因为时间序列数据管理而闻名，但是 Prometh
 -   `-`：不支持
 -   `?`：未知
 
-#### 2.1.1 基础功能
+##### 2.1.1 基础功能
 
 | TSDB                          |          IoTDB          |  InfluxDB  |  OpenTSDB  |  KairosDB  | TimescaleDB |
 | ----------------------------- | :---------------------: | :--------: | :--------: | :--------: | :---------: |
@@ -183,7 +183,7 @@ Prometheus 和 Druid 也因为时间序列数据管理而闻名，但是 Prometh
 -   TimescaleDB 不能被企业免费使用。
 -   IoTDB 和 InfluxDB 可以满足时间序列数据管理的大部分需求，同时它俩之间有一些不同之处。
 
-#### 2.1.2 高级功能
+##### 2.1.2 高级功能
 
 | TSDB                         | IoTDB  | InfluxDB | OpenTSDB | KairosDB | TimescaleDB |
 | ---------------------------- | :----: | :------: | :------: | :------: |:-----------:|
@@ -257,13 +257,13 @@ Prometheus 和 Druid 也因为时间序列数据管理而闻名，但是 Prometh
 
 IoTDB 拥有许多其它时间序列数据库不支持的强大功能。
 
-### 2.2 性能比较
+#### 2.2 性能比较
 
 如果你觉得：”如果我只需要基础功能的话，IoTDB 好像和其它的时间序列数据库没有什么不同。“
 
 这好像是有道理的。但是如果考虑性能的话，你也许会改变你的想法。
 
-#### 2.2.1 快速浏览
+##### 2.2.1 快速浏览
 
 | TSDB                 | IoTDB | InfluxDB | KairosDB | TimescaleDB |
 | -------------------- | :---: | :------: | :------: | :---------: |
@@ -273,13 +273,13 @@ IoTDB 拥有许多其它时间序列数据库不支持的强大功能。
 | *Downsampling Query* |  ++   |    +     |    +-    |     +-      |
 | *Latest Query*       |  ++   |    +     |    +-    |      +      |
 
-##### 写入性能
+###### 写入性能
 
 我们从两个方面来测试写性能：batch size 和 client num。存储组的数量是 10。有 1000 个设备，每个设备有 100 个传感器，也就是说一共有 100K 条时间序列。
 
 测试使用的 IoTDB 版本是`v0.11.1`。
 
-###### 改变 batch size
+####### 改变 batch size
 
 10 个客户端并发地写数据。IoTDB 使用 batch insertion API，batch size 从 1ms 到 1min 变化（每次调用 write API 写 N 个数据点）。
 
@@ -289,7 +289,7 @@ IoTDB 拥有许多其它时间序列数据库不支持的强大功能。
 
 <center>Figure 1. Batch Size with Write throughput (points/second) IoTDB v0.11.1</center>
 
-###### 改变 client num
+####### 改变 client num
 
 client num 从 1 到 50 变化。IoTDB 使用 batch insertion API，batch size 是 100（每次调用 write API 写 100 个数据点）。
 
@@ -299,7 +299,7 @@ client num 从 1 到 50 变化。IoTDB 使用 batch insertion API，batch size �
 
 <center>Figure 3. Client Num with Write Throughput (points/second) IoTDB v0.11.1</center>
 
-##### 查询性能
+###### 查询性能
 
 10 个客户端并发地读数据。存储组的数量是 10。有 10 个设备，每个设备有 10 个传感器，也就是说一共有 100 条时间序列。
 
@@ -327,7 +327,7 @@ client num 从 1 到 50 变化。IoTDB 使用 batch insertion API，batch size �
 
 可以看到，IoTDB 的 raw data query、aggregation query、downsampling query、latest query 查询性能表现都超越了其它数据库。
 
-#### 2.2.2 更多细节
+##### 2.2.2 更多细节
 
 我们提供了一个 benchmark 工具，叫做 [IoTDB-benchamrk](https://github.com/thulab/iotdb-benchmark)（你可以用 dev branch 来编译它）。它支持 IoTDB, InfluxDB, KairosDB, TimescaleDB, OpenTSDB。
 
@@ -341,7 +341,7 @@ client num 从 1 到 50 变化。IoTDB 使用 batch insertion API，batch size �
 
 所有的客户端运行的机器配置是：Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz，(6 cores 12 threads), 16GB memory, 256G SSD, OS: Ubuntu 16.04.7 LTS, 64bits.
 
-## 3. 结论
+### 3. 结论
 
 从以上所有实验中，我们可以看到 IoTDB 的性能大大优于其他数据库。
 

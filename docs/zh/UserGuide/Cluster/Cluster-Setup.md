@@ -18,12 +18,13 @@
     under the License.
 
 -->
+# 集群搭建
 
 ## 集群设置
 
 你可以根据此文档启动IoTDB集群。
 
-## 安装环境
+### 安装环境
 
 为使用IoTDB，你首先需要:
 
@@ -31,7 +32,7 @@
 
 2. 设置最大文件打开数为 65535。
 
-## 安装步骤
+### 安装步骤
 
 IoTDB 支持多种安装途径。用户可以使用三种方式对 IoTDB 进行安装——下载二进制可运行程序、使用源码、使用 docker 镜像。
 
@@ -39,7 +40,7 @@ IoTDB 支持多种安装途径。用户可以使用三种方式对 IoTDB 进行�
 - 二进制可运行程序：请从 [下载](https://iotdb.apache.org/Download/) 页面下载最新的安装包，解压后即完成安装。
 - 使用 Docker 镜像：dockerfile 文件位于 https://github.com/apache/iotdb/blob/master/docker/src/main
 
-### 源码编译
+#### 源码编译
 
 下载源码:
 
@@ -61,13 +62,13 @@ git checkout rel/0.12
 
 集群的二进制版本在目录 **cluster/target/{iotdb-project.version}** 下
 
-### 下载
+#### 下载
 
 你可以直接下载二进制版本 [Download Page](https://iotdb.apache.org/Download/)
 
 
 
-## 文件目录
+### 文件目录
 
 完成IoTDB Cluster安装后，默认会在IoTDB Cluster的根目录下生成下列目录文件：
 
@@ -83,7 +84,7 @@ git checkout rel/0.12
 
 
 
-## 配置
+### 配置
 
 为方便 IoTDB Server 的配置与管理，IoTDB Server 为用户提供三种配置项，使得您可以在启动服务或服务运行时对其进行配置。
 
@@ -133,9 +134,9 @@ iotdb-engines.properties 配置文件中的部分内容会不再生效：
 
 
 
-## 启动服务
+### 启动服务
 
-### 启动集群
+#### 启动集群
 
 您可以多节点部署或单机部署分布式集群，两者的主要区别是后者需要处理端口和文件目录的冲突，配置项含义请参考 [配置项](https://github.com/apache/iotdb/blob/master/docs/zh/UserGuide/Cluster/Cluster-Setup.md#配置项)。 启动其中一个节点的服务，需要执行如下命令：
 
@@ -151,7 +152,7 @@ iotdb-engines.properties 配置文件中的部分内容会不再生效：
 
 **如果你启动了所有seed节点，并且所有seed节点可以相互通信并没有ip地址/端口和文件目录的冲突，集群就成功启动了。**
 
-### 集群扩展
+#### 集群扩展
 
 在集群运行过程中，用户可以向集群中加入新的节点或者删除集群中已有节点。目前仅支持逐节点集群扩展操作，多节点的集群扩展可以转化为一系列单节点集群扩展操作来实现。集群只有在上一次集群扩展操作完成后才会接收新的集群扩展操作。
 
@@ -179,11 +180,11 @@ iotdb-engines.properties 配置文件中的部分内容会不再生效：
 
 `internal_ip`表示待删除节点的 IP 地址 `internal_meta_port`表示待删除节点的 meta 服务端口
 
-### 使用 Cli 工具
+#### 使用 Cli 工具
 
 安装环境请参考 [快速上手/安装环境章节](https://github.com/apache/iotdb/blob/master/docs/zh/UserGuide/QuickStart/QuickStart.md)。你可以根据节点的rpc\_address和rpc\_port向任何节点发起连接。
 
-### 停止集群
+#### 停止集群
 
 在任一机器上启动以下脚本进行停止所有运行在该机器上的节点服务操作：
 
@@ -197,9 +198,9 @@ iotdb-engines.properties 配置文件中的部分内容会不再生效：
 
 
 
-## 附录
+### 附录
 
-### 集群配置项
+#### 集群配置项
 
 - internal_ip
 
