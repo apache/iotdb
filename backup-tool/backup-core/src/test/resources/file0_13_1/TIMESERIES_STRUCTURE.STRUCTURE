@@ -1,0 +1,13 @@
+timeseries,alias,storage group,dataType,encoding,compression,tags,attributes,aligned
+"root.0131.cli.ali.txt",,"root.test","TEXT","PLAIN","SNAPPY",,,"true"
+"root.0131.cli.ali.doubl",,"root.test","DOUBLE","GORILLA","SNAPPY",,,"true"
+"root.0131.cli.ali.in64",,"root.test","INT64","RLE","SNAPPY",,,"true"
+"root.0131.cli.ali.in32",,"root.test","INT32","RLE","SNAPPY",,,"true"
+"root.0131.cli.ali.floa",,"root.test","FLOAT","GORILLA","SNAPPY",,,"true"
+"root.0131.cli.ali.boolan",,"root.test","BOOLEAN","RLE","SNAPPY",,,"true"
+"root.0131.monitor.cc",,"root.test","TEXT","PLAIN","SNAPPY",,,"true"
+"root.0131.monitor.targetHost",,"root.test","TEXT","PLAIN","SNAPPY",,,"true"
+"root.0131.monitor.providerId",,"root.test","TEXT","PLAIN","SNAPPY",,,"true"
+"root.0131.monitor.host",,"root.test","TEXT","PLAIN","SNAPPY",,,"true"
+"root.0131.monitor.errorQps",,"root.test","DOUBLE","GORILLA","SNAPPY",,,"true"
+"root.0131.monitor.startTime",,"root.test","TEXT","PLAIN","SNAPPY",,,"true"
