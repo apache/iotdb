@@ -32,11 +32,17 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
 import org.apache.iotdb.confignode.client.async.handlers.ClearCacheHandler;
+import org.apache.iotdb.confignode.client.async.handlers.ConstructSchemaBlackListHandler;
 import org.apache.iotdb.confignode.client.async.handlers.CreateRegionHandler;
+import org.apache.iotdb.confignode.client.async.handlers.DeleteDataForDeleteTimeSeriesHandler;
+import org.apache.iotdb.confignode.client.async.handlers.DeleteTimeSeriesHandler;
+import org.apache.iotdb.confignode.client.async.handlers.FetchSchemaBlackLsitHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
+import org.apache.iotdb.confignode.client.async.handlers.InvalidateMatchedSchemaCacheHandler;
 import org.apache.iotdb.confignode.client.async.handlers.LoadConfigurationHandler;
 import org.apache.iotdb.confignode.client.async.handlers.MergeHandler;
+import org.apache.iotdb.confignode.client.async.handlers.RollbackSchemaBlackListHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetSystemStatusHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
@@ -164,6 +170,36 @@ public class AsyncDataNodeClientPool {
           case BROADCAST_LATEST_CONFIG_NODE_GROUP:
             handler =
                 new UpdateConfigNodeGroupHandler(
+                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+            break;
+          case CONSTRUCT_SCHEMA_BLACK_LIST:
+            handler =
+                new ConstructSchemaBlackListHandler(
+                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+            break;
+          case ROLLBACK_SCHEMA_BLACK_LIST:
+            handler =
+                new RollbackSchemaBlackListHandler(
+                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+            break;
+          case FETCH_SCHEMA_BLACK_LIST:
+            handler =
+                new FetchSchemaBlackLsitHandler(
+                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+            break;
+          case INVALIDATE_MATCHED_SCHEMA_CACHE:
+            handler =
+                new InvalidateMatchedSchemaCacheHandler(
+                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+            break;
+          case DELETE_DATA_FOR_DELETE_TIMESERIES:
+            handler =
+                new DeleteDataForDeleteTimeSeriesHandler(
+                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+            break;
+          case DELETE_TIMESERIES:
+            handler =
+                new DeleteTimeSeriesHandler(
                     countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
             break;
           default:
