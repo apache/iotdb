@@ -131,6 +131,10 @@ public class TriggerInformation {
     this.className = className;
   }
 
+  public Map<String, String> getAttributes() {
+    return attributes;
+  }
+
   public String getJarName() {
     return jarName;
   }

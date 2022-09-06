@@ -268,13 +268,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (!createTriggerStatement.isUsingURI()) {
         // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
-        String fileName =
-            createTriggerStatement
-                .getJarPath()
-                .substring(createTriggerStatement.getJarPath().lastIndexOf(File.separator) + 1);
+        String jarPath = createTriggerStatement.getJarPath();
         tCreateTriggerReq.setJarFile(
             ExecutableManager.transferToBytebuffer(createTriggerStatement.getJarPath()));
-        tCreateTriggerReq.setJarPath(fileName);
+        tCreateTriggerReq.setJarPath(jarPath.substring(jarPath.lastIndexOf(File.separator) + 1));
       }
 
       final TSStatus executionStatus = client.createTrigger(tCreateTriggerReq);

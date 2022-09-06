@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.trigger.executor;
 
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.trigger.api.Trigger;
+import org.apache.iotdb.trigger.api.TriggerAttributes;
 
 public class TriggerExecutor {
   private final TriggerInformation triggerInformation;
@@ -30,5 +32,26 @@ public class TriggerExecutor {
   public TriggerExecutor(TriggerInformation triggerInformation, Trigger trigger) {
     this.triggerInformation = triggerInformation;
     this.trigger = trigger;
+    // call Trigger#validate and Trigger#onCreate
+    onCreate();
+  }
+
+  private void onCreate() {
+    try {
+      TriggerAttributes attributes = new TriggerAttributes(triggerInformation.getAttributes());
+      trigger.validate(attributes);
+      trigger.onCreate(attributes);
+    } catch (Exception e) {
+      onTriggerExecutionError("validate/onCreate(TriggerAttributes)", e);
+    }
+  }
+
+  private void onTriggerExecutionError(String methodName, Exception e)
+      throws TriggerExecutionException {
+    throw new TriggerExecutionException(
+        String.format(
+                "Error occurred during executing Trigger#%s: %s",
+                methodName, System.lineSeparator())
+            + e);
   }
 }
