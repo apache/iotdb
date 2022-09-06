@@ -19,9 +19,12 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -40,6 +43,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -113,6 +117,9 @@ public class IoTDBStartCheck {
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol";
 
   private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
+
+  private static final String TARGET_CONFIG_NODES = "target_config_nodes";
+
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
   public static IoTDBStartCheck getInstance() {
@@ -380,6 +387,21 @@ public class IoTDBStartCheck {
 
     if (!(properties.getProperty(SCHEMA_ENGINE_MODE).equals(schemaEngineMode))) {
       throwException(SCHEMA_ENGINE_MODE, schemaEngineMode);
+    }
+
+    if (properties.getProperty(TARGET_CONFIG_NODES, null) != null) {
+      String rawString = properties.getProperty(TARGET_CONFIG_NODES);
+      List<TEndPoint> targetConfigNodes;
+      try {
+        targetConfigNodes = NodeUrlUtils.parseTEndPointUrls(rawString);
+      } catch (BadNodeUrlException e) {
+        throw new ConfigurationException(TARGET_CONFIG_NODES, rawString);
+      }
+      for (TEndPoint endPoint : targetConfigNodes) {
+        if (endPoint.getIp().equals("0.0.0.0")) {
+          throw new ConfigurationException(TARGET_CONFIG_NODES, "0.0.0.0");
+        }
+      }
     }
 
     // load configuration from system properties only when start as Data node
