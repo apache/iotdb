@@ -40,12 +40,13 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** PublishHandler handle the messages from MQTT clients. */
 public class PublishHandler extends AbstractInterceptHandler {
 
   private final ServiceProvider serviceProvider = IoTDB.serviceProvider;
-  private long sessionId;
+  private final ConcurrentHashMap<String, Long> clientIdToSessionIdMap = new ConcurrentHashMap<>();
   private static final boolean isEnableOperationSync =
       IoTDBDescriptor.getInstance().getConfig().isEnableOperationSync();
   private static final Logger LOG = LoggerFactory.getLogger(PublishHandler.class);
@@ -62,7 +63,7 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   @Override
   public String getID() {
-    return "iotdb-mqtt-broker-listener-" + sessionId;
+    return "iotdb-mqtt-broker-listener";
   }
 
   @Override
@@ -74,7 +75,7 @@ public class PublishHandler extends AbstractInterceptHandler {
               new String(msg.getPassword()),
               ZoneId.systemDefault().toString(),
               TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
-      sessionId = basicOpenSessionResp.getSessionId();
+      clientIdToSessionIdMap.put(msg.getClientID(), basicOpenSessionResp.getSessionId());
     } catch (TException e) {
       throw new RuntimeException(e);
     }
@@ -82,12 +83,19 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onDisconnect(InterceptDisconnectMessage msg) {
-    serviceProvider.closeSession(sessionId);
+    if (clientIdToSessionIdMap.containsKey(msg.getClientID())) {
+      serviceProvider.closeSession(clientIdToSessionIdMap.get(msg.getClientID()));
+      clientIdToSessionIdMap.remove(msg.getClientID());
+    }
   }
 
   @Override
   public void onPublish(InterceptPublishMessage msg) {
     String clientId = msg.getClientID();
+    if (!clientIdToSessionIdMap.containsKey(clientId)) {
+      return;
+    }
+    long sessionId = clientIdToSessionIdMap.get(clientId);
     ByteBuf payload = msg.getPayload();
     String topic = msg.getTopicName();
     String username = msg.getUsername();
