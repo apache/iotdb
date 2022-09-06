@@ -44,7 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PublishHandler extends AbstractInterceptHandler {
   private static final Logger LOG = LoggerFactory.getLogger(PublishHandler.class);
   private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-  /** clientId -> sessionId */
+
   private final ConcurrentHashMap<String, Long> clientIdToSessionIdMap = new ConcurrentHashMap<>();
 
   private final PayloadFormatter payloadFormat;
@@ -79,7 +79,7 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onDisconnect(InterceptDisconnectMessage msg) {
-    if (clientIdToSessionIdMap.contains(msg.getClientID())) {
+    if (clientIdToSessionIdMap.containsKey(msg.getClientID())) {
       SESSION_MANAGER.closeSession(clientIdToSessionIdMap.get(msg.getClientID()));
     }
   }
@@ -87,7 +87,7 @@ public class PublishHandler extends AbstractInterceptHandler {
   @Override
   public void onPublish(InterceptPublishMessage msg) {
     String clientId = msg.getClientID();
-    if (!clientIdToSessionIdMap.contains(clientId)) {
+    if (!clientIdToSessionIdMap.containsKey(clientId)) {
       return;
     }
     long sessionId = clientIdToSessionIdMap.get(msg.getClientID());
