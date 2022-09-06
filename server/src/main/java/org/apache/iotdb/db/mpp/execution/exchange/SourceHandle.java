@@ -410,7 +410,12 @@ public class SourceHandle implements ISourceHandle {
             }
             break;
           } catch (Throwable e) {
-            logger.error("failed to get data block, attempt times: {}", attempt, e);
+            logger.error(
+                "failed to get data block [{}, {}), attempt times: {}",
+                startSequenceId,
+                endSequenceId,
+                attempt,
+                e);
             if (attempt == MAX_ATTEMPT_TIMES) {
               synchronized (SourceHandle.this) {
                 bufferRetainedSizeInBytes -= reservedBytes;
