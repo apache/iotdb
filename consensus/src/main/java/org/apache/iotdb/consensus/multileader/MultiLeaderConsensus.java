@@ -273,6 +273,7 @@ public class MultiLeaderConsensus implements IConsensus {
       impl.activePeer(peer);
 
     } catch (ConsensusGroupAddPeerException e) {
+      logger.error("cannot execute addPeer() for {}", peer, e);
       return ConsensusGenericResponse.newBuilder()
           .setSuccess(false)
           .setException(new ConsensusException(e.getMessage()))
