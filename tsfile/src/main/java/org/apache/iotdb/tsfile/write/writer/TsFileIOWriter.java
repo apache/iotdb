@@ -294,7 +294,9 @@ public class TsFileIOWriter implements AutoCloseable {
     }
 
     // write bloom filter
-    size += tsFileMetaData.serializeBloomFilter(out.wrapAsStream(), chunkMetadataListMap.keySet());
+    size +=
+        tsFileMetaData.buildAndSerializeBloomFilter(
+            out.wrapAsStream(), chunkMetadataListMap.keySet());
     if (logger.isDebugEnabled()) {
       logger.debug("finish flushing the bloom filter file pos:{}", out.getPosition());
     }
