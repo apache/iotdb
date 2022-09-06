@@ -227,10 +227,6 @@ public class Analysis {
     return typeProvider;
   }
 
-  public void setTypeProvider(TypeProvider typeProvider) {
-    this.typeProvider = typeProvider;
-  }
-
   public TSDataType getType(Expression expression) {
     TSDataType type = expressionTypes.get(NodeRef.of(expression));
     checkArgument(type != null, "Expression not analyzed: %s", expression);

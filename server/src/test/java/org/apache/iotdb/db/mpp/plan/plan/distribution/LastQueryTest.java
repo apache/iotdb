@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanBuilder;
+import org.apache.iotdb.db.mpp.plan.planner.SymbolAllocator;
 import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
@@ -197,7 +198,7 @@ public class LastQueryTest {
 
   private LogicalQueryPlan constructLastQuery(List<String> paths, MPPQueryContext context)
       throws IllegalPathException {
-    LogicalPlanBuilder builder = new LogicalPlanBuilder(context);
+    LogicalPlanBuilder builder = new LogicalPlanBuilder(context, new SymbolAllocator());
     Set<Expression> expressions = new HashSet<>();
     for (String path : paths) {
       expressions.add(new TimeSeriesOperand(new MeasurementPath(path)));
