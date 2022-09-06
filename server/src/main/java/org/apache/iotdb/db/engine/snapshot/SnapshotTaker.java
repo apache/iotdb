@@ -146,6 +146,9 @@ public class SnapshotTaker {
     try {
       for (TsFileResource resource : resources) {
         File tsFile = resource.getTsFile();
+        if (!resource.isClosed()) {
+          continue;
+        }
         File snapshotTsFile = getSnapshotFilePathForTsFile(tsFile, snapshotId);
         // create hard link for tsfile, resource, mods
         createHardLink(snapshotTsFile, tsFile);
