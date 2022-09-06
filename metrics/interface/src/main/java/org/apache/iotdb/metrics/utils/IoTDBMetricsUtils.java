@@ -42,23 +42,23 @@ public class IoTDBMetricsUtils {
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder
         .append(STORAGE_GROUP)
-        .append(".`")
+        .append(".\"")
         .append(metricConfig.getRpcAddress())
         .append(":")
         .append(metricConfig.getRpcPort())
-        .append("`")
+        .append("\"")
         .append(".")
-        .append("`")
+        .append("\"")
         .append(name)
-        .append("`");
+        .append("\"");
     for (Map.Entry<String, String> entry : labels.entrySet()) {
       stringBuilder
           .append(".")
-          .append("`")
+          .append("\"")
           .append(entry.getKey())
           .append("=")
           .append(entry.getValue())
-          .append("`");
+          .append("\"");
     }
     return stringBuilder.toString();
   }
