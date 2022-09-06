@@ -150,12 +150,12 @@ public class SnapshotTaker {
         // create hard link for tsfile, resource, mods
         createHardLink(snapshotTsFile, tsFile);
         createHardLink(
-            new File(snapshotTsFile.getCanonicalPath() + TsFileResource.RESOURCE_SUFFIX),
-            new File(tsFile.getCanonicalPath() + TsFileResource.RESOURCE_SUFFIX));
+            new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+            new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
         if (resource.getModFile().exists()) {
           createHardLink(
-              new File(snapshotTsFile.getCanonicalPath() + ModificationFile.FILE_SUFFIX),
-              new File(tsFile.getCanonicalPath() + ModificationFile.FILE_SUFFIX));
+              new File(snapshotTsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX),
+              new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
         }
       }
       return true;
@@ -166,7 +166,15 @@ public class SnapshotTaker {
   }
 
   private void createHardLink(File target, File source) throws IOException {
-    Files.createLink(target.toPath(), source.toPath());
+    if (!target.getParentFile().exists()) {
+      LOGGER.error("Hard link target dir {} doesn't exist", target.getParentFile());
+    }
+    if (!source.exists()) {
+      LOGGER.error("Hard link source file {} doesn't exist", source);
+    }
+
+    Files.createLink(target.getAbsoluteFile().toPath(), source.getAbsoluteFile().toPath());
+    LOGGER.info("Taking snapshot for {} to {}", source, target);
     snapshotLogger.logFile(source.getAbsolutePath(), target.getAbsolutePath());
   }
 
@@ -213,6 +221,7 @@ public class SnapshotTaker {
   }
 
   private void cleanUpWhenFail(String snapshotId) {
+    LOGGER.info("Cleaning up snapshot dir for {}", snapshotId);
     for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
       File dataDirForThisSnapshot =
           new File(dataDir + File.separator + "snapshot" + File.separator + snapshotId);
