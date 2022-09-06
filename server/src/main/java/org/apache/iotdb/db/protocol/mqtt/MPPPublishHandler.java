@@ -98,8 +98,9 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onDisconnect(InterceptDisconnectMessage msg) {
-    if (clientIdToSessionIdMap.containsKey(msg.getClientID())) {
-      SESSION_MANAGER.closeSession(clientIdToSessionIdMap.get(msg.getClientID()));
+    Long sessionId = clientIdToSessionIdMap.remove(msg.getClientID());
+    if (null != sessionId) {
+      SESSION_MANAGER.closeSession(sessionId);
     }
   }
 
