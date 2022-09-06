@@ -43,7 +43,7 @@ public class MPPDataExchangeServiceMetrics implements IMetricSet {
         thriftServiceThread,
         AbstractThriftServiceThread::getActiveThreadCount,
         Tag.NAME.toString(),
-        ThreadName.MPP_DATA_EXCHANGE_RPC_SERVER.getName());
+        ThreadName.MPP_DATA_EXCHANGE_RPC_SERVICE.getName());
   }
 
   @Override
@@ -52,6 +52,6 @@ public class MPPDataExchangeServiceMetrics implements IMetricSet {
         MetricType.GAUGE,
         Metric.THRIFT_ACTIVE_THREADS.toString(),
         Tag.NAME.toString(),
-        ThreadName.MPP_DATA_EXCHANGE_RPC_SERVER.getName());
+        ThreadName.MPP_DATA_EXCHANGE_RPC_SERVICE.getName());
   }
 }

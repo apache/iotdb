@@ -43,7 +43,7 @@ public class DataNodeInternalRPCServiceMetrics implements IMetricSet {
         thriftServiceThread,
         AbstractThriftServiceThread::getActiveThreadCount,
         Tag.NAME.toString(),
-        ThreadName.INTERNAL_SERVICE_RPC_SERVER.getName());
+        ThreadName.DATANODE_INTERNAL_RPC_SERVICE.getName());
   }
 
   @Override
@@ -52,6 +52,6 @@ public class DataNodeInternalRPCServiceMetrics implements IMetricSet {
         MetricType.GAUGE,
         Metric.THRIFT_ACTIVE_THREADS.toString(),
         Tag.NAME.toString(),
-        ThreadName.INTERNAL_SERVICE_RPC_SERVER.getName());
+        ThreadName.DATANODE_INTERNAL_RPC_SERVICE.getName());
   }
 }

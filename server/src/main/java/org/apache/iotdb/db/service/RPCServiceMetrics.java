@@ -44,7 +44,7 @@ public class RPCServiceMetrics implements IMetricSet {
             thriftServiceThread,
             AbstractThriftServiceThread::getActiveThreadCount,
             Tag.NAME.toString(),
-            ThreadName.RPC_SERVICE.getName());
+            ThreadName.CLIENT_RPC_SERVICE.getName());
   }
 
   @Override
@@ -54,6 +54,6 @@ public class RPCServiceMetrics implements IMetricSet {
             MetricType.GAUGE,
             Metric.THRIFT_ACTIVE_THREADS.toString(),
             Tag.NAME.toString(),
-            ThreadName.RPC_SERVICE.getName());
+            ThreadName.CLIENT_RPC_SERVICE.getName());
   }
 }

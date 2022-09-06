@@ -41,7 +41,7 @@ public class ConfigNodeRPCServiceMetrics implements IMetricSet {
         thriftServiceThread,
         AbstractThriftServiceThread::getActiveThreadCount,
         Tag.NAME.toString(),
-        ThreadName.CONFIG_NODE_RPC_SERVER.getName());
+        ThreadName.CONFIGNODE_RPC_SERVICE.getName());
   }
 
   @Override
@@ -50,6 +50,6 @@ public class ConfigNodeRPCServiceMetrics implements IMetricSet {
         MetricType.GAUGE,
         Metric.THRIFT_ACTIVE_THREADS.toString(),
         Tag.NAME.toString(),
-        ThreadName.CONFIG_NODE_RPC_SERVER.getName());
+        ThreadName.CONFIGNODE_RPC_SERVICE.getName());
   }
 }
