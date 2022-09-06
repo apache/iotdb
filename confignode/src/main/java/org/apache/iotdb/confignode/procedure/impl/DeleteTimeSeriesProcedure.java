@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.confignode.procedure.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -27,14 +35,28 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.DeleteTimeSeriesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class DeleteTimeSeriesProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteTimeSeriesState> {
@@ -44,6 +66,9 @@ public class DeleteTimeSeriesProcedure
   private static final int RETRY_THRESHOLD = 5;
 
   private PathPatternTree patternTree;
+  private byte[] patternTreeBytes;
+
+  private String requestMessage;
 
   public DeleteTimeSeriesProcedure() {
     super();
@@ -51,28 +76,186 @@ public class DeleteTimeSeriesProcedure
 
   public DeleteTimeSeriesProcedure(PathPatternTree patternTree) {
     super();
-    this.patternTree = patternTree;
+    setPatternTree(patternTree);
   }
 
   @Override
-  protected Flow executeFromState(
-      ConfigNodeProcedureEnv configNodeProcedureEnv, DeleteTimeSeriesState deleteTimeSeriesState)
+  protected Flow executeFromState(ConfigNodeProcedureEnv env, DeleteTimeSeriesState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
-    return null;
+    try {
+      switch (state) {
+        case CONSTRUCT_BLACK_LIST:
+          LOGGER.info("Construct black list of timeseries {}", requestMessage);
+          constructBlackList(env);
+          break;
+        case CLEAN_DATANODE_SCHEMA_CACHE:
+          LOGGER.info("Invalidate cache of timeseries {}", requestMessage);
+          invalidateCache(env);
+          break;
+        case DELETE_DATA:
+          LOGGER.info("Delete data of timeseries {}", requestMessage);
+          deleteData(env);
+          break;
+        case DELETE_TIMESERIES:
+          LOGGER.info("Delete timeseries schema of {}", requestMessage);
+          deleteTimeSeries(env);
+          return Flow.NO_MORE_STATE;
+      }
+    } catch (TException | IOException e) {
+      if (isRollbackSupported(state)) {
+        setFailure(new ProcedureException("Delete timeseries failed " + state));
+      } else {
+        LOGGER.error(
+            "Retry error trying to delete timeseries {}, state {}", requestMessage, state, e);
+        if (getCycles() > RETRY_THRESHOLD) {
+          setFailure(new ProcedureException("State stuck at " + state));
+        }
+      }
+    }
+    return Flow.HAS_MORE_STATE;
   }
 
-  private void constructBlackList(ConfigNodeProcedureEnv configNodeProcedureEnv) {}
+  private void constructBlackList(ConfigNodeProcedureEnv env) throws TException, IOException {
+    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+        getRelatedSchemaRegionGroup(env);
+    Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap =
+        getDataNodeRegionGroupMap(relatedSchemaRegionGroup);
 
-  private void invalidateCache(ConfigNodeProcedureEnv configNodeProcedureEnv) {}
+    for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
+        dataNodeConsensusGroupIdMap.entrySet()) {
+      List<TSStatus> statusList = new ArrayList<>();
+      AsyncDataNodeClientPool.getInstance()
+          .sendAsyncRequestToDataNodeWithRetry(
+              new TConstructSchemaBlackListReq(entry.getValue(), ByteBuffer.wrap(patternTreeBytes)),
+              Collections.singletonMap(entry.getKey().getDataNodeId(), entry.getKey()),
+              DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
+              statusList);
+      if (statusList.get(0).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // todo implement retry on another dataNode
+        LOGGER.error(
+            "Failed to construct black list of timeseries {} on {}",
+            requestMessage,
+            entry.getKey());
+        setFailure(new ProcedureException("Construct black list failed"));
+        return;
+      }
+    }
+    setNextState(DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE);
+  }
 
-  private void DeleteData(ConfigNodeProcedureEnv configNodeProcedureEnv) {}
+  private void invalidateCache(ConfigNodeProcedureEnv env) throws TException, IOException {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    List<TSStatus> statusList = new ArrayList<>();
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            new TInvalidateMatchedSchemaCacheReq(ByteBuffer.wrap(patternTreeBytes)),
+            dataNodeLocationMap,
+            DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+            statusList);
+    for (TSStatus status : statusList) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // todo implement retry on another dataNode
+        LOGGER.error("Failed to invalidate schema cache of timeseries {}", requestMessage);
+        setFailure(new ProcedureException("Invalidate schema cache failed"));
+        return;
+      }
+    }
+    setNextState(DeleteTimeSeriesState.DELETE_DATA);
+  }
 
-  private void DeleteTimeSeries(ConfigNodeProcedureEnv configNodeProcedureEnv) {}
+  private void deleteData(ConfigNodeProcedureEnv env) throws TException, IOException {
+    Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
+        getRelatedSchemaRegionGroup(env);
+    Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap =
+        getDataNodeRegionGroupMap(relatedDataRegionGroup);
+
+    for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
+        dataNodeConsensusGroupIdMap.entrySet()) {
+      List<TSStatus> statusList = new ArrayList<>();
+      AsyncDataNodeClientPool.getInstance()
+          .sendAsyncRequestToDataNodeWithRetry(
+              new TDeleteDataForDeleteTimeSeriesReq(
+                  entry.getValue(), ByteBuffer.wrap(patternTreeBytes)),
+              Collections.singletonMap(entry.getKey().getDataNodeId(), entry.getKey()),
+              DataNodeRequestType.DELETE_DATA_FOR_DELETE_TIMESERIES,
+              statusList);
+      if (statusList.get(0).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // todo implement retry on another dataNode
+        LOGGER.error(
+            "Failed to delete data of timeseries {} on {}", requestMessage, entry.getKey());
+        setFailure(new ProcedureException("Delete data failed"));
+        return;
+      }
+    }
+    setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES);
+  }
+
+  private void deleteTimeSeries(ConfigNodeProcedureEnv env) throws TException, IOException {
+    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+        getRelatedSchemaRegionGroup(env);
+    Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap =
+        getDataNodeRegionGroupMap(relatedSchemaRegionGroup);
+
+    for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
+        dataNodeConsensusGroupIdMap.entrySet()) {
+      List<TSStatus> statusList = new ArrayList<>();
+      AsyncDataNodeClientPool.getInstance()
+          .sendAsyncRequestToDataNodeWithRetry(
+              new TDeleteTimeSeriesReq(entry.getValue(), ByteBuffer.wrap(patternTreeBytes)),
+              Collections.singletonMap(entry.getKey().getDataNodeId(), entry.getKey()),
+              DataNodeRequestType.DELETE_TIMESERIES,
+              statusList);
+      if (statusList.get(0).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // todo implement retry on another dataNode
+        LOGGER.error("Failed to delete timeseries {} on {}", requestMessage, entry.getKey());
+        setFailure(new ProcedureException("Delete timeseries failed"));
+        return;
+      }
+    }
+  }
+
+  private Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
+      ConfigNodeProcedureEnv env) {
+    ConfigManager configManager = env.getConfigManager();
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        configManager.getSchemaPartition(patternTree).getSchemaPartitionTable();
+    List<TRegionReplicaSet> allRegionReplicaSets =
+        configManager.getPartitionManager().getAllReplicaSets();
+    Set<TConsensusGroupId> groupIdSet =
+        schemaPartitionTable.values().stream()
+            .flatMap(m -> m.values().stream())
+            .collect(Collectors.toSet());
+    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+      if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
+        filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+      }
+    }
+    return filteredRegionReplicaSets;
+  }
+
+  private Map<TDataNodeLocation, List<TConsensusGroupId>> getDataNodeRegionGroupMap(
+      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap) {
+    Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap = new HashMap<>();
+    regionReplicaSetMap
+        .values()
+        .forEach(
+            regionReplicaSet -> {
+              dataNodeConsensusGroupIdMap
+                  .computeIfAbsent(
+                      regionReplicaSet.getDataNodeLocations().get(0), k -> new ArrayList<>())
+                  .add(regionReplicaSet.getRegionId());
+            });
+    return dataNodeConsensusGroupIdMap;
+  }
 
   @Override
   protected void rollbackState(
       ConfigNodeProcedureEnv configNodeProcedureEnv, DeleteTimeSeriesState deleteTimeSeriesState)
-      throws IOException, InterruptedException, ProcedureException {}
+      throws IOException, InterruptedException, ProcedureException {
+    rollbackBlackList();
+  }
 
   private void rollbackBlackList() {}
 
@@ -100,6 +283,23 @@ public class DeleteTimeSeriesProcedure
     return patternTree;
   }
 
+  public void setPatternTree(PathPatternTree patternTree) {
+    this.patternTree = patternTree;
+    requestMessage = patternTree.getAllPathPatterns().toString();
+    preparePatternTreeBytesData();
+  }
+
+  private void preparePatternTreeBytesData() {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      patternTree.serialize(dataOutputStream);
+    } catch (IOException e) {
+
+    }
+    patternTreeBytes = byteArrayOutputStream.toByteArray();
+  }
+
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeInt(ProcedureFactory.ProcedureType.DELETE_TIMESERIES_PROCEDURE.ordinal());
@@ -110,7 +310,7 @@ public class DeleteTimeSeriesProcedure
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    patternTree = PathPatternTree.deserialize(byteBuffer);
+    setPatternTree(PathPatternTree.deserialize(byteBuffer));
   }
 
   @Override
