@@ -62,9 +62,11 @@ import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.protocol.SnapshotManagementRequest;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
+import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
+import org.apache.ratis.util.function.CheckedSupplier;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +80,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -148,6 +151,49 @@ class RatisConsensus implements IConsensus {
     server.close();
   }
 
+  /** launch a consensus write with retry mechanism */
+  private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
+      throws IOException {
+
+    Predicate<RaftClientReply> shouldRetry =
+        reply ->
+            !reply.isSuccess()
+                && (reply.getException() != null
+                    && reply.getException() instanceof ResourceUnavailableException);
+
+    final int maxRetryTimes = 3;
+    final long waitMillis = 500;
+
+    int retry = 0;
+    RaftClientReply reply = null;
+    while (retry < maxRetryTimes) {
+      retry++;
+
+      reply = caller.get();
+      if (!shouldRetry.test(reply)) {
+        return reply;
+      }
+      logger.debug("{} sending write request with retry = {} and reply = {}", this, retry, reply);
+
+      try {
+        Thread.sleep(waitMillis);
+      } catch (InterruptedException e) {
+        logger.warn("{} retry write sleep is interrupted: {}", this, e);
+        Thread.currentThread().interrupt();
+      }
+    }
+    return reply;
+  }
+
+  private RaftClientReply writeLocallyWithRetry(RaftClientRequest request) throws IOException {
+    return writeWithRetry(() -> server.submitClientRequest(request));
+  }
+
+  private RaftClientReply writeRemotelyWithRetry(RatisClient client, Message message)
+      throws IOException {
+    return writeWithRetry(() -> client.getRaftClient().io().send(message));
+  }
+
   /**
    * write will first send request to local server use method call if local server is not leader, it
    * will use RaftClient to send RPC to read leader
@@ -183,7 +229,7 @@ class RatisConsensus implements IConsensus {
     RaftPeer suggestedLeader = null;
     if (isLeader(consensusGroupId) && waitUntilLeaderReady(raftGroupId)) {
       try {
-        localServerReply = server.submitClientRequest(clientRequest);
+        localServerReply = writeLocallyWithRetry(clientRequest);
         if (localServerReply.isSuccess()) {
           ResponseMessage responseMessage = (ResponseMessage) localServerReply.getMessage();
           TSStatus writeStatus = (TSStatus) responseMessage.getContentHolder();
@@ -203,7 +249,7 @@ class RatisConsensus implements IConsensus {
     RatisClient client = null;
     try {
       client = getRaftClient(raftGroup);
-      RaftClientReply reply = client.getRaftClient().io().send(message);
+      RaftClientReply reply = writeRemotelyWithRetry(client, message);
       if (!reply.isSuccess()) {
         return failedWrite(new RatisRequestFailedException(reply.getException()));
       }
