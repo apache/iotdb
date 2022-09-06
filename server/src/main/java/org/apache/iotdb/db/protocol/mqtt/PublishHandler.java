@@ -64,16 +64,18 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onConnect(InterceptConnectMessage msg) {
-    try {
-      BasicOpenSessionResp basicOpenSessionResp =
-          SESSION_MANAGER.openSession(
-              msg.getUsername(),
-              new String(msg.getPassword()),
-              ZoneId.systemDefault().toString(),
-              TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
-      clientIdToSessionIdMap.put(msg.getClientID(), basicOpenSessionResp.getSessionId());
-    } catch (TException e) {
-      throw new RuntimeException(e);
+    if (!clientIdToSessionIdMap.containsKey(msg.getClientID())) {
+      try {
+        BasicOpenSessionResp basicOpenSessionResp =
+            SESSION_MANAGER.openSession(
+                msg.getUsername(),
+                new String(msg.getPassword()),
+                ZoneId.systemDefault().toString(),
+                TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+        clientIdToSessionIdMap.put(msg.getClientID(), basicOpenSessionResp.getSessionId());
+      } catch (TException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
