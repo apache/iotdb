@@ -102,7 +102,7 @@ public class ConfigNodeStartupCheck {
     // The ip of target ConfigNode couldn't be 0.0.0.0
     if (CONF.getTargetConfigNode().getIp().equals("0.0.0.0")) {
       throw new ConfigurationException(
-          "target_config_nodes", CONF.getTargetConfigNode().getIp(), "127.0.0.1 or ipv4 address");
+          "The ip address of any target_config_nodes couldn't be 0.0.0.0");
     }
   }
 

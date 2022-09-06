@@ -39,10 +39,18 @@ public class ConfigurationException extends IoTDBException {
     this.correctValue = correctValue;
   }
 
+  /**
+   * @param parameter The error parameter
+   * @param badValue The bad value
+   */
   public ConfigurationException(String parameter, String badValue) {
     super(
         String.format("Parameter %s can not be %s", parameter, badValue),
         TSStatusCode.CONFIG_ERROR.getStatusCode());
+  }
+
+  public ConfigurationException(String errorStr) {
+    super(errorStr, TSStatusCode.CONFIG_ERROR.getStatusCode());
   }
 
   public String getParameter() {

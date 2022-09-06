@@ -399,7 +399,8 @@ public class IoTDBStartCheck {
       }
       for (TEndPoint endPoint : targetConfigNodes) {
         if (endPoint.getIp().equals("0.0.0.0")) {
-          throw new ConfigurationException(TARGET_CONFIG_NODES, "0.0.0.0");
+          throw new ConfigurationException(
+              "The ip address of any target_config_nodes couldn't be 0.0.0.0");
         }
       }
     }
