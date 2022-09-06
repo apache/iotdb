@@ -327,7 +327,7 @@ public class TsFileIOWriter implements AutoCloseable {
     // create device -> TimeseriesMetaDataList Map
     for (Map.Entry<Path, List<IChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
       // for ordinary path
-      flushOneChunkMetadata(entry.getKey(), entry.getValue());
+      constructOneTimeseriesMetadata(entry.getKey(), entry.getValue(), true);
     }
 
     // construct TsFileMetadata and return
@@ -339,8 +339,11 @@ public class TsFileIOWriter implements AutoCloseable {
    *
    * @param path Path of chunk
    * @param chunkMetadataList List of chunkMetadata about path(previous param)
+   * @param needRecordInMap need to record the timeseries metadata in deviceTimeseriesMetadataMap
+   * @return the constructed TimeseriesMetadata
    */
-  private void flushOneChunkMetadata(Path path, List<IChunkMetadata> chunkMetadataList)
+  protected TimeseriesMetadata constructOneTimeseriesMetadata(
+      Path path, List<IChunkMetadata> chunkMetadataList, boolean needRecordInMap)
       throws IOException {
     // create TimeseriesMetaData
     PublicBAOS publicBAOS = new PublicBAOS();
@@ -367,9 +370,12 @@ public class TsFileIOWriter implements AutoCloseable {
             dataType,
             seriesStatistics,
             publicBAOS);
-    deviceTimeseriesMetadataMap
-        .computeIfAbsent(path.getDevice(), k -> new ArrayList<>())
-        .add(timeseriesMetadata);
+    if (needRecordInMap) {
+      deviceTimeseriesMetadataMap
+          .computeIfAbsent(path.getDevice(), k -> new ArrayList<>())
+          .add(timeseriesMetadata);
+    }
+    return timeseriesMetadata;
   }
 
   /**

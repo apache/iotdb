@@ -101,9 +101,9 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
       writer.sortAndFlushChunkMetadata();
       writer.tempOutput.flush();
 
-      ChunkMetadataExternalSortWindow window =
+      ChunkMetadataReadIterator window =
           writer
-          .new ChunkMetadataExternalSortWindow(
+          .new ChunkMetadataReadIterator(
               0,
               writer.chunkMetadataTempFile.length(),
               new LocalTsFileInput(writer.chunkMetadataTempFile.toPath()));
@@ -157,9 +157,9 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
             new AlignedChunkMetadata(currentTimeChunkMetadata, currentValueChunkMetadata));
       }
 
-      ChunkMetadataExternalSortWindow window =
+      ChunkMetadataReadIterator window =
           writer
-          .new ChunkMetadataExternalSortWindow(
+          .new ChunkMetadataReadIterator(
               0,
               writer.chunkMetadataTempFile.length(),
               new LocalTsFileInput(writer.chunkMetadataTempFile.toPath()));
@@ -226,9 +226,9 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
       writer.sortAndFlushChunkMetadata();
       writer.tempOutput.flush();
 
-      ChunkMetadataExternalSortWindow window =
+      ChunkMetadataReadIterator window =
           writer
-          .new ChunkMetadataExternalSortWindow(
+          .new ChunkMetadataReadIterator(
               0,
               writer.chunkMetadataTempFile.length(),
               new LocalTsFileInput(writer.chunkMetadataTempFile.toPath()));
