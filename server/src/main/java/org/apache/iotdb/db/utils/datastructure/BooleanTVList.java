@@ -35,6 +35,8 @@ import java.util.List;
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public abstract class BooleanTVList extends TVList {
+  // list of primitive array, add 1 when expanded -> Binary primitive array
+  // index relation: arrayIndex -> elementIndex
   protected List<boolean[]> values;
 
   BooleanTVList() {

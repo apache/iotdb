@@ -35,6 +35,8 @@ import java.util.List;
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public abstract class LongTVList extends TVList {
+  // list of primitive array, add 1 when expanded -> long primitive array
+  // index relation: arrayIndex -> elementIndex
   protected List<long[]> values;
 
   LongTVList() {

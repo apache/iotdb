@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+/**
+ * The interface refers to TimSort.java, and is used for sort the TVList Functions for tim_sort like
+ * merge, sort, binary_sort is implemented here as default, reuse code whenever possible.
+ */
 public interface TimSort {
+  /** when array size <= 32, it's better to use binarysort. */
   int SMALL_ARRAY_LENGTH = 32;
 
-  /**
-   * the same as the 'set' function in TVList, the reason is to avoid two equal functions.
-   *
-   * @param src
-   * @param dest
-   */
+  /** the same as the 'set' function in TVList, the reason is to avoid two equal functions. */
   void tim_set(int src, int dest);
 
   void setFromSorted(int src, int dest);
@@ -45,11 +45,16 @@ public interface TimSort {
 
   void clearSortedValue();
 
+  /** compare the timestamps in idx1 and idx2 */
   int compare(int idx1, int idx2);
 
   /** From TimSort.java */
   void reverseRange(int lo, int hi);
 
+  /**
+   * the entrance of tim_sort; 1. array_size <= 32, use binary sort. 2. recursively invoke merge
+   * sort.
+   */
   default void sort(int lo, int hi) {
     if (lo == hi) {
       return;
@@ -131,6 +136,7 @@ public interface TimSort {
     }
   }
 
+  /** merge arrays [lo, mid) [mid, hi] */
   default void merge(int lo, int mid, int hi) {
     // end of sorting buffer
     int tmpIdx = 0;

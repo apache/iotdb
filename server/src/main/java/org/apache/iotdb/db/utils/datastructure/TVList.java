@@ -54,9 +54,9 @@ public abstract class TVList implements WALEntryValue {
   protected int rowCount;
 
   protected boolean sorted = true;
+  protected long minTime;
   // record reference count of this tv list
   // currently this reference will only be increase because we can't know when to decrease it
-  protected long minTime;
   protected AtomicInteger referenceCount;
   private long version;
 

@@ -199,12 +199,8 @@ public class TimAlignedTVList extends AlignedTVList implements TimSort {
 
   @Override
   public void clear() {
-    rowCount = 0;
-    sorted = true;
-    minTime = Long.MAX_VALUE;
-    clearTime();
+    super.clear();
     clearSortedTime();
-    clearValue();
     clearSortedValue();
   }
 

@@ -140,6 +140,13 @@ public class TimLongTVList extends LongTVList implements TimSort {
     }
   }
 
+  @Override
+  public void clear() {
+    super.clear();
+    clearSortedTime();
+    clearSortedValue();
+  }
+
   public static TimLongTVList deserialize(DataInputStream stream) throws IOException {
     TimLongTVList tvList = new TimLongTVList();
     int rowCount = stream.readInt();
