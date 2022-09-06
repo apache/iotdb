@@ -148,6 +148,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void SetTTLPlanTest() throws IOException {
     SetTTLPlan req0 = new SetTTLPlan(Arrays.asList("root", "sg0"), Long.MAX_VALUE);
     SetTTLPlan req1 = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    System.out.println(req1);
     Assert.assertEquals(req0, req1);
   }
 
@@ -619,6 +620,7 @@ public class ConfigPhysicalPlanSerDeTest {
                 0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
     ApplyConfigNodePlan req1 =
         (ApplyConfigNodePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    System.out.println(req1.toString());
     Assert.assertEquals(req0, req1);
   }
 
@@ -644,6 +646,7 @@ public class ConfigPhysicalPlanSerDeTest {
     UpdateProcedurePlan reqNew =
         (UpdateProcedurePlan)
             ConfigPhysicalPlan.Factory.create(updateProcedurePlan.serializeToByteBuffer());
+    System.out.println(reqNew.getProcedure());
     Procedure proc = reqNew.getProcedure();
     Assert.assertEquals(proc, procedure);
   }

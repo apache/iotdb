@@ -157,12 +157,12 @@ public class RegionMigrateProcedure
     configNodeProcedureEnv.getSchedulerLock().lock();
     try {
       if (configNodeProcedureEnv.getRegionMigrateLock().tryLock(this)) {
-        LOG.info("{} acquire lock.", getProcId());
+        LOG.info("procedureId {} acquire lock.", getProcId());
         return ProcedureLockState.LOCK_ACQUIRED;
       }
       configNodeProcedureEnv.getRegionMigrateLock().waitProcedure(this);
 
-      LOG.info("{} wait for lock.", getProcId());
+      LOG.info("procedureId {} wait for lock.", getProcId());
       return ProcedureLockState.LOCK_EVENT_WAIT;
     } finally {
       configNodeProcedureEnv.getSchedulerLock().unlock();

@@ -55,6 +55,7 @@ public class RegionMigrateService implements IService {
   private static final int RETRY = 5;
 
   private static final int SLEEP_MILLIS = 5000;
+
   private RegionMigratePool regionMigratePool;
 
   private RegionMigrateService() {}
@@ -64,10 +65,10 @@ public class RegionMigrateService implements IService {
   }
 
   /**
-   * add a region peer
+   * submit AddRegionPeerTask
    *
    * @param req TMigrateRegionReq
-   * @return submit task succeed?
+   * @return if the submit task succeed
    */
   public synchronized boolean submitAddRegionPeerTask(TMigrateRegionReq req) {
 
@@ -86,10 +87,10 @@ public class RegionMigrateService implements IService {
   }
 
   /**
-   * remove a region peer
+   * submit RemoveRegionPeerTask
    *
    * @param req TMigrateRegionReq
-   * @return submit task succeed?
+   * @return if the submit task succeed
    */
   public synchronized boolean submitRemoveRegionPeerTask(TMigrateRegionReq req) {
 
