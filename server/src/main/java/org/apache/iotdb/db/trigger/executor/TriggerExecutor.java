@@ -17,14 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.trigger.exception;
+package org.apache.iotdb.db.trigger.executor;
 
-public class TriggerRegistrationException extends RuntimeException {
-  public TriggerRegistrationException(String message) {
-    super(message);
-  }
+import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.trigger.api.Trigger;
 
-  public TriggerRegistrationException(String message, Throwable cause) {
-    super(message, cause);
+public class TriggerExecutor {
+  private final TriggerInformation triggerInformation;
+
+  private final Trigger trigger;
+
+  public TriggerExecutor(TriggerInformation triggerInformation, Trigger trigger) {
+    this.triggerInformation = triggerInformation;
+    this.trigger = trigger;
   }
 }

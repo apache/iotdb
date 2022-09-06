@@ -249,7 +249,9 @@ struct TCreateTriggerReq {
   4: required bool usingURI,
   5: required byte triggerEvent,
   6: required byte triggerType
-  7: optional binary jarFile
+  7: required binary pathPattern,
+  8: required map<string, string> attributes,
+  9: optional binary jarFile
 }
 
 struct TDropTriggerReq {

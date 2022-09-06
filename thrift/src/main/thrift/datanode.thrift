@@ -176,6 +176,10 @@ struct TcreateTriggerInstanceReq {
   2: required binary jarFile
 }
 
+struct TactiveTriggerInstanceReq {
+  1: required string triggerName
+}
+
 struct TDropTriggerInstanceReq {
   1: required string triggerName
   2: required bool needToDeleteJarFile
@@ -263,11 +267,11 @@ service IDataNodeRPCService {
   common.TSStatus invalidatePartitionCache(TInvalidateCacheReq req)
 
   /**
-       * Config node will invalidate Schema Info cache.
-       *
-       * @param bool:isStorageGroup, string:fullPath
-       */
-    common.TSStatus invalidateSchemaCache(TInvalidateCacheReq req)
+     * Config node will invalidate Schema Info cache.
+     *
+     * @param bool:isStorageGroup, string:fullPath
+     */
+  common.TSStatus invalidateSchemaCache(TInvalidateCacheReq req)
 
   /**
      * Config node will delete a data/schema region of a certain storageGroup.
@@ -347,19 +351,26 @@ service IDataNodeRPCService {
    **/
   common.TSStatus dropFunction(TDropFunctionRequest req)
 
-   /**
-    * Config node will create a trigger instance on data node.
-    *
-    * @param TriggerInformation, jar file.
-    **/
+  /**
+   * Config node will create a trigger instance on data node.
+   *
+   * @param TriggerInformation, jar file.
+   **/
   common.TSStatus createTriggerInstance(TcreateTriggerInstanceReq req)
 
   /**
-     * Config node will drop a trigger on all online config nodes and data nodes.
-     *
-     * @param trigger name, whether need to delete jar
-     **/
-    common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
+   * Config node will active a trigger instance on data node.
+   *
+   * @param trigger name.
+   **/
+  common.TSStatus activeTriggerInstance(TactiveTriggerInstanceReq req)
+
+  /**
+    * Config node will drop a trigger on all online config nodes and data nodes.
+    *
+    * @param trigger name, whether need to delete jar
+    **/
+  common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
 
   /**
    * Config node will invalidate permission Info cache.

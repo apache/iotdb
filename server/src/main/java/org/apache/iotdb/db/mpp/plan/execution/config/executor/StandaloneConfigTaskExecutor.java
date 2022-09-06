@@ -25,8 +25,6 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
-import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupInfo;
@@ -39,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTa
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
@@ -225,20 +224,16 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createTrigger(
-      String triggerName,
-      String className,
-      String jarPath,
-      boolean usingURI,
-      TriggerEvent triggerEvent,
-      TriggerType triggerType,
-      PartialPath pathPattern) {
+      CreateTriggerStatement createTriggerStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
       // todo: implementation
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
       final String message =
-          String.format("Failed to create trigger %s, because %s.", triggerName, e.getMessage());
+          String.format(
+              "Failed to create trigger %s, because %s.",
+              createTriggerStatement.getTriggerName(), e.getMessage());
       LOGGER.error(message, e);
       future.setException(
           new IoTDBException(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));

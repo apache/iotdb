@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
 /** This Class used to save the specific information of one Trigger. */
 public class TriggerInformation {
@@ -36,6 +37,9 @@ public class TriggerInformation {
   private String triggerName;
   private String className;
   private String jarName;
+
+  private Map<String, String> attributes;
+
   private TTriggerState triggerState;
 
   /** indicate this Trigger is Stateful or Stateless */
@@ -51,6 +55,7 @@ public class TriggerInformation {
       String triggerName,
       String className,
       String jarName,
+      Map<String, String> attributes,
       TTriggerState triggerState,
       boolean isStateful,
       TDataNodeLocation dataNodeLocation) {
@@ -58,6 +63,7 @@ public class TriggerInformation {
     this.triggerName = triggerName;
     this.className = className;
     this.jarName = jarName;
+    this.attributes = attributes;
     this.triggerState = triggerState;
     this.isStateful = isStateful;
     this.dataNodeLocation = dataNodeLocation;
@@ -75,6 +81,7 @@ public class TriggerInformation {
     ReadWriteIOUtils.write(triggerName, outputStream);
     ReadWriteIOUtils.write(className, outputStream);
     ReadWriteIOUtils.write(jarName, outputStream);
+    ReadWriteIOUtils.write(attributes, outputStream);
     ReadWriteIOUtils.write(triggerState.getValue(), outputStream);
     ReadWriteIOUtils.write(isStateful, outputStream);
     if (isStateful) {
@@ -88,6 +95,7 @@ public class TriggerInformation {
     triggerInformation.triggerName = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.className = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.jarName = ReadWriteIOUtils.readString(byteBuffer);
+    triggerInformation.attributes = ReadWriteIOUtils.readMap(byteBuffer);
     triggerInformation.triggerState =
         TTriggerState.findByValue(ReadWriteIOUtils.readInt(byteBuffer));
     boolean isStateful = ReadWriteIOUtils.readBool(byteBuffer);
