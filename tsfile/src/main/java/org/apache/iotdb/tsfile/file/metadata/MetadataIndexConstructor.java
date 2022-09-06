@@ -81,6 +81,11 @@ public class MetadataIndexConstructor {
               measurementMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
     }
 
+    return checkAndBuildLevelIndex(deviceMetadataIndexMap, out);
+  }
+
+  public static MetadataIndexNode checkAndBuildLevelIndex(
+      Map<String, MetadataIndexNode> deviceMetadataIndexMap, TsFileOutput out) throws IOException {
     // if not exceed the max child nodes num, ignore the device index and directly point to the
     // measurement
     if (deviceMetadataIndexMap.size() <= config.getMaxDegreeOfIndexNode()) {

@@ -53,6 +53,7 @@ import java.util.Queue;
 import java.util.TreeMap;
 
 import static org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor.addCurrentIndexNodeToQueue;
+import static org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor.checkAndBuildLevelIndex;
 import static org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor.generateRootNode;
 
 public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
@@ -198,6 +199,13 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
 
     // read in the chunk metadata, and construct the index tree
     readChunkMetadataAndConstructIndexTree();
+
+    // write magic string
+    out.write(MAGIC_STRING_BYTES);
+
+    // close file
+    out.close();
+    canWrite = false;
   }
 
   private void readChunkMetadataAndConstructIndexTree() throws IOException {
@@ -223,6 +231,7 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
     BloomFilter filter =
         BloomFilter.getEmptyBloomFilter(
             TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(), pathCount);
+
     while (iterator.hasNextChunkMetadata()) {
       // read in all chunk metadata of one series
       // construct the timeseries metadata for this series
@@ -259,38 +268,7 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
       timeseriesMetadata.serializeTo(out.wrapAsStream());
     }
 
-    MetadataIndexNode metadataIndex = null;
-    // if not exceed the max child nodes num, ignore the device index and directly point to the
-    // measurement
-    if (deviceMetadataIndexMap.size() <= config.getMaxDegreeOfIndexNode()) {
-      MetadataIndexNode metadataIndexNode =
-          new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
-      for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
-        metadataIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
-        entry.getValue().serializeTo(out.wrapAsStream());
-      }
-      metadataIndexNode.setEndOffset(out.getPosition());
-      metadataIndex = metadataIndexNode;
-    } else {
-      // else, build level index for devices
-      Queue<MetadataIndexNode> deviceMetadataIndexQueue = new ArrayDeque<>();
-      currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
-
-      for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
-        // when constructing from internal node, each node is related to an entry
-        if (currentIndexNode.isFull()) {
-          addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadataIndexQueue, out);
-          currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
-        }
-        currentIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
-        entry.getValue().serializeTo(out.wrapAsStream());
-      }
-      addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadataIndexQueue, out);
-      MetadataIndexNode deviceMetadataIndexNode =
-          generateRootNode(deviceMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_DEVICE);
-      deviceMetadataIndexNode.setEndOffset(out.getPosition());
-      metadataIndex = deviceMetadataIndexNode;
-    }
+    MetadataIndexNode metadataIndex = checkAndBuildLevelIndex(deviceMetadataIndexMap, out);
 
     TsFileMetadata tsFileMetadata = new TsFileMetadata();
     tsFileMetadata.setMetadataIndex(metadataIndex);
@@ -301,13 +279,6 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
 
     // write TsFileMetaData size
     ReadWriteIOUtils.write(size, out.wrapAsStream());
-
-    // write magic string
-    out.write(MAGIC_STRING_BYTES);
-
-    // close file
-    out.close();
-    canWrite = false;
   }
 
   /**
