@@ -30,11 +30,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class DeleteTimeSeriesNode extends PlanNode {
+public class RollbackSchemaBlackListNode extends PlanNode {
 
   private final PathPatternTree patternTree;
 
-  public DeleteTimeSeriesNode(PlanNodeId id, PathPatternTree patternTree) {
+  public RollbackSchemaBlackListNode(PlanNodeId id, PathPatternTree patternTree) {
     super(id);
     this.patternTree = patternTree;
   }
@@ -53,12 +53,12 @@ public class DeleteTimeSeriesNode extends PlanNode {
 
   @Override
   public PlanNode clone() {
-    return new DeleteTimeSeriesNode(getPlanNodeId(), patternTree);
+    return new RollbackSchemaBlackListNode(getPlanNodeId(), patternTree);
   }
 
   @Override
   public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
+    return 0;
   }
 
   @Override
@@ -68,29 +68,24 @@ public class DeleteTimeSeriesNode extends PlanNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitDeleteTimeseries(this, context);
+    return visitor.visitRollbackSchemaBlackList(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.DELETE_TIMESERIES.serialize(byteBuffer);
+    PlanNodeType.ROLLBACK_SCHEMA_BLACK_LIST_NODE.serialize(byteBuffer);
     patternTree.serialize(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.DELETE_TIMESERIES.serialize(stream);
+    PlanNodeType.ROLLBACK_SCHEMA_BLACK_LIST_NODE.serialize(stream);
     patternTree.serialize(stream);
   }
 
-  public static DeleteTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
-    PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new DeleteTimeSeriesNode(planNodeId, patternTree);
-  }
-
-  public String toString() {
-    return String.format(
-        "DeleteTimeseriesNode-%s: %s. Region: %s", getPlanNodeId(), patternTree, "Not Assigned");
+  public static RollbackSchemaBlackListNode deserialize(ByteBuffer buffer) {
+    PathPatternTree patternTree = PathPatternTree.deserialize(buffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
+    return new RollbackSchemaBlackListNode(planNodeId, patternTree);
   }
 }

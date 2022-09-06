@@ -215,25 +215,36 @@ struct TUpdateTemplateReq{
 }
 
 struct TConstructSchemaBlackListReq{
-  1: required list<i32> schemaRegionIdList
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
 }
 
 struct TRollbackSchemaBlackListReq{
-  1: required list<i32> schemaRegionIdList
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
 }
 
 struct TInvalidateMatchedSchemaCacheReq{
-    1: required binary pathPatternTree
-}
-
-struct TDeleteDataForDeleteTimeSeriesReq{
   1: required binary pathPatternTree
 }
 
+struct TFetchSchemaBlackListReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TFetchSchemaBlackListResp{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TDeleteDataForDeleteTimeSeriesReq{
+  1: required list<common.TConsensusGroupId> dataRegionIdList
+  2: required binary pathPatternTree
+}
+
 struct TDeleteTimeSeriesReq{
-  1: required list<i32> schemaRegionIdList
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
 }
 
@@ -436,6 +447,13 @@ service IDataNodeRPCService {
    * @param binary: pathPatternTree
    */
   common.TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req)
+
+  /**
+   * Config node will fetch the schema info in black list.
+   *
+   * @param binary: pathPatternTree
+   */
+  TFetchSchemaBlackListResp fetchSchemaBlackList(TFetchSchemaBlackListReq req)
 
   /**
    * Config node inform this dataNode to execute a distribution data deleion mpp task

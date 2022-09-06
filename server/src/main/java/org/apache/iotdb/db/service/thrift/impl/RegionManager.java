@@ -174,6 +174,38 @@ public class RegionManager {
     }
   }
 
+  public TSStatus executeSchemaPlanNode(SchemaRegionId schemaRegionId, PlanNode planNode) {
+    ConsensusWriteResponse writeResponse =
+        executePlanNodeInConsensusLayer(schemaRegionId, planNode);
+    TSStatus status = writeResponse.getStatus();
+    if (status == null) {
+      LOGGER.error(
+          "Something wrong happened while calling consensus layer's write API.",
+          writeResponse.getException());
+      return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR);
+    }
+    return status;
+  }
+
+  public TSStatus executeDeleteDataForDeleteTimeSeries(
+      DataRegionId dataRegionId, PlanNode planNode) {
+    dataRegionLockMap.get(dataRegionId).writeLock().lock();
+    try {
+      ConsensusWriteResponse writeResponse =
+          executePlanNodeInConsensusLayer(dataRegionId, planNode);
+      TSStatus status = writeResponse.getStatus();
+      if (status == null) {
+        LOGGER.error(
+            "Something wrong happened while calling consensus layer's write API.",
+            writeResponse.getException());
+        return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR);
+      }
+      return status;
+    } finally {
+      dataRegionLockMap.get(dataRegionId).writeLock().unlock();
+    }
+  }
+
   public TSStatus createSchemaRegion(TRegionReplicaSet regionReplicaSet, String storageGroup) {
     TSStatus tsStatus;
     try {

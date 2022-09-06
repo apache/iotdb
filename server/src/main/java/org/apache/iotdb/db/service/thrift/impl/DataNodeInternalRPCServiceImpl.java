@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.consensus.common.Peer;
@@ -53,13 +54,19 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.metrics.MetricService;
@@ -84,6 +91,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
@@ -113,6 +122,8 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -270,7 +281,59 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus constructSchemaBlackList(TConstructSchemaBlackListReq req) throws TException {
+    PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      status =
+          regionManager.executeSchemaPlanNode(
+              new SchemaRegionId(consensusGroupId.getId()),
+              new ConstructSchemaBlackListNode(new PlanNodeId(""), patternTree));
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  @Override
+  public TSStatus rollbackSchemaBlackList(TRollbackSchemaBlackListReq req) throws TException {
+    PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      status =
+          regionManager.executeSchemaPlanNode(
+              new SchemaRegionId(consensusGroupId.getId()),
+              new RollbackSchemaBlackListNode(new PlanNodeId(""), patternTree));
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  @Override
   public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req)
+      throws TException {
+    return null;
+  }
+
+  @Override
+  public TFetchSchemaBlackListResp fetchSchemaBlackList(TFetchSchemaBlackListReq req)
       throws TException {
     return null;
   }
@@ -278,12 +341,49 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus deleteDataForDeleteTimeSeries(TDeleteDataForDeleteTimeSeriesReq req)
       throws TException {
-    return null;
+    PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    List<PartialPath> pathList = patternTree.getAllPathPatterns();
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    for (TConsensusGroupId consensusGroupId : req.getDataRegionIdList()) {
+      status =
+          regionManager.executeDeleteDataForDeleteTimeSeries(
+              new DataRegionId(consensusGroupId.getId()),
+              new DeleteDataNode(new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE));
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
-    return null;
+    PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    List<TSStatus> failureList = new ArrayList<>();
+    TSStatus status;
+    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      status =
+          regionManager.executeSchemaPlanNode(
+              new SchemaRegionId(consensusGroupId.getId()),
+              new DeleteTimeSeriesNode(new PlanNodeId(""), patternTree));
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failureList.add(status);
+      }
+    }
+
+    if (!failureList.isEmpty()) {
+      return RpcUtils.getStatus(failureList);
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   @Override
@@ -460,16 +560,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         break;
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-  }
-
-  @Override
-  public TSStatus constructSchemaBlackList(TConstructSchemaBlackListReq req) throws TException {
-    return null;
-  }
-
-  @Override
-  public TSStatus rollbackSchemaBlackList(TRollbackSchemaBlackListReq req) throws TException {
-    return null;
   }
 
   @Override
