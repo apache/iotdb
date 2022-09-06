@@ -19,7 +19,7 @@
 
 -->
 
-# 结果集空值过滤
+## 结果集空值过滤
 
 在实际应用中，用户可能希望对查询的结果集中某些存在空值的行进行过滤。在 IoTDB 中，可以使用  `WITHOUT NULL`  子句对结果集中的空值进行过滤，有两种过滤策略：`WITHOUT NULL ANY`和`WITHOUT NULL ALL`。不仅如此， `WITHOUT NULL`  子句支持指定相应列进行过滤。
 
@@ -27,7 +27,7 @@
 > 
 > WITHOUT NULL ALL: 指定的列集中，所有列都为NULL,才满足条件进行过滤
 
-## 不指定列
+### 不指定列
 
 > 默认就是对结果集中的所有列生效，即指定的列集为结果集中的所有列
 
@@ -43,7 +43,7 @@ select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 select * from root.ln.** where group by ([1,10), 2ms) WITHOUT NULL ALL
 ```
 
-## 指定列
+### 指定列
 
 > 只对指定的列集生效
 
@@ -66,7 +66,7 @@ select * from root.test.sg1 without null all (s1, usag)
 select s1 + s2, s1 - s2, s1 * s2, s1 / s2, s1 % s2 from root.test.sg1 without null all (s1+s2, s2)
 ```
 
-### 原始数据查询
+#### 原始数据查询
 
 1. 如果查询的结果集中, root.ln.sg1.s1这一列如果为null,则过滤掉该行
 
@@ -86,7 +86,7 @@ select * from root.ln.sg1 WITHOUT NULL ANY(s1, s2)
 select * from root.ln.sg1 WITHOUT NULL ALL(s1, s2)
 ```
 
-### 带表达式查询
+#### 带表达式查询
 
 指定的列可以为表达式
 
@@ -102,7 +102,7 @@ select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root
 select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null any (s2+s4, s2)
 ``` 
 
-### 别名
+#### 别名
 
 指定的列可以为别名
 
@@ -122,13 +122,13 @@ select s1, sin(s2) + cos(s2) as t1, cos(sin(s2 + s4) + s2) as t2 from root.test.
 select s1 as d, sin(s1), cos(s1), tan(s1) as t, s2 from root.test.sg1 without null all(d,  tan(s1), t) limit 5
 ```
 
-### 带函数查询
+#### 带函数查询
 
 ```sql
 select s1, sin(s2) + cos(s2), cos(sin(s2 + s4) + s2) from root.test.sg1 without null all (sin(s2) + cos(s2), cos(sin(s2 + s4) + s2))
 ```
 
-### 按设备对齐查询
+#### 按设备对齐查询
 
 ```sql
 select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null all(last_value(s2), last_value(s3)) align by device
@@ -155,7 +155,7 @@ It costs 0.007s
 select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null all(last_value(`root.sg1.d1.s3`)) align by device
 ```
 
-### 聚合查询
+#### 聚合查询
 
 ```sql
 select avg(s4), sum(s2) from root.test.sg1 group by ([1,10), 2ms) without null all(sum(s2))
@@ -165,7 +165,7 @@ select avg(s4), sum(s2) from root.test.sg1 group by ([1,10), 2ms) without null a
 select avg(s4), sum(s2), count(s3) from root.test.sg1 group by ([1,10), 2ms) without null all(avg(s4), sum(s2))
 ```
 
-### 指定全路径列名
+#### 指定全路径列名
 
 假设下面的查询输出的结果列为"root.test.sg1.s2", "root.test.sg1.s3", "root.test.sg2.s2", "root.test.sg2.s3"四个，可以使用全路径名指定相应列进行过滤，比如下面的例子：
 
@@ -181,7 +181,7 @@ select s2, s3 from root.test.** without null all(`root.test.sg1.s2`, `root.test.
 select s2, s3 from root.test.** without null all(`root.test.sg1.s2`, s3)
 ```
 
-### 对齐序列查询
+#### 对齐序列查询
 
 1. 可以指定`without null` 子句后的列名为对齐序列列名
 
