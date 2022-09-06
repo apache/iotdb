@@ -39,7 +39,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
@@ -863,6 +862,16 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return counter.getCount();
   }
 
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
+      throws MetadataException {
+    CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
+    counter.setPrefixMatch(isPrefixMatch);
+    counter.setTemplateMap(templateMap);
+    counter.traverse();
+    return counter.getCount();
+  }
+
   /**
    * Get the count of timeseries matching the given path.
    *
@@ -1350,8 +1359,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           @Override
           protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
               throws MetadataException {
-            // shall not traverse nodes inside template
-            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
+            // shall not traverse nodes inside template or measurement ones
+            if (!node.getPartialPath().equals(getCurrentPartialPath(node))
+                || node.isMeasurement()) {
               return true;
             }
 
@@ -1387,8 +1397,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
           @Override
           protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-            // shall not traverse nodes inside template
-            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
+            // shall not traverse nodes inside template or measurement ones
+            if (!node.getPartialPath().equals(getCurrentPartialPath(node))
+                || node.isMeasurement()) {
               return true;
             }
 
@@ -1482,7 +1493,10 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       if (cur.isEntity()) {
         entityMNode = cur.getAsEntityMNode();
       } else {
-        entityMNode = MNodeUtils.setToEntity(cur);
+        entityMNode = store.setToEntity(cur);
+        if (entityMNode.isStorageGroup()) {
+          this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+        }
       }
     }
 
@@ -1507,7 +1521,10 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     if (cur.isEntity()) {
       entityMNode = cur.getAsEntityMNode();
     } else {
-      entityMNode = MNodeUtils.setToEntity(cur);
+      entityMNode = store.setToEntity(cur);
+      if (entityMNode.isStorageGroup()) {
+        this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
+      }
     }
 
     if (!entityMNode.isAligned()) {
@@ -1529,6 +1546,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
           @Override
           protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+            if (node.isMeasurement()) {
+              return true;
+            }
             if (node.getSchemaTemplateId() != NON_TEMPLATE
                 && templateId != ALL_TEMPLATE
                 && node.getSchemaTemplateId() != templateId) {

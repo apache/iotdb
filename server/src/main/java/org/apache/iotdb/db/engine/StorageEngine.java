@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
@@ -798,7 +799,7 @@ public class StorageEngine implements IService {
    * @throws StorageEngineException StorageEngineException
    */
   public void upgradeAll() throws StorageEngineException {
-    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException(
           "Current system mode is read only, does not support file upgrade");
     }
@@ -839,7 +840,7 @@ public class StorageEngine implements IService {
    * @throws StorageEngineException StorageEngineException
    */
   public void mergeAll() throws StorageEngineException {
-    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
 

@@ -76,7 +76,6 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.external.api.ISeriesNumerLimiter;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -172,7 +171,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
-  private SchemaSyncManager syncManager = SchemaSyncManager.getInstance();
 
   private final ISeriesNumerLimiter seriesNumerLimiter;
 
@@ -538,9 +536,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           }
           plan.setTagOffset(offset);
           logWriter.createTimeseries(plan);
-          if (syncManager.isEnableSync()) {
-            syncManager.syncMetadataPlan(plan);
-          }
         }
         if (offset != -1) {
           leafMNode.setOffset(offset);
@@ -708,9 +703,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           }
           plan.setTagOffsets(tagOffsets);
           logWriter.createAlignedTimeseries(plan);
-          if (syncManager.isEnableSync()) {
-            syncManager.syncMetadataPlan(plan);
-          }
         }
         tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
@@ -783,9 +775,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         }
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);
-        if (syncManager.isEnableSync()) {
-          syncManager.syncMetadataPlan(deleteTimeSeriesPlan);
-        }
       }
     } catch (DeleteFailedException e) {
       failedNames.add(e.getName());
@@ -898,6 +887,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
+  }
+
+  @Override
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   @Override

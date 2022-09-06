@@ -50,4 +50,4 @@ data_region_num
 
 推荐值为[data region number] = [CPU core number] / [user-defined storage group number]
 
-参考[配置手册](../Reference/Config-Manual.md)以获取更多信息。
+参考[配置手册](../Reference/DataNode-Config-Manual.md)以获取更多信息。

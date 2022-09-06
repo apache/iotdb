@@ -55,7 +55,7 @@ fill(previous)
 在这里，我们举一个使用 Previous 方法填充空值的示例。 SQL 语句如下：
 
 ```sql
-select temperature, status from root.sgcc.wf03.wt01 where time => 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000
+select temperature, status from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000
 ```
 如果我们不使用任何填充方式，原始的查询结果如下：
 
@@ -76,7 +76,7 @@ Total line number = 4
 
 如果我们使用previous填充， SQL 语句如下：
 ```sql
-select temperature from root.sgcc.wf03.wt01 where time => 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(previous)
+select temperature from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(previous)
 ```
 
 previous填充后的结果如下：
@@ -110,7 +110,7 @@ fill(linear)
 在这里，我们举一个使用线性方法填充空值的示例。 SQL 语句如下：
 
 ```sql
-select temperature from root.sgcc.wf03.wt01 where time => 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(linear)
+select temperature from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(linear)
 ```
 
 线性填充后的结果如下：

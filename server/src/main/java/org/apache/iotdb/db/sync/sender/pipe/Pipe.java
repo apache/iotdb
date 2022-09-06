@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
+import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.sync.transport.client.ISyncClient;
 
 /**
@@ -106,6 +107,17 @@ public interface Pipe {
    * be committed yet.
    */
   void commit();
+
+  /**
+   * Get {@linkplain ISyncManager} by dataRegionId. If ISyncManager does not exist, it will be
+   * created automatically.
+   *
+   * @param dataRegionId string of {@linkplain org.apache.iotdb.commons.consensus.DataRegionId}
+   * @return ISyncManager
+   */
+  ISyncManager getOrCreateSyncManager(String dataRegionId);
+
+  void deleteSyncManager(String dataRegionId);
 
   // a new pipe should be stop status
   enum PipeStatus {

@@ -41,7 +41,7 @@ public class NodeHeartbeatSample {
   public NodeHeartbeatSample(THeartbeatResp heartbeatResp, long receiveTimestamp) {
     this.sendTimestamp = heartbeatResp.getHeartbeatTimestamp();
     this.receiveTimestamp = receiveTimestamp;
-    this.status = NodeStatus.valueOf(heartbeatResp.getStatus());
+    this.status = NodeStatus.parse(heartbeatResp.getStatus());
     this.cpu = heartbeatResp.getCpu();
     this.memory = heartbeatResp.getMemory();
   }

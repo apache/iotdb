@@ -33,7 +33,7 @@ IoTDB supports the following data types:
 * TEXT (String)
 
 
-The time series of **FLOAT** and **DOUBLE** type can specify (MAX\_POINT\_NUMBER, see [this page](../Reference/SQL-Reference.md) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](Encoding.md) or [TS\_2DIFF](Encoding.md). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](../Reference/Config-Manual.md) in the configuration file `iotdb-datanode.properties`.
+The time series of **FLOAT** and **DOUBLE** type can specify (MAX\_POINT\_NUMBER, see [this page](../Reference/SQL-Reference.md) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](Encoding.md) or [TS\_2DIFF](Encoding.md). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](../Reference/DataNode-Config-Manual.md) in the configuration file `iotdb-datanode.properties`.
 
 * For Float data value, The data range is (-Integer.MAX_VALUE, Integer.MAX_VALUE), rather than Float.MAX_VALUE, and the max_point_number is 19, caused by the limition of function Math.round(float) in Java.
 * For Double data value, The data range is (-Long.MAX_VALUE, Long.MAX_VALUE), rather than Double.MAX_VALUE, and the max_point_number is 19, caused by the limition of function Math.round(double) in Java (Long.MAX_VALUE=9.22E18).

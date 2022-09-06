@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -67,6 +68,8 @@ import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
@@ -85,7 +88,8 @@ import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
+import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -271,9 +275,6 @@ public class DataRegion {
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
-
-  /** used to collect TsFiles in this virtual storage group */
-  private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
 
   /**
    * constrcut a storage group processor
@@ -748,8 +749,9 @@ public class DataRegion {
     TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
     if (!recoverPerformer.canWrite()) {
       // cannot write, just close it
-      if (tsFileSyncManager.isEnableSync()) {
-        tsFileSyncManager.collectRealTimeTsFile(tsFileResource.getTsFile());
+      for (ISyncManager syncManager :
+          SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
+        syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
       }
       try {
         tsFileResource.close();
@@ -1479,7 +1481,7 @@ public class DataRegion {
         logger.error(
             "disk space is insufficient when creating TsFile processor, change system mode to read-only",
             e);
-        IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
         break;
       } catch (IOException e) {
         if (retryCnt < 3) {
@@ -1488,7 +1490,7 @@ public class DataRegion {
         } else {
           logger.error(
               "meet IOException when creating TsFileProcessor, change system mode to error", e);
-          IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
+          CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
           break;
         }
       }
@@ -2184,7 +2186,7 @@ public class DataRegion {
    * @param pattern Must be a pattern start with a precise device path
    * @param startTime
    * @param endTime
-   * @param planIndex
+   * @param searchIndex
    * @param timePartitionFilter
    * @throws IOException
    */
@@ -2192,7 +2194,7 @@ public class DataRegion {
       PartialPath pattern,
       long startTime,
       long endTime,
-      long planIndex,
+      long searchIndex,
       TimePartitionFilter timePartitionFilter)
       throws IOException {
     // If there are still some old version tsfiles, the delete won't succeeded.
@@ -2224,7 +2226,7 @@ public class DataRegion {
 
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
-          logDeleteInWAL(startTime, endTime, pattern, timePartitionFilter);
+          logDeletionInWAL(startTime, endTime, searchIndex, pattern, timePartitionFilter);
 
       for (WALFlushListener walFlushListener : walListeners) {
         if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
@@ -2286,6 +2288,42 @@ public class DataRegion {
           && (timePartitionFilter == null
               || timePartitionFilter.satisfy(storageGroupName, entry.getKey()))) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteInWAL(deletionPlan);
+        walFlushListeners.add(walFlushListener);
+      }
+    }
+    return walFlushListeners;
+  }
+
+  private List<WALFlushListener> logDeletionInWAL(
+      long startTime,
+      long endTime,
+      long searchIndex,
+      PartialPath path,
+      TimePartitionFilter timePartitionFilter) {
+    long timePartitionStartId = StorageEngine.getTimePartition(startTime);
+    long timePartitionEndId = StorageEngine.getTimePartition(endTime);
+    List<WALFlushListener> walFlushListeners = new ArrayList<>();
+    if (config.getWalMode() == WALMode.DISABLE) {
+      return walFlushListeners;
+    }
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(new PlanNodeId(""), Collections.singletonList(path), startTime, endTime);
+    deleteDataNode.setSearchIndex(searchIndex);
+    for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
+      if (timePartitionStartId <= entry.getKey()
+          && entry.getKey() <= timePartitionEndId
+          && (timePartitionFilter == null
+              || timePartitionFilter.satisfy(storageGroupName, entry.getKey()))) {
+        WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
+        walFlushListeners.add(walFlushListener);
+      }
+    }
+    for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
+      if (timePartitionStartId <= entry.getKey()
+          && entry.getKey() <= timePartitionEndId
+          && (timePartitionFilter == null
+              || timePartitionFilter.satisfy(storageGroupName, entry.getKey()))) {
+        WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
       }
     }
@@ -2375,8 +2413,9 @@ public class DataRegion {
         tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
       }
 
-      if (tsFileSyncManager.isEnableSync()) {
-        tsFileSyncManager.collectRealTimeDeletion(deletion, storageGroupName);
+      for (ISyncManager syncManager :
+          SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
+        syncManager.syncRealTimeDeletion(deletion);
       }
 
       // add a record in case of rollback
@@ -3638,14 +3677,15 @@ public class DataRegion {
   /**
    * Used to collect history TsFiles(i.e. the tsfile whose memtable == null).
    *
+   * @param syncManager ISyncManager which invokes to collect history TsFile
    * @param dataStartTime only collect history TsFiles which contains the data after the
    *     dataStartTime
    * @return A list, which contains TsFile path
    */
-  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
+  public List<File> collectHistoryTsFileForSync(ISyncManager syncManager, long dataStartTime) {
     writeLock("Collect data for sync");
     try {
-      return tsFileManager.collectHistoryTsFileForSync(dataStartTime);
+      return tsFileManager.collectHistoryTsFileForSync(syncManager, dataStartTime);
     } finally {
       writeUnlock();
     }

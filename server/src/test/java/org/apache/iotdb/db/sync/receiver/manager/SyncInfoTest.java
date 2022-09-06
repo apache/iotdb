@@ -20,7 +20,7 @@ package org.apache.iotdb.db.sync.receiver.manager;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.common.SyncInfo;
@@ -72,10 +72,10 @@ public class SyncInfoTest {
       } catch (PipeException e) {
         // throw exception because only one pipe is allowed now
       }
-      syncInfo.operatePipe(pipe1, Operator.OperatorType.DROP_PIPE);
+      syncInfo.operatePipe(pipe1, StatementType.DROP_PIPE);
       syncInfo.addPipe(new CreatePipePlan(pipe2, "demo"), createdTime2);
-      syncInfo.operatePipe(pipe2, Operator.OperatorType.STOP_PIPE);
-      syncInfo.operatePipe(pipe2, Operator.OperatorType.START_PIPE);
+      syncInfo.operatePipe(pipe2, StatementType.STOP_PIPE);
+      syncInfo.operatePipe(pipe2, StatementType.START_PIPE);
       Assert.assertEquals(2, syncInfo.getAllPipeInfos().size());
       Assert.assertEquals(1, syncInfo.getAllPipeSink().size());
       PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");

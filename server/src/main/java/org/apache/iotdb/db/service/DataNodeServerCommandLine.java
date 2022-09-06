@@ -92,7 +92,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
 
     // we start IoTDB kernel first. then we start the cluster module.
     if (MODE_START.equals(mode)) {
-      dataNode.doAddNode(args);
+      dataNode.doAddNode();
     } else if (MODE_REMOVE.equals(mode)) {
       doRemoveNode(args);
     } else {

@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -84,12 +83,6 @@ public class IoTDBConfig {
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
-  /** Shutdown system or set it to read-only mode when unrecoverable error occurs. */
-  private boolean allowReadOnlyWhenErrorsOccur = true;
-
-  /** Status of current system. */
-  private volatile NodeStatus status = NodeStatus.Running;
-
   /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
 
@@ -133,7 +126,7 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /** Memory allocated for the write process */
-  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 4 / 10;
+  private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 4 / 10;
 
   /** Memory allocated for the read process */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
@@ -151,6 +144,12 @@ public class IoTDBConfig {
 
   /** Reject proportion for system */
   private double rejectProportion = 0.8;
+
+  /** The proportion of write memory for memtable */
+  private double writeProportion = 0.8;
+
+  /** The proportion of write memory for compaction */
+  private double compactionProportion = 0.2;
 
   /** If storage group increased more than this threshold, report to system. Unit: byte */
   private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
@@ -622,9 +621,6 @@ public class IoTDBConfig {
   /** TEXT encoding when creating schema automatically is enabled */
   private TSEncoding defaultTextEncoding = TSEncoding.PLAIN;
 
-  /** How much memory (in byte) can be used by a single merge task. */
-  private long crossCompactionMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.1);
-
   /** How many threads will be set up to perform upgrade tasks. */
   private int upgradeThreadNum = 1;
 
@@ -914,6 +910,15 @@ public class IoTDBConfig {
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
+  /** the maximum number of clients that can be applied for a node's InternalService */
+  private int maxConnectionForInternalService = 100;
+
+  /**
+   * the maximum number of clients that can be idle for a node's InternalService. When the number of
+   * idle clients on a node exceeds this number, newly returned clients will be released
+   */
+  private int coreConnectionForInternalService = 100;
+
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
@@ -957,6 +962,12 @@ public class IoTDBConfig {
 
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
+
+  /**
+   * Whether the schema memory allocation is default config. Used for cluster mode initialization
+   * judgement
+   */
+  private boolean isDefaultSchemaMemoryConfig = true;
 
   /** Memory allocated for schemaRegion */
   private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
@@ -1546,46 +1557,6 @@ public class IoTDBConfig {
     this.sessionTimeoutThreshold = sessionTimeoutThreshold;
   }
 
-  boolean isAllowReadOnlyWhenErrorsOccur() {
-    return allowReadOnlyWhenErrorsOccur;
-  }
-
-  void setAllowReadOnlyWhenErrorsOccur(boolean allowReadOnlyWhenErrorsOccur) {
-    this.allowReadOnlyWhenErrorsOccur = allowReadOnlyWhenErrorsOccur;
-  }
-
-  public boolean isReadOnly() {
-    return status == NodeStatus.ReadOnly
-        || (status == NodeStatus.Error && allowReadOnlyWhenErrorsOccur);
-  }
-
-  public NodeStatus getNodeStatus() {
-    return status;
-  }
-
-  public void setNodeStatus(NodeStatus newStatus) {
-    if (newStatus == NodeStatus.ReadOnly) {
-      logger.error(
-          "Change system mode to read-only! Only query statements are permitted!",
-          new RuntimeException("System mode is set to READ_ONLY"));
-    } else if (newStatus == NodeStatus.Error) {
-      if (allowReadOnlyWhenErrorsOccur) {
-        logger.error(
-            "Unrecoverable error occurs! Make system read-only when allow_read_only_when_errors_occur is true.",
-            new RuntimeException("System mode is set to READ_ONLY"));
-        newStatus = NodeStatus.ReadOnly;
-      } else {
-        logger.error(
-            "Unrecoverable error occurs! Shutdown system directly when allow_read_only_when_errors_occur is false.",
-            new RuntimeException("System mode is set to ERROR"));
-        System.exit(-1);
-      }
-    } else {
-      logger.info("Set system mode from {} to NORMAL.", status);
-    }
-    this.status = newStatus;
-  }
-
   public String getRpcImplClassName() {
     return rpcImplClassName;
   }
@@ -1710,14 +1681,6 @@ public class IoTDBConfig {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
   }
 
-  public long getCrossCompactionMemoryBudget() {
-    return crossCompactionMemoryBudget;
-  }
-
-  public void setCrossCompactionMemoryBudget(long crossCompactionMemoryBudget) {
-    this.crossCompactionMemoryBudget = crossCompactionMemoryBudget;
-  }
-
   public long getMergeIntervalSec() {
     return mergeIntervalSec;
   }
@@ -1758,12 +1721,12 @@ public class IoTDBConfig {
     this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
   }
 
-  public long getAllocateMemoryForWrite() {
-    return allocateMemoryForWrite;
+  public long getAllocateMemoryForStorageEngine() {
+    return allocateMemoryForStorageEngine;
   }
 
-  public void setAllocateMemoryForWrite(long allocateMemoryForWrite) {
-    this.allocateMemoryForWrite = allocateMemoryForWrite;
+  public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
+    this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
   }
 
   public long getAllocateMemoryForSchema() {
@@ -2949,6 +2912,22 @@ public class IoTDBConfig {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
   }
 
+  public int getMaxConnectionForInternalService() {
+    return maxConnectionForInternalService;
+  }
+
+  public void setMaxConnectionForInternalService(int maxConnectionForInternalService) {
+    this.maxConnectionForInternalService = maxConnectionForInternalService;
+  }
+
+  public int getCoreConnectionForInternalService() {
+    return coreConnectionForInternalService;
+  }
+
+  public void setCoreConnectionForInternalService(int coreConnectionForInternalService) {
+    this.coreConnectionForInternalService = coreConnectionForInternalService;
+  }
+
   public int getSelectorNumOfClientManager() {
     return selectorNumOfClientManager;
   }
@@ -3081,6 +3060,14 @@ public class IoTDBConfig {
     return new TEndPoint(rpcAddress, rpcPort);
   }
 
+  boolean isDefaultSchemaMemoryConfig() {
+    return isDefaultSchemaMemoryConfig;
+  }
+
+  void setDefaultSchemaMemoryConfig(boolean defaultSchemaMemoryConfig) {
+    isDefaultSchemaMemoryConfig = defaultSchemaMemoryConfig;
+  }
+
   public long getAllocateMemoryForSchemaRegion() {
     return allocateMemoryForSchemaRegion;
   }
@@ -3127,6 +3114,22 @@ public class IoTDBConfig {
 
   public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
+  }
+
+  public double getWriteProportion() {
+    return writeProportion;
+  }
+
+  public void setWriteProportion(double writeProportion) {
+    this.writeProportion = writeProportion;
+  }
+
+  public double getCompactionProportion() {
+    return compactionProportion;
+  }
+
+  public void setCompactionProportion(double compactionProportion) {
+    this.compactionProportion = compactionProportion;
   }
 
   public long getThrottleThreshold() {
