@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.concurrent;
 public enum ThreadName {
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
   CLIENT_RPC_PROCESSOR("ClientRPC-Processor"),
-  CONFIGNODE_RPC_SERVICE("ConfigNodeRpc-Service"),
+  CONFIGNODE_RPC_SERVICE("ConfigNodeRPC-Service"),
   CONFIGNODE_RPC_PROCESSOR("ConfigNodeRPC-Processor"),
   MULTI_LEADER_CONSENSUS_RPC_SERVICE("MultiLeaderConsensusRPC-Service"),
   MULTI_LEADER_CONSENSUS_RPC_PROCESSOR("MultiLeaderConsensusRPC-Processor"),
