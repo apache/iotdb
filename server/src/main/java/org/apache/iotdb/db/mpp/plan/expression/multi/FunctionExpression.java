@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -35,8 +34,6 @@ import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
@@ -240,42 +237,6 @@ public class FunctionExpression extends Expression {
       expression.constructUdfExecutors(expressionName2Executor, zoneId);
     }
     expressionName2Executor.put(expressionString, new UDTFExecutor(functionName, zoneId));
-  }
-
-  @Override
-  public TSDataType inferTypes(TypeProvider typeProvider) {
-    final String expressionString = toString();
-
-    if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      for (Expression expression : expressions) {
-        expression.inferTypes(typeProvider);
-      }
-
-      if (!isBuiltInAggregationFunctionExpression()) {
-        typeProvider.setType(
-            expressionString,
-            new UDTFInformationInferrer(functionName)
-                .inferOutputType(
-                    expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-                    expressions.stream()
-                        .map(f -> typeProvider.getType(f.toString()))
-                        .collect(Collectors.toList()),
-                    functionAttributes));
-      } else {
-        if (expressions.size() != 1) {
-          throw new SemanticException(
-              String.format(
-                  "Builtin aggregation function only accepts 1 input expression. Actual %d input expressions.",
-                  expressions.size()));
-        }
-        typeProvider.setType(
-            expressionString,
-            TypeInferenceUtils.getAggrDataType(
-                functionName, typeProvider.getType(expressions.get(0).toString())));
-      }
-    }
-
-    return typeProvider.getType(expressionString);
   }
 
   @Override
