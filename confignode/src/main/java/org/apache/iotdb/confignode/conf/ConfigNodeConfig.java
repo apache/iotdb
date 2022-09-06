@@ -102,7 +102,7 @@ public class ConfigNodeConfig {
 
   /** External temporary lib directory for storing downloaded JAR files */
   private String temporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
 
   /** Time partition interval in seconds */
   private long timePartitionInterval = 86400;
