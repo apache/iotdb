@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.NodeReadOnlyException;
@@ -80,7 +81,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -114,6 +114,8 @@ class RatisConsensus implements IConsensus {
   // TODO make it configurable
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
+  private final RatisConfig config;
+
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
     myself = Utils.fromTEndPointAndPriorityToRaftPeer(config.getThisNode(), DEFAULT_PRIORITY);
@@ -125,6 +127,7 @@ class RatisConsensus implements IConsensus {
     GrpcConfigKeys.Server.setPort(properties, config.getThisNode().getPort());
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
+    this.config = config.getRatisConfig();
 
     clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
 
@@ -151,18 +154,18 @@ class RatisConsensus implements IConsensus {
     server.close();
   }
 
+  private boolean shouldRetry(RaftClientReply reply) {
+    // currently, we only retry when ResourceUnavailableException is caught
+    return !reply.isSuccess()
+        && (reply.getException() != null
+            && reply.getException() instanceof ResourceUnavailableException);
+  }
   /** launch a consensus write with retry mechanism */
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
 
-    Predicate<RaftClientReply> shouldRetry =
-        reply ->
-            !reply.isSuccess()
-                && (reply.getException() != null
-                    && reply.getException() instanceof ResourceUnavailableException);
-
-    final int maxRetryTimes = 3;
-    final long waitMillis = 500;
+    final int maxRetryTimes = config.getRatisConsensus().getRetryTimesMax();
+    final long waitMillis = config.getRatisConsensus().getRetryWaitMillis();
 
     int retry = 0;
     RaftClientReply reply = null;
@@ -170,7 +173,7 @@ class RatisConsensus implements IConsensus {
       retry++;
 
       reply = caller.get();
-      if (!shouldRetry.test(reply)) {
+      if (!shouldRetry(reply)) {
         return reply;
       }
       logger.debug("{} sending write request with retry = {} and reply = {}", this, retry, reply);
