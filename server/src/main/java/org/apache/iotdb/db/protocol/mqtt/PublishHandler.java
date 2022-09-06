@@ -85,9 +85,9 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onDisconnect(InterceptDisconnectMessage msg) {
-    if (clientIdToSessionIdMap.containsKey(msg.getClientID())) {
+    Long sessionId = clientIdToSessionIdMap.remove(msg.getClientID());
+    if (null != sessionId) {
       serviceProvider.closeSession(clientIdToSessionIdMap.get(msg.getClientID()));
-      clientIdToSessionIdMap.remove(msg.getClientID());
     }
   }
 
