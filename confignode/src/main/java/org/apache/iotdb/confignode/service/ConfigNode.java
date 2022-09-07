@@ -140,6 +140,7 @@ public class ConfigNode implements ConfigNodeMBean {
         stop();
       }
 
+      registerManager.register(MetricService.getInstance());
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
       try {
@@ -176,10 +177,6 @@ public class ConfigNode implements ConfigNodeMBean {
         UDFExecutableManager.setupAndGetInstance(CONF.getTemporaryLibDir(), CONF.getUdfLibDir()));
     registerManager.register(UDFClassLoaderManager.setupAndGetInstance(CONF.getUdfLibDir()));
     registerManager.register(UDFRegistrationService.setupAndGetInstance(CONF.getSystemUdfDir()));
-
-    // Setup MetricService
-    registerManager.register(MetricService.getInstance());
-    MetricService.getInstance().startAllReporter();
 
     LOGGER.info("Successfully setup internal services.");
   }

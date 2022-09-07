@@ -54,7 +54,7 @@ public abstract class AbstractMetricService {
   /** The config of metric service */
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   /** Is the first initialization of metric service */
-  private final AtomicBoolean isFirstInitialization = new AtomicBoolean(true);
+  protected AtomicBoolean isFirstInitialization = new AtomicBoolean(true);
   /** The metric manager of metric service */
   protected AbstractMetricManager metricManager = new DoNothingMetricManager();
   /** The metric reporter of metric service */
@@ -101,9 +101,7 @@ public abstract class AbstractMetricService {
     // load metric reporter
     loadReporter();
     // do start all reporter without first time
-    if (!isFirstInitialization.getAndSet(false)) {
-      startAllReporter();
-    }
+    startAllReporter();
     logger.info("Start predefined metrics: {}", metricConfig.getPredefinedMetrics());
     for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
       enablePredefinedMetrics(predefinedMetric);
