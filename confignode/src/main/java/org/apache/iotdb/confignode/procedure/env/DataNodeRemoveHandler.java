@@ -435,6 +435,10 @@ public class DataNodeRemoveHandler {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     int removedDataNodeSize = removeDataNodePlan.getDataNodeLocations().size();
     int allDataNodeSize = configManager.getNodeManager().getRegisteredDataNodeCount();
+    if (NodeInfo.getMinimumDataNode() == 1) {
+      status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
+      status.setMessage("one replication is not supported to remove data node.");
+    }
     if (allDataNodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
       status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
       status.setMessage(
