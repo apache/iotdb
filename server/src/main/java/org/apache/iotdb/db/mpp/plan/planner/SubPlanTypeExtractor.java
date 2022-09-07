@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.SimplePlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 
 public class SubPlanTypeExtractor {
 
@@ -49,6 +52,24 @@ public class SubPlanTypeExtractor {
         source.accept(this, context);
       }
       return null;
+    }
+
+    @Override
+    public Void visitSeriesAggregationScan(SeriesAggregationScanNode node, Void context) {
+      String sourcePath = node.getSeriesPath().getFullPath();
+      typeProvider.setType(sourcePath, allTypes.getType(sourcePath));
+      return visitPlan(node, context);
+    }
+
+    @Override
+    public Void visitAlignedSeriesAggregationScan(
+        AlignedSeriesAggregationScanNode node, Void context) {
+      AlignedPath alignedPath = node.getAlignedPath();
+      for (int i = 0; i < alignedPath.getColumnNum(); i++) {
+        String sourcePath = alignedPath.getPathWithMeasurement(i).getFullPath();
+        typeProvider.setType(sourcePath, allTypes.getType(sourcePath));
+      }
+      return visitPlan(node, context);
     }
   }
 }
