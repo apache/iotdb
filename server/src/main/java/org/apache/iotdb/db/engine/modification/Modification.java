@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.modification;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.tree.PatternTreeMap;
 
 import java.util.Objects;
 
