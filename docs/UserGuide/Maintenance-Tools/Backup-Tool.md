@@ -32,8 +32,7 @@ you can use the command below to compile this project or install it:
 ````
 mvn clean package;  
 mvn install;  
-mvn test;   
-mvn verify;   
+mvn test;    
 ````
 ps: you can add '-DskipTests' to skip those tests.    
 Since the core-jar has not been placed on the remote repository, to compile the tools smoothly, you first need to execute mvn install -DskipTests.    

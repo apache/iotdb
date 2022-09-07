@@ -33,7 +33,6 @@ backup-command项目是一个工具类包，功能实现依赖于核心项目，
 mvn clean package;  
 mvn install;  
 mvn test;   
-mvn verify;   
 ````
 ps: 使用 '-DskipTests' 来跳过测试用例    
 由于core-jar还没有放到远程仓库，为了顺利编译工具，首先需要执行mvn install -DskipTests。  

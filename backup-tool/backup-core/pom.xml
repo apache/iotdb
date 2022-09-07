@@ -26,29 +26,17 @@
     <packaging>jar</packaging>
     <properties>
         <core.test.skip>false</core.test.skip>
-        <core.it.skip>${core.test.skip}</core.it.skip>
+        <core.it.skip>true</core.it.skip>
         <core.ut.skip>${core.test.skip}</core.ut.skip>
     </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-session</artifactId>
-            <!--            <exclusions>-->
-            <!--                <exclusion>-->
-            <!--                    <groupId>ch.qos.logback</groupId>-->
-            <!--                    <artifactId>logback-classic</artifactId>-->
-            <!--                </exclusion>-->
-            <!--            </exclusions>-->
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-antlr</artifactId>
-            <!--            <exclusions>-->
-            <!--                <exclusion>-->
-            <!--                    <groupId>ch.qos.logback</groupId>-->
-            <!--                    <artifactId>logback-classic</artifactId>-->
-            <!--                </exclusion>-->
-            <!--            </exclusions>-->
         </dependency>
         <dependency>
             <groupId>commons-cli</groupId>
@@ -92,13 +80,6 @@
             <artifactId>log4j-core</artifactId>
             <version>2.17.2</version>
         </dependency>
-        <!--用于与slf4j保持桥接-->
-        <!--        <dependency>-->
-        <!--            <groupId>org.apache.logging.log4j</groupId>-->
-        <!--            <artifactId>log4j-slf4j-impl</artifactId>-->
-        <!--            <version>2.17.2</version>-->
-        <!--        </dependency>-->
-        <!-- slf4j核心包-->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
