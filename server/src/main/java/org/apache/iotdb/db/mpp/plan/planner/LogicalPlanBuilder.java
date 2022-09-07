@@ -101,11 +101,8 @@ public class LogicalPlanBuilder {
 
   private final MPPQueryContext context;
 
-  private final SymbolAllocator symbolAllocator;
-
-  public LogicalPlanBuilder(MPPQueryContext context, SymbolAllocator symbolAllocator) {
+  public LogicalPlanBuilder(MPPQueryContext context) {
     this.context = context;
-    this.symbolAllocator = symbolAllocator;
   }
 
   public PlanNode getRoot() {
