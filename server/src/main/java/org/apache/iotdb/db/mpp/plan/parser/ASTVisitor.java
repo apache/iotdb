@@ -100,6 +100,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -760,6 +761,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         ctx.triggerType().STATELESS() != null ? TriggerType.STATELESS : TriggerType.STATEFUL,
         parsePrefixPath(ctx.prefixPath()),
         attributes);
+  }
+
+  @Override
+  public Statement visitDropTrigger(IoTDBSqlParser.DropTriggerContext ctx) {
+    return new DropTriggerStatement(parseIdentifier(ctx.triggerName.getText()));
   }
 
   // Show Child Paths =====================================================================
@@ -2480,8 +2486,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       setSystemStatusStatement.setStatus(NodeStatus.Running);
     } else if (ctx.READONLY() != null) {
       setSystemStatusStatement.setStatus(NodeStatus.ReadOnly);
-    } else if (ctx.ERROR() != null) {
-      setSystemStatusStatement.setStatus(NodeStatus.Error);
     } else {
       throw new RuntimeException("Unknown system status in set system command.");
     }
@@ -2817,6 +2821,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.syncAttributeClauses() != null) {
       createPipeStatement.setPipeAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
+    } else {
+      createPipeStatement.setPipeAttributes(new HashMap<>());
     }
     return createPipeStatement;
   }

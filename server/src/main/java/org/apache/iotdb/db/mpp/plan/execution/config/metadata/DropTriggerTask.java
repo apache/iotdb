@@ -17,26 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config.sys.sync;
+package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class StartPipeTask implements IConfigTask {
+public class DropTriggerTask implements IConfigTask {
+  private final String triggerName;
 
-  private final StartPipeStatement startPipeStatement;
-
-  public StartPipeTask(StartPipeStatement startPipeStatement) {
-    this.startPipeStatement = startPipeStatement;
+  public DropTriggerTask(DropTriggerStatement dropTriggerStatement) {
+    this.triggerName = dropTriggerStatement.getTriggerName();
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.startPipe(startPipeStatement);
+    return configTaskExecutor.dropTrigger(triggerName);
   }
 }

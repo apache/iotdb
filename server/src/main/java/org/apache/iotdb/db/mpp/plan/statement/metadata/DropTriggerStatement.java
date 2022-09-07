@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
-import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
@@ -30,83 +28,23 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
-public class CreateTriggerStatement extends Statement implements IConfigStatement {
-
+public class DropTriggerStatement extends Statement implements IConfigStatement {
   private final String triggerName;
 
-  private final String className;
-
-  private final String jarPath;
-
-  /** usingURI == true indicates that jarPath is a URI */
-  private final boolean usingURI;
-
-  private final TriggerEvent triggerEvent;
-
-  private final TriggerType triggerType;
-
-  private final PartialPath pathPattern;
-
-  private final Map<String, String> attributes;
-
-  public CreateTriggerStatement(
-      String triggerName,
-      String className,
-      String jarPath,
-      boolean usingURI,
-      TriggerEvent triggerEvent,
-      TriggerType triggerType,
-      PartialPath pathPattern,
-      Map<String, String> attributes) {
+  public DropTriggerStatement(String triggerName) {
     super();
-    statementType = StatementType.CREATE_TRIGGER;
+    statementType = StatementType.DROP_TRIGGER;
     this.triggerName = triggerName;
-    this.className = className;
-    this.jarPath = jarPath;
-    this.usingURI = usingURI;
-    this.triggerEvent = triggerEvent;
-    this.triggerType = triggerType;
-    this.pathPattern = pathPattern;
-    this.attributes = attributes;
   }
 
   public String getTriggerName() {
     return triggerName;
   }
 
-  public String getClassName() {
-    return className;
-  }
-
-  public TriggerEvent getTriggerEvent() {
-    return triggerEvent;
-  }
-
-  public TriggerType getTriggerType() {
-    return triggerType;
-  }
-
-  public PartialPath getPathPattern() {
-    return pathPattern;
-  }
-
-  public Map<String, String> getAttributes() {
-    return attributes;
-  }
-
-  public String getJarPath() {
-    return jarPath;
-  }
-
-  public boolean isUsingURI() {
-    return usingURI;
-  }
-
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateTrigger(this, context);
+    return visitor.visitDropTrigger(this, context);
   }
 
   @Override

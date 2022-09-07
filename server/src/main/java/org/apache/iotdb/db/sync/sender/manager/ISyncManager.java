@@ -16,33 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.sync.sender.manager;
 
-package org.apache.iotdb.confignode.client;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 
-public enum DataNodeRequestType {
-  DELETE_REGIONS,
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
-  CREATE_NEW_REGION_PEER,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  DELETE_OLD_REGION_PEER,
-  DISABLE_DATA_NODE,
-  STOP_DATA_NODE,
+import java.io.File;
+import java.util.List;
 
-  SET_TTL,
-  CREATE_DATA_REGIONS,
-  CREATE_SCHEMA_REGIONS,
-  CREATE_FUNCTION,
-  DROP_FUNCTION,
-  FLUSH,
-  UPDATE_REGION_ROUTE_MAP,
-  BROADCAST_LATEST_CONFIG_NODE_GROUP,
-  UPDATE_TEMPLATE,
-  CLEAR_CACHE,
-  MERGE,
-  FULL_MERGE,
-  LOAD_CONFIGURATION,
-  SET_SYSTEM_STATUS,
+/**
+ * ISyncManager is designed for collect all history TsFiles(i.e. before the pipe start time, all
+ * tsfiles whose memtable is set to null.) and realtime TsFiles for registered {@link TsFilePipe}.
+ */
+public interface ISyncManager {
+  /** tsfile */
+  void syncRealTimeDeletion(Deletion deletion);
+
+  void syncRealTimeTsFile(File tsFile);
+
+  void syncRealTimeResource(File tsFile);
+
+  List<File> syncHistoryTsFile(long dataStartTime);
+
+  File createHardlink(File tsFile, long modsOffset);
+
+  void delete();
 }
