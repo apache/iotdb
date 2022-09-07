@@ -36,8 +36,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -54,24 +55,22 @@ public class MigrationManager {
   private final ReentrantLock lock = new ReentrantLock();
   // region lock resources
   private MigrationOperateWriter logWriter;
-  // taskId -> MigrationTask
-  List<MigrationTask> migrationTasks = new ArrayList<>();
+  // define ordering for migrationTasks, dictionary order on (status, startTime, storageGroup, -ttl)
+  private final Set<MigrationTask> migrationTasks =
+      new TreeSet<>(
+          (task1, task2) -> {
+            int statusDiff = task1.getStatus().ordinal() - task2.getStatus().ordinal();
+            if (statusDiff != 0) return statusDiff;
+            long startTimeDiff = task1.getStartTime() - task2.getStartTime();
+            if (startTimeDiff != 0) return startTimeDiff > 0 ? 1 : -1;
+            int storageGroupDiff = task1.getStorageGroup().compareTo(task2.getStorageGroup());
+            if (storageGroupDiff != 0) return storageGroupDiff;
+            long ttlDiff = task2.getTTL() - task1.getTTL();
+            return ttlDiff > 0 ? 1 : -1;
+          });
   // the current largest MigrationTask id + 1, used to create new tasks
   private long currentTaskId = 0;
   // endregion
-
-  // define ordering for migrationTasks, dictionary order on (status, startTime, storageGroup, -ttl)
-  Comparator<MigrationTask> migrationTaskComparator =
-      (task1, task2) -> {
-        int statusDiff = task1.getStatus().ordinal() - task2.getStatus().ordinal();
-        if (statusDiff != 0) return statusDiff;
-        long startTimeDiff = task1.getStartTime() - task2.getStartTime();
-        if (startTimeDiff != 0) return startTimeDiff > 0 ? 1 : -1;
-        int storageGroupDiff = task1.getStorageGroup().compareTo(task2.getStorageGroup());
-        if (storageGroupDiff != 0) return storageGroupDiff;
-        long ttlDiff = task2.getTTL() - task1.getTTL();
-        return ttlDiff > 0 ? 1 : -1;
-      };
 
   // single thread to iterate through migrationTasks and check start
   private ScheduledExecutorService migrationCheckThread;
@@ -132,8 +131,7 @@ public class MigrationManager {
       // recover
       MigrationRecover recover = new MigrationRecover();
       recover.recover();
-      this.migrationTasks = recover.getMigrationTasks();
-      this.migrationTasks.sort(migrationTaskComparator);
+      this.migrationTasks.addAll(recover.getMigrationTasks());
       this.currentTaskId = recover.getCurrentTaskId();
 
       try {
@@ -193,7 +191,7 @@ public class MigrationManager {
     try {
       lock.lock();
 
-      // check if there is duplicates
+      // check if there are duplicates
       for (MigrationTask migrationTask : migrationTasks) {
         if (migrationTask.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
             && migrationTask.getTargetDir().equals(targetDir)
@@ -213,7 +211,6 @@ public class MigrationManager {
         return;
       }
       migrationTasks.add(newTask);
-      migrationTasks.sort(migrationTaskComparator);
       currentTaskId++;
     } finally {
       lock.unlock();

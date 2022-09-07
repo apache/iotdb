@@ -1565,7 +1565,7 @@ public class VirtualStorageGroupProcessor {
     }
     long ttlLowerBound = System.currentTimeMillis() - task.getTTL();
     logger.debug(
-        "{}: TTL removing files before {}",
+        "{}: Migrating files before {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId,
         new Date(ttlLowerBound));
 
@@ -1614,12 +1614,6 @@ public class VirtualStorageGroupProcessor {
           // start the migration
           if (task.startFile(resource.getTsFile())) {
             File migratedFile = resource.migrate(targetDir);
-
-            logger.info(
-                "Migrated a file {} to {} before {}",
-                resource.getTsFilePath(),
-                migratedFile.getAbsolutePath(),
-                new Date(ttlLowerBound));
           } else {
             // migrating log couldn't start
             logger.error("{} logger error", resource.getTsFilePath());
