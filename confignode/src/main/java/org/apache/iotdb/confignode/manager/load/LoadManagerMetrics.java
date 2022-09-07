@@ -35,6 +35,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_ONLINE;
@@ -274,5 +275,18 @@ public class LoadManagerMetrics implements IMetricSet {
           .set(0);
     }
     return unknownDataNodes.size();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    LoadManagerMetrics that = (LoadManagerMetrics) o;
+    return Objects.equals(configManager, that.configManager);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(configManager);
   }
 }

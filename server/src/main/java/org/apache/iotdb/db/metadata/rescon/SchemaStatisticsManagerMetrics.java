@@ -26,6 +26,8 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
+
 public class SchemaStatisticsManagerMetrics implements IMetricSet {
   private SchemaStatisticsManager schemaStatisticsManager;
 
@@ -48,5 +50,18 @@ public class SchemaStatisticsManagerMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "timeSeries");
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SchemaStatisticsManagerMetrics that = (SchemaStatisticsManagerMetrics) o;
+    return Objects.equals(schemaStatisticsManager, that.schemaStatisticsManager);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(schemaStatisticsManager);
   }
 }

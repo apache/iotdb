@@ -100,13 +100,16 @@ public class FileMetrics implements IMetricSet {
         "unseq");
 
     // finally start to update the value of some metrics in async way
-    if (null != currentServiceFuture) {
-      currentServiceFuture = ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-          service,
-          this::collect,
-          1,
-          MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
-          TimeUnit.SECONDS);
+    if (metricService.isEnable() && null != currentServiceFuture) {
+      currentServiceFuture =
+          ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+              service,
+              this::collect,
+              1,
+              MetricConfigDescriptor.getInstance()
+                  .getMetricConfig()
+                  .getAsyncCollectPeriodInSecond(),
+              TimeUnit.SECONDS);
     }
   }
 

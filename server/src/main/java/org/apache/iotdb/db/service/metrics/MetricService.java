@@ -99,7 +99,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
         logger.error("Unknown predefined metrics: {}", metric);
         return;
     }
-    addMetricSet(metricSet);
+    metricSet.bindTo(this);
   }
 
   @Override
@@ -111,6 +111,9 @@ public class MetricService extends AbstractMetricService implements MetricServic
           case START_METRIC:
             isEnableMetric = true;
             start();
+            if (!isAllReporterStart.get()) {
+              startAllReporter();
+            }
             break;
           case STOP_METRIC:
             stop();
@@ -121,9 +124,9 @@ public class MetricService extends AbstractMetricService implements MetricServic
             restart();
             break;
           case RESTART_REPORTER:
-            compositeReporter.stopAll();
+            stopAllReporter();
             loadReporter();
-            compositeReporter.startAll();
+            startAllReporter();
             logger.info("Finish restart metric reporters.");
             break;
           case NOTHING:

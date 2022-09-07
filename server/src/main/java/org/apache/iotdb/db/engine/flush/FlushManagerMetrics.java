@@ -26,6 +26,8 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
+
 public class FlushManagerMetrics implements IMetricSet {
   private FlushManager flushManager;
 
@@ -71,5 +73,18 @@ public class FlushManagerMetrics implements IMetricSet {
         "flush",
         Tag.STATUS.toString(),
         "running");
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    FlushManagerMetrics that = (FlushManagerMetrics) o;
+    return Objects.equals(flushManager, that.flushManager);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(flushManager);
   }
 }

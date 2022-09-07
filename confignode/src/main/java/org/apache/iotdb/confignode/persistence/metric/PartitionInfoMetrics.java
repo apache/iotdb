@@ -29,6 +29,8 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
+
 public class PartitionInfoMetrics implements IMetricSet {
   private PartitionInfo partitionInfo;
 
@@ -83,6 +85,19 @@ public class PartitionInfoMetrics implements IMetricSet {
         "total",
         Tag.TYPE.toString(),
         TConsensusGroupType.DataRegion.toString());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    PartitionInfoMetrics that = (PartitionInfoMetrics) o;
+    return Objects.equals(partitionInfo, that.partitionInfo);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(partitionInfo);
   }
 
   public static class StorageGroupPartitionTableMetrics implements IMetricSet {
@@ -166,13 +181,18 @@ public class PartitionInfoMetrics implements IMetricSet {
           Tag.TYPE.toString(),
           "dataSlotNumber");
     }
-  }
-
-  public static class RegionGroupMetrics implements IMetricSet {
-    @Override
-    public void bindTo(AbstractMetricService metricService) {}
 
     @Override
-    public void unbindFrom(AbstractMetricService metricService) {}
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      StorageGroupPartitionTableMetrics that = (StorageGroupPartitionTableMetrics) o;
+      return Objects.equals(storageGroupPartitionTable, that.storageGroupPartitionTable);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(storageGroupPartitionTable);
+    }
   }
 }

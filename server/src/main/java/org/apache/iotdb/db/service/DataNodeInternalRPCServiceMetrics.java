@@ -28,6 +28,8 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
+
 public class DataNodeInternalRPCServiceMetrics implements IMetricSet {
   AbstractThriftServiceThread thriftServiceThread;
 
@@ -53,5 +55,18 @@ public class DataNodeInternalRPCServiceMetrics implements IMetricSet {
         Metric.THRIFT_ACTIVE_THREADS.toString(),
         Tag.NAME.toString(),
         ThreadName.DATANODE_INTERNAL_RPC_SERVICE.getName());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    DataNodeInternalRPCServiceMetrics that = (DataNodeInternalRPCServiceMetrics) o;
+    return Objects.equals(thriftServiceThread, that.thriftServiceThread);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(thriftServiceThread);
   }
 }

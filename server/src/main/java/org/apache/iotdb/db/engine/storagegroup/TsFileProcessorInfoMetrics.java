@@ -26,6 +26,8 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
+
 public class TsFileProcessorInfoMetrics implements IMetricSet {
   private String storageGroupName;
   private long memCost;
@@ -55,5 +57,18 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
             Metric.MEM.toString(),
             Tag.NAME.toString(),
             "chunkMetaData_" + storageGroupName);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TsFileProcessorInfoMetrics that = (TsFileProcessorInfoMetrics) o;
+    return memCost == that.memCost && Objects.equals(storageGroupName, that.storageGroupName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(storageGroupName, memCost);
   }
 }

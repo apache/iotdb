@@ -27,6 +27,8 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
+
 public class RawQueryReadTaskPoolManagerMetrics implements IMetricSet {
   private RawQueryReadTaskPoolManager rawQueryReadTaskPoolManager;
 
@@ -73,5 +75,18 @@ public class RawQueryReadTaskPoolManagerMetrics implements IMetricSet {
         ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
         Tag.STATUS.toString(),
         "waiting");
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    RawQueryReadTaskPoolManagerMetrics that = (RawQueryReadTaskPoolManagerMetrics) o;
+    return Objects.equals(rawQueryReadTaskPoolManager, that.rawQueryReadTaskPoolManager);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(rawQueryReadTaskPoolManager);
   }
 }

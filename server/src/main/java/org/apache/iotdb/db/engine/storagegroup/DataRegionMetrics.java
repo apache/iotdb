@@ -26,6 +26,8 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
+
 public class DataRegionMetrics implements IMetricSet {
   private DataRegion dataRegion;
   private String storageGroupName;
@@ -53,5 +55,19 @@ public class DataRegionMetrics implements IMetricSet {
         Metric.MEM.toString(),
         Tag.NAME.toString(),
         "storageGroup_" + storageGroupName);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    DataRegionMetrics that = (DataRegionMetrics) o;
+    return Objects.equals(dataRegion, that.dataRegion)
+        && Objects.equals(storageGroupName, that.storageGroupName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(dataRegion, storageGroupName);
   }
 }

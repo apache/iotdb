@@ -35,6 +35,7 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.ReporterType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,8 @@ public abstract class AbstractMetricService {
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   /** Is the first initialization of metric service */
   private final AtomicBoolean isFirstInitialization = new AtomicBoolean(true);
+  /** Is all reporters start */
+  protected final AtomicBoolean isAllReporterStart = new AtomicBoolean(false);
   /** The metric manager of metric service */
   protected AbstractMetricManager metricManager = new DoNothingMetricManager();
   /** The metric reporter of metric service */
@@ -67,6 +70,33 @@ public abstract class AbstractMetricService {
 
   /** start metric service */
   public void startService() {
+    startCoreModule();
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.bindTo(this);
+    }
+  }
+
+  /** restart metric service */
+  public void restartService() {
+    logger.info("Restart Core Module");
+    stopCoreModule();
+    startCoreModule();
+    for (IMetricSet metricSet : metricSets) {
+      logger.info("Restart metricSet: {}", metricSet.getClass().getName());
+      metricSet.unbindFrom(this);
+      metricSet.bindTo(this);
+    }
+  }
+
+  /** stop metric service */
+  public void stopService() {
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.unbindFrom(this);
+    }
+    stopCoreModule();
+  }
+  /** start metric core module */
+  private void startCoreModule() {
     logger.info("Start metric service at level: {}", metricConfig.getMetricLevel().name());
     // load metric manager
     loadManager();
@@ -82,28 +112,9 @@ public abstract class AbstractMetricService {
     }
   }
 
-  /** restart metric service */
-  public void restartService() {
-    stopCoreModule();
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.unbindFrom(this);
-      metricSet.bindTo(this);
-    }
-    startService();
-  }
-
-  /** stop metric service */
-  public void stopService() {
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.unbindFrom(this);
-    }
-    metricSets = new ArrayList<>();
-    stopCoreModule();
-  }
-
   /** stop metric core module */
   private void stopCoreModule() {
-    compositeReporter.stopAll();
+    stopAllReporter();
     metricManager.stop();
     metricManager = new DoNothingMetricManager();
     compositeReporter = new CompositeReporter();
@@ -167,7 +178,19 @@ public abstract class AbstractMetricService {
     if (!isEnable()) {
       return;
     }
-    compositeReporter.startAll();
+    if (!isAllReporterStart.getAndSet(true)) {
+      compositeReporter.startAll();
+    }
+  }
+
+  /** Stop all reporters */
+  public void stopAllReporter() {
+    if (!isEnable()) {
+      return;
+    }
+    if (isAllReporterStart.getAndSet(false)) {
+      compositeReporter.stopAll();
+    }
   }
 
   /** Start reporter according to type */
@@ -276,7 +299,9 @@ public abstract class AbstractMetricService {
 
   /** bind metrics and store metric set */
   public void addMetricSet(IMetricSet metricSet) {
-    metricSet.bindTo(this);
-    metricSets.add(metricSet);
+    if (!metricSets.contains(metricSet)) {
+      metricSet.bindTo(this);
+      metricSets.add(metricSet);
+    }
   }
 }

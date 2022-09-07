@@ -24,6 +24,7 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ConfigNodeRPCServiceHandlerMetrics implements IMetricSet {
@@ -51,5 +52,18 @@ public class ConfigNodeRPCServiceHandlerMetrics implements IMetricSet {
         Metric.THRIFT_CONNECTIONS.toString(),
         Tag.NAME.toString(),
         "ConfigNodeRPC");
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ConfigNodeRPCServiceHandlerMetrics that = (ConfigNodeRPCServiceHandlerMetrics) o;
+    return Objects.equals(thriftConnectionNumber, that.thriftConnectionNumber);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(thriftConnectionNumber);
   }
 }

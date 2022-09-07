@@ -20,13 +20,14 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.service.AbstractThriftServiceThread;
-import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+
+import java.util.Objects;
 
 public class RPCServiceMetrics implements IMetricSet {
   private AbstractThriftServiceThread thriftServiceThread;
@@ -37,23 +38,34 @@ public class RPCServiceMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.THRIFT_ACTIVE_THREADS.toString(),
-            MetricLevel.CORE,
-            thriftServiceThread,
-            AbstractThriftServiceThread::getActiveThreadCount,
-            Tag.NAME.toString(),
-            ThreadName.CLIENT_RPC_SERVICE.getName());
+    metricService.getOrCreateAutoGauge(
+        Metric.THRIFT_ACTIVE_THREADS.toString(),
+        MetricLevel.CORE,
+        thriftServiceThread,
+        AbstractThriftServiceThread::getActiveThreadCount,
+        Tag.NAME.toString(),
+        ThreadName.CLIENT_RPC_SERVICE.getName());
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    MetricService.getInstance()
-        .remove(
-            MetricType.GAUGE,
-            Metric.THRIFT_ACTIVE_THREADS.toString(),
-            Tag.NAME.toString(),
-            ThreadName.CLIENT_RPC_SERVICE.getName());
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.THRIFT_ACTIVE_THREADS.toString(),
+        Tag.NAME.toString(),
+        ThreadName.CLIENT_RPC_SERVICE.getName());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    RPCServiceMetrics that = (RPCServiceMetrics) o;
+    return Objects.equals(thriftServiceThread, that.thriftServiceThread);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(thriftServiceThread);
   }
 }

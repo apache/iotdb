@@ -27,6 +27,8 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
+
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_REGISTER;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_TAG_TOTAL;
 
@@ -76,5 +78,18 @@ public class NodeInfoMetrics implements IMetricSet {
         METRIC_TAG_TOTAL,
         Tag.STATUS.toString(),
         METRIC_STATUS_REGISTER);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    NodeInfoMetrics that = (NodeInfoMetrics) o;
+    return Objects.equals(nodeInfo, that.nodeInfo);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(nodeInfo);
   }
 }

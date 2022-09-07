@@ -26,6 +26,8 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
+
 public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
 
   private TimeSeriesMetadataCache timeSeriesMetadataCache;
@@ -58,5 +60,18 @@ public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
         MetricType.GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "timeSeriesMeta");
     metricService.remove(
         MetricType.GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "bloomFilter");
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TimeSeriesMetadataCacheMetrics that = (TimeSeriesMetadataCacheMetrics) o;
+    return Objects.equals(timeSeriesMetadataCache, that.timeSeriesMetadataCache);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(timeSeriesMetadataCache);
   }
 }

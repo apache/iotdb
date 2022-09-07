@@ -26,6 +26,7 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class InternalServiceThriftHandlerMetrics implements IMetricSet {
@@ -50,5 +51,18 @@ public class InternalServiceThriftHandlerMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.GAUGE, Metric.THRIFT_CONNECTIONS.toString(), Tag.NAME.toString(), "Internal");
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    InternalServiceThriftHandlerMetrics that = (InternalServiceThriftHandlerMetrics) o;
+    return Objects.equals(thriftConnectionNumber, that.thriftConnectionNumber);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(thriftConnectionNumber);
   }
 }

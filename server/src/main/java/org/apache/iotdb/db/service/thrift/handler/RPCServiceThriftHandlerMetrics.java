@@ -16,7 +16,6 @@
  */
 package org.apache.iotdb.db.service.thrift.handler;
 
-import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -24,6 +23,7 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class RPCServiceThriftHandlerMetrics implements IMetricSet {
@@ -35,19 +35,31 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.THRIFT_CONNECTIONS.toString(),
-            MetricLevel.CORE,
-            thriftConnectionNumber,
-            AtomicLong::get,
-            Tag.NAME.toString(),
-            "RPC");
+    metricService.getOrCreateAutoGauge(
+        Metric.THRIFT_CONNECTIONS.toString(),
+        MetricLevel.CORE,
+        thriftConnectionNumber,
+        AtomicLong::get,
+        Tag.NAME.toString(),
+        "RPC");
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    MetricService.getInstance()
-        .remove(MetricType.GAUGE, Metric.THRIFT_CONNECTIONS.toString(), Tag.NAME.toString(), "RPC");
+    metricService.remove(
+        MetricType.GAUGE, Metric.THRIFT_CONNECTIONS.toString(), Tag.NAME.toString(), "RPC");
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    RPCServiceThriftHandlerMetrics that = (RPCServiceThriftHandlerMetrics) o;
+    return Objects.equals(thriftConnectionNumber, that.thriftConnectionNumber);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(thriftConnectionNumber);
   }
 }
