@@ -44,6 +44,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -251,7 +252,6 @@ public class ReadPointCompactionPerformer
       String device, Set<String> measurements) throws IllegalPathException, IOException {
     HashMap<String, MeasurementSchema> schemaMap = new HashMap<>();
     List<TsFileResource> allResources = new LinkedList<>(seqFiles);
-    allResources.addAll(unseqFiles);
     // sort the tsfile by version, so that we can iterate the tsfile from the newest to oldest
     allResources.sort(
         (o1, o2) -> {
@@ -265,28 +265,41 @@ public class ReadPointCompactionPerformer
             return 0;
           }
         });
+    // unseq files are followed, and encoding is read from ordered files first if possible
+    allResources.addAll(unseqFiles);
     for (String measurement : measurements) {
       for (TsFileResource tsFileResource : allResources) {
         if (!tsFileResource.mayContainsDevice(device)) {
           continue;
         }
-        MeasurementSchema schema =
-            getMeasurementSchemaFromReader(
-                tsFileResource,
-                readerCacheMap.computeIfAbsent(
-                    tsFileResource,
-                    x -> {
-                      try {
-                        FileReaderManager.getInstance().increaseFileReaderReference(x, true);
-                        return FileReaderManager.getInstance().get(x.getTsFilePath(), true);
-                      } catch (IOException e) {
-                        throw new RuntimeException(
-                            String.format(
-                                "Failed to construct sequence reader for %s", tsFileResource));
-                      }
-                    }),
-                device,
-                measurement);
+        MeasurementSchema schema = getMeasurementSchemaFromReader(
+                        tsFileResource,
+                        readerCacheMap.computeIfAbsent(
+                                tsFileResource,
+                                x -> {
+                                  try {
+                                    FileReaderManager.getInstance().increaseFileReaderReference(x, true);
+                                    return FileReaderManager.getInstance().get(x.getTsFilePath(), true);
+                                  } catch (IOException e) {
+                                    throw new RuntimeException(
+                                            String.format(
+                                                    "Failed to construct sequence reader for %s", tsFileResource));
+                                  }
+                                }),
+                        device,
+                        measurement);;
+        if(tsFileResource.isSeq()) {
+          try {
+            // There is no measurement in the seq file. Get the schema from Mtree
+            IMeasurementSchema seriesSchema = IoTDB.schemaProcessor.getSeriesSchema(new PartialPath(device, measurement));
+            if(seriesSchema != null && seriesSchema instanceof MeasurementSchema) {
+              schema = (MeasurementSchema) seriesSchema;
+            }
+          } catch (MetadataException e) {
+            // If an exception occurs, obtain it by reading a file
+            LOGGER.warn("");
+          }
+        }
         if (schema != null) {
           schemaMap.put(measurement, schema);
           break;
