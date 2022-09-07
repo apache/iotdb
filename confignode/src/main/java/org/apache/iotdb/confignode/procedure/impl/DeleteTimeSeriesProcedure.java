@@ -24,12 +24,15 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.ConstructSchemaBlackListHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DeleteDataForDeleteTimeSeriesHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DeleteTimeSeriesHandler;
+import org.apache.iotdb.confignode.client.async.handlers.FetchSchemaBlackLsitHandler;
 import org.apache.iotdb.confignode.client.async.handlers.InvalidateMatchedSchemaCacheHandler;
 import org.apache.iotdb.confignode.client.async.handlers.RollbackSchemaBlackListHandler;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -42,6 +45,8 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -55,6 +60,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -136,7 +143,8 @@ public class DeleteTimeSeriesProcedure
           .sendAsyncRequestToDataNodeWithRetry(
               new TConstructSchemaBlackListReq(entry.getValue(), ByteBuffer.wrap(patternTreeBytes)),
               handler);
-      if (statusList.get(0).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (statusList.get(statusList.size() - 1).getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // todo implement retry on another dataNode
         LOGGER.error(
             "Failed to construct schema black list of timeseries {} on {}",
@@ -170,16 +178,36 @@ public class DeleteTimeSeriesProcedure
   }
 
   private void deleteData(ConfigNodeProcedureEnv env) throws TException, IOException {
-    Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
+    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         getRelatedSchemaRegionGroup(env);
-    Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap =
-        getDataNodeRegionGroupMap(relatedDataRegionGroup);
+    Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeSchemaRegionGroupGroupIdMap =
+        getDataNodeRegionGroupMap(relatedSchemaRegionGroup);
 
     for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
-        dataNodeConsensusGroupIdMap.entrySet()) {
+        dataNodeSchemaRegionGroupGroupIdMap.entrySet()) {
+      PathPatternTree patternTree =
+          fetchSchemaBlackListOnTargetDataNode(entry.getKey(), entry.getValue());
+      if (patternTree == null) {
+        LOGGER.error(
+            "Failed to fetch schema black list for delete data of timeseries {} on {}",
+            requestMessage,
+            entry.getKey());
+        setFailure(new ProcedureException("Fetch schema black list forDelete data failed"));
+        return;
+      }
+
+      if (patternTree.isEmpty()) {
+        continue;
+      }
+
+      Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
+          getRelatedDataRegionGroup(env, patternTree);
+      Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeDataRegionGroupIdMap =
+          getDataNodeRegionGroupMap(relatedDataRegionGroup);
+
       List<TSStatus> statusList = new ArrayList<>();
       Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-      dataNodeLocationMap.put(entry.getKey().getDataNodeId(), entry.getKey());
+      dataNodeDataRegionGroupIdMap.forEach((k, v) -> dataNodeLocationMap.put(k.getDataNodeId(), k));
       DeleteDataForDeleteTimeSeriesHandler handler =
           new DeleteDataForDeleteTimeSeriesHandler(dataNodeLocationMap, statusList);
       AsyncDataNodeClientPool.getInstance()
@@ -187,15 +215,44 @@ public class DeleteTimeSeriesProcedure
               new TDeleteDataForDeleteTimeSeriesReq(
                   entry.getValue(), ByteBuffer.wrap(patternTreeBytes)),
               handler);
-      if (statusList.get(0).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (statusList.get(statusList.size() - 1).getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // todo implement retry on another dataNode
         LOGGER.error(
-            "Failed to delete data of timeseries {} on {}", requestMessage, entry.getKey());
+            "Failed to delete data of timeseries {} on {}",
+            patternTree.getAllPathPatterns().toString(),
+            entry.getKey());
         setFailure(new ProcedureException("Delete data failed"));
         return;
       }
     }
     setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES);
+  }
+
+  private PathPatternTree fetchSchemaBlackListOnTargetDataNode(
+      TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> schemaRegionIdList) {
+    List<TFetchSchemaBlackListResp> respList = new ArrayList<>();
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
+    dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
+    FetchSchemaBlackLsitHandler handler =
+        new FetchSchemaBlackLsitHandler(dataNodeLocationMap, respList);
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            new TFetchSchemaBlackListReq(schemaRegionIdList, ByteBuffer.wrap(patternTreeBytes)),
+            handler);
+    if (respList.get(respList.size() - 1).getStatus().getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // todo implement retry on another dataNode
+      LOGGER.error(
+          "Failed to fetch schema black list for delete data of timeseries {} on {}",
+          requestMessage,
+          dataNodeLocation);
+      setFailure(new ProcedureException("Fetch schema black list forDelete data failed"));
+      return null;
+    }
+
+    return PathPatternTree.deserialize(
+        ByteBuffer.wrap(respList.get(respList.size() - 1).getPathPatternTree()));
   }
 
   private void deleteTimeSeries(ConfigNodeProcedureEnv env) throws TException, IOException {
@@ -215,7 +272,8 @@ public class DeleteTimeSeriesProcedure
           .sendAsyncRequestToDataNodeWithRetry(
               new TDeleteTimeSeriesReq(entry.getValue(), ByteBuffer.wrap(patternTreeBytes)),
               handler);
-      if (statusList.get(0).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (statusList.get(statusList.size() - 1).getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // todo implement retry on another dataNode
         LOGGER.error("Failed to delete timeseries {} on {}", requestMessage, entry.getKey());
         setFailure(new ProcedureException("Delete timeseries failed"));
@@ -235,6 +293,46 @@ public class DeleteTimeSeriesProcedure
         schemaPartitionTable.values().stream()
             .flatMap(m -> m.values().stream())
             .collect(Collectors.toSet());
+    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+      if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
+        filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+      }
+    }
+    return filteredRegionReplicaSets;
+  }
+
+  private Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
+      ConfigNodeProcedureEnv env, PathPatternTree patternTree) {
+    ConfigManager configManager = env.getConfigManager();
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        configManager.getSchemaPartition(patternTree).getSchemaPartitionTable();
+    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+        new HashMap<>();
+    schemaPartitionTable.forEach(
+        (key, value) -> {
+          Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> slotListMap = new HashMap<>();
+          value.keySet().forEach(slot -> slotListMap.put(slot, Collections.emptyList()));
+          partitionSlotsMap.put(key, slotListMap);
+        });
+    GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+        dataPartitionTable =
+            configManager.getDataPartition(getDataPartitionPlan).getDataPartitionTable();
+
+    List<TRegionReplicaSet> allRegionReplicaSets =
+        configManager.getPartitionManager().getAllReplicaSets();
+    Set<TConsensusGroupId> groupIdSet =
+        dataPartitionTable.values().stream()
+            .flatMap(
+                tSeriesPartitionSlotMapMap ->
+                    tSeriesPartitionSlotMapMap.values().stream()
+                        .flatMap(
+                            tTimePartitionSlotListMap ->
+                                tTimePartitionSlotListMap.values().stream()
+                                    .flatMap(Collection::stream)))
+            .collect(Collectors.toSet());
+
     Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
     for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
       if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
