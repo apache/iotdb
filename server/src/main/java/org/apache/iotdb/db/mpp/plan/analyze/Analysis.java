@@ -65,7 +65,6 @@ public class Analysis {
 
   // map from output column name (for every node) to its datatype
   private final Map<NodeRef<Expression>, TSDataType> expressionTypes = new LinkedHashMap<>();
-  private TypeProvider typeProvider;
 
   private boolean finishQueryAfterAnalyze;
 
@@ -128,6 +127,8 @@ public class Analysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)
   /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private List<Pair<Expression, String>> outputExpressions;
 
   // indicate is there a value filter
   private boolean hasValueFilter = false;
@@ -221,10 +222,6 @@ public class Analysis {
 
   public void setRespDatasetHeader(DatasetHeader respDatasetHeader) {
     this.respDatasetHeader = respDatasetHeader;
-  }
-
-  public TypeProvider getTypeProvider() {
-    return typeProvider;
   }
 
   public TSDataType getType(Expression expression) {
@@ -459,5 +456,13 @@ public class Analysis {
 
   public void addTypes(Map<NodeRef<Expression>, TSDataType> types) {
     this.expressionTypes.putAll(types);
+  }
+
+  public List<Pair<Expression, String>> getOutputExpressions() {
+    return outputExpressions;
+  }
+
+  public void setOutputExpressions(List<Pair<Expression, String>> outputExpressions) {
+    this.outputExpressions = outputExpressions;
   }
 }

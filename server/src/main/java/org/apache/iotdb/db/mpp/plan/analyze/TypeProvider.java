@@ -22,8 +22,6 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.collect.ImmutableMap;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,10 +35,6 @@ public class TypeProvider {
 
   private final Map<String, TSDataType> typeMap;
 
-  public static TypeProvider empty() {
-    return new TypeProvider(ImmutableMap.of());
-  }
-
   public TypeProvider() {
     this.typeMap = new HashMap<>();
   }
@@ -49,16 +43,17 @@ public class TypeProvider {
     this.typeMap = typeMap;
   }
 
-  public TSDataType getType(String path) {
-    checkState(typeMap.containsKey(path), String.format("no data type found for path: %s", path));
-    return typeMap.get(path);
+  public TSDataType getType(String symbol) {
+    checkState(
+        typeMap.containsKey(symbol), String.format("no data type found for symbol: %s", symbol));
+    return typeMap.get(symbol);
   }
 
-  public void setType(String path, TSDataType dataType) {
+  public void setType(String symbol, TSDataType dataType) {
     checkState(
-        !typeMap.containsKey(path) || typeMap.get(path) == dataType,
-        String.format("inconsistent data type for path: %s", path));
-    this.typeMap.put(path, dataType);
+        !typeMap.containsKey(symbol) || typeMap.get(symbol) == dataType,
+        String.format("inconsistent data type for symbol: %s", symbol));
+    this.typeMap.put(symbol, dataType);
   }
 
   public boolean containsTypeInfoOf(String path) {

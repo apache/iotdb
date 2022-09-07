@@ -112,7 +112,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
     fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
 
-    fragmentInstance.getFragment().setTypeProvider(analysis.getTypeProvider());
+    fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
     fragmentInstanceList.add(fragmentInstance);
   }
