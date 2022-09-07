@@ -96,7 +96,6 @@ public class SenderManager {
                       PipeMessage.MsgType.WARN,
                       String.format(
                           "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber()));
-              continue;
             }
             pipe.commit();
           }

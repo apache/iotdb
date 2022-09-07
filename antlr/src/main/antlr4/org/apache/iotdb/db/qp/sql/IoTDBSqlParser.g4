@@ -126,11 +126,19 @@ uri
 
 // Create Trigger
 createTrigger
-    : CREATE TRIGGER triggerName=identifier triggerEventClause ON fullPath AS className=STRING_LITERAL triggerAttributeClause?
+    : CREATE triggerType? TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL jarLocation? triggerAttributeClause?
+    ;
+
+triggerType
+    : STATELESS | STATEFUL
     ;
 
 triggerEventClause
-    : (BEFORE | AFTER) INSERT
+    : (BEFORE | AFTER) (INSERT | DELETE)
+    ;
+
+jarLocation
+    : USING ((FILE fileName=STRING_LITERAL) | URI uri)
     ;
 
 triggerAttributeClause

@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.OperationType;
@@ -50,6 +51,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class SessionManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
@@ -340,7 +342,7 @@ public class SessionManager {
   /** Check whether specific Session has the authorization to given plan. */
   public TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
     try {
-      if (!checkAuthorization(plan, sessionIdToUsername.get(sessionId))) {
+      if (!checkAuthorization(plan, getUsername(sessionId))) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
             "No permissions for this operation, please add privilege "
@@ -351,8 +353,8 @@ public class SessionManager {
       LOGGER.warn("meet error while checking authorization.", e);
       return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return onQueryException(
+          e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
     return null;
   }
@@ -371,7 +373,13 @@ public class SessionManager {
   }
 
   public String getUsername(Long sessionId) {
-    return sessionIdToUsername.get(sessionId);
+    String username = sessionIdToUsername.get(sessionId);
+    if (username == null) {
+      throw new RuntimeException(
+          new IoTDBException(
+              "session expired, please re-login.", TSStatusCode.SESSION_EXPIRED.getStatusCode()));
+    }
+    return username;
   }
 
   public ZoneId getZoneId(Long sessionId) {

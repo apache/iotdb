@@ -962,7 +962,7 @@ var config = {
 							['Ecosystem-Integration/Grafana-Connector','Grafana-Connector (Not Recommended)'],
 							['Ecosystem-Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem-Integration/DBeaver','DBeaver-IoTDB'],
-							['Ecosystem-Integration/MapReduce TsFile','MapReduce-TsFile'],
+							['Ecosystem-Integration/MapReduce-TsFile','MapReduce-TsFile'],
 							['Ecosystem-Integration/Spark-TsFile','Spark-TsFile'],
 							['Ecosystem-Integration/Spark-IoTDB','Spark-IoTDB'],
 							['Ecosystem-Integration/Hive-TsFile','Hive-TsFile'],

@@ -43,7 +43,7 @@ try {
 这里是状态码和相对应信息的列表：
 
 |状态码|状态类型|状态信息|
-|:---|:---|:---|
+|:--|:---|:---|
 |200|SUCCESS_STATUS|成功状态|
 |201|STILL_EXECUTING_STATUS|仍在执行状态|
 |202|INVALID_HANDLE_STATUS|无效句柄状态|
@@ -89,6 +89,7 @@ try {
 |504|START_UP_ERROR|启动错误|
 |505|SHUT_DOWN_ERROR|关机错误|
 |506|MULTIPLE_ERROR|多行语句执行错误|
+|507|SESSION_EXPIRED|会话过期|
 |600|WRONG_LOGIN_PASSWORD_ERROR|用户名或密码错误|
 |601|NOT_LOGIN_ERROR|没有登录|
 |602|NO_PERMISSION_ERROR|没有操作权限|

@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
+import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -94,9 +96,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -713,6 +717,55 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowFunctions(ShowFunctionsContext ctx) {
     return new ShowFunctionsStatement();
+  }
+
+  // Create Trigger =====================================================================
+  @Override
+  public Statement visitCreateTrigger(IoTDBSqlParser.CreateTriggerContext ctx) {
+    if (ctx.triggerEventClause().DELETE() != null) {
+      throw new SemanticException("Trigger does not support DELETE as TRIGGER_EVENT for now.");
+    }
+    if (ctx.triggerType() == null) {
+      throw new SemanticException("Please specify trigger type: STATELESS or STATEFUL.");
+    }
+    if (ctx.jarLocation() == null) {
+      throw new SemanticException("Please specify the location of jar.");
+    }
+    // parse jarPath
+    String jarPath;
+    boolean usingURI;
+    if (ctx.jarLocation().FILE() != null) {
+      usingURI = false;
+      jarPath = parseFilePath(ctx.jarLocation().fileName.getText());
+    } else {
+      usingURI = true;
+      jarPath = parseFilePath(ctx.jarLocation().uri().getText());
+    }
+    Map<String, String> attributes = new HashMap<>();
+    if (ctx.triggerAttributeClause() != null) {
+      for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :
+          ctx.triggerAttributeClause().triggerAttribute()) {
+        attributes.put(
+            parseAttributeKey(triggerAttributeContext.key),
+            parseAttributeValue(triggerAttributeContext.value));
+      }
+    }
+    return new CreateTriggerStatement(
+        parseIdentifier(ctx.triggerName.getText()),
+        parseStringLiteral(ctx.className.getText()),
+        jarPath,
+        usingURI,
+        ctx.triggerEventClause().BEFORE() != null
+            ? TriggerEvent.BEFORE_INSERT
+            : TriggerEvent.AFTER_INSERT,
+        ctx.triggerType().STATELESS() != null ? TriggerType.STATELESS : TriggerType.STATEFUL,
+        parsePrefixPath(ctx.prefixPath()),
+        attributes);
+  }
+
+  @Override
+  public Statement visitDropTrigger(IoTDBSqlParser.DropTriggerContext ctx) {
+    return new DropTriggerStatement(parseIdentifier(ctx.triggerName.getText()));
   }
 
   // Show Child Paths =====================================================================
@@ -2770,6 +2823,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.syncAttributeClauses() != null) {
       createPipeStatement.setPipeAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
+    } else {
+      createPipeStatement.setPipeAttributes(new HashMap<>());
     }
     return createPipeStatement;
   }

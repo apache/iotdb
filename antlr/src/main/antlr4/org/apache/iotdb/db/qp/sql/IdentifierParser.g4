@@ -75,6 +75,7 @@ keyWords
     | EVERY
     | EXPLAIN
     | FILL
+    | FILE
     | FLUSH
     | FOR
     | FROM
@@ -148,6 +149,8 @@ keyWords
     | SOFFSET
     | STORAGE
     | START
+    | STATEFUL
+    | STATELESS
     | STOP
     | SYSTEM
     | TAGS
@@ -167,6 +170,7 @@ keyWords
     | UNSET
     | UPDATE
     | UPSERT
+    | URI
     | USER
     | USING
     | VALUES

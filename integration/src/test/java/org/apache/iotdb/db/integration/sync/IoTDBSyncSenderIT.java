@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Ignore
 @Category({LocalStandaloneTest.class})
 public class IoTDBSyncSenderIT {
   private boolean enableSeqSpaceCompaction;

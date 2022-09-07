@@ -279,7 +279,7 @@ public class SinkHandle implements ISinkHandle {
     Pair<TsBlock, Long> pair = sequenceIdToTsBlock.get(sequenceId);
     if (pair == null || pair.left == null) {
       logger.error(
-          "The data block doesn't exist. Sequence ID is {}, remaining map is {}",
+          "The TsBlock doesn't exist. Sequence ID is {}, remaining map is {}",
           sequenceId,
           sequenceIdToTsBlock.entrySet());
       throw new IllegalStateException("The data block doesn't exist. Sequence ID: " + sequenceId);
@@ -307,6 +307,7 @@ public class SinkHandle implements ISinkHandle {
         freedBytes += entry.getValue().right;
         bufferRetainedSizeInBytes -= entry.getValue().right;
         iterator.remove();
+        logger.info("ack TsBlock {}.", entry.getKey());
       }
     }
     if (isFinished()) {

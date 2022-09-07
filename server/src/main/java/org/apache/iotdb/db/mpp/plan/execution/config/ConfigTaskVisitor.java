@@ -21,8 +21,10 @@ package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateFunctionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateTriggerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropFunctionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropTriggerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
@@ -57,8 +59,10 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
@@ -154,12 +158,6 @@ public class ConfigTaskVisitor
   }
 
   @Override
-  public IConfigTask visitCreateFunction(
-      CreateFunctionStatement createFunctionStatement, TaskContext context) {
-    return new CreateFunctionTask(createFunctionStatement);
-  }
-
-  @Override
   public IConfigTask visitMerge(MergeStatement mergeStatement, TaskContext context) {
     return new MergeTask(mergeStatement);
   }
@@ -187,6 +185,12 @@ public class ConfigTaskVisitor
   }
 
   @Override
+  public IConfigTask visitCreateFunction(
+      CreateFunctionStatement createFunctionStatement, TaskContext context) {
+    return new CreateFunctionTask(createFunctionStatement);
+  }
+
+  @Override
   public IConfigTask visitDropFunction(
       DropFunctionStatement dropFunctionStatement, TaskContext context) {
     return new DropFunctionTask(dropFunctionStatement);
@@ -196,6 +200,16 @@ public class ConfigTaskVisitor
   public IConfigTask visitShowFunctions(
       ShowFunctionsStatement showFunctionsStatement, TaskContext context) {
     return new ShowFunctionsTask();
+  }
+
+  public IConfigTask visitCreateTrigger(
+      CreateTriggerStatement createTriggerStatement, TaskContext context) {
+    return new CreateTriggerTask(createTriggerStatement);
+  }
+
+  public IConfigTask visitDropTrigger(
+      DropTriggerStatement dropTriggerStatement, TaskContext context) {
+    return new DropTriggerTask(dropTriggerStatement);
   }
 
   @Override

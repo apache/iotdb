@@ -27,17 +27,17 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
 
 ### 数据文件
 
-数据文件存储了用户写入 IoTDB 系统的所有数据。包含 TsFile 文件和其他文件，可通过 [data_dirs 配置项](../Reference/Config-Manual.md) 进行配置。
+数据文件存储了用户写入 IoTDB 系统的所有数据。包含 TsFile 文件和其他文件，可通过 [data_dirs 配置项](../Reference/DataNode-Config-Manual.md) 进行配置。
 
-为了更好的支持用户对于磁盘空间扩展等存储需求，IoTDB 为 TsFile 的存储配置增加了多文件目录的存储方式，用户可自主配置多个存储路径作为数据的持久化位置（详情见 [data_dirs 配置项](../Reference/Config-Manual.md)），并可以指定或自定义目录选择策略（详情见 [multi_dir_strategy 配置项](../Reference/Config-Manual.md)）。
+为了更好的支持用户对于磁盘空间扩展等存储需求，IoTDB 为 TsFile 的存储配置增加了多文件目录的存储方式，用户可自主配置多个存储路径作为数据的持久化位置（详情见 [data_dirs 配置项](../Reference/DataNode-Config-Manual.md)），并可以指定或自定义目录选择策略（详情见 [multi_dir_strategy 配置项](../Reference/DataNode-Config-Manual.md)）。
 
 ### 系统文件
 
-系统 Schema 文件，存储了数据文件的元数据信息。可通过 system_dir 配置项进行配置（详情见 [system_dir 配置项](../Reference/Config-Manual.md)）。
+系统 Schema 文件，存储了数据文件的元数据信息。可通过 system_dir 配置项进行配置（详情见 [system_dir 配置项](../Reference/DataNode-Config-Manual.md)）。
 
 ### 写前日志文件
 
-写前日志文件存储了系统的写前日志。可通过`wal_dir`配置项进行配置（详情见 [wal_dir 配置项](../Reference/Config-Manual.md)）。
+写前日志文件存储了系统的写前日志。可通过`wal_dir`配置项进行配置（详情见 [wal_dir 配置项](../Reference/DataNode-Config-Manual.md)）。
 
 ### 数据存储目录设置举例
 
