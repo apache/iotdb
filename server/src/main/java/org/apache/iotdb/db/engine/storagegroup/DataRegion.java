@@ -1490,7 +1490,7 @@ public class DataRegion {
         } else {
           logger.error(
               "meet IOException when creating TsFileProcessor, change system mode to error", e);
-          CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
           break;
         }
       }

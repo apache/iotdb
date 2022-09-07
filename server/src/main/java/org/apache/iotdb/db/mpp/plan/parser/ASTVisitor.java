@@ -2486,8 +2486,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       setSystemStatusStatement.setStatus(NodeStatus.Running);
     } else if (ctx.READONLY() != null) {
       setSystemStatusStatement.setStatus(NodeStatus.ReadOnly);
-    } else if (ctx.ERROR() != null) {
-      setSystemStatusStatement.setStatus(NodeStatus.Error);
     } else {
       throw new RuntimeException("Unknown system status in set system command.");
     }

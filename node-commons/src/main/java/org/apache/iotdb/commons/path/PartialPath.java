@@ -361,17 +361,28 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * "root.**", "root.*.d.s" overlaps with "root.sg.d.s", "root.sg.**" overlaps with "root.**.s",
    * "root.*.d.s" doesn't overlap with "root.sg.d1.*"
    *
-   * @param rPath a plain full path of a timeseries
-   * @return true if a successful match, otherwise return false
+   * @param rPath a pattern path of a timeseries
+   * @return true if overlapping otherwise return false
    */
   public boolean overlapWith(PartialPath rPath) {
     String[] rNodes = rPath.getNodes();
     for (int i = 0; i < this.nodes.length && i < rNodes.length; i++) {
-      // todo there's case that root.**.a and root.sg.d.s do not overlap with each other
-      if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)
-          || rNodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        return true;
+      // if encounter MULTI_LEVEL_PATH_WILDCARD, check recursively
+      if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        if (checkOverlapWithMultiLevelWildcard(nodes, rNodes, i + 1, i + 1)) {
+          return true;
+        }
       }
+      if (rNodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        if (checkOverlapWithMultiLevelWildcard(rNodes, nodes, i + 1, i + 1)) {
+          return true;
+        }
+      }
+      if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)
+          && rNodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        return false;
+      }
+      // if without MULTI_LEVEL_PATH_WILDCARD, scan and check
       if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD) || rNodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
         continue;
       }
@@ -380,6 +391,50 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       }
     }
     return this.nodes.length == rNodes.length;
+  }
+
+  /**
+   * Try to check overlap between nodes1[pos1:] and nodes2[pos2:] recursively.
+   *
+   * @param nodes1 nodes1[pos1-1] is MULTI_LEVEL_PATH_WILDCARD.
+   * @param nodes2 nodes2 is another pattern path to check overlapping
+   * @param pos1 start index of nodes1
+   * @param pos2 start index of nodes2
+   * @return true if overlapping, otherwise return false
+   */
+  private boolean checkOverlapWithMultiLevelWildcard(
+      String[] nodes1, String[] nodes2, int pos1, int pos2) {
+    // make sure pos1<nodes1.length and pos2<node2.length
+    if (pos1 > nodes1.length || pos2 > nodes2.length) {
+      return false;
+    } else if (pos1 == nodes1.length && pos2 == nodes2.length) {
+      return true;
+    }
+    int i, j;
+    for (i = pos1, j = pos2; i < nodes1.length && j < nodes2.length; i++, j++) {
+      if (nodes1[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        if (checkOverlapWithMultiLevelWildcard(nodes1, nodes2, pos1 + 1, pos2 + 1)) {
+          return true;
+        }
+      }
+      if (nodes2[j].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        if (checkOverlapWithMultiLevelWildcard(nodes2, nodes1, pos2 + 1, pos1 + 1)) {
+          return true;
+        }
+      }
+      if (nodes1[i].equals(ONE_LEVEL_PATH_WILDCARD) || nodes2[j].equals(ONE_LEVEL_PATH_WILDCARD)) {
+        continue;
+      } else if (!nodes1[i].equals(nodes2[j])) {
+        // failed to match, MULTI_LEVEL_PATH_WILDCARD should match more path in nodes2.
+        return checkOverlapWithMultiLevelWildcard(nodes1, nodes2, pos1, pos2 + 1);
+      }
+    }
+    if (i != nodes1.length || j != nodes2.length) {
+      // MULTI_LEVEL_PATH_WILDCARD should match more path in nodes2.
+      return checkOverlapWithMultiLevelWildcard(nodes1, nodes2, pos1, pos2 + 1);
+    } else {
+      return true;
+    }
   }
 
   @Override

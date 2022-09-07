@@ -39,7 +39,7 @@ public class ConfigNodeConfig {
   private int consensusPort = 22278;
 
   /** Used for connecting to the ConfigNodeGroup */
-  private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
+  private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 22277);
 
   // TODO: Read from iotdb-confignode.properties
   private int partitionRegionId = 0;

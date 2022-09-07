@@ -113,6 +113,7 @@ public class IoTDBStartCheck {
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol";
 
   private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
+
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
   public static IoTDBStartCheck getInstance() {

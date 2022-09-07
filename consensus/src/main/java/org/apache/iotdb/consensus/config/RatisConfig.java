@@ -34,6 +34,7 @@ public class RatisConfig {
   private final ThreadPool threadPool;
   private final Log log;
   private final Grpc grpc;
+  private final RatisConsensus ratisConsensus;
 
   private RatisConfig(
       Rpc rpc,
@@ -41,13 +42,15 @@ public class RatisConfig {
       Snapshot snapshot,
       ThreadPool threadPool,
       Log log,
-      Grpc grpc) {
+      Grpc grpc,
+      RatisConsensus ratisConsensus) {
     this.rpc = rpc;
     this.leaderElection = leaderElection;
     this.snapshot = snapshot;
     this.threadPool = threadPool;
     this.log = log;
     this.grpc = grpc;
+    this.ratisConsensus = ratisConsensus;
   }
 
   public Rpc getRpc() {
@@ -74,6 +77,10 @@ public class RatisConfig {
     return grpc;
   }
 
+  public RatisConsensus getRatisConsensus() {
+    return ratisConsensus;
+  }
+
   public static Builder newBuilder() {
     return new Builder();
   }
@@ -85,6 +92,7 @@ public class RatisConfig {
     private ThreadPool threadPool;
     private Log log;
     private Grpc grpc;
+    private RatisConsensus ratisConsensus;
 
     public RatisConfig build() {
       return new RatisConfig(
@@ -93,7 +101,8 @@ public class RatisConfig {
           snapshot != null ? snapshot : Snapshot.newBuilder().build(),
           threadPool != null ? threadPool : ThreadPool.newBuilder().build(),
           log != null ? log : Log.newBuilder().build(),
-          grpc != null ? grpc : Grpc.newBuilder().build());
+          grpc != null ? grpc : Grpc.newBuilder().build(),
+          ratisConsensus != null ? ratisConsensus : RatisConsensus.newBuilder().build());
     }
 
     public Builder setRpc(Rpc rpc) {
@@ -123,6 +132,11 @@ public class RatisConfig {
 
     public Builder setGrpc(Grpc grpc) {
       this.grpc = grpc;
+      return this;
+    }
+
+    public Builder setRatisConsensus(RatisConsensus ratisConsensus) {
+      this.ratisConsensus = ratisConsensus;
       return this;
     }
   }
@@ -688,6 +702,47 @@ public class RatisConfig {
 
       public Grpc.Builder setLeaderOutstandingAppendsMax(int leaderOutstandingAppendsMax) {
         this.leaderOutstandingAppendsMax = leaderOutstandingAppendsMax;
+        return this;
+      }
+    }
+  }
+
+  public static class RatisConsensus {
+    private final int retryTimesMax;
+    private final long retryWaitMillis;
+
+    private RatisConsensus(int retryTimesMax, long retryWaitMillis) {
+      this.retryTimesMax = retryTimesMax;
+      this.retryWaitMillis = retryWaitMillis;
+    }
+
+    public int getRetryTimesMax() {
+      return retryTimesMax;
+    }
+
+    public long getRetryWaitMillis() {
+      return retryWaitMillis;
+    }
+
+    public static RatisConsensus.Builder newBuilder() {
+      return new Builder();
+    }
+
+    public static class Builder {
+      private int retryTimesMax = 3;
+      private long retryWaitMillis = 500;
+
+      public RatisConsensus build() {
+        return new RatisConsensus(retryTimesMax, retryWaitMillis);
+      }
+
+      public RatisConsensus.Builder setRetryTimesMax(int retryTimesMax) {
+        this.retryTimesMax = retryTimesMax;
+        return this;
+      }
+
+      public RatisConsensus.Builder setRetryWaitMillis(long retryWaitMillis) {
+        this.retryWaitMillis = retryWaitMillis;
         return this;
       }
     }
