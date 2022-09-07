@@ -111,9 +111,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
           case START_METRIC:
             isEnableMetric = true;
             start();
-            if (!isAllReporterStart.get()) {
-              startAllReporter();
-            }
+            startAllReporter();
             break;
           case STOP_METRIC:
             stop();

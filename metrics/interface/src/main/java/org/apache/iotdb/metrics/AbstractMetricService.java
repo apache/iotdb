@@ -55,8 +55,6 @@ public abstract class AbstractMetricService {
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   /** Is the first initialization of metric service */
   private final AtomicBoolean isFirstInitialization = new AtomicBoolean(true);
-  /** Is all reporters start */
-  protected final AtomicBoolean isAllReporterStart = new AtomicBoolean(false);
   /** The metric manager of metric service */
   protected AbstractMetricManager metricManager = new DoNothingMetricManager();
   /** The metric reporter of metric service */
@@ -178,9 +176,7 @@ public abstract class AbstractMetricService {
     if (!isEnable()) {
       return;
     }
-    if (!isAllReporterStart.getAndSet(true)) {
-      compositeReporter.startAll();
-    }
+    compositeReporter.startAll();
   }
 
   /** Stop all reporters */
@@ -188,9 +184,7 @@ public abstract class AbstractMetricService {
     if (!isEnable()) {
       return;
     }
-    if (isAllReporterStart.getAndSet(false)) {
-      compositeReporter.stopAll();
-    }
+    compositeReporter.stopAll();
   }
 
   /** Start reporter according to type */
