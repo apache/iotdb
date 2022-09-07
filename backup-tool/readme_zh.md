@@ -41,7 +41,7 @@ ps: 使用 '-DskipTests' 来跳过测试用例
 ## 特性    
 - 基于iotdb-session   
 - 基于pipeline的导入导出工具  
-- 基于react框架  
+- 基于project reactor框架  
 - 支持很多情形的导入导出,比如导入导出一个存储组,导入导出对应的时间序列结构,包含设备是否对齐的信息等等  
 
 ## 使用
