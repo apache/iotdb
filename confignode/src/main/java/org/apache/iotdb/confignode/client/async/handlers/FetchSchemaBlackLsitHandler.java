@@ -48,6 +48,7 @@ public class FetchSchemaBlackLsitHandler extends AbstractRetryHandler
       List<TFetchSchemaBlackListResp> respList) {
     super(DataNodeRequestType.FETCH_SCHEMA_BLACK_LIST, dataNodeLocationMap);
     this.respList = respList;
+    this.dataNodeResponseStatus = new ArrayList<>();
   }
 
   public FetchSchemaBlackLsitHandler(

@@ -320,8 +320,7 @@ public class AsyncDataNodeClientPool {
               (DeleteDataForDeleteTimeSeriesHandler) handler);
           break;
         case DELETE_TIMESERIES:
-          client.deleteTimeSeries(
-              (TDeleteTimeSeriesReq) req, (DeleteDataForDeleteTimeSeriesHandler) handler);
+          client.deleteTimeSeries((TDeleteTimeSeriesReq) req, (DeleteTimeSeriesHandler) handler);
           break;
         default:
           LOGGER.error(

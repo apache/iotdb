@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupT
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateFunctionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateTriggerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteTimeSeriesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropFunctionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropTriggerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
@@ -306,7 +307,7 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitDeleteTimeseries(
       DeleteTimeSeriesStatement deleteTimeSeriesStatement, TaskContext context) {
-    return super.visitDeleteTimeseries(deleteTimeSeriesStatement, context);
+    return new DeleteTimeSeriesTask(deleteTimeSeriesStatement);
   }
 
   public static class TaskContext {}

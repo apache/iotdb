@@ -213,7 +213,8 @@ public class DeleteTimeSeriesProcedure
       AsyncDataNodeClientPool.getInstance()
           .sendAsyncRequestToDataNodeWithRetry(
               new TDeleteDataForDeleteTimeSeriesReq(
-                  entry.getValue(), ByteBuffer.wrap(patternTreeBytes)),
+                  new ArrayList<>(relatedDataRegionGroup.keySet()),
+                  ByteBuffer.wrap(patternTreeBytes)),
               handler);
       if (statusList.get(statusList.size() - 1).getCode()
           != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -221,7 +222,7 @@ public class DeleteTimeSeriesProcedure
         LOGGER.error(
             "Failed to delete data of timeseries {} on {}",
             patternTree.getAllPathPatterns().toString(),
-            entry.getKey());
+            relatedDataRegionGroup.keySet());
         setFailure(new ProcedureException("Delete data failed"));
         return;
       }
