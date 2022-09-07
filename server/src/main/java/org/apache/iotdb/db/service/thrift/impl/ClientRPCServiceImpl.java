@@ -598,7 +598,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (costTime >= CONFIG.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
       }
-      LOGGER.info("result sql {} cost {} ms", statement, costTime);
     }
   }
 

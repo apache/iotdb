@@ -336,7 +336,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                 boolean isFirstData = true;
                 for (long currentTime : timeBatch) {
                   TTimePartitionSlot currentTimePartitionSlot =
-                      StorageEngineV2.getTimePartitionSlot(currentTime);
+                      StorageEngineV2.getTimePartitionSlot(currentTime); // TODO: can speed up
                   if (!timePartitionSlot.equals(currentTimePartitionSlot)) {
                     if (!isFirstData) {
                       chunkData.setTailPageNeedDecode(true); // close last chunk data
