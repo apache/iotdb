@@ -166,14 +166,14 @@ public class DeleteTimeSeriesProcedure
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
             new TInvalidateMatchedSchemaCacheReq(ByteBuffer.wrap(patternTreeBytes)), handler);
-    for (TSStatus status : statusList) {
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // todo implement retry on another dataNode
-        LOGGER.error("Failed to invalidate schema cache of timeseries {}", requestMessage);
-        setFailure(new ProcedureException("Invalidate schema cache failed"));
-        return;
-      }
+    if (statusList.get(statusList.size() - 1).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // todo implement retry on another dataNode
+      LOGGER.error("Failed to invalidate schema cache of timeseries {}", requestMessage);
+      setFailure(new ProcedureException("Invalidate schema cache failed"));
+      return;
     }
+
     setNextState(DeleteTimeSeriesState.DELETE_DATA);
   }
 
@@ -204,6 +204,10 @@ public class DeleteTimeSeriesProcedure
           getRelatedDataRegionGroup(env, patternTree);
       Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeDataRegionGroupIdMap =
           getDataNodeRegionGroupMap(relatedDataRegionGroup);
+
+      if (dataNodeDataRegionGroupIdMap.isEmpty()) {
+        continue;
+      }
 
       List<TSStatus> statusList = new ArrayList<>();
       Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
