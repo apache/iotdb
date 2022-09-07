@@ -40,7 +40,6 @@ import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.rpc.TSStatusCode;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -139,8 +138,6 @@ public class ConfigNode implements ConfigNodeMBean {
             "The current ConfigNode can't joined the cluster because leader's scheduling failed. The possible cause is that the ip:port configuration is incorrect.");
         stop();
       }
-
-      registerManager.register(MetricService.getInstance());
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
       try {
@@ -178,6 +175,7 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(UDFClassLoaderManager.setupAndGetInstance(CONF.getUdfLibDir()));
     registerManager.register(UDFRegistrationService.setupAndGetInstance(CONF.getSystemUdfDir()));
 
+    registerManager.register(MetricService.getInstance());
     LOGGER.info("Successfully setup internal services.");
   }
 

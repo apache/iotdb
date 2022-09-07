@@ -18,7 +18,7 @@
 #
 
 # whether enable the module
-enableMetric: false
+enableMetric: true
 
 # Is stat performance of operation latency
 enablePerformanceStat: false
