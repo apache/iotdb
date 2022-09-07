@@ -64,7 +64,7 @@ public class DataNodeInternalRPCService extends ThriftService
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.INTERNAL_SERVICE_RPC_CLIENT.getName(),
+              ThreadName.DATANODE_INTERNAL_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -75,7 +75,7 @@ public class DataNodeInternalRPCService extends ThriftService
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.INTERNAL_SERVICE_RPC_SERVER.getName());
+    thriftServiceThread.setName(ThreadName.DATANODE_INTERNAL_RPC_SERVICE.getName());
     MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),
@@ -83,7 +83,7 @@ public class DataNodeInternalRPCService extends ThriftService
             thriftServiceThread,
             AbstractThriftServiceThread::getActiveThreadCount,
             Tag.NAME.toString(),
-            ThreadName.INTERNAL_SERVICE_RPC_SERVER.getName());
+            ThreadName.DATANODE_INTERNAL_RPC_SERVICE.getName());
   }
 
   @Override

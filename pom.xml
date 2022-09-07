@@ -118,6 +118,7 @@
         <module>library-udf</module>
         <module>schema-engine-rocksdb</module>
         <module>udf-api</module>
+        <module>trigger-api</module>
         <module>rewrite-tsfile-tool</module>
         <module>external-api</module>
     </modules>

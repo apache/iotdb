@@ -34,6 +34,10 @@ public class CreateTriggerTask implements IConfigTask {
 
   private final String className;
 
+  private final String jarPath;
+
+  private final boolean usingURI;
+
   private final TriggerEvent triggerEvent;
 
   private final TriggerType triggerType;
@@ -43,6 +47,8 @@ public class CreateTriggerTask implements IConfigTask {
   public CreateTriggerTask(CreateTriggerStatement createTriggerStatement) {
     this.triggerName = createTriggerStatement.getTriggerName();
     this.className = createTriggerStatement.getClassName();
+    this.jarPath = createTriggerStatement.getJarPath();
+    this.usingURI = createTriggerStatement.isUsingURI();
     this.triggerEvent = createTriggerStatement.getTriggerEvent();
     this.triggerType = createTriggerStatement.getTriggerType();
     this.pathPattern = createTriggerStatement.getPathPattern();
@@ -52,6 +58,6 @@ public class CreateTriggerTask implements IConfigTask {
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.createTrigger(
-        triggerName, className, triggerEvent, triggerType, pathPattern);
+        triggerName, className, jarPath, usingURI, triggerEvent, triggerType, pathPattern);
   }
 }

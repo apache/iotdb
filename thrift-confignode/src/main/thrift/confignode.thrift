@@ -231,10 +231,25 @@ struct TDropFunctionReq {
 }
 
 // Trigger
+enum TTriggerState {
+  // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
+  INACTIVE
+  // The intermediate state of Create trigger, the trigger need to create has activated on some DataNodes.
+  PARTIAL_ACTIVE
+  // Triggers on all DataNodes are available.
+  ACTIVE
+  // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
+  DROPPING
+}
+
 struct TCreateTriggerReq {
   1: required string triggerName
   2: required binary triggerInformation
   3: required common.TFile jarFile
+}
+
+struct TDropTriggerReq {
+  1: required string triggerName
 }
 
 // Show cluster
@@ -347,6 +362,21 @@ struct TSetSchemaTemplateReq {
 struct TGetPathsSetTemplatesResp {
   1: required common.TSStatus status
   2: optional list<string> pathList
+}
+
+// Show pipe
+struct TPipeInfo {
+  1: required i64 createTime
+  2: required string pipeName
+  3: required string role
+  4: required string remote
+  5: required string status
+  6: required string message
+}
+
+struct TShowPipeResp {
+  1: required common.TSStatus status
+  2: optional list<TPipeInfo> pipeInfoList
 }
 
 service IConfigNodeRPCService {
@@ -603,6 +633,14 @@ service IConfigNodeRPCService {
       *         EXECUTE_STATEMENT_ERROR if operations on any node failed
       */
   common.TSStatus createTrigger(TCreateTriggerReq req)
+
+  /**
+       * Remove a trigger on all online ConfigNodes and DataNodes
+       *
+       * @return SUCCESS_STATUS if the function was removed successfully
+       *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+       */
+    common.TSStatus dropTrigger(TDropTriggerReq req)
 
   // ======================================================
   // Maintenance Tools

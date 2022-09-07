@@ -26,7 +26,7 @@
 SQL 语法：
 
 ```sql
-select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <whereClause>
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <whereClause> [ORDER BY TIMESERIES (DESC | ASC)?]
 ```
 
 其含义是：查询时间序列 prefixPath.path 中最近时间戳的数据。
@@ -63,6 +63,22 @@ IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017
 +-----------------------------+-----------------------------+---------+--------+
 |2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
 |2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
++-----------------------------+-----------------------------+---------+--------+
+Total line number = 2
+It costs 0.002s
+```
+
+## 将结果集根据序列名进行排序
+
+**示例 3：** 查询 root.ln.wf01.wt01 下所有序列的最新数据点，并按照序列名降序排列。
+
+```
+IoTDB> select last * from root.ln.wf01.wt01 order by timeseries desc;
++-----------------------------+-----------------------------+---------+--------+
+|                         Time|                   timeseries|    value|dataType|
++-----------------------------+-----------------------------+---------+--------+
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
+|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
 +-----------------------------+-----------------------------+---------+--------+
 Total line number = 2
 It costs 0.002s

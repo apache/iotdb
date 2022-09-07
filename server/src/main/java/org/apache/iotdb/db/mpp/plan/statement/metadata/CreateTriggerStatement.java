@@ -23,8 +23,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
 import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.Collections;
 import java.util.List;
@@ -35,6 +37,11 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
   private final String triggerName;
 
   private final String className;
+
+  private final String jarPath;
+
+  /** usingURI == true indicates that jarPath is a URI */
+  private final boolean usingURI;
 
   private final TriggerEvent triggerEvent;
 
@@ -47,12 +54,18 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
   public CreateTriggerStatement(
       String triggerName,
       String className,
+      String jarPath,
+      boolean usingURI,
       TriggerEvent triggerEvent,
       TriggerType triggerType,
       PartialPath pathPattern,
       Map<String, String> attributes) {
+    super();
+    statementType = StatementType.CREATE_TRIGGER;
     this.triggerName = triggerName;
     this.className = className;
+    this.jarPath = jarPath;
+    this.usingURI = usingURI;
     this.triggerEvent = triggerEvent;
     this.triggerType = triggerType;
     this.pathPattern = pathPattern;
@@ -81,6 +94,19 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
 
   public Map<String, String> getAttributes() {
     return attributes;
+  }
+
+  public String getJarPath() {
+    return jarPath;
+  }
+
+  public boolean isUsingURI() {
+    return usingURI;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitCreateTrigger(this, context);
   }
 
   @Override

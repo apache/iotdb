@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -484,7 +485,7 @@ public class TriggerRegistrationService implements IService {
 
   @Override
   public ServiceType getID() {
-    return ServiceType.TRIGGER_REGISTRATION_SERVICE;
+    return ServiceType.TRIGGER_REGISTRATION_SERVICE_OLD;
   }
 
   public int executorSize() {

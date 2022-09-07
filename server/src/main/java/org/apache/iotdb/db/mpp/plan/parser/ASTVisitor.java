@@ -100,6 +100,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -727,6 +728,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.triggerType() == null) {
       throw new SemanticException("Please specify trigger type: STATELESS or STATEFUL.");
     }
+    if (ctx.jarLocation() == null) {
+      throw new SemanticException("Please specify the location of jar.");
+    }
+    // parse jarPath
+    String jarPath;
+    boolean usingURI;
+    if (ctx.jarLocation().FILE() != null) {
+      usingURI = false;
+      jarPath = parseFilePath(ctx.jarLocation().fileName.getText());
+    } else {
+      usingURI = true;
+      jarPath = parseFilePath(ctx.jarLocation().uri().getText());
+    }
     Map<String, String> attributes = new HashMap<>();
     if (ctx.triggerAttributeClause() != null) {
       for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :
@@ -739,12 +753,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new CreateTriggerStatement(
         parseIdentifier(ctx.triggerName.getText()),
         parseStringLiteral(ctx.className.getText()),
+        jarPath,
+        usingURI,
         ctx.triggerEventClause().BEFORE() != null
             ? TriggerEvent.BEFORE_INSERT
             : TriggerEvent.AFTER_INSERT,
         ctx.triggerType().STATELESS() != null ? TriggerType.STATELESS : TriggerType.STATEFUL,
         parsePrefixPath(ctx.prefixPath()),
         attributes);
+  }
+
+  @Override
+  public Statement visitDropTrigger(IoTDBSqlParser.DropTriggerContext ctx) {
+    return new DropTriggerStatement(parseIdentifier(ctx.triggerName.getText()));
   }
 
   // Show Child Paths =====================================================================
@@ -2802,6 +2823,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.syncAttributeClauses() != null) {
       createPipeStatement.setPipeAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
+    } else {
+      createPipeStatement.setPipeAttributes(new HashMap<>());
     }
     return createPipeStatement;
   }
