@@ -166,7 +166,7 @@ public class NodeManager {
    *     DATANODE_NOT_EXIST when some datanode not exist.
    */
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
-    LOGGER.info("Node manager start to remove DataNode {}", removeDataNodePlan);
+    LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
 
     DataNodeRemoveHandler dataNodeRemoveHandler =
         new DataNodeRemoveHandler((ConfigManager) configManager);
@@ -193,7 +193,7 @@ public class NodeManager {
     }
     dataSet.setStatus(status);
 
-    LOGGER.info("Node manager finished to remove DataNode {}", removeDataNodePlan);
+    LOGGER.info("NodeManager finished to remove DataNode {}", removeDataNodePlan);
     return dataSet;
   }
 

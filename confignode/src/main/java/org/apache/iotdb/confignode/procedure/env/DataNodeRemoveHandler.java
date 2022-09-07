@@ -86,7 +86,8 @@ public class DataNodeRemoveHandler {
    */
   public TSStatus broadcastDisableDataNode(TDataNodeLocation disabledDataNode) {
     LOGGER.info(
-        "DataNodeRemoveService start send disable the Data Node to cluster, {}", disabledDataNode);
+        "DataNodeRemoveService start send disable the Data Node to cluster, {}",
+            getIdWithRpcEndpoint(disabledDataNode));
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<TEndPoint> otherOnlineDataNodes =
         configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
@@ -107,7 +108,7 @@ public class DataNodeRemoveHandler {
     }
     LOGGER.info(
         "DataNodeRemoveService finished send disable the Data Node to cluster, {}",
-        disabledDataNode);
+            getIdWithRpcEndpoint(disabledDataNode));
     status.setMessage("Succeed disable the Data Node from cluster");
     return status;
   }
@@ -172,9 +173,9 @@ public class DataNodeRemoveHandler {
                 maintainPeerReq,
                 DataNodeRequestType.ADD_REGION_PEER);
     LOGGER.info(
-        "Send region {} add peer action to {}, wait it finished",
+        "Send action addRegionPeer, wait it finished, regionId: {}, dataNode: {}",
         regionId,
-        selectedDataNode.get().getInternalEndPoint());
+        getIdWithRpcEndpoint(selectedDataNode.get()));
     return status;
   }
 
@@ -339,10 +340,10 @@ public class DataNodeRemoveHandler {
                 req,
                 DataNodeRequestType.CREATE_NEW_REGION_PEER);
 
-    LOGGER.info("Send create peer for regionId {} on data node {}", regionId, destDataNode);
+    LOGGER.info("Send action createNewRegionPeer, regionId: {}, dataNode: {}", regionId, destDataNode);
     if (isFailed(status)) {
       LOGGER.error(
-          "Send create peer for regionId {} on data node {},  result: {}",
+          "Send action createNewRegionPeer, regionId: {}, dataNode: {}, result: {}",
           regionId,
           destDataNode,
           status);
@@ -491,5 +492,10 @@ public class DataNodeRemoveHandler {
 
     // TODO replace findAny() by select the low load node.
     return regionReplicaNodes.stream().filter(e -> !e.equals(filterLocation)).findAny();
+  }
+
+  private String getIdWithRpcEndpoint(TDataNodeLocation location) {
+    return String.format("dataNodeId: %s, clientRpcEndPoint: %s",
+            location.getDataNodeId(), location.getClientRpcEndPoint());
   }
 }

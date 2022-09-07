@@ -277,15 +277,10 @@ public class RegionMigrateService implements IService {
         } catch (Throwable e) {
           addPeerSucceed = false;
           taskLogger.error(
-              "add new peer {} for region {} error, retry times: {}", newPeerNode, regionId, i, e);
+              "Add new peer {} for region {} error, retry times: {}", newPeerNode, regionId, i, e);
           status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-          status.setMessage(
-              "add peer "
-                  + newPeerNode
-                  + " for region: "
-                  + regionId
-                  + " error, exception: "
-                  + e.getMessage());
+          status.setMessage(String.format("Add peer for region error, peerId: %s, regionId: %s, errorMessage: %s",
+                  newPeerNode, regionId, e.getMessage()));
         }
         if (addPeerSucceed && resp != null && resp.isSuccess()) {
           break;
@@ -295,7 +290,8 @@ public class RegionMigrateService implements IService {
         taskLogger.error(
             "add new peer {} for region {} failed, resp: {}", newPeerNode, regionId, resp);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-        status.setMessage("add new peer " + newPeerNode + " for region " + regionId + "failed");
+        status.setMessage(String.format("Add peer for region error, peerId: %s, regionId: %s, resp: %s",
+                newPeerNode, regionId, resp));
         return status;
       }
 

@@ -88,7 +88,7 @@ public class RegionMigrateProcedure
           tsStatus = env.getDataNodeRemoveHandler().addRegionPeer(destDataNode, consensusGroupId);
           if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId);
-            LOG.info("Wait for region {}  add peer finished", consensusGroupId);
+            LOG.info("Wait for region add peer finished, regionId: {}", consensusGroupId);
           } else {
             throw new ProcedureException("Failed to add region peer");
           }
@@ -253,7 +253,7 @@ public class RegionMigrateProcedure
       regionMigrateLock.notify();
     }
     LOG.info(
-        "notified after DataNode reported region {} migrate result:{} ", req.getRegionId(), req);
+        "Notified after DataNode reported region {} migrate result: {} ", req.getRegionId(), req);
   }
 
   public TConsensusGroupId getConsensusGroupId() {
