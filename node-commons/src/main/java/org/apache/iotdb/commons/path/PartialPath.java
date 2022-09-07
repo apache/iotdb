@@ -384,11 +384,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   /**
-   * Try to check overlap between nodes1 and nodes2.
+   * Try to check overlap between nodes1 and nodes2 with MULTI_LEVEL_PATH_WILDCARD. Time complexity
+   * O(n^2).
    *
    * @return true if overlapping, otherwise return false
    */
   private boolean checkOverlapWithMultiLevelWildcard(String[] nodes1, String[] nodes2) {
+    // dp[i][j] means if nodes1[0:i) and nodes[0:j) overlapping
     boolean[][] dp = new boolean[nodes1.length + 1][nodes2.length + 1];
     dp[0][0] = true;
     for (int i = 1; i <= nodes1.length; i++) {
@@ -397,6 +399,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
             || nodes2[j - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
           // if encounter MULTI_LEVEL_PATH_WILDCARD
           if (nodes1[i - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+            // if nodes1[i-1] is MULTI_LEVEL_PATH_WILDCARD, dp[i][k(k>=j)]=dp[i-1][j-1]
             if (dp[i - 1][j - 1]) {
               for (int k = j; k <= nodes2.length; k++) {
                 dp[i][k] = true;
@@ -404,6 +407,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
             }
           }
           if (nodes2[j - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+            // if nodes2[j-1] is MULTI_LEVEL_PATH_WILDCARD, dp[k(k>=i)][j]=dp[i-1][j-1]
             if (dp[i - 1][j - 1]) {
               for (int k = i; k <= nodes1.length; k++) {
                 dp[k][j] = true;
@@ -415,6 +419,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
           if (nodes1[i - 1].equals(ONE_LEVEL_PATH_WILDCARD)
               || nodes2[j - 1].equals(ONE_LEVEL_PATH_WILDCARD)
               || nodes1[i - 1].equals(nodes2[j - 1])) {
+            // if nodes1[i-1] and nodes[2] is matched, dp[i][j] = dp[i-1][j-1]
             dp[i][j] |= dp[i - 1][j - 1];
           }
         }
