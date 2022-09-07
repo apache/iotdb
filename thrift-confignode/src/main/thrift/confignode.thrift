@@ -192,7 +192,7 @@ struct TLoginReq {
 }
 
 struct TCheckUserPrivilegesReq {
-  1: required string username;
+  1: required string username
   2: required list<string> paths
   3: required i32 permission
 }
@@ -230,6 +230,28 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
+// Trigger
+enum TTriggerState {
+  // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
+  INACTIVE
+  // The intermediate state of Create trigger, the trigger need to create has activated on some DataNodes.
+  PARTIAL_ACTIVE
+  // Triggers on all DataNodes are available.
+  ACTIVE
+  // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
+  DROPPING
+}
+
+struct TCreateTriggerReq {
+  1: required string triggerName
+  2: required binary triggerInformation
+  3: required common.TFile jarFile
+}
+
+struct TDropTriggerReq {
+  1: required string triggerName
+}
+
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status
@@ -259,6 +281,7 @@ struct TConfigNodeInfo {
   2: required string status
   3: required string internalAddress
   4: required i32 internalPort
+  5: required string roleType
 }
 
 struct TShowConfigNodesResp {
@@ -599,6 +622,27 @@ service IConfigNodeRPCService {
   common.TSStatus dropFunction(TDropFunctionReq req)
 
   // ======================================================
+  // Trigger
+  // ======================================================
+
+   /**
+      * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+      * and sync Information of it to all ConfigNodes
+      *
+      * @return SUCCESS_STATUS if the trigger was created successfully
+      *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+      */
+  common.TSStatus createTrigger(TCreateTriggerReq req)
+
+  /**
+       * Remove a trigger on all online ConfigNodes and DataNodes
+       *
+       * @return SUCCESS_STATUS if the function was removed successfully
+       *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+       */
+    common.TSStatus dropTrigger(TDropTriggerReq req)
+
+  // ======================================================
   // Maintenance Tools
   // ======================================================
 
@@ -613,6 +657,9 @@ service IConfigNodeRPCService {
 
   /** Load configuration on all DataNodes */
   common.TSStatus loadConfiguration()
+
+  /** Set system status on DataNodes */
+  common.TSStatus setSystemStatus(string status)
 
   // ======================================================
   // Cluster Tools

@@ -76,6 +76,7 @@ public class ColumnHeaderConstant {
   // column names for show region statement
   public static final String COLUMN_REGION_ID = "RegionId";
   public static final String COLUMN_TYPE = "Type";
+  public static final String COLUMN_SHOW_REGION_STORAGE_GROUP = "Storage Group";
   public static final String COLUMN_DATANODE_ID = "DataNodeId";
   public static final String COLUMN_SERIES_SLOTS = "SeriesSlots";
   public static final String COLUMN_TIME_SLOTS = "TimeSlots";
@@ -192,7 +193,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_REGION_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_SHOW_REGION_STORAGE_GROUP, TSDataType.TEXT),
           new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT64),
           new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64),
           new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
@@ -214,7 +215,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PORT, TSDataType.INT32));
+          new ColumnHeader(COLUMN_PORT, TSDataType.INT32),
+          new ColumnHeader(COLUMN_ROLE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showClusterColumnHeaders =
       ImmutableList.of(

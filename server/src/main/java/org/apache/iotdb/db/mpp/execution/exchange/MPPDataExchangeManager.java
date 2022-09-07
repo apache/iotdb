@@ -155,7 +155,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           // have already been stopped. For example, in the query whit LimitOperator, the downstream
           // FragmentInstance may be finished, although the upstream is still working.
           logger.warn(
-              "received NewDataBlockEvent but the upstream FragmentInstance[{}] is not found",
+              "received NewDataBlockEvent but the downstream FragmentInstance[{}] is not found",
               e.getTargetFragmentInstanceId());
           return;
         }

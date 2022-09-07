@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
@@ -39,6 +40,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.exception.NodeReadOnlyException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
@@ -159,6 +161,16 @@ class RatisConsensus implements IConsensus {
     RaftGroup raftGroup = getGroupInfo(raftGroupId);
     if (raftGroup == null || !raftGroup.getPeers().contains(myself)) {
       return failedWrite(new ConsensusGroupNotExistException(consensusGroupId));
+    }
+
+    // current Peer is group leader and in ReadOnly State
+    if (isLeader(consensusGroupId) && CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      try {
+        forceStepDownLeader(raftGroup);
+      } catch (IOException e) {
+        logger.warn("leader {} read only, force step down failed due to {}", myself, e);
+      }
+      return failedWrite(new NodeReadOnlyException(myself));
     }
 
     // serialize request into Message
@@ -456,10 +468,8 @@ class RatisConsensus implements IConsensus {
       if (!configChangeReply.isSuccess()) {
         return failed(new RatisRequestFailedException(configChangeReply.getException()));
       }
-      // TODO tuning for timeoutMs
-      // when newLeaderPeerId == null, ratis forces current leader to step down and raise new
-      // election
-      reply = client.getRaftClient().admin().transferLeadership(null, 5000);
+
+      reply = forceStepDownLeader(raftGroup);
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
       }
@@ -471,6 +481,22 @@ class RatisConsensus implements IConsensus {
       }
     }
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
+  }
+
+  // TODO when Ratis implements read leader transfer mechanism, change this implementation
+  private RaftClientReply forceStepDownLeader(RaftGroup group) throws IOException {
+    RatisClient client = null;
+    try {
+      client = getRaftClient(group);
+      // TODO tuning for timeoutMs
+      // when newLeaderPeerId == null, ratis forces current leader to step down and raise new
+      // election
+      return client.getRaftClient().admin().transferLeadership(null, 5000);
+    } finally {
+      if (client != null) {
+        client.returnSelf();
+      }
+    }
   }
 
   @Override

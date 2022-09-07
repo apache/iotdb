@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -575,9 +574,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateSetSystemMode(SetSystemModePlan plan) {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setNodeStatus(plan.isReadOnly() ? NodeStatus.ReadOnly : NodeStatus.Running);
+    CommonDescriptor.getInstance().getConfig().setNodeStatus(plan.getStatus());
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
@@ -1930,7 +1927,7 @@ public class PlanExecutor implements IPlanExecutor {
             }
           }
           break;
-        case GRANT_ROLE_TO_USER:
+        case GRANT_USER_ROLE:
           authorizerManager.grantRoleToUser(roleName, userName);
           break;
         case REVOKE_USER:
@@ -1947,7 +1944,7 @@ public class PlanExecutor implements IPlanExecutor {
             }
           }
           break;
-        case REVOKE_ROLE_FROM_USER:
+        case REVOKE_USER_ROLE:
           authorizerManager.revokeRoleFromUser(roleName, userName);
           break;
         default:
@@ -2446,7 +2443,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void settle(SettlePlan plan) throws StorageEngineException {
-    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException(
           "Current system mode is read only, does not support file settle");
     }

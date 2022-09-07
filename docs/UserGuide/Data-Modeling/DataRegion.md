@@ -52,4 +52,4 @@ data_region_num
 
 Recommended value is [data region number] = [CPU core number] / [user-defined storage group number]
 
-For more information, you can refer to [this page](../Reference/Config-Manual.md).
+For more information, you can refer to [this page](../Reference/DataNode-Config-Manual.md).

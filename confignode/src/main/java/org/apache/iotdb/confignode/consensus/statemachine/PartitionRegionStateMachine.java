@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -31,7 +32,6 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -167,6 +167,6 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
 
   @Override
   public boolean isReadOnly() {
-    return IoTDBDescriptor.getInstance().getConfig().isReadOnly();
+    return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
 }

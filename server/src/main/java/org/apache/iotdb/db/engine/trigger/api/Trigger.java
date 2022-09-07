@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.trigger.api;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 /** User Guide: docs/UserGuide/Operation Manual/Triggers.md */

@@ -17,23 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.service;
+package org.apache.iotdb.commons.trigger.exception;
 
-public class UDFExecutableResource {
-
-  private final long requestId;
-  private final String resourceDir;
-
-  public UDFExecutableResource(long requestId, String resourceDir) {
-    this.requestId = requestId;
-    this.resourceDir = resourceDir;
+public class TriggerExecutionException extends RuntimeException {
+  public TriggerExecutionException(String message) {
+    super(message);
   }
 
-  public long getRequestId() {
-    return requestId;
-  }
-
-  public String getResourceDir() {
-    return resourceDir;
+  public TriggerExecutionException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

@@ -49,8 +49,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
@@ -124,20 +126,29 @@ public class ExpressionAnalyzer {
       boolean rawFlag = false, aggregationFlag = false;
       if (firstType == ResultColumn.ColumnType.RAW
           || secondType == ResultColumn.ColumnType.RAW
-          || thirdType == ResultColumn.ColumnType.RAW) rawFlag = true;
+          || thirdType == ResultColumn.ColumnType.RAW) {
+        rawFlag = true;
+      }
       if (firstType == ResultColumn.ColumnType.AGGREGATION
           || secondType == ResultColumn.ColumnType.AGGREGATION
-          || thirdType == ResultColumn.ColumnType.AGGREGATION) aggregationFlag = true;
-      if (rawFlag && aggregationFlag)
+          || thirdType == ResultColumn.ColumnType.AGGREGATION) {
+        aggregationFlag = true;
+      }
+      if (rawFlag && aggregationFlag) {
         throw new SemanticException(
             "Raw data and aggregation result hybrid calculation is not supported.");
+      }
       if (firstType == ResultColumn.ColumnType.CONSTANT
           && secondType == ResultColumn.ColumnType.CONSTANT
           && thirdType == ResultColumn.ColumnType.CONSTANT) {
         throw new SemanticException("Constant column is not supported.");
       }
-      if (firstType != ResultColumn.ColumnType.CONSTANT) return firstType;
-      if (secondType != ResultColumn.ColumnType.CONSTANT) return secondType;
+      if (firstType != ResultColumn.ColumnType.CONSTANT) {
+        return firstType;
+      }
+      if (secondType != ResultColumn.ColumnType.CONSTANT) {
+        return secondType;
+      }
       return thirdType;
     } else if (expression instanceof BinaryExpression) {
       ResultColumn.ColumnType leftType =
@@ -277,6 +288,71 @@ public class ExpressionAnalyzer {
       return Collections.singletonList(expression);
     } else if (expression instanceof ConstantOperand) {
       return Collections.singletonList(expression);
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  /**
+   * Concat suffix path in SELECT or WITHOUT NULL clause with the prefix path in the FROM clause.
+   *
+   * @param expression expression in SELECT or WITHOUT NULL clause which may include suffix paths
+   * @param prefixPaths prefix paths in the FROM clause
+   * @return the concatenated partialPath list
+   */
+  public static List<PartialPath> concatExpressionWithSuffixPaths(
+      Expression expression, List<PartialPath> prefixPaths) {
+    Set<PartialPath> resultPaths = new HashSet<>();
+    if (expression instanceof TernaryExpression) {
+      List<PartialPath> firstExpressions =
+          concatExpressionWithSuffixPaths(
+              ((TernaryExpression) expression).getFirstExpression(), prefixPaths);
+      List<PartialPath> secondExpressions =
+          concatExpressionWithSuffixPaths(
+              ((TernaryExpression) expression).getSecondExpression(), prefixPaths);
+      List<PartialPath> thirdExpressions =
+          concatExpressionWithSuffixPaths(
+              ((TernaryExpression) expression).getThirdExpression(), prefixPaths);
+      resultPaths.addAll(firstExpressions);
+      resultPaths.addAll(secondExpressions);
+      resultPaths.addAll(thirdExpressions);
+      return new ArrayList<>(resultPaths);
+    } else if (expression instanceof BinaryExpression) {
+      List<PartialPath> leftExpressions =
+          concatExpressionWithSuffixPaths(
+              ((BinaryExpression) expression).getLeftExpression(), prefixPaths);
+      List<PartialPath> rightExpressions =
+          concatExpressionWithSuffixPaths(
+              ((BinaryExpression) expression).getRightExpression(), prefixPaths);
+      resultPaths.addAll(leftExpressions);
+      resultPaths.addAll(rightExpressions);
+      return new ArrayList<>(resultPaths);
+    } else if (expression instanceof UnaryExpression) {
+      List<PartialPath> childExpressions =
+          concatExpressionWithSuffixPaths(
+              ((UnaryExpression) expression).getExpression(), prefixPaths);
+      resultPaths.addAll(childExpressions);
+      return new ArrayList<>(resultPaths);
+    } else if (expression instanceof FunctionExpression) {
+      for (Expression suffixExpression : expression.getExpressions()) {
+        resultPaths.addAll(concatExpressionWithSuffixPaths(suffixExpression, prefixPaths));
+      }
+      return new ArrayList<>(resultPaths);
+    } else if (expression instanceof TimeSeriesOperand) {
+      PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
+      List<PartialPath> actualPaths = new ArrayList<>();
+      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+        actualPaths.add(rawPath);
+      } else {
+        for (PartialPath prefixPath : prefixPaths) {
+          PartialPath concatPath = prefixPath.concatPath(rawPath);
+          actualPaths.add(concatPath);
+        }
+      }
+      return actualPaths;
+    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+      return new ArrayList<>();
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());
@@ -1026,9 +1102,9 @@ public class ExpressionAnalyzer {
       Expression firstExpression =
           removeAliasFromExpression(((TernaryExpression) expression).getFirstExpression());
       Expression secondExpression =
-          removeAliasFromExpression(((TernaryExpression) expression).getFirstExpression());
+          removeAliasFromExpression(((TernaryExpression) expression).getSecondExpression());
       Expression thirdExpression =
-          removeAliasFromExpression(((TernaryExpression) expression).getFirstExpression());
+          removeAliasFromExpression(((TernaryExpression) expression).getThirdExpression());
       return reconstructTernaryExpressions(
               expression,
               Collections.singletonList(firstExpression),
@@ -1110,7 +1186,7 @@ public class ExpressionAnalyzer {
           getDeviceNameInSourceExpression(((TernaryExpression) expression).getFirstExpression());
       if (DeviceName == null) {
         DeviceName =
-            getDeviceNameInSourceExpression(((TernaryExpression) expression).getFirstExpression());
+            getDeviceNameInSourceExpression(((TernaryExpression) expression).getSecondExpression());
       }
       if (DeviceName == null) {
         DeviceName =
@@ -1143,9 +1219,9 @@ public class ExpressionAnalyzer {
       Expression firstExpression =
           getMeasurementExpression(((TernaryExpression) expression).getFirstExpression());
       Expression secondExpression =
-          getMeasurementExpression(((TernaryExpression) expression).getFirstExpression());
+          getMeasurementExpression(((TernaryExpression) expression).getSecondExpression());
       Expression thirdExpression =
-          getMeasurementExpression(((TernaryExpression) expression).getFirstExpression());
+          getMeasurementExpression(((TernaryExpression) expression).getThirdExpression());
       return reconstructTernaryExpressions(
               expression,
               Collections.singletonList(firstExpression),

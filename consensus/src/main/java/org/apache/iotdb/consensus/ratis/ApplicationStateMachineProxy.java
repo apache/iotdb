@@ -181,22 +181,29 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
 
     boolean applicationTakeSnapshotSuccess = applicationStateMachine.takeSnapshot(snapshotDir);
-    boolean addTermIndexMetafileSuccess =
-        snapshotStorage.addTermIndexMetaFile(snapshotDir, metadata);
-
-    if (!applicationTakeSnapshotSuccess || !addTermIndexMetafileSuccess) {
-      // this takeSnapshot failed, clean up files and directories
-      // statemachine is supposed to clear snapshotDir on failure
-      boolean isEmpty = snapshotDir.delete();
-      if (!isEmpty) {
-        logger.warn(
-            "StateMachine take snapshot failed but leave unexpected remaining files at "
-                + snapshotDir.getAbsolutePath());
-        FileUtils.deleteFully(snapshotDir);
-      }
+    if (!applicationTakeSnapshotSuccess) {
+      deleteIncompleteSnapshot(snapshotDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
+
+    boolean addTermIndexMetafileSuccess =
+        snapshotStorage.addTermIndexMetaFile(snapshotDir, metadata);
+    if (!addTermIndexMetafileSuccess) {
+      deleteIncompleteSnapshot(snapshotDir);
+      return RaftLog.INVALID_LOG_INDEX;
+    }
+
     return lastApplied.getIndex();
+  }
+
+  private void deleteIncompleteSnapshot(File snapshotDir) throws IOException {
+    // this takeSnapshot failed, clean up files and directories
+    // statemachine is supposed to clear snapshotDir on failure
+    boolean isEmpty = snapshotDir.delete();
+    if (!isEmpty) {
+      logger.info("Snapshot directory is incomplete, deleting " + snapshotDir.getAbsolutePath());
+      FileUtils.deleteFully(snapshotDir);
+    }
   }
 
   private void loadSnapshot(File latestSnapshotDir) {

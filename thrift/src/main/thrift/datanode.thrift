@@ -171,6 +171,16 @@ struct TDropFunctionRequest {
   1: required string udfName
 }
 
+struct TcreateTriggerInstanceReq {
+  1: required binary triggerInformation
+  2: required binary jarFile
+}
+
+struct TDropTriggerInstanceReq {
+  1: required string triggerName
+  2: required bool needToDeleteJarFile
+}
+
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
@@ -337,6 +347,20 @@ service IDataNodeRPCService {
    **/
   common.TSStatus dropFunction(TDropFunctionRequest req)
 
+   /**
+    * Config node will create a trigger instance on data node.
+    *
+    * @param TriggerInformation, jar file.
+    **/
+  common.TSStatus createTriggerInstance(TcreateTriggerInstanceReq req)
+
+  /**
+     * Config node will drop a trigger on all online config nodes and data nodes.
+     *
+     * @param trigger name, whether need to delete jar
+     **/
+    common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
+
   /**
    * Config node will invalidate permission Info cache.
    *
@@ -353,6 +377,8 @@ service IDataNodeRPCService {
   common.TSStatus clearCache()
 
   common.TSStatus loadConfiguration()
+
+  common.TSStatus setSystemStatus(string status)
 
   /**
    * Config node will Set the TTL for the storage group on a list of data nodes.
