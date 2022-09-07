@@ -152,7 +152,7 @@ public class Main {
             new FlushLevelProcess<MemTableManager, MemTable>() {
               @Override
               public void flush(MemTableManager memNode, FlushContext context) {
-                System.out.println(memNode);
+                System.out.println(memNode + "-->[ level:" + context.getLevel() + " ]");
               }
 
               @Override
@@ -167,7 +167,7 @@ public class Main {
             new FlushLevelProcess<MemTable, MemGroup>() {
               @Override
               public void flush(MemTable memNode, FlushContext context) {
-                System.out.println(memNode);
+                System.out.println(memNode + "-->[ level:" + context.getLevel() + " ]");
               }
 
               @Override
@@ -181,7 +181,7 @@ public class Main {
             new FlushLevelProcess<MemGroup, MemChunk>() {
               @Override
               public void flush(MemGroup memNode, FlushContext context) {
-                System.out.println(memNode);
+                System.out.println(memNode + "-->[ level:" + context.getLevel() + " ]");
               }
 
               @Override
@@ -195,7 +195,7 @@ public class Main {
             new FlushLevelProcess<MemChunk, Object>() {
               @Override
               public void flush(MemChunk memNode, FlushContext context) {
-                System.out.println(memNode);
+                System.out.println(memNode + "-->[ level:" + context.getLevel() + " ]");
               }
 
               @Override

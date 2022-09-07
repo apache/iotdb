@@ -37,9 +37,7 @@ public abstract class BasicLevelProcess<I, O, C extends Context> implements Leve
 
   @Override
   public void process(I memNode, C context) {
-    int currentLevel = context.getLevel();
     context.getAccessStrategy().execute(this, memNode, context);
-    context.setLevel(currentLevel);
   }
 
   public boolean hasNext() {

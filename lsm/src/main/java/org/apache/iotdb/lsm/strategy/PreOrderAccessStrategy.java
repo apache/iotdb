@@ -40,5 +40,6 @@ public class PreOrderAccessStrategy implements AccessStrategy {
         levelProcess.getNext().process(child, context);
       }
     }
+    context.setLevel(currentLevel);
   }
 }
