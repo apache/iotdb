@@ -24,7 +24,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.14.0-preview2</version>
+        <version>0.14.0-preview3-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>integration-test</artifactId>
@@ -36,9 +36,9 @@
         <integrationTest.parallelMode>none</integrationTest.parallelMode>
         <integrationTest.nodeMaxHeapSize>200m</integrationTest.nodeMaxHeapSize>
         <integrationTest.nodeNewHeapSize>200m</integrationTest.nodeNewHeapSize>
-        <integrationTest.testEnv/>
-        <integrationTest.excludedGroups/>
-        <integrationTest.includedGroups/>
+        <integrationTest.testEnv />
+        <integrationTest.excludedGroups />
+        <integrationTest.includedGroups />
     </properties>
     <dependencies>
         <dependency>
@@ -203,7 +203,7 @@
             <id>LocalStandaloneIT</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneIT</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups />
                 <integrationTest.testEnv>Standalone</integrationTest.testEnv>
             </properties>
             <activation>
@@ -215,7 +215,7 @@
             <id>RemoteIT</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.RemoteIT</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups />
                 <integrationTest.testEnv>Remote</integrationTest.testEnv>
             </properties>
             <activation>
@@ -226,7 +226,7 @@
             <id>ClusterIT</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.ClusterIT</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups />
                 <integrationTest.testEnv>Cluster1</integrationTest.testEnv>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -241,7 +241,7 @@
             <id>LocalStandaloneOnMppIT</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneIT</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups />
                 <integrationTest.testEnv>LocalStandaloneOnMpp</integrationTest.testEnv>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
