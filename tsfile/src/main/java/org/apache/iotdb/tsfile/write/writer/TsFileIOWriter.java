@@ -253,11 +253,10 @@ public class TsFileIOWriter implements AutoCloseable {
     }
 
     if (chunkMetadataList != null && chunkMetadataList.size() > 0) {
-      ChunkMetadata chunkMetadata = chunkMetadataList.get(0);
-      Path series = new Path(currentChunkGroupDeviceId, chunkMetadata.getMeasurementUid());
-      chunkMetadataListMap
-          .computeIfAbsent(series, k -> new ArrayList<>())
-          .addAll(chunkMetadataList);
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        Path series = new Path(currentChunkGroupDeviceId, chunkMetadata.getMeasurementUid());
+        chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
+      }
     }
     return chunkMetadataListMap;
   }

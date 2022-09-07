@@ -64,7 +64,8 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
   protected LocalTsFileOutput tempOutput;
   protected final boolean autoControl;
   // it stores the start address of persisted chunk metadata for per series
-  protected Queue<Long> segmentForPerSeries = new ArrayDeque<>();
+  //  protected Queue<Long> segmentForPerSeries = new ArrayDeque<>();
+  protected volatile boolean hasChunkMetadataInDisk = false;
   protected String currentSeries = null;
   // record the total num of path in order to make bloom filter
   protected int pathCount = 0;
@@ -109,10 +110,10 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
     if (tempOutput == null) {
       tempOutput = new LocalTsFileOutput(new FileOutputStream(chunkMetadataTempFile));
     }
+    hasChunkMetadataInDisk = true;
     // the file structure in temp file will be
     // ChunkType | chunkSize | chunkBuffer
     for (Map.Entry<Path, List<IChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
-      segmentForPerSeries.add(tempOutput.getPosition());
       Path seriesPath = entry.getKey();
       if (!seriesPath.equals(lastSerializePath)) {
         pathCount++;
@@ -120,6 +121,11 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
       List<IChunkMetadata> iChunkMetadataList = entry.getValue();
       writeChunkMetadata(iChunkMetadataList, seriesPath, tempOutput);
       lastSerializePath = seriesPath;
+    }
+    // clear the cache metadata to release the memory
+    chunkGroupMetadataList.clear();
+    if (chunkMetadataList != null) {
+      chunkMetadataList.clear();
     }
   }
 
@@ -160,8 +166,8 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
   private void writeAlignedChunkMetadata(
       List<IChunkMetadata> iChunkMetadataList, Path seriesPath, LocalTsFileOutput output)
       throws IOException {
-    ReadWriteIOUtils.write(VECTOR_TYPE, output);
     for (IChunkMetadata chunkMetadata : iChunkMetadataList) {
+      ReadWriteIOUtils.write(VECTOR_TYPE, output);
       PublicBAOS buffer = new PublicBAOS();
       int size = chunkMetadata.serializeWithFullInfo(buffer, seriesPath.getDevice());
       ReadWriteIOUtils.write(size, output);
@@ -172,8 +178,8 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
   private void writeNormalChunkMetadata(
       List<IChunkMetadata> iChunkMetadataList, Path seriesPath, LocalTsFileOutput output)
       throws IOException {
-    ReadWriteIOUtils.write(NORMAL_TYPE, output);
     for (IChunkMetadata chunkMetadata : iChunkMetadataList) {
+      ReadWriteIOUtils.write(NORMAL_TYPE, output);
       PublicBAOS buffer = new PublicBAOS();
       int size = chunkMetadata.serializeWithFullInfo(buffer, seriesPath.getFullPath());
       ReadWriteIOUtils.write(size, output);
@@ -183,7 +189,7 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
 
   @Override
   public void endFile() throws IOException {
-    if (this.segmentForPerSeries.size() > 0) {
+    if (hasChunkMetadataInDisk) {
       // there is some chunk metadata already been written to the disk
       // first we should flush the remaining chunk metadata in memory to disk
       // then read the persisted chunk metadata from disk
@@ -192,7 +198,6 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
     } else {
       // sort the chunk metadata in memory, construct the index tree
       // and just close the file
-      tempOutput.close();
       super.endFile();
       return;
     }
@@ -221,7 +226,7 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
             chunkMetadataTempFile.length(),
             new LocalTsFileInput(chunkMetadataTempFile.toPath()));
     Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
-    Queue<MetadataIndexNode> measurementMetadataIndexQueue = null;
+    Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
     String currentDevice = null;
     String prevDevice = null;
     MetadataIndexNode currentIndexNode =
@@ -232,14 +237,17 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
         BloomFilter.getEmptyBloomFilter(
             TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(), pathCount);
 
+    int indexCount = 0;
     while (iterator.hasNextChunkMetadata()) {
       // read in all chunk metadata of one series
       // construct the timeseries metadata for this series
       TimeseriesMetadata timeseriesMetadata = readTimeseriesMetadata(iterator);
+      indexCount++;
       // build bloom filter
       filter.add(currentSeries);
       // construct the index tree node for the series
-      currentDevice = new Path(currentSeries).getDevice();
+      Path currentPath = new Path(currentSeries, true);
+      currentDevice = currentPath.getDevice();
       if (!currentDevice.equals(prevDevice)) {
         if (prevDevice != null) {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
@@ -259,13 +267,25 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
           currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
         }
         currentIndexNode.addEntry(
-            new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(), out.getPosition()));
+            new MetadataIndexEntry(currentPath.getMeasurement(), out.getPosition()));
       }
 
       prevDevice = currentDevice;
       seriesIdxForCurrDevice++;
       // serialize the timeseries metadata to file
       timeseriesMetadata.serializeTo(out.wrapAsStream());
+    }
+
+    addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
+    deviceMetadataIndexMap.put(
+        prevDevice,
+        generateRootNode(
+            measurementMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
+
+    if (indexCount != pathCount) {
+      throw new IOException(
+          String.format(
+              "Expected path count is %d, index path count is %d", pathCount, indexCount));
     }
 
     MetadataIndexNode metadataIndex = checkAndBuildLevelIndex(deviceMetadataIndexMap, out);
@@ -290,20 +310,12 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
    */
   private TimeseriesMetadata readTimeseriesMetadata(ChunkMetadataReadIterator iterator)
       throws IOException {
-    Pair<String, IChunkMetadata> currentPair = iterator.getCurrentPair();
-    if (currentPair == null) {
-      currentPair = iterator.getNextSeriesNameAndChunkMetadata();
-    }
-    if (!currentPair.left.equals(currentSeries)) {
-      // come to a new series
-      currentSeries = currentPair.left;
-    }
     List<IChunkMetadata> iChunkMetadataList = new ArrayList<>();
-    while (currentPair != null && currentPair.left.equals(currentSeries)) {
-      iChunkMetadataList.add(currentPair.right);
-      currentPair = iterator.getNextSeriesNameAndChunkMetadata();
-    }
-    return super.constructOneTimeseriesMetadata(new Path(currentSeries), iChunkMetadataList, false);
+    currentSeries = iterator.getAllChunkMetadataForNextSeries(iChunkMetadataList);
+    TimeseriesMetadata timeseriesMetadata =
+        super.constructOneTimeseriesMetadata(new Path(currentSeries), iChunkMetadataList, false);
+    timeseriesMetadata.setMeasurementId(new Path(currentSeries, true).getMeasurement());
+    return timeseriesMetadata;
   }
 
   @Override
@@ -356,6 +368,28 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
         currentPair = new Pair<>(devicePath, chunkMetadata);
       }
       return currentPair;
+    }
+
+    public String getAllChunkMetadataForNextSeries(List<IChunkMetadata> iChunkMetadataList)
+        throws IOException {
+      if (currentPair == null) {
+        if (!hasNextChunkMetadata()) {
+          return null;
+        } else {
+          getNextSeriesNameAndChunkMetadata();
+        }
+      }
+      String currentSeries = currentPair.left;
+      iChunkMetadataList.add(currentPair.right);
+      while (hasNextChunkMetadata()) {
+        getNextSeriesNameAndChunkMetadata();
+        if (currentPair != null && currentPair.left.equals(currentSeries)) {
+          iChunkMetadataList.add(currentPair.right);
+        } else {
+          break;
+        }
+      }
+      return currentSeries;
     }
 
     public Pair<String, IChunkMetadata> getCurrentPair() {

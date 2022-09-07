@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.write.TsFileIntegrityCheckingTool;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -41,24 +42,47 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter {
   private static File testFile = new File("target", "1-1-0-0.tsfile");
   private static File emptyFile = new File("target", "temp");
-  private static final int TEST_CHUNK_SIZE = 1000;
+  private long TEST_CHUNK_SIZE = 1000;
+  private List<String> measurementDictInOrder = new ArrayList<>();
+  private List<String> deviceDictInOrder = new ArrayList<>();
+  private boolean init = false;
 
   @Before
-  public void setUp() throws IOException {}
+  public void setUp() throws IOException {
+    if (!init) {
+      init = true;
+      for (int i = 0; i < 2048; ++i) {
+        measurementDictInOrder.add("s" + i);
+        deviceDictInOrder.add("root.sg.d" + i);
+      }
+      measurementDictInOrder.sort((String::compareTo));
+      deviceDictInOrder.sort((String::compareTo));
+    }
+  }
 
   @After
   public void tearDown() throws IOException {
     this.close();
-    FileUtils.delete(testFile);
-    FileUtils.delete(
-        new File(testFile.getPath() + MemoryControlTsFileIOWriter.CHUNK_METADATA_TEMP_FILE_PREFIX));
-    FileUtils.delete(emptyFile);
+    if (testFile.exists()) {
+      FileUtils.delete(testFile);
+    }
+    if (new File(testFile.getPath() + MemoryControlTsFileIOWriter.CHUNK_METADATA_TEMP_FILE_PREFIX)
+        .exists()) {
+      FileUtils.delete(
+          new File(
+              testFile.getPath() + MemoryControlTsFileIOWriter.CHUNK_METADATA_TEMP_FILE_PREFIX));
+    }
+    if (emptyFile.exists()) {
+      FileUtils.delete(emptyFile);
+    }
   }
 
   public MemoryControlTsFileIOWriterTest() throws IOException {
@@ -71,26 +95,26 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
         new MemoryControlTsFileIOWriter(testFile, 1024 * 1024 * 10, true)) {
       List<ChunkMetadata> originChunkMetadataList = new ArrayList<>();
       for (int i = 0; i < 10; ++i) {
-        String deviceId = "root.sg.d" + i;
+        String deviceId = deviceDictInOrder.get(i);
         writer.startChunkGroup(deviceId);
         for (int j = 0; j < 5; ++j) {
           ChunkWriterImpl chunkWriter;
           switch (j) {
             case 0:
-              chunkWriter = generateIntData(j);
+              chunkWriter = generateIntData(j, 0L);
               break;
             case 1:
-              chunkWriter = generateBooleanData(j);
+              chunkWriter = generateBooleanData(j, 0);
               break;
             case 2:
-              chunkWriter = generateFloatData(j);
+              chunkWriter = generateFloatData(j, 0L);
               break;
             case 3:
-              chunkWriter = generateDoubleData(j);
+              chunkWriter = generateDoubleData(j, 0L);
               break;
             case 4:
             default:
-              chunkWriter = generateTextData(j);
+              chunkWriter = generateTextData(j, 0L);
               break;
           }
           chunkWriter.writeToFileWriter(writer);
@@ -109,7 +133,9 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
               new LocalTsFileInput(writer.chunkMetadataTempFile.toPath()));
       for (int i = 0; i < originChunkMetadataList.size(); ++i) {
         Pair<String, IChunkMetadata> chunkMetadataPair = window.getNextSeriesNameAndChunkMetadata();
-        Assert.assertEquals("root.sg.d" + i / 5 + ".s" + i % 5, chunkMetadataPair.left);
+        Assert.assertEquals(
+            deviceDictInOrder.get(i / 5) + "." + measurementDictInOrder.get(i % 5),
+            chunkMetadataPair.left);
         Assert.assertEquals(
             originChunkMetadataList.get(i).getStartTime(), chunkMetadataPair.right.getStartTime());
         Assert.assertEquals(
@@ -129,9 +155,9 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
         new MemoryControlTsFileIOWriter(testFile, 1024 * 1024 * 10, true)) {
       List<ChunkMetadata> originChunkMetadataList = new ArrayList<>();
       for (int i = 0; i < 10; ++i) {
-        String deviceId = "root.sg.d" + i;
+        String deviceId = deviceDictInOrder.get(i);
         writer.startChunkGroup(deviceId);
-        AlignedChunkWriterImpl chunkWriter = generateVectorData(i);
+        AlignedChunkWriterImpl chunkWriter = generateVectorData(i, 0L);
         chunkWriter.writeToFileWriter(writer);
         originChunkMetadataList.addAll(writer.chunkMetadataList);
         writer.endChunkGroup();
@@ -165,7 +191,7 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
               new LocalTsFileInput(writer.chunkMetadataTempFile.toPath()));
       for (int i = 0; i < alignedChunkMetadata.size(); ++i) {
         Pair<String, IChunkMetadata> chunkMetadataPair = window.getNextSeriesNameAndChunkMetadata();
-        Assert.assertEquals("root.sg.d" + i, chunkMetadataPair.left);
+        Assert.assertEquals(deviceDictInOrder.get(i), chunkMetadataPair.left);
         Assert.assertEquals(
             alignedChunkMetadata.get(i).getStartTime(), chunkMetadataPair.right.getStartTime());
         Assert.assertEquals(
@@ -184,7 +210,7 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
         new MemoryControlTsFileIOWriter(testFile, 1024 * 1024 * 10, true)) {
       List<IChunkMetadata> originChunkMetadataList = new ArrayList<>();
       for (int i = 0; i < 10; ++i) {
-        String deviceId = "root.sg.d" + i;
+        String deviceId = deviceDictInOrder.get(i);
         writer.startChunkGroup(deviceId);
         if (i % 2 == 0) {
           // write normal series
@@ -192,20 +218,20 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
             ChunkWriterImpl chunkWriter;
             switch (j) {
               case 0:
-                chunkWriter = generateIntData(j);
+                chunkWriter = generateIntData(j, 0L);
                 break;
               case 1:
-                chunkWriter = generateBooleanData(j);
+                chunkWriter = generateBooleanData(j, 0L);
                 break;
               case 2:
-                chunkWriter = generateFloatData(j);
+                chunkWriter = generateFloatData(j, 0L);
                 break;
               case 3:
-                chunkWriter = generateDoubleData(j);
+                chunkWriter = generateDoubleData(j, 0L);
                 break;
               case 4:
               default:
-                chunkWriter = generateTextData(j);
+                chunkWriter = generateTextData(j, 0L);
                 break;
             }
             chunkWriter.writeToFileWriter(writer);
@@ -213,7 +239,7 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
           originChunkMetadataList.addAll(writer.chunkMetadataList);
         } else {
           // write vector
-          AlignedChunkWriterImpl chunkWriter = generateVectorData(i);
+          AlignedChunkWriterImpl chunkWriter = generateVectorData(i, 0L);
           chunkWriter.writeToFileWriter(writer);
           originChunkMetadataList.add(
               new AlignedChunkMetadata(
@@ -236,11 +262,13 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
         Pair<String, IChunkMetadata> chunkMetadataPair = window.getNextSeriesNameAndChunkMetadata();
         if (originChunkMetadataList.get(i) instanceof ChunkMetadata) {
           Assert.assertEquals(
-              "root.sg.d" + deviceCnt + "." + originChunkMetadataList.get(i).getMeasurementUid(),
+              deviceDictInOrder.get(deviceCnt)
+                  + "."
+                  + originChunkMetadataList.get(i).getMeasurementUid(),
               chunkMetadataPair.left);
         } else {
           deviceCnt++;
-          Assert.assertEquals("root.sg.d" + deviceCnt++, chunkMetadataPair.left);
+          Assert.assertEquals(deviceDictInOrder.get(deviceCnt++), chunkMetadataPair.left);
         }
         Assert.assertEquals(
             originChunkMetadataList.get(i).getStartTime(), chunkMetadataPair.right.getStartTime());
@@ -255,47 +283,554 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
     }
   }
 
-  private ChunkWriterImpl generateIntData(int idx) {
+  /**
+   * Write a file with 10 devices and 5 series in each device. For each series, we write one chunk
+   * for it. This test make sure that each chunk
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testWriteCompleteFileWithNormalChunk() throws IOException {
+    Map<String, Map<String, List<List<Long>>>> originTimes = new HashMap<>();
+    try (MemoryControlTsFileIOWriter writer =
+        new MemoryControlTsFileIOWriter(testFile, 1024, true)) {
+      List<IChunkMetadata> originChunkMetadataList = new ArrayList<>();
+      for (int i = 0; i < 10; ++i) {
+        String deviceId = deviceDictInOrder.get(i);
+        writer.startChunkGroup(deviceId);
+        for (int j = 0; j < 5; ++j) {
+          ChunkWriterImpl chunkWriter;
+          switch (j) {
+            case 0:
+              chunkWriter = generateIntData(j, 0L);
+              break;
+            case 1:
+              chunkWriter = generateBooleanData(j, 0L);
+              break;
+            case 2:
+              chunkWriter = generateFloatData(j, 0L);
+              break;
+            case 3:
+              chunkWriter = generateDoubleData(j, 0L);
+              break;
+            case 4:
+            default:
+              chunkWriter = generateTextData(j, 0L);
+              break;
+          }
+          chunkWriter.writeToFileWriter(writer);
+          List<Long> times = new ArrayList<>();
+          for (long t = 0; t < TEST_CHUNK_SIZE; ++t) {
+            times.add(t);
+          }
+          originTimes
+              .computeIfAbsent(deviceId, x -> new HashMap<>())
+              .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+              .add(times);
+        }
+        originChunkMetadataList.addAll(writer.chunkMetadataList);
+        writer.endChunkGroup();
+      }
+      Assert.assertTrue(writer.hasChunkMetadataInDisk);
+      writer.endFile();
+    }
+    TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
+    TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originTimes);
+  }
+
+  /**
+   * Write a file with 10 devices and 5 series in each device. For each series, we write 100 chunks
+   * for it. This test make sure that each chunk
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testWriteCompleteFileWithMultipleNormalChunk() throws IOException {
+    Map<String, Map<String, List<List<Long>>>> originTimes = new HashMap<>();
+    try (MemoryControlTsFileIOWriter writer =
+        new MemoryControlTsFileIOWriter(testFile, 1024, true)) {
+      for (int i = 0; i < 10; ++i) {
+        String deviceId = deviceDictInOrder.get(i);
+        writer.startChunkGroup(deviceId);
+        for (int j = 0; j < 5; ++j) {
+          ChunkWriterImpl chunkWriter;
+          switch (j) {
+            case 0:
+              for (int k = 0; k < 10; ++k) {
+                chunkWriter = generateIntData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 1:
+              for (int k = 0; k < 10; ++k) {
+                chunkWriter = generateBooleanData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 2:
+              for (int k = 0; k < 10; ++k) {
+                chunkWriter = generateFloatData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 3:
+              for (int k = 0; k < 10; ++k) {
+                chunkWriter = generateDoubleData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 4:
+            default:
+              for (int k = 0; k < 10; ++k) {
+                chunkWriter = generateTextData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+          }
+        }
+        writer.endChunkGroup();
+      }
+      Assert.assertTrue(writer.hasChunkMetadataInDisk);
+      writer.endFile();
+    }
+    TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
+    TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originTimes);
+  }
+
+  /**
+   * Write a file with 10 devices and 5 series in each device. For each series, we write 1024 chunks
+   * for it. This test make sure that each chunk
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testWriteCompleteFileWithEnormousNormalChunk() throws IOException {
+    Map<String, Map<String, List<List<Long>>>> originTimes = new HashMap<>();
+    long originTestChunkSize = TEST_CHUNK_SIZE;
+    TEST_CHUNK_SIZE = 10;
+    try (MemoryControlTsFileIOWriter writer =
+        new MemoryControlTsFileIOWriter(testFile, 1024, true)) {
+      for (int i = 0; i < 10; ++i) {
+        String deviceId = deviceDictInOrder.get(i);
+        writer.startChunkGroup(deviceId);
+        for (int j = 0; j < 5; ++j) {
+          ChunkWriterImpl chunkWriter;
+          switch (j) {
+            case 0:
+              for (int k = 0; k < 1024; ++k) {
+                chunkWriter = generateIntData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 1:
+              for (int k = 0; k < 1024; ++k) {
+                chunkWriter = generateBooleanData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 2:
+              for (int k = 0; k < 1024; ++k) {
+                chunkWriter = generateFloatData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 3:
+              for (int k = 0; k < 1024; ++k) {
+                chunkWriter = generateDoubleData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 4:
+            default:
+              for (int k = 0; k < 1024; ++k) {
+                chunkWriter = generateTextData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+          }
+        }
+        writer.endChunkGroup();
+      }
+      Assert.assertTrue(writer.hasChunkMetadataInDisk);
+      writer.endFile();
+    } finally {
+      TEST_CHUNK_SIZE = originTestChunkSize;
+    }
+    TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
+    TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originTimes);
+  }
+
+  /**
+   * Write a file with 10 devices and 1024 series in each device. For each series, we write 100
+   * chunks for it. This test make sure that each chunk
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testWriteCompleteFileWithEnormousSeriesNum() throws IOException {
+    Map<String, Map<String, List<List<Long>>>> originTimes = new HashMap<>();
+    long originTestChunkSize = TEST_CHUNK_SIZE;
+    TEST_CHUNK_SIZE = 10;
+    try (MemoryControlTsFileIOWriter writer =
+        new MemoryControlTsFileIOWriter(testFile, 1024, true)) {
+      for (int i = 0; i < 10; ++i) {
+        String deviceId = deviceDictInOrder.get(i);
+        writer.startChunkGroup(deviceId);
+        for (int j = 0; j < 1024; ++j) {
+          ChunkWriterImpl chunkWriter;
+          switch (j % 5) {
+            case 0:
+              for (int k = 0; k < 100; ++k) {
+                chunkWriter = generateIntData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 1:
+              for (int k = 0; k < 100; ++k) {
+                chunkWriter = generateBooleanData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 2:
+              for (int k = 0; k < 100; ++k) {
+                chunkWriter = generateFloatData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 3:
+              for (int k = 0; k < 100; ++k) {
+                chunkWriter = generateDoubleData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 4:
+            default:
+              for (int k = 0; k < 100; ++k) {
+                chunkWriter = generateTextData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+          }
+        }
+        writer.endChunkGroup();
+      }
+      Assert.assertTrue(writer.hasChunkMetadataInDisk);
+      writer.endFile();
+    } finally {
+      TEST_CHUNK_SIZE = originTestChunkSize;
+    }
+    TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
+    TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originTimes);
+  }
+
+  /**
+   * Write a file with 1024 devices and 5 series in each device. For each series, we write 10 chunks
+   * for it. This test make sure that each chunk
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testWriteCompleteFileWithEnormousDeviceNum() throws IOException {
+    Map<String, Map<String, List<List<Long>>>> originTimes = new HashMap<>();
+    long originTestChunkSize = TEST_CHUNK_SIZE;
+    TEST_CHUNK_SIZE = 10;
+    try (MemoryControlTsFileIOWriter writer =
+        new MemoryControlTsFileIOWriter(testFile, 1024, true)) {
+      for (int i = 0; i < 1024; ++i) {
+        String deviceId = deviceDictInOrder.get(i);
+        writer.startChunkGroup(deviceId);
+        for (int j = 0; j < 5; ++j) {
+          ChunkWriterImpl chunkWriter;
+          switch (j % 5) {
+            case 0:
+              for (int k = 0; k < 10; ++k) {
+                chunkWriter = generateIntData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 1:
+              for (int k = 0; k < 10; ++k) {
+                chunkWriter = generateBooleanData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 2:
+              for (int k = 0; k < 10; ++k) {
+                chunkWriter = generateFloatData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 3:
+              for (int k = 0; k < 10; ++k) {
+                chunkWriter = generateDoubleData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+            case 4:
+            default:
+              for (int k = 0; k < 10; ++k) {
+                chunkWriter = generateTextData(j, (long) TEST_CHUNK_SIZE * k);
+                chunkWriter.writeToFileWriter(writer);
+                List<Long> times = new ArrayList<>();
+                for (long t = (long) TEST_CHUNK_SIZE * k;
+                    t < (long) TEST_CHUNK_SIZE * (k + 1);
+                    ++t) {
+                  times.add(t);
+                }
+                originTimes
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(measurementDictInOrder.get(j), x -> new ArrayList<>())
+                    .add(times);
+              }
+              break;
+          }
+        }
+        writer.endChunkGroup();
+      }
+      Assert.assertTrue(writer.hasChunkMetadataInDisk);
+      writer.endFile();
+    } finally {
+      TEST_CHUNK_SIZE = originTestChunkSize;
+    }
+    TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
+    TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originTimes);
+  }
+
+  private ChunkWriterImpl generateIntData(int idx, long startTime) {
     ChunkWriterImpl chunkWriter =
-        new ChunkWriterImpl(new MeasurementSchema("s" + idx, TSDataType.INT64));
+        new ChunkWriterImpl(
+            new MeasurementSchema(measurementDictInOrder.get(idx), TSDataType.INT64));
     Random random = new Random();
-    for (int i = 0; i < TEST_CHUNK_SIZE; ++i) {
+    for (long i = startTime; i < startTime + TEST_CHUNK_SIZE; ++i) {
       chunkWriter.write(i, random.nextLong());
     }
     return chunkWriter;
   }
 
-  private ChunkWriterImpl generateFloatData(int idx) {
+  private ChunkWriterImpl generateFloatData(int idx, long startTime) {
     ChunkWriterImpl chunkWriter =
-        new ChunkWriterImpl(new MeasurementSchema("s" + idx, TSDataType.FLOAT));
+        new ChunkWriterImpl(
+            new MeasurementSchema(measurementDictInOrder.get(idx), TSDataType.FLOAT));
     Random random = new Random();
-    for (int i = 0; i < TEST_CHUNK_SIZE; ++i) {
+    for (long i = startTime; i < startTime + TEST_CHUNK_SIZE; ++i) {
       chunkWriter.write(i, random.nextFloat());
     }
     return chunkWriter;
   }
 
-  private ChunkWriterImpl generateDoubleData(int idx) {
+  private ChunkWriterImpl generateDoubleData(int idx, long startTime) {
     ChunkWriterImpl chunkWriter =
-        new ChunkWriterImpl(new MeasurementSchema("s" + idx, TSDataType.DOUBLE));
+        new ChunkWriterImpl(
+            new MeasurementSchema(measurementDictInOrder.get(idx), TSDataType.DOUBLE));
     Random random = new Random();
-    for (int i = 0; i < TEST_CHUNK_SIZE; ++i) {
+    for (long i = startTime; i < startTime + TEST_CHUNK_SIZE; ++i) {
       chunkWriter.write(i, random.nextDouble());
     }
     return chunkWriter;
   }
 
-  private ChunkWriterImpl generateBooleanData(int idx) {
+  private ChunkWriterImpl generateBooleanData(int idx, long startTime) {
     ChunkWriterImpl chunkWriter =
-        new ChunkWriterImpl(new MeasurementSchema("s" + idx, TSDataType.BOOLEAN));
+        new ChunkWriterImpl(
+            new MeasurementSchema(measurementDictInOrder.get(idx), TSDataType.BOOLEAN));
     Random random = new Random();
-    for (int i = 0; i < TEST_CHUNK_SIZE; ++i) {
+    for (long i = startTime; i < startTime + TEST_CHUNK_SIZE; ++i) {
       chunkWriter.write(i, random.nextBoolean());
     }
     return chunkWriter;
   }
 
-  private AlignedChunkWriterImpl generateVectorData(int idx) {
+  private AlignedChunkWriterImpl generateVectorData(int idx, long startTime) {
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     measurementSchemas.add(new MeasurementSchema("", TSDataType.INT32));
     measurementSchemas.add(new MeasurementSchema("", TSDataType.INT64));
@@ -305,7 +840,7 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
     measurementSchemas.add(new MeasurementSchema("", TSDataType.TEXT));
     AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
     Random random = new Random();
-    for (int i = 0; i < TEST_CHUNK_SIZE; ++i) {
+    for (long i = startTime; i < startTime + TEST_CHUNK_SIZE; ++i) {
       TsPrimitiveType[] points = new TsPrimitiveType[6];
       points[0] = new TsPrimitiveType.TsInt(random.nextInt());
       points[1] = new TsPrimitiveType.TsLong(random.nextLong());
@@ -318,11 +853,12 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
     return chunkWriter;
   }
 
-  private ChunkWriterImpl generateTextData(int idx) {
+  private ChunkWriterImpl generateTextData(int idx, long startTime) {
     ChunkWriterImpl chunkWriter =
-        new ChunkWriterImpl(new MeasurementSchema("s" + idx, TSDataType.TEXT));
+        new ChunkWriterImpl(
+            new MeasurementSchema(measurementDictInOrder.get(idx), TSDataType.TEXT));
     Random random = new Random();
-    for (int i = 0; i < TEST_CHUNK_SIZE; ++i) {
+    for (long i = startTime; i < startTime + TEST_CHUNK_SIZE; ++i) {
       chunkWriter.write(i, new Binary(String.valueOf(random.nextDouble())));
     }
     return chunkWriter;
