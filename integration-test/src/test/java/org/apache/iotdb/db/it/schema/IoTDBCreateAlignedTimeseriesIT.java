@@ -111,8 +111,6 @@ public class IoTDBCreateAlignedTimeseriesIT {
     // ensure that current storage group in cache is right.
     assertTimeseriesEquals(timeSeriesArray);
 
-    statement.close();
-    connection.close();
     // todo
     //    EnvironmentUtils.stopDaemon();
     //    setUp();
