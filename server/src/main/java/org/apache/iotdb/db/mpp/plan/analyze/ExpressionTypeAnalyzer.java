@@ -61,6 +61,14 @@ public class ExpressionTypeAnalyzer {
     updateAnalysis(analysis, analyzer);
   }
 
+  public static void analyzeExpression(
+      Map<NodeRef<Expression>, TSDataType> types, Expression expression) {
+    ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
+    analyzer.analyze(expression);
+
+    types.putAll(analyzer.getExpressionTypes());
+  }
+
   private static void updateAnalysis(Analysis analysis, ExpressionTypeAnalyzer analyzer) {
     analysis.addTypes(analyzer.getExpressionTypes());
   }

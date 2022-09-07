@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -34,6 +34,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
@@ -269,7 +270,7 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public boolean isMappable(TypeProvider typeProvider) {
+  public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
     if (isBuiltInAggregationFunctionExpression) {
       return true;
     }
@@ -277,7 +278,7 @@ public class FunctionExpression extends Expression {
         .getAccessStrategy(
             expressions.stream().map(Expression::toString).collect(Collectors.toList()),
             expressions.stream()
-                .map(f -> typeProvider.getType(f.toString()))
+                .map(f -> expressionTypes.get(NodeRef.of(f)))
                 .collect(Collectors.toList()),
             functionAttributes)
         .getAccessStrategyType()
