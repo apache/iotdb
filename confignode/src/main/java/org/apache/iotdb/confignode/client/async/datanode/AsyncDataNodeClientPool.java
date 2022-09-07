@@ -48,11 +48,17 @@ import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
+import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 
 import org.slf4j.Logger;
@@ -175,32 +181,32 @@ public class AsyncDataNodeClientPool {
           case CONSTRUCT_SCHEMA_BLACK_LIST:
             handler =
                 new ConstructSchemaBlackListHandler(
-                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+                    countDownLatch, targetDataNode, dataNodeLocationMap, dataNodeResponseStatus);
             break;
           case ROLLBACK_SCHEMA_BLACK_LIST:
             handler =
                 new RollbackSchemaBlackListHandler(
-                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+                    countDownLatch, targetDataNode, dataNodeLocationMap, dataNodeResponseStatus);
             break;
           case FETCH_SCHEMA_BLACK_LIST:
             handler =
                 new FetchSchemaBlackLsitHandler(
-                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+                    countDownLatch, targetDataNode, dataNodeLocationMap, dataNodeResponseStatus);
             break;
           case INVALIDATE_MATCHED_SCHEMA_CACHE:
             handler =
                 new InvalidateMatchedSchemaCacheHandler(
-                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+                    countDownLatch, targetDataNode, dataNodeLocationMap, dataNodeResponseStatus);
             break;
           case DELETE_DATA_FOR_DELETE_TIMESERIES:
             handler =
                 new DeleteDataForDeleteTimeSeriesHandler(
-                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+                    countDownLatch, targetDataNode, dataNodeLocationMap, dataNodeResponseStatus);
             break;
           case DELETE_TIMESERIES:
             handler =
                 new DeleteTimeSeriesHandler(
-                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+                    countDownLatch, targetDataNode, dataNodeLocationMap, dataNodeResponseStatus);
             break;
           default:
             return;
@@ -211,6 +217,31 @@ public class AsyncDataNodeClientPool {
         countDownLatch.await();
       } catch (InterruptedException e) {
         LOGGER.error("Interrupted during {} on ConfigNode", requestType);
+      }
+      // Check if there is a node that fails to send the request, and retry if there is one
+      if (dataNodeLocationMap.isEmpty()) {
+        break;
+      }
+    }
+  }
+
+  public void sendAsyncRequestToDataNodeWithRetry(Object req, AbstractRetryHandler handler) {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = handler.getDataNodeLocationMap();
+    if (dataNodeLocationMap.isEmpty()) {
+      return;
+    }
+    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
+      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
+      handler.setCountDownLatch(countDownLatch);
+      for (TDataNodeLocation targetDataNode : dataNodeLocationMap.values()) {
+        handler.setTargetDataNode(targetDataNode);
+        sendAsyncRequestToDataNode(targetDataNode, req, handler, retry);
+      }
+
+      try {
+        countDownLatch.await();
+      } catch (InterruptedException e) {
+        LOGGER.error("Interrupted during {} on ConfigNode", handler.getDataNodeRequestType());
       }
       // Check if there is a node that fails to send the request, and retry if there is one
       if (dataNodeLocationMap.isEmpty()) {
@@ -265,6 +296,32 @@ public class AsyncDataNodeClientPool {
         case BROADCAST_LATEST_CONFIG_NODE_GROUP:
           client.updateConfigNodeGroup(
               (TUpdateConfigNodeGroupReq) req, (UpdateConfigNodeGroupHandler) handler);
+          break;
+        case CONSTRUCT_SCHEMA_BLACK_LIST:
+          client.constructSchemaBlackList(
+              (TConstructSchemaBlackListReq) req, (ConstructSchemaBlackListHandler) handler);
+          break;
+        case ROLLBACK_SCHEMA_BLACK_LIST:
+          client.rollbackSchemaBlackList(
+              (TRollbackSchemaBlackListReq) req, (RollbackSchemaBlackListHandler) handler);
+          break;
+        case FETCH_SCHEMA_BLACK_LIST:
+          client.fetchSchemaBlackList(
+              (TFetchSchemaBlackListReq) req, (FetchSchemaBlackLsitHandler) handler);
+          break;
+        case INVALIDATE_MATCHED_SCHEMA_CACHE:
+          client.invalidateMatchedSchemaCache(
+              (TInvalidateMatchedSchemaCacheReq) req,
+              (InvalidateMatchedSchemaCacheHandler) handler);
+          break;
+        case DELETE_DATA_FOR_DELETE_TIMESERIES:
+          client.deleteDataForDeleteTimeSeries(
+              (TDeleteDataForDeleteTimeSeriesReq) req,
+              (DeleteDataForDeleteTimeSeriesHandler) handler);
+          break;
+        case DELETE_TIMESERIES:
+          client.deleteTimeSeries(
+              (TDeleteTimeSeriesReq) req, (DeleteDataForDeleteTimeSeriesHandler) handler);
           break;
         default:
           LOGGER.error(

@@ -24,8 +24,12 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.ConstructSchemaBlackListHandler;
+import org.apache.iotdb.confignode.client.async.handlers.DeleteDataForDeleteTimeSeriesHandler;
+import org.apache.iotdb.confignode.client.async.handlers.DeleteTimeSeriesHandler;
+import org.apache.iotdb.confignode.client.async.handlers.InvalidateMatchedSchemaCacheHandler;
+import org.apache.iotdb.confignode.client.async.handlers.RollbackSchemaBlackListHandler;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -39,6 +43,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -50,7 +55,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,7 +89,7 @@ public class DeleteTimeSeriesProcedure
     try {
       switch (state) {
         case CONSTRUCT_BLACK_LIST:
-          LOGGER.info("Construct black list of timeseries {}", requestMessage);
+          LOGGER.info("Construct schema black list of timeseries {}", requestMessage);
           constructBlackList(env);
           break;
         case CLEAN_DATANODE_SCHEMA_CACHE:
@@ -124,19 +128,21 @@ public class DeleteTimeSeriesProcedure
     for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
         dataNodeConsensusGroupIdMap.entrySet()) {
       List<TSStatus> statusList = new ArrayList<>();
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
+      dataNodeLocationMap.put(entry.getKey().getDataNodeId(), entry.getKey());
+      ConstructSchemaBlackListHandler handler =
+          new ConstructSchemaBlackListHandler(dataNodeLocationMap, statusList);
       AsyncDataNodeClientPool.getInstance()
           .sendAsyncRequestToDataNodeWithRetry(
               new TConstructSchemaBlackListReq(entry.getValue(), ByteBuffer.wrap(patternTreeBytes)),
-              Collections.singletonMap(entry.getKey().getDataNodeId(), entry.getKey()),
-              DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
-              statusList);
+              handler);
       if (statusList.get(0).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // todo implement retry on another dataNode
         LOGGER.error(
-            "Failed to construct black list of timeseries {} on {}",
+            "Failed to construct schema black list of timeseries {} on {}",
             requestMessage,
             entry.getKey());
-        setFailure(new ProcedureException("Construct black list failed"));
+        setFailure(new ProcedureException("Construct schema black list failed"));
         return;
       }
     }
@@ -147,12 +153,11 @@ public class DeleteTimeSeriesProcedure
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     List<TSStatus> statusList = new ArrayList<>();
+    InvalidateMatchedSchemaCacheHandler handler =
+        new InvalidateMatchedSchemaCacheHandler(dataNodeLocationMap, statusList);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            new TInvalidateMatchedSchemaCacheReq(ByteBuffer.wrap(patternTreeBytes)),
-            dataNodeLocationMap,
-            DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-            statusList);
+            new TInvalidateMatchedSchemaCacheReq(ByteBuffer.wrap(patternTreeBytes)), handler);
     for (TSStatus status : statusList) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // todo implement retry on another dataNode
@@ -173,13 +178,15 @@ public class DeleteTimeSeriesProcedure
     for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
         dataNodeConsensusGroupIdMap.entrySet()) {
       List<TSStatus> statusList = new ArrayList<>();
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
+      dataNodeLocationMap.put(entry.getKey().getDataNodeId(), entry.getKey());
+      DeleteDataForDeleteTimeSeriesHandler handler =
+          new DeleteDataForDeleteTimeSeriesHandler(dataNodeLocationMap, statusList);
       AsyncDataNodeClientPool.getInstance()
           .sendAsyncRequestToDataNodeWithRetry(
               new TDeleteDataForDeleteTimeSeriesReq(
                   entry.getValue(), ByteBuffer.wrap(patternTreeBytes)),
-              Collections.singletonMap(entry.getKey().getDataNodeId(), entry.getKey()),
-              DataNodeRequestType.DELETE_DATA_FOR_DELETE_TIMESERIES,
-              statusList);
+              handler);
       if (statusList.get(0).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // todo implement retry on another dataNode
         LOGGER.error(
@@ -200,12 +207,14 @@ public class DeleteTimeSeriesProcedure
     for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
         dataNodeConsensusGroupIdMap.entrySet()) {
       List<TSStatus> statusList = new ArrayList<>();
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
+      dataNodeLocationMap.put(entry.getKey().getDataNodeId(), entry.getKey());
+      DeleteTimeSeriesHandler handler =
+          new DeleteTimeSeriesHandler(dataNodeLocationMap, statusList);
       AsyncDataNodeClientPool.getInstance()
           .sendAsyncRequestToDataNodeWithRetry(
               new TDeleteTimeSeriesReq(entry.getValue(), ByteBuffer.wrap(patternTreeBytes)),
-              Collections.singletonMap(entry.getKey().getDataNodeId(), entry.getKey()),
-              DataNodeRequestType.DELETE_TIMESERIES,
-              statusList);
+              handler);
       if (statusList.get(0).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // todo implement retry on another dataNode
         LOGGER.error("Failed to delete timeseries {} on {}", requestMessage, entry.getKey());
@@ -254,10 +263,37 @@ public class DeleteTimeSeriesProcedure
   protected void rollbackState(
       ConfigNodeProcedureEnv configNodeProcedureEnv, DeleteTimeSeriesState deleteTimeSeriesState)
       throws IOException, InterruptedException, ProcedureException {
-    rollbackBlackList();
+    rollbackBlackList(configNodeProcedureEnv);
   }
 
-  private void rollbackBlackList() {}
+  private void rollbackBlackList(ConfigNodeProcedureEnv env) {
+    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+        getRelatedSchemaRegionGroup(env);
+    Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap =
+        getDataNodeRegionGroupMap(relatedSchemaRegionGroup);
+
+    for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
+        dataNodeConsensusGroupIdMap.entrySet()) {
+      List<TSStatus> statusList = new ArrayList<>();
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
+      dataNodeLocationMap.put(entry.getKey().getDataNodeId(), entry.getKey());
+      RollbackSchemaBlackListHandler handler =
+          new RollbackSchemaBlackListHandler(dataNodeLocationMap, statusList);
+      AsyncDataNodeClientPool.getInstance()
+          .sendAsyncRequestToDataNodeWithRetry(
+              new TRollbackSchemaBlackListReq(entry.getValue(), ByteBuffer.wrap(patternTreeBytes)),
+              handler);
+      if (statusList.get(0).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // todo implement retry on another dataNode
+        LOGGER.error(
+            "Failed to rollback schema black list of timeseries {} on {}",
+            requestMessage,
+            entry.getKey());
+        setFailure(new ProcedureException("Construct schema black list failed"));
+        return;
+      }
+    }
+  }
 
   @Override
   protected boolean isRollbackSupported(DeleteTimeSeriesState deleteTimeSeriesState) {
@@ -294,7 +330,7 @@ public class DeleteTimeSeriesProcedure
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
       patternTree.serialize(dataOutputStream);
-    } catch (IOException e) {
+    } catch (IOException ignored) {
 
     }
     patternTreeBytes = byteArrayOutputStream.toByteArray();
