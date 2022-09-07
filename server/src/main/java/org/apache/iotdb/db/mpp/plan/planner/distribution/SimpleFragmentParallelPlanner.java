@@ -149,6 +149,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       targetIndex = 0;
     } else {
       targetIndex = (int) (queryContext.getSession().getSessionId() % availableDataNodes.size());
+      targetIndex = Math.abs(targetIndex);
     }
     return availableDataNodes.get(targetIndex);
   }
