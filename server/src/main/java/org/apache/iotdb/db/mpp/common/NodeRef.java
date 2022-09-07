@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
+import static java.lang.String.format;
 import static java.lang.System.identityHashCode;
 import static java.util.Objects.requireNonNull;
 
@@ -51,5 +52,10 @@ public class NodeRef<T extends StatementNode> {
   @Override
   public int hashCode() {
     return identityHashCode(node);
+  }
+
+  @Override
+  public String toString() {
+    return format("@%s: %s", Integer.toHexString(identityHashCode(node)), node);
   }
 }

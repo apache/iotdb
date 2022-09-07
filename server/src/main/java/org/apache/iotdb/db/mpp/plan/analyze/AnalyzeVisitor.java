@@ -497,6 +497,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // generate result set header according to output expressions
       DatasetHeader datasetHeader = analyzeOutput(analysis, outputExpressions);
+      analysis.setOutputExpressions(outputExpressions);
       analysis.setRespDatasetHeader(datasetHeader);
 
       // fetch partition information
@@ -658,9 +659,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           for (String deviceName : deviceToTransformExpressionOfOneMeasurement.keySet()) {
             Expression transformExpression =
                 deviceToTransformExpressionOfOneMeasurement.get(deviceName);
+            Expression transformExpressionWithoutAlias =
+                ExpressionAnalyzer.removeAliasFromExpression(transformExpression);
+            analyzeExpression(analysis, transformExpressionWithoutAlias);
             deviceToTransformExpressions
                 .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-                .add(ExpressionAnalyzer.removeAliasFromExpression(transformExpression));
+                .add(transformExpressionWithoutAlias);
             deviceToMeasurementsMap
                 .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
                 .add(measurementExpressionWithoutAlias.getExpressionString());

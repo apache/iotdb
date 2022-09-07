@@ -301,8 +301,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 queryStatement.getResultTimeOrder(),
                 analysis.getGlobalTimeFilter(),
                 analysis.getGroupByTimeParameter(),
-                aggregationExpressions,
                 measurementIndexes,
+                aggregationExpressions,
+                aggregationTransformExpressions,
                 analysis.getGroupByLevelExpressions());
         if (queryStatement.isGroupByLevel()) {
           planBuilder = // plan Having with GroupByLevel
@@ -330,6 +331,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 analysis.getGlobalTimeFilter(),
                 analysis.getGroupByTimeParameter(),
                 aggregationExpressions,
+                aggregationTransformExpressions,
                 analysis.getGroupByLevelExpressions());
 
         if (queryStatement.isGroupByLevel()) {

@@ -100,6 +100,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_DEVICE;
 
 public class LogicalPlanBuilder {
 
@@ -203,6 +204,7 @@ public class LogicalPlanBuilder {
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
+      Set<Expression> aggregationTransformExpressions,
       Map<Expression, Set<Expression>> groupByLevelExpressions) {
     boolean needCheckAscending = groupByTimeParameter == null;
     Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
@@ -225,6 +227,7 @@ public class LogicalPlanBuilder {
             timeFilter,
             groupByTimeParameter);
     updateTypeProvider(sourceExpressions);
+    updateTypeProvider(aggregationTransformExpressions);
 
     return convergeAggregationSource(
         sourceNodeList,
@@ -241,8 +244,9 @@ public class LogicalPlanBuilder {
       Ordering scanOrder,
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter,
-      Set<Expression> aggregationExpressions,
       List<Integer> measurementIndexes,
+      Set<Expression> aggregationExpressions,
+      Set<Expression> aggregationTransformExpressions,
       Map<Expression, Set<Expression>> groupByLevelExpressions) {
     checkArgument(
         sourceExpressions.size() == measurementIndexes.size(),
@@ -275,6 +279,7 @@ public class LogicalPlanBuilder {
             timeFilter,
             groupByTimeParameter);
     updateTypeProvider(sourceExpressions);
+    updateTypeProvider(aggregationTransformExpressions);
 
     if (!curStep.isOutputPartial()) {
       // update measurementIndexes
@@ -441,10 +446,12 @@ public class LogicalPlanBuilder {
       List<Pair<Expression, String>> outputExpressions,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       Ordering mergeOrder) {
-    List<String> outputColumnNames =
+    List<String> outputColumnNames = new ArrayList<>();
+    outputColumnNames.add(COLUMN_DEVICE);
+    outputColumnNames.addAll(
         outputExpressions.stream()
             .map(pair -> pair.getLeft().toString())
-            .collect(Collectors.toList());
+            .collect(Collectors.toList()));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             context.getQueryId().genPlanNodeId(),
@@ -460,7 +467,7 @@ public class LogicalPlanBuilder {
       deviceViewNode.addChildDeviceNode(deviceName, subPlan);
     }
 
-    context.getTypeProvider().setType(ColumnHeaderConstant.COLUMN_DEVICE, TSDataType.TEXT);
+    context.getTypeProvider().setType(COLUMN_DEVICE, TSDataType.TEXT);
     updateTypeProvider(outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toList()));
 
     this.root = deviceViewNode;
