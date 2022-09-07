@@ -121,6 +121,7 @@
         <module>trigger-api</module>
         <module>rewrite-tsfile-tool</module>
         <module>external-api</module>
+        <module>lsm</module>
     </modules>
     <!-- Properties Management -->
     <properties>

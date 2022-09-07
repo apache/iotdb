@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.lsm.context;
 
-import org.apache.iotdb.lsm.strategy.BFSAccessStrategy;
 import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
 
 public class FlushContext extends Context {
