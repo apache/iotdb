@@ -52,8 +52,6 @@ public class RBFSAccessStrategy implements AccessStrategy {
       return;
     }
 
-    // 后序遍历，处理level == minimumFlushedLevel的节点
-
     // 已经处理过，直接return
     if (currentLevel > flushContext.getMinimumFlushedLevel()) return;
 
