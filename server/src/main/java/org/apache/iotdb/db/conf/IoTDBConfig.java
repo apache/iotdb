@@ -2753,6 +2753,7 @@ public class IoTDBConfig {
 
   public void setCompactionProportion(double compactionProportion) {
     this.compactionProportion = compactionProportion;
+  }
 
   public Properties getCustomizedProperties() {
     return customizedProperties;
