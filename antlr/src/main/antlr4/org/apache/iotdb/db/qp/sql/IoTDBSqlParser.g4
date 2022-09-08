@@ -381,11 +381,16 @@ selectStatement
 
 intoClause
     : INTO ALIGNED? intoPath (COMMA intoPath)*
+    | INTO ALIGNED? intoDeviceAndMeasurement (COMMA intoDeviceAndMeasurement)*
     ;
 
 intoPath
     : fullPath
     | nodeNameWithoutWildcard (DOT nodeNameWithoutWildcard)*
+    ;
+
+intoDeviceAndMeasurement
+    : intoPath LR_BRACKET nodeNameWithoutWildcard (DOT nodeNameWithoutWildcard)* RR_BRACKET
     ;
 
 specialClause

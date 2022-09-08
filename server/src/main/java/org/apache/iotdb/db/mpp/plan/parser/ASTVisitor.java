@@ -65,13 +65,14 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.component.AlignByDeviceIntoComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.AlignByTimeIntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
-import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -797,11 +798,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitSelectStatement(IoTDBSqlParser.SelectStatementContext ctx) {
-    if (ctx.intoClause() != null) {
-      throw new SemanticException(
-          "The SELECT-INTO statement is not supported in the current version.");
-    }
-
     // initialize query statement
     queryStatement = new QueryStatement();
 
@@ -1368,9 +1364,43 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private void parseIntoClause(IoTDBSqlParser.IntoClauseContext ctx) {
     boolean isAligned = ctx.ALIGNED() != null;
-    List<PartialPath> intoPaths = new ArrayList<>();
+    if (ctx.intoPath() != null) {
+      List<PartialPath> intoPaths = new ArrayList<>();
+      for (IoTDBSqlParser.IntoPathContext intoPathContext : ctx.intoPath()) {
+        intoPaths.add(parseIntoPath(intoPathContext));
+      }
+      queryStatement.setIntoComponent(new AlignByTimeIntoComponent(intoPaths, isAligned));
+    } else if (ctx.intoDeviceAndMeasurement() != null) {
+      List<Pair<PartialPath, List<PartialPath>>> intoDeviceAndMeasurementList = new ArrayList<>();
+      for (IoTDBSqlParser.IntoDeviceAndMeasurementContext intoDeviceAndMeasurementContext :
+          ctx.intoDeviceAndMeasurement()) {
+        PartialPath intoDevice = parseIntoPath(intoDeviceAndMeasurementContext.intoPath());
+        List<PartialPath> intoMeasurements =
+            intoDeviceAndMeasurementContext.nodeNameWithoutWildcard().stream()
+                .map(
+                    nodeNameWithoutWildcardContext ->
+                        new PartialPath(
+                            parseNodeNameWithoutWildCard(nodeNameWithoutWildcardContext), false))
+                .collect(Collectors.toList());
+        intoDeviceAndMeasurementList.add(new Pair<>(intoDevice, intoMeasurements));
+      }
+      queryStatement.setIntoComponent(
+          new AlignByDeviceIntoComponent(intoDeviceAndMeasurementList, isAligned));
+    }
+  }
 
-    queryStatement.setIntoComponent(new IntoComponent(intoPaths, isAligned));
+  private PartialPath parseIntoPath(IoTDBSqlParser.IntoPathContext intoPathContext) {
+    if (intoPathContext.fullPath() != null) {
+      return parseFullPath(intoPathContext.fullPath());
+    } else {
+      List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNames =
+          intoPathContext.nodeNameWithoutWildcard();
+      String[] path = new String[nodeNames.size()];
+      for (int i = 0; i < nodeNames.size(); i++) {
+        path[i] = parseNodeNameWithoutWildCard(nodeNames.get(i));
+      }
+      return new PartialPath(path);
+    }
   }
 
   // Insert Statement ========================================================================

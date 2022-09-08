@@ -19,16 +19,20 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
-/** This class maintains information of {@code INTO} clause. */
-public abstract class IntoComponent {
+import org.apache.iotdb.commons.path.PartialPath;
 
-  protected final boolean isAligned;
+import java.util.List;
 
-  protected IntoComponent(boolean isAligned) {
-    this.isAligned = isAligned;
+public class AlignByTimeIntoComponent extends IntoComponent {
+
+  private final List<PartialPath> intoPaths;
+
+  public AlignByTimeIntoComponent(List<PartialPath> intoPaths, boolean isAligned) {
+    super(isAligned);
+    this.intoPaths = intoPaths;
   }
 
-  public boolean isAligned() {
-    return isAligned;
+  public List<PartialPath> getIntoPaths() {
+    return intoPaths;
   }
 }
