@@ -76,17 +76,18 @@ public class IoTDBSyncClient implements ISyncClient {
 
   /**
    * @param pipe sync task
-   * @param ipAddress remote ip address
+   * @param remoteAddress remote ip address
    * @param port remote port
-   * @param localIP local ip address
+   * @param localAddress local ip address
+   * @param storageGroupName storage group name that client belongs to
    */
   public IoTDBSyncClient(
-      Pipe pipe, String ipAddress, int port, String localIP, String storageGroupName) {
+      Pipe pipe, String remoteAddress, int port, String localAddress, String storageGroupName) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
     this.pipe = pipe;
-    this.ipAddress = ipAddress;
+    this.ipAddress = remoteAddress;
     this.port = port;
-    this.localIP = localIP;
+    this.localIP = localAddress;
     this.storageGroupName = storageGroupName;
   }
 

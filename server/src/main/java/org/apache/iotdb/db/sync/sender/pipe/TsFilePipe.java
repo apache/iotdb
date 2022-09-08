@@ -61,7 +61,7 @@ public class TsFilePipe implements Pipe {
   private final long dataStartTime;
   private final boolean syncDelOp;
 
-  // <DataNodeId, PipeDataQueue>
+  // <DataRegionId, PipeDataQueue>
   private final Map<String, PipeDataQueue> historyQueueMap = new ConcurrentHashMap<>();
   private final Map<String, PipeDataQueue> realTimeQueueMap = new ConcurrentHashMap<>();
   private final TsFilePipeLogger pipeLog;
