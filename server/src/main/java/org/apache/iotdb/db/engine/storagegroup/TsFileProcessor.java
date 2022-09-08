@@ -555,7 +555,7 @@ public class TsFileProcessor {
                 : 0;
       }
       // TEXT data mem size
-      if (dataTypes[i] == TSDataType.TEXT) {
+      if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
         textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
       }
     }
@@ -610,7 +610,7 @@ public class TsFileProcessor {
                 * dataTypes[i].getDataTypeSize();
       }
       // TEXT data mem size
-      if (dataTypes[i] == TSDataType.TEXT) {
+      if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
         textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
       }
     }
