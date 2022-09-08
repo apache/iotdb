@@ -52,7 +52,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class TsFilePipe implements Pipe {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipe.class);
-  // <DataNodeId, ISyncManager>
+  // <DataRegionId, ISyncManager>
   private final Map<String, ISyncManager> syncManagerMap = new ConcurrentHashMap<>();
 
   private final long createTime;
