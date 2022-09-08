@@ -36,6 +36,7 @@ import reactor.netty.http.server.HttpServer;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.time.Duration;
 
 public class DropwizardPrometheusReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(DropwizardPrometheusReporter.class);
@@ -92,7 +93,7 @@ public class DropwizardPrometheusReporter implements Reporter {
   public boolean stop() {
     if (httpServer != null) {
       try {
-        httpServer.onDispose().block();
+        httpServer.disposeNow(Duration.ofSeconds(10));
         httpServer = null;
       } catch (Exception e) {
         LOGGER.error("failed to stop server", e);
