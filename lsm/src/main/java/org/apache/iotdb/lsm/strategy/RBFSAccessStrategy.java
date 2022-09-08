@@ -19,7 +19,6 @@
 package org.apache.iotdb.lsm.strategy;
 
 import org.apache.iotdb.lsm.context.Context;
-import org.apache.iotdb.lsm.context.FlushContext;
 import org.apache.iotdb.lsm.levelProcess.BasicLevelProcess;
 
 import java.util.List;
@@ -28,24 +27,22 @@ public class RBFSAccessStrategy implements AccessStrategy {
   @Override
   public <I, O, C extends Context> void execute(
       BasicLevelProcess<I, O, C> levelProcess, I memNode, C context) {
-    FlushContext flushContext = (FlushContext) context;
     int currentLevel = context.getLevel();
-    // 如果当前节点是最深的一层节点
-    if (!levelProcess.hasNext()) {
-      flushContext.setMinimumFlushedLevel(currentLevel);
+    if (Integer.MAX_VALUE == context.getLevelUpperBound() && !levelProcess.hasNext()) {
+      context.setLevelUpperBound(context.getLevel());
     }
     // 如果是根节点
     if (currentLevel == 0) {
-      while (flushContext.getMinimumFlushedLevel() != currentLevel) {
+      while (context.getLevelUpperBound() != currentLevel) {
         List<O> children = levelProcess.getChildren(memNode, context);
         for (O child : children) {
           // 处理子节点
-          flushContext.setLevel(currentLevel + 1);
+          context.setLevel(currentLevel + 1);
           levelProcess.getNext().process(child, context);
-          flushContext.setLevel(currentLevel);
+          context.setLevel(currentLevel);
         }
         // 每次处理完-1
-        flushContext.setMinimumFlushedLevel(flushContext.getMinimumFlushedLevel() - 1);
+        context.setLevelUpperBound(context.getLevelUpperBound() - 1);
       }
       // 处理root节点
       levelProcess.handle(memNode, context);
@@ -53,18 +50,18 @@ public class RBFSAccessStrategy implements AccessStrategy {
     }
 
     // 已经处理过，直接return
-    if (currentLevel > flushContext.getMinimumFlushedLevel()) return;
+    if (currentLevel > context.getLevelUpperBound()) return;
 
     // 处理子节点
-    if (currentLevel == flushContext.getMinimumFlushedLevel()) {
+    if (currentLevel == context.getLevelUpperBound()) {
       levelProcess.handle(memNode, context);
       return;
     }
     List<O> children = levelProcess.getChildren(memNode, context);
     for (O child : children) {
-      flushContext.setLevel(currentLevel + 1);
+      context.setLevel(currentLevel + 1);
       levelProcess.getNext().process(child, context);
-      flushContext.setLevel(currentLevel);
+      context.setLevel(currentLevel);
     }
   }
 }

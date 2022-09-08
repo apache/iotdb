@@ -21,22 +21,7 @@ package org.apache.iotdb.lsm.context;
 import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
 
 public class FlushContext extends Context {
-
-  // 最小的已经flush的层级
-  int minimumFlushedLevel;
-
   public FlushContext() {
-    super();
-    type = ContextType.FLUSH;
     accessStrategy = new RBFSAccessStrategy();
-    minimumFlushedLevel = Integer.MAX_VALUE;
-  }
-
-  public int getMinimumFlushedLevel() {
-    return minimumFlushedLevel;
-  }
-
-  public void setMinimumFlushedLevel(int minimumFlushedLevel) {
-    this.minimumFlushedLevel = minimumFlushedLevel;
   }
 }

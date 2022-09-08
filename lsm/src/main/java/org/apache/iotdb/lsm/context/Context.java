@@ -35,6 +35,9 @@ public class Context {
   // 多少个线程处理该节点的子节点
   int threadNums;
 
+  // 上界,大于该值的层级不会被处理
+  int levelUpperBound;
+
   // 返回值
   Object result;
 
@@ -43,20 +46,7 @@ public class Context {
     type = ContextType.NONE;
     level = 0;
     threadNums = 1;
-  }
-
-  public Context(
-      ContextType type,
-      AccessStrategy accessStrategy,
-      int level,
-      boolean sync,
-      int threadNums,
-      Object result) {
-    this.type = type;
-    this.accessStrategy = accessStrategy;
-    this.level = level;
-    this.threadNums = threadNums;
-    this.result = result;
+    levelUpperBound = Integer.MAX_VALUE;
   }
 
   public void setLevel(int level) {
@@ -97,5 +87,13 @@ public class Context {
 
   public void setAccessStrategy(AccessStrategy accessStrategy) {
     this.accessStrategy = accessStrategy;
+  }
+
+  public int getLevelUpperBound() {
+    return levelUpperBound;
+  }
+
+  public void setLevelUpperBound(int levelUpperBound) {
+    this.levelUpperBound = levelUpperBound;
   }
 }
