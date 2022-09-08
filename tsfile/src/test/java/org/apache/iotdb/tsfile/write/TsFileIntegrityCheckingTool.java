@@ -32,14 +32,19 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
 import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.junit.Assert;
@@ -49,6 +54,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -136,7 +142,8 @@ public class TsFileIntegrityCheckingTool {
   }
 
   public static void checkIntegrityByQuery(
-      String filename, Map<String, Map<String, List<List<Long>>>> originData) {
+      String filename,
+      Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData) {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
       Map<String, List<TimeseriesMetadata>> allTimeseriesMetadata =
           reader.getAllTimeseriesMetadata(true);
@@ -144,23 +151,74 @@ public class TsFileIntegrityCheckingTool {
       for (Map.Entry<String, List<TimeseriesMetadata>> entry : allTimeseriesMetadata.entrySet()) {
         String deviceId = entry.getKey();
         List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
-        Assert.assertEquals(originData.get(deviceId).size(), timeseriesMetadataList.size());
-        for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-          String measurementId = timeseriesMetadata.getMeasurementId();
-          List<List<Long>> originChunks = originData.get(deviceId).get(measurementId);
-          List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
-          Assert.assertEquals(originChunks.size(), chunkMetadataList.size());
-          chunkMetadataList.sort(Comparator.comparing(IChunkMetadata::getStartTime));
-          for (int i = 0; i < chunkMetadataList.size(); ++i) {
-            Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadataList.get(i));
-            ChunkReader chunkReader = new ChunkReader(chunk, null);
-            List<Long> originValue = originChunks.get(i);
-            for (int valIdx = 0; chunkReader.hasNextSatisfiedPage(); ) {
-              IPointReader pointReader = chunkReader.nextPageData().getBatchDataIterator();
-              while (pointReader.hasNextTimeValuePair()) {
-                Assert.assertEquals(
-                    originValue.get(valIdx++).longValue(),
-                    pointReader.nextTimeValuePair().getTimestamp());
+        boolean vectorMode = false;
+        if (timeseriesMetadataList.size() > 0
+            && timeseriesMetadataList.get(0).getTSDataType() != TSDataType.VECTOR) {
+          Assert.assertEquals(originData.get(deviceId).size(), timeseriesMetadataList.size());
+        } else {
+          vectorMode = true;
+          Assert.assertEquals(originData.get(deviceId).size(), timeseriesMetadataList.size() - 1);
+        }
+
+        if (!vectorMode) {
+          // check integrity of not aligned series
+          for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
+            String measurementId = timeseriesMetadata.getMeasurementId();
+            List<List<Pair<Long, TsPrimitiveType>>> originChunks =
+                originData.get(deviceId).get(measurementId);
+            List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+            Assert.assertEquals(originChunks.size(), chunkMetadataList.size());
+            chunkMetadataList.sort(Comparator.comparing(IChunkMetadata::getStartTime));
+            for (int i = 0; i < chunkMetadataList.size(); ++i) {
+              Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadataList.get(i));
+              ChunkReader chunkReader = new ChunkReader(chunk, null);
+              List<Pair<Long, TsPrimitiveType>> originValue = originChunks.get(i);
+              for (int valIdx = 0; chunkReader.hasNextSatisfiedPage(); ) {
+                IPointReader pointReader = chunkReader.nextPageData().getBatchDataIterator();
+                while (pointReader.hasNextTimeValuePair()) {
+                  TimeValuePair pair = pointReader.nextTimeValuePair();
+                  Assert.assertEquals(
+                      originValue.get(valIdx).left.longValue(), pair.getTimestamp());
+                  try {
+                    Assert.assertEquals(originValue.get(valIdx++).right, pair.getValue());
+                  } catch (Throwable e) {
+                    System.out.println();
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          // check integrity of vector type
+          // 1. check the time column
+          TimeseriesMetadata timeColumnMetadata = timeseriesMetadataList.get(0);
+          List<IChunkMetadata> timeChunkMetadataList = timeColumnMetadata.getChunkMetadataList();
+          timeChunkMetadataList.sort(Comparator.comparing(IChunkMetadata::getStartTime));
+
+          for (int i = 1; i < timeseriesMetadataList.size(); ++i) {
+            List<IChunkMetadata> valueChunkMetadataList =
+                timeseriesMetadataList.get(i).getChunkMetadataList();
+            Assert.assertEquals(timeChunkMetadataList.size(), valueChunkMetadataList.size());
+            List<List<Pair<Long, TsPrimitiveType>>> originDataChunks =
+                originData.get(deviceId).get(timeseriesMetadataList.get(i).getMeasurementId());
+            for (int chunkIdx = 0; chunkIdx < timeChunkMetadataList.size(); ++chunkIdx) {
+              Chunk timeChunk =
+                  reader.readMemChunk((ChunkMetadata) timeChunkMetadataList.get(chunkIdx));
+              Chunk valueChunk =
+                  reader.readMemChunk((ChunkMetadata) valueChunkMetadataList.get(chunkIdx));
+              IChunkReader chunkReader =
+                  new AlignedChunkReader(timeChunk, Collections.singletonList(valueChunk), null);
+              List<Pair<Long, TsPrimitiveType>> originValue = originDataChunks.get(chunkIdx);
+              for (int valIdx = 0; chunkReader.hasNextSatisfiedPage(); ) {
+                IBatchDataIterator pointReader = chunkReader.nextPageData().getBatchDataIterator();
+                while (pointReader.hasNext()) {
+                  long time = pointReader.currentTime();
+                  Assert.assertEquals(originValue.get(valIdx).left.longValue(), time);
+                  Assert.assertEquals(
+                      originValue.get(valIdx++).right.getValue(),
+                      ((TsPrimitiveType[]) pointReader.currentValue())[0].getValue());
+                  pointReader.next();
+                }
               }
             }
           }

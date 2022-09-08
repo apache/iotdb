@@ -62,7 +62,6 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
   protected long currentChunkMetadataSize = 0L;
   protected File chunkMetadataTempFile;
   protected LocalTsFileOutput tempOutput;
-  protected final boolean autoControl;
   // it stores the start address of persisted chunk metadata for per series
   //  protected Queue<Long> segmentForPerSeries = new ArrayDeque<>();
   protected volatile boolean hasChunkMetadataInDisk = false;
@@ -75,33 +74,27 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
   private static final byte VECTOR_TYPE = 1;
   private static final byte NORMAL_TYPE = 2;
 
-  public MemoryControlTsFileIOWriter(File file, long maxMetadataSize, boolean autoControl)
-      throws IOException {
+  public MemoryControlTsFileIOWriter(File file, long maxMetadataSize) throws IOException {
     super(file);
     this.maxMetadataSize = maxMetadataSize;
     this.chunkMetadataTempFile = new File(file.getAbsoluteFile() + CHUNK_METADATA_TEMP_FILE_PREFIX);
-    this.autoControl = autoControl;
   }
 
   @Override
   public void endCurrentChunk() {
     currentChunkMetadataSize += currentChunkMetadata.calculateRamSize();
     super.endCurrentChunk();
-    if (this.autoControl) {
-      checkMetadataSizeAndMayFlush();
-    }
   }
 
-  public boolean checkMetadataSizeAndMayFlush() {
+  public void checkMetadataSizeAndMayFlush() throws IOException {
     if (currentChunkMetadataSize > maxMetadataSize) {
       try {
         sortAndFlushChunkMetadata();
-        return true;
       } catch (IOException e) {
-        LOG.error("Meets exception when flushing metadata to temp files", e);
+        LOG.error("Meets exception when flushing metadata to temp file for {}", file, e);
+        throw e;
       }
     }
-    return false;
   }
 
   protected void sortAndFlushChunkMetadata() throws IOException {
@@ -135,13 +128,7 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
     if (iChunkMetadataList.size() == 0) {
       return;
     }
-    if (iChunkMetadataList.get(0).getDataType() == TSDataType.VECTOR) {
-      // pack the TimeChunkMetadata and List<ValueChunkMetadata> into List<AlignedChunkMetadata>
-      List<IChunkMetadata> alignedChunkMetadata = packAlignedChunkMetadata(iChunkMetadataList);
-      writeAlignedChunkMetadata(alignedChunkMetadata, seriesPath, output);
-    } else {
-      writeNormalChunkMetadata(iChunkMetadataList, seriesPath, output);
-    }
+    writeNormalChunkMetadata(iChunkMetadataList, seriesPath, output);
   }
 
   private List<IChunkMetadata> packAlignedChunkMetadata(List<IChunkMetadata> iChunkMetadataList) {
@@ -242,12 +229,19 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
       // read in all chunk metadata of one series
       // construct the timeseries metadata for this series
       TimeseriesMetadata timeseriesMetadata = readTimeseriesMetadata(iterator);
+
       indexCount++;
       // build bloom filter
       filter.add(currentSeries);
       // construct the index tree node for the series
-      Path currentPath = new Path(currentSeries, true);
-      currentDevice = currentPath.getDevice();
+      Path currentPath = null;
+      if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
+        // remove the last . in the series id
+        currentDevice = currentSeries.substring(0, currentSeries.length() - 1);
+      } else {
+        currentPath = new Path(currentSeries, true);
+        currentDevice = currentPath.getDevice();
+      }
       if (!currentDevice.equals(prevDevice)) {
         if (prevDevice != null) {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
@@ -266,8 +260,12 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
           currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
         }
-        currentIndexNode.addEntry(
-            new MetadataIndexEntry(currentPath.getMeasurement(), out.getPosition()));
+        if (timeseriesMetadata.getTSDataType() != TSDataType.VECTOR) {
+          currentIndexNode.addEntry(
+              new MetadataIndexEntry(currentPath.getMeasurement(), out.getPosition()));
+        } else {
+          currentIndexNode.addEntry(new MetadataIndexEntry("", out.getPosition()));
+        }
       }
 
       prevDevice = currentDevice;
@@ -314,7 +312,12 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
     currentSeries = iterator.getAllChunkMetadataForNextSeries(iChunkMetadataList);
     TimeseriesMetadata timeseriesMetadata =
         super.constructOneTimeseriesMetadata(new Path(currentSeries), iChunkMetadataList, false);
-    timeseriesMetadata.setMeasurementId(new Path(currentSeries, true).getMeasurement());
+    if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
+      // set empty measurement id for time column
+      timeseriesMetadata.setMeasurementId("");
+    } else {
+      timeseriesMetadata.setMeasurementId(new Path(currentSeries, true).getMeasurement());
+    }
     return timeseriesMetadata;
   }
 
