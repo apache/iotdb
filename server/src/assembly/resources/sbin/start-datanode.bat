@@ -71,7 +71,8 @@ IF "%IOTDB_CONF%" == "" (
   SET IOTDB_CONF="%IOTDB_CONF%"
 )
 
-SET IOTDB_LOGS=%IOTDB_HOME%\logs
+rem SET IOTDB_LOGS=%IOTDB_HOME%\logs
+if NOT DEFINED IOTDB_LOG_DIR set IOTDB_LOG_DIR=%IOTDB_HOME%\logs
 
 IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
   IF  "%enable_printgc%" == "true" (
@@ -101,7 +102,8 @@ set JAVA_OPTS=-ea^
  -DIOTDB_HOME="%IOTDB_HOME%"^
  -DTSFILE_HOME="%IOTDB_HOME%"^
  -DTSFILE_CONF="%IOTDB_CONF%"^
- -DIOTDB_CONF="%IOTDB_CONF%"
+ -DIOTDB_CONF="%IOTDB_CONF%"^
+ -DIOTDB_LOG_DIR="%IOTDB_LOG_DIR%"
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
