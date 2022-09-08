@@ -87,6 +87,7 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
   }
 
   public void checkMetadataSizeAndMayFlush() throws IOException {
+    // This function should be called after all data of an aligned device has been written
     if (currentChunkMetadataSize > maxMetadataSize) {
       try {
         sortAndFlushChunkMetadata();
