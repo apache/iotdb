@@ -134,6 +134,11 @@ public class RatisConfig {
       this.grpc = grpc;
       return this;
     }
+
+    public Builder setLeaderLogAppender(LeaderLogAppender leaderLogAppender) {
+      this.leaderLogAppender = leaderLogAppender;
+      return this;
+    }
   }
 
   /** server rpc timeout related */
@@ -744,17 +749,17 @@ public class RatisConfig {
         return new LeaderLogAppender(bufferByteLimit, snapshotChunkSizeMax, installSnapshotEnabled);
       }
 
-      LeaderLogAppender.Builder setBufferByteLimit(SizeInBytes bufferByteLimit) {
-        this.bufferByteLimit = bufferByteLimit;
+      public LeaderLogAppender.Builder setBufferByteLimit(long bufferByteLimit) {
+        this.bufferByteLimit = SizeInBytes.valueOf(bufferByteLimit);
         return this;
       }
 
-      LeaderLogAppender.Builder setSnapshotChunkSizeMax(SizeInBytes snapshotChunkSizeMax) {
-        this.snapshotChunkSizeMax = snapshotChunkSizeMax;
+      public LeaderLogAppender.Builder setSnapshotChunkSizeMax(long snapshotChunkSizeMax) {
+        this.snapshotChunkSizeMax = SizeInBytes.valueOf(snapshotChunkSizeMax);
         return this;
       }
 
-      LeaderLogAppender.Builder setInstallSnapshotEnabled(boolean installSnapshotEnabled) {
+      public LeaderLogAppender.Builder setInstallSnapshotEnabled(boolean installSnapshotEnabled) {
         this.installSnapshotEnabled = installSnapshotEnabled;
         return this;
       }
