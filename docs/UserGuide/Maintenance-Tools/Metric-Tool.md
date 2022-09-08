@@ -19,11 +19,14 @@
 
 -->
 
-## 1. What is metrics?
+
+Currently, users can use various methods to monitor the running IoTDB process, including using Java's Jconsole tool to monitor the system status of the running IoTDB process, using the interface developed by IoTDB for users to view data statistics, and using the monitor framework to monitor the system status of the running IoTDB process.
+
+# 1. Monitor Framework
 
 Along with IoTDB running, some metrics reflecting current system's status will be collected continuously, which will provide some useful information helping us resolving system problems and detecting potential system risks.
 
-## 2. When to use metrics?
+## 1.1. When to use monitor framework?
 
 Belows are some typical application scenarios
 
@@ -46,15 +49,15 @@ Belows are some typical application scenarios
 
    We could use the count of error logs、the alive status of nodes in cluster, etc, to determine whether the system is running abnormally.
 
-## 3. Who will use metrics?
+## 1.2. Who will use monitor framework?
 
 Any person cares about the system's status, including but not limited to RD, QA, SRE, DBA, can use the metrics to work more efficiently.
 
-## 4. What metrics does IoTDB have?
+## 1.3. What metrics does IoTDB have?
 
 For now, we have provided some metrics for several core modules of IoTDB, and more metrics will be added or updated along with the development of new features and optimization or refactoring of architecture.
 
-### 4.1. Key Concept
+### 1.3.1. Key Concept
 
 Before step into next, we'd better stop to have a look into some key concepts about metrics.
 
@@ -68,15 +71,15 @@ Every metric data has two properties
 
   Each metric could have 0 or several sub classes (Tag), for the same example, the ```logback_events_total``` metric has a sub class named ```level```, which means ```the total count of log events at the specific level```
 
-### 4.2. Data Format
+### 1.3.2. Data Format
 
 IoTDB provides metrics data both in JMX and Prometheus format. For JMX, you can get these metrics via ```org.apache.iotdb.metrics```.  
 
 Next, we will choose Prometheus format data as samples to describe each kind of metric.
 
-### 4.3. IoTDB Metrics
+### 1.3.3. IoTDB Metrics
 
-#### 4.3.1. API
+#### 1.3.3.1. API
 
 | Metric                | Tag                      | level     | Description                              | Sample                                       |
 | --------------------- | ------------------------ | --------- | ---------------------------------------- | -------------------------------------------- |
@@ -87,24 +90,24 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | thrift_connections    | name="{{thriftService}}" | core      | current number of thrift connections     | thrift_connections{name="RPC",} 1.0          |
 | thrift_active_threads | name="{{thriftThread}}"  | core      | current number if thrift worker threads  | thrift_active_threads{name="RPC",} 1.0       |
 
-#### 4.3.2. Task
-| Metric                  | Tag                                                                           | level     | Description                                              | Sample                                                                                  |
-| ----------------------- | ----------------------------------------------------------------------------- | --------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| queue                   | name="compaction_inner/compaction_cross/flush",<br />status="running/waiting" | important | The count of current tasks in running and waiting status | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
-| cost_task_seconds_count | name="inner_compaction/cross_compaction/flush"                                | important | The total count of tasks occurs till now                 | cost_task_seconds_count{name="flush",} 1.0                                              |
-| cost_task_seconds_max   | name="inner_compaction/cross_compaction/flush"                                | important | The seconds of the longest task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
-| cost_task_seconds_sum   | name="inner_compaction/cross_compaction/flush"                                | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
-| data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | The size of data written in compaction                   | data_written{name="compaction",type="total",} 10240                                     |
-| data_read               | name="compaction"                                                             | important | The size of data read in compaction                      | data_read={name="compaction",} 10240                                                    |
-| compaction_task_count   | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross"  | important | The number of compaction task                            | compaction_task_count{name="inner_compaction",type="sequence",} 1                       |
+#### 1.3.3.2. Task
+| Metric                        | Tag                                                                           | level     | Description                                              | Sample                                                                                  |
+| ----------------------------- | ----------------------------------------------------------------------------- | --------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| queue                         | name="compaction_inner/compaction_cross/flush",<br />status="running/waiting" | important | The count of current tasks in running and waiting status | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
+| cost_task_seconds_count       | name="inner_compaction/cross_compaction/flush"                                | important | The total count of tasks occurs till now                 | cost_task_seconds_count{name="flush",} 1.0                                              |
+| cost_task_seconds_max         | name="inner_compaction/cross_compaction/flush"                                | important | The seconds of the longest task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
+| cost_task_seconds_sum         | name="inner_compaction/cross_compaction/flush"                                | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
+| data_written_total            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | The size of data written in compaction                   | data_written_total{name="compaction",type="total",} 10240                                     |
+| data_read_total               | name="compaction"                                                             | important | The size of data read in compaction                      | data_read_total{name="compaction",} 10240                                                    |
+| compaction_task_count_total   | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross"  | important | The number of compaction task                            | compaction_task_count_total{name="inner_compaction",type="sequence",} 1                       |
 
-#### 4.3.3. Memory Usage
+#### 1.3.3.3. Memory Usage
 
 | Metric | Tag                                     | level     | Description                                                           | Sample                            |
 | ------ | --------------------------------------- | --------- | --------------------------------------------------------------------- | --------------------------------- |
 | mem    | name="chunkMetaData/storageGroup/mtree" | important | Current memory size of chunkMetaData/storageGroup/mtree data in bytes | mem{name="chunkMetaData",} 2050.0 |
 
-#### 4.3.4. Cache
+#### 1.3.3.4. Cache
 
 | Metric      | Tag                                                               | level     | Description                                                                               | Sample                                              |
 | ----------- | ----------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------- |
@@ -112,13 +115,13 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cache_total | name="StorageGroup/SchemaPartition/DataPartition", type="hit/all" | important | The cache hit/all counts of StorageGroup/SchemaPartition/DataPartition                    | cache_total{name="DataPartition",type="all",} 801.0 |
 
 
-#### 4.3.5. Business Data
+#### 1.3.3.5. Business Data
 
 | Metric   | Tag                                   | level     | Description                                                   | Sample                           |
 | -------- | ------------------------------------- | --------- | ------------------------------------------------------------- | -------------------------------- |
 | quantity | name="timeSeries/storageGroup/device" | important | The current count of timeSeries/storageGroup/devices in IoTDB | quantity{name="timeSeries",} 1.0 |
 
-#### 4.3.6. Cluster
+#### 1.3.3.6. Cluster
 
 | Metric                    | Tag                                                                | level     | Description                                                                                  | Sample                                                                       |
 | ------------------------- | ------------------------------------------------------------------ | --------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -133,12 +136,12 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | The number of DataRegion/SchemaRegion in storage group                                       | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
 | slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | The number of dataSlot/schemaSlot in storage group                                           | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
 
-### 4.4. IoTDB PreDefined Metrics Set
+### 1.3.4. IoTDB PreDefined Metrics Set
 Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file to enable the predefined set of metrics，now support `JVM`, `LOGBACK`, `FILE`, `PROCESS`, `SYSYTEM`.
 
-#### 4.4.1. JVM
+#### 1.3.4.1. JVM
 
-##### 4.4.1.1. Threads
+##### 1.3.4.1.1. Threads
 
 | Metric                     | Tag                                                           | level     | Description                          | Sample                                             |
 | -------------------------- | ------------------------------------------------------------- | --------- | ------------------------------------ | -------------------------------------------------- |
@@ -147,7 +150,7 @@ Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file
 | jvm_threads_peak_threads   | None                                                          | Important | The max count of threads till now    | jvm_threads_peak_threads 28.0                      |
 | jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | Important | The count of threads in each status  | jvm_threads_states_threads{state="runnable",} 10.0 |
 
-##### 4.4.1.2. GC
+##### 1.3.4.1.2. GC
 
 | Metric                              | Tag                                                    | level     | Description                                                                                             | Sample                                                                                  |
 | ----------------------------------- | ------------------------------------------------------ | --------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
@@ -159,7 +162,7 @@ Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file
 | jvm_gc_live_data_size_bytes         | None                                                   | Important | Size of long-lived heap memory pool after reclamation                                                   | jvm_gc_live_data_size_bytes 8450088.0                                                   |
 | jvm_gc_memory_allocated_bytes_total | None                                                   | Important | Incremented for an increase in the size of the (young) heap memory pool after one GC to before the next | jvm_gc_memory_allocated_bytes_total 4.2979144E7                                         |
 
-##### 4.4.1.3. Memory
+##### 1.3.4.1.3. Memory
 
 | Metric                          | Tag                             | level     | Description                                                                           | Sample                                                                                                                                                        |
 | ------------------------------- | ------------------------------- | --------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -170,28 +173,28 @@ Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file
 | jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | Important | The maximum amount of memory in bytes that can be used for memory management          | jvm_memory_max_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space",} 1.073741824E9   |
 | jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | Important | The amount of used memory                                                             | jvm_memory_used_bytes{area="heap",id="Par Eden Space",} 1.000128376E9<br/>jvm_memory_used_bytes{area="nonheap",id="Code Cache",} 2.9783808E7<br/>             |
 
-##### 4.4.1.4. Classes
+##### 1.3.4.1.4. Classes
 
 | Metric                             | Tag                                           | level     | Description                                                                               | Sample                                                                              |
 | ---------------------------------- | --------------------------------------------- | --------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| jvm_classes_unloaded_classes_total | None                                          | Important | The total number of classes unloaded since the Java virtual machine has started execution | jvm_classes_unloaded_classes_total 680.0                                            |
+| jvm_classes_unloaded_classes       | None                                          | Important | The total number of classes unloaded since the Java virtual machine has started execution | jvm_classes_unloaded_classes 680.0                                            |
 | jvm_classes_loaded_classes         | None                                          | Important | The number of classes that are currently loaded in the Java virtual machine               | jvm_classes_loaded_classes 5975.0                                                   |
-| jvm_compilation_time_ms_total      | {compiler="HotSpot 64-Bit Tiered Compilers",} | Important | The approximate accumulated elapsed time spent in compilation                             | jvm_compilation_time_ms_total{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
+| jvm_compilation_time_ms            | {compiler="HotSpot 64-Bit Tiered Compilers",} | Important | The approximate accumulated elapsed time spent in compilation                             | jvm_compilation_time_ms{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
 
-#### 4.4.2. File
+#### 1.3.4.2. File
 
 | Metric     | Tag                  | level     | Description                                     | Sample                      |
 | ---------- | -------------------- | --------- | ----------------------------------------------- | --------------------------- |
 | file_size  | name="wal/seq/unseq" | important | The current file size of wal/seq/unseq in bytes | file_size{name="wal",} 67.0 |
 | file_count | name="wal/seq/unseq" | important | The current count of wal/seq/unseq files        | file_count{name="seq",} 1.0 |
 
-#### 4.4.3. Logback
+#### 1.3.4.3. Logback
 
 | Metric               | Tag                                    | level     | Description                                                   | 示例                                    |
 | -------------------- | -------------------------------------- | --------- | ------------------------------------------------------------- | --------------------------------------- |
 | logback_events_total | {level="trace/debug/info/warn/error",} | Important | The count of  trace/debug/info/warn/error log events till now | logback_events_total{level="warn",} 0.0 |
 
-#### 4.4.4. Process
+#### 1.3.4.4. Process
 | Metric                | Tag            | level | Description                                                                   | 示例                                            |
 | --------------------- | -------------- | ----- | ----------------------------------------------------------------------------- | ----------------------------------------------- |
 | process_cpu_load      | name="cpu"     | core  | current process CPU Usage (%)                                                 | process_cpu_load{name="process",} 5.0           |
@@ -204,7 +207,7 @@ Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file
 | process_threads_count | name="process" | core  | The current number of threads                                                 | process_threads_count{name="process",} 11.0     |
 | process_status        | name="process" | core  | The process survivor status, 1.0 means survivorship, and 0.0 means terminated | process_status{name="process",} 1.0             |
 
-#### 4.4.5. System
+#### 1.3.4.5. System
 | Metric                         | Tag           | level     | Description                                                 | 示例                                                           |
 | ------------------------------ | ------------- | --------- | ----------------------------------------------------------- | -------------------------------------------------------------- |
 | sys_cpu_load                   | name="cpu"    | core      | current system CPU Usage(%)                                 | sys_cpu_load{name="system",} 15.0                              |
@@ -217,7 +220,7 @@ Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file
 | sys_disk_total_space           | name="disk"   | core      | The total disk space                                        | sys_disk_total_space{name="system",} 5.10770798592E11          |
 | sys_disk_free_space            | name="disk"   | core      | The available  disk space                                   | sys_disk_free_space{name="system",} 3.63467845632E11           |
 
-### 4.5. Add custom metrics
+### 1.3.5. Add custom metrics
 - If you want to add your own metrics data in IoTDB, please see the [IoTDB Metric Framework] (https://github.com/apache/iotdb/tree/master/metrics) document.
 - Metric embedded point definition rules
   - `Metric`: The name of the monitoring item. For example, `entry_seconds_count` is the cumulative number of accesses to the interface, and `file_size` is the total number of files.
@@ -233,11 +236,11 @@ Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file
   - `Normal`: General indicators of the module, used by **developers** to facilitate **locating the module** when problems occur, such as specific key operation situations in the merger.
   - `All`: All indicators of the module, used by **module developers**, often used when the problem is reproduced, so as to solve the problem quickly.
 
-## 5. How to get these metrics？
+## 1.4. How to get these metrics？
 
 The metrics collection switch is disabled by default，you need to enable it from ```conf/iotdb-metric.yml```, Currently, it also supports hot loading via `load configuration` after startup.
 
-### 5.1. Iotdb-metric.yml
+### 1.4.1. Iotdb-metric.yml
 
 ```yaml
 # whether enable the module
@@ -318,7 +321,7 @@ mem{name="mtree",} 1328.0
 ...
 ```
 
-### 5.2. Integrating with Prometheus and Grafana
+### 1.4.2. Integrating with Prometheus and Grafana
 
 As above descriptions，IoTDB provides metrics data in standard Prometheus format，so we can integrate with Prometheus and Grafana directly. 
 
@@ -359,19 +362,19 @@ The following documents may help you have a good journey with Prometheus and Gra
 
 [Grafana query metrics from Prometheus](https://prometheus.io/docs/visualization/grafana/#grafana-support-for-prometheus)
 
-### 5.3. Apache IoTDB Dashboard
+### 1.4.3. Apache IoTDB Dashboard
 We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as follows:
 
 ![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-#### 5.3.1. How to get Apache IoTDB Dashboard
+#### 1.4.3.1. How to get Apache IoTDB Dashboard
 
 1. You can obtain the json files of Dashboards corresponding to different iotdb versions in the grafana-metrics-example folder.
 2. You can visit [Grafana Dashboard official website](https://grafana.com/grafana/dashboards/), search for `Apache IoTDB Dashboard` and use
 
 When creating Grafana, you can select the json file you just downloaded to `Import` and select the corresponding target data source for Apache IoTDB Dashboard.
 
-#### 5.3.2. Apache IoTDB StandaAlone Dashboard Instructions
+#### 1.4.3.2. Apache IoTDB StandaAlone Dashboard Instructions
 > Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
 
 1. `Overview`:
@@ -394,7 +397,7 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
    6. `Off-heap Memory`: The off-heap memory of IoTDB.
    7. `The number of Java Thread`: The number of threads in different states of IoTDB.
 
-#### 5.3.3. Apache IoTDB ConfigNode Dashboard Instructions
+#### 1.4.3.3. Apache IoTDB ConfigNode Dashboard Instructions
 > Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
 
 1. `Overview`:
@@ -417,7 +420,7 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
    5. `The number of Java Thread`: The number of threads in different states of IoTDB.
    6. `The time consumed of Interface`: The average time consumed by the system interface
 
-#### 5.3.4. Apache IoTDB DataNode Dashboard Instructions
+#### 1.4.3.4. Apache IoTDB DataNode Dashboard Instructions
 > Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
 
 1. `Overview`:
@@ -439,3 +442,42 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
    5. `Heap Memory`: The heap memory of IoTDB.
    6. `Off-heap Memory`: The off-heap memory of IoTDB.
    7. `The number of Java Thread`: The number of threads in different states of IoTDB.
+
+# 2. System Status Monitoring
+
+After starting JConsole tool and connecting to IoTDB server, a basic look at IoTDB system status(CPU Occupation, in-memory information, etc.) is provided. See [official documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/management/jconsole.html) for more information.
+
+# 3. JMX MBean Monitoring
+By using JConsole tool and connecting with JMX you are provided with some system statistics and parameters.
+
+This section describes how to use the JConsole ```Mbean```tab of jconsole to monitor some system configurations of IoTDB, the statistics of writing, and so on. After connecting to JMX, you can find the "MBean" of "org.apache.iotdb.service", as shown in the figure below.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/46039728/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
+
+# 4. Performance Monitor
+
+## 4.1. Introduction
+
+To grasp the performance of iotdb, this module is added to count the time-consumption of each operation. This module can compute the statistics of the avg time-consuming of each operation and the proportion of each operation whose time consumption falls into a time range. The output is in log_measure.log file. An output example is below.  
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937461-14296f80-a303-11e9-9602-a7bed624bfb3.png">
+
+## 4.2. Configuration parameter
+
+location：conf/iotdb-datanode.properties
+
+<center>
+
+**Table -parameter and description**
+
+| Parameter                 | Default Value | Description                               |
+| :------------------------ | :------------ | :---------------------------------------- |
+| enable\_performance\_stat | false         | Is stat performance of sub-module enable. |
+</center>
+
+# 5. Cache Hit Ratio Statistics
+To improve query performance, IOTDB caches ChunkMetaData and TsFileMetaData. Users can view the cache hit ratio through debug level log and MXBean, and adjust the memory occupied by the cache according to the cache hit ratio and system memory. The method of using MXBean to view cache hit ratio is as follows:
+1. Connect to jconsole with port 31999 and select 'MBean' in the menu item above.
+2. Expand the sidebar and select 'org.apache.iotdb.db.service'. You will get the results shown in the following figure:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">

@@ -397,6 +397,7 @@ public class IntermediateLayerVisitor
       case SLIDING_SIZE_WINDOW:
       case SLIDING_TIME_WINDOW:
       case SESSION_TIME_WINDOW:
+      case STATE_WINDOW:
         return new UDFQueryRowWindowTransformer(
             udfInputIntermediateLayer.constructRowWindowReader(
                 accessStrategy, context.memoryAssigner.assign()),

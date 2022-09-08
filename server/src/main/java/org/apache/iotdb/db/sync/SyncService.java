@@ -28,8 +28,11 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
@@ -40,6 +43,7 @@ import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
 import org.apache.iotdb.db.sync.externalpipe.ExternalPipeStatus;
+import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
@@ -58,6 +62,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +70,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -126,8 +132,17 @@ public class SyncService implements IService {
     return syncInfoFetcher.getPipeSink(name);
   }
 
+  // TODO(sync): delete this in new-standalone version
   public void addPipeSink(CreatePipeSinkPlan plan) throws PipeSinkException {
     TSStatus status = syncInfoFetcher.addPipeSink(plan);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeSinkException(status.message);
+    }
+  }
+
+  public void addPipeSink(CreatePipeSinkStatement createPipeSinkStatement)
+      throws PipeSinkException {
+    TSStatus status = syncInfoFetcher.addPipeSink(createPipeSinkStatement);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeSinkException(status.message);
     }
@@ -148,6 +163,7 @@ public class SyncService implements IService {
 
   // region Interfaces and Implementation of Pipe
 
+  // TODO(sync): delete this in new-standalone version
   public synchronized void addPipe(CreatePipePlan plan) throws PipeException {
     // check plan
     long currentTime = DatetimeUtils.currentTime();
@@ -174,6 +190,45 @@ public class SyncService implements IService {
             String.format(
                 "Cast Class to %s error when create pipe %s.",
                 IoTDBPipeSink.class.getName(), plan.getPipeName()),
+            e);
+        runningPipe = null;
+        throw new PipeException(
+            String.format(
+                "Wrong pipeSink type %s for create pipe %s",
+                runningPipeSink.getType(), runningPipeSink.getPipeSinkName()));
+      }
+    } else { // for external pipe
+      // == start ExternalPipeProcessor for send data to external pipe plugin
+      startExternalPipeManager(false);
+    }
+  }
+
+  public synchronized void addPipe(CreatePipeStatement statement) throws PipeException {
+    // check statement
+    long currentTime = DatetimeUtils.currentTime();
+    if (statement.getStartTime() > currentTime) {
+      throw new PipeException(
+          String.format(
+              "Start time %s is later than current time %s, this is not supported yet.",
+              DatetimeUtils.convertLongToDate(statement.getStartTime()),
+              DatetimeUtils.convertLongToDate(currentTime)));
+    }
+    // add pipe
+    TSStatus status = syncInfoFetcher.addPipe(statement, currentTime);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(status.message);
+    }
+
+    PipeSink runningPipeSink = getPipeSink(statement.getPipeSinkName());
+    runningPipe = SyncPipeUtil.parseCreatePipePlanAsPipe(statement, runningPipeSink, currentTime);
+    if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
+      try {
+        senderManager = new SenderManager(runningPipe, (IoTDBPipeSink) runningPipeSink);
+      } catch (ClassCastException e) {
+        logger.error(
+            String.format(
+                "Cast Class to %s error when create pipe %s.",
+                IoTDBPipeSink.class.getName(), statement.getPipeName()),
             e);
         runningPipe = null;
         throw new PipeException(
@@ -300,6 +355,40 @@ public class SyncService implements IService {
         }
         break;
     }
+  }
+
+  public List<TPipeInfo> showPipe(String pipeName) {
+    boolean showAll = StringUtils.isEmpty(pipeName);
+    List<TPipeInfo> list = new ArrayList<>();
+    // show pipe in sender
+    for (PipeInfo pipe : SyncService.getInstance().getAllPipeInfos()) {
+      if (showAll || pipeName.equals(pipe.getPipeName())) {
+        TPipeInfo tPipeInfo =
+            new TPipeInfo(
+                pipe.getCreateTime(),
+                pipe.getPipeName(),
+                SyncConstant.ROLE_SENDER,
+                pipe.getPipeSinkName(),
+                pipe.getStatus().name(),
+                "");
+        list.add(tPipeInfo);
+      }
+    }
+    // show pipe in receiver
+    for (TSyncIdentityInfo identityInfo : receiverManager.getAllTSyncIdentityInfos()) {
+      if (showAll || pipeName.equals(identityInfo.getPipeName())) {
+        TPipeInfo tPipeInfo =
+            new TPipeInfo(
+                identityInfo.getCreateTime(),
+                identityInfo.getPipeName(),
+                SyncConstant.ROLE_RECEIVER,
+                identityInfo.getAddress(),
+                Pipe.PipeStatus.RUNNING.name(),
+                "");
+        list.add(tPipeInfo);
+      }
+    }
+    return list;
   }
 
   public void showPipe(ShowPipePlan plan, ListDataSet listDataSet) {
@@ -510,6 +599,22 @@ public class SyncService implements IService {
     } else { // for external pipe
       // == start ExternalPipeProcessor for send data to external pipe plugin
       startExternalPipeManager(runningPipe.getStatus() == Pipe.PipeStatus.RUNNING);
+    }
+  }
+
+  public List<ISyncManager> getOrCreateSyncManager(String dataRegionId) {
+    // TODO(sync): maybe add cache to accelerate
+    List<ISyncManager> syncManagerList = new ArrayList<>();
+    if (runningPipe != null) {
+      syncManagerList.add(runningPipe.getOrCreateSyncManager(dataRegionId));
+    }
+    return syncManagerList;
+  }
+
+  /** This method will be called before deleting dataRegion */
+  public void deleteSyncManager(String dataRegionId) {
+    if (runningPipe != null) {
+      runningPipe.deleteSyncManager(dataRegionId);
     }
   }
 

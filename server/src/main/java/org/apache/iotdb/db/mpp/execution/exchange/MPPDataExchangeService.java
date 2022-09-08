@@ -98,7 +98,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.MPP_DATA_EXCHANGE_RPC_CLIENT.getName(),
+              ThreadName.MPP_DATA_EXCHANGE_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -109,7 +109,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.MPP_DATA_EXCHANGE_RPC_SERVER.getName());
+    thriftServiceThread.setName(ThreadName.MPP_DATA_EXCHANGE_RPC_SERVICE.getName());
     MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),
@@ -117,7 +117,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
             thriftServiceThread,
             AbstractThriftServiceThread::getActiveThreadCount,
             Tag.NAME.toString(),
-            ThreadName.MPP_DATA_EXCHANGE_RPC_SERVER.getName());
+            ThreadName.MPP_DATA_EXCHANGE_RPC_SERVICE.getName());
   }
 
   @Override

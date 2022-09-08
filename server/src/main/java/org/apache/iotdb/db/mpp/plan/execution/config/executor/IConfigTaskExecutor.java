@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
+import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
@@ -34,6 +38,14 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -50,23 +62,36 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> countStorageGroup(
       CountStorageGroupStatement countStorageGroupStatement);
 
-  SettableFuture<ConfigTaskResult> createFunction(
-      String udfName, String className, List<String> uris);
-
   SettableFuture<ConfigTaskResult> deleteStorageGroup(
       DeleteStorageGroupStatement deleteStorageGroupStatement);
 
+  SettableFuture<ConfigTaskResult> createFunction(
+      String udfName, String className, List<String> uris);
+
   SettableFuture<ConfigTaskResult> dropFunction(String udfName);
+
+  SettableFuture<ConfigTaskResult> createTrigger(
+      String triggerName,
+      String className,
+      String jarPath,
+      boolean usingURI,
+      TriggerEvent triggerEvent,
+      TriggerType triggerType,
+      PartialPath pathPattern);
+
+  SettableFuture<ConfigTaskResult> dropTrigger(String triggerName);
 
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
-  SettableFuture<ConfigTaskResult> merge(boolean isCluster);
+  SettableFuture<ConfigTaskResult> merge(boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean isCluster);
+  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> clearCache(boolean isCluster);
+  SettableFuture<ConfigTaskResult> clearCache(boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> loadConfiguration(boolean isCluster);
+  SettableFuture<ConfigTaskResult> loadConfiguration(boolean onCluster);
+
+  SettableFuture<ConfigTaskResult> setSystemStatus(boolean onCluster, NodeStatus status);
 
   SettableFuture<ConfigTaskResult> showCluster();
 
@@ -93,19 +118,19 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement);
 
-  SettableFuture<ConfigTaskResult> createPipe();
+  SettableFuture<ConfigTaskResult> createPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
 
-  SettableFuture<ConfigTaskResult> createPipeSink();
+  SettableFuture<ConfigTaskResult> dropPipeSink(DropPipeSinkStatement dropPipeSinkStatement);
 
-  SettableFuture<ConfigTaskResult> dropPipe();
+  SettableFuture<ConfigTaskResult> showPipeSink(ShowPipeSinkStatement showPipeSinkStatement);
 
-  SettableFuture<ConfigTaskResult> dropPipeSink();
+  SettableFuture<ConfigTaskResult> dropPipe(DropPipeStatement dropPipeStatement);
 
-  SettableFuture<ConfigTaskResult> showPipe();
+  SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement);
 
-  SettableFuture<ConfigTaskResult> showPipeSink();
+  SettableFuture<ConfigTaskResult> startPipe(StartPipeStatement startPipeStatement);
 
-  SettableFuture<ConfigTaskResult> startPipe();
+  SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement);
 
-  SettableFuture<ConfigTaskResult> stopPipe();
+  SettableFuture<ConfigTaskResult> showPipe(ShowPipeStatement showPipeStatement);
 }

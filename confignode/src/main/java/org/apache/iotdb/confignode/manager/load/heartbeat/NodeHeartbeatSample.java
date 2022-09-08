@@ -18,17 +18,32 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+
 public class NodeHeartbeatSample {
 
   // Unit: ms
   private final long sendTimestamp;
   private final long receiveTimestamp;
 
-  // TODO: Add load sample
+  private NodeStatus status;
+  private short cpu;
+  private short memory;
 
+  /** Constructor for ConfigNode sample */
   public NodeHeartbeatSample(long sendTimestamp, long receiveTimestamp) {
     this.sendTimestamp = sendTimestamp;
     this.receiveTimestamp = receiveTimestamp;
+  }
+
+  /** Constructor for DataNode sample */
+  public NodeHeartbeatSample(THeartbeatResp heartbeatResp, long receiveTimestamp) {
+    this.sendTimestamp = heartbeatResp.getHeartbeatTimestamp();
+    this.receiveTimestamp = receiveTimestamp;
+    this.status = NodeStatus.parse(heartbeatResp.getStatus());
+    this.cpu = heartbeatResp.getCpu();
+    this.memory = heartbeatResp.getMemory();
   }
 
   public long getSendTimestamp() {
@@ -37,5 +52,17 @@ public class NodeHeartbeatSample {
 
   public long getReceiveTimestamp() {
     return receiveTimestamp;
+  }
+
+  public NodeStatus getStatus() {
+    return status;
+  }
+
+  public short getCpu() {
+    return cpu;
+  }
+
+  public short getMemory() {
+    return memory;
   }
 }

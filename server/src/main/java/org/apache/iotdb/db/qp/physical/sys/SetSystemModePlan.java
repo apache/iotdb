@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -33,15 +34,15 @@ import java.util.List;
 
 public class SetSystemModePlan extends PhysicalPlan {
 
-  private boolean isReadOnly;
+  private NodeStatus status;
 
   public SetSystemModePlan() {
     super(OperatorType.SET_SYSTEM_MODE);
   }
 
-  public SetSystemModePlan(boolean isReadOnly) {
+  public SetSystemModePlan(NodeStatus status) {
     super(OperatorType.SET_SYSTEM_MODE);
-    this.isReadOnly = isReadOnly;
+    this.status = status;
   }
 
   @Override
@@ -49,31 +50,27 @@ public class SetSystemModePlan extends PhysicalPlan {
     return Collections.emptyList();
   }
 
-  public boolean isReadOnly() {
-    return isReadOnly;
+  public NodeStatus getStatus() {
+    return status;
   }
 
   @Override
   public void serialize(DataOutputStream outputStream) throws IOException {
     outputStream.writeByte((byte) PhysicalPlanType.SET_SYSTEM_MODE.ordinal());
-
-    outputStream.writeBoolean(isReadOnly);
+    ReadWriteIOUtils.write(status.getStatus(), outputStream);
     outputStream.writeLong(index);
   }
 
   @Override
   public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.SET_SYSTEM_MODE.ordinal());
-
-    ReadWriteIOUtils.write(isReadOnly, buffer);
-
+    ReadWriteIOUtils.write(status.getStatus(), buffer);
     buffer.putLong(index);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-
-    isReadOnly = buffer.get() == 1;
+    this.status = NodeStatus.parse(ReadWriteIOUtils.readString(buffer));
     this.index = buffer.getLong();
   }
 }

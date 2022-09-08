@@ -22,9 +22,9 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
@@ -109,15 +109,18 @@ public class SyncLogReader {
       while ((readLine = br.readLine()) != null) {
         lineNumber += 1;
         parseStrings = readLine.split(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
-        Operator.OperatorType type = Operator.OperatorType.valueOf(parseStrings[0]);
+
+        StatementType type = StatementType.valueOf(parseStrings[0]);
 
         switch (type) {
           case CREATE_PIPESINK:
             readLine = br.readLine();
             lineNumber += 1;
-            CreatePipeSinkPlan pipeSinkPlan = CreatePipeSinkPlan.parseString(readLine);
+            CreatePipeSinkStatement createPipeSinkStatement =
+                CreatePipeSinkStatement.parseString(readLine);
             pipeSinks.put(
-                pipeSinkPlan.getPipeSinkName(), SyncPipeUtil.parseCreatePipeSinkPlan(pipeSinkPlan));
+                createPipeSinkStatement.getPipeSinkName(),
+                SyncPipeUtil.parseCreatePipeSinkStatement(createPipeSinkStatement));
             break;
           case DROP_PIPESINK:
             pipeSinks.remove(parseStrings[1]);
@@ -125,11 +128,11 @@ public class SyncLogReader {
           case CREATE_PIPE:
             readLine = br.readLine();
             lineNumber += 1;
-            CreatePipePlan pipePlan = CreatePipePlan.parseString(readLine);
+            CreatePipeStatement createPipeStatement = CreatePipeStatement.parseString(readLine);
             runningPipe =
                 SyncPipeUtil.parseCreatePipePlanAsPipeInfo(
-                    pipePlan,
-                    pipeSinks.get(pipePlan.getPipeSinkName()),
+                    createPipeStatement,
+                    pipeSinks.get(createPipeStatement.getPipeSinkName()),
                     Long.parseLong(parseStrings[1]));
             pipes.add(runningPipe);
             break;

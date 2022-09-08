@@ -39,14 +39,14 @@ import java.util.Properties;
 public class ConfigNodeRemoveCheck {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
-  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   private final File systemPropertiesFile;
   private final Properties systemProperties;
 
   public ConfigNodeRemoveCheck() {
     systemPropertiesFile =
-        new File(conf.getSystemDir() + File.separator + ConfigNodeConstant.SYSTEM_FILE_NAME);
+        new File(CONF.getSystemDir() + File.separator + ConfigNodeConstant.SYSTEM_FILE_NAME);
     systemProperties = new Properties();
   }
 
@@ -62,7 +62,7 @@ public class ConfigNodeRemoveCheck {
           getConfigNodeList().stream()
               .filter(e -> e.getInternalEndPoint().equals(endPoint))
               .findFirst()
-              .get();
+              .orElse(null);
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.error("Load system properties file failed.", e);
     }
@@ -70,7 +70,7 @@ public class ConfigNodeRemoveCheck {
     return nodeLocation;
   }
 
-  public void removeConfigNode(TConfigNodeLocation nodeLocation)
+  public void removeConfigNode(TConfigNodeLocation removedNode)
       throws BadNodeUrlException, IOException {
     TSStatus status = new TSStatus();
     for (TConfigNodeLocation configNodeLocation : getConfigNodeList()) {
@@ -79,7 +79,7 @@ public class ConfigNodeRemoveCheck {
               SyncConfigNodeClientPool.getInstance()
                   .sendSyncRequestToConfigNodeWithRetry(
                       configNodeLocation.getInternalEndPoint(),
-                      nodeLocation,
+                      removedNode,
                       ConfigNodeRequestType.REMOVE_CONFIG_NODE);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         break;

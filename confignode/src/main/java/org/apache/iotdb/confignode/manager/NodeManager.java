@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -68,6 +69,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -277,6 +279,10 @@ public class NodeManager {
             info.setStatus(getNodeStatus(configNodeId));
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
+            info.setRoleType(
+                configNodeLocation.getInternalEndPoint().equals(CURRENT_NODE)
+                    ? RegionRoleType.Leader.name()
+                    : RegionRoleType.Follower.name());
             configNodeInfoList.add(info);
           });
     }
@@ -414,6 +420,20 @@ public class NodeManager {
     return dataNodeResponseStatus;
   }
 
+  public List<TSStatus> setSystemStatus(String status) {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            status,
+            dataNodeLocationMap,
+            DataNodeRequestType.SET_SYSTEM_STATUS,
+            dataNodeResponseStatus);
+    return dataNodeResponseStatus;
+  }
+
   /** Start the heartbeat service */
   public void startHeartbeatService() {
     synchronized (scheduleMonitor) {
@@ -432,14 +452,19 @@ public class NodeManager {
 
   /** loop body of the heartbeat thread */
   private void heartbeatLoopBody() {
-    if (getConsensusManager().isLeader()) {
-      // Generate HeartbeatReq
-      THeartbeatReq heartbeatReq = genHeartbeatReq();
-      // Send heartbeat requests to all the registered DataNodes
-      pingRegisteredDataNodes(heartbeatReq, getRegisteredDataNodes());
-      // Send heartbeat requests to all the registered ConfigNodes
-      pingRegisteredConfigNodes(heartbeatReq, getRegisteredConfigNodes());
-    }
+    // the consensusManager of configManager may not be fully initialized at this time
+    Optional.ofNullable(getConsensusManager())
+        .ifPresent(
+            consensusManager -> {
+              if (getConsensusManager().isLeader()) {
+                // Generate HeartbeatReq
+                THeartbeatReq heartbeatReq = genHeartbeatReq();
+                // Send heartbeat requests to all the registered DataNodes
+                pingRegisteredDataNodes(heartbeatReq, getRegisteredDataNodes());
+                // Send heartbeat requests to all the registered ConfigNodes
+                pingRegisteredConfigNodes(heartbeatReq, getRegisteredConfigNodes());
+              }
+            });
   }
 
   private THeartbeatReq genHeartbeatReq() {
@@ -537,7 +562,9 @@ public class NodeManager {
    */
   private String getNodeStatus(int nodeId) {
     BaseNodeCache nodeCache = nodeCacheMap.get(nodeId);
-    return nodeCache == null ? "Unknown" : nodeCache.getNodeStatus().getStatus();
+    return nodeCache == null
+        ? NodeStatus.Unknown.getStatus()
+        : nodeCache.getNodeStatus().getStatus();
   }
 
   /**

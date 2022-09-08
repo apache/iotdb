@@ -183,4 +183,57 @@ public class IoTDBResultSetIT {
         ColumnHeaderConstant.COLUMN_DEVICES + "," + ColumnHeaderConstant.COLUMN_IS_ALIGNED + ",";
     resultSetEqualTest("show devices root.sg1.**", expectedHeader, emptyResultSet);
   }
+
+  @Test
+  public void timeWasNullTest() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      // create timeseries
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+
+      for (int i = 0; i < 10; i++) {
+        statement.addBatch(
+            "insert into root.sg1.d1(timestamp, s1, s2) values(" + i + "," + 1 + "," + 1 + ")");
+      }
+
+      statement.execute("insert into root.sg1.d1(timestamp, s3) values(103, 1)");
+      statement.execute("insert into root.sg1.d1(timestamp, s3) values(104, 1)");
+      statement.execute("insert into root.sg1.d1(timestamp, s3) values(105, 1)");
+      statement.executeBatch();
+      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        int columnCount = metaData.getColumnCount();
+        while (resultSet.next()) {
+          for (int i = 1; i <= columnCount; i++) {
+            int ct = metaData.getColumnType(i);
+            if (ct == Types.TIMESTAMP) {
+              if (resultSet.wasNull()) {
+                fail();
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  public void emptyLastQueryTest() {
+    String expectedHeader =
+        ColumnHeaderConstant.COLUMN_TIME
+            + ","
+            + ColumnHeaderConstant.COLUMN_TIMESERIES
+            + ","
+            + ColumnHeaderConstant.COLUMN_VALUE
+            + ","
+            + ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE
+            + ",";
+    resultSetEqualTest("select last s1 from root.sg.d1", expectedHeader, emptyResultSet);
+  }
 }

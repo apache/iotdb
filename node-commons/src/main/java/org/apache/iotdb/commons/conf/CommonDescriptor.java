@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,5 +97,10 @@ public class CommonDescriptor {
             properties.getProperty(
                 "selector_thread_nums_of_client_manager",
                 String.valueOf(config.getSelectorNumOfClientManager()))));
+
+    config.setHandleSystemErrorStrategy(
+        HandleSystemErrorStrategy.valueOf(
+            properties.getProperty(
+                "handle_system_error", String.valueOf(config.getHandleSystemErrorStrategy()))));
   }
 }
