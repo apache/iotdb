@@ -192,7 +192,10 @@ public class DataNodeRemoveHandler {
    * @param regionId region id
    * @return TSStatus
    */
-  public TSStatus removeRegionPeer(TDataNodeLocation originalDataNode, TConsensusGroupId regionId) {
+  public TSStatus removeRegionPeer(
+      TDataNodeLocation originalDataNode,
+      TDataNodeLocation destDataNode,
+      TConsensusGroupId regionId) {
     TSStatus status;
 
     TDataNodeLocation rpcClientDataNode = null;
@@ -200,33 +203,10 @@ public class DataNodeRemoveHandler {
     // Here we pick the DataNode who contains one of the RegionReplica of the specified
     // ConsensusGroup except the origin one
     // in order to notify the new ConsensusGroup that the origin peer should secede now
+    // if the selectedDataNode equals null, we choose the destDataNode to execute the method
     Optional<TDataNodeLocation> selectedDataNode =
         filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
-    if (selectedDataNode.isPresent()) {
-      rpcClientDataNode = selectedDataNode.get();
-    } else {
-      // if the originalDataNode to be removed is alive
-      // make the originalDataNode as rpcClientDataNode
-      List<TDataNodeConfiguration> aliveDataNodes =
-          configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running);
-      if (aliveDataNodes.stream().anyMatch(node -> node.getLocation().equals(originalDataNode))) {
-        LOGGER.info(
-            "Choose the originalDataNode to execute removeRegionPeer, node: {}", originalDataNode);
-        rpcClientDataNode = originalDataNode;
-      } else {
-        LOGGER.warn(
-            "There are no other DataNodes could be selected to perform the remove peer process, "
-                + "and originalDataNode is not alive"
-                + "please check RegionGroup: {} by SQL: show regions",
-            regionId);
-        status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-        status.setMessage(
-            "There are no other DataNodes could be selected to perform the remove peer process, "
-                + "and originalDataNode is not alive"
-                + "please check by SQL: show regions");
-        return status;
-      }
-    }
+    rpcClientDataNode = selectedDataNode.orElse(destDataNode);
 
     // Send removeRegionPeer request to the rpcClientDataNode
     TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, rpcClientDataNode);

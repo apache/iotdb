@@ -106,7 +106,8 @@ public class RegionMigrateProcedure
           break;
         case REMOVE_REGION_PEER:
           tsStatus =
-              env.getDataNodeRemoveHandler().removeRegionPeer(originalDataNode, consensusGroupId);
+              env.getDataNodeRemoveHandler()
+                  .removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId);
             LOG.info("Wait for region {} remove peer finished", consensusGroupId);
