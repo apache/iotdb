@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -433,12 +434,28 @@ public class DataNodeRemoveHandler {
    */
   private TSStatus checkRegionReplication(RemoveDataNodePlan removeDataNodePlan) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    int removedDataNodeSize = removeDataNodePlan.getDataNodeLocations().size();
+    List<TDataNodeLocation> removedDataNodes = removeDataNodePlan.getDataNodeLocations();
     int allDataNodeSize = configManager.getNodeManager().getRegisteredDataNodeCount();
     if (NodeInfo.getMinimumDataNode() == 1) {
-      status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
-      status.setMessage("one replication is not supported to remove data node.");
+      for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
+        // check removed data node is in running state
+        BaseNodeCache nodeCache =
+            configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
+        if (!nodeCache.getNodeStatus().getStatus().equals("Running")) {
+          removeDataNodePlan.getDataNodeLocations().remove(dataNodeLocation);
+          LOGGER.error(
+              "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication",
+              dataNodeLocation);
+        }
+      }
+      if (removeDataNodePlan.getDataNodeLocations().size() == 0) {
+        status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
+        status.setMessage("Failed to remove all requested data nodes");
+        return status;
+      }
     }
+
+    int removedDataNodeSize = removeDataNodePlan.getDataNodeLocations().size();
     if (allDataNodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
       status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
       status.setMessage(

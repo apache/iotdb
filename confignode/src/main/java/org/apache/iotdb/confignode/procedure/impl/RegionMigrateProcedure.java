@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -86,17 +85,6 @@ public class RegionMigrateProcedure
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
-          BaseNodeCache nodeCache =
-              env.getConfigManager()
-                  .getNodeManager()
-                  .getNodeCacheMap()
-                  .get(destDataNode.getDataNodeId());
-          if (!nodeCache.getNodeStatus().getStatus().equals("Running")) {
-            throw new ProcedureException(
-                "DataNode "
-                    + destDataNode.getDataNodeId()
-                    + "is not running, failed to add region peer");
-          }
           tsStatus = env.getDataNodeRemoveHandler().addRegionPeer(destDataNode, consensusGroupId);
           if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId);
