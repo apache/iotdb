@@ -67,7 +67,7 @@ public class RegionMigrateService implements IService {
   /**
    * submit AddRegionPeerTask
    *
-   * @param req TMigrateRegionReq
+   * @param req TMaintainPeerReq
    * @return if the submit task succeed
    */
   public synchronized boolean submitAddRegionPeerTask(TMaintainPeerReq req) {
@@ -77,7 +77,7 @@ public class RegionMigrateService implements IService {
       regionMigratePool.submit(new AddRegionPeerTask(req.getRegionId(), req.getDestNode()));
     } catch (Exception e) {
       LOGGER.error(
-          "Submit add region peer task error for Region: {} on DataNode: {}.",
+          "Submit addRegionPeer task error for Region: {} on DataNode: {}.",
           req.getRegionId(),
           req.getDestNode().getInternalEndPoint().getIp(),
           e);
@@ -99,7 +99,7 @@ public class RegionMigrateService implements IService {
       regionMigratePool.submit(new RemoveRegionPeerTask(req.getRegionId(), req.getDestNode()));
     } catch (Exception e) {
       LOGGER.error(
-          "Submit remove region peer task error for Region: {} on DataNode: {}.",
+          "Submit removeRegionPeer task error for Region: {} on DataNode: {}.",
           req.getRegionId(),
           req.getDestNode().getInternalEndPoint().getIp(),
           e);
@@ -114,7 +114,7 @@ public class RegionMigrateService implements IService {
    * @param req TMigrateRegionReq
    * @return submit task succeed?
    */
-  public synchronized boolean submitRemoveRegionConsensusGroupTask(TMaintainPeerReq req) {
+  public synchronized boolean submitDeleteOldRegionPeerTask(TMaintainPeerReq req) {
 
     boolean submitSucceed = true;
     try {
@@ -122,7 +122,7 @@ public class RegionMigrateService implements IService {
           new RemoveRegionConsensusGroupTask(req.getRegionId(), req.getDestNode()));
     } catch (Exception e) {
       LOGGER.error(
-          "Submit remove region peer task error for Region: {} on DataNode: {}.",
+          "Submit deleteOldRegionPeerTask error for Region: {} on DataNode: {}.",
           req.getRegionId(),
           req.getDestNode().getInternalEndPoint().getIp(),
           e);
@@ -279,7 +279,9 @@ public class RegionMigrateService implements IService {
           taskLogger.error(
               "Add new peer {} for region {} error, retry times: {}", newPeerNode, regionId, i, e);
           status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-          status.setMessage(String.format("Add peer for region error, peerId: %s, regionId: %s, errorMessage: %s",
+          status.setMessage(
+              String.format(
+                  "Add peer for region error, peerId: %s, regionId: %s, errorMessage: %s",
                   newPeerNode, regionId, e.getMessage()));
         }
         if (addPeerSucceed && resp != null && resp.isSuccess()) {
@@ -288,9 +290,11 @@ public class RegionMigrateService implements IService {
       }
       if (!addPeerSucceed || resp == null || !resp.isSuccess()) {
         taskLogger.error(
-            "add new peer {} for region {} failed, resp: {}", newPeerNode, regionId, resp);
+            "Add new peer {} for region {} failed, resp: {}", newPeerNode, regionId, resp);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-        status.setMessage(String.format("Add peer for region error, peerId: %s, regionId: %s, resp: %s",
+        status.setMessage(
+            String.format(
+                "Add peer for region error, peerId: %s, regionId: %s, resp: %s",
                 newPeerNode, regionId, resp));
         return status;
       }
@@ -331,10 +335,10 @@ public class RegionMigrateService implements IService {
   private static class RemoveRegionPeerTask implements Runnable {
     private static final Logger taskLogger = LoggerFactory.getLogger(RemoveRegionPeerTask.class);
 
-    // The RegionGroup that shall perform the add peer process
+    // The RegionGroup that shall perform the remove peer process
     private final TConsensusGroupId tRegionId;
 
-    // The DataNode that selected to perform the add peer process
+    // The DataNode that selected to perform the remove peer process
     private final TDataNodeLocation selectedDataNode;
 
     public RemoveRegionPeerTask(TConsensusGroupId tRegionId, TDataNodeLocation selectedDataNode) {
@@ -367,7 +371,7 @@ public class RegionMigrateService implements IService {
       ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
       TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       TEndPoint oldPeerNode = getConsensusEndPoint(selectedDataNode, regionId);
-      taskLogger.info("start to remove peer {} for region {}", oldPeerNode, regionId);
+      taskLogger.info("Start to remove peer {} for region {}", oldPeerNode, regionId);
       ConsensusGenericResponse resp = null;
       boolean removePeerSucceed = true;
       for (int i = 0; i < RETRY; i++) {

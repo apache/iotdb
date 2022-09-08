@@ -242,10 +242,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           throw new IOException("unknown PhysicalPlan type: " + typeNum);
       }
       req.deserializeImpl(buffer);
-      LOGGER.info(
-          "invoking create method in ConfigPhysicalPlan, planType: {}, req: {}",
-          ConfigPhysicalPlanType.values()[typeNum],
-          req instanceof UpdateProcedurePlan ? ((UpdateProcedurePlan) req).getProcedure() : null);
       return req;
     }
 

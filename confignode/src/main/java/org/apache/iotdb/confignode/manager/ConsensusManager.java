@@ -47,7 +47,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /** ConsensusManager maintains consensus class, request will redirect to consensus layer */
 public class ConsensusManager {
@@ -107,7 +106,7 @@ public class ConsensusManager {
       createPeerForConsensusGroup(
           Collections.singletonList(
               new TConfigNodeLocation(
-                      seedConfigNodeId,
+                  seedConfigNodeId,
                   new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                   new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
     }

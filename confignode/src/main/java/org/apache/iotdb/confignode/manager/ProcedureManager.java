@@ -260,7 +260,8 @@ public class ProcedureManager {
   }
 
   public void reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
-    LOGGER.info("Receive DataNode region: {} migrate result: {}", req.getRegionId(), req);
+    LOGGER.info(
+        "Receive DataNode region migrate result，regionId: {}，req: {}", req.getRegionId(), req);
 
     this.executor
         .getProcedures()
@@ -271,11 +272,6 @@ public class ProcedureManager {
                 RegionMigrateProcedure regionMigrateProcedure = (RegionMigrateProcedure) procedure;
                 if (regionMigrateProcedure.getConsensusGroupId().equals(req.getRegionId())) {
                   regionMigrateProcedure.notifyTheRegionMigrateFinished(req);
-                } else {
-                  LOGGER.warn(
-                      "DataNode report region: {} is not equals ConfigNode send region: {}",
-                      req.getRegionId(),
-                      regionMigrateProcedure.getConsensusGroupId());
                 }
               }
             });
