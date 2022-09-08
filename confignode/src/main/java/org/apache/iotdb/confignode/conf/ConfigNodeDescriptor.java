@@ -294,7 +294,9 @@ public class ConfigNodeDescriptor {
    * @return True if the target_config_nodes points to itself
    */
   public boolean isSeedConfigNode() {
-    return conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+    return (conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+            || (NodeUrlUtils.isLocalAddress(conf.getInternalAddress())
+                && NodeUrlUtils.isLocalAddress(conf.getTargetConfigNode().getIp())))
         && conf.getInternalPort() == conf.getTargetConfigNode().getPort();
   }
 

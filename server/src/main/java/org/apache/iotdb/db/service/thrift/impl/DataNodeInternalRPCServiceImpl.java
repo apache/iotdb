@@ -89,13 +89,14 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
-import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
@@ -638,7 +639,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus createPeerToConsensusGroup(TCreatePeerReq req) throws TException {
+  public TSStatus createNewRegionPeer(TCreatePeerReq req) throws TException {
     ConsensusGroupId regionId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
     List<Peer> peers =
@@ -654,39 +655,53 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus removeRegionPeer(TMigrateRegionReq req) throws TException {
+  public TSStatus addRegionPeer(TMaintainPeerReq req) throws TException {
     TConsensusGroupId regionId = req.getRegionId();
-    String fromNodeIp = req.getFromNode().getInternalEndPoint().getIp();
-    boolean submitSucceed = RegionMigrateService.getInstance().submitRemoveRegionPeerTask(req);
+    String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
+    boolean submitSucceed = RegionMigrateService.getInstance().submitAddRegionPeerTask(req);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(
-          "succeed to submit a remove region peer task. region: {}, from {}",
+          "Successfully submit a add region peer task for region: {} on DataNode: {}",
           regionId,
-          req.getFromNode().getInternalEndPoint());
+          selectedDataNodeIP);
       return status;
     }
     status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-    status.setMessage(
-        "submit region remove region peer task failed, region: "
-            + regionId
-            + ", from "
-            + req.getFromNode().getInternalEndPoint());
+    status.setMessage("submit add region peer task failed, region: " + regionId);
     return status;
   }
 
   @Override
-  public TSStatus deletePeerToConsensusGroup(TMigrateRegionReq req) throws TException {
+  public TSStatus removeRegionPeer(TMaintainPeerReq req) throws TException {
     TConsensusGroupId regionId = req.getRegionId();
-    String fromNodeIp = req.getFromNode().getInternalEndPoint().getIp();
+    String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
+    boolean submitSucceed = RegionMigrateService.getInstance().submitRemoveRegionPeerTask(req);
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    if (submitSucceed) {
+      LOGGER.info(
+          "Successfully to submit a remove region peer task for region: {} on DataNode: {}",
+          regionId,
+          selectedDataNodeIP);
+      return status;
+    }
+    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+    status.setMessage("submit add region peer task failed, region: " + regionId);
+    return status;
+  }
+
+  @Override
+  public TSStatus deleteOldRegionPeer(TMaintainPeerReq req) throws TException {
+    TConsensusGroupId regionId = req.getRegionId();
+    String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
     boolean submitSucceed =
         RegionMigrateService.getInstance().submitRemoveRegionConsensusGroupTask(req);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(
-          "succeed to submit a remove region consensus group task. region: {}, from {}",
+          "Successfully to submit a remove region consensus group task for region: {} on DataNode: {}",
           regionId,
-          fromNodeIp);
+          selectedDataNodeIP);
       return status;
     }
     status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
@@ -750,19 +765,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus addRegionPeer(TMigrateRegionReq req) throws TException {
-    TConsensusGroupId regionId = req.getRegionId();
-    String toNodeIp = req.getToNode().getInternalEndPoint().getIp();
-    boolean submitSucceed = RegionMigrateService.getInstance().submitAddRegionPeerTask(req);
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    if (submitSucceed) {
-      LOGGER.info(
-          "succeed to submit a add region peer task. region: {}, to {}", regionId, toNodeIp);
-      return status;
-    }
-    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-    status.setMessage("submit add region peer task failed, region: " + regionId);
-    return status;
+  public TSStatus dropTriggerInstance(TDropTriggerInstanceReq req) throws TException {
+    // todo: implementation
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   private TEndPoint getConsensusEndPoint(

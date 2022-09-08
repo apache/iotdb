@@ -256,13 +256,15 @@ public class CommonConfig {
   }
 
   public boolean isReadOnly() {
-    return status == NodeStatus.ReadOnly
-        || (status == NodeStatus.Error
-            && handleSystemErrorStrategy == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY);
+    return status == NodeStatus.ReadOnly;
   }
 
   public NodeStatus getNodeStatus() {
     return status;
+  }
+
+  public void handleUnrecoverableError() {
+    handleSystemErrorStrategy.handle();
   }
 
   public void setNodeStatus(NodeStatus newStatus) {
@@ -270,8 +272,6 @@ public class CommonConfig {
       logger.error(
           "Change system status to read-only! Only query statements are permitted!",
           new RuntimeException("System mode is set to READ_ONLY"));
-    } else if (newStatus == NodeStatus.Error) {
-      newStatus = handleSystemErrorStrategy.handle();
     } else {
       logger.info("Set system mode from {} to {}.", status, newStatus);
     }

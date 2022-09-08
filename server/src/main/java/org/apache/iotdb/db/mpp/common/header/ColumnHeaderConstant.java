@@ -96,6 +96,14 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_PIPESINK_NAME = "name";
   public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
 
+  // column names for show pipe
+  public static final String COLUMN_PIPE_CREATE_TIME = "create time";
+  public static final String COLUMN_PIPE_NAME = "name";
+  public static final String COLUMN_PIPE_ROLE = "role";
+  public static final String COLUMN_PIPE_REMOTE = "remote";
+  public static final String COLUMN_PIPE_STATUS = "status";
+  public static final String COLUMN_PIPE_MESSAGE = "message";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
@@ -235,4 +243,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_PIPESINK_NAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPESINK_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PIPESINK_ATTRIBUTES, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showPipeColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_PIPE_CREATE_TIME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPE_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPE_ROLE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPE_REMOTE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPE_STATUS, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_PIPE_MESSAGE, TSDataType.TEXT));
 }

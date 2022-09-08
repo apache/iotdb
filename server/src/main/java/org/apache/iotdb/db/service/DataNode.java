@@ -111,11 +111,17 @@ public class DataNode implements DataNodeMBean {
     IoTDBStartCheck.getInstance().checkConfig();
     // TODO: check configuration for data node
 
+    for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
+      if (endPoint.getIp().equals("0.0.0.0")) {
+        throw new ConfigurationException(
+            "The ip address of any target_config_nodes couldn't be 0.0.0.0");
+      }
+    }
+
     // if client ip is the default address, set it same with internal ip
     if (config.getRpcAddress().equals("0.0.0.0")) {
       config.setRpcAddress(config.getInternalAddress());
     }
-
     thisNode.setIp(IoTDBDescriptor.getInstance().getConfig().getInternalAddress());
     thisNode.setPort(IoTDBDescriptor.getInstance().getConfig().getInternalPort());
   }
