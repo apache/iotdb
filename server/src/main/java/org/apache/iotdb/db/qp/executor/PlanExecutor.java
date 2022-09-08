@@ -119,6 +119,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.RewriteTimeseriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -348,6 +349,8 @@ public class PlanExecutor implements IPlanExecutor {
         return createMultiTimeSeries((CreateMultiTimeSeriesPlan) plan);
       case ALTER_TIMESERIES:
         return alterTimeSeries((AlterTimeSeriesPlan) plan);
+      case REWRITE_TIMESERIES:
+        return rewriteTimeseries((RewriteTimeseriesPlan) plan);
       case SET_STORAGE_GROUP:
         return setStorageGroup((SetStorageGroupPlan) plan);
       case DELETE_STORAGE_GROUP:
@@ -454,6 +457,11 @@ public class PlanExecutor implements IPlanExecutor {
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorName()));
     }
+  }
+
+  private boolean rewriteTimeseries(RewriteTimeseriesPlan plan) {
+    logger.info("rewriteTimeseries begin:{}", plan);
+    return true;
   }
 
   private boolean operateStopPipeServer() throws QueryProcessException {
@@ -2132,11 +2140,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     // storage alter
     try {
-      StorageEngine.getInstance()
-          .alterTimeseries(
-              fullPath,
-              curEncoding,
-              curCompressionType);
+      StorageEngine.getInstance().alterTimeseries(fullPath, curEncoding, curCompressionType);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }

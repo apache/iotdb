@@ -186,19 +186,17 @@ public class SingleSeriesCompactionExecutor {
   private void constructChunkWriterFromReadChunk(Chunk chunk) {
     ChunkHeader chunkHeader = chunk.getHeader();
     // Gets the altering encoding/compressed timeseries record in the cache
-    Pair<TSEncoding, CompressionType> cacheRecord = AlteringRecordsCache.getInstance().getRecord(series.getMeasurement());
+    Pair<TSEncoding, CompressionType> cacheRecord =
+        AlteringRecordsCache.getInstance().getRecord(series.getMeasurement());
     TSEncoding encoding = chunkHeader.getEncodingType();
     CompressionType compressionType = chunkHeader.getCompressionType();
-    if(cacheRecord != null) {
+    if (cacheRecord != null) {
       encoding = cacheRecord.left;
       compressionType = cacheRecord.right;
     }
     this.schema =
         new MeasurementSchema(
-            series.getMeasurement(),
-            chunkHeader.getDataType(),
-                encoding,
-                compressionType);
+            series.getMeasurement(), chunkHeader.getDataType(), encoding, compressionType);
     this.chunkWriter = new ChunkWriterImpl(this.schema);
   }
 
@@ -223,8 +221,9 @@ public class SingleSeriesCompactionExecutor {
       writeChunkIntoChunkWriter(chunk);
       flushChunkWriterIfLargeEnough();
     } else if (cachedChunk != null) {
-      // Fix: Merging chunks can be problematic when the same measurement has different encoding/compression
-      if (!isTypeChanged(cachedChunk, chunk)){
+      // Fix: Merging chunks can be problematic when the same measurement has different
+      // encoding/compression
+      if (!isTypeChanged(cachedChunk, chunk)) {
         // if there is a cached chunk, merge it with current chunk, then flush it
         mergeWithCachedChunk(chunk, chunkMetadata);
         flushCachedChunkIfLargeEnough();
@@ -249,8 +248,9 @@ public class SingleSeriesCompactionExecutor {
       writeChunkIntoChunkWriter(chunk);
       flushChunkWriterIfLargeEnough();
     } else if (cachedChunk != null) {
-      // Fix: Merging chunks can be problematic when the same measurement has different encoding/compression
-      if (!isTypeChanged(cachedChunk, chunk)){
+      // Fix: Merging chunks can be problematic when the same measurement has different
+      // encoding/compression
+      if (!isTypeChanged(cachedChunk, chunk)) {
         // if there is a cached chunk, merge it with current chunk
         mergeWithCachedChunk(chunk, chunkMetadata);
         flushCachedChunkIfLargeEnough();

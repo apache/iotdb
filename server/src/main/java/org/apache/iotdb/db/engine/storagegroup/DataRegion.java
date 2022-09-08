@@ -129,7 +129,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -584,13 +583,14 @@ public class DataRegion {
 
     final String logKey = this.getStorageGroupPath();
     // alter.log analyzer
-    File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlteringLogger.ALTERING_LOG_NAME);
+    File logFile =
+        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlteringLogger.ALTERING_LOG_NAME);
     if (!logFile.exists()) {
       return;
     }
     AlteringLogAnalyzer analyzer = new AlteringLogAnalyzer(logFile);
     List<Pair<String, Pair<TSEncoding, CompressionType>>> alterList = analyzer.getAlterList();
-    if(alterList == null || alterList.size() <= 0) {
+    if (alterList == null || alterList.size() <= 0) {
       try {
         logger.warn("recoverAlter-{}: An empty alter.log exists", logKey);
         fsFactory.deleteIfExists(logFile);
@@ -601,7 +601,9 @@ public class DataRegion {
     }
     // recover alter records cache
     alteringRecordsCache.startAlter();
-    alterList.forEach(record -> alteringRecordsCache.putRecord(record.left, record.right.left, record.right.right));
+    alterList.forEach(
+        record ->
+            alteringRecordsCache.putRecord(record.left, record.right.left, record.right.right));
     logger.info("recoverAlter-{}: record count is {}", logKey, alterList.size());
   }
 
@@ -685,8 +687,8 @@ public class DataRegion {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders, boolean isSeq)
-      throws IOException, DataRegionException {
+  private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(
+      List<String> folders, boolean isSeq) throws IOException, DataRegionException {
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
@@ -701,7 +703,7 @@ public class DataRegion {
       // resources
       continueFailedRenames(fileFolder, TEMP_SUFFIX);
       // only sequence dir
-      if(isSeq) {
+      if (isSeq) {
         // altering tsfile repaired
         alteringFailRenames(fileFolder);
       }
@@ -753,25 +755,38 @@ public class DataRegion {
   }
 
   /**
-   * tsfile repaired<br/>
-   * 1、.tfile .alter -> del:.alter<br/>
-   * 2、.alter .alter.old -> rename:.alter.old to .tsfile del:.alter<br/>
+   * tsfile repaired<br>
+   * 1、.tfile .alter -> del:.alter<br>
+   * 2、.alter .alter.old -> rename:.alter.old to .tsfile del:.alter<br>
    */
   private void alteringFailRenames(File fileFolder) {
     File[] files = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), ALTER_TMP_FILE_SUFFIX);
     if (files != null) {
       for (File tempResource : files) {
-        File tsFile = fsFactory.getFile(tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX));
-        File resource = fsFactory.getFile(tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, RESOURCE_SUFFIX));
-        File alterResouce = fsFactory.getFile(tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, ALTER_TMP_FILE_RESOURCE_SUFFIX));
-        File alterOldTsFile = fsFactory.getFile(tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, ALTER_OLD_TMP_FILE_SUFFIX));
-        File alterOldResource = fsFactory.getFile(tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, ALTER_OLD_TMP_FILE_RESOURCE_SUFFIX));
-        if(tsFile.exists()) {
+        File tsFile =
+            fsFactory.getFile(tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX));
+        File resource =
+            fsFactory.getFile(
+                tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, RESOURCE_SUFFIX));
+        File alterResouce =
+            fsFactory.getFile(
+                tempResource
+                    .getPath()
+                    .replace(ALTER_TMP_FILE_SUFFIX, ALTER_TMP_FILE_RESOURCE_SUFFIX));
+        File alterOldTsFile =
+            fsFactory.getFile(
+                tempResource.getPath().replace(ALTER_TMP_FILE_SUFFIX, ALTER_OLD_TMP_FILE_SUFFIX));
+        File alterOldResource =
+            fsFactory.getFile(
+                tempResource
+                    .getPath()
+                    .replace(ALTER_TMP_FILE_SUFFIX, ALTER_OLD_TMP_FILE_RESOURCE_SUFFIX));
+        if (tsFile.exists()) {
           tempResource.deleteOnExit();
           alterResouce.deleteOnExit();
           continue;
         }
-        if(alterOldTsFile.exists()) {
+        if (alterOldTsFile.exists()) {
           alterOldTsFile.renameTo(tsFile);
           alterOldResource.renameTo(resource);
           tempResource.deleteOnExit();
@@ -2155,10 +2170,10 @@ public class DataRegion {
    * <del>2、locks</del><br>
    * <del>3、write temp tsfiles</del><br>
    * <del>4、unregister old tsfiles and release locks</del><br>
-   * <del>5、rename temp tsfiles<</del>br>
-   * <del>6、register tsfiles</del><br>
+   * <del>5、rename temp tsfiles<</del>br> <del>6、register tsfiles</del><br>
    */
-  public void alter(PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+  public void alter(
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
       throws IOException {
 
     final String logKey =
@@ -2171,7 +2186,8 @@ public class DataRegion {
       throw new IOException("Alter failed. Please do not delete until the old files settled.");
     }
     // log and cache altering record
-    File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlteringLogger.ALTERING_LOG_NAME);
+    File logFile =
+        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlteringLogger.ALTERING_LOG_NAME);
     if (!logFile.exists()) {
       logFile.createNewFile();
     }
@@ -2179,84 +2195,92 @@ public class DataRegion {
       alteringLogger.addAlterParam(fullPath, curEncoding, curCompressionType);
       alteringRecordsCache.putRecord(fullPath.getFullPath(), curEncoding, curCompressionType);
     }
-    // flush & close TODO Both merge and clear will be rewritten using the new code(TSEncoding & CompressionType), so there is no need to waste time forcing disk flushing to modify Schema operations
-//    logger.info("[alter timeseries] {} syncCloseAllWorkingTsFileProcessors", logKey);
+    // flush & close TODO Both merge and clear will be rewritten using the new code(TSEncoding &
+    // CompressionType), so there is no need to waste time forcing disk flushing to modify Schema
+    // operations
+    //    logger.info("[alter timeseries] {} syncCloseAllWorkingTsFileProcessors", logKey);
     //    syncCloseAllWorkingTsFileProcessors();
     // !! Split into alter and clear operations
 
-
-
-
-//    logger.info("[alter timeseries] writeLock");
-//    // wait lock
-//    if (!tsFileManager.rewriteLockWithTimeout(
-//        IoTDBDescriptor.getInstance().getConfig().getRewriteLockWaitTimeoutInMS())) {
-//      throw new IOException(
-//          "Alter failed. Other file rewriting operations are in progress, please do it later.");
-//    }
-//    // recover log
-//    File logFile =
-//        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlteringLogger.ALTERING_LOG_NAME);
-//    if (logFile.exists()) {
-//      logger.info("[alter timeseries] {} rewriteUnlock", logKey);
-//      tsFileManager.rewriteUnlock();
-//      throw new IOException(
-//          "Alter failed. alter.log detected, other alter operations may be running, please do it later.");
-//    }
-//    // rewrite target tsfiles
-//    boolean done = false;
-//    try (AlteringLogger alteringLogger = new AlteringLogger(logFile)) {
-//      Set<Long> timePartitions = tsFileManager.getTimePartitions();
-//      // Record the ALTER process for server restart recovery
-//      alteringLogger.logHeader(fullPath, curEncoding, curCompressionType, timePartitions);
-//      for (Long timePartition : timePartitions) {
-//        logger.info("[alter timeseries] {} alterDataInTsFiles seq({})", logKey, timePartition);
-//        try {
-//          rewriteDataInTsFiles(
-//              tsFileManager.getSequenceListByTimePartition(timePartition),
-//              fullPath,
-//              curEncoding,
-//              curCompressionType,
-//              timePartition,
-//              true,
-//              alteringLogger,
-//              null,
-//              logKey);
-//          logger.info("[alter timeseries] {} alterDataInTsFiles unseq({})", logKey, timePartition);
-//          rewriteDataInTsFiles(
-//              tsFileManager.getUnsequenceListByTimePartition(timePartition),
-//              fullPath,
-//              curEncoding,
-//              curCompressionType,
-//              timePartition,
-//              false,
-//              alteringLogger,
-//              null,
-//              logKey);
-//        } catch (IOException e) {
-//          /**
-//           * TODO If an exception occurs in the operation of a single tsfile, you need to terminate
-//           * the operation and return 1. The modified schema and rewritten tsfile need to provide
-//           * rollback commands 2. The tsfile that has not been rewritten needs to provide a recovery
-//           * command
-//           */
-//          logger.error(
-//              "[alter timeseries] " + logKey + " timePartition " + timePartition + " error", e);
-//          throw e;
-//        }
-//      }
-//      done = true;
-//    } catch (Exception e) {
-//      logger.error("[alter timeseries] " + logKey + " error", e);
-//      throw e;
-//    } finally {
-//      logger.info("[alter timeseries] {} rewriteUnlock", logKey);
-//      tsFileManager.rewriteUnlock();
-//      // The process is complete and the logFile is deleted
-//      if (done && logFile.exists()) {
-//        FileUtils.delete(logFile);
-//      }
-//    }
+    //    logger.info("[alter timeseries] writeLock");
+    //    // wait lock
+    //    if (!tsFileManager.rewriteLockWithTimeout(
+    //        IoTDBDescriptor.getInstance().getConfig().getRewriteLockWaitTimeoutInMS())) {
+    //      throw new IOException(
+    //          "Alter failed. Other file rewriting operations are in progress, please do it
+    // later.");
+    //    }
+    //    // recover log
+    //    File logFile =
+    //        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir,
+    // AlteringLogger.ALTERING_LOG_NAME);
+    //    if (logFile.exists()) {
+    //      logger.info("[alter timeseries] {} rewriteUnlock", logKey);
+    //      tsFileManager.rewriteUnlock();
+    //      throw new IOException(
+    //          "Alter failed. alter.log detected, other alter operations may be running, please do
+    // it later.");
+    //    }
+    //    // rewrite target tsfiles
+    //    boolean done = false;
+    //    try (AlteringLogger alteringLogger = new AlteringLogger(logFile)) {
+    //      Set<Long> timePartitions = tsFileManager.getTimePartitions();
+    //      // Record the ALTER process for server restart recovery
+    //      alteringLogger.logHeader(fullPath, curEncoding, curCompressionType, timePartitions);
+    //      for (Long timePartition : timePartitions) {
+    //        logger.info("[alter timeseries] {} alterDataInTsFiles seq({})", logKey,
+    // timePartition);
+    //        try {
+    //          rewriteDataInTsFiles(
+    //              tsFileManager.getSequenceListByTimePartition(timePartition),
+    //              fullPath,
+    //              curEncoding,
+    //              curCompressionType,
+    //              timePartition,
+    //              true,
+    //              alteringLogger,
+    //              null,
+    //              logKey);
+    //          logger.info("[alter timeseries] {} alterDataInTsFiles unseq({})", logKey,
+    // timePartition);
+    //          rewriteDataInTsFiles(
+    //              tsFileManager.getUnsequenceListByTimePartition(timePartition),
+    //              fullPath,
+    //              curEncoding,
+    //              curCompressionType,
+    //              timePartition,
+    //              false,
+    //              alteringLogger,
+    //              null,
+    //              logKey);
+    //        } catch (IOException e) {
+    //          /**
+    //           * TODO If an exception occurs in the operation of a single tsfile, you need to
+    // terminate
+    //           * the operation and return 1. The modified schema and rewritten tsfile need to
+    // provide
+    //           * rollback commands 2. The tsfile that has not been rewritten needs to provide a
+    // recovery
+    //           * command
+    //           */
+    //          logger.error(
+    //              "[alter timeseries] " + logKey + " timePartition " + timePartition + " error",
+    // e);
+    //          throw e;
+    //        }
+    //      }
+    //      done = true;
+    //    } catch (Exception e) {
+    //      logger.error("[alter timeseries] " + logKey + " error", e);
+    //      throw e;
+    //    } finally {
+    //      logger.info("[alter timeseries] {} rewriteUnlock", logKey);
+    //      tsFileManager.rewriteUnlock();
+    //      // The process is complete and the logFile is deleted
+    //      if (done && logFile.exists()) {
+    //        FileUtils.delete(logFile);
+    //      }
+    //    }
   }
 
   private void rewriteDataInTsFiles(
@@ -2275,7 +2299,7 @@ public class DataRegion {
       return;
     }
     // log timePartition start
-//    alteringLogger.startTimePartition(tsFileList, timePartition, sequence);
+    //    alteringLogger.startTimePartition(tsFileList, timePartition, sequence);
     for (TsFileResource tsFileResource : tsFileList) {
       if (!findUndoneResourcesAndRemove(tsFileResource, undoneFiles)) {
         continue;
@@ -2337,7 +2361,7 @@ public class DataRegion {
         throw e;
       }
     }
-//    alteringLogger.endTimePartition(timePartition);
+    //    alteringLogger.endTimePartition(timePartition);
   }
 
   private boolean findUndoneResourcesAndRemove(

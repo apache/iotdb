@@ -18,34 +18,17 @@
  */
 package org.apache.iotdb.db.engine.alter;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogAnalyzer;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogger;
 import org.apache.iotdb.db.engine.compaction.log.TsFileIdentifier;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileAlignedSeriesReaderIterator;
-import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
-import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.Schema;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -53,10 +36,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class AlteringLogTest {
@@ -64,34 +45,34 @@ public class AlteringLogTest {
   String path = AlteringLogger.ALTERING_LOG_NAME;
 
   String f1 =
-          "data"
-                  .concat(File.separator)
-                  .concat("data")
-                  .concat(File.separator)
-                  .concat("sequence")
-                  .concat(File.separator)
-                  .concat("root.alt1")
-                  .concat(File.separator)
-                  .concat("0")
-                  .concat(File.separator)
-                  .concat("0")
-                  .concat(File.separator)
-                  .concat("1-1-0-0.tsfile");
+      "data"
+          .concat(File.separator)
+          .concat("data")
+          .concat(File.separator)
+          .concat("sequence")
+          .concat(File.separator)
+          .concat("root.alt1")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("1-1-0-0.tsfile");
 
   String f2 =
-          "data"
-                  .concat(File.separator)
-                  .concat("data")
-                  .concat(File.separator)
-                  .concat("sequence")
-                  .concat(File.separator)
-                  .concat("root.alt1")
-                  .concat(File.separator)
-                  .concat("0")
-                  .concat(File.separator)
-                  .concat("0")
-                  .concat(File.separator)
-                  .concat("2-2-0-0.tsfile");
+      "data"
+          .concat(File.separator)
+          .concat("data")
+          .concat(File.separator)
+          .concat("sequence")
+          .concat(File.separator)
+          .concat("root.alt1")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("2-2-0-0.tsfile");
 
   @Before
   public void setUp() throws Exception {
@@ -110,9 +91,11 @@ public class AlteringLogTest {
   public void alterLogTest() {
 
     File f = FSFactoryProducer.getFSFactory().getFile(path);
-    try(AlteringLogger logger = new AlteringLogger(f)) {
-      logger.addAlterParam(new PartialPath("root.alt1.d1", "m1"), TSEncoding.TS_2DIFF, CompressionType.GZIP);
-      logger.addAlterParam(new PartialPath("root.alt1.d2", "m1"), TSEncoding.GORILLA, CompressionType.SNAPPY);
+    try (AlteringLogger logger = new AlteringLogger(f)) {
+      logger.addAlterParam(
+          new PartialPath("root.alt1.d1", "m1"), TSEncoding.TS_2DIFF, CompressionType.GZIP);
+      logger.addAlterParam(
+          new PartialPath("root.alt1.d2", "m1"), TSEncoding.GORILLA, CompressionType.SNAPPY);
       logger.clearBegin();
       logger.doneFile(new TsFileResource(new File(f1)));
       logger.doneFile(new TsFileResource(new File(f2)));
@@ -145,7 +128,6 @@ public class AlteringLogTest {
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
-
   }
 
   @After

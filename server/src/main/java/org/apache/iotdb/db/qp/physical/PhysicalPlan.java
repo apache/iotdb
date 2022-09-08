@@ -571,7 +571,8 @@ public abstract class PhysicalPlan implements IConsensusRequest {
     START_PIPE_SERVER,
     STOP_PIPE_SERVER,
     DROP_TEMPLATE,
-    ACTIVATE_TEMPLATE_IN_CLUSTER
+    ACTIVATE_TEMPLATE_IN_CLUSTER,
+    REWRITE_TIMESERIES
   }
 
   public long getIndex() {

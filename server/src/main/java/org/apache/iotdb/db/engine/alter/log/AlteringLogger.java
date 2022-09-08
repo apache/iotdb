@@ -53,28 +53,26 @@ public class AlteringLogger implements AutoCloseable {
   }
 
   public void addAlterParam(
-          PartialPath fullPath,
-          TSEncoding curEncoding,
-          CompressionType curCompressionType)
-          throws IOException {
-      if (fullPath == null || curEncoding == null || curCompressionType == null) {
-        throw new IOException("alter params is null");
-      }
-      logStream.write(FLAG_ALTER_PARAM_BEGIN);
-      logStream.newLine();
-      logStream.write(fullPath.getFullPath());
-      logStream.newLine();
-      logStream.write(Byte.toString(curEncoding.serialize()));
-      logStream.newLine();
-      logStream.write(Byte.toString(curCompressionType.serialize()));
-      logStream.newLine();
-      logStream.flush();
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws IOException {
+    if (fullPath == null || curEncoding == null || curCompressionType == null) {
+      throw new IOException("alter params is null");
+    }
+    logStream.write(FLAG_ALTER_PARAM_BEGIN);
+    logStream.newLine();
+    logStream.write(fullPath.getFullPath());
+    logStream.newLine();
+    logStream.write(Byte.toString(curEncoding.serialize()));
+    logStream.newLine();
+    logStream.write(Byte.toString(curCompressionType.serialize()));
+    logStream.newLine();
+    logStream.flush();
   }
 
   public void clearBegin() throws IOException {
-      logStream.write(FLAG_CLEAR_BEGIN);
-      logStream.newLine();
-      logStream.flush();
+    logStream.write(FLAG_CLEAR_BEGIN);
+    logStream.newLine();
+    logStream.flush();
   }
 
   public void doneFile(TsFileResource file) throws IOException {
@@ -83,9 +81,9 @@ public class AlteringLogger implements AutoCloseable {
     }
     logStream.write(FLAG_DONE);
     logStream.newLine();
-    logStream.write(""+TsFileIdentifier.getFileIdentifierFromFilePath(file.getTsFile().getAbsolutePath()));
+    logStream.write(
+        "" + TsFileIdentifier.getFileIdentifierFromFilePath(file.getTsFile().getAbsolutePath()));
     logStream.newLine();
     logStream.flush();
   }
-
 }

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.alter.log;
 
 import org.apache.iotdb.db.engine.compaction.log.TsFileIdentifier;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -30,10 +29,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /** altering log analyzer */
@@ -42,7 +39,8 @@ public class AlteringLogAnalyzer {
   //  private static final Logger logger = LoggerFactory.getLogger(AlteringLogAnalyzer.class);
 
   private final File alterLogFile;
-  private final List<Pair<String, Pair<TSEncoding, CompressionType>>> alterList = new ArrayList<>(4);
+  private final List<Pair<String, Pair<TSEncoding, CompressionType>>> alterList =
+      new ArrayList<>(4);
   private boolean clearBegin = false;
   private final Set<TsFileIdentifier> doneFiles = new HashSet<>(32);
 
@@ -65,7 +63,8 @@ public class AlteringLogAnalyzer {
           if (encoding == null) {
             throw new IOException("alter.log parse fail, encoding is null");
           }
-          CompressionType compressionType = CompressionType.deserialize(Byte.parseByte(bufferedReader.readLine()));
+          CompressionType compressionType =
+              CompressionType.deserialize(Byte.parseByte(bufferedReader.readLine()));
           if (compressionType == null) {
             throw new IOException("alter.log parse fail, compressionType is null");
           }
@@ -74,8 +73,7 @@ public class AlteringLogAnalyzer {
           clearBegin = true;
         } else if (AlteringLogger.FLAG_DONE.equals(mark)) {
           String curLineStr = bufferedReader.readLine();
-          doneFiles.add(
-                  TsFileIdentifier.getFileIdentifierFromInfoString(curLineStr));
+          doneFiles.add(TsFileIdentifier.getFileIdentifierFromInfoString(curLineStr));
         }
       }
     }

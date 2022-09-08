@@ -789,9 +789,10 @@ public class StorageEngine implements IService {
    */
   public void alterTimeseries(
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
-          throws StorageEngineException, StorageGroupNotSetException {
+      throws StorageEngineException, StorageGroupNotSetException {
     // The alterLock is mutually exclusive with the clear operation
-    StorageGroupManager storageGroupManager = processorMap.get(IoTDB.schemaProcessor.getBelongedStorageGroup(fullPath));
+    StorageGroupManager storageGroupManager =
+        processorMap.get(IoTDB.schemaProcessor.getBelongedStorageGroup(fullPath));
     if (storageGroupManager == null) {
       throw new StorageEngineException("system error, StorageGroup not found");
     }
@@ -799,10 +800,11 @@ public class StorageEngine implements IService {
     // Update the ALTER state in memory
     AlteringRecordsCache.getInstance().startAlter();
     try {
-      // Change the encoding compression type in the schema first. After that, the newly inserted data
+      // Change the encoding compression type in the schema first. After that, the newly inserted
+      // data
       // will use the new encoding compression type
       Pair<TSEncoding, CompressionType> oldPair =
-              IoTDB.schemaProcessor.alterTimeseries(fullPath, curEncoding, curCompressionType);
+          IoTDB.schemaProcessor.alterTimeseries(fullPath, curEncoding, curCompressionType);
       if (oldPair == null || oldPair.left == null || oldPair.right == null) {
         throw new MetadataException("system error, old type is null");
       }
@@ -814,7 +816,7 @@ public class StorageEngine implements IService {
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
     } finally {
-      if(storageGroupManager != null) {
+      if (storageGroupManager != null) {
         storageGroupManager.alterUnlock();
       }
     }

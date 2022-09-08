@@ -79,9 +79,7 @@ public class StorageGroupManager {
   /** value of root.stats."root.sg".TOTAL_POINTS */
   private long monitorSeriesValue;
 
-  /**
-   * TsFile alter lock: Control the concurrency of alter timeseries and clear operations
-   */
+  /** TsFile alter lock: Control the concurrency of alter timeseries and clear operations */
   private final ReentrantLock alterLock = new ReentrantLock(true);
 
   public StorageGroupManager() {

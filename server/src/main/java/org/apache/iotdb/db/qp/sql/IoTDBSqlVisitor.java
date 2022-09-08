@@ -117,6 +117,7 @@ import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
+import org.apache.iotdb.db.qp.logical.sys.RewriteTimeseriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
@@ -253,6 +254,17 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     setStorageGroupOperator.setPath(path);
     return setStorageGroupOperator;
+  }
+
+  @Override
+  public Operator visitRewriteTimeseries(IoTDBSqlParser.RewriteTimeseriesContext ctx) {
+
+    RewriteTimeseriesOperator rewriteTimeseriesOperator =
+        new RewriteTimeseriesOperator(SQLConstant.TOK_METADATA_ALTER);
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    rewriteTimeseriesOperator.setPath(path);
+
+    return rewriteTimeseriesOperator;
   }
 
   // Create Timeseries

@@ -117,6 +117,10 @@ CLEAR
     : C L E A R
     ;
 
+REWRITE
+    : R E W R I T E
+    ;
+
 CLUSTER
     : C L U S T E R
     ;

@@ -272,27 +272,30 @@ public class ReadPointCompactionPerformer
         if (!tsFileResource.mayContainsDevice(device)) {
           continue;
         }
-        MeasurementSchema schema = getMeasurementSchemaFromReader(
-                        tsFileResource,
-                        readerCacheMap.computeIfAbsent(
-                                tsFileResource,
-                                x -> {
-                                  try {
-                                    FileReaderManager.getInstance().increaseFileReaderReference(x, true);
-                                    return FileReaderManager.getInstance().get(x.getTsFilePath(), true);
-                                  } catch (IOException e) {
-                                    throw new RuntimeException(
-                                            String.format(
-                                                    "Failed to construct sequence reader for %s", tsFileResource));
-                                  }
-                                }),
-                        device,
-                        measurement);;
-        if(tsFileResource.isSeq()) {
+        MeasurementSchema schema =
+            getMeasurementSchemaFromReader(
+                tsFileResource,
+                readerCacheMap.computeIfAbsent(
+                    tsFileResource,
+                    x -> {
+                      try {
+                        FileReaderManager.getInstance().increaseFileReaderReference(x, true);
+                        return FileReaderManager.getInstance().get(x.getTsFilePath(), true);
+                      } catch (IOException e) {
+                        throw new RuntimeException(
+                            String.format(
+                                "Failed to construct sequence reader for %s", tsFileResource));
+                      }
+                    }),
+                device,
+                measurement);
+        ;
+        if (tsFileResource.isSeq()) {
           try {
             // There is no measurement in the seq file. Get the schema from Mtree
-            IMeasurementSchema seriesSchema = IoTDB.schemaProcessor.getSeriesSchema(new PartialPath(device, measurement));
-            if(seriesSchema != null && seriesSchema instanceof MeasurementSchema) {
+            IMeasurementSchema seriesSchema =
+                IoTDB.schemaProcessor.getSeriesSchema(new PartialPath(device, measurement));
+            if (seriesSchema != null && seriesSchema instanceof MeasurementSchema) {
               schema = (MeasurementSchema) seriesSchema;
             }
           } catch (MetadataException e) {

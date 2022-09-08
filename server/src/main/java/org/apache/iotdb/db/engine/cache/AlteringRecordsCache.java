@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.cache;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,27 +30,24 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * This class is used to cache Altering Timeseries.
- */
+/** This class is used to cache Altering Timeseries. */
 public class AlteringRecordsCache {
 
   private static final Logger logger = LoggerFactory.getLogger(AlteringRecordsCache.class);
 
-  private final Map<String, Pair<TSEncoding, CompressionType>> alteringRecords = new ConcurrentHashMap<>(32);
+  private final Map<String, Pair<TSEncoding, CompressionType>> alteringRecords =
+      new ConcurrentHashMap<>(32);
 
   private final AtomicBoolean isAltering = new AtomicBoolean(false);
 
-  private AlteringRecordsCache() {
-
-  }
+  private AlteringRecordsCache() {}
 
   public void startAlter() {
     isAltering.set(true);
   }
 
   public void putRecord(String fullPath, TSEncoding encoding, CompressionType compressionType) {
-    if(fullPath != null) {
+    if (fullPath != null) {
       alteringRecords.put(fullPath, new Pair<>(encoding, compressionType));
     }
   }
@@ -60,7 +58,7 @@ public class AlteringRecordsCache {
 
   public Pair<TSEncoding, CompressionType> getRecord(String fullPath) {
 
-    if(!isAltering.get()) {
+    if (!isAltering.get()) {
       return null;
     }
     return alteringRecords.get(fullPath);

@@ -93,6 +93,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.RewriteTimeseriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -1874,6 +1875,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           setStorageGroupStatement, ctx.storageGroupAttributesClause());
     }
     return setStorageGroupStatement;
+  }
+
+  @Override
+  public Statement visitRewriteTimeseries(IoTDBSqlParser.RewriteTimeseriesContext ctx) {
+    RewriteTimeseriesStatement rewriteTimeseriesStatement = new RewriteTimeseriesStatement();
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    rewriteTimeseriesStatement.setStorageGroupPath(path);
+    return rewriteTimeseriesStatement;
   }
 
   private void parseStorageGroupAttributesClause(
