@@ -54,7 +54,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// TODO: @MiniSho Move this test into org.apache.iotdb.db.it.confignode package
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBClusterPartitionTableTest {

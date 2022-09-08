@@ -79,8 +79,6 @@ public class IoTDBConfigNodeIT {
   protected static String originalConfigNodeConsensusProtocolClass;
   protected static String originalSchemaRegionConsensusProtocolClass;
   protected static String originalDataRegionConsensusProtocolClass;
-  protected static int originSchemaReplicationFactor;
-  protected static int originDataReplicationFactor;
 
   private final int retryNum = 30;
 
@@ -92,8 +90,6 @@ public class IoTDBConfigNodeIT {
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     originalDataRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    originSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
-    originDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
 
     ConfigFactory.getConfig()
         .setConfigNodeConsesusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
@@ -101,8 +97,6 @@ public class IoTDBConfigNodeIT {
         .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
     ConfigFactory.getConfig()
         .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
-    ConfigFactory.getConfig().setSchemaReplicationFactor(2);
-    ConfigFactory.getConfig().setDataReplicationFactor(2);
 
     EnvFactory.getEnv().initBeforeClass();
   }
@@ -116,8 +110,6 @@ public class IoTDBConfigNodeIT {
         .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
     ConfigFactory.getConfig()
         .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
-    ConfigFactory.getConfig().setSchemaReplicationFactor(originSchemaReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(originDataReplicationFactor);
   }
 
   private TShowClusterResp getClusterNodeInfos(

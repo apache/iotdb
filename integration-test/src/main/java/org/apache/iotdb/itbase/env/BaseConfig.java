@@ -226,20 +226,4 @@ public interface BaseConfig {
   default long getTimePartitionInterval() {
     return 86400;
   }
-
-  default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
-    return this;
-  }
-
-  default int getSchemaReplicationFactor() {
-    return 1;
-  }
-
-  default BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
-    return this;
-  }
-
-  default int getDataReplicationFactor() {
-    return 1;
-  }
 }
