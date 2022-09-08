@@ -199,4 +199,173 @@ public class IoTDBDeleteTimeseriesIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void deleteTimeSeriesAndAutoDeleteDeviceTest() throws Exception {
+    String[] retArray1 = new String[] {"0,4,4,4,4"};
+
+    String insertSql = "insert into root.sg.d1(time, s1, s2, s3, s4) values(%d, %d, %d, %d, %d)";
+    for (int i = 1; i <= 4; i++) {
+      statement.execute(String.format(insertSql, i, i, i, i, i));
+    }
+
+    int cnt = 0;
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select count(s1), count(s2), count(s3), count(s4) from root.sg.d1")) {
+      while (resultSet.next()) {
+        StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
+        for (int i = 1; i <= 4; i++) {
+          ans.append(",").append(resultSet.getString(count("root.sg.d1.s" + i)));
+        }
+        Assert.assertEquals(retArray1[cnt], ans.toString());
+        cnt++;
+      }
+      Assert.assertEquals(retArray1.length, cnt);
+    }
+
+    statement.execute("delete timeseries root.sg.d1.*");
+    try (ResultSet resultSet = statement.executeQuery("select * from root.sg.d1")) {
+      Assert.assertFalse(resultSet.next());
+    }
+
+    try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg.d1.*")) {
+      Assert.assertFalse(resultSet.next());
+    }
+
+    try (ResultSet resultSet = statement.executeQuery("show devices root.sg.d1")) {
+      Assert.assertFalse(resultSet.next());
+    }
+  }
+
+  @Test
+  public void deleteTimeSeriesCrossSchemaRegionTest() throws Exception {
+    String[] retArray1 = new String[] {"0,4,4,4,4"};
+
+    String insertSql = "insert into root.sg.d%d(time, s1, s2) values(%d, %d, %d)";
+    for (int i = 1; i <= 4; i++) {
+      for (int j = 1; j <= 4; j++) {
+        statement.execute(String.format(insertSql, j, i, i, i));
+      }
+    }
+
+    int cnt = 0;
+    try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.sg.*")) {
+      while (resultSet.next()) {
+        StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
+        for (int i = 1; i <= 4; i++) {
+          ans.append(",").append(resultSet.getString(count("root.sg.d" + i + ".s1")));
+        }
+        Assert.assertEquals(retArray1[cnt], ans.toString());
+        cnt++;
+      }
+      Assert.assertEquals(retArray1.length, cnt);
+    }
+
+    statement.execute("delete timeseries root.sg.*.s1");
+    try (ResultSet resultSet = statement.executeQuery("select s1 from root.sg.*")) {
+      Assert.assertFalse(resultSet.next());
+    }
+
+    try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg.*.s1")) {
+      Assert.assertFalse(resultSet.next());
+    }
+
+    cnt = 0;
+    try (ResultSet resultSet = statement.executeQuery("select count(s2) from root.sg.*")) {
+      while (resultSet.next()) {
+        StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
+        for (int i = 1; i <= 4; i++) {
+          ans.append(",").append(resultSet.getString(count("root.sg.d" + i + ".s2")));
+        }
+        Assert.assertEquals(retArray1[cnt], ans.toString());
+        cnt++;
+      }
+      Assert.assertEquals(retArray1.length, cnt);
+    }
+  }
+
+  @Test
+  public void deleteTimeSeriesCrossStorageGroupTest() throws Exception {
+    String[] retArray1 = new String[] {"0,4,4,4,4"};
+
+    String insertSql = "insert into root.sg%d.d1(time, s1, s2) values(%d, %d, %d)";
+    for (int i = 1; i <= 4; i++) {
+      for (int j = 1; j <= 4; j++) {
+        statement.execute(String.format(insertSql, j, i, i, i));
+      }
+    }
+
+    int cnt = 0;
+    try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.*.d1")) {
+      while (resultSet.next()) {
+        StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
+        for (int i = 1; i <= 4; i++) {
+          ans.append(",").append(resultSet.getString(count("root.sg" + i + ".d1.s1")));
+        }
+        Assert.assertEquals(retArray1[cnt], ans.toString());
+        cnt++;
+      }
+      Assert.assertEquals(retArray1.length, cnt);
+    }
+
+    statement.execute("delete timeseries root.*.d1.s1");
+    try (ResultSet resultSet = statement.executeQuery("select s1 from root.*.*")) {
+      Assert.assertFalse(resultSet.next());
+    }
+
+    try (ResultSet resultSet = statement.executeQuery("show timeseries root.*.*.s1")) {
+      Assert.assertFalse(resultSet.next());
+    }
+
+    cnt = 0;
+    try (ResultSet resultSet = statement.executeQuery("select count(s2) from root.*.*")) {
+      while (resultSet.next()) {
+        StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
+        for (int i = 1; i <= 4; i++) {
+          ans.append(",").append(resultSet.getString(count("root.sg" + i + ".d1.s2")));
+        }
+        Assert.assertEquals(retArray1[cnt], ans.toString());
+        cnt++;
+      }
+      Assert.assertEquals(retArray1.length, cnt);
+    }
+  }
+
+  @Test
+  public void deleteTimeSeriesWithMultiPatternTest() throws Exception {
+    String[] retArray1 = new String[] {"0,4,4,4,4"};
+
+    String insertSql = "insert into root.sg%d.d1(time, s1, s2) values(%d, %d, %d)";
+    for (int i = 1; i <= 4; i++) {
+      for (int j = 1; j <= 4; j++) {
+        statement.execute(String.format(insertSql, j, i, i, i));
+      }
+    }
+
+    int cnt = 0;
+    try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.*.d1")) {
+      while (resultSet.next()) {
+        StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
+        for (int i = 1; i <= 4; i++) {
+          ans.append(",").append(resultSet.getString(count("root.sg" + i + ".d1.s1")));
+        }
+        Assert.assertEquals(retArray1[cnt], ans.toString());
+        cnt++;
+      }
+      Assert.assertEquals(retArray1.length, cnt);
+    }
+
+    statement.execute("delete timeseries root.*.d1.s1, root.*.d1.s2");
+    try (ResultSet resultSet = statement.executeQuery("select * from root.*.*")) {
+      Assert.assertFalse(resultSet.next());
+    }
+
+    try (ResultSet resultSet = statement.executeQuery("show timeseries root.*.*.*")) {
+      Assert.assertFalse(resultSet.next());
+    }
+  }
+
+  @Test
+  public void deleteTimeSeriesAndReturnPathNotExistsTest() throws Exception {}
 }
