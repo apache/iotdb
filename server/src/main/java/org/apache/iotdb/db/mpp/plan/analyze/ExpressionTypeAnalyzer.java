@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
@@ -230,6 +231,14 @@ public class ExpressionTypeAnalyzer {
       }
 
       return setExpressionType(compareBinaryExpression, TSDataType.BOOLEAN);
+    }
+
+    @Override
+    public TSDataType visitBetweenExpression(BetweenExpression betweenExpression, Void context) {
+      process(betweenExpression.getFirstExpression(), null);
+      process(betweenExpression.getSecondExpression(), null);
+      process(betweenExpression.getThirdExpression(), null);
+      return setExpressionType(betweenExpression, TSDataType.BOOLEAN);
     }
 
     @Override

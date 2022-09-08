@@ -1365,6 +1365,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               .map(TimeSeriesOperand::new)
               .collect(Collectors.toCollection(LinkedHashSet::new));
       analysis.setSourceExpressions(sourceExpressions);
+      sourceExpressions.forEach(expression -> analyzeExpression(analysis, expression));
 
       Set<String> deviceSet =
           allSelectedPath.stream().map(MeasurementPath::getDevice).collect(Collectors.toSet());

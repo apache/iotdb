@@ -891,7 +891,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           node.getOutputExpressions(),
           node.isKeepNull(),
           node.getZoneId(),
-          context.getTypeProvider(),
+          expressionTypes,
           node.getScanOrder() == Ordering.ASC);
     } catch (QueryProcessException | IOException e) {
       throw new RuntimeException(e);
@@ -1032,7 +1032,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           projectExpressions,
           node.isKeepNull(),
           node.getZoneId(),
-          context.getTypeProvider(),
+          expressionTypes,
           node.getScanOrder() == Ordering.ASC);
     } catch (QueryProcessException | IOException e) {
       throw new RuntimeException(e);

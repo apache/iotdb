@@ -431,6 +431,19 @@ public class LogicalPlanBuilder {
     }
   }
 
+  public static void updateTypeProviderByPartialAggregation(
+      GroupByLevelDescriptor aggregationDescriptor, TypeProvider typeProvider) {
+    List<AggregationType> splitAggregations =
+        SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
+    PartialPath path = ((TimeSeriesOperand) aggregationDescriptor.getOutputExpression()).getPath();
+    for (AggregationType aggregationType : splitAggregations) {
+      String functionName = aggregationType.toString().toLowerCase();
+      typeProvider.setType(
+          String.format("%s(%s)", functionName, path.getFullPath()),
+          SchemaUtils.getSeriesTypeByPath(path, functionName));
+    }
+  }
+
   private PlanNode convergeWithTimeJoin(List<PlanNode> sourceNodes, Ordering mergeOrder) {
     PlanNode tmpNode;
     if (sourceNodes.size() == 1) {
@@ -571,6 +584,10 @@ public class LogicalPlanBuilder {
               groupedExpression.getExpressions().get(0)));
     }
     updateTypeProvider(groupByLevelExpressions.keySet());
+    updateTypeProvider(
+        groupByLevelDescriptors.stream()
+            .map(GroupByLevelDescriptor::getOutputExpression)
+            .collect(Collectors.toList()));
     return new GroupByLevelNode(
         context.getQueryId().genPlanNodeId(),
         children,

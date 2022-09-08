@@ -23,8 +23,14 @@ import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.SimplePlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+
+import java.util.List;
 
 public class SubPlanTypeExtractor {
 
@@ -70,6 +76,35 @@ public class SubPlanTypeExtractor {
         typeProvider.setType(sourcePath, allTypes.getType(sourcePath));
       }
       return visitPlan(node, context);
+    }
+
+    @Override
+    public Void visitAggregation(AggregationNode node, Void context) {
+      updateTypeProviderByAggregationDescriptor(node.getAggregationDescriptorList());
+      return visitPlan(node, context);
+    }
+
+    @Override
+    public Void visitSlidingWindowAggregation(SlidingWindowAggregationNode node, Void context) {
+      updateTypeProviderByAggregationDescriptor(node.getAggregationDescriptorList());
+      return visitPlan(node, context);
+    }
+
+    @Override
+    public Void visitGroupByLevel(GroupByLevelNode node, Void context) {
+      updateTypeProviderByAggregationDescriptor(node.getGroupByLevelDescriptors());
+      return visitPlan(node, context);
+    }
+
+    private void updateTypeProviderByAggregationDescriptor(
+        List<? extends AggregationDescriptor> aggregationDescriptorList) {
+      aggregationDescriptorList.stream()
+          .flatMap(aggregationDescriptor -> aggregationDescriptor.getInputExpressions().stream())
+          .forEach(
+              expression -> {
+                String expressionStr = expression.toString();
+                typeProvider.setType(expressionStr, allTypes.getType(expressionStr));
+              });
     }
   }
 }
