@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.tree;
+package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -26,9 +26,18 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.BiConsumer;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 public class PathPatternNode {
 
@@ -48,6 +57,20 @@ public class PathPatternNode {
     return children.getOrDefault(nodeName, null);
   }
 
+  public List<PathPatternNode> getMatchChildren(String nodeName) {
+    List<PathPatternNode> res = new ArrayList<>();
+    if (children.containsKey(nodeName)) {
+      res.add(children.get(nodeName));
+    }
+    if (children.containsKey(ONE_LEVEL_PATH_WILDCARD)) {
+      res.add(children.get(ONE_LEVEL_PATH_WILDCARD));
+    }
+    if (children.containsKey(MULTI_LEVEL_PATH_WILDCARD)) {
+      res.add(children.get(MULTI_LEVEL_PATH_WILDCARD));
+    }
+    return res;
+  }
+
   public Map<String, PathPatternNode> getChildren() {
     return children;
   }
@@ -56,12 +79,24 @@ public class PathPatternNode {
     children.put(tmpNode.getName(), tmpNode);
   }
 
+  public void deleteChild(PathPatternNode tmpNode) {
+    children.remove(tmpNode.getName());
+  }
+
   public boolean isLeaf() {
     return children.isEmpty();
   }
 
   public boolean isWildcard() {
-    return name.equals("*") || name.equals("**");
+    return name.equals(ONE_LEVEL_PATH_WILDCARD) || name.equals(MULTI_LEVEL_PATH_WILDCARD);
+  }
+
+  public boolean isMultiLevelWildcard() {
+    return name.equals(MULTI_LEVEL_PATH_WILDCARD);
+  }
+
+  public boolean isOneLevelWildcard() {
+    return name.equals(MULTI_LEVEL_PATH_WILDCARD);
   }
 
   @TestOnly

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.tree;
+package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
