@@ -592,7 +592,7 @@ var config = {
 							['System-Tools/Load-External-Tsfile','Load External Tsfile'],
 							['System-Tools/Performance-Tracing-Tool','Performance Tracing Tool'],
 							['System-Tools/CSV-Tool','CSV Tool'],
-							['System-Tools/Log-Tool','Log Tool'],
+							['System-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
 							['System-Tools/JMX-Tool','JMX Tool'],
 							['System-Tools/MLogParser-Tool','MLogParser Tool'],
 							['System-Tools/NodeTool','Node Tool'],
@@ -766,7 +766,7 @@ var config = {
 						title: 'Maintenance Tools',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','Maintenance Command'],
-							['Maintenance-Tools/Log-Tool','Log Tool'],
+							['Maintenance-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
