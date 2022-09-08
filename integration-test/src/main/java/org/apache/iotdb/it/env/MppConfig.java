@@ -233,4 +233,18 @@ public class MppConfig implements BaseConfig {
         "time_partition_interval", String.valueOf(timePartitionInterval));
     return this;
   }
+
+  @Override
+  public BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
+    confignodeProperties.setProperty(
+        "schema_replication_factor", String.valueOf(schemaReplicationFactor));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
+    confignodeProperties.setProperty(
+        "data_replication_factor", String.valueOf(dataReplicationFactor));
+    return this;
+  }
 }
