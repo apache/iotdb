@@ -41,17 +41,6 @@ public class CountAccumulator implements Accumulator {
     int windowControlColumnIndex = curWindow.getControlColumnIndex();
     int curPositionCount = column[windowControlColumnIndex].getPositionCount();
 
-    //    for (int i = 0; i < curPositionCount; i++) {
-    //      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-    //        return i;
-    //      }
-    //      curWindow.mergeOnePoint();
-    //      if (!column[1].isNull(i)) {
-    //        countValue++;
-    //      }
-    //    }
-
-    //    return curPositionCount;
     TimeColumn timeColumn = (TimeColumn) column[0];
     Column valueColumn = column[1];
     long minTime = Math.min(timeColumn.getStartTime(), timeColumn.getEndTime());
