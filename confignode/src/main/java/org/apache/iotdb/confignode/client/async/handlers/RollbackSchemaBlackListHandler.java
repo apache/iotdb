@@ -29,7 +29,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
@@ -39,33 +39,39 @@ public class RollbackSchemaBlackListHandler extends AbstractRetryHandler
   private static final Logger LOGGER =
       LoggerFactory.getLogger(RollbackSchemaBlackListHandler.class);
 
-  private List<TSStatus> dataNodeResponseStatus;
+  private Map<Integer, TSStatus> dataNodeResponseStatusMap = new HashMap<>();
 
-  public RollbackSchemaBlackListHandler(
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap, List<TSStatus> dataNodeResponseStatus) {
+  public RollbackSchemaBlackListHandler(Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     super(DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST, dataNodeLocationMap);
-    this.dataNodeResponseStatus = dataNodeResponseStatus;
   }
 
   public RollbackSchemaBlackListHandler(
       CountDownLatch countDownLatch,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      List<TSStatus> dataNodeResponseStatus) {
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     super(
         countDownLatch,
         DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
         targetDataNode,
         dataNodeLocationMap);
-    this.dataNodeResponseStatus = dataNodeResponseStatus;
+  }
+
+  public Map<Integer, TSStatus> getDataNodeResponseStatusMap() {
+    return dataNodeResponseStatusMap;
   }
 
   @Override
   public void onComplete(TSStatus tsStatus) {
-    dataNodeResponseStatus.add(tsStatus);
+    dataNodeResponseStatusMap.put(targetDataNode.getDataNodeId(), tsStatus);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully rollback schema black list on DataNode: {}", targetDataNode);
+    } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
+      LOGGER.error(
+          "Failed to rollback schema black list on DataNode {}, {}",
+          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
+          tsStatus);
     } else {
       LOGGER.error(
           "Failed to rollback schema black list on DataNode {}, {}",
@@ -78,7 +84,8 @@ public class RollbackSchemaBlackListHandler extends AbstractRetryHandler
   @Override
   public void onError(Exception e) {
     countDownLatch.countDown();
-    dataNodeResponseStatus.add(
+    dataNodeResponseStatusMap.put(
+        targetDataNode.getDataNodeId(),
         new TSStatus(
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),

@@ -25,8 +25,10 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -106,6 +108,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -975,5 +978,71 @@ public class ConfigManager implements IManager {
     } else {
       return status;
     }
+  }
+
+  /** Get all related schemaRegion which may contains the timeseries matched by given patternTree */
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
+      PathPatternTree patternTree) {
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        getSchemaPartition(patternTree).getSchemaPartitionTable();
+
+    List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
+    Set<TConsensusGroupId> groupIdSet =
+        schemaPartitionTable.values().stream()
+            .flatMap(m -> m.values().stream())
+            .collect(Collectors.toSet());
+    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+      if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
+        filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+      }
+    }
+    return filteredRegionReplicaSets;
+  }
+
+  /**
+   * Get all related dataRegion which may contains the data of specific timeseries matched by given
+   * patternTree
+   */
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
+      PathPatternTree patternTree) {
+    // get all storage group and slot by getting schema partition
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        getSchemaPartition(patternTree).getSchemaPartitionTable();
+
+    // construct request for getting data partition
+    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+        new HashMap<>();
+    schemaPartitionTable.forEach(
+        (key, value) -> {
+          Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> slotListMap = new HashMap<>();
+          value.keySet().forEach(slot -> slotListMap.put(slot, Collections.emptyList()));
+          partitionSlotsMap.put(key, slotListMap);
+        });
+
+    // get all data partitions
+    GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+        dataPartitionTable = getDataPartition(getDataPartitionPlan).getDataPartitionTable();
+
+    // get all region replicaset of target data partitions
+    List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
+    Set<TConsensusGroupId> groupIdSet =
+        dataPartitionTable.values().stream()
+            .flatMap(
+                tSeriesPartitionSlotMapMap ->
+                    tSeriesPartitionSlotMapMap.values().stream()
+                        .flatMap(
+                            tTimePartitionSlotListMap ->
+                                tTimePartitionSlotListMap.values().stream()
+                                    .flatMap(Collection::stream)))
+            .collect(Collectors.toSet());
+    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+      if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
+        filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+      }
+    }
+    return filteredRegionReplicaSets;
   }
 }

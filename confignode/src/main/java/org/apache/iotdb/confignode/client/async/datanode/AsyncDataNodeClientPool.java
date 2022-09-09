@@ -181,22 +181,22 @@ public class AsyncDataNodeClientPool {
           case CONSTRUCT_SCHEMA_BLACK_LIST:
             handler =
                 new ConstructSchemaBlackListHandler(
-                    countDownLatch, targetDataNode, dataNodeLocationMap, dataNodeResponseStatus);
+                    countDownLatch, targetDataNode, dataNodeLocationMap);
             break;
           case ROLLBACK_SCHEMA_BLACK_LIST:
             handler =
                 new RollbackSchemaBlackListHandler(
-                    countDownLatch, targetDataNode, dataNodeLocationMap, dataNodeResponseStatus);
+                    countDownLatch, targetDataNode, dataNodeLocationMap);
             break;
           case FETCH_SCHEMA_BLACK_LIST:
             handler =
                 new FetchSchemaBlackLsitHandler(
-                    countDownLatch, targetDataNode, dataNodeLocationMap, dataNodeResponseStatus);
+                    countDownLatch, targetDataNode, dataNodeLocationMap);
             break;
           case INVALIDATE_MATCHED_SCHEMA_CACHE:
             handler =
                 new InvalidateMatchedSchemaCacheHandler(
-                    countDownLatch, targetDataNode, dataNodeLocationMap, dataNodeResponseStatus);
+                    countDownLatch, targetDataNode, dataNodeLocationMap);
             break;
           case DELETE_DATA_FOR_DELETE_TIMESERIES:
             handler =
@@ -205,8 +205,7 @@ public class AsyncDataNodeClientPool {
             break;
           case DELETE_TIMESERIES:
             handler =
-                new DeleteTimeSeriesHandler(
-                    countDownLatch, targetDataNode, dataNodeLocationMap, dataNodeResponseStatus);
+                new DeleteTimeSeriesHandler(countDownLatch, targetDataNode, dataNodeLocationMap);
             break;
           default:
             return;
