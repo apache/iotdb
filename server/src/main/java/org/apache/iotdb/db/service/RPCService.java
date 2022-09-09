@@ -38,7 +38,7 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Processor;
 
 import java.lang.reflect.InvocationTargetException;
 
-/** A service to handle jdbc request from client. */
+/** A service to handle RPC request from client. */
 public class RPCService extends ThriftService implements RPCServiceMBean {
 
   private IClientRPCServiceWithHandler impl;
@@ -72,7 +72,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.RPC_CLIENT.getName(),
+              ThreadName.CLIENT_RPC_PROCESSOR.getName(),
               config.getRpcAddress(),
               config.getRpcPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -82,7 +82,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.RPC_SERVICE.getName());
+    thriftServiceThread.setName(ThreadName.CLIENT_RPC_SERVICE.getName());
     MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),
@@ -90,7 +90,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
             thriftServiceThread,
             AbstractThriftServiceThread::getActiveThreadCount,
             Tag.NAME.toString(),
-            ThreadName.RPC_SERVICE.getName());
+            ThreadName.CLIENT_RPC_SERVICE.getName());
   }
 
   @Override

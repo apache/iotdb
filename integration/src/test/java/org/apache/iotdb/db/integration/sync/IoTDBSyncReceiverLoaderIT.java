@@ -154,7 +154,7 @@ public class IoTDBSyncReceiverLoaderIT {
     // 3. test for TsFileLoader
     List<File> tsFiles = SyncTestUtil.getTsFilePaths(tmpDir);
     for (File tsfile : tsFiles) {
-      ILoader tsFileLoader = new TsFileLoader(tsfile);
+      ILoader tsFileLoader = new TsFileLoader(tsfile, "root.vehicle");
       try {
         tsFileLoader.load();
       } catch (Exception e) {

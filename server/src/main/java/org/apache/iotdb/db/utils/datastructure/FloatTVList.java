@@ -30,22 +30,15 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import java.io.DataInputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
-public class FloatTVList extends TVList {
-
+public abstract class FloatTVList extends TVList {
   // list of primitive array, add 1 when expanded -> float primitive array
   // index relation: arrayIndex -> elementIndex
-  private List<float[]> values;
-
-  private float[][] sortedValues;
-
-  private float pivotValue;
+  protected List<float[]> values;
 
   FloatTVList() {
     super();
@@ -87,40 +80,6 @@ public class FloatTVList extends TVList {
   }
 
   @Override
-  public FloatTVList clone() {
-    FloatTVList cloneList = new FloatTVList();
-    cloneAs(cloneList);
-    for (float[] valueArray : values) {
-      cloneList.values.add(cloneValue(valueArray));
-    }
-    return cloneList;
-  }
-
-  private float[] cloneValue(float[] array) {
-    float[] cloneArray = new float[array.length];
-    System.arraycopy(array, 0, cloneArray, 0, array.length);
-    return cloneArray;
-  }
-
-  @Override
-  public void sort() {
-    if (sortedTimestamps == null
-        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedTimestamps =
-          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
-    }
-    if (sortedValues == null
-        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedValues =
-          (float[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.FLOAT, rowCount);
-    }
-    sort(0, rowCount);
-    clearSortedValue();
-    clearSortedTime();
-    sorted = true;
-  }
-
-  @Override
   void clearValue() {
     if (values != null) {
       for (float[] dataArray : values) {
@@ -131,60 +90,8 @@ public class FloatTVList extends TVList {
   }
 
   @Override
-  void clearSortedValue() {
-    if (sortedValues != null) {
-      sortedValues = null;
-    }
-  }
-
-  @Override
-  protected void setFromSorted(int src, int dest) {
-    set(
-        dest,
-        sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
-        sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
-  }
-
-  @Override
-  protected void set(int src, int dest) {
-    long srcT = getTime(src);
-    float srcV = getFloat(src);
-    set(dest, srcT, srcV);
-  }
-
-  @Override
-  protected void setToSorted(int src, int dest) {
-    sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
-    sortedValues[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getFloat(src);
-  }
-
-  @Override
-  protected void reverseRange(int lo, int hi) {
-    hi--;
-    while (lo < hi) {
-      long loT = getTime(lo);
-      float loV = getFloat(lo);
-      long hiT = getTime(hi);
-      float hiV = getFloat(hi);
-      set(lo++, hiT, hiV);
-      set(hi--, loT, loV);
-    }
-  }
-
-  @Override
   protected void expandValues() {
     values.add((float[]) getPrimitiveArraysByType(TSDataType.FLOAT));
-  }
-
-  @Override
-  protected void saveAsPivot(int pos) {
-    pivotTime = getTime(pos);
-    pivotValue = getFloat(pos);
-  }
-
-  @Override
-  protected void setPivotTo(int pos) {
-    set(pos, pivotTime, pivotValue);
   }
 
   @Override
@@ -321,18 +228,5 @@ public class FloatTVList extends TVList {
       buffer.putLong(getTime(rowIdx));
       buffer.putFloat(getFloat(rowIdx));
     }
-  }
-
-  public static FloatTVList deserialize(DataInputStream stream) throws IOException {
-    FloatTVList tvList = new FloatTVList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    float[] values = new float[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = stream.readFloat();
-    }
-    tvList.putFloats(times, values, null, 0, rowCount);
-    return tvList;
   }
 }

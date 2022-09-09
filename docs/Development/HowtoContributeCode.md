@@ -80,7 +80,7 @@ a.Configuration file: server/src/assembly/resources/conf/iotdb-datanode.properti
 
 b. Codes: IoTDBDescriptor, IoTDBConfig
 
-c. Documentation: docs/UserGuide/Reference/Config-Manual.md
+c. Documentation: docs/UserGuide/Reference/DataNode-Config-Manual.md
 
 3.To modify configuration parameters in IT and UT, you need to modify them in the method annotated by @before and reset them in the method annotated by @after. In this way, you can avoid impact on other tests. The parameters of the compaction module are placed in the CompactionConfigRestorer file.
 

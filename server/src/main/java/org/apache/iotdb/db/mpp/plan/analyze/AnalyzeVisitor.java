@@ -91,6 +91,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTe
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
@@ -178,6 +179,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.info("{} fetch schema done", getLogHeader());
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
+        if (queryStatement.isLastQuery()) {
+          analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
+        }
         analysis.setFinishQueryAfterAnalyze(true);
         return analysis;
       }
@@ -1491,7 +1495,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(
-        countDevicesStatement.getPartialPath().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+        countDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
 
     analysis.setSchemaPartitionInfo(schemaPartitionInfo);
@@ -1506,10 +1510,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(countTimeSeriesStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(countTimeSeriesStatement.getPartialPath());
+    patternTree.appendPathPattern(countTimeSeriesStatement.getPathPattern());
     SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
-
     analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+
+    Map<Integer, Template> templateMap =
+        schemaFetcher.checkAllRelatedTemplate(countTimeSeriesStatement.getPathPattern());
+    analysis.setRelatedTemplateInfo(templateMap);
+
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountTimeSeriesHeader());
     return analysis;
   }
@@ -1521,7 +1529,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(countLevelTimeSeriesStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(countLevelTimeSeriesStatement.getPartialPath());
+    patternTree.appendPathPattern(countLevelTimeSeriesStatement.getPathPattern());
     SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
 
     analysis.setSchemaPartitionInfo(schemaPartitionInfo);
@@ -1535,7 +1543,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(countStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(countStatement.getPartialPath());
+    patternTree.appendPathPattern(countStatement.getPathPattern());
     SchemaNodeManagementPartition schemaNodeManagementPartition =
         partitionFetcher.getSchemaNodeManagementPartitionWithLevel(
             patternTree, countStatement.getLevel());
@@ -1785,6 +1793,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
 
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitShowPipeSinkType(
+      ShowPipeSinkTypeStatement showPipeSinkTypeStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    analysis.setStatement(showPipeSinkTypeStatement);
+    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowPipeSinkTypeHeader());
+    analysis.setFinishQueryAfterAnalyze(true);
     return analysis;
   }
 }

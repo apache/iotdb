@@ -59,7 +59,7 @@ public class IsNullExpression extends UnaryExpression {
 
   @Override
   protected String getExpressionStringInternal() {
-    return expression + " IS " + (isNot ? "" : "NOT ") + "NULL";
+    return expression + " IS " + (isNot ? "NOT " : "") + "NULL";
   }
 
   @Override

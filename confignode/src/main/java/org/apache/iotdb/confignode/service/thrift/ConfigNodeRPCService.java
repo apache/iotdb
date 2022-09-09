@@ -72,17 +72,17 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.CONFIG_NODE_RPC_CLIENT.getName(),
+              ThreadName.CONFIGNODE_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
               configConf.getRpcMaxConcurrentClientNum(),
               configConf.getThriftServerAwaitTimeForStopService(),
-              new ConfigNodeRPCServiceHandler(configNodeRPCServiceProcessor),
+              new ConfigNodeRPCServiceHandler(),
               commonConfig.isRpcThriftCompressionEnabled());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.CONFIG_NODE_RPC_SERVER.getName());
+    thriftServiceThread.setName(ThreadName.CONFIGNODE_RPC_SERVICE.getName());
     MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),
@@ -90,7 +90,7 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
             thriftServiceThread,
             AbstractThriftServiceThread::getActiveThreadCount,
             Tag.NAME.toString(),
-            ThreadName.CONFIG_NODE_RPC_SERVER.getName());
+            ThreadName.CONFIGNODE_RPC_SERVICE.getName());
   }
 
   @Override

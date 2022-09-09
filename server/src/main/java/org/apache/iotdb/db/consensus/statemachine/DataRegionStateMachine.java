@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -27,7 +28,6 @@ import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -57,6 +58,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -88,7 +90,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean isReadOnly() {
-    return IoTDBDescriptor.getInstance().getConfig().isReadOnly();
+    return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
 
   @Override
@@ -194,8 +196,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
           insertNodeWrapper.getStartSyncIndex(),
           insertNodeWrapper.getEndSyncIndex());
       List<TSStatus> subStatus = new LinkedList<>();
-      for (InsertNode insertNode : insertNodeWrapper.getInsertNodes()) {
-        subStatus.add(write(insertNode));
+      for (PlanNode planNode : insertNodeWrapper.getInsertNodes()) {
+        subStatus.add(write(planNode));
       }
       queueSortCondition.signalAll();
       return new TSStatus().setSubStatus(subStatus);
@@ -207,7 +209,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
   private static class InsertNodeWrapper implements Comparable<InsertNodeWrapper> {
     private final long startSyncIndex;
     private final long endSyncIndex;
-    private final List<InsertNode> insertNodes;
+    private final List<PlanNode> insertNodes;
 
     public InsertNodeWrapper(long startSyncIndex, long endSyncIndex) {
       this.startSyncIndex = startSyncIndex;
@@ -220,7 +222,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       return Long.compare(startSyncIndex, o.startSyncIndex);
     }
 
-    public void add(InsertNode insertNode) {
+    public void add(PlanNode insertNode) {
       this.insertNodes.add(insertNode);
     }
 
@@ -232,7 +234,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       return endSyncIndex;
     }
 
-    public List<InsertNode> getInsertNodes() {
+    public List<PlanNode> getInsertNodes() {
       return insertNodes;
     }
   }
@@ -246,25 +248,35 @@ public class DataRegionStateMachine extends BaseStateMachine {
     return insertNodeWrapper;
   }
 
-  private InsertNode grabInsertNode(IndexedConsensusRequest indexedRequest) {
+  private PlanNode grabInsertNode(IndexedConsensusRequest indexedRequest) {
     List<InsertNode> insertNodes = new ArrayList<>(indexedRequest.getRequests().size());
     for (IConsensusRequest req : indexedRequest.getRequests()) {
       // PlanNode in IndexedConsensusRequest should always be InsertNode
-      InsertNode innerNode = (InsertNode) getPlanNode(req);
-      innerNode.setSearchIndex(indexedRequest.getSearchIndex());
-      insertNodes.add(innerNode);
+      PlanNode planNode = getPlanNode(req);
+      if (planNode instanceof InsertNode) {
+        InsertNode innerNode = (InsertNode) planNode;
+        innerNode.setSearchIndex(indexedRequest.getSearchIndex());
+        insertNodes.add(innerNode);
+      } else if (indexedRequest.getRequests().size() == 1) {
+        // If the planNode is not InsertNode, it is expected that the IndexedConsensusRequest only
+        // contains one request
+        return planNode;
+      } else {
+        throw new IllegalArgumentException(
+            "PlanNodes in IndexedConsensusRequest are not InsertNode and the size of requests are larger than 1");
+      }
     }
     return mergeInsertNodes(insertNodes);
   }
 
   @Override
-  public List<File> getSnapshotFiles(File latestSnapshotRootDir) {
+  public List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
     try {
       return new SnapshotLoader(
               latestSnapshotRootDir.getAbsolutePath(),
               region.getStorageGroupName(),
               region.getDataRegionId())
-          .getSnapshotFileInfo();
+          .getSnapshotFileInfo().stream().map(File::toPath).collect(Collectors.toList());
     } catch (IOException e) {
       logger.error(
           "Meets error when getting snapshot files for {}-{}",

@@ -23,8 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceCompactionFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -34,6 +33,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -84,29 +84,28 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(1, result[0].size());
-    Assert.assertEquals(2, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+    Assert.assertEquals(1, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -131,28 +130,30 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(1, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(1, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -177,28 +178,30 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(1));
-    Assert.assertEquals(result[0].get(1), seqResources.get(2));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -229,30 +232,32 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(4, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(1));
-    Assert.assertEquals(result[0].get(1), seqResources.get(2));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
-    Assert.assertEquals(result[1].get(2), unseqResources.get(2));
-    Assert.assertEquals(result[1].get(3), unseqResources.get(3));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(4, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).right.get(2), unseqResources.get(2));
+    Assert.assertEquals(selected.get(0).right.get(3), unseqResources.get(3));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -279,31 +284,33 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(5, result[0].size());
-    Assert.assertEquals(2, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(1));
-    Assert.assertEquals(result[0].get(1), seqResources.get(2));
-    Assert.assertEquals(result[0].get(2), seqResources.get(3));
-    Assert.assertEquals(result[0].get(3), seqResources.get(4));
-    Assert.assertEquals(result[0].get(4), seqResources.get(5));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(5, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(5));
+
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -330,29 +337,31 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(1, result[0].size());
-    Assert.assertEquals(3, result[1].size());
-    for (TsFileResource selectedResource : (List<TsFileResource>) result[0]) {
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+
+    Assert.assertEquals(1, selected.get(0).left.size());
+    Assert.assertEquals(3, selected.get(0).right.size());
+    for (TsFileResource selectedResource : (List<TsFileResource>) selected.get(0).left) {
       Assert.assertEquals(selectedResource, seqResources.get(1));
     }
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
-    Assert.assertEquals(result[1].get(2), unseqResources.get(2));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).right.get(2), unseqResources.get(2));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -380,31 +389,33 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(3, result[0].size());
-    Assert.assertEquals(4, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(1));
-    Assert.assertEquals(result[0].get(1), seqResources.get(2));
-    Assert.assertEquals(result[0].get(2), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
-    Assert.assertEquals(result[1].get(2), unseqResources.get(2));
-    Assert.assertEquals(result[1].get(3), unseqResources.get(3));
+    Assert.assertEquals(3, selected.get(0).left.size());
+    Assert.assertEquals(4, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).right.get(2), unseqResources.get(2));
+    Assert.assertEquals(selected.get(0).right.get(3), unseqResources.get(3));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -431,31 +442,33 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(4, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(1));
-    Assert.assertEquals(result[0].get(1), seqResources.get(2));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(4, selected.get(0).right.size());
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
-    Assert.assertEquals(result[1].get(2), unseqResources.get(2));
-    Assert.assertEquals(result[1].get(3), unseqResources.get(3));
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).right.get(2), unseqResources.get(2));
+    Assert.assertEquals(selected.get(0).right.get(3), unseqResources.get(3));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -485,28 +498,30 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -537,28 +552,30 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -590,27 +607,29 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(4));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -641,28 +660,30 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -694,28 +715,30 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -748,28 +771,30 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(4));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -801,29 +826,31 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(3, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(1));
-    Assert.assertEquals(result[0].get(1), seqResources.get(2));
-    Assert.assertEquals(result[0].get(2), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(3, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -856,29 +883,31 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(3, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(1));
-    Assert.assertEquals(result[0].get(1), seqResources.get(2));
-    Assert.assertEquals(result[0].get(2), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(3, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -912,29 +941,31 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(3, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(1));
-    Assert.assertEquals(result[0].get(1), seqResources.get(2));
-    Assert.assertEquals(result[0].get(2), seqResources.get(4));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(3, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -967,30 +998,32 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(5, result[0].size());
-    Assert.assertEquals(1, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[0].get(2), seqResources.get(4));
-    Assert.assertEquals(result[0].get(3), seqResources.get(5));
-    Assert.assertEquals(result[0].get(4), seqResources.get(6));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(5, selected.get(0).left.size());
+    Assert.assertEquals(1, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(6));
+
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1023,30 +1056,32 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(5, result[0].size());
-    Assert.assertEquals(1, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[0].get(2), seqResources.get(4));
-    Assert.assertEquals(result[0].get(3), seqResources.get(5));
-    Assert.assertEquals(result[0].get(4), seqResources.get(6));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(5, selected.get(0).left.size());
+    Assert.assertEquals(1, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(6));
+
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1079,30 +1114,32 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(6, result[0].size());
-    Assert.assertEquals(1, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[0].get(2), seqResources.get(4));
-    Assert.assertEquals(result[0].get(3), seqResources.get(5));
-    Assert.assertEquals(result[0].get(4), seqResources.get(6));
-    Assert.assertEquals(result[0].get(5), seqResources.get(7));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+
+    Assert.assertEquals(6, selected.get(0).left.size());
+    Assert.assertEquals(1, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(6));
+    Assert.assertEquals(selected.get(0).left.get(5), seqResources.get(7));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1135,29 +1172,31 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(5, result[0].size());
-    Assert.assertEquals(1, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[0].get(2), seqResources.get(4));
-    Assert.assertEquals(result[0].get(3), seqResources.get(5));
-    Assert.assertEquals(result[0].get(4), seqResources.get(7));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+
+    Assert.assertEquals(5, selected.get(0).left.size());
+    Assert.assertEquals(1, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(7));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1187,28 +1226,30 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1239,28 +1280,30 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1292,27 +1335,29 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(4));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1343,28 +1388,30 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1396,28 +1443,30 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1450,28 +1499,30 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(4));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1503,29 +1554,31 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(3, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(1));
-    Assert.assertEquals(result[0].get(1), seqResources.get(2));
-    Assert.assertEquals(result[0].get(2), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(3, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1558,29 +1611,31 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(3, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(1));
-    Assert.assertEquals(result[0].get(1), seqResources.get(2));
-    Assert.assertEquals(result[0].get(2), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(3, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1614,29 +1669,31 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(3, result[0].size());
-    Assert.assertEquals(2, result[1].size());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[0].get(0), seqResources.get(1));
-    Assert.assertEquals(result[0].get(1), seqResources.get(2));
-    Assert.assertEquals(result[0].get(2), seqResources.get(4));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    Assert.assertEquals(3, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1669,30 +1726,32 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(5, result[0].size());
-    Assert.assertEquals(1, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[0].get(2), seqResources.get(4));
-    Assert.assertEquals(result[0].get(3), seqResources.get(5));
-    Assert.assertEquals(result[0].get(4), seqResources.get(6));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(5, selected.get(0).left.size());
+    Assert.assertEquals(1, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(6));
+
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1725,30 +1784,32 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(5, result[0].size());
-    Assert.assertEquals(1, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[0].get(2), seqResources.get(4));
-    Assert.assertEquals(result[0].get(3), seqResources.get(5));
-    Assert.assertEquals(result[0].get(4), seqResources.get(6));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(5, selected.get(0).left.size());
+    Assert.assertEquals(1, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(6));
+
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1781,30 +1842,32 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(6, result[0].size());
-    Assert.assertEquals(1, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[0].get(2), seqResources.get(4));
-    Assert.assertEquals(result[0].get(3), seqResources.get(5));
-    Assert.assertEquals(result[0].get(4), seqResources.get(6));
-    Assert.assertEquals(result[0].get(5), seqResources.get(7));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+
+    Assert.assertEquals(6, selected.get(0).left.size());
+    Assert.assertEquals(1, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(6));
+    Assert.assertEquals(selected.get(0).left.get(5), seqResources.get(7));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1837,29 +1900,31 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(5, result[0].size());
-    Assert.assertEquals(1, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[0].get(2), seqResources.get(4));
-    Assert.assertEquals(result[0].get(3), seqResources.get(5));
-    Assert.assertEquals(result[0].get(4), seqResources.get(7));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+
+    Assert.assertEquals(5, selected.get(0).left.size());
+    Assert.assertEquals(1, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(7));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1893,26 +1958,28 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(1, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(1, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1948,20 +2015,22 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
     // Assert.assertEquals(0, result.length);
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -1996,26 +2065,28 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(1, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(1, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -2050,27 +2121,29 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(2, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -2106,26 +2179,28 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    Assert.assertEquals(2, result.length);
-    Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(1, result[1].size());
-    Assert.assertEquals(result[0].get(0), seqResources.get(2));
-    Assert.assertEquals(result[0].get(1), seqResources.get(3));
-    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+
+    Assert.assertEquals(2, selected.get(0).left.size());
+    Assert.assertEquals(1, selected.get(0).right.size());
+    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            result[0],
-            result[1],
+            selected.get(0).left,
+            selected.get(0).right,
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getCrossCompactionPerformer()
                 .createInstance(),
             new AtomicInteger(0),
+            0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
 
@@ -2139,5 +2214,6 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     }
     TsFileValidationTool.findUncorrectFiles(files);
     Assert.assertEquals(0, TsFileValidationTool.badFileNum);
+    TsFileValidationTool.clearMap();
   }
 }

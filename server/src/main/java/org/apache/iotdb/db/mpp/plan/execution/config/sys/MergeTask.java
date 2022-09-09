@@ -28,7 +28,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class MergeTask implements IConfigTask {
 
-  private MergeStatement mergeStatement;
+  private final MergeStatement mergeStatement;
 
   public MergeTask(MergeStatement mergeStatement) {
     this.mergeStatement = mergeStatement;
@@ -37,6 +37,6 @@ public class MergeTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.merge(mergeStatement.isCluster());
+    return configTaskExecutor.merge(mergeStatement.isOnCluster());
   }
 }

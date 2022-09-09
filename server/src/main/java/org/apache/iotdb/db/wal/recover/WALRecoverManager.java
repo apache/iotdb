@@ -175,6 +175,7 @@ public class WALRecoverManager {
   public WALRecoverListener addRecoverPerformer(UnsealedTsFileRecoverPerformer recoverPerformer) {
     if (hasStarted) {
       logger.error("Cannot recover tsfile from wal because wal recovery has already started");
+      return null;
     } else {
       try {
         String canonicalPath = recoverPerformer.getTsFileResource().getTsFile().getCanonicalPath();

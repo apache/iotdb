@@ -104,6 +104,13 @@ public class RegionGroupCache implements IRegionGroupCache {
   }
 
   @Override
+  public void removeCacheIfExists(Integer dataNodeId) {
+    synchronized (slidingWindow) {
+      slidingWindow.remove(dataNodeId);
+    }
+  }
+
+  @Override
   public int getLeaderDataNodeId() {
     return leaderDataNodeId.get();
   }

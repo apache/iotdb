@@ -84,6 +84,11 @@ public class InsertRowStatement extends InsertBaseStatement {
     isNeedInferType = needInferType;
   }
 
+  @Override
+  public boolean isEmpty() {
+    return values.length == 0;
+  }
+
   public void fillValues(ByteBuffer buffer) throws QueryProcessException {
     this.values = new Object[measurements.length];
     this.dataTypes = new TSDataType[measurements.length];

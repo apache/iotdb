@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.snapshot;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -33,8 +32,14 @@ public class SnapshotLogger implements AutoCloseable {
   private File logFile;
   private BufferedOutputStream os;
 
-  public SnapshotLogger(File logFile) throws FileNotFoundException {
+  public SnapshotLogger(File logFile) throws IOException {
     this.logFile = logFile;
+    if (!logFile.getParentFile().exists() && !logFile.getParentFile().mkdirs()) {
+      throw new IOException("Cannot create parent folder for " + logFile.getAbsolutePath());
+    }
+    if (!this.logFile.createNewFile()) {
+      throw new IOException("Cannot create file " + logFile.getAbsolutePath());
+    }
     os = new BufferedOutputStream(new FileOutputStream(logFile));
   }
 

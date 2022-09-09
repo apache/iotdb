@@ -74,6 +74,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -110,16 +111,22 @@ public class DataNode implements DataNodeMBean {
     IoTDBStartCheck.getInstance().checkConfig();
     // TODO: check configuration for data node
 
+    for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
+      if (endPoint.getIp().equals("0.0.0.0")) {
+        throw new ConfigurationException(
+            "The ip address of any target_config_nodes couldn't be 0.0.0.0");
+      }
+    }
+
     // if client ip is the default address, set it same with internal ip
     if (config.getRpcAddress().equals("0.0.0.0")) {
       config.setRpcAddress(config.getInternalAddress());
     }
-
     thisNode.setIp(IoTDBDescriptor.getInstance().getConfig().getInternalAddress());
     thisNode.setPort(IoTDBDescriptor.getInstance().getConfig().getInternalPort());
   }
 
-  protected void doAddNode(String[] args) {
+  protected void doAddNode() {
     try {
       // prepare cluster IoTDB-DataNode
       prepareDataNode();
@@ -189,6 +196,8 @@ public class DataNode implements DataNodeMBean {
             config.setDataNodeId(dataNodeID);
           }
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
+          IoTDBDescriptor.getInstance().loadRatisConfig(dataNodeRegisterResp.ratisConfig);
+          IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
 
           if (!IoTDBStartCheck.getInstance()
               .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
@@ -388,7 +397,6 @@ public class DataNode implements DataNodeMBean {
   public void stop() {
     deactivate();
 
-    // QSW
     try {
       MetricService.getInstance().stop();
       SchemaRegionConsensusImpl.getInstance().stop();
@@ -396,6 +404,20 @@ public class DataNode implements DataNodeMBean {
     } catch (Exception e) {
       logger.error("stop data node error", e);
     }
+
+    // kill the datanode process 5 seconds later
+    // if remove this step, datanode process will still alive
+    new Thread(
+            () -> {
+              try {
+                TimeUnit.SECONDS.sleep(5);
+              } catch (InterruptedException e) {
+                logger.error("Meets InterruptedException in stop method of DataNode");
+              } finally {
+                System.exit(0);
+              }
+            })
+        .start();
   }
 
   private void initServiceProvider() throws QueryProcessException {

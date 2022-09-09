@@ -75,7 +75,7 @@ public class LazyGreedyRouterTest {
         new TDataNodeConfiguration().setLocation(new TDataNodeLocation().setDataNodeId(2)));
 
     /* Test2: The number of leaders in DataNode-1 and DataNode-3 should be approximately 6 */
-    lazyGreedyRouter.updateUnknownDataNodes(dataNodeConfigurations);
+    lazyGreedyRouter.updateDisabledDataNodes(dataNodeConfigurations);
     leaderCounter.clear();
     routeMap = lazyGreedyRouter.genLatestRegionRouteMap(regionReplicaSetList);
     routeMap
@@ -145,7 +145,7 @@ public class LazyGreedyRouterTest {
         new TDataNodeConfiguration().setLocation(new TDataNodeLocation().setDataNodeId(2)));
 
     /* Test2: The number of leaders in DataNode-1 and DataNode-3 should be exactly 9 */
-    lazyGreedyRouter.updateUnknownDataNodes(dataNodeConfigurations);
+    lazyGreedyRouter.updateDisabledDataNodes(dataNodeConfigurations);
     leaderCounter.clear();
     routeMap = lazyGreedyRouter.genLatestRegionRouteMap(regionReplicaSetList);
     routeMap

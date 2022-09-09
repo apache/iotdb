@@ -41,6 +41,8 @@ import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
+import org.apache.iotdb.confignode.manager.NodeManager;
+import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -109,7 +111,7 @@ public class ConfigNodeProcedureEnv {
    */
   public TSStatus deleteConfig(String name) {
     DeleteStorageGroupPlan deleteStorageGroupPlan = new DeleteStorageGroupPlan(name);
-    return configManager.getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupPlan);
+    return getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupPlan);
   }
 
   /**
@@ -120,7 +122,7 @@ public class ConfigNodeProcedureEnv {
    */
   public void preDelete(
       PreDeleteStorageGroupPlan.PreDeleteType preDeleteType, String deleteSgName) {
-    configManager.getPartitionManager().preDeleteStorageGroup(deleteSgName, preDeleteType);
+    getPartitionManager().preDeleteStorageGroup(deleteSgName, preDeleteType);
   }
 
   /**
@@ -263,6 +265,7 @@ public class ConfigNodeProcedureEnv {
                     tConfigNodeLocation.getInternalEndPoint(),
                     tConfigNodeLocation,
                     ConfigNodeRequestType.STOP_CONFIG_NODE);
+    getNodeManager().removeNodeCache(tConfigNodeLocation.getConfigNodeId());
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(tsStatus.getMessage());
     }
@@ -367,8 +370,16 @@ public class ConfigNodeProcedureEnv {
     return configManager.getConsensusManager();
   }
 
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
+  }
+
   private ClusterSchemaManager getClusterSchemaManager() {
     return configManager.getClusterSchemaManager();
+  }
+
+  private PartitionManager getPartitionManager() {
+    return configManager.getPartitionManager();
   }
 
   private LoadManager getLoadManager() {

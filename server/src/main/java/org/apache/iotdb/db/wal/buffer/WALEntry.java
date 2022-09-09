@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -74,6 +75,8 @@ public abstract class WALEntry implements SerializedSize {
       this.type = WALEntryType.INSERT_ROW_NODE;
     } else if (value instanceof InsertTabletNode) {
       this.type = WALEntryType.INSERT_TABLET_NODE;
+    } else if (value instanceof DeleteDataNode) {
+      this.type = WALEntryType.DELETE_DATA_NODE;
     } else {
       throw new RuntimeException("Unknown WALEntry type");
     }
@@ -93,9 +96,6 @@ public abstract class WALEntry implements SerializedSize {
       throws IllegalPathException, IOException {
     byte typeNum = stream.readByte();
     WALEntryType type = WALEntryType.valueOf(typeNum);
-    if (type == null) {
-      throw new IOException("unrecognized wal entry type " + typeNum);
-    }
 
     // handle signal
     switch (type) {
@@ -127,6 +127,9 @@ public abstract class WALEntry implements SerializedSize {
       case INSERT_TABLET_NODE:
         value = (InsertTabletNode) PlanNodeType.deserializeFromWAL(stream);
         break;
+      case DELETE_DATA_NODE:
+        value = (DeleteDataNode) PlanNodeType.deserializeFromWAL(stream);
+        break;
     }
     return new WALInfoEntry(type, memTableId, value);
   }
@@ -135,7 +138,7 @@ public abstract class WALEntry implements SerializedSize {
    * This deserialization method is only for multi-leader consensus and just deserializes
    * InsertRowNode and InsertTabletNode
    */
-  public static PlanNode deserializeInsertNode(ByteBuffer buffer) {
+  public static PlanNode deserializeForConsensus(ByteBuffer buffer) {
     logger.debug(
         "buffer capacity is: {}, limit is: {}, position is: {}",
         buffer.capacity(),

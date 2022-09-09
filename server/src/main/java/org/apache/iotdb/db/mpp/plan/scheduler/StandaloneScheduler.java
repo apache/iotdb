@@ -22,10 +22,10 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -36,13 +36,14 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
@@ -101,8 +102,15 @@ public class StandaloneScheduler implements IScheduler {
             if (groupId instanceof DataRegionId) {
               DataRegion region =
                   StorageEngineV2.getInstance().getDataRegion((DataRegionId) groupId);
-              FragmentInstanceManager.getInstance()
-                  .execDataQueryFragmentInstance(fragmentInstance, region);
+              FragmentInstanceInfo info =
+                  FragmentInstanceManager.getInstance()
+                      .execDataQueryFragmentInstance(fragmentInstance, region);
+              // query dispatch failed
+              if (info.getState().isFailed()) {
+                stateMachine.transitionToFailed(
+                    RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, info.getMessage()));
+                return;
+              }
             } else {
               ISchemaRegion region =
                   SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) groupId);
@@ -112,20 +120,18 @@ public class StandaloneScheduler implements IScheduler {
           }
         } catch (Exception e) {
           stateMachine.transitionToFailed(e);
+          LOGGER.info("transit to FAILED");
+          return;
         }
         // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
         stateMachine.transitionToRunning();
-        LOGGER.info("{} transit to RUNNING", getLogHeader());
-        instances.forEach(
-            instance ->
-                stateMachine.initialFragInstanceState(
-                    instance.getId(), FragmentInstanceState.RUNNING));
+        LOGGER.info("transit to RUNNING");
         this.stateTracker.start();
-        LOGGER.info("{} state tracker starts", getLogHeader());
+        LOGGER.info("state tracker starts");
         break;
       case WRITE:
         // reject non-query operations when system is read-only
-        if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+        if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
           TSStatus failedStatus = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
           failedStatus.setMessage("Fail to do non-query operations because system is read-only.");
           stateMachine.transitionToFailed(failedStatus);
@@ -133,7 +139,7 @@ public class StandaloneScheduler implements IScheduler {
         }
         try {
           for (FragmentInstance fragmentInstance : instances) {
-            PlanNode planNode = fragmentInstance.getFragment().getRoot();
+            PlanNode planNode = fragmentInstance.getFragment().getPlanNodeTree();
             ConsensusGroupId groupId =
                 ConsensusGroupId.Factory.createFromTConsensusGroupId(
                     fragmentInstance.getRegionReplicaSet().getRegionId());
