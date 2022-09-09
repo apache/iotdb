@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
@@ -41,6 +42,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.RatisGetDivisionException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 
 import org.apache.commons.pool2.KeyedObjectPool;
@@ -63,6 +65,7 @@ import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
+import org.apache.ratis.server.storage.RaftStorageDirectory;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +77,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -133,6 +139,8 @@ class RatisConsensus implements IConsensus {
                         registry.apply(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId)),
                         raftGroupId))
             .build();
+
+    createSnapshotThread(config);
   }
 
   @Override
@@ -573,6 +581,50 @@ class RatisConsensus implements IConsensus {
     }
 
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
+  }
+
+  private void triggerSnapshotByCustomize(ConsensusConfig config) {
+    Iterable<RaftGroupId> groupIds = server.getGroupIds();
+
+    while (groupIds.iterator().hasNext()) {
+      RaftGroupId raftGroupId = groupIds.iterator().next();
+      File currentDir = null;
+
+      try {
+         currentDir = server.getDivision(raftGroupId).getRaftStorage().getStorageDir()
+                .getCurrentDir();
+      }
+      catch (IOException e) {
+        failed(new RatisGetDivisionException(e));
+      }
+
+      long currentDirLength = currentDir.length();
+      long triggerSnapshotFileSize = config.getRatisConfig().getSnapshot().getTriggerSnapshotFileSize();
+
+      if (currentDirLength >= triggerSnapshotFileSize) {
+        ConsensusGenericResponse consensusGenericResponse = triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
+        if (consensusGenericResponse.isSuccess()){
+          logger.info("Raft group " + raftGroupId + " took snapshot successfully");
+        }
+        else {
+          logger.warn("Raft group " + raftGroupId + " failed to take snapshot");
+        }
+      }
+    }
+  }
+
+  private void createSnapshotThread(ConsensusConfig config) {
+    ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+    Runnable command = () -> triggerSnapshotByCustomize(config);
+    long delay = config.getRatisConfig().getSnapshot().getTriggerSnapshotTime();
+
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+            executor,
+            command,
+            0,
+            delay,
+            TimeUnit.SECONDS
+    );
   }
 
   private ConsensusGenericResponse failed(ConsensusException e) {

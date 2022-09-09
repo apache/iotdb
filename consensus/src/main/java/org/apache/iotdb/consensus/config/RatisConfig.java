@@ -257,16 +257,22 @@ public class RatisConfig {
     private final long creationGap;
     private final long autoTriggerThreshold;
     private final int retentionFileNum;
+    private final long triggerSnapshotTime;
+    private final long triggerSnapshotFileSize;
 
     private Snapshot(
         boolean autoTriggerEnabled,
         long creationGap,
         long autoTriggerThreshold,
-        int retentionFileNum) {
+        int retentionFileNum,
+        long triggerSnapshotTime,
+        long triggerSnapshotFileSize) {
       this.autoTriggerEnabled = autoTriggerEnabled;
       this.creationGap = creationGap;
       this.autoTriggerThreshold = autoTriggerThreshold;
       this.retentionFileNum = retentionFileNum;
+      this.triggerSnapshotTime = triggerSnapshotTime;
+      this.triggerSnapshotFileSize = triggerSnapshotFileSize;
     }
 
     public boolean isAutoTriggerEnabled() {
@@ -285,6 +291,14 @@ public class RatisConfig {
       return retentionFileNum;
     }
 
+    public long getTriggerSnapshotTime() {
+      return triggerSnapshotTime;
+    }
+
+    public long getTriggerSnapshotFileSize() {
+      return triggerSnapshotFileSize;
+    }
+
     public static Snapshot.Builder newBuilder() {
       return new Snapshot.Builder();
     }
@@ -295,10 +309,12 @@ public class RatisConfig {
       private long autoTriggerThreshold =
           RaftServerConfigKeys.Snapshot.AUTO_TRIGGER_THRESHOLD_DEFAULT;
       private int retentionFileNum = RaftServerConfigKeys.Snapshot.RETENTION_FILE_NUM_DEFAULT;
+      private long triggerSnapshotTime = 60;
+      private long triggerSnapshotFileSize = 20L << 30;
 
       public Snapshot build() {
         return new Snapshot(
-            autoTriggerEnabled, creationGap, autoTriggerThreshold, retentionFileNum);
+            autoTriggerEnabled, creationGap, autoTriggerThreshold, retentionFileNum,triggerSnapshotTime,triggerSnapshotFileSize);
       }
 
       public Snapshot.Builder setAutoTriggerEnabled(boolean autoTriggerEnabled) {
@@ -318,6 +334,16 @@ public class RatisConfig {
 
       public Snapshot.Builder setRetentionFileNum(int retentionFileNum) {
         this.retentionFileNum = retentionFileNum;
+        return this;
+      }
+
+      public Snapshot.Builder setTriggerSnapshotTime(long triggerSnapshotTime) {
+        this.triggerSnapshotTime = triggerSnapshotTime;
+        return this;
+      }
+
+      public Snapshot.Builder setTriggerSnapshotFileSize(long triggerSnapshotFileSize) {
+        this.triggerSnapshotFileSize = triggerSnapshotFileSize;
         return this;
       }
     }
