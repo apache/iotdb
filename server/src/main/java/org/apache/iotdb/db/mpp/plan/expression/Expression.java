@@ -21,8 +21,7 @@ package org.apache.iotdb.db.mpp.plan.expression;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
@@ -49,6 +48,7 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
@@ -59,7 +59,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -68,7 +67,7 @@ import java.util.Map;
 import java.util.Set;
 
 /** A skeleton class for expression */
-public abstract class Expression {
+public abstract class Expression extends StatementNode {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Operations that Class Expression is not responsible for should be done through a visitor
@@ -101,7 +100,7 @@ public abstract class Expression {
     return false;
   }
 
-  public abstract boolean isMappable(TypeProvider typeProvider);
+  public abstract boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // isConstantOperand
@@ -145,24 +144,6 @@ public abstract class Expression {
 
   public abstract void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId);
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // type inference
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  public abstract TSDataType inferTypes(TypeProvider typeProvider);
-
-  protected static void checkInputExpressionDataType(
-      String expressionString, TSDataType actual, TSDataType... expected) {
-    for (TSDataType type : expected) {
-      if (actual.equals(type)) {
-        return;
-      }
-    }
-    throw new SemanticException(
-        String.format(
-            "Invalid input expression data type. expression: %s, actual data type: %s, expected data type(s): %s.",
-            expressionString, actual.name(), Arrays.toString(expected)));
-  }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // For expression evaluation DAG building
