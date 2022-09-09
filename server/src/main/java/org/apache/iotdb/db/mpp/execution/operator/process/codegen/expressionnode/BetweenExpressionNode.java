@@ -64,16 +64,16 @@ public class BetweenExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public String toSingleRowCode() {
+  public String toExpendCode() {
     StringBuilder betweenCode = new StringBuilder();
     betweenCode
-        .append(firstNode.toSingleRowCode())
+        .append(firstNode.toExpendCode())
         .append(">=")
-        .append(secondNode.toSingleRowCode())
+        .append(secondNode.toExpendCode())
         .append("&&")
-        .append(firstNode.toSingleRowCode())
+        .append(firstNode.toExpendCode())
         .append("<=")
-        .append(thirdNode.toSingleRowCode());
+        .append(thirdNode.toExpendCode());
     return isNotBetween ? "!" + bracket(betweenCode.toString()) : betweenCode.toString();
   }
 }

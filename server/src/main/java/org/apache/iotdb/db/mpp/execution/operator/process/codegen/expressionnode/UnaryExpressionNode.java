@@ -44,7 +44,7 @@ public class UnaryExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public String toSingleRowCode() {
-    return op + bracket(subNode.toSingleRowCode());
+  public String toExpendCode() {
+    return op + bracket(subNode.toExpendCode());
   }
 }

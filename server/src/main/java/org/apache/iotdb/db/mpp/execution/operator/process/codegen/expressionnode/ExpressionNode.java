@@ -19,16 +19,29 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode;
 
+/**
+ * This type is a expression node help to generate expression string it is not complete java
+ * statement
+ */
 public interface ExpressionNode {
+
+  /**
+   * get the code string of the expression if subNode has name, it will replace the full code of the
+   * subNode with its nodeName for example: a + b * c if subNode a * c has name "var1", the return
+   * value will be a + var1
+   */
+  String toCode();
+
+  /**
+   * this function will generate complete code of expression without generated variable for example:
+   * (a + b) * c will just return : (a + b) * c seldom used
+   */
+  String toExpendCode();
+
+  /** return an ExpressionNode represent in which condition current ExpressionNode will be null */
+  ExpressionNode checkWhetherNotNull();
+
   String getNodeName();
 
   void setNodeName(String nodeName);
-
-  // each node has a name will be replaced by its name
-  // the nodes without name will call toCode()
-  String toCode();
-
-  ExpressionNode checkWhetherNotNull();
-
-  String toSingleRowCode();
 }

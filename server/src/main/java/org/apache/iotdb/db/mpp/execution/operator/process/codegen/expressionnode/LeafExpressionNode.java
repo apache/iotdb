@@ -36,7 +36,7 @@ public class LeafExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public String toSingleRowCode() {
+  public String toExpendCode() {
     return toCode();
   }
 }

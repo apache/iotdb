@@ -19,26 +19,26 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen;
 
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
-public interface Codegen {
+public interface CodegenEvaluator {
   /** Accept inputs in Objects, return calculated value through code generation */
   Object[] accept(Object[] args, long timestamp) throws InvocationTargetException;
 
-  /** construct expression to script, may fail and will return false */
-  boolean addExpression(Expression expression);
-
   List<Boolean> isGenerated();
 
-  Codegen setTypeProvider(TypeProvider typeProvider);
-
-  /** this function should be called before {@link Codegen#addExpression(Expression)} */
-  Codegen setInputs(List<String> paths, List<TSDataType> tsDataTypes);
-
+  /** construct expression to script, may fail and will return false */
   void generateScriptEvaluator() throws Exception;
+
+  void generateFilterEvaluator() throws Exception;
+
+  Column[] evaluate(TsBlock inputTsBlock) throws InvocationTargetException;
+
+  Column evaluateFilter(TsBlock input) throws InvocationTargetException;
+
+  boolean isFilterGeneratedSuccess();
 }

@@ -66,7 +66,7 @@ public class BinaryExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public String toSingleRowCode() {
-    return bracket(leftNode.toSingleRowCode()) + op + bracket(rightNode.toSingleRowCode());
+  public String toExpendCode() {
+    return bracket(leftNode.toExpendCode()) + op + bracket(rightNode.toExpendCode());
   }
 }

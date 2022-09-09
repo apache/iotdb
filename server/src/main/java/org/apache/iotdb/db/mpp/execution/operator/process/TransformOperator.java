@@ -25,9 +25,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.codegen.Codegen;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenImpl;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenEvaluator;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenEvaluatorImpl;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -89,9 +89,10 @@ public class TransformOperator implements ProcessOperator {
   protected LayerPointReader[] dataReaders;
   protected boolean codegenExpressionsHaveCache;
   protected Object[] cacheValues;
-  protected Codegen generatedEvaluate;
+  protected CodegenEvaluator generatedEvaluate;
 
   public TransformOperator(
+      CodegenContext codegenContext,
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
@@ -109,29 +110,20 @@ public class TransformOperator implements ProcessOperator {
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);
     initTransformers(inputLocations, outputExpressions, typeProvider);
-    initGeneratedEvaluate(inputLocations, outputExpressions, typeProvider, inputDataTypes);
+    initGeneratedEvaluate(codegenContext);
     timeHeap = new TimeSelector(transformers.length << 1, isAscending);
     transformerTimeHeap = new TimeSelector(transformers.length << 1, isAscending);
     shouldIterateReadersToNextValid = new boolean[outputExpressions.length];
     Arrays.fill(shouldIterateReadersToNextValid, true);
   }
 
-  private void initGeneratedEvaluate(
-      Map<String, List<InputLocation>> inputLocations,
-      Expression[] outputExpressions,
-      TypeProvider typeProvider,
-      List<TSDataType> inputDataTypes) {
-    generatedEvaluate = new CodegenImpl(typeProvider, udtfContext, new CodegenContext());
-    List<String> paths = new ArrayList<>(inputLocations.keySet());
+  private void initGeneratedEvaluate(CodegenContext codegenContext) {
+    codegenContext.setUdtfContext(udtfContext);
+    generatedEvaluate = new CodegenEvaluatorImpl(codegenContext);
 
-    generatedEvaluate.setInputs(paths, inputDataTypes);
-
-    for (Expression expression : outputExpressions) {
-      generatedEvaluate.addExpression(expression);
-    }
-    codeGeneratedSuccess = generatedEvaluate.isGenerated();
     try {
       generatedEvaluate.generateScriptEvaluator();
+      codeGeneratedSuccess = generatedEvaluate.isGenerated();
     } catch (Exception exception) {
       // code generate fail, all marked as false
       codeGeneratedSuccess = Collections.nCopies(codeGeneratedSuccess.size(), false);

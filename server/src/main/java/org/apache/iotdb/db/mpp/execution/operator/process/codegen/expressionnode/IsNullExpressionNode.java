@@ -53,8 +53,8 @@ public class IsNullExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public String toSingleRowCode() {
+  public String toExpendCode() {
     String op = isNotNull ? "!=" : "==";
-    return subExpression.toSingleRowCode() + " " + op + " null ";
+    return subExpression.toExpendCode() + " " + op + " null ";
   }
 }

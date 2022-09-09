@@ -102,7 +102,7 @@ public class FunctionExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public String toSingleRowCode() {
+  public String toExpendCode() {
     return toCode();
   }
 

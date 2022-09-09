@@ -19,21 +19,21 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen;
 
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 
-import java.util.List;
-
 public interface CodegenVisitor {
 
-  //  boolean unaryExpressionVisitor(UnaryExpression unaryExpression);
+  boolean expressionVisitor(Expression expression);
 
   boolean logicNotExpressionVisitor(LogicNotExpression logicNotExpression);
 
@@ -59,9 +59,5 @@ public interface CodegenVisitor {
 
   boolean functionExpressionVisitor(FunctionExpression functionExpression);
 
-  void init();
-
-  List<String> getParameterNames();
-
-  boolean isContainUDTFExpression();
+  boolean inExpressionVisitor(InExpression inExpression);
 }

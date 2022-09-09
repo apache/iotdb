@@ -19,24 +19,45 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode;
 
-public class ConstantExpressionNode extends ExpressionNodeImpl {
+public class InExpressionNode extends ExpressionNodeImpl {
+  private final String setName;
 
-  public ConstantExpressionNode(String varName) {
-    this.nodeName = varName;
+  private final ExpressionNode subNode;
+
+  private final boolean isNotIn;
+
+  public InExpressionNode(
+      String nodeName, ExpressionNode subNode, String setNameNode, boolean isNotIn) {
+    this.nodeName = nodeName;
+    this.setName = setNameNode;
+    this.subNode = subNode;
+    this.isNotIn = isNotIn;
+  }
+
+  public InExpressionNode(ExpressionNode subNode, String setName, boolean isNotIn) {
+    this.setName = setName;
+    this.subNode = subNode;
+    this.isNotIn = isNotIn;
   }
 
   @Override
   public String toCode() {
-    return nodeName;
+    if (subNode.getNodeName() != null) {
+      String code = setName + ".contains(" + subNode.getNodeName() + ")";
+      return isNotIn ? "! " + code : code;
+    } else {
+      String code = setName + ".contains(" + subNode.toCode() + ")";
+      return isNotIn ? "! " + code : code;
+    }
   }
 
   @Override
   public ExpressionNode checkWhetherNotNull() {
-    return new ConstantExpressionNode("true");
+    return new IsNullExpressionNode(subNode, true);
   }
 
   @Override
   public String toExpendCode() {
-    return nodeName;
+    return null;
   }
 }

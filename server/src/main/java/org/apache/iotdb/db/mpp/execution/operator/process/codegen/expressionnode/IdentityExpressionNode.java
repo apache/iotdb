@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode;
 
-public class ConstantExpressionNode extends ExpressionNodeImpl {
-
-  public ConstantExpressionNode(String varName) {
-    this.nodeName = varName;
+public class IdentityExpressionNode extends ExpressionNodeImpl {
+  public IdentityExpressionNode(String nodeName) {
+    this.nodeName = nodeName;
   }
 
   @Override

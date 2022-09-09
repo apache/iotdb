@@ -25,48 +25,96 @@ import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.New
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.ReturnStatement;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.Statement;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.CodegenSimpleRow;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 public class CodegenContext {
-  private final List<Statement> codes;
+  private List<Statement> codes;
 
-  private final Set<Expression> inputExpr;
+  private final Map<String, List<InputLocation>> inputLocations;
+  private final List<TSDataType> inputDataTypes;
 
-  private final Set<Expression> constExpr;
+  private Map<String, String> inputNameToVarName;
 
-  private final List<Expression> outputExpr;
+  private final List<Expression> outputExpression;
 
-  private final Map<Expression, Class<?>> expressionClass;
+  private final Expression filterExpression;
 
-  private final Map<Expression, ExpressionNode> expressionToNode;
+  private Map<Expression, TSDataType> expressionToDataType;
+
+  private Map<Expression, ExpressionNode> expressionToNode;
 
   private Map<String, UDTFExecutor> udtfExecutors;
 
   private Map<String, CodegenSimpleRow> udtfInputs;
 
-  public CodegenContext() {
-    this.codes = new ArrayList<>();
-    this.expressionToNode = new HashMap<>();
-    this.inputExpr = new HashSet<>();
-    this.outputExpr = new ArrayList<>();
-    this.expressionClass = new HashMap<>();
-    this.constExpr = new HashSet<>();
-    this.udtfInputs = new HashMap<>();
-    this.udtfExecutors = new HashMap<>();
+  private final TypeProvider typeProvider;
+
+  private UDTFContext udtfContext;
+
+  public UDTFContext getUdtfContext() {
+    return udtfContext;
   }
 
+  public void setUdtfContext(UDTFContext udtfContext) {
+    this.udtfContext = udtfContext;
+  }
+
+  public void setIsExpressionGeneratedSuccess(List<Boolean> isExpressionGeneratedSuccess) {
+    this.isExpressionGeneratedSuccess = isExpressionGeneratedSuccess;
+  }
+
+  private List<Boolean> isExpressionGeneratedSuccess;
+
   private long uniqueIndex;
+
+  public CodegenContext(
+      Map<String, List<InputLocation>> inputLocations,
+      List<TSDataType> inputDataTypes,
+      List<Expression> outputExpressions,
+      Expression filterExpression,
+      TypeProvider typeProvider) {
+    init();
+
+    this.inputLocations = inputLocations;
+    this.inputDataTypes = inputDataTypes;
+    this.outputExpression = outputExpressions;
+    this.filterExpression = filterExpression;
+    this.typeProvider = typeProvider;
+  }
+
+  public void init() {
+    this.codes = new ArrayList<>();
+    this.expressionToNode = new HashMap<>();
+    this.expressionToDataType = new HashMap<>();
+    this.udtfInputs = new HashMap<>();
+    this.udtfExecutors = new HashMap<>();
+    this.inputNameToVarName = new HashMap<>();
+  }
+
+  public void addInputVarNameMap(String inputName, String varName) {
+    inputNameToVarName.put(inputName, varName);
+  }
+
+  public String getVarName(String inputName) {
+    return inputNameToVarName.get(inputName);
+  }
+
+  public Map<String, String> getInputNameToVarName() {
+    return inputNameToVarName;
+  }
 
   public boolean isExpressionExisted(Expression expression) {
     return expressionToNode.containsKey(expression);
@@ -76,7 +124,7 @@ public class CodegenContext {
       Expression expression, ExpressionNode ExpressionNode, TSDataType tsDataType) {
     if (!expressionToNode.containsKey(expression)) {
       expressionToNode.put(expression, ExpressionNode);
-      expressionClass.put(expression, tsDatatypeToClass(tsDataType));
+      expressionToDataType.put(expression, tsDataType);
     }
   }
 
@@ -85,14 +133,6 @@ public class CodegenContext {
       return expressionToNode.get(expression);
     }
     return null;
-  }
-
-  public void addInputExpr(Expression expression) {
-    inputExpr.add(expression);
-  }
-
-  public void addConstExpr(Expression expression) {
-    constExpr.add(expression);
   }
 
   public void addUdtfExecutor(String executorName, UDTFExecutor executor) {
@@ -104,13 +144,6 @@ public class CodegenContext {
       udtfInputs = new HashMap<>();
     }
     udtfInputs.put(rowName, input);
-  }
-
-  public boolean isInputOrConstant(Expression expression) {
-    if (inputExpr.contains(expression)) {
-      return true;
-    }
-    return constExpr.contains(expression);
   }
 
   public void addCode(Statement statement) {
@@ -126,19 +159,27 @@ public class CodegenContext {
   }
 
   public void addOutputExpr(Expression expression) {
-    outputExpr.add(expression);
+    outputExpression.add(expression);
+  }
+
+  public void generateReturnFilter() {
+    ReturnStatement returnStatement =
+        new ReturnStatement(
+            new ConstantExpressionNode(expressionToNode.get(filterExpression).getNodeName()));
+    codes.add(returnStatement);
   }
 
   public void generateReturnStatement() {
     String retValueVarName = uniqueVarName();
     NewObjectsStatement retValueStatement =
-        new NewObjectsStatement(retValueVarName, outputExpr.size());
+        new NewObjectsStatement(retValueVarName, outputExpression.size());
 
-    for (Expression expression : outputExpr) {
-      if (Objects.isNull(expression)) {
-        retValueStatement.addRetValue(null);
-      } else {
+    for (int i = 0; i < outputExpression.size(); ++i) {
+      Expression expression = outputExpression.get(i);
+      if (isExpressionGeneratedSuccess.get(i)) {
         retValueStatement.addRetValue(expressionToNode.get(expression));
+      } else {
+        retValueStatement.addRetValue(null);
       }
     }
     codes.add(retValueStatement);
@@ -173,15 +214,11 @@ public class CodegenContext {
     }
   }
 
-  public Set<Expression> getInputExpr() {
-    return inputExpr;
-  }
-
   public Class<?> getExpressionType(Expression expression) {
-    if (!expressionClass.containsKey(expression)) {
+    if (!expressionToDataType.containsKey(expression)) {
       return null;
     }
-    return expressionClass.get(expression);
+    return tsDatatypeToClass(expressionToDataType.get(expression));
   }
 
   public Map<String, UDTFExecutor> getUdtfExecutors() {
@@ -190,5 +227,33 @@ public class CodegenContext {
 
   public Map<String, CodegenSimpleRow> getUdtfInputs() {
     return udtfInputs;
+  }
+
+  public Map<String, List<InputLocation>> getInputLocations() {
+    return inputLocations;
+  }
+
+  public List<TSDataType> getInputDataTypes() {
+    return inputDataTypes;
+  }
+
+  public List<Expression> getOutputExpression() {
+    return outputExpression;
+  }
+
+  public Expression getFilterExpression() {
+    return filterExpression;
+  }
+
+  public TypeProvider getTypeProvider() {
+    return typeProvider;
+  }
+
+  public List<TSDataType> getOutputDataTypes() {
+    return outputExpression.stream().map(expressionToDataType::get).collect(Collectors.toList());
+  }
+
+  public boolean isExpressionInput(Expression expression) {
+    return inputLocations.containsKey(expression.getExpressionString());
   }
 }

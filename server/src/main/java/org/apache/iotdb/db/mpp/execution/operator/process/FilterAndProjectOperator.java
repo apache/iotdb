@@ -21,6 +21,9 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenEvaluator;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenEvaluatorImpl;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.BinaryColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.ConstantColumnTransformer;
@@ -42,6 +45,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class FilterAndProjectOperator implements ProcessOperator {
 
@@ -66,7 +70,14 @@ public class FilterAndProjectOperator implements ProcessOperator {
   // false when we only need to do projection
   private final boolean hasFilter;
 
+  private CodegenEvaluator codegenEvaluator;
+
+  private List<Boolean> expressionGeneratedSuccess;
+
+  private boolean isGeneratedSuccess;
+
   public FilterAndProjectOperator(
+      CodegenContext codegenContext,
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> filterOutputDataTypes,
@@ -87,6 +98,26 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.hasNonMappableUDF = hasNonMappableUDF;
     this.filterTsBlockBuilder = new TsBlockBuilder(8, filterOutputDataTypes);
     this.hasFilter = hasFilter;
+    initCodegenEvaluator(codegenContext);
+  }
+
+  private void initCodegenEvaluator(CodegenContext codegenContext) {
+    if (Objects.isNull(codegenContext)) {
+      isGeneratedSuccess = false;
+    }
+
+    codegenEvaluator = new CodegenEvaluatorImpl(codegenContext);
+    try {
+      codegenEvaluator.generateScriptEvaluator();
+      expressionGeneratedSuccess = codegenEvaluator.isGenerated();
+      if (hasFilter) {
+        codegenEvaluator.generateFilterEvaluator();
+      }
+
+      isGeneratedSuccess = true;
+    } catch (Exception e) {
+      isGeneratedSuccess = false;
+    }
   }
 
   @Override
@@ -129,9 +160,11 @@ public class FilterAndProjectOperator implements ProcessOperator {
       leafColumnTransformer.initFromTsBlock(input);
     }
 
-    filterOutputTransformer.tryEvaluate();
-
-    Column filterColumn = filterOutputTransformer.getColumn();
+    Column filterColumn = tryGetFilterColumnByCodegen(input);
+    if (Objects.isNull(filterColumn)) {
+      filterOutputTransformer.tryEvaluate();
+      filterColumn = filterOutputTransformer.getColumn();
+    }
 
     // reuse this builder
     filterTsBlockBuilder.reset();
@@ -175,18 +208,47 @@ public class FilterAndProjectOperator implements ProcessOperator {
     return filterTsBlockBuilder.build();
   }
 
+  private Column tryGetFilterColumnByCodegen(TsBlock input) {
+    if (!codegenEvaluator.isFilterGeneratedSuccess()) {
+      return null;
+    }
+    try {
+      return codegenEvaluator.evaluateFilter(input);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
   private TsBlock getTransformedTsBlock(TsBlock input) {
     final TimeColumn originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
+
+    // deal with codegenSuccess expressions
+    Column[] codegenColumn = new Column[0];
+    if (isGeneratedSuccess) {
+      try {
+        codegenColumn = codegenEvaluator.evaluate(input);
+      } catch (Exception e) {
+        codegenColumn = new Column[positionCount];
+      }
+    }
+
     // feed pre calculated data
     for (LeafColumnTransformer leafColumnTransformer : projectLeafColumnTransformerList) {
       leafColumnTransformer.initFromTsBlock(input);
     }
 
     List<Column> resultColumns = new ArrayList<>();
-    for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
-      columnTransformer.tryEvaluate();
-      resultColumns.add(columnTransformer.getColumn());
+    for (int i = 0; i < projectOutputTransformerList.size(); i++) {
+      if (isGeneratedSuccess
+          && expressionGeneratedSuccess.get(i)
+          && !Objects.isNull(codegenColumn[i])) {
+        resultColumns.add(codegenColumn[i]);
+      } else {
+        ColumnTransformer columnTransformer = projectOutputTransformerList.get(i);
+        columnTransformer.tryEvaluate();
+        resultColumns.add(columnTransformer.getColumn());
+      }
     }
     return TsBlock.wrapBlocksWithoutCopy(
         positionCount, originTimeColumn, resultColumns.toArray(new Column[0]));

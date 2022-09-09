@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.unary;
 
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.CodegenVisitor;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -122,5 +123,10 @@ public class InExpression extends UnaryExpression {
     for (String value : values) {
       ReadWriteIOUtils.write(value, stream);
     }
+  }
+
+  @Override
+  public boolean codegenAccept(CodegenVisitor visitor) {
+    return visitor.inExpressionVisitor(this);
   }
 }
