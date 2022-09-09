@@ -91,20 +91,11 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       return false;
     }
 
-    // 如果当前窗口还没有初始化，那么需要先初始化
-    // 主要是窗口的一些状态值比如时间窗口的时间范围TimeRange、状态窗口的第一个值用于后面做比较等
-    // 然后使用aggregator.updateWindow方法，清空之前aggregator的聚合结果。
+    // if window is not initialized, we should init window status and reset aggregators
     if (!windowManager.isCurWindowInit()) {
-      // init 才是真正的给当前窗口赋值
       initWindowManagerAndAggregators();
     }
 
-    // 如果inputTsBlock满足当前窗口的时间范围
-    // 对于时间窗口来说，就是之前的逻辑
-    // 对于其他三种窗口来说，其实并不需要对时间范围进行判断，因为每一点都会处于窗口内
-    // 但是，因为我们拿到的TsBlock的时间戳范围是会超过用户给定的时间范围的，所以这里也需要进行判断
-    // 比如 用户给定[100,200]时间范围，数据共有[0,1000]，这时候TsBlock中的时间戳是可能会超过200的
-    // 所以不能把TsBlock中所有的数据点全部用于窗口，也需要时间范围的判断
     if (windowManager.satisfiedTimeRange(inputTsBlock)) {
       inputTsBlock = windowManager.skipPointsOutOfTimeRange(inputTsBlock);
 
@@ -119,11 +110,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       }
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
         inputTsBlock = null;
-        // 用于判断如果TsBlock刚好用完，聚合窗口是否也刚好结束。
-        // NOTE: 但是
-        // 如果旧的TsBlock还剩8个点，但是窗口共10个点。也就是新的TsBlock向后再找两个点窗口才结束。
-        // 按目前的FirstValue的addIntInput逻辑，第一个数据就会把candidate记为true，所以下面这个条件会为true
-        // candidate的逻辑是不是要在merge中写？
+        // for the last index of TsBlock, if we can know the aggregation calculation is over
+        // we can directly updateResultTsBlock and return true
         if (isAllAggregatorsHasFinalResult(aggregators)) {
           updateResultTsBlock();
           return true;
@@ -146,9 +134,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   @Override
   protected void updateResultTsBlock() {
     appendAggregationResult(resultTsBlockBuilder, aggregators, windowManager.currentOutputTime());
-    // 对于其他三种窗口来说，可能只能返回true？但是什么时候false呢，怎么知道窗口已经超出时间范围？
     if (windowManager.hasNext()) {
-      // 这里是清空窗口数据，置为notInit
+      // reset window init status to false
       windowManager.genNextWindow();
     } else {
       finish = true;
