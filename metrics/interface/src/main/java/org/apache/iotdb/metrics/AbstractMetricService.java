@@ -23,8 +23,8 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.reporter.CompositeReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.type.Counter;
@@ -54,7 +54,7 @@ public abstract class AbstractMetricService {
   /** The config of metric service */
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   /** Is the first initialization of metric service */
-  private final AtomicBoolean isFirstInitialization = new AtomicBoolean(true);
+  protected AtomicBoolean isFirstInitialization = new AtomicBoolean(true);
   /** The metric manager of metric service */
   protected AbstractMetricManager metricManager = new DoNothingMetricManager();
   /** The metric reporter of metric service */
@@ -68,31 +68,52 @@ public abstract class AbstractMetricService {
 
   /** start metric service */
   public void startService() {
+    startCoreModule();
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.bindTo(this);
+    }
+  }
+
+  /** restart metric service */
+  public void restartService() {
+    logger.info("Restart Core Module");
+    stopCoreModule();
+    startCoreModule();
+    for (IMetricSet metricSet : metricSets) {
+      logger.info("Restart metricSet: {}", metricSet.getClass().getName());
+      metricSet.unbindFrom(this);
+      metricSet.bindTo(this);
+    }
+  }
+
+  /** stop metric service */
+  public void stopService() {
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.unbindFrom(this);
+    }
+    stopCoreModule();
+  }
+  /** start metric core module */
+  private void startCoreModule() {
     logger.info("Start metric service at level: {}", metricConfig.getMetricLevel().name());
     // load metric manager
     loadManager();
     // load metric reporter
     loadReporter();
     // do start all reporter without first time
-    if (!isFirstInitialization.getAndSet(false)) {
-      startAllReporter();
-    }
+    startAllReporter();
+    logger.info("Start predefined metrics: {}", metricConfig.getPredefinedMetrics());
     for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
       enablePredefinedMetrics(predefinedMetric);
     }
-    logger.info("Start predefined metrics: {}", metricConfig.getPredefinedMetrics());
   }
 
-  /** stop metric service */
-  public void stopService() {
-    compositeReporter.stopAll();
+  /** stop metric core module */
+  private void stopCoreModule() {
+    stopAllReporter();
     metricManager.stop();
     metricManager = new DoNothingMetricManager();
     compositeReporter = new CompositeReporter();
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.stopAsyncCollectedMetrics();
-    }
-    metricSets = new ArrayList<>();
   }
 
   /** Load metric manager according to configuration */
@@ -154,6 +175,14 @@ public abstract class AbstractMetricService {
       return;
     }
     compositeReporter.startAll();
+  }
+
+  /** Stop all reporters */
+  public void stopAllReporter() {
+    if (!isEnable()) {
+      return;
+    }
+    compositeReporter.stopAll();
   }
 
   /** Start reporter according to type */
@@ -258,5 +287,13 @@ public abstract class AbstractMetricService {
 
   public boolean isEnable() {
     return isEnableMetric;
+  }
+
+  /** bind metrics and store metric set */
+  public void addMetricSet(IMetricSet metricSet) {
+    if (!metricSets.contains(metricSet)) {
+      metricSet.bindTo(this);
+      metricSets.add(metricSet);
+    }
   }
 }

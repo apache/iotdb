@@ -36,7 +36,6 @@ import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
 
-import java.time.Duration;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -50,6 +49,9 @@ public class MicrometerPrometheusReporter implements Reporter {
 
   @Override
   public boolean start() {
+    if (httpServer != null) {
+      return false;
+    }
     Set<MeterRegistry> meterRegistrySet =
         Metrics.globalRegistry.getRegistries().stream()
             .filter(reporter -> reporter instanceof PrometheusMeterRegistry)
@@ -64,7 +66,6 @@ public class MicrometerPrometheusReporter implements Reporter {
     }
     httpServer =
         HttpServer.create()
-            .idleTimeout(Duration.ofMillis(30_000L))
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
             .port(metricConfig.getPrometheusExporterPort())
             .route(
