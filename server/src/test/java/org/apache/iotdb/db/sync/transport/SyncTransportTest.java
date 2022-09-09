@@ -132,7 +132,7 @@ public class SyncTransportTest {
   @Test
   public void testTransportFile() throws Exception {
     TSyncIdentityInfo identityInfo =
-        new TSyncIdentityInfo("127.0.0.1", pipeName1, createdTime1, config.getIoTDBVersion());
+        new TSyncIdentityInfo("127.0.0.1", pipeName1, createdTime1, config.getIoTDBVersion(), "");
     try (TTransport transport =
         RpcTransportFactory.INSTANCE.getTransport(
             new TSocket(
@@ -245,7 +245,8 @@ public class SyncTransportTest {
         // do nothing
       }
       serviceClient.handshake(
-          new TSyncIdentityInfo("127.0.0.1", pipeName1, createdTime1, config.getIoTDBVersion()));
+          new TSyncIdentityInfo(
+              "127.0.0.1", pipeName1, createdTime1, config.getIoTDBVersion(), "root.sg1"));
       TSStatus tsStatus = serviceClient.sendPipeData(buffToSend);
       Assert.assertEquals(tsStatus.getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
@@ -278,7 +279,11 @@ public class SyncTransportTest {
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
     IoTDBSyncClient client =
         new IoTDBSyncClient(
-            pipe, "127.0.0.1", IoTDBDescriptor.getInstance().getConfig().getRpcPort(), "127.0.0.1");
+            pipe,
+            "127.0.0.1",
+            IoTDBDescriptor.getInstance().getConfig().getRpcPort(),
+            "127.0.0.1",
+            "root.vehicle");
     client.handshake();
     for (PipeData pipeData : pipeDataList) {
       client.send(pipeData);

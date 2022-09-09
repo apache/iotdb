@@ -130,7 +130,6 @@ keyWords
     | QUERY
     | RUNNING
     | READONLY
-    | ERROR
     | REGEXP
     | REGIONS
     | REMOVE

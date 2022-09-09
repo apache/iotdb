@@ -666,7 +666,7 @@ public class StorageEngineV2 implements IService {
               .deleteWALNode(
                   region.getStorageGroupName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
         }
-        SyncService.getInstance().deleteSyncManager(region.getDataRegionId());
+        SyncService.getInstance().unregisterDataRegion(region.getDataRegionId());
       } catch (Exception e) {
         logger.error(
             "Error occurs when deleting data region {}-{}",

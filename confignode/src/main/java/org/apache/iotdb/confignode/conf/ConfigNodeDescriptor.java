@@ -266,6 +266,7 @@ public class ConfigNodeDescriptor {
                   "procedure_core_worker_thread_size",
                   String.valueOf(conf.getProcedureCoreWorkerThreadsSize()))));
 
+      loadRatisConsensusConfig(properties);
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
@@ -279,13 +280,23 @@ public class ConfigNodeDescriptor {
     }
   }
 
+  private void loadRatisConsensusConfig(Properties properties) {
+    conf.setRatisConsensusLogAppenderBufferSize(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_log_appender_buffer_size_max",
+                String.valueOf(conf.getRatisConsensusLogAppenderBufferSize()))));
+  }
+
   /**
    * Check if the current ConfigNode is SeedConfigNode.
    *
    * @return True if the target_config_nodes points to itself
    */
   public boolean isSeedConfigNode() {
-    return conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+    return (conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+            || (NodeUrlUtils.isLocalAddress(conf.getInternalAddress())
+                && NodeUrlUtils.isLocalAddress(conf.getTargetConfigNode().getIp())))
         && conf.getInternalPort() == conf.getTargetConfigNode().getPort();
   }
 

@@ -19,57 +19,6 @@
 
 -->
 
-## Monitor and Log Tools
-
-### System Monitor
-
-Currently, IoTDB provides users Java's JConsole tool to monitor system status or use IoTDB's open API to check data status.
-
-#### System Status Monitoring
-
-After starting JConsole tool and connecting to IoTDB server, a basic look at IoTDB system status(CPU Occupation, in-memory information, etc.) is provided. See [official documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/management/jconsole.html) for more information.
-
-#### JMX MBean Monitoring
-By using JConsole tool and connecting with JMX you are provided with some system statistics and parameters.
-
-This section describes how to use the JConsole ```Mbean```tab of jconsole to monitor some system configurations of IoTDB, the statistics of writing, and so on. After connecting to JMX, you can find the "MBean" of "org.apache.iotdb.service", as shown in the figure below.
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/46039728/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
-
-### System Metric Framework
-[Metric Tool](Metric-Tool.md)
-
-### Performance Monitor
-
-#### Introduction
-
-To grasp the performance of iotdb, this module is added to count the time-consumption of each operation. This module can compute the statistics of the avg time-consuming of each operation and the proportion of each operation whose time consumption falls into a time range. The output is in log_measure.log file. An output example is below.  
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937461-14296f80-a303-11e9-9602-a7bed624bfb3.png">
-
-#### Configuration parameter
-
-location：conf/iotdb-datanode.properties
-
-<center>
-
-**Table -parameter and description**
-
-| Parameter                 | Default Value | Description                               |
-| :------------------------ | :------------ | :---------------------------------------- |
-| enable\_performance\_stat | false         | Is stat performance of sub-module enable. |
-</center>
-
-### Cache Hit Ratio Statistics
-
-#### Overview
-
-To improve query performance, IOTDB caches ChunkMetaData and TsFileMetaData. Users can view the cache hit ratio through debug level log and MXBean, and adjust the memory occupied by the cache according to the cache hit ratio and system memory. The method of using MXBean to view cache hit ratio is as follows:
-1. Connect to jconsole with port 31999 and select 'MBean' in the menu item above.
-2. Expand the sidebar and select 'org.apache.iotdb.db.service'. You will get the results shown in the following figure:
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
-
 ## System log
 
 IoTDB allows users to configure IoTDB system logs (such as log output level) by modifying the log configuration file. The default location of the system log configuration file is in \$IOTDB_HOME/conf folder. 
@@ -113,3 +62,7 @@ This method is to obtain the current log level of the specified Logger. This met
 
 This method is to obtain the log level of the specified Logger. This method accepts a String type parameter named p1, which is the name of the specified Logger. This method returns the log level of the specified Logger.
 It should be noted that the difference between this method and the `getLoggerEffectiveLevel` method is that the method returns the log level that the specified Logger is set in the configuration file. If the user does not set the log level for the Logger, then return empty. According to Logger's log-level inheritance mechanism, a Logger's level is not explicitly set, it will inherit the log level settings from its nearest ancestor. At this point, calling the `getLoggerEffectiveLevel` method will return the log level in which the Logger is in effect; calling `getLoggerLevel` will return null.
+
+* setLoggerLevel
+
+This method sets the log level of the specified Logger. The method accepts a parameter of type String named p1 and a parameter of type String named p2, specifying the name of the logger and the log level of the target, respectively.
