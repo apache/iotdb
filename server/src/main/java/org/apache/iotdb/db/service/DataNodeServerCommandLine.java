@@ -158,6 +158,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
         throw new IoTDBException(
             removeResp.getStatus().toString(), removeResp.getStatus().getCode());
       }
+      logger.info("Submit remove datanode request successfully, you can see more details in the confignode logs.");
     }
   }
 

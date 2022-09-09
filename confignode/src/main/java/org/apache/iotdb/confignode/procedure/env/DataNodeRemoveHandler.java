@@ -209,7 +209,7 @@ public class DataNodeRemoveHandler {
     rpcClientDataNode = selectedDataNode.orElse(destDataNode);
 
     // Send removeRegionPeer request to the rpcClientDataNode
-    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, rpcClientDataNode);
+    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(

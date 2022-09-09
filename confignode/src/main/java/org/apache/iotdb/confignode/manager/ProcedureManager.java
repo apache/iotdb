@@ -260,8 +260,6 @@ public class ProcedureManager {
   }
 
   public void reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
-    LOGGER.info(
-        "Receive DataNode region migrate result，regionId: {}，req: {}", req.getRegionId(), req);
 
     this.executor
         .getProcedures()
