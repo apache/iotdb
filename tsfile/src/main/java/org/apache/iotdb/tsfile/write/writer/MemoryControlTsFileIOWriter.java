@@ -55,6 +55,17 @@ import static org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor.add
 import static org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor.checkAndBuildLevelIndex;
 import static org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor.generateRootNode;
 
+/**
+ * This writer control the total size of chunk metadata to avoid OOM when writing massive
+ * timeseries. <b>This writer can only be used in the scenarios where the chunk is written in
+ * order.</b> The order means lexicographical order and time order. The lexicographical order
+ * requires that, if the writer is going to write a series <i>S</i>, all data of the all series
+ * smaller than <i>S</i> in lexicographical order has been written to the writer. The time order
+ * requires that, for a single series <i>S</i>, if the writer is going to write a chunk <i>C</i> of
+ * it, all chunks of <i>S</i> whose start time is smaller than <i>C</i> should have been written to
+ * the writer. If you do not comply with the above requirements, metadata index tree may be
+ * generated incorrectly. As a result, the file cannot be queried correctly.
+ */
 public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
   private static final Logger LOG = LoggerFactory.getLogger(MemoryControlTsFileIOWriter.class);
   protected long maxMetadataSize;
