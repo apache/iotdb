@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class LastValueDescAccumulator extends LastValueAccumulator {
@@ -39,87 +39,207 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     super.reset();
   }
 
-  protected int addIntInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        return i;
+  protected int addIntInput(Column[] column, IWindow curWindow) {
+    int windowControlColumnIndex = curWindow.getControlColumnIndex();
+    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+
+    if (curWindow.isTimeWindow()) {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          updateIntLastValue(column[1].getInt(i), column[0].getLong(i));
+          return i;
+        }
       }
-      if (!column[1].isNull(i)) {
-        updateIntLastValue(column[1].getInt(i), curTime);
-        return i;
+    } else {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          // do not assign true to initResult
+          if (column[0].getLong(i) > maxTime) {
+            maxTime = column[0].getLong(i);
+            lastValue.setInt(column[1].getInt(i));
+          }
+        }
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
-  protected int addLongInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        return i;
+  protected int addLongInput(Column[] column, IWindow curWindow) {
+    int windowControlColumnIndex = curWindow.getControlColumnIndex();
+    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+
+    if (curWindow.isTimeWindow()) {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          updateLongLastValue(column[1].getLong(i), column[0].getLong(i));
+          return i;
+        }
       }
-      if (!column[1].isNull(i)) {
-        updateLongLastValue(column[1].getLong(i), curTime);
-        return i;
+    } else {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          // do not assign true to initResult
+          if (column[0].getLong(i) > maxTime) {
+            maxTime = column[0].getLong(i);
+            lastValue.setLong(column[1].getLong(i));
+          }
+        }
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
-  protected int addFloatInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        return i;
+  protected int addFloatInput(Column[] column, IWindow curWindow) {
+    int windowControlColumnIndex = curWindow.getControlColumnIndex();
+    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+
+    if (curWindow.isTimeWindow()) {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          updateFloatLastValue(column[1].getFloat(i), column[0].getLong(i));
+          return i;
+        }
       }
-      if (!column[1].isNull(i)) {
-        updateFloatLastValue(column[1].getFloat(i), curTime);
-        return i;
+    } else {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          // do not assign true to initResult
+          if (column[0].getLong(i) > maxTime) {
+            maxTime = column[0].getLong(i);
+            lastValue.setFloat(column[1].getFloat(i));
+          }
+        }
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
-  protected int addDoubleInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        return i;
+  protected int addDoubleInput(Column[] column, IWindow curWindow) {
+    int windowControlColumnIndex = curWindow.getControlColumnIndex();
+    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+
+    if (curWindow.isTimeWindow()) {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          updateDoubleLastValue(column[1].getDouble(i), column[0].getLong(i));
+          return i;
+        }
       }
-      if (!column[1].isNull(i)) {
-        updateDoubleLastValue(column[1].getDouble(i), curTime);
-        return i;
+    } else {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          // do not assign true to initResult
+          if (column[0].getLong(i) > maxTime) {
+            maxTime = column[0].getLong(i);
+            lastValue.setDouble(column[1].getDouble(i));
+          }
+        }
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
-  protected int addBooleanInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        return i;
+  protected int addBooleanInput(Column[] column, IWindow curWindow) {
+    int windowControlColumnIndex = curWindow.getControlColumnIndex();
+    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+
+    if (curWindow.isTimeWindow()) {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          updateBooleanLastValue(column[1].getBoolean(i), column[0].getLong(i));
+          return i;
+        }
       }
-      if (!column[1].isNull(i)) {
-        updateBooleanLastValue(column[1].getBoolean(i), curTime);
-        return i;
+    } else {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          // do not assign true to initResult
+          if (column[0].getLong(i) > maxTime) {
+            maxTime = column[0].getLong(i);
+            lastValue.setBoolean(column[1].getBoolean(i));
+          }
+        }
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
-  protected int addBinaryInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        return i;
+  protected int addBinaryInput(Column[] column, IWindow curWindow) {
+    int windowControlColumnIndex = curWindow.getControlColumnIndex();
+    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+
+    if (curWindow.isTimeWindow()) {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          updateBinaryLastValue(column[1].getBinary(i), column[0].getLong(i));
+          return i;
+        }
       }
-      if (!column[1].isNull(i)) {
-        updateBinaryLastValue(column[1].getBinary(i), curTime);
-        return i;
+    } else {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          // do not assign true to initResult
+          if (column[0].getLong(i) > maxTime) {
+            maxTime = column[0].getLong(i);
+            lastValue.setBinary(column[1].getBinary(i));
+          }
+        }
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 }

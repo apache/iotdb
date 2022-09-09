@@ -21,9 +21,10 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
-import org.apache.iotdb.db.mpp.execution.operator.IWindowManager;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindowManager;
+import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -53,6 +54,8 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   protected IWindowManager windowManager;
 
+  protected boolean finish;
+
   protected final List<Aggregator> aggregators;
 
   // using for building result tsBlock
@@ -73,6 +76,9 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     this.child = child;
     this.aggregators = aggregators;
     this.timeRangeIterator = timeRangeIterator;
+    this.finish = false;
+
+    this.windowManager = new TimeWindowManager(this.timeRangeIterator);
 
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
@@ -94,16 +100,6 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     return child.isBlocked();
   }
 
-  protected boolean finish;
-
-  @Override
-  public boolean hasNext() {
-    if (finish) {
-      return false;
-    }
-    return inputTsBlock != null || child.hasNext();
-  }
-
   @Override
   public TsBlock next() {
     // start stopwatch
@@ -113,18 +109,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     // reset operator state
     canCallNext = true;
 
-    while (System.nanoTime() - start < maxRuntime && hasNext() && !resultTsBlockBuilder.isFull()) {
-
-      //      if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
-      //        // move to next time window
-      //        curTimeRange = timeRangeIterator.nextTimeRange();
-      //
-      //        // clear previous aggregation result
-      //        for (Aggregator aggregator : aggregators) {
-      //          aggregator.updateTimeRange(curTimeRange);
-      //        }
-      //      }
-
+    while (hasNext() && !resultTsBlockBuilder.isFull()) {
       // calculate aggregation result on current time window
       if (!calculateNextAggregationResult()) {
         break;

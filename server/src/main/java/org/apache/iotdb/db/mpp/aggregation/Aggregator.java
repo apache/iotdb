@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.mpp.execution.operator.IWindow;
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
+import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindow;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -64,22 +65,18 @@ public class Aggregator {
     checkArgument(
         step.isInputRaw(),
         "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
-    if (inputLocationList == null) {
-      return accumulator.addInput(tsBlock.getTimeAndValueColumn(0), curWindow);
-    } else {
-      int lastReadReadIndex = 0;
-      for (InputLocation[] inputLocations : inputLocationList) {
-        checkArgument(
-            inputLocations[0].getTsBlockIndex() == 0,
-            "RawDataAggregateOperator can only process one tsBlock input.");
-        Column[] timeValueColumn = new Column[2];
-        timeValueColumn[0] = tsBlock.getTimeColumn();
-        timeValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
-        lastReadReadIndex =
-            Math.max(lastReadReadIndex, accumulator.addInput(timeValueColumn, curWindow));
-      }
-      return lastReadReadIndex;
+    int lastReadReadIndex = 0;
+    for (InputLocation[] inputLocations : inputLocationList) {
+      checkArgument(
+          inputLocations[0].getTsBlockIndex() == 0,
+          "RawDataAggregateOperator can only process one tsBlock input.");
+      Column[] timeValueColumn = new Column[2];
+      timeValueColumn[0] = tsBlock.getTimeColumn();
+      timeValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+      lastReadReadIndex =
+          Math.max(lastReadReadIndex, accumulator.addInput(timeValueColumn, curWindow));
     }
+    return lastReadReadIndex;
   }
 
   // Used for AggregateOperator

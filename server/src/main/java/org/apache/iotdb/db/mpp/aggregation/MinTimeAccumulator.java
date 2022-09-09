@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
@@ -37,21 +37,34 @@ public class MinTimeAccumulator implements Accumulator {
   // Column should be like: | Time | Value |
   // Value is used to judge isNull()
   @Override
-  public int addInput(Column[] column, TimeRange timeRange) {
-    int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
-    for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
-        return i;
+  public int addInput(Column[] column, IWindow curWindow) {
+    int windowControlColumnIndex = curWindow.getControlColumnIndex();
+    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+
+    if (curWindow.isTimeWindow()) {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          updateMinTime(column[0].getLong(i));
+          return i;
+        }
       }
-      if (!column[1].isNull(i)) {
-        updateMinTime(curTime);
-        return i;
+    } else {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          minTime = Math.min(minTime, column[0].getLong(i));
+        }
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
   // partialResult should be like: | partialMinTimeValue |

@@ -17,17 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator;
+package org.apache.iotdb.db.mpp.execution.operator.window;
 
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public interface IWindow {
 
   int getControlColumnIndex();
 
-  boolean satisfy(Column column);
+  boolean satisfy(Column column, int index);
 
   boolean isTimeWindow();
 
-  void acceptOnePoint();
+  void mergeOnePoint();
+
+  void update(TimeRange curTimeRange);
 }

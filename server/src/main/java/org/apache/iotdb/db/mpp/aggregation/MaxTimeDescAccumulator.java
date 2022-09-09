@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
@@ -27,21 +27,34 @@ public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
   // Column should be like: | Time | Value |
   // Value is used to judge isNull()
   @Override
-  public int addInput(Column[] column, TimeRange timeRange) {
-    int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
-    for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
-        return i;
+  public int addInput(Column[] column, IWindow curWindow) {
+    int windowControlColumnIndex = curWindow.getControlColumnIndex();
+    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+
+    if (curWindow.isTimeWindow()) {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          updateMaxTime(column[0].getLong(i));
+          return i;
+        }
       }
-      if (!column[1].isNull(i)) {
-        updateMaxTime(curTime);
-        return i;
+    } else {
+      for (int i = 0; i < curPositionCount; i++) {
+        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+          return i;
+        }
+        curWindow.mergeOnePoint();
+        if (!column[1].isNull(i)) {
+          maxTime = Math.max(maxTime, column[0].getLong(i));
+        }
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
   @Override

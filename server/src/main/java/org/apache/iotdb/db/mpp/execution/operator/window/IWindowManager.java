@@ -17,23 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator;
+package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 public interface IWindowManager {
 
-  boolean isCurWindowReady();
+  boolean isCurWindowInit();
 
   void initCurWindow(TsBlock tsBlock);
 
   boolean hasNext();
 
-  void next();
+  void genNextWindow();
 
   long currentOutputTime();
 
   IWindow getCurWindow();
 
-  TsBlock skipOutOfWindowPoints(TsBlock inputTsBlock);
+  TsBlock skipPointsOutOfTimeRange(TsBlock inputTsBlock);
+
+  boolean satisfiedTimeRange(TsBlock inputTsBlock);
+
+  boolean isTsBlockOutOfBound(TsBlock inputTsBlock);
 }
