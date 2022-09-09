@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.commons.trigger.exception;
 
-public class TriggerRegistrationException extends RuntimeException {
-  public TriggerRegistrationException(String message) {
+public class TriggerJarToLargeException extends RuntimeException {
+  public TriggerJarToLargeException(String message) {
     super(message);
   }
 
-  public TriggerRegistrationException(String message, Throwable cause) {
+  public TriggerJarToLargeException(String message, Throwable cause) {
     super(message, cause);
   }
 }
