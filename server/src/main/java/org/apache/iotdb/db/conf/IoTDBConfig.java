@@ -1103,9 +1103,6 @@ public class IoTDBConfig {
     mqttDir = addHomeDir(mqttDir);
     externalPropertiesLoaderDir = addHomeDir(externalPropertiesLoaderDir);
     externalLimiterDir = addHomeDir(externalLimiterDir);
-    for (int i = 0; i < walDirs.length; i++) {
-      walDirs[i] = addHomeDir(walDirs[i]);
-    }
     extPipeDir = addHomeDir(extPipeDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
@@ -1576,14 +1573,6 @@ public class IoTDBConfig {
 
   public void setWalMode(WALMode walMode) {
     this.walMode = walMode;
-  }
-
-  public String[] getWalDirs() {
-    return walDirs;
-  }
-
-  public void setWalDirs(String[] walDirs) {
-    this.walDirs = walDirs;
   }
 
   public int getMaxWalNodesNum() {

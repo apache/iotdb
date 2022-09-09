@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -49,6 +51,7 @@ public class IoTDBStartCheck {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBStartCheck.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -56,7 +59,7 @@ public class IoTDBStartCheck {
   // If user delete folder "data", system.properties can reset.
   private static final String PROPERTIES_FILE_NAME = "system.properties";
   private static final String SCHEMA_DIR = config.getSchemaDir();
-  private static final String[] WAL_DIRS = config.getWalDirs();
+  private static final String[] WAL_DIRS = commonConfig.getWalDirs();
 
   private File propertiesFile;
   private File tmpPropertiesFile;
