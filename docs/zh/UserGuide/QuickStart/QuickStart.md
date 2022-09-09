@@ -67,7 +67,7 @@ Windows 系统启动命令如下：
 ```
 > sbin\start-server.bat -c <conf_path>
 ```
-- "-c" and "-rpc_port" 都是可选的。
+- "-c"是可选的。
 - 选项 "-c" 指定了配置文件所在的文件夹。
 
 #### 使用 Cli 工具
