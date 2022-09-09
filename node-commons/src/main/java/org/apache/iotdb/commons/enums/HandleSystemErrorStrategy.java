@@ -19,13 +19,12 @@
 package org.apache.iotdb.commons.enums;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public enum HandleSystemErrorStrategy {
-  /** just set system status to error and then do nothing else */
-  NONE,
   /** set system status to read-only and the system only accepts query operations */
   CHANGE_TO_READ_ONLY,
   /** the system will be shutdown */
@@ -33,23 +32,17 @@ public enum HandleSystemErrorStrategy {
 
   private static final Logger logger = LoggerFactory.getLogger(HandleSystemErrorStrategy.class);
 
-  public NodeStatus handle() {
-    NodeStatus status = NodeStatus.Error;
-    if (this == HandleSystemErrorStrategy.NONE) {
-      logger.error(
-          "Unrecoverable error occurs! Just change system status to error because handle_system_error is NONE.",
-          new RuntimeException("System mode is set to ERROR"));
-    } else if (this == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY) {
+  public void handle() {
+    if (this == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY) {
       logger.error(
           "Unrecoverable error occurs! Change system status to read-only because handle_system_error is CHANGE_TO_READ_ONLY. Only query statements are permitted!",
           new RuntimeException("System mode is set to READ_ONLY"));
-      status = NodeStatus.ReadOnly;
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
     } else if (this == HandleSystemErrorStrategy.SHUTDOWN) {
       logger.error(
           "Unrecoverable error occurs! Shutdown system directly because handle_system_error is SHUTDOWN.",
-          new RuntimeException("System mode is set to ERROR"));
+          new RuntimeException("Unrecoverable error occurs! Shutdown system directly."));
       System.exit(-1);
     }
-    return status;
   }
 }

@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -125,6 +126,13 @@ public class NodeManager {
     dataSet.setGlobalConfig(globalConfig);
   }
 
+  private void setRatisConfig(DataNodeRegisterResp dataSet) {
+    final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    TRatisConfig ratisConfig = new TRatisConfig();
+    ratisConfig.setAppenderBufferSize(conf.getRatisConsensusLogAppenderBufferSize());
+    dataSet.setRatisConfig(ratisConfig);
+  }
+
   /**
    * Register DataNode
    *
@@ -155,6 +163,7 @@ public class NodeManager {
     dataSet.setDataNodeId(registerDataNodePlan.getInfo().getLocation().getDataNodeId());
     dataSet.setConfigNodeList(getRegisteredConfigNodes());
     setGlobalConfig(dataSet);
+    setRatisConfig(dataSet);
     return dataSet;
   }
 

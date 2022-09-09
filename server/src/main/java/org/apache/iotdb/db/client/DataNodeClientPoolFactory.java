@@ -73,7 +73,7 @@ public class DataNodeClientPoolFactory {
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build(),
-              ThreadName.CONFIG_NODE_CLIENT_POOL_THREAD_NAME.getName()),
+              ThreadName.ASYNC_CONFIGNODE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>()
               .setMaxIdleClientForEachNode(conf.getCoreConnectionForInternalService())
               .setMaxTotalClientForEachNode(conf.getMaxConnectionForInternalService())
@@ -135,7 +135,7 @@ public class DataNodeClientPoolFactory {
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build(),
-              ThreadName.DATA_NODE_MPP_DATA_EXCHANGE_CLIENT_POOL_THREAD_NAME.getName()),
+              ThreadName.ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeMPPDataExchangeServiceClient>()
               .build()
               .getConfig());

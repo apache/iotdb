@@ -852,7 +852,7 @@ public class IoTDBConfig {
   private int pageCacheSizeInSchemaFile = 1024;
 
   /** Internal address for data node */
-  private String internalAddress = "127.0.0.1";
+  private String internalAddress = "0.0.0.0";
 
   /** Internal port for coordinator */
   private int internalPort = 9003;
@@ -984,11 +984,12 @@ public class IoTDBConfig {
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
-  /** Maximum execution time of a DriverTask */
   private int driverTaskExecutionTimeSliceInMs = 100;
 
   /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
+
+  private long RatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
 
   IoTDBConfig() {}
 
@@ -3138,6 +3139,15 @@ public class IoTDBConfig {
 
   public void setThrottleThreshold(long throttleThreshold) {
     this.throttleThreshold = throttleThreshold;
+  }
+
+  public long getRatisConsensusLogAppenderBufferSizeMax() {
+    return RatisConsensusLogAppenderBufferSizeMax;
+  }
+
+  public void setRatisConsensusLogAppenderBufferSizeMax(
+      long ratisConsensusLogAppenderBufferSizeMax) {
+    RatisConsensusLogAppenderBufferSizeMax = ratisConsensusLogAppenderBufferSizeMax;
   }
 
   public String getConfigMessage() {

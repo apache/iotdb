@@ -228,7 +228,9 @@ public class ReceiverManager {
       buff.get(byteArray);
       pipeData = PipeData.createPipeData(byteArray);
       if (pipeData instanceof TsFilePipeData) {
-        handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
+        TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
+        tsFilePipeData.setStorageGroupName(identityInfo.getStorageGroup());
+        handleTsFilePipeData(tsFilePipeData, fileDir);
       }
     } catch (IOException | IllegalPathException e) {
       logger.error("Pipe data transport error, {}", e.getMessage());
