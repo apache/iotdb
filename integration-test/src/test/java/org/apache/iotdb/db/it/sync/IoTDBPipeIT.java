@@ -88,12 +88,11 @@ public class IoTDBPipeIT {
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
       statement.execute("START PIPE p;");
-      Thread.sleep(1000); // wait 1000 ms to start thread
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPE")) {
         String[] expectedRetSet =
             new String[] {
+              // there is no data now, so no connection in receiver
               String.format("%s,p,sender,demo,RUNNING,NORMAL,", createTime),
-              String.format("%s,p,receiver,0.0.0.0,RUNNING,NORMAL,", createTime),
             };
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }

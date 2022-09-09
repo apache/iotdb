@@ -185,7 +185,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void addPipe(CreatePipeStatement statement) throws PipeException {
-    logger.info("Execute CREATE PIPE {}",statement.getPipeName());
+    logger.info("Execute CREATE PIPE {}", statement.getPipeName());
     // check statement
     long currentTime = DatetimeUtils.currentTime();
     if (statement.getStartTime() > currentTime) {
@@ -211,7 +211,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void stopPipe(String pipeName) throws PipeException {
-    logger.info("Execute STOP PIPE {}",pipeName);
+    logger.info("Execute STOP PIPE {}", pipeName);
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.RUNNING) {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
@@ -235,7 +235,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void startPipe(String pipeName) throws PipeException {
-    logger.info("Execute START PIPE {}",pipeName);
+    logger.info("Execute START PIPE {}", pipeName);
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.STOP) {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
@@ -249,7 +249,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void dropPipe(String pipeName) throws PipeException {
-    logger.info("Execute DROP PIPE {}",pipeName);
+    logger.info("Execute DROP PIPE {}", pipeName);
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
       runningPipe.drop();
@@ -485,7 +485,7 @@ public class SyncService implements IService {
   public void stop() {
     if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       try {
-        runningPipe.stop();
+        runningPipe.close();
       } catch (PipeException e) {
         logger.warn(
             String.format("Stop pipe %s error when stop Sender Service.", runningPipe.getName()),
