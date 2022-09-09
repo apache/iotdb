@@ -63,6 +63,12 @@ import java.util.Map;
 public class TsFileIntegrityCheckingTool {
   private static Logger LOG = LoggerFactory.getLogger(TsFileIntegrityCheckingTool.class);
 
+  /**
+   * This method check the integrity of file by reading it from the start to the end. It mainly
+   * checks the integrity of the chunks.
+   *
+   * @param filename
+   */
   public static void checkIntegrityBySequenceRead(String filename) {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
       String headMagicString = reader.readHeadMagic();
@@ -141,6 +147,16 @@ public class TsFileIntegrityCheckingTool {
     }
   }
 
+  /**
+   * This method checks the integrity of the file by mimicking the process of the query, which reads
+   * the metadata index tree first, and get the timeseries metadata list and chunk metadata list.
+   * After that, this method acquires single chunk according to chunk metadata, then it deserializes
+   * the chunk, and verifies the correctness of the data.
+   *
+   * @param filename File to be check
+   * @param originData The origin data in a map format, Device -> SeriesId -> List<List<Time,Val>>,
+   *     each inner list stands for a chunk.
+   */
   public static void checkIntegrityByQuery(
       String filename,
       Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData) {
@@ -148,6 +164,7 @@ public class TsFileIntegrityCheckingTool {
       Map<String, List<TimeseriesMetadata>> allTimeseriesMetadata =
           reader.getAllTimeseriesMetadata(true);
       Assert.assertEquals(originData.size(), allTimeseriesMetadata.size());
+      // check each series
       for (Map.Entry<String, List<TimeseriesMetadata>> entry : allTimeseriesMetadata.entrySet()) {
         String deviceId = entry.getKey();
         List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
@@ -163,6 +180,7 @@ public class TsFileIntegrityCheckingTool {
         if (!vectorMode) {
           // check integrity of not aligned series
           for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
+            // get its chunk metadata list, and read the chunk
             String measurementId = timeseriesMetadata.getMeasurementId();
             List<List<Pair<Long, TsPrimitiveType>>> originChunks =
                 originData.get(deviceId).get(measurementId);
@@ -173,29 +191,27 @@ public class TsFileIntegrityCheckingTool {
               Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadataList.get(i));
               ChunkReader chunkReader = new ChunkReader(chunk, null);
               List<Pair<Long, TsPrimitiveType>> originValue = originChunks.get(i);
+              // deserialize the chunk and verify it with origin data
               for (int valIdx = 0; chunkReader.hasNextSatisfiedPage(); ) {
                 IPointReader pointReader = chunkReader.nextPageData().getBatchDataIterator();
                 while (pointReader.hasNextTimeValuePair()) {
                   TimeValuePair pair = pointReader.nextTimeValuePair();
                   Assert.assertEquals(
                       originValue.get(valIdx).left.longValue(), pair.getTimestamp());
-                  try {
-                    Assert.assertEquals(originValue.get(valIdx++).right, pair.getValue());
-                  } catch (Throwable e) {
-                    System.out.println();
-                  }
+                  Assert.assertEquals(originValue.get(valIdx++).right, pair.getValue());
                 }
               }
             }
           }
         } else {
           // check integrity of vector type
-          // 1. check the time column
+          // get the timeseries metadata of the time column
           TimeseriesMetadata timeColumnMetadata = timeseriesMetadataList.get(0);
           List<IChunkMetadata> timeChunkMetadataList = timeColumnMetadata.getChunkMetadataList();
           timeChunkMetadataList.sort(Comparator.comparing(IChunkMetadata::getStartTime));
 
           for (int i = 1; i < timeseriesMetadataList.size(); ++i) {
+            // traverse each value column
             List<IChunkMetadata> valueChunkMetadataList =
                 timeseriesMetadataList.get(i).getChunkMetadataList();
             Assert.assertEquals(timeChunkMetadataList.size(), valueChunkMetadataList.size());
@@ -206,8 +222,10 @@ public class TsFileIntegrityCheckingTool {
                   reader.readMemChunk((ChunkMetadata) timeChunkMetadataList.get(chunkIdx));
               Chunk valueChunk =
                   reader.readMemChunk((ChunkMetadata) valueChunkMetadataList.get(chunkIdx));
+              // construct an aligned chunk reader using time chunk and value chunk
               IChunkReader chunkReader =
                   new AlignedChunkReader(timeChunk, Collections.singletonList(valueChunk), null);
+              // verify the values
               List<Pair<Long, TsPrimitiveType>> originValue = originDataChunks.get(chunkIdx);
               for (int valIdx = 0; chunkReader.hasNextSatisfiedPage(); ) {
                 IBatchDataIterator pointReader = chunkReader.nextPageData().getBatchDataIterator();
