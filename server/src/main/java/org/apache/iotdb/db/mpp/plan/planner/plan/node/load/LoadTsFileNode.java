@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import org.slf4j.Logger;
@@ -86,12 +87,15 @@ public class LoadTsFileNode extends WritePlanNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
+    LoadTsFileStatement statement = (LoadTsFileStatement) analysis.getStatement();
     List<WritePlanNode> res = new ArrayList<>();
     for (File file : tsFiles) {
       try {
         LoadSingleTsFileNode singleTsFileNode = new LoadSingleTsFileNode(getPlanNodeId(), file);
         singleTsFileNode.checkIfNeedDecodeTsFile(analysis.getDataPartitionInfo());
-        singleTsFileNode.autoRegisterSchema();
+        if (statement.isAutoCreateSchema() || statement.isVerifySchema()) {
+          singleTsFileNode.autoRegisterSchema(statement.isVerifySchema());
+        }
 
         if (singleTsFileNode.needDecodeTsFile()) {
           singleTsFileNode.splitTsFileByDataPartition(analysis.getDataPartitionInfo());

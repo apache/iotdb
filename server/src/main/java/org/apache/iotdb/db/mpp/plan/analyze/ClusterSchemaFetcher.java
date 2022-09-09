@@ -207,6 +207,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             indexOfMissingMeasurements,
             measurements,
             getDataType,
+            null,
+            null,
             isAligned);
 
     schemaTree.mergeSchemaTree(missingSchemaTree);
@@ -220,6 +222,18 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<PartialPath> devicePathList,
       List<String[]> measurementsList,
       List<TSDataType[]> tsDataTypesList,
+      List<Boolean> isAlignedList) {
+    return fetchSchemaListWithAutoCreate(
+        devicePathList, measurementsList, tsDataTypesList, null, null, isAlignedList);
+  }
+
+  @Override
+  public ISchemaTree fetchSchemaListWithAutoCreate(
+      List<PartialPath> devicePathList,
+      List<String[]> measurementsList,
+      List<TSDataType[]> tsDataTypesList,
+      List<TSEncoding[]> encodingsList,
+      List<CompressionType[]> compressionTypesList,
       List<Boolean> isAlignedList) {
 
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
@@ -259,6 +273,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
               indexOfMissingMeasurementsList.get(i),
               measurementsList.get(i),
               index -> tsDataTypesList.get(finalI)[index],
+              encodingsList == null ? null : encodingsList.get(i),
+              compressionTypesList == null ? null : compressionTypesList.get(i),
               isAlignedList.get(i));
       schemaTree.mergeSchemaTree(missingSchemaTree);
       schemaCache.put(missingSchemaTree);
@@ -287,6 +303,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<Integer> indexOfMissingMeasurements,
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
+      TSEncoding[] encodings,
+      CompressionType[] compressionTypes,
       boolean isAligned) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(
@@ -348,15 +366,31 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     List<String> missingMeasurements = new ArrayList<>(indexOfMissingMeasurements.size());
     List<TSDataType> dataTypesOfMissingMeasurement =
         new ArrayList<>(indexOfMissingMeasurements.size());
+    List<TSEncoding> encodingsOfMissingMeasurement =
+        new ArrayList<>(indexOfMissingMeasurements.size());
+    List<CompressionType> compressionTypesOfMissingMeasurement =
+        new ArrayList<>(indexOfMissingMeasurements.size());
     indexOfMissingMeasurements.forEach(
         index -> {
+          TSDataType tsDataType = getDataType.apply(index);
           missingMeasurements.add(measurements[index]);
-          dataTypesOfMissingMeasurement.add(getDataType.apply(index));
+          dataTypesOfMissingMeasurement.add(tsDataType);
+          encodingsOfMissingMeasurement.add(
+              encodings == null ? getDefaultEncoding(tsDataType) : encodings[index]);
+          compressionTypesOfMissingMeasurement.add(
+              compressionTypes == null
+                  ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                  : compressionTypes[index]);
         });
 
     schemaTree.mergeSchemaTree(
         internalCreateTimeseries(
-            devicePath, missingMeasurements, dataTypesOfMissingMeasurement, isAligned));
+            devicePath,
+            missingMeasurements,
+            dataTypesOfMissingMeasurement,
+            encodingsOfMissingMeasurement,
+            compressionTypesOfMissingMeasurement,
+            isAligned));
 
     return schemaTree;
   }
@@ -384,15 +418,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       PartialPath devicePath,
       List<String> measurements,
       List<TSDataType> tsDataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
       boolean isAligned) {
-
-    List<TSEncoding> encodings = new ArrayList<>();
-    List<CompressionType> compressors = new ArrayList<>();
-    for (TSDataType dataType : tsDataTypes) {
-      encodings.add(getDefaultEncoding(dataType));
-      compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
-    }
-
     List<MeasurementPath> measurementPathList =
         executeInternalCreateTimeseriesStatement(
             new InternalCreateTimeSeriesStatement(

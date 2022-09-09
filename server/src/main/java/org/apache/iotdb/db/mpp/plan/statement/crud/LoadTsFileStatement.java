@@ -98,6 +98,14 @@ public class LoadTsFileStatement extends Statement {
     this.verifySchema = verifySchema;
   }
 
+  public boolean isVerifySchema() {
+    return verifySchema;
+  }
+
+  public boolean isAutoCreateSchema() {
+    return autoCreateSchema;
+  }
+
   public List<File> getTsFiles() {
     return tsFiles;
   }

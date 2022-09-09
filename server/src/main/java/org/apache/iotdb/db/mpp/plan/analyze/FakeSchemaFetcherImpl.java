@@ -28,7 +28,9 @@ import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -107,6 +109,17 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
       List<PartialPath> devicePath,
       List<String[]> measurements,
       List<TSDataType[]> tsDataTypes,
+      List<Boolean> aligned) {
+    return null;
+  }
+
+  @Override
+  public ISchemaTree fetchSchemaListWithAutoCreate(
+      List<PartialPath> devicePath,
+      List<String[]> measurements,
+      List<TSDataType[]> tsDataTypes,
+      List<TSEncoding[]> encodings,
+      List<CompressionType[]> compressionTypes,
       List<Boolean> aligned) {
     return null;
   }

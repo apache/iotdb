@@ -1770,6 +1770,33 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         Collections.emptyMap());
   }
 
+  /** create timeseries ignoring PathAlreadyExistException */
+  private void internalCreateTimeseries(
+      PartialPath path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
+      throws MetadataException {
+    createTimeseries(path, dataType, encoding, compressor, Collections.emptyMap());
+  }
+
+  /** create aligned timeseries ignoring PathAlreadyExistException */
+  private void internalAlignedCreateTimeseries(
+      PartialPath prefixPath,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors)
+      throws MetadataException {
+    int measurementsSize = measurements.size();
+    for (int i = 0; i < measurementsSize; i++) {
+      if (encodings.get(i) == null) {
+        encodings.set(i, getDefaultEncoding(dataTypes.get(i)));
+      }
+      if (compressors.get(i) == null) {
+        compressors.set(i, TSFileDescriptor.getInstance().getConfig().getCompressor());
+      }
+    }
+    createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
+  }
+
   /** create aligned timeseries ignoring PathAlreadyExistException */
   private void internalAlignedCreateTimeseries(
       PartialPath prefixPath, List<String> measurements, List<TSDataType> dataTypes)
@@ -1788,6 +1815,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       PartialPath devicePath,
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
+      TSEncoding[] encodings,
+      CompressionType[] compressionTypes,
       boolean aligned)
       throws MetadataException {
     try {
@@ -1802,11 +1831,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               internalAlignedCreateTimeseries(
                   devicePath,
                   Collections.singletonList(measurements[i]),
-                  Collections.singletonList(getDataType.apply(i)));
+                  Collections.singletonList(getDataType.apply(i)),
+                  Collections.singletonList(encodings[i]),
+                  Collections.singletonList(compressionTypes[i]));
 
             } else {
               internalCreateTimeseries(
-                  devicePath.concatNode(measurements[i]), getDataType.apply(i));
+                  devicePath.concatNode(measurements[i]),
+                  getDataType.apply(i),
+                  encodings[i],
+                  compressionTypes[i]);
             }
             // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
             deviceMNode = mtree.getNodeByPath(devicePath);
