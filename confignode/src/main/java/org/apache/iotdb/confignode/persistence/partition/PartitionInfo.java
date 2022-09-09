@@ -79,6 +79,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -467,7 +468,7 @@ public class PartitionInfo implements SnapshotProcessor {
   /** Get region information */
   public DataSet getRegionInfoList(GetRegionInfoListPlan regionsInfoPlan) {
     RegionInfoListResp regionResp = new RegionInfoListResp();
-    List<TRegionInfo> regionInfoList = new ArrayList<>();
+    List<TRegionInfo> regionInfoList = new Vector<>();
     if (storageGroupPartitionTables.isEmpty()) {
       regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       regionResp.setRegionInfoList(new ArrayList<>());
@@ -481,7 +482,7 @@ public class PartitionInfo implements SnapshotProcessor {
           if (storageGroups != null && !storageGroups.contains(storageGroup)) {
             return;
           }
-          storageGroupPartitionTable.getRegionInfoList(regionsInfoPlan, regionInfoList);
+          regionInfoList.addAll(storageGroupPartitionTable.getRegionInfoList(regionsInfoPlan));
         });
     regionInfoList.sort(
         Comparator.comparingInt(regionId -> regionId.getConsensusGroupId().getId()));

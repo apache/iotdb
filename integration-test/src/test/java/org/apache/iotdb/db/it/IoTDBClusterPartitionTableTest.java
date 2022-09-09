@@ -30,6 +30,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.it.env.ConfigFactory;
@@ -68,8 +70,8 @@ public class IoTDBClusterPartitionTableTest {
   private static final long testTimePartitionInterval = 86400;
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 5;
-  private static final int seriesPartitionSlotsNum = 10;
-  private static final int timePartitionSlotsNum = 100;
+  private static final int seriesPartitionSlotsNum = 100;
+  private static final int timePartitionSlotsNum = 10;
 
   @Before
   public void setUp() throws Exception {
@@ -250,9 +252,9 @@ public class IoTDBClusterPartitionTableTest {
           Assert.assertTrue(timePartitionSlotMap.containsKey(timePartitionSlot));
           if (k > 0) {
             // Check consistency
-            Assert.assertEquals(
-                timePartitionSlotMap.get(new TTimePartitionSlot(0)),
-                timePartitionSlotMap.get(timePartitionSlot));
+                        Assert.assertEquals(
+                            timePartitionSlotMap.get(new TTimePartitionSlot(0)),
+                            timePartitionSlotMap.get(timePartitionSlot));
           }
         }
       }
@@ -303,6 +305,17 @@ public class IoTDBClusterPartitionTableTest {
           dataPartitionTableResp.getStatus().getCode());
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
       checkDataPartitionMap(dataPartitionTableResp.getDataPartitionTable());
+
+      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
+      Assert.assertEquals(storageGroupNum, showRegionResp.getRegionInfoListSize());
+      showRegionResp
+          .getRegionInfoList()
+          .forEach(
+              regionInfo -> {
+                Assert.assertEquals(seriesPartitionSlotsNum, regionInfo.getSeriesSlots());
+                Assert.assertEquals(
+                    seriesPartitionSlotsNum * timePartitionSlotsNum, regionInfo.getTimeSlots());
+              });
     }
   }
 }

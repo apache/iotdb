@@ -281,12 +281,9 @@ public class StorageGroupPartitionTable {
         dataPartitionTable.createDataPartition(assignedDataPartition);
 
     // Add counter
-    AtomicInteger total = new AtomicInteger(0);
     deltaMap.forEach(
-        ((consensusGroupId, delta) -> {
-          total.getAndAdd(delta.get());
-          regionGroupMap.get(consensusGroupId).addCounter(delta.get());
-        }));
+        ((consensusGroupId, delta) ->
+            regionGroupMap.get(consensusGroupId).addCounter(delta.get())));
   }
 
   /**
@@ -351,34 +348,39 @@ public class StorageGroupPartitionTable {
     return result;
   }
 
-  public void getRegionInfoList(
-      GetRegionInfoListPlan regionsInfoPlan, List<TRegionInfo> regionInfoList) {
+  public List<TRegionInfo> getRegionInfoList(GetRegionInfoListPlan regionsInfoPlan) {
+    List<TRegionInfo> regionInfoList = new Vector<>();
     final TShowRegionReq showRegionReq = regionsInfoPlan.getShowRegionReq();
+
     regionGroupMap.forEach(
         (consensusGroupId, regionGroup) -> {
-          TRegionReplicaSet replicaSet = regionGroup.getReplicaSet();
           if (showRegionReq == null || showRegionReq.getConsensusGroupType() == null) {
-            buildTRegionsInfo(regionInfoList, replicaSet, regionGroup);
-          } else if (regionsInfoPlan.getShowRegionReq().getConsensusGroupType().ordinal()
-              == replicaSet.getRegionId().getType().ordinal()) {
-            buildTRegionsInfo(regionInfoList, replicaSet, regionGroup);
+            regionInfoList.addAll(buildRegionInfoList(regionGroup));
+          } else if (showRegionReq.getConsensusGroupType().equals(regionGroup.getId().getType())) {
+            regionInfoList.addAll(buildRegionInfoList(regionGroup));
           }
         });
+
+    return regionInfoList;
   }
 
-  private void buildTRegionsInfo(
-      List<TRegionInfo> regionInfoList, TRegionReplicaSet replicaSet, RegionGroup regionGroup) {
-    replicaSet
+  private List<TRegionInfo> buildRegionInfoList(RegionGroup regionGroup) {
+    List<TRegionInfo> regionInfoList = new Vector<>();
+    final TConsensusGroupId regionId = regionGroup.getId();
+    final TConsensusGroupType regionType = regionGroup.getId().getType();
+
+    regionGroup
+        .getReplicaSet()
         .getDataNodeLocations()
         .forEach(
             (dataNodeLocation) -> {
               TRegionInfo regionInfo = new TRegionInfo();
-              regionInfo.setConsensusGroupId(replicaSet.getRegionId());
+              regionInfo.setConsensusGroupId(regionId);
               regionInfo.setStorageGroup(storageGroupName);
-              if (replicaSet.getRegionId().getType() == TConsensusGroupType.DataRegion) {
+              if (TConsensusGroupType.DataRegion.equals(regionType)) {
                 regionInfo.setSeriesSlots(dataPartitionTable.getDataPartitionMap().size());
                 regionInfo.setTimeSlots(regionGroup.getCounter());
-              } else if (replicaSet.getRegionId().getType() == TConsensusGroupType.SchemaRegion) {
+              } else if (TConsensusGroupType.SchemaRegion.equals(regionType)) {
                 regionInfo.setSeriesSlots(regionGroup.getCounter());
                 regionInfo.setTimeSlots(0);
               }
@@ -389,6 +391,8 @@ public class StorageGroupPartitionTable {
               regionInfo.setStatus(RegionStatus.Up.getStatus());
               regionInfoList.add(regionInfo);
             });
+
+    return regionInfoList;
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
