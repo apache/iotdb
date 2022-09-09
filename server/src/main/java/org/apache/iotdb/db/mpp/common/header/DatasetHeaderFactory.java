@@ -112,4 +112,16 @@ public class DatasetHeaderFactory {
   public static DatasetHeader getShowPathsUsingTemplateHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showPathsUsingTemplateHeaders, true);
   }
+
+  public static DatasetHeader getShowPipeSinkTypeHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showPipeSinkTypeColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowPipeSinkHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showPipeSinkColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowPipeHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showPipeColumnHeaders, true);
+  }
 }

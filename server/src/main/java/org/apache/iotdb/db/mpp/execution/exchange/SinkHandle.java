@@ -230,7 +230,7 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     logger.info("SinkHandle is being closed.");
     sequenceIdToTsBlock.clear();
     closed = true;
@@ -246,17 +246,17 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public boolean isAborted() {
+  public synchronized boolean isAborted() {
     return aborted;
   }
 
   @Override
-  public boolean isFinished() {
+  public synchronized boolean isFinished() {
     return noMoreTsBlocks && sequenceIdToTsBlock.isEmpty();
   }
 
   @Override
-  public long getBufferRetainedSizeInBytes() {
+  public synchronized long getBufferRetainedSizeInBytes() {
     return bufferRetainedSizeInBytes;
   }
 
@@ -268,13 +268,23 @@ public class SinkHandle implements ISinkHandle {
     throw new UnsupportedOperationException();
   }
 
-  ByteBuffer getSerializedTsBlock(int sequenceId) throws IOException {
-    TsBlock tsBlock;
-    tsBlock = sequenceIdToTsBlock.get(sequenceId).left;
-    if (tsBlock == null) {
+  synchronized ByteBuffer getSerializedTsBlock(int sequenceId) throws IOException {
+    if (aborted || closed) {
+      logger.warn(
+          "SinkHandle still receive getting TsBlock request after being aborted={} or closed={}",
+          aborted,
+          closed);
+      throw new IllegalStateException("Sink handle is aborted or closed. ");
+    }
+    Pair<TsBlock, Long> pair = sequenceIdToTsBlock.get(sequenceId);
+    if (pair == null || pair.left == null) {
+      logger.error(
+          "The TsBlock doesn't exist. Sequence ID is {}, remaining map is {}",
+          sequenceId,
+          sequenceIdToTsBlock.entrySet());
       throw new IllegalStateException("The data block doesn't exist. Sequence ID: " + sequenceId);
     }
-    return serde.serialize(tsBlock);
+    return serde.serialize(pair.left);
   }
 
   void acknowledgeTsBlock(int startSequenceId, int endSequenceId) {
@@ -297,12 +307,17 @@ public class SinkHandle implements ISinkHandle {
         freedBytes += entry.getValue().right;
         bufferRetainedSizeInBytes -= entry.getValue().right;
         iterator.remove();
+        logger.info("ack TsBlock {}.", entry.getKey());
       }
     }
     if (isFinished()) {
       sinkHandleListener.onFinish(this);
     }
-    localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), freedBytes);
+    // there may exist duplicate ack message in network caused by caller retrying, if so duplicate
+    // ack message's freedBytes may be zero
+    if (freedBytes > 0) {
+      localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), freedBytes);
+    }
   }
 
   public TEndPoint getRemoteEndpoint() {

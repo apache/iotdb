@@ -45,6 +45,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -106,7 +107,8 @@ public class CountMergeOperatorTest {
               true,
               null,
               null,
-              false);
+              false,
+              Collections.emptyMap());
       TsBlock tsBlock = null;
       while (timeSeriesCountOperator.hasNext()) {
         tsBlock = timeSeriesCountOperator.next();
@@ -121,7 +123,8 @@ public class CountMergeOperatorTest {
               false,
               null,
               null,
-              false);
+              false,
+              Collections.emptyMap());
       tsBlock = timeSeriesCountOperator2.next();
       assertFalse(timeSeriesCountOperator2.hasNext());
       assertTrue(timeSeriesCountOperator2.isFinished());

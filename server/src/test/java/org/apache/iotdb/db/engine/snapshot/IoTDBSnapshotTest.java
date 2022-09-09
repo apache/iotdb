@@ -128,6 +128,44 @@ public class IoTDBSnapshotTest {
   }
 
   @Test
+  public void testCreateSnapshotWithUnclosedTsFile()
+      throws IOException, WriteProcessException, DirectoryNotLegalException {
+    String[] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
+    DirectoryManager.getInstance().resetFolders();
+    try {
+      List<TsFileResource> resources = writeTsFiles();
+      resources.subList(50, 100).forEach(x -> x.setStatus(TsFileResourceStatus.UNCLOSED));
+      DataRegion region = new DataRegion(testSgName, "0");
+      region.getTsFileManager().addAll(resources, true);
+      File snapshotDir = new File("target" + File.separator + "snapshot");
+      Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
+      try {
+        new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+        File[] files =
+            snapshotDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
+        Assert.assertEquals(1, files.length);
+        SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
+        int cnt = 0;
+        while (analyzer.hasNext()) {
+          analyzer.getNextPairs();
+          cnt++;
+        }
+        analyzer.close();
+        Assert.assertEquals(100, cnt);
+        for (TsFileResource resource : resources) {
+          Assert.assertTrue(resource.tryWriteLock());
+        }
+      } finally {
+        FileUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
+      DirectoryManager.getInstance().resetFolders();
+    }
+  }
+
+  @Test
   public void testLoadSnapshot()
       throws IOException, WriteProcessException, DataRegionException, DirectoryNotLegalException {
     String[] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();

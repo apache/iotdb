@@ -97,9 +97,10 @@ public class RouteBalancer {
             .getDataRegionConsensusProtocolClass()
             .equals(ConsensusFactory.MultiLeaderConsensus)) {
           // Latent router for MultiLeader consensus protocol
-          lazyGreedyRouter.updateUnknownDataNodes(
+          lazyGreedyRouter.updateDisabledDataNodes(
               getNodeManager()
-                  .filterDataNodeThroughStatus(NodeStatus.Unknown, NodeStatus.Removing));
+                  .filterDataNodeThroughStatus(
+                      NodeStatus.Unknown, NodeStatus.Removing, NodeStatus.ReadOnly));
           return lazyGreedyRouter;
         } else if (LEADER_POLICY.equals(policy)) {
           return new LeaderRouter(

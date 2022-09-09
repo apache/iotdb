@@ -44,6 +44,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -146,7 +147,8 @@ public class SchemaCountOperatorTest {
               true,
               null,
               null,
-              false);
+              false,
+              Collections.emptyMap());
       TsBlock tsBlock = null;
       while (timeSeriesCountOperator.hasNext()) {
         tsBlock = timeSeriesCountOperator.next();
@@ -161,7 +163,8 @@ public class SchemaCountOperatorTest {
               false,
               null,
               null,
-              false);
+              false,
+              Collections.emptyMap());
       tsBlock = timeSeriesCountOperator2.next();
       assertFalse(timeSeriesCountOperator2.hasNext());
       assertTrue(timeSeriesCountOperator2.isFinished());

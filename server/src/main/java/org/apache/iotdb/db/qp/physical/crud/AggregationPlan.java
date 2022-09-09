@@ -20,7 +20,9 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -190,5 +192,35 @@ public class AggregationPlan extends RawDataQueryPlan {
       columnForDisplay = aggregatePath;
     }
     return columnForDisplay;
+  }
+
+  public void verifyAllAggregationDataTypesMatched() throws LogicalOperatorException {
+    List<String> aggregations = this.getDeduplicatedAggregations();
+    List<TSDataType> dataTypes = SchemaUtils.getSeriesTypesByPaths(this.getDeduplicatedPaths());
+
+    for (int i = 0; i < aggregations.size(); i++) {
+      if (!verifyIsAggregationDataTypeMatched(aggregations.get(i), dataTypes.get(i))) {
+        throw new LogicalOperatorException(
+            "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+      }
+    }
+  }
+
+  private boolean verifyIsAggregationDataTypeMatched(String aggregation, TSDataType dataType) {
+    switch (aggregation.toLowerCase()) {
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+      case SQLConstant.EXTREME:
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.MAX_VALUE:
+        return dataType.isNumeric();
+      case SQLConstant.COUNT:
+      case SQLConstant.MIN_TIME:
+      case SQLConstant.MAX_TIME:
+      case SQLConstant.FIRST_VALUE:
+      case SQLConstant.LAST_VALUE:
+      default:
+        return true;
+    }
   }
 }

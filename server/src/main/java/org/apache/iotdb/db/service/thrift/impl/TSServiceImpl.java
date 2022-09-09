@@ -22,12 +22,14 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -773,6 +775,10 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   private TSExecuteStatementResp submitQueryTask(
       PhysicalPlan physicalPlan, long startTime, TSExecuteStatementReq req) throws Exception {
+    TSStatus status = SESSION_MANAGER.checkAuthority(physicalPlan, req.getSessionId());
+    if (status != null) {
+      return new TSExecuteStatementResp(status);
+    }
     QueryTask queryTask =
         new QueryTask(
             physicalPlan,
@@ -806,7 +812,9 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,
-              "No permissions for this operation " + plan.getOperatorType()));
+              "No permissions for this operation, please add privilege "
+                  + OperatorType.values()[
+                      AuthorityChecker.translateToPermissionId(plan.getOperatorType())]));
     }
 
     long queryId = context.getQueryId();
@@ -1171,7 +1179,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMarkRate());
     properties.setWatermarkParamMaxRightBit(
         IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMaxRightBit());
-    properties.setIsReadOnly(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
+    properties.setIsReadOnly(CommonDescriptor.getInstance().getConfig().isReadOnly());
     properties.setThriftMaxFrameSize(
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
     return properties;
@@ -1750,17 +1758,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      // if measurements.size() == 1, convert to create timeseries
-      if (req.measurements.size() == 1) {
-        return createTimeseries(
-            new TSCreateTimeseriesReq(
-                req.sessionId,
-                req.prefixPath + "." + req.measurements.get(0),
-                req.dataTypes.get(0),
-                req.encodings.get(0),
-                req.compressors.get(0)));
-      }
-
       // check whether measurement is legal according to syntax convention
 
       PathUtils.isLegalSingleMeasurements(req.getMeasurements());
@@ -2113,15 +2110,13 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
-      throws TException {
-    return SyncService.getInstance().transportData(metaInfo, buff, digest);
+  public TSStatus sendPipeData(ByteBuffer buff) throws TException {
+    return SyncService.getInstance().transportPipeData(buff);
   }
 
   @Override
-  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
-      throws TException {
-    return SyncService.getInstance().checkFileDigest(metaInfo, digest);
+  public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
+    return SyncService.getInstance().transportFile(metaInfo, buff);
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {

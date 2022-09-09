@@ -129,13 +129,11 @@ public class SourceHandle implements ISourceHandle {
       if (tsBlock == null) {
         return null;
       }
-      logger.info(
-          "Receive {} TsBlock, size is {}", currSequenceId, tsBlock.getRetainedSizeInBytes());
+      long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
+      logger.info("Receive {} TsBlock, size is {}", currSequenceId, retainedSize);
       currSequenceId += 1;
-      bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
-      localMemoryManager
-          .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
+      bufferRetainedSizeInBytes -= retainedSize;
+      localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), retainedSize);
 
       if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
         logger.info("no buffered TsBlock, blocked");
@@ -412,7 +410,12 @@ public class SourceHandle implements ISourceHandle {
             }
             break;
           } catch (Throwable e) {
-            logger.error("failed to get data block, attempt times: {}", attempt, e);
+            logger.error(
+                "failed to get data block [{}, {}), attempt times: {}",
+                startSequenceId,
+                endSequenceId,
+                attempt,
+                e);
             if (attempt == MAX_ATTEMPT_TIMES) {
               synchronized (SourceHandle.this) {
                 bufferRetainedSizeInBytes -= reservedBytes;

@@ -35,6 +35,7 @@ struct TDataNodeRegisterResp {
   3: optional i32 dataNodeId
   4: optional TGlobalConfig globalConfig
   5: optional binary templateInfo
+  6: optional TRatisConfig ratisConfig
 }
 
 struct TGlobalConfig {
@@ -44,6 +45,10 @@ struct TGlobalConfig {
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
+}
+
+struct TRatisConfig {
+  1: optional i64 appenderBufferSize
 }
 
 struct TDataNodeRemoveReq {
@@ -102,7 +107,7 @@ struct TCountStorageGroupResp {
 
 struct TStorageGroupSchemaResp {
   1: required common.TSStatus status
-  // map<string, StorageGroupMessage>
+  // map<string, TStorageGroupSchema>
   2: optional map<string, TStorageGroupSchema> storageGroupSchemaMap
 }
 
@@ -119,13 +124,6 @@ struct TStorageGroupSchema {
 // Schema
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
-}
-
-// TODO: Replace this by TSchemaPartitionTableResp
-struct TSchemaPartitionResp {
-  1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
-  2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
 }
 
 struct TSchemaPartitionTableResp {
@@ -151,13 +149,6 @@ struct TSchemaNodeManagementResp {
 struct TDataPartitionReq {
   // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
   1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
-}
-
-// TODO: Replace this by TDataPartitionTableResp
-struct TDataPartitionResp {
-  1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
-  2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
 }
 
 struct TDataPartitionTableResp {
@@ -206,7 +197,7 @@ struct TLoginReq {
 }
 
 struct TCheckUserPrivilegesReq {
-  1: required string username;
+  1: required string username
   2: required list<string> paths
   3: required i32 permission
 }
@@ -244,6 +235,28 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
+// Trigger
+enum TTriggerState {
+  // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
+  INACTIVE
+  // The intermediate state of Create trigger, the trigger need to create has activated on some DataNodes.
+  PARTIAL_ACTIVE
+  // Triggers on all DataNodes are available.
+  ACTIVE
+  // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
+  DROPPING
+}
+
+struct TCreateTriggerReq {
+  1: required string triggerName
+  2: required binary triggerInformation
+  3: required common.TFile jarFile
+}
+
+struct TDropTriggerReq {
+  1: required string triggerName
+}
+
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status
@@ -273,11 +286,29 @@ struct TConfigNodeInfo {
   2: required string status
   3: required string internalAddress
   4: required i32 internalPort
+  5: required string roleType
 }
 
 struct TShowConfigNodesResp {
   1: required common.TSStatus status
   2: optional list<TConfigNodeInfo> configNodesInfoList
+}
+
+// Show storageGroup
+struct TStorageGroupInfo {
+  1: required string name
+  2: required i64 TTL
+  3: required i32 schemaReplicationFactor
+  4: required i32 dataReplicationFactor
+  5: required i64 timePartitionInterval
+  6: required i32 schemaRegionNum
+  7: required i32 dataRegionNum
+}
+
+struct TShowStorageGroupResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, TStorageGroupInfo>
+  2: optional map<string, TStorageGroupInfo> storageGroupInfoMap
 }
 
 // Show regions
@@ -336,6 +367,21 @@ struct TSetSchemaTemplateReq {
 struct TGetPathsSetTemplatesResp {
   1: required common.TSStatus status
   2: optional list<string> pathList
+}
+
+// Show pipe
+struct TPipeInfo {
+  1: required i64 createTime
+  2: required string pipeName
+  3: required string role
+  4: required string remote
+  5: required string status
+  6: required string message
+}
+
+struct TShowPipeResp {
+  1: required common.TSStatus status
+  2: optional list<TPipeInfo> pipeInfoList
 }
 
 service IConfigNodeRPCService {
@@ -429,18 +475,12 @@ service IConfigNodeRPCService {
   // SchemaPartition
   // ======================================================
 
-  // TODO: Replace this by getSchemaPartitionTable
-  TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
-
   /**
    * Get SchemaPartitionTable by specific PathPatternTree,
    * the returned SchemaPartitionTable will not contain the unallocated SeriesPartitionSlots
    * See https://apache-iotdb.feishu.cn/docs/doccnqe3PLPEKwsCX1xadXQ2JOg for detailed matching rules
    */
   TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
-
-  // TODO: Replace this by getOrCreateSchemaPartitionTable
-  TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
 
   /**
    * Get or create SchemaPartitionTable by specific PathPatternTree,
@@ -463,17 +503,11 @@ service IConfigNodeRPCService {
   // DataPartition
   // ======================================================
 
-  // TODO: Replace this by getDataPartitionTable
-  TDataPartitionResp getDataPartition(TDataPartitionReq req)
-
   /**
    * Get DataPartitionTable by specific PartitionSlotsMap,
    * the returned DataPartitionTable will not contain the unallocated SeriesPartitionSlots and TimePartitionSlots
    */
   TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req)
-
-  // TODO: Replace this by getOrCreateDataPartitionTable
-  TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
   /**
    * Get or create DataPartitionTable by specific PartitionSlotsMap,
@@ -593,6 +627,27 @@ service IConfigNodeRPCService {
   common.TSStatus dropFunction(TDropFunctionReq req)
 
   // ======================================================
+  // Trigger
+  // ======================================================
+
+   /**
+      * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+      * and sync Information of it to all ConfigNodes
+      *
+      * @return SUCCESS_STATUS if the trigger was created successfully
+      *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+      */
+  common.TSStatus createTrigger(TCreateTriggerReq req)
+
+  /**
+       * Remove a trigger on all online ConfigNodes and DataNodes
+       *
+       * @return SUCCESS_STATUS if the function was removed successfully
+       *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+       */
+    common.TSStatus dropTrigger(TDropTriggerReq req)
+
+  // ======================================================
   // Maintenance Tools
   // ======================================================
 
@@ -608,6 +663,9 @@ service IConfigNodeRPCService {
   /** Load configuration on all DataNodes */
   common.TSStatus loadConfiguration()
 
+  /** Set system status on DataNodes */
+  common.TSStatus setSystemStatus(string status)
+
   // ======================================================
   // Cluster Tools
   // ======================================================
@@ -620,6 +678,9 @@ service IConfigNodeRPCService {
 
   /** Show cluster ConfigNodes' information */
   TShowConfigNodesResp showConfigNodes()
+
+  /** Show cluster StorageGroups' information */
+  TShowStorageGroupResp showStorageGroup(list<string> storageGroupPathPattern)
 
   /**
    * Show the matched cluster Regions' information

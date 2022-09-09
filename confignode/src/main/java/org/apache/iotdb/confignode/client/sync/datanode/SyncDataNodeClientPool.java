@@ -27,11 +27,11 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.mpp.rpc.thrift.TAddConsensusGroup;
+import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
-import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -85,14 +85,14 @@ public class SyncDataNodeClientPool {
             return client.stopDataNode();
           case UPDATE_TEMPLATE:
             return client.updateTemplate((TUpdateTemplateReq) req);
-          case ADD_REGION_CONSENSUS_GROUP:
-            return client.addToRegionConsensusGroup((TAddConsensusGroup) req);
+          case CREATE_NEW_REGION_PEER:
+            return client.createNewRegionPeer((TCreatePeerReq) req);
           case ADD_REGION_PEER:
-            return client.addRegionPeer((TMigrateRegionReq) req);
+            return client.addRegionPeer((TMaintainPeerReq) req);
           case REMOVE_REGION_PEER:
-            return client.removeRegionPeer((TMigrateRegionReq) req);
-          case REMOVE_REGION_CONSENSUS_GROUP:
-            return client.removeToRegionConsensusGroup((TMigrateRegionReq) req);
+            return client.removeRegionPeer((TMaintainPeerReq) req);
+          case DELETE_OLD_REGION_PEER:
+            return client.deleteOldRegionPeer((TMaintainPeerReq) req);
           default:
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
@@ -110,7 +110,7 @@ public class SyncDataNodeClientPool {
     }
     LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
-        .setMessage("All retry failed due to" + lastException.getMessage());
+        .setMessage("All retry failed due to: " + lastException.getMessage());
   }
 
   public void deleteRegions(Set<TRegionReplicaSet> deletedRegionSet) {
