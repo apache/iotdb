@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.logfile;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -125,7 +124,7 @@ public class MLogWriter implements AutoCloseable {
         } else {
           logger.error(
               "MLog {} sync failed, change system mode to error", logFile.getAbsoluteFile(), e);
-          CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
           break;
         }
       }

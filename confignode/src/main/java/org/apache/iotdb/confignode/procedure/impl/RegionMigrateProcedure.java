@@ -74,20 +74,18 @@ public class RegionMigrateProcedure
     if (consensusGroupId == null) {
       return Flow.NO_MORE_STATE;
     }
-    TSStatus tsStatus = null;
+    TSStatus tsStatus;
     try {
       switch (state) {
         case REGION_MIGRATE_PREPARE:
-          setNextState(RegionTransitionState.CREATE_PEER);
+          setNextState(RegionTransitionState.CREATE_NEW_REGION_PEER);
           break;
-        case CREATE_PEER:
-          env.getDataNodeRemoveHandler().createPeer(consensusGroupId, destDataNode);
+        case CREATE_NEW_REGION_PEER:
+          env.getDataNodeRemoveHandler().createNewRegionPeer(consensusGroupId, destDataNode);
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
-          tsStatus =
-              env.getDataNodeRemoveHandler()
-                  .addRegionPeer(originalDataNode, destDataNode, consensusGroupId);
+          tsStatus = env.getDataNodeRemoveHandler().addRegionPeer(destDataNode, consensusGroupId);
           if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId);
             LOG.info("Wait for region {}  add peer finished", consensusGroupId);
@@ -102,26 +100,25 @@ public class RegionMigrateProcedure
           break;
         case REMOVE_REGION_PEER:
           tsStatus =
-              env.getDataNodeRemoveHandler()
-                  .removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
+              env.getDataNodeRemoveHandler().removeRegionPeer(originalDataNode, consensusGroupId);
           if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId);
             LOG.info("Wait for region {} remove peer finished", consensusGroupId);
           } else {
             throw new ProcedureException("Failed to remove region peer");
           }
-          setNextState(RegionTransitionState.DELETE_PEER);
+          setNextState(RegionTransitionState.DELETE_OLD_REGION_PEER);
           break;
-        case DELETE_PEER:
+        case DELETE_OLD_REGION_PEER:
           tsStatus =
               env.getDataNodeRemoveHandler()
-                  .deletePeer(originalDataNode, destDataNode, consensusGroupId);
+                  .deleteOldRegionPeer(originalDataNode, consensusGroupId);
           if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId);
             LOG.info("Wait for region {}  remove consensus group finished", consensusGroupId);
           }
-          // remove consensus group after a node stop, which will be failed, but we will continue
-          // execute.
+          // remove consensus group after a node stop, which will be failed, but we will
+          // continuously execute.
           setNextState(RegionTransitionState.UPDATE_REGION_LOCATION_CACHE);
           break;
         case UPDATE_REGION_LOCATION_CACHE:

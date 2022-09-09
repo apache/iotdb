@@ -93,7 +93,7 @@ public class IoTDBSyncReceiverIT {
     EnvironmentUtils.envSetUp();
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
     remoteIp1 = "127.0.0.1";
-    client = new IoTDBSyncClient(pipe, remoteIp1, 6667, "127.0.0.1");
+    client = new IoTDBSyncClient(pipe, remoteIp1, 6667, "127.0.0.1", "root.vehicle");
     client.handshake();
   }
 

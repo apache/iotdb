@@ -67,7 +67,7 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.INTERNAL_SERVICE_RPC_SERVER.getName(),
+              ThreadName.DATANODE_INTERNAL_RPC_SERVICE.getName(),
               getBindIP(),
               getBindPort(),
               65535,
@@ -77,7 +77,7 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.INTERNAL_SERVICE_RPC_SERVER.getName());
+    thriftServiceThread.setName(ThreadName.DATANODE_INTERNAL_RPC_SERVICE.getName());
   }
 
   @Override

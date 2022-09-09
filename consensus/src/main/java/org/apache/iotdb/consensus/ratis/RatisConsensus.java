@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.NodeReadOnlyException;
@@ -62,9 +63,11 @@ import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.protocol.SnapshotManagementRequest;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
+import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
+import org.apache.ratis.util.function.CheckedSupplier;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,6 +114,8 @@ class RatisConsensus implements IConsensus {
   // TODO make it configurable
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
+  private final RatisConfig config;
+
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
     myself = Utils.fromTEndPointAndPriorityToRaftPeer(config.getThisNode(), DEFAULT_PRIORITY);
@@ -122,6 +127,7 @@ class RatisConsensus implements IConsensus {
     GrpcConfigKeys.Server.setPort(properties, config.getThisNode().getPort());
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
+    this.config = config.getRatisConfig();
 
     clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
 
@@ -146,6 +152,49 @@ class RatisConsensus implements IConsensus {
   public void stop() throws IOException {
     clientManager.close();
     server.close();
+  }
+
+  private boolean shouldRetry(RaftClientReply reply) {
+    // currently, we only retry when ResourceUnavailableException is caught
+    return !reply.isSuccess()
+        && (reply.getException() != null
+            && reply.getException() instanceof ResourceUnavailableException);
+  }
+  /** launch a consensus write with retry mechanism */
+  private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
+      throws IOException {
+
+    final int maxRetryTimes = config.getRatisConsensus().getRetryTimesMax();
+    final long waitMillis = config.getRatisConsensus().getRetryWaitMillis();
+
+    int retry = 0;
+    RaftClientReply reply = null;
+    while (retry < maxRetryTimes) {
+      retry++;
+
+      reply = caller.get();
+      if (!shouldRetry(reply)) {
+        return reply;
+      }
+      logger.debug("{} sending write request with retry = {} and reply = {}", this, retry, reply);
+
+      try {
+        Thread.sleep(waitMillis);
+      } catch (InterruptedException e) {
+        logger.warn("{} retry write sleep is interrupted: {}", this, e);
+        Thread.currentThread().interrupt();
+      }
+    }
+    return reply;
+  }
+
+  private RaftClientReply writeLocallyWithRetry(RaftClientRequest request) throws IOException {
+    return writeWithRetry(() -> server.submitClientRequest(request));
+  }
+
+  private RaftClientReply writeRemotelyWithRetry(RatisClient client, Message message)
+      throws IOException {
+    return writeWithRetry(() -> client.getRaftClient().io().send(message));
   }
 
   /**
@@ -183,7 +232,7 @@ class RatisConsensus implements IConsensus {
     RaftPeer suggestedLeader = null;
     if (isLeader(consensusGroupId) && waitUntilLeaderReady(raftGroupId)) {
       try {
-        localServerReply = server.submitClientRequest(clientRequest);
+        localServerReply = writeLocallyWithRetry(clientRequest);
         if (localServerReply.isSuccess()) {
           ResponseMessage responseMessage = (ResponseMessage) localServerReply.getMessage();
           TSStatus writeStatus = (TSStatus) responseMessage.getContentHolder();
@@ -203,7 +252,7 @@ class RatisConsensus implements IConsensus {
     RatisClient client = null;
     try {
       client = getRaftClient(raftGroup);
-      RaftClientReply reply = client.getRaftClient().io().send(message);
+      RaftClientReply reply = writeRemotelyWithRetry(client, message);
       if (!reply.isSuccess()) {
         return failedWrite(new RatisRequestFailedException(reply.getException()));
       }
