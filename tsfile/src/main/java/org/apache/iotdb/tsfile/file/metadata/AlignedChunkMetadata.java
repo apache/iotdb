@@ -22,20 +22,16 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 public class AlignedChunkMetadata implements IChunkMetadata {
 
   // ChunkMetadata for time column
-  private IChunkMetadata timeChunkMetadata;
+  private final IChunkMetadata timeChunkMetadata;
   // ChunkMetadata for all subSensors in the vector
-  private List<IChunkMetadata> valueChunkMetadataList;
+  private final List<IChunkMetadata> valueChunkMetadataList;
 
   /** ChunkLoader of metadata, used to create IChunkReader */
   private IChunkLoader chunkLoader;
@@ -45,8 +41,6 @@ public class AlignedChunkMetadata implements IChunkMetadata {
     this.timeChunkMetadata = timeChunkMetadata;
     this.valueChunkMetadataList = valueChunkMetadataList;
   }
-
-  public AlignedChunkMetadata() {}
 
   @Override
   public Statistics getStatistics() {
@@ -189,31 +183,8 @@ public class AlignedChunkMetadata implements IChunkMetadata {
     throw new UnsupportedOperationException("VectorChunkMetadata doesn't support serial method");
   }
 
-  public int serializeWithFullInfo(OutputStream outputStream, String seriesFullPath)
-      throws IOException {
-    int byteLen = 0;
-    byteLen += ReadWriteIOUtils.write(valueChunkMetadataList.size() + 1, outputStream);
-    byteLen += timeChunkMetadata.serializeWithFullInfo(outputStream, seriesFullPath);
-    for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
-      byteLen += chunkMetadata.serializeWithFullInfo(outputStream, "");
-    }
-    return byteLen;
-  }
-
-  public static String deserializeWithFullInfo(
-      ByteBuffer buffer, AlignedChunkMetadata alignedChunkMetadata) throws IOException {
-    int chunkMetadataNum = ReadWriteIOUtils.readInt(buffer);
-    alignedChunkMetadata.timeChunkMetadata = new ChunkMetadata();
-    alignedChunkMetadata.valueChunkMetadataList = new ArrayList<>();
-    String deviceId =
-        ChunkMetadata.deserializeWithFullInfo(
-            buffer, (ChunkMetadata) alignedChunkMetadata.timeChunkMetadata);
-    for (int i = 1; i < chunkMetadataNum; ++i) {
-      ChunkMetadata metadata = new ChunkMetadata();
-      ChunkMetadata.deserializeWithFullInfo(buffer, metadata);
-      alignedChunkMetadata.valueChunkMetadataList.add(metadata);
-    }
-    return deviceId;
+  public int serializeWithFullInfo(OutputStream outputStream, String seriesFullPath) {
+    throw new UnsupportedOperationException("VectorChunkMetadata doesn't support serial method");
   }
 
   @Override
