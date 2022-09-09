@@ -23,10 +23,7 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.window.IWindowManager;
-import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
@@ -37,8 +34,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
-
 public abstract class SingleInputAggregationOperator implements ProcessOperator {
 
   protected final OperatorContext operatorContext;
@@ -47,14 +42,6 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
   protected final Operator child;
   protected TsBlock inputTsBlock;
   protected boolean canCallNext;
-
-  protected final ITimeRangeIterator timeRangeIterator;
-  // current interval of aggregation window [curStartTime, curEndTime)
-  protected TimeRange curTimeRange;
-
-  protected IWindowManager windowManager;
-
-  protected boolean finish;
 
   protected final List<Aggregator> aggregators;
 
@@ -75,10 +62,6 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     this.ascending = ascending;
     this.child = child;
     this.aggregators = aggregators;
-    this.timeRangeIterator = timeRangeIterator;
-    this.finish = false;
-
-    this.windowManager = new TimeWindowManager(this.timeRangeIterator);
 
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
@@ -137,11 +120,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   protected abstract boolean calculateNextAggregationResult();
 
-  protected void updateResultTsBlock() {
-    curTimeRange = null;
-    appendAggregationResult(
-        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
-  }
+  protected abstract void updateResultTsBlock();
 
   @Override
   public long calculateMaxPeekMemory() {

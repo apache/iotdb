@@ -29,6 +29,8 @@ public class TimeWindow implements IWindow {
   private long curMinTime;
   private long curMaxTime;
 
+  private int TIME_COLUMN_INDEX = 0;
+
   public TimeWindow() {}
 
   public TimeWindow(TimeRange curTimeRange) {
@@ -51,7 +53,7 @@ public class TimeWindow implements IWindow {
 
   @Override
   public int getControlColumnIndex() {
-    return 0;
+    return TIME_COLUMN_INDEX;
   }
 
   @Override
@@ -66,9 +68,10 @@ public class TimeWindow implements IWindow {
   }
 
   @Override
-  public void mergeOnePoint() {}
+  public void mergeOnePoint() {
+    // do nothing
+  }
 
-  @Override
   public void update(TimeRange curTimeRange) {
     this.curTimeRange = curTimeRange;
     this.curMinTime = curTimeRange.getMin();

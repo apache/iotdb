@@ -131,6 +131,9 @@ public class Aggregator {
   }
 
   public boolean hasFinalResult() {
+    // For other window (SessionWindow, CountWindow and StateWindow), we cannot
+    // precompute where the window ends, so we cannot judge whether the aggregation method
+    // has been calculated.
     if (!curWindow.isTimeWindow()) {
       return false;
     }

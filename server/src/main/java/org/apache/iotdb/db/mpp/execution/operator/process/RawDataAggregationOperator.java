@@ -24,6 +24,8 @@ import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindowManager;
+import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowManager;
 
 import java.util.List;
 
@@ -42,6 +44,10 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAg
  */
 public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
+  private final IWindowManager windowManager;
+
+  private boolean finish;
+
   public RawDataAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
@@ -50,6 +56,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       boolean ascending,
       long maxReturnSize) {
     super(operatorContext, aggregators, child, ascending, timeRangeIterator, maxReturnSize);
+    this.windowManager = new TimeWindowManager(timeRangeIterator);
+    this.finish = false;
   }
 
   @Override
@@ -85,8 +93,6 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   }
 
   private boolean calculateAndUpdateFromRawData() {
-    // 待使用的inputTsBlock为空就直接return false
-    // 在calculateNextAggregationResult方法中，就会向子节点拿下一个TsBlock
     if (inputTsBlock == null || inputTsBlock.isEmpty()) {
       return false;
     }
@@ -96,8 +102,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       initWindowManagerAndAggregators();
     }
 
-    if (windowManager.satisfiedTimeRange(inputTsBlock)) {
-      inputTsBlock = windowManager.skipPointsOutOfTimeRange(inputTsBlock);
+    if (windowManager.satisfiedCurWindow(inputTsBlock)) {
+      inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
 
       int lastReadRowIndex = 0;
       for (Aggregator aggregator : aggregators) {

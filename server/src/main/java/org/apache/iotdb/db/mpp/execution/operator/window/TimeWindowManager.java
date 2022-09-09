@@ -72,7 +72,7 @@ public class TimeWindowManager implements IWindowManager {
   }
 
   @Override
-  public TsBlock skipPointsOutOfTimeRange(TsBlock inputTsBlock) {
+  public TsBlock skipPointsOutOfCurWindow(TsBlock inputTsBlock) {
     if ((ascending && inputTsBlock.getStartTime() < curWindow.getCurMinTime())
         || (!ascending && inputTsBlock.getStartTime() > curWindow.getCurMaxTime())) {
       return TsBlockUtil.skipPointsOutOfTimeRange(
@@ -82,7 +82,7 @@ public class TimeWindowManager implements IWindowManager {
   }
 
   @Override
-  public boolean satisfiedTimeRange(TsBlock inputTsBlock) {
+  public boolean satisfiedCurWindow(TsBlock inputTsBlock) {
     return AggregationUtil.satisfiedTimeRange(inputTsBlock, curWindow.getCurTimeRange(), ascending);
   }
 

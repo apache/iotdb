@@ -56,7 +56,7 @@ public class CountAccumulator implements Accumulator {
           return i;
         }
         curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
+        if (!valueColumn.isNull(i)) {
           countValue++;
         }
       }

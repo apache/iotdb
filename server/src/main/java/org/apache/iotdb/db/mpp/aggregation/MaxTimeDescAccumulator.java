@@ -31,24 +31,16 @@ public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
     int windowControlColumnIndex = curWindow.getControlColumnIndex();
     int curPositionCount = column[windowControlColumnIndex].getPositionCount();
 
-    if (curWindow.isTimeWindow()) {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
+    for (int i = 0; i < curPositionCount; i++) {
+      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+        return i;
+      }
+      curWindow.mergeOnePoint();
+      if (!column[1].isNull(i)) {
+        if (curWindow.isTimeWindow()) {
           updateMaxTime(column[0].getLong(i));
           return i;
-        }
-      }
-    } else {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
+        } else {
           maxTime = Math.max(maxTime, column[0].getLong(i));
         }
       }

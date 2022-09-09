@@ -19,18 +19,33 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
+/** Used to customize the window which stipulates where we can calculate aggregation result. */
 public interface IWindow {
 
+  /**
+   * Get the index of column which stipulates the window type
+   *
+   * @return the control column index
+   */
   int getControlColumnIndex();
 
+  /**
+   * Judge whether the point at index of column belongs to this window
+   *
+   * @param column
+   * @param index
+   * @return
+   */
   boolean satisfy(Column column, int index);
 
+  /** @return whether it is time window */
   boolean isTimeWindow();
 
+  /**
+   * When we merge a point into window, at this time, we can use this method to change the status in
+   * this window
+   */
   void mergeOnePoint();
-
-  void update(TimeRange curTimeRange);
 }

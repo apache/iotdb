@@ -21,23 +21,71 @@ package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
+/**
+ * Used to customize all the type of window managers, such as TimeWindowManager,
+ * SessionWindowManager
+ */
 public interface IWindowManager {
 
+  /**
+   * Judge whether the current window is initialized
+   *
+   * @return whether the current window is initialized
+   */
   boolean isCurWindowInit();
 
+  /**
+   * Used to initialize the status of window
+   *
+   * @param tsBlock a TsBlock
+   */
   void initCurWindow(TsBlock tsBlock);
 
+  /**
+   * Used to determine whether there is a next window
+   *
+   * @return whether there is a next window
+   */
   boolean hasNext();
 
+  /** Used to mark the current window has got last point */
   void genNextWindow();
 
+  /**
+   * Used to get the output time of current window
+   *
+   * @return the output time of current window
+   */
   long currentOutputTime();
 
+  /**
+   * Used to get current window
+   *
+   * @return current window
+   */
   IWindow getCurWindow();
 
-  TsBlock skipPointsOutOfTimeRange(TsBlock inputTsBlock);
+  /**
+   * Used to skip some points through the window attributes, such as timeRange and so on.
+   *
+   * @param inputTsBlock a TsBlock
+   * @return a new TsBlock which skips some points
+   */
+  TsBlock skipPointsOutOfCurWindow(TsBlock inputTsBlock);
 
-  boolean satisfiedTimeRange(TsBlock inputTsBlock);
+  /**
+   * Used to determine whether the current window overlaps with TsBlock
+   *
+   * @param inputTsBlock a TsBlock
+   * @return whether the current window overlaps with TsBlock
+   */
+  boolean satisfiedCurWindow(TsBlock inputTsBlock);
 
+  /**
+   * Used to determine whether there are extra points for the next window
+   *
+   * @param inputTsBlock a TsBlock
+   * @return whether there are extra points for the next window
+   */
   boolean isTsBlockOutOfBound(TsBlock inputTsBlock);
 }
