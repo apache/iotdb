@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.writer.MemoryControlTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -29,13 +32,21 @@ import java.util.Collections;
 import java.util.List;
 
 public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
-  private TsFileIOWriter fileWriter;
+  private MemoryControlTsFileIOWriter fileWriter;
 
   private boolean isEmptyFile;
+  private TsFileResource resource;
 
   public InnerSpaceCompactionWriter(TsFileResource targetFileResource) throws IOException {
-    this.fileWriter = new TsFileIOWriter(targetFileResource.getTsFile());
+    long sizeForFileWriter =
+        SystemInfo.getInstance().getMemorySizeForCompaction()
+            / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+            * 5
+            / 100L;
+    this.fileWriter =
+        new MemoryControlTsFileIOWriter(targetFileResource.getTsFile(), sizeForFileWriter);
     isEmptyFile = true;
+    resource = targetFileResource;
   }
 
   @Override
@@ -65,11 +76,14 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   }
 
   @Override
-  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+  public void write(
+      TimeColumn timestamps, Column[] columns, String device, int subTaskId, int batchSize)
       throws IOException {
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
     checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
+    resource.updateStartTime(device, timestamps.getStartTime());
+    resource.updateEndTime(device, timestamps.getEndTime());
     isEmptyFile = false;
   }
 
@@ -87,6 +101,12 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
       fileWriter.close();
     }
     fileWriter = null;
+  }
+
+  @Override
+  public void updateStartTimeAndEndTime(String device, long time, int subTaskId) {
+    resource.updateStartTime(device, time);
+    resource.updateEndTime(device, time);
   }
 
   @Override

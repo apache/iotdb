@@ -57,6 +57,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putOnePageChunk;
 
@@ -132,7 +133,7 @@ public class InnerUnseqCompactionTest {
   @Test
   public void test()
       throws MetadataException, IOException, StorageEngineException, WriteProcessException,
-          InterruptedException {
+          InterruptedException, ExecutionException {
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
         for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {
