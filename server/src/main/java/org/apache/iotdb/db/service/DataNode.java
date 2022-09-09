@@ -266,9 +266,6 @@ public class DataNode implements DataNodeMBean {
     setUncaughtExceptionHandler();
     initServiceProvider();
 
-    // init metric service
-    registerManager.register(MetricService.getInstance());
-
     logger.info("recover the schema...");
     initSchemaEngine();
     registerManager.register(new JMXService());
@@ -312,11 +309,10 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
 
-    // start reporter
-    MetricService.getInstance().startAllReporter();
-
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
+
+    registerManager.register(MetricService.getInstance());
   }
 
   /** set up RPC and protocols after DataNode is available */

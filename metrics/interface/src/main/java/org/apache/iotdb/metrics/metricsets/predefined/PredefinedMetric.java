@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.predefined;
+package org.apache.iotdb.metrics.metricsets.predefined;
 
 public enum PredefinedMetric {
   JVM,
