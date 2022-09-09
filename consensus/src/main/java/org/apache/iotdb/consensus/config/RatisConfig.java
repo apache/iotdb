@@ -33,6 +33,7 @@ public class RatisConfig {
   private final Snapshot snapshot;
   private final ThreadPool threadPool;
   private final Log log;
+  private final LeaderLogAppender leaderLogAppender;
   private final Grpc grpc;
   private final RatisConsensus ratisConsensus;
 
@@ -43,12 +44,14 @@ public class RatisConfig {
       ThreadPool threadPool,
       Log log,
       Grpc grpc,
+      LeaderLogAppender leaderLogAppender,
       RatisConsensus ratisConsensus) {
     this.rpc = rpc;
     this.leaderElection = leaderElection;
     this.snapshot = snapshot;
     this.threadPool = threadPool;
     this.log = log;
+    this.leaderLogAppender = leaderLogAppender;
     this.grpc = grpc;
     this.ratisConsensus = ratisConsensus;
   }
@@ -73,6 +76,10 @@ public class RatisConfig {
     return log;
   }
 
+  public LeaderLogAppender getLeaderLogAppender() {
+    return leaderLogAppender;
+  }
+
   public Grpc getGrpc() {
     return grpc;
   }
@@ -91,6 +98,7 @@ public class RatisConfig {
     private Snapshot snapshot;
     private ThreadPool threadPool;
     private Log log;
+    private LeaderLogAppender leaderLogAppender;
     private Grpc grpc;
     private RatisConsensus ratisConsensus;
 
@@ -102,6 +110,7 @@ public class RatisConfig {
           threadPool != null ? threadPool : ThreadPool.newBuilder().build(),
           log != null ? log : Log.newBuilder().build(),
           grpc != null ? grpc : Grpc.newBuilder().build(),
+          leaderLogAppender != null ? leaderLogAppender : LeaderLogAppender.newBuilder().build(),
           ratisConsensus != null ? ratisConsensus : RatisConsensus.newBuilder().build());
     }
 
@@ -137,6 +146,11 @@ public class RatisConfig {
 
     public Builder setRatisConsensus(RatisConsensus ratisConsensus) {
       this.ratisConsensus = ratisConsensus;
+      return this;
+    }
+
+    public Builder setLeaderLogAppender(LeaderLogAppender leaderLogAppender) {
+      this.leaderLogAppender = leaderLogAppender;
       return this;
     }
   }
@@ -743,6 +757,65 @@ public class RatisConfig {
 
       public RatisConsensus.Builder setRetryWaitMillis(long retryWaitMillis) {
         this.retryWaitMillis = retryWaitMillis;
+        return this;
+      }
+    }
+  }
+
+  public static class LeaderLogAppender {
+    private final SizeInBytes bufferByteLimit;
+    private final SizeInBytes snapshotChunkSizeMax;
+    private final boolean installSnapshotEnabled;
+
+    private LeaderLogAppender(
+        SizeInBytes bufferByteLimit,
+        SizeInBytes snapshotChunkSizeMax,
+        boolean installSnapshotEnabled) {
+      this.bufferByteLimit = bufferByteLimit;
+      this.snapshotChunkSizeMax = snapshotChunkSizeMax;
+      this.installSnapshotEnabled = installSnapshotEnabled;
+    }
+
+    public SizeInBytes getBufferByteLimit() {
+      return bufferByteLimit;
+    }
+
+    public SizeInBytes getSnapshotChunkSizeMax() {
+      return snapshotChunkSizeMax;
+    }
+
+    public boolean isInstallSnapshotEnabled() {
+      return installSnapshotEnabled;
+    }
+
+    public static LeaderLogAppender.Builder newBuilder() {
+      return new LeaderLogAppender.Builder();
+    }
+
+    public static class Builder {
+      private SizeInBytes bufferByteLimit =
+          RaftServerConfigKeys.Log.Appender.BUFFER_BYTE_LIMIT_DEFAULT;
+      private SizeInBytes snapshotChunkSizeMax =
+          RaftServerConfigKeys.Log.Appender.SNAPSHOT_CHUNK_SIZE_MAX_DEFAULT;
+      private boolean installSnapshotEnabled =
+          RaftServerConfigKeys.Log.Appender.INSTALL_SNAPSHOT_ENABLED_DEFAULT;
+
+      public LeaderLogAppender build() {
+        return new LeaderLogAppender(bufferByteLimit, snapshotChunkSizeMax, installSnapshotEnabled);
+      }
+
+      public LeaderLogAppender.Builder setBufferByteLimit(long bufferByteLimit) {
+        this.bufferByteLimit = SizeInBytes.valueOf(bufferByteLimit);
+        return this;
+      }
+
+      public LeaderLogAppender.Builder setSnapshotChunkSizeMax(long snapshotChunkSizeMax) {
+        this.snapshotChunkSizeMax = SizeInBytes.valueOf(snapshotChunkSizeMax);
+        return this;
+      }
+
+      public LeaderLogAppender.Builder setInstallSnapshotEnabled(boolean installSnapshotEnabled) {
+        this.installSnapshotEnabled = installSnapshotEnabled;
         return this;
       }
     }

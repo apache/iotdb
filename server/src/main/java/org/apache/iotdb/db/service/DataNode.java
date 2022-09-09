@@ -196,6 +196,7 @@ public class DataNode implements DataNodeMBean {
             config.setDataNodeId(dataNodeID);
           }
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
+          IoTDBDescriptor.getInstance().loadRatisConfig(dataNodeRegisterResp.ratisConfig);
           IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
 
           if (!IoTDBStartCheck.getInstance()

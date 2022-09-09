@@ -35,6 +35,7 @@ struct TDataNodeRegisterResp {
   3: optional i32 dataNodeId
   4: optional TGlobalConfig globalConfig
   5: optional binary templateInfo
+  6: optional TRatisConfig ratisConfig
 }
 
 struct TGlobalConfig {
@@ -44,6 +45,10 @@ struct TGlobalConfig {
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
+}
+
+struct TRatisConfig {
+  1: optional i64 appenderBufferSize
 }
 
 struct TDataNodeRemoveReq {
