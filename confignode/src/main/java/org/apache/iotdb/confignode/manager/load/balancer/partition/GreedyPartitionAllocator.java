@@ -67,7 +67,7 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
             // Greedy allocation
             schemaPartitionMap.put(seriesPartitionSlot, regionSlotsCounter.get(0).getRight());
             // Bubble sort
-            bubbleSort(0, regionSlotsCounter);
+            bubbleSort(regionSlotsCounter.get(0).getRight(), regionSlotsCounter);
           }
           result.put(storageGroup, new SchemaPartitionTable(schemaPartitionMap));
         });
@@ -88,80 +88,90 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
               getPartitionManager()
                   .getSortedRegionSlotsCounter(storageGroup, TConsensusGroupType.DataRegion);
 
+          DataPartitionTable dataPartitionTable = new DataPartitionTable();
+
           // Enumerate SeriesPartitionSlot
-          Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap =
-              new ConcurrentHashMap<>();
           for (Map.Entry<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesPartitionEntry :
               unassignedPartitionSlotsMap.entrySet()) {
-            Map<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionMap =
-                new ConcurrentHashMap<>();
+            SeriesPartitionTable seriesPartitionTable = new SeriesPartitionTable();
 
-            // Enumerate TimePartitionSlot
+            // Enumerate TimePartitionSlot in ascending order
             List<TTimePartitionSlot> timePartitionSlots = seriesPartitionEntry.getValue();
             timePartitionSlots.sort(Comparator.comparingLong(TTimePartitionSlot::getStartTime));
             for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
+
+              /* Check if the current DataPartition has predecessor firstly, and inherit it if exists */
+
+              // Check if the current Partition's predecessor is allocated
+              // in the same batch of Partition creation
               TConsensusGroupId predecessor =
-                  getPredecessor(
-                      seriesPartitionMap,
-                      storageGroup,
-                      seriesPartitionEntry.getKey(),
-                      timePartitionSlot);
+                  seriesPartitionTable.getPrecededDataPartition(
+                      timePartitionSlot, TIME_PARTITION_INTERVAL);
               if (predecessor != null) {
-                // For DataPartition allocation, we consider predecessor first
-                seriesPartitionMap.put(timePartitionSlot, Collections.singletonList(predecessor));
-                for (int i = 0; i < regionSlotsCounter.size(); i++) {
-                  if (regionSlotsCounter.get(i).getRight().equals(predecessor)) {
-                    bubbleSort(i, regionSlotsCounter);
-                    break;
-                  }
-                }
-              } else {
-                // Greedy allocation
-                seriesPartitionMap.put(
-                    timePartitionSlot,
-                    Collections.singletonList(regionSlotsCounter.get(0).getRight()));
-                // Bubble sort
-                bubbleSort(0, regionSlotsCounter);
+                seriesPartitionTable
+                    .getSeriesPartitionMap()
+                    .put(timePartitionSlot, Collections.singletonList(predecessor));
+                bubbleSort(predecessor, regionSlotsCounter);
+                continue;
               }
+
+              // Check if the current Partition's predecessor was allocated
+              // in the former Partition creation
+              predecessor =
+                  getPartitionManager()
+                      .getPrecededDataPartition(
+                          storageGroup,
+                          seriesPartitionEntry.getKey(),
+                          timePartitionSlot,
+                          TIME_PARTITION_INTERVAL);
+              if (predecessor != null) {
+                seriesPartitionTable
+                    .getSeriesPartitionMap()
+                    .put(timePartitionSlot, Collections.singletonList(predecessor));
+                bubbleSort(predecessor, regionSlotsCounter);
+                continue;
+              }
+
+              /* Greedy allocation */
+              seriesPartitionTable
+                  .getSeriesPartitionMap()
+                  .put(
+                      timePartitionSlot,
+                      Collections.singletonList(regionSlotsCounter.get(0).getRight()));
+              bubbleSort(regionSlotsCounter.get(0).getRight(), regionSlotsCounter);
             }
-            dataPartitionMap.put(
-                seriesPartitionEntry.getKey(), new SeriesPartitionTable(seriesPartitionMap));
+            dataPartitionTable
+                .getDataPartitionMap()
+                .put(seriesPartitionEntry.getKey(), seriesPartitionTable);
           }
-          result.put(storageGroup, new DataPartitionTable(dataPartitionMap));
+          result.put(storageGroup, dataPartitionTable);
         });
 
     return result;
   }
 
-  private TConsensusGroupId getPredecessor(
-      Map<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionMap,
-      String storageGroup,
-      TSeriesPartitionSlot seriesPartitionSlot,
-      TTimePartitionSlot timePartitionSlot) {
-    // Check if the current Partition's predecessor is allocated
-    // in the same batch of Partition creation firstly
-    if (timePartitionSlot.getStartTime() > TIME_PARTITION_INTERVAL) {
-      TTimePartitionSlot precedeSlot =
-          new TTimePartitionSlot(timePartitionSlot.getStartTime() - TIME_PARTITION_INTERVAL);
-      if (seriesPartitionMap.containsKey(precedeSlot)) {
-        return seriesPartitionMap.get(precedeSlot).get(0);
+  /**
+   * Bubble sort the regionSlotsCounter from the specified consensus group
+   *
+   * <p>Notice: Here we use bubble sort instead of other sorting algorithm is because that, there is
+   * only one Partition allocated in each loop. Therefore, only consider one consensus group weight
+   * change is enough
+   *
+   * @param consensusGroupId The consensus group where the new Partition is allocated
+   * @param regionSlotsCounter List<Pair<Allocated Partition num, TConsensusGroupId>>
+   */
+  private void bubbleSort(
+      TConsensusGroupId consensusGroupId, List<Pair<Long, TConsensusGroupId>> regionSlotsCounter) {
+    // Find the corresponding consensus group
+    int index = 0;
+    for (int i = 0; i < regionSlotsCounter.size(); i++) {
+      if (regionSlotsCounter.get(i).getRight().equals(consensusGroupId)) {
+        index = i;
+        break;
       }
     }
 
-    // Check if the current Partition's predecessor was allocated
-    // in the former Partition creation secondly
-    return getPartitionManager()
-        .getPrecededDataPartition(
-            storageGroup, seriesPartitionSlot, timePartitionSlot, TIME_PARTITION_INTERVAL);
-  }
-
-  /**
-   * Bubble sort the regionSlotsCounter from the specified index
-   *
-   * @param index The index where the new Partition is allocated
-   * @param regionSlotsCounter List<Pair<Allocated Partition num, TConsensusGroupId>>
-   */
-  private void bubbleSort(int index, List<Pair<Long, TConsensusGroupId>> regionSlotsCounter) {
+    // Do bubble sort
     regionSlotsCounter.get(index).setLeft(regionSlotsCounter.get(index).getLeft() + 1);
     while (index < regionSlotsCounter.size() - 1
         && regionSlotsCounter.get(index).getLeft() > regionSlotsCounter.get(index + 1).getLeft()) {

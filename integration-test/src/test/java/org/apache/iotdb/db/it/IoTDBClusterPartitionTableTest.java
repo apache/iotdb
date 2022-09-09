@@ -71,7 +71,7 @@ public class IoTDBClusterPartitionTableTest {
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 5;
   private static final int seriesPartitionSlotsNum = 100;
-  private static final int timePartitionSlotsNum = 10;
+  private static final int timePartitionSlotsNum = 100;
 
   @Before
   public void setUp() throws Exception {
@@ -252,9 +252,9 @@ public class IoTDBClusterPartitionTableTest {
           Assert.assertTrue(timePartitionSlotMap.containsKey(timePartitionSlot));
           if (k > 0) {
             // Check consistency
-                        Assert.assertEquals(
-                            timePartitionSlotMap.get(new TTimePartitionSlot(0)),
-                            timePartitionSlotMap.get(timePartitionSlot));
+            Assert.assertEquals(
+                timePartitionSlotMap.get(new TTimePartitionSlot(0)),
+                timePartitionSlotMap.get(timePartitionSlot));
           }
         }
       }
@@ -306,15 +306,16 @@ public class IoTDBClusterPartitionTableTest {
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
       checkDataPartitionMap(dataPartitionTableResp.getDataPartitionTable());
 
+      // Test DataPartition inherit policy
       TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
-      Assert.assertEquals(storageGroupNum, showRegionResp.getRegionInfoListSize());
       showRegionResp
           .getRegionInfoList()
           .forEach(
               regionInfo -> {
-                Assert.assertEquals(seriesPartitionSlotsNum, regionInfo.getSeriesSlots());
+                // Normally, all Timeslots belonging to the same SeriesSlot are allocated to the
+                // same DataRegionGroup
                 Assert.assertEquals(
-                    seriesPartitionSlotsNum * timePartitionSlotsNum, regionInfo.getTimeSlots());
+                    regionInfo.getSeriesSlots() * timePartitionSlotsNum, regionInfo.getTimeSlots());
               });
     }
   }

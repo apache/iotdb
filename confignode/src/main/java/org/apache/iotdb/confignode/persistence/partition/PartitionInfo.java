@@ -615,8 +615,8 @@ public class PartitionInfo implements SnapshotProcessor {
     return storageGroupPartitionTables.get(storageGroup).getRegionGroupCount(type);
   }
 
-  public int getSlotCount(String storageGroup) {
-    return storageGroupPartitionTables.get(storageGroup).getSlotsCount();
+  public int getAssignedSeriesPartitionSlotsCount(String storageGroup) {
+    return storageGroupPartitionTables.get(storageGroup).getAssignedSeriesPartitionSlotsCount();
   }
 
   /**
