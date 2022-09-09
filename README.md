@@ -197,16 +197,14 @@ Users can start IoTDB by the start-server script under the sbin folder.
 # Unix/OS X
 > nohup sbin/start-server.sh >/dev/null 2>&1 &
 or
-> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
+> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
 
 # Windows
-> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
+> sbin\start-server.bat -c <conf_path>
 ```
 
-- "-c" and "-rpc_port" are optional.
+- "-c" is optional.
 - option "-c" specifies the system configuration file directory.
-- option "-rpc_port" specifies the rpc port.
-- if both option specified, the *rpc_port* will overrides the rpc_port in *conf_path*.
 
 
 ### Use IoTDB
