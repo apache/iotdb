@@ -49,9 +49,6 @@ public class SyncInfo {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(SyncInfo.class);
 
-  // <pipeFolderName, pipeMsg>
-  private final Map<String, PipeMessage> pipeMessageMap = new ConcurrentHashMap<>();
-
   private Map<String, PipeSink> pipeSinks;
 
   private PipeInfo runningPipe;
@@ -245,11 +242,12 @@ public class SyncInfo {
    *
    * @param pipeName name of pipe
    * @param createTime createTime of pipe
-   * @param message pipe message
+   * @param messageType pipe message type
    */
-  public void changePipeMessage(String pipeName, long createTime, PipeMessage message) {
-    if (message.compareTo(pipes.get(pipeName).get(createTime).getPipeMessage()) > 0) {
-      pipes.get(pipeName).get(createTime).setPipeMessage(message);
+  public void changePipeMessage(
+      String pipeName, long createTime, PipeMessage.PipeMessageType messageType) {
+    if (messageType.compareTo(pipes.get(pipeName).get(createTime).getMessageType()) > 0) {
+      pipes.get(pipeName).get(createTime).setMessageType(messageType);
     }
   }
 

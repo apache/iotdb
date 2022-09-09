@@ -18,18 +18,41 @@
  */
 package org.apache.iotdb.db.sync.sender.pipe;
 
-public enum PipeMessage {
-  NORMAL(1),
-  WARN(2),
-  ERROR(3);
+public class PipeMessage {
+  private final String message;
+  private final PipeMessageType type;
 
-  private int value;
-
-  PipeMessage(int value) {
-    this.value = value;
+  public PipeMessage(PipeMessageType type, String message) {
+    this.type = type;
+    this.message = message;
   }
 
-  public int getValue() {
-    return value;
+  public String getMessage() {
+    return message;
+  }
+
+  public PipeMessageType getType() {
+    return type;
+  }
+
+  @Override
+  public String toString() {
+    return "PipeMessage{" + "message='" + message + '\'' + ", type=" + type + '}';
+  }
+
+  public enum PipeMessageType {
+    NORMAL(1),
+    WARN(2),
+    ERROR(3);
+
+    private int value;
+
+    PipeMessageType(int value) {
+      this.value = value;
+    }
+
+    public int getValue() {
+      return value;
+    }
   }
 }

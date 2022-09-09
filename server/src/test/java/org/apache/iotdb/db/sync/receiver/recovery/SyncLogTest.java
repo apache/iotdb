@@ -85,14 +85,29 @@ public class SyncLogTest {
       // check Pipe
       PipeInfo runningPipe = syncLogReader.getRunningPipeInfo();
       SyncTestUtils.checkPipeInfo(
-          runningPipe, pipe2, "demo", PipeStatus.RUNNING, createdTime2, PipeMessage.NORMAL);
+          runningPipe,
+          pipe2,
+          "demo",
+          PipeStatus.RUNNING,
+          createdTime2,
+          PipeMessage.PipeMessageType.NORMAL);
       Map<String, Map<Long, PipeInfo>> pipes = syncLogReader.getAllPipeInfos();
       PipeInfo pipeInfo1 = pipes.get(pipe1).get(createdTime1);
       SyncTestUtils.checkPipeInfo(
-          pipeInfo1, pipe1, "demo", PipeStatus.DROP, createdTime1, PipeMessage.NORMAL);
+          pipeInfo1,
+          pipe1,
+          "demo",
+          PipeStatus.DROP,
+          createdTime1,
+          PipeMessage.PipeMessageType.NORMAL);
       PipeInfo pipeInfo2 = pipes.get(pipe2).get(createdTime2);
       SyncTestUtils.checkPipeInfo(
-          pipeInfo2, pipe2, "demo", PipeStatus.RUNNING, createdTime2, PipeMessage.NORMAL);
+          pipeInfo2,
+          pipe2,
+          "demo",
+          PipeStatus.RUNNING,
+          createdTime2,
+          PipeMessage.PipeMessageType.NORMAL);
     } catch (Exception e) {
       Assert.fail();
       e.printStackTrace();

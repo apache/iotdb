@@ -93,7 +93,10 @@ public class TsFilePipe implements Pipe {
   }
 
   private void recover() {
-    File dir = new File(SyncPathUtil.getSenderRealTimePipeLogDir(this.name, this.createTime));
+    File dir =
+        new File(
+            SyncPathUtil.getSenderRealTimePipeLogDir(
+                pipeInfo.getPipeName(), pipeInfo.getCreateTime()));
     if (dir.exists()) {
       File[] fileList = dir.listFiles();
       for (File file : fileList) {
@@ -101,11 +104,11 @@ public class TsFilePipe implements Pipe {
         BufferedPipeDataQueue historyQueue =
             new BufferedPipeDataQueue(
                 SyncPathUtil.getSenderDataRegionHistoryPipeLogDir(
-                    this.name, this.createTime, dataRegionId));
+                    pipeInfo.getPipeName(), pipeInfo.getCreateTime(), dataRegionId));
         BufferedPipeDataQueue realTimeQueue =
             new BufferedPipeDataQueue(
                 SyncPathUtil.getSenderDataRegionRealTimePipeLogDir(
-                    this.name, this.createTime, dataRegionId));
+                    pipeInfo.getPipeName(), pipeInfo.getCreateTime(), dataRegionId));
         historyQueueMap.put(dataRegionId, historyQueue);
         realTimeQueueMap.put(dataRegionId, realTimeQueue);
         this.maxSerialNumber.set(
@@ -156,7 +159,8 @@ public class TsFilePipe implements Pipe {
   private void collectHistoryData() {
     // collect history TsFile
     for (Map.Entry<String, ISyncManager> entry : syncManagerMap.entrySet()) {
-      List<File> historyTsFiles = entry.getValue().syncHistoryTsFile(pipeInfo.getDataStartTimestamp());
+      List<File> historyTsFiles =
+          entry.getValue().syncHistoryTsFile(pipeInfo.getDataStartTimestamp());
       // put history data into PipeDataQueue
       int historyTsFilesSize = historyTsFiles.size();
       for (int i = 0; i < historyTsFilesSize; i++) {
@@ -289,11 +293,13 @@ public class TsFilePipe implements Pipe {
     historyQueueMap.put(
         dataRegionId,
         new BufferedPipeDataQueue(
-            SyncPathUtil.getSenderDataRegionHistoryPipeLogDir(name, createTime, dataRegionId)));
+            SyncPathUtil.getSenderDataRegionHistoryPipeLogDir(
+                pipeInfo.getPipeName(), pipeInfo.getCreateTime(), dataRegionId)));
     realTimeQueueMap.put(
         dataRegionId,
         new BufferedPipeDataQueue(
-            SyncPathUtil.getSenderDataRegionRealTimePipeLogDir(name, createTime, dataRegionId)));
+            SyncPathUtil.getSenderDataRegionRealTimePipeLogDir(
+                pipeInfo.getPipeName(), pipeInfo.getCreateTime(), dataRegionId)));
     senderManager.registerDataRegion(dataRegionId);
   }
 

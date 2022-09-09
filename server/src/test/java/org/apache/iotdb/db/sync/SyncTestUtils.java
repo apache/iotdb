@@ -31,11 +31,11 @@ public class SyncTestUtils {
       String pipeSinkName,
       Pipe.PipeStatus status,
       long createTime,
-      PipeMessage pipeMessage) {
+      PipeMessage.PipeMessageType messageType) {
     Assert.assertEquals(pipeName, pipeInfo.getPipeName());
     Assert.assertEquals(pipeSinkName, pipeInfo.getPipeSinkName());
     Assert.assertEquals(status, pipeInfo.getStatus());
     Assert.assertEquals(createTime, pipeInfo.getCreateTime());
-    Assert.assertEquals(pipeMessage, pipeInfo.getPipeMessage());
+    Assert.assertEquals(messageType, pipeInfo.getMessageType());
   }
 }

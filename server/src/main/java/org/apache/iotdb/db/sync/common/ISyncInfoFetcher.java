@@ -61,7 +61,7 @@ public interface ISyncInfoFetcher {
 
   PipeInfo getRunningPipeInfo();
 
-  TSStatus recordMsg(String pipeName, long createTime, PipeMessage pipeMessage);
+  TSStatus recordMsg(String pipeName, long createTime, PipeMessage message);
 
   // endregion
 }

@@ -25,14 +25,14 @@ public abstract class PipeInfo {
   protected String pipeSinkName;
   protected PipeStatus status;
   protected long createTime;
-  protected PipeMessage pipeMessage;
+  protected PipeMessage.PipeMessageType messageType;
 
   public PipeInfo(String pipeName, String pipeSinkName, long createTime) {
     this.pipeName = pipeName;
     this.pipeSinkName = pipeSinkName;
     this.createTime = createTime;
     this.status = PipeStatus.STOP;
-    this.pipeMessage = PipeMessage.NORMAL;
+    this.messageType = PipeMessage.PipeMessageType.NORMAL;
   }
 
   public PipeInfo(String pipeName, String pipeSinkName, PipeStatus status, long createTime) {
@@ -40,7 +40,7 @@ public abstract class PipeInfo {
     this.pipeSinkName = pipeSinkName;
     this.createTime = createTime;
     this.status = status;
-    this.pipeMessage = PipeMessage.NORMAL;
+    this.messageType = PipeMessage.PipeMessageType.NORMAL;
   }
 
   public String getPipeName() {
@@ -67,12 +67,12 @@ public abstract class PipeInfo {
     this.status = status;
   }
 
-  public PipeMessage getPipeMessage() {
-    return pipeMessage;
+  public PipeMessage.PipeMessageType getMessageType() {
+    return messageType;
   }
 
-  public void setPipeMessage(PipeMessage pipeMessage) {
-    this.pipeMessage = pipeMessage;
+  public void setMessageType(PipeMessage.PipeMessageType messageType) {
+    this.messageType = messageType;
   }
 
   public void start() {

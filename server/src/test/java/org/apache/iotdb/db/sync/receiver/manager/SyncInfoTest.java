@@ -78,13 +78,13 @@ public class SyncInfoTest {
       syncInfo.operatePipe(pipe2, StatementType.START_PIPE);
       Assert.assertEquals(1, syncInfo.getAllPipeSink().size());
       Assert.assertEquals(2, syncInfo.getAllPipeInfos().size());
-      syncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.WARN);
-      syncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.NORMAL);
+      syncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.PipeMessageType.WARN);
+      syncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.PipeMessageType.NORMAL);
       PipeInfo pipeInfo1 = syncInfo.getPipeInfo(pipe2, createdTime2);
-      Assert.assertEquals(PipeMessage.WARN, pipeInfo1.getPipeMessage());
-      syncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.ERROR);
+      Assert.assertEquals(PipeMessage.PipeMessageType.WARN, pipeInfo1.getMessageType());
+      syncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.PipeMessageType.ERROR);
       PipeInfo pipeInfo2 = syncInfo.getPipeInfo(pipe2, createdTime2);
-      Assert.assertEquals(PipeMessage.ERROR, pipeInfo2.getPipeMessage());
+      Assert.assertEquals(PipeMessage.PipeMessageType.ERROR, pipeInfo2.getMessageType());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
