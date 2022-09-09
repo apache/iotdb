@@ -72,7 +72,7 @@ or
 > sbin\start-server.bat -c <conf_path>
 ```
 
-- "-c" and "-rpc_port" are optional.
+- "-c" is optional.
 - option "-c" specifies the system configuration file directory.
 
 if you want to use JMX to connect IOTDB, you may need to add 
