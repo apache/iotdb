@@ -87,7 +87,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -268,10 +267,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (!createTriggerStatement.isUsingURI()) {
         // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
-        String jarPath = createTriggerStatement.getJarPath();
         tCreateTriggerReq.setJarFile(
             ExecutableManager.transferToBytebuffer(createTriggerStatement.getJarPath()));
-        tCreateTriggerReq.setJarPath(jarPath.substring(jarPath.lastIndexOf(File.separator) + 1));
       }
 
       final TSStatus executionStatus = client.createTrigger(tCreateTriggerReq);

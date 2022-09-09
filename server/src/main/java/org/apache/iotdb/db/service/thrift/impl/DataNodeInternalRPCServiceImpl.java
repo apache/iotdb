@@ -233,7 +233,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     }
     if (groupId instanceof DataRegionId) {
+
       writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
+
     } else {
       writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
     }
