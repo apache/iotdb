@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
@@ -37,6 +39,7 @@ import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -53,6 +56,8 @@ import java.util.stream.Collectors;
 
 public class DataNodeRemoveHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRemoveHandler.class);
+
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   private final ConfigManager configManager;
 
@@ -387,14 +392,20 @@ public class DataNodeRemoveHandler {
   public DataNodeToStatusResp checkRemoveDataNodeRequest(RemoveDataNodePlan removeDataNodePlan) {
     DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
     dataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    TSStatus status = checkRegionReplication(removeDataNodePlan);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+
+    TSStatus status = checkClusterProtocol();
+    if (isFailed(status)) {
+      dataSet.setStatus(status);
+      return dataSet;
+    }
+    status = checkRegionReplication(removeDataNodePlan);
+    if (isFailed(status)) {
       dataSet.setStatus(status);
       return dataSet;
     }
 
     status = checkDataNodeExist(removeDataNodePlan);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (isFailed(status)) {
       dataSet.setStatus(status);
       return dataSet;
     }
@@ -512,5 +523,22 @@ public class DataNodeRemoveHandler {
 
     // TODO replace findAny() by select the low load node.
     return regionReplicaNodes.stream().filter(e -> !e.equals(filterLocation)).findAny();
+  }
+
+  /**
+   * Check the protocol of the cluster, standalone is not supported to remove data node currently
+   *
+   * @return SUCCEED_STATUS if the Cluster is not standalone protocol, REMOVE_DATANODE_FAILED
+   *     otherwise
+   */
+  private TSStatus checkClusterProtocol() {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
+        && CONF.getSchemaRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.StandAloneConsensus)) {
+      status.setCode(TSStatusCode.REMOVE_DATANODE_FAILED.getStatusCode());
+      status.setMessage("standalone protocol is not supported to remove data node");
+    }
+    return status;
   }
 }
