@@ -106,6 +106,10 @@ public class LoadTsFileStatement extends Statement {
     return autoCreateSchema;
   }
 
+  public int getSgLevel() {
+    return sgLevel;
+  }
+
   public List<File> getTsFiles() {
     return tsFiles;
   }

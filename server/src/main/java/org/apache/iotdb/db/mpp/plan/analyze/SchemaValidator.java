@@ -73,6 +73,6 @@ public class SchemaValidator {
       List<CompressionType[]> compressionTypes,
       List<Boolean> isAlignedList) {
     return SCHEMA_FETCHER.fetchSchemaListWithAutoCreate(
-        devicePaths, measurements, dataTypes, encodings,compressionTypes, isAlignedList);
+        devicePaths, measurements, dataTypes, encodings, compressionTypes, isAlignedList);
   }
 }

@@ -35,7 +35,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class LoadTsFileNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileNode.class);
@@ -89,12 +91,14 @@ public class LoadTsFileNode extends WritePlanNode {
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     LoadTsFileStatement statement = (LoadTsFileStatement) analysis.getStatement();
     List<WritePlanNode> res = new ArrayList<>();
+    Set<String> registeredDevices = new HashSet<>();
     for (File file : tsFiles) {
       try {
         LoadSingleTsFileNode singleTsFileNode = new LoadSingleTsFileNode(getPlanNodeId(), file);
         singleTsFileNode.checkIfNeedDecodeTsFile(analysis.getDataPartitionInfo());
         if (statement.isAutoCreateSchema() || statement.isVerifySchema()) {
-          singleTsFileNode.autoRegisterSchema(statement.isVerifySchema());
+          singleTsFileNode.autoRegisterSchema(
+              statement.isVerifySchema(), statement.getSgLevel(), registeredDevices);
         }
 
         if (singleTsFileNode.needDecodeTsFile()) {

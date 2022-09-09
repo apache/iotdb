@@ -52,12 +52,12 @@ public interface ISchemaFetcher {
       List<Boolean> aligned);
 
   ISchemaTree fetchSchemaListWithAutoCreate(
-          List<PartialPath> devicePath,
-          List<String[]> measurements,
-          List<TSDataType[]> tsDataTypes,
-          List<TSEncoding[]> encodings,
-          List<CompressionType[]> compressionTypes,
-          List<Boolean> aligned);
+      List<PartialPath> devicePath,
+      List<String[]> measurements,
+      List<TSDataType[]> tsDataTypes,
+      List<TSEncoding[]> encodings,
+      List<CompressionType[]> compressionTypes,
+      List<Boolean> aligned);
 
   Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path);
 
