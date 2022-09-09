@@ -25,7 +25,7 @@ public enum MetricLevel {
   IMPORTANT(2),
   CORE(3);
 
-  /** Level of metric */
+  /** Level of metric service */
   int level;
 
   MetricLevel(int level) {

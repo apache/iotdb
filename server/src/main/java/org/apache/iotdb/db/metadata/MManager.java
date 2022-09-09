@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.SeriesNumberOverflowException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
@@ -84,12 +85,13 @@ import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -120,6 +122,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -186,8 +189,8 @@ public class MManager {
   private boolean initialized;
   private boolean allowToCreateNewSeries = true;
 
-  private AtomicLong totalNormalSeriesNumber = new AtomicLong();
-  private AtomicLong totalTemplateSeriesNumber = new AtomicLong();
+  private final AtomicLong totalNormalSeriesNumber = new AtomicLong();
+  private final AtomicLong totalTemplateSeriesNumber = new AtomicLong();
 
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
@@ -205,6 +208,9 @@ public class MManager {
   private TagManager tagManager = TagManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
 
+  // seriesNumerMonitor may be null, so we must check it before use it.
+  private ISeriesNumerMonitor seriesNumerMonitor = null;
+
   // region MManager Singleton
   private static class MManagerHolder {
 
@@ -215,6 +221,10 @@ public class MManager {
     private static final MManager INSTANCE = new MManager();
   }
 
+  public void setSeriesNumerMonitor(ISeriesNumerMonitor seriesNumerMonitor) {
+    this.seriesNumerMonitor = seriesNumerMonitor;
+  }
+
   /** we should not use this function in other place, but only in IoTDB class */
   public static MManager getInstance() {
     return MManagerHolder.INSTANCE;
@@ -223,6 +233,19 @@ public class MManager {
 
   // region Interfaces and Implementation of MManager initialization、snapshot、recover and clear
   protected MManager() {
+    // init ISeriesNumerMonitor if there is.
+    // each mmanager instance will generate an ISeriesNumerMonitor instance
+    // So, if you want to share the ISeriesNumerMonitor instance, pls change this part of code.
+    ServiceLoader<ISeriesNumerMonitor> monitorServiceLoader =
+        ServiceLoader.load(ISeriesNumerMonitor.class);
+    for (ISeriesNumerMonitor loader : monitorServiceLoader) {
+      if (this.seriesNumerMonitor != null) {
+        // it means there is more than one ISeriesNumerMonitor implementation.
+        logger.warn("There are more than one ISeriesNumerMonitor implementation. pls check.");
+      }
+      logger.info("Will set seriesNumerMonitor from {} ", loader.getClass().getName());
+      this.seriesNumerMonitor = loader;
+    }
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
     mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
     String schemaDir = config.getSchemaDir();
@@ -303,8 +326,7 @@ public class MManager {
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       startStatisticCounts();
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateAutoGauge(
               Metric.MEM.toString(),
               MetricLevel.IMPORTANT,
@@ -316,8 +338,7 @@ public class MManager {
   }
 
   private void startStatisticCounts() {
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
@@ -328,8 +349,7 @@ public class MManager {
             Tag.TYPE.toString(),
             "normal");
 
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
@@ -340,8 +360,7 @@ public class MManager {
             Tag.TYPE.toString(),
             "template");
 
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
@@ -359,8 +378,7 @@ public class MManager {
             Tag.TYPE.toString(),
             "total");
 
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
@@ -585,35 +603,49 @@ public class MManager {
           "IoTDB system load is too large to create timeseries, "
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
+
+    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(1)) {
+      throw new SeriesNumberOverflowException();
+    }
     try {
-      PartialPath path = plan.getPath();
-      SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
+      IMeasurementMNode leafMNode;
+      try {
+        PartialPath path = plan.getPath();
+        SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
 
-      ensureStorageGroup(path);
+        ensureStorageGroup(path);
 
-      TSDataType type = plan.getDataType();
-      // create time series in MTree
-      IMeasurementMNode leafMNode =
-          mtree.createTimeseries(
-              path,
-              type,
-              plan.getEncoding(),
-              plan.getCompressor(),
-              plan.getProps(),
-              plan.getAlias());
+        TSDataType type = plan.getDataType();
+        // create time series in MTree
+        leafMNode =
+            mtree.createTimeseries(
+                path,
+                type,
+                plan.getEncoding(),
+                plan.getCompressor(),
+                plan.getProps(),
+                plan.getAlias());
 
-      // the cached mNode may be replaced by new entityMNode in mtree
-      mNodeCache.invalidate(path.getDevicePath());
+        // the cached mNode may be replaced by new entityMNode in mtree
+        mNodeCache.invalidate(path.getDevicePath());
 
-      // update tag index
+        // update tag index
 
-      if (offset != -1 && isRecovering) {
-        // the timeseries has already been created and now system is recovering, using the tag info
-        // in tagFile to recover index directly
-        tagManager.recoverIndex(offset, leafMNode);
-      } else if (plan.getTags() != null) {
-        // tag key, tag value
-        tagManager.addIndex(plan.getTags(), leafMNode);
+        if (offset != -1 && isRecovering) {
+          // the timeseries has already been created and now system is recovering, using the tag
+          // info
+          // in tagFile to recover index directly
+          tagManager.recoverIndex(offset, leafMNode);
+        } else if (plan.getTags() != null) {
+          // tag key, tag value
+          tagManager.addIndex(plan.getTags(), leafMNode);
+        }
+      } catch (Throwable t) {
+        // roll back
+        if (seriesNumerMonitor != null) {
+          seriesNumerMonitor.deleteTimeSeries(1);
+        }
+        throw t;
       }
 
       // update statistics and schemaDataTypeNumMap
@@ -697,31 +729,45 @@ public class MManager {
           "IoTDB system load is too large to create timeseries, "
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
+    int seriesCount = plan.getMeasurements().size();
+
+    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(seriesCount)) {
+      throw new SeriesNumberOverflowException();
+    }
+
     try {
       PartialPath prefixPath = plan.getPrefixPath();
       List<String> measurements = plan.getMeasurements();
       List<TSDataType> dataTypes = plan.getDataTypes();
       List<TSEncoding> encodings = plan.getEncodings();
 
-      for (int i = 0; i < measurements.size(); i++) {
-        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
+      try {
+        for (int i = 0; i < measurements.size(); i++) {
+          SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
+        }
+
+        ensureStorageGroup(prefixPath);
+
+        // create time series in MTree
+        mtree.createAlignedTimeseries(
+            prefixPath,
+            measurements,
+            plan.getDataTypes(),
+            plan.getEncodings(),
+            plan.getCompressors());
+
+        // the cached mNode may be replaced by new entityMNode in mtree
+        mNodeCache.invalidate(prefixPath);
+      } catch (Throwable t) {
+        // roll back
+        if (seriesNumerMonitor != null) {
+          seriesNumerMonitor.deleteTimeSeries(seriesCount);
+        }
+        throw t;
       }
 
-      ensureStorageGroup(prefixPath);
-
-      // create time series in MTree
-      mtree.createAlignedTimeseries(
-          prefixPath,
-          measurements,
-          plan.getDataTypes(),
-          plan.getEncodings(),
-          plan.getCompressors());
-
-      // the cached mNode may be replaced by new entityMNode in mtree
-      mNodeCache.invalidate(prefixPath);
-
       // update statistics and schemaDataTypeNumMap
-      totalNormalSeriesNumber.addAndGet(measurements.size());
+      totalNormalSeriesNumber.addAndGet(seriesCount);
       if (totalNormalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
         logger.warn("Current series number {} is too large...", totalNormalSeriesNumber);
         allowToCreateNewSeries = false;
@@ -849,6 +895,9 @@ public class MManager {
       node = node.getParent();
     }
     totalNormalSeriesNumber.addAndGet(-1);
+    if (seriesNumerMonitor != null) {
+      seriesNumerMonitor.deleteTimeSeries(1);
+    }
     if (!allowToCreateNewSeries
         && totalNormalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
       logger.info("Current series number {} come back to normal level", totalNormalSeriesNumber);
@@ -888,9 +937,13 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
-        totalNormalSeriesNumber.addAndGet(
-            -mtree.getAllTimeseriesCount(
-                storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD), false, false));
+        int timeSeriesCount =
+            mtree.getAllTimeseriesCount(
+                storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD), false, false);
+        totalNormalSeriesNumber.addAndGet(-timeSeriesCount);
+        if (seriesNumerMonitor != null) {
+          seriesNumerMonitor.deleteTimeSeries(timeSeriesCount);
+        }
         // clear cached MNode
         if (!allowToCreateNewSeries
             && totalNormalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
@@ -2481,7 +2534,11 @@ public class MManager {
       }
 
       node.setUseTemplate(false);
-      totalTemplateSeriesNumber.addAndGet(-node.getUpperTemplate().getMeasurementsCount());
+      int seriesCount = node.getUpperTemplate().getMeasurementsCount();
+      totalTemplateSeriesNumber.addAndGet(-seriesCount);
+      if (seriesNumerMonitor != null) {
+        seriesNumerMonitor.deleteTimeSeries(seriesCount);
+      }
 
       // clear caches within MManger
       mNodeCache.invalidate(node);
@@ -2507,24 +2564,39 @@ public class MManager {
           String.format("Path [%s] has not been set any template.", node.getFullPath()));
     }
 
-    // this operation may change mtree structure and node type
-    // invoke mnode.setUseTemplate is invalid
-
-    // check alignment of template and mounted node
-    // if direct measurement exists, node will be replaced
-    IMNode mountedMNode = mtree.checkTemplateAlignmentWithMountedNode(node, template);
-
-    // if has direct measurement (be a EntityNode), to ensure alignment adapt with former node or
-    // template
-    if (mountedMNode.isEntity()) {
-      mountedMNode
-          .getAsEntityMNode()
-          .setAligned(
-              node.isEntity()
-                  ? node.getAsEntityMNode().isAligned()
-                  : node.getUpperTemplate().isDirectAligned());
+    if (seriesNumerMonitor != null
+        && !seriesNumerMonitor.addTimeSeries(template.getMeasurementsCount())) {
+      throw new SeriesNumberOverflowException();
     }
-    mountedMNode.setUseTemplate(true);
+
+    IMNode mountedMNode;
+    try {
+      // this operation may change mtree structure and node type
+      // invoke mnode.setUseTemplate is invalid
+
+      // check alignment of template and mounted node
+      // if direct measurement exists, node will be replaced
+      mountedMNode = mtree.checkTemplateAlignmentWithMountedNode(node, template);
+
+      // if has direct measurement (be a EntityNode), to ensure alignment adapt with former node or
+      // template
+      if (mountedMNode.isEntity()) {
+        mountedMNode
+            .getAsEntityMNode()
+            .setAligned(
+                node.isEntity()
+                    ? node.getAsEntityMNode().isAligned()
+                    : node.getUpperTemplate().isDirectAligned());
+      }
+      mountedMNode.setUseTemplate(true);
+    } catch (Throwable t) {
+      // roll back
+      if (seriesNumerMonitor != null) {
+        seriesNumerMonitor.deleteTimeSeries(template.getMeasurementsCount());
+      }
+      throw t;
+    }
+
     totalTemplateSeriesNumber.addAndGet(template.getMeasurementsCount());
 
     if (node != mountedMNode) {

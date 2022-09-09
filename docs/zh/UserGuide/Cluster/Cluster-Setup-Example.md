@@ -20,14 +20,14 @@ under the License.
 ```
 
 -->
-
-## 前提条件
+## 集群搭建示例
+### 前提条件
 
 如果您在使用 Windows 系统，请安装 MinGW，WSL 或者 git bash。
 
-## 1 节点 1 副本分布式搭建示例
+### 1 节点 1 副本分布式搭建示例
 
-### 源码编译：
+#### 源码编译：
 
 ```
 mvn clean package -DskipTests
@@ -35,7 +35,7 @@ chmod -R 777 ./cluster/target/
 nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh >/dev/null 2>&1 &
 ```
 
-### 使用官网发布版本：
+#### 使用官网发布版本：
 
 ```
 curl -O https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-cluster-bin.zip
@@ -46,9 +46,9 @@ sed -i -e 's/^default_replica_num=3$/default_replica_num=1/g' conf/iotdb-cluster
 nohup ./sbin/start-node.sh >/dev/null 2>&1 &
 ```
 
-## 单机部署 3 节点 1 副本示例
+### 单机部署 3 节点 1 副本示例
 
-### 配置
+#### 配置
 
 通过自己修改配置来处理端口和文件目录冲突，可以在一台机器上启动多个实例。
 
@@ -103,7 +103,7 @@ internal_data_port = 40014
 rpc_port=6671
 ```
 
-### 源码编译：
+#### 源码编译：
 
 ```
 mvn clean package -DskipTests
@@ -113,7 +113,7 @@ nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluste
 nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
 ```
 
-### 使用官网发布版本:
+#### 使用官网发布版本:
 
 下载发布版本:
 
@@ -167,12 +167,12 @@ nohup ./sbin/start-node.sh >/dev/null 2>&1 &nohup ./sbin/start-node.sh ./node2_c
 
 
 
-## 3 节点 3 副本分布式搭建示例
+### 3 节点 3 副本分布式搭建示例
 
 假设我们需要在三个物理节点上部署分布式 IoTDB，这三个节点分别为 A, B 和 C，其公网 ip 分别为 A\_public\_IP*, *B\_public\_IP*, and *C\_public\_IP*，私网 ip 分别为 *A\_private\_IP*, *B\_private\_IP*, and *C\_private\_IP*.
 
 注：如果没有公网 ip 或者私网 ip 则两者**设置成一致**即可，只需要保证客户端能够访问到服务端即可。 私网ip对应iotdb-cluster.properties中的`internal_ip`配置项，公网ip对应iotdb-engine.properties中的`rpc_address`配置项。
-### 配置
+#### 配置
 
 **节点A**:
 
@@ -232,7 +232,7 @@ rpc_address = C_public_ip
 ```
 
 
-### 启动IoTDB集群
+#### 启动IoTDB集群
 
 以下为操作步骤：
 
@@ -246,7 +246,7 @@ rpc_address = C_public_ip
 
 
 
-### 源码编译：
+#### 源码编译：
 **在三个节点上分别执行操作**
 ```
 mvn clean package -DskipTests
@@ -254,7 +254,7 @@ chmod -R 777 ./cluster/target/
 cd cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/
 ```
 
-### 使用官网发布版本:
+#### 使用官网发布版本:
 **在三个节点上分别执行操作**
 
 下载发布版本:

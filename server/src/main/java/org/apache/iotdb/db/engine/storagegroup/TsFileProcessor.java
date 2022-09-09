@@ -375,29 +375,29 @@ public class TsFileProcessor {
     memTableLock.readLock().lock();
     try {
       for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
-        // skip failed Measurements
-        if (insertRowPlan.getDataTypes()[i] == null || insertRowPlan.getMeasurements()[i] == null) {
-          continue;
-        }
-        if (workMemTable.checkIfChunkDoesNotExist(deviceID, insertRowPlan.getMeasurements()[i])) {
-          // ChunkMetadataIncrement
-          chunkMetadataIncrement +=
-              ChunkMetadata.calculateRamSize(
-                  insertRowPlan.getMeasurements()[i], insertRowPlan.getDataTypes()[i]);
-          memTableIncrement += TVList.tvListArrayMemCost(insertRowPlan.getDataTypes()[i]);
-        } else {
-          // here currentChunkPointNum >= 1
-          long currentChunkPointNum =
-              workMemTable.getCurrentTVListSize(deviceID, insertRowPlan.getMeasurements()[i]);
-          memTableIncrement +=
-              (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
-                  ? TVList.tvListArrayMemCost(insertRowPlan.getDataTypes()[i])
-                  : 0;
-        }
-        // TEXT data mem size
-        if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
-          textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
-        }
+      // skip failed Measurements
+      if (insertRowPlan.getDataTypes()[i] == null || insertRowPlan.getMeasurements()[i] == null) {
+        continue;
+      }
+      if (workMemTable.checkIfChunkDoesNotExist(deviceID, insertRowPlan.getMeasurements()[i])) {
+        // ChunkMetadataIncrement
+        chunkMetadataIncrement +=
+            ChunkMetadata.calculateRamSize(
+                insertRowPlan.getMeasurements()[i], insertRowPlan.getDataTypes()[i]);
+        memTableIncrement += TVList.tvListArrayMemCost(insertRowPlan.getDataTypes()[i]);
+      } else {
+        // here currentChunkPointNum >= 1
+        long currentChunkPointNum =
+            workMemTable.getCurrentTVListSize(deviceID, insertRowPlan.getMeasurements()[i]);
+        memTableIncrement +=
+            (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
+                ? TVList.tvListArrayMemCost(insertRowPlan.getDataTypes()[i])
+                : 0;
+      }
+      // TEXT data mem size
+      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT
+          && insertRowPlan.getValues()[i] != null) {
+        textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     } finally {
       memTableLock.readLock().unlock();
@@ -457,7 +457,8 @@ public class TsFileProcessor {
                 * insertRowPlan.getDataTypes()[i].getDataTypeSize();
       }
       // TEXT data mem size
-      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
+      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT
+          && insertRowPlan.getValues()[i] != null) {
         textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     }

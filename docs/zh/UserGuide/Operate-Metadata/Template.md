@@ -19,13 +19,13 @@
 
 -->
 
-# 元数据模板
+## 元数据模板
 
 IoTDB 支持元数据模板功能，实现同类型不同实体的物理量元数据共享，减少元数据内存占用，同时简化同类型实体的管理。
 
 注：以下语句中的 `schema` 关键字可以省略。
 
-## 创建元数据模板
+### 创建元数据模板
 
 创建元数据模板的 SQL 语法如下：
 
@@ -47,7 +47,7 @@ IoTDB> create schema template t2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT 
 
 其中，物理量 `lat` 和 `lon` 是对齐的。
 
-## 挂载元数据模板
+### 挂载元数据模板
 
 **为了更好地适配未来版本的更新及各模块的协作，我们强烈建议您将模板设置在存储组及存储组下层的节点中。**
 
@@ -103,7 +103,7 @@ show devices root.sg1.**
 +---------------+---------+
 ```
 
-## 查看元数据模板
+### 查看元数据模板
 
 - 查看所有元数据模板
 
@@ -171,7 +171,7 @@ IoTDB> show paths using schema template t1
 +-----------+
 ```
 
-## 解除元数据模板
+### 解除元数据模板
 
 对于挂载了元数据模板的节点或其孩子节点，如果：1）曾按模板中的序列写入了数据，或2）使用了 `create timeseries of schema template`，则在使用以下命令之前，不能够卸载或删除元数据模板：
 
@@ -181,7 +181,7 @@ IoTDB> deactivate schema template t1 from root.sg.d1
 
 **注意**：这一操作会删除对应节点下按照模板中的序列写入的数据。
 
-## 卸载元数据模板
+### 卸载元数据模板
 
 卸载元数据模板的 SQL 语句如下所示：
 
@@ -189,7 +189,7 @@ IoTDB> deactivate schema template t1 from root.sg.d1
 IoTDB> unset schema template t1 from root.sg1.d1
 ```
 
-## 删除元数据模板
+### 删除元数据模板
 
 删除元数据模板的 SQL 语句如下所示：
 

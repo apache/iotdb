@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,23 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.external.api;
 
-package org.apache.iotdb.metrics.dropwizard.reporter;
+import java.util.Properties;
 
-enum MetricType {
-  COUNTER("counter"),
-  GAUGE("gauge"),
-  SUMMARY("summary"),
-  HISTOGRAM("histogram"),
-  UNTYPED("untyped");
+/**
+ * An interface to load properties from external properties file to override the default
+ * configurations
+ */
+public interface IPropertiesLoader {
 
-  private final String text;
+  /**
+   * Load Properties from specific file
+   *
+   * @return a property list with values in file.
+   */
+  Properties loadProperties();
 
-  MetricType(String text) {
-    this.text = text;
-  }
-
-  public String getText() {
-    return text;
-  }
+  /**
+   * some properties that iotdb does not use by default.
+   *
+   * @return properties.
+   */
+  Properties getCustomizedProperties();
 }

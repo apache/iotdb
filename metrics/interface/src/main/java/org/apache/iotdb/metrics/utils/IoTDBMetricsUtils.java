@@ -43,9 +43,9 @@ public class IoTDBMetricsUtils {
     stringBuilder
         .append(STORAGE_GROUP)
         .append(".\"")
-        .append(metricConfig.getInstanceHost())
+        .append(metricConfig.getRpcAddress())
         .append(":")
-        .append(metricConfig.getInstancePort())
+        .append(metricConfig.getRpcPort())
         .append("\"")
         .append(".")
         .append("\"")
