@@ -162,23 +162,19 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       List<ChunkMetadataElement> overlappedChunkMetadatas =
           findOverlapChunkMetadatas(firstChunkMetadataElement);
       boolean isChunkOverlap = overlappedChunkMetadatas.size() > 1;
-      int modifiedStatus =
+      List<TimeRange> deletons =
           isAligned
-              ? (getAlignedChunkDeletions(
-                              (AlignedChunkMetadata) firstChunkMetadataElement.chunkMetadata)
-                          .size()
-                      > 0
-                  ? 0
-                  : -1)
-              : isPageOrChunkModified(
-                  firstChunkMetadataElement.startTime,
-                  firstChunkMetadataElement.chunkMetadata.getEndTime(),
-                  firstChunkMetadataElement.chunkMetadata.getDeleteIntervalList());
+              ? getAlignedChunkDeletions(
+                  (AlignedChunkMetadata) firstChunkMetadataElement.chunkMetadata)
+              : firstChunkMetadataElement.chunkMetadata.getDeleteIntervalList();
+      int modifiedStatus =
+          isPageOrChunkModified(
+              firstChunkMetadataElement.startTime,
+              firstChunkMetadataElement.chunkMetadata.getEndTime(),
+              deletons);
+      modifiedStatus = modifiedStatus == 1 ? 0 : modifiedStatus;
 
-      switch (isPageOrChunkModified(
-          firstChunkMetadataElement.startTime,
-          firstChunkMetadataElement.chunkMetadata.getEndTime(),
-          firstChunkMetadataElement.chunkMetadata.getDeleteIntervalList())) {
+      switch (modifiedStatus) {
         case -1:
           // no data on this chunk has been deleted
           if (isChunkOverlap) {
@@ -252,31 +248,105 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
   private void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement)
       throws IOException {
-    Chunk chunk = ChunkCache.getInstance().get((ChunkMetadata) chunkMetadataElement.chunkMetadata);
-    ChunkReader chunkReader = new ChunkReader(chunk);
-    ByteBuffer chunkDataBuffer = chunk.getData();
-    ChunkHeader chunkHeader = chunk.getHeader();
-    while (chunkDataBuffer.remaining() > 0) {
-      // deserialize a PageHeader from chunkDataBuffer
-      PageHeader pageHeader;
-      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunk.getChunkStatistic());
-      } else {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-      }
-      ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
+    if (chunkMetadataElement.chunkMetadata instanceof ChunkMetadata) {
+      Chunk chunk =
+          ChunkCache.getInstance().get((ChunkMetadata) chunkMetadataElement.chunkMetadata);
+      ChunkReader chunkReader = new ChunkReader(chunk);
+      ByteBuffer chunkDataBuffer = chunk.getData();
+      ChunkHeader chunkHeader = chunk.getHeader();
+      while (chunkDataBuffer.remaining() > 0) {
+        // deserialize a PageHeader from chunkDataBuffer
+        PageHeader pageHeader;
+        if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunk.getChunkStatistic());
+        } else {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+        }
+        ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
 
-      boolean isLastPage = chunkDataBuffer.remaining() <= 0;
-      pageQueue.add(
-          new PageElement(
-              pageHeader,
-              compressedPageData,
-              chunkReader,
-              chunkMetadataElement,
-              isLastPage,
-              chunkMetadataElement.priority));
+        boolean isLastPage = chunkDataBuffer.remaining() <= 0;
+        pageQueue.add(
+            new PageElement(
+                pageHeader,
+                compressedPageData,
+                chunkReader,
+                chunkMetadataElement,
+                isLastPage,
+                chunkMetadataElement.priority));
+      }
+    } else {
+      AlignedChunkMetadata alignedChunkMetadata =
+          (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+
+      List<PageHeader> timePageHeaders = new ArrayList<>();
+      List<ByteBuffer> compressedTimePageDatas = new ArrayList<>();
+      List<List<PageHeader>> valuePageHeaders = new ArrayList<>();
+      List<List<ByteBuffer>> compressedValuePageDatas = new ArrayList<>();
+
+      // deserialize time chunk
+      ChunkMetadata chunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
+      Chunk timeChunk = ChunkCache.getInstance().get(chunkMetadata);
+      ChunkReader chunkReader = new ChunkReader(timeChunk);
+      ByteBuffer chunkDataBuffer = timeChunk.getData();
+      ChunkHeader chunkHeader = timeChunk.getHeader();
+      while (chunkDataBuffer.remaining() > 0) {
+        // deserialize a PageHeader from chunkDataBuffer
+        PageHeader pageHeader;
+        if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, timeChunk.getChunkStatistic());
+        } else {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+        }
+        ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
+        timePageHeaders.add(pageHeader);
+        compressedTimePageDatas.add(compressedPageData);
+      }
+
+      // deserialize value chunks
+      List<Chunk> valueChunks = new ArrayList<>();
+      for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
+        chunkMetadata = (ChunkMetadata) alignedChunkMetadata.getValueChunkMetadataList().get(i);
+        Chunk valueChunk = ChunkCache.getInstance().get(chunkMetadata);
+        chunkReader = new ChunkReader(valueChunk);
+        chunkDataBuffer = valueChunk.getData();
+        chunkHeader = valueChunk.getHeader();
+        valuePageHeaders.add(new ArrayList<>());
+        compressedValuePageDatas.add(new ArrayList<>());
+        valueChunks.add(valueChunk);
+        while (chunkDataBuffer.remaining() > 0) {
+          // deserialize a PageHeader from chunkDataBuffer
+          PageHeader pageHeader;
+          if (((byte) (chunkHeader.getChunkType() & 0x3F))
+              == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+            pageHeader =
+                PageHeader.deserializeFrom(chunkDataBuffer, valueChunk.getChunkStatistic());
+          } else {
+            pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+          }
+          ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
+          valuePageHeaders.get(i).add(pageHeader);
+          compressedValuePageDatas.get(i).add(compressedPageData);
+        }
+      }
+
+      // add aligned pages into page queue
+      for (int i = 0; i < timePageHeaders.size(); i++) {
+        AlignedChunkReader alignedChunkReader =
+            new AlignedChunkReader(timeChunk, valueChunks, null);
+        pageQueue.add(
+            new PageElement(
+                timePageHeaders.get(i),
+                valuePageHeaders.get(i),
+                compressedTimePageDatas.get(i),
+                compressedValuePageDatas.get(i),
+                new AlignedChunkReader(timeChunk, valueChunks, null),
+                chunkMetadataElement,
+                i == timePageHeaders.size() - 1,
+                chunkMetadataElement.priority));
+      }
     }
   }
+
 
   /**
    * Compact pages in page queue.

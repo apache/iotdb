@@ -38,14 +38,14 @@ public class PageElement {
   public PageElement(
       PageHeader pageHeader,
       ByteBuffer pageData,
-      ChunkReader iChunkReader,
+      ChunkReader chunkReader,
       ChunkMetadataElement chunkMetadataElement,
       boolean isLastPage,
       int priority) {
     this.pageHeader = pageHeader;
     this.pageData = pageData;
     this.priority = priority;
-    this.iChunkReader = iChunkReader;
+    this.iChunkReader = chunkReader;
     this.startTime = pageHeader.getStartTime();
     this.chunkMetadataElement = chunkMetadataElement;
     this.isLastPage = isLastPage;
@@ -56,8 +56,8 @@ public class PageElement {
       List<PageHeader> valuePageHeaders,
       ByteBuffer timePageData,
       List<ByteBuffer> valuePageDatas,
-      ChunkReader iChunkReader,
-      ChunkMetadataElement timeChunkMetadataElement,
+      AlignedChunkReader alignedChunkReader,
+      ChunkMetadataElement chunkMetadataElement,
       boolean isLastPage,
       int priority) {
     this.pageHeader = timePageHeader;
@@ -65,9 +65,9 @@ public class PageElement {
     this.pageData = timePageData;
     this.valuePageDatas = valuePageDatas;
     this.priority = priority;
-    this.iChunkReader = iChunkReader;
+    this.iChunkReader = alignedChunkReader;
     this.startTime = pageHeader.getStartTime();
-    this.chunkMetadataElement = timeChunkMetadataElement;
+    this.chunkMetadataElement = chunkMetadataElement;
     this.isLastPage = isLastPage;
   }
 
