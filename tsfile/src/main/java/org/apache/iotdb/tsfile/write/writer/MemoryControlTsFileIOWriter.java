@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,13 +79,12 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
   protected int pathCount = 0;
   Path lastSerializePath = null;
 
-  public static final String CHUNK_METADATA_TEMP_FILE_PREFIX = ".cmt";
-  private static final byte NORMAL_TYPE = 2;
+  public static final String CHUNK_METADATA_TEMP_FILE_SUFFIX = ".cmt";
 
   public MemoryControlTsFileIOWriter(File file, long maxMetadataSize) throws IOException {
     super(file);
     this.maxMetadataSize = maxMetadataSize;
-    this.chunkMetadataTempFile = new File(file.getAbsoluteFile() + CHUNK_METADATA_TEMP_FILE_PREFIX);
+    this.chunkMetadataTempFile = new File(file.getAbsoluteFile() + CHUNK_METADATA_TEMP_FILE_SUFFIX);
   }
 
   @Override
@@ -181,6 +181,7 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
     // close file
     out.close();
     canWrite = false;
+    FileUtils.delete(new File(file + CHUNK_METADATA_TEMP_FILE_SUFFIX));
   }
 
   private void readChunkMetadataAndConstructIndexTree() throws IOException {
@@ -296,7 +297,7 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
     List<IChunkMetadata> iChunkMetadataList = new ArrayList<>();
     currentSeries = iterator.getAllChunkMetadataForNextSeries(iChunkMetadataList);
     TimeseriesMetadata timeseriesMetadata =
-        super.constructOneTimeseriesMetadata(new Path(currentSeries), iChunkMetadataList, false);
+        super.constructOneTimeseriesMetadata(new Path(currentSeries), iChunkMetadataList);
     if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
       // set empty measurement id for time column
       timeseriesMetadata.setMeasurementId("");

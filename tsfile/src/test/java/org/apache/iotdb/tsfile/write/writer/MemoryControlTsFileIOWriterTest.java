@@ -74,11 +74,11 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
     if (testFile.exists()) {
       FileUtils.delete(testFile);
     }
-    if (new File(testFile.getPath() + MemoryControlTsFileIOWriter.CHUNK_METADATA_TEMP_FILE_PREFIX)
+    if (new File(testFile.getPath() + MemoryControlTsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
         .exists()) {
       FileUtils.delete(
           new File(
-              testFile.getPath() + MemoryControlTsFileIOWriter.CHUNK_METADATA_TEMP_FILE_PREFIX));
+              testFile.getPath() + MemoryControlTsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX));
     }
     if (emptyFile.exists()) {
       FileUtils.delete(emptyFile);
