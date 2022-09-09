@@ -330,8 +330,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
 
     List<TSDataType> dataTypes = list.getTsDataTypes();
-    // value columns
-
     for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 2) {
       for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
         // Pair of Time and Index
@@ -340,18 +338,21 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
         }
         for (int sortedRowIndex = pageRange.get(pageNum * 2);
-            sortedRowIndex < pageRange.get(pageNum * 2 + 1);
+            sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
             sortedRowIndex++) {
+
           // skip time duplicated rows
+          long time = list.getTime(sortedRowIndex);
           if (Objects.nonNull(timeDuplicateInfo)) {
             if (!list.isNullValue(list.getValueIndex(sortedRowIndex), columnIndex)) {
-              lastValidPointIndexForTimeDupCheck.left = list.getTime(sortedRowIndex);
+              lastValidPointIndexForTimeDupCheck.left = time;
               lastValidPointIndexForTimeDupCheck.right = list.getValueIndex(sortedRowIndex);
             }
             if (timeDuplicateInfo[sortedRowIndex]) {
               continue;
             }
           }
+
           // The part of code solves the following problem:
           // Time: 1,2,2,3
           // Value: 1,2,null,null
@@ -360,14 +361,15 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2!=air.left:2, write(T:2,V:2)
           // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2,
           // write(T:3,V:null)
+
           int originRowIndex;
-          long time = list.getTime(sortedRowIndex);
           if (Objects.nonNull(lastValidPointIndexForTimeDupCheck)
               && (time == lastValidPointIndexForTimeDupCheck.left)) {
             originRowIndex = lastValidPointIndexForTimeDupCheck.right;
           } else {
             originRowIndex = list.getValueIndex(sortedRowIndex);
           }
+
           boolean isNull = list.isNullValue(originRowIndex, columnIndex);
           switch (dataTypes.get(columnIndex)) {
             case BOOLEAN:
@@ -398,19 +400,20 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
               break;
           }
         }
+
         alignedChunkWriter.nextColumn();
       }
 
-      long[] times = new long[pageNum];
+      long[] times = new long[maxNumberOfPointsInPage];
       int pointsInPage = 0;
       for (int sortedRowIndex = pageRange.get(pageNum * 2);
-          sortedRowIndex < pageRange.get(pageNum * 2 + 1);
+          sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
           sortedRowIndex++) {
         if (Objects.isNull(timeDuplicateInfo) || !timeDuplicateInfo[sortedRowIndex]) {
           times[pointsInPage++] = list.getTime(sortedRowIndex);
-          alignedChunkWriter.write(list.getTime(sortedRowIndex));
         }
       }
+
       alignedChunkWriter.write(times, pointsInPage, 0);
     }
   }
