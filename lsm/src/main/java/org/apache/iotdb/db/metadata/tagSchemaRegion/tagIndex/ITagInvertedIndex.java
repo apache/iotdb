@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex;
 
-import java.io.File;
 import java.util.List;
 import java.util.Map;
 
 public interface ITagInvertedIndex {
-  void addTag(String tagKey,String tagValue,int id);
-  void addTags(Map<String,String> tags,int id);
-  void removeTag(String tagKey,String tagValue,int id);
-  void removeTags(Map<String,String> tags,int id);
-  List<Integer> getMatchedIDs();
+  void addTag(String tagKey, String tagValue, int id);
+
+  void addTags(Map<String, String> tags, int id);
+
+  void removeTag(String tagKey, String tagValue, int id);
+
+  void removeTags(Map<String, String> tags, int id);
+
+  List<Integer> getMatchedIDs(Map<String, String> tags);
 }
