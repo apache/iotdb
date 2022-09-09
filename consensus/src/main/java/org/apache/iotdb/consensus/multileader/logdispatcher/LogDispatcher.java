@@ -361,8 +361,29 @@ public class LogDispatcher {
           logger.warn("wait for next WAL entry is interrupted");
         }
         IndexedConsensusRequest data = walEntryiterator.next();
-        currentIndex = data.getSearchIndex();
-        iteratorIndex = currentIndex;
+        if (currentIndex > data.getSearchIndex()) {
+          // if the index of request is smaller than currentIndex, then continue
+          logger.warn(
+              "search for one Entry which index is {}, but find a smaller one, index : {}",
+              currentIndex,
+              data.getSearchIndex());
+          continue;
+        } else if (currentIndex < data.getSearchIndex()) {
+          logger.warn(
+              "search for one Entry which index is {}, but find a larger one, index : {}",
+              currentIndex,
+              data.getSearchIndex());
+          if (data.getSearchIndex() >= maxIndex) {
+            // if the index of request is larger than maxIndex, then finish
+            break;
+          }
+          // if the index of request is larger than currentIndex, and smaller than maxIndex, then
+          // skip to index
+          currentIndex = data.getSearchIndex();
+          walEntryiterator.skipTo(currentIndex);
+          iteratorIndex = currentIndex;
+        }
+        // construct request from wal
         for (IConsensusRequest innerRequest : data.getRequests()) {
           logBatches.add(new TLogBatch(innerRequest.serializeToByteBuffer(), currentIndex, true));
         }
