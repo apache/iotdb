@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.time.ZoneId;
 import java.util.Collections;
@@ -42,7 +43,7 @@ public abstract class LeafOperand extends Expression {
   }
 
   @Override
-  public boolean isMappable(TypeProvider typeProvider) {
+  public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
     return true;
   }
 }

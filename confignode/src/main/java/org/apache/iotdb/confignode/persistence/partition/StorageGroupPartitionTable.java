@@ -30,10 +30,6 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -78,52 +74,6 @@ public class StorageGroupPartitionTable {
 
     this.schemaPartitionTable = new SchemaPartitionTable();
     this.dataPartitionTable = new DataPartitionTable();
-
-    addMetrics();
-  }
-
-  private void addMetrics() {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.REGION.toString(),
-            MetricLevel.NORMAL,
-            this,
-            o -> o.getRegionGroupCount(TConsensusGroupType.SchemaRegion),
-            Tag.NAME.toString(),
-            storageGroupName,
-            Tag.TYPE.toString(),
-            TConsensusGroupType.SchemaRegion.toString());
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.REGION.toString(),
-            MetricLevel.NORMAL,
-            this,
-            o -> o.getRegionGroupCount(TConsensusGroupType.DataRegion),
-            Tag.NAME.toString(),
-            storageGroupName,
-            Tag.TYPE.toString(),
-            TConsensusGroupType.DataRegion.toString());
-    // TODO slot will be updated in the future
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.SLOT.toString(),
-            MetricLevel.NORMAL,
-            schemaPartitionTable,
-            o -> o.getSchemaPartitionMap().size(),
-            Tag.NAME.toString(),
-            storageGroupName,
-            Tag.TYPE.toString(),
-            "schemaSlotNumber");
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.SLOT.toString(),
-            MetricLevel.NORMAL,
-            dataPartitionTable,
-            o -> o.getDataPartitionMap().size(),
-            Tag.NAME.toString(),
-            storageGroupName,
-            Tag.TYPE.toString(),
-            "dataSlotNumber");
   }
 
   public boolean isPredeleted() {
@@ -470,6 +420,14 @@ public class StorageGroupPartitionTable {
 
   public String getStorageGroupName() {
     return storageGroupName;
+  }
+
+  public int getDataPartitionMapSize() {
+    return dataPartitionTable.getDataPartitionMap().size();
+  }
+
+  public int getSchemaPartitionMapSize() {
+    return schemaPartitionTable.getSchemaPartitionMap().size();
   }
 
   @Override

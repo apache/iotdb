@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -109,37 +110,6 @@ public class PartitionInfo implements SnapshotProcessor {
     this.deletedRegionSet = Collections.synchronizedSet(new HashSet<>());
   }
 
-  public void addMetrics() {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            storageGroupPartitionTables,
-            ConcurrentHashMap::size,
-            Tag.NAME.toString(),
-            "storageGroup");
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.REGION.toString(),
-            MetricLevel.IMPORTANT,
-            this,
-            o -> o.updateRegionGroupMetric(TConsensusGroupType.SchemaRegion),
-            Tag.NAME.toString(),
-            "total",
-            Tag.TYPE.toString(),
-            TConsensusGroupType.SchemaRegion.toString());
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.REGION.toString(),
-            MetricLevel.IMPORTANT,
-            this,
-            o -> o.updateRegionGroupMetric(TConsensusGroupType.DataRegion),
-            Tag.NAME.toString(),
-            "total",
-            Tag.TYPE.toString(),
-            TConsensusGroupType.DataRegion.toString());
-  }
-
   public int generateNextRegionGroupId() {
     return nextRegionGroupId.incrementAndGet();
   }
@@ -156,8 +126,12 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     String storageGroupName = plan.getSchema().getName();
-    storageGroupPartitionTables.put(
-        storageGroupName, new StorageGroupPartitionTable(storageGroupName));
+    StorageGroupPartitionTable storageGroupPartitionTable =
+        new StorageGroupPartitionTable(storageGroupName);
+    storageGroupPartitionTables.put(storageGroupName, storageGroupPartitionTable);
+    MetricService.getInstance()
+        .addMetricSet(
+            new PartitionInfoMetrics.StorageGroupPartitionTableMetrics(storageGroupPartitionTable));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -649,7 +623,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param type SchemaRegion or DataRegion
    * @return the number of SchemaRegion or DataRegion
    */
-  private int updateRegionGroupMetric(TConsensusGroupType type) {
+  public int updateRegionGroupMetric(TConsensusGroupType type) {
     Set<RegionGroup> regionGroups = new HashSet<>();
     for (Map.Entry<String, StorageGroupPartitionTable> entry :
         storageGroupPartitionTables.entrySet()) {
@@ -677,6 +651,7 @@ public class PartitionInfo implements SnapshotProcessor {
               + ":"
               + dataNodeLocation.getClientRpcEndPoint().port
               + ")";
+      // TODO: this metric can be optimized
       MetricService.getInstance()
           .getOrCreateGauge(
               Metric.REGION.toString(),
@@ -779,6 +754,10 @@ public class PartitionInfo implements SnapshotProcessor {
         deletedRegionSet.add(regionReplicaSet);
       }
     }
+  }
+
+  public int getStorageGroupPartitionTableSize() {
+    return storageGroupPartitionTables.size();
   }
 
   public void clear() {

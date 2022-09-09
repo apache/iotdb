@@ -24,13 +24,15 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeFlushTaskManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeReleaseTaskManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
+import org.apache.iotdb.db.service.metrics.MetricService;
 
 public class SchemaResourceManager {
 
   private SchemaResourceManager() {}
 
   public static void initSchemaResource() {
-    SchemaStatisticsManager.getInstance().init();
+    MetricService.getInstance()
+        .addMetricSet(new SchemaStatisticsManagerMetrics(SchemaStatisticsManager.getInstance()));
     MemoryStatistics.getInstance().init();
     if (IoTDBDescriptor.getInstance()
         .getConfig()
