@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.performer.impl;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.AlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SingleSeriesCompactionExecutor;
@@ -28,11 +29,13 @@ import org.apache.iotdb.db.engine.compaction.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.MemoryControlTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -63,8 +66,15 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   @Override
   public void perform()
       throws IOException, MetadataException, InterruptedException, StorageEngineException {
+    // size for file writer is 5% of per compaction task memory budget
+    long sizeForFileWriter =
+        SystemInfo.getInstance().getMemorySizeForCompaction()
+            / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+            * 5
+            / 100L;
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles);
-        TsFileIOWriter writer = new TsFileIOWriter(targetResource.getTsFile())) {
+        MemoryControlTsFileIOWriter writer =
+            new MemoryControlTsFileIOWriter(targetResource.getTsFile(), sizeForFileWriter)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
