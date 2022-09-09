@@ -375,6 +375,7 @@ public class LogDispatcher {
               data.getSearchIndex());
           if (data.getSearchIndex() >= maxIndex) {
             // if the index of request is larger than maxIndex, then finish
+            walEntryiterator.skipTo(currentIndex);
             break;
           }
           // if the index of request is larger than currentIndex, and smaller than maxIndex, then
