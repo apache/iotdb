@@ -119,9 +119,16 @@ public class RegionGroup {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     RegionGroup that = (RegionGroup) o;
+    for (Map.Entry<TSeriesPartitionSlot, AtomicLong> slotCountEntry : slotCountMap.entrySet()) {
+      if (!that.slotCountMap.containsKey(slotCountEntry.getKey())) {
+        return false;
+      }
+      if (slotCountEntry.getValue().get() != that.slotCountMap.get(slotCountEntry.getKey()).get()) {
+        return false;
+      }
+    }
     return replicaSet.equals(that.replicaSet)
-        && slotCountMap.equals(that.slotCountMap)
-        && totalTimeSlotCount.equals(that.totalTimeSlotCount);
+        && totalTimeSlotCount.get() == that.totalTimeSlotCount.get();
   }
 
   @Override

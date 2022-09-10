@@ -152,7 +152,9 @@ public class StorageGroupPartitionTable {
   }
 
   public int getAssignedSeriesPartitionSlotsCount() {
-    return schemaPartitionTable.getSchemaPartitionMap().size();
+    return Math.max(
+        schemaPartitionTable.getSchemaPartitionMap().size(),
+        dataPartitionTable.getDataPartitionMap().size());
   }
 
   /**
@@ -435,7 +437,7 @@ public class StorageGroupPartitionTable {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     StorageGroupPartitionTable that = (StorageGroupPartitionTable) o;
-    return isPredeleted == that.isPredeleted
+    return storageGroupName.equals(that.storageGroupName)
         && regionGroupMap.equals(that.regionGroupMap)
         && schemaPartitionTable.equals(that.schemaPartitionTable)
         && dataPartitionTable.equals(that.dataPartitionTable);
@@ -443,6 +445,6 @@ public class StorageGroupPartitionTable {
 
   @Override
   public int hashCode() {
-    return Objects.hash(isPredeleted, regionGroupMap, schemaPartitionTable, dataPartitionTable);
+    return Objects.hash(storageGroupName, regionGroupMap, schemaPartitionTable, dataPartitionTable);
   }
 }
