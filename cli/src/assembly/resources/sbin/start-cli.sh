@@ -21,8 +21,26 @@
 # You can put your env variable here
 # export JAVA_HOME=$JAVA_HOME
 
+
+if [ "x$IOTDB_INCLUDE" = "x" ]; then
+    # Locations (in order) to use when searching for an include file.
+    for include in "`dirname "$0"`/iotdb.in.sh" \
+                   "$HOME/.iotdb.in.sh" \
+                   /usr/share/iotdb/iotdb.in.sh \
+                   /etc/iotdb/iotdb.in.sh \
+                   /opt/iotdb/iotdb.in.sh; do
+        if [ -r "$include" ]; then
+            . "$include"
+            break
+        fi
+    done
+# ...otherwise, source the specified include.
+elif [ -r "$IOTDB_INCLUDE" ]; then
+    . "$IOTDB_INCLUDE"
+fi
+
 if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+  export IOTDB_HOME="`dirname "$0"`/.."
 fi
 
 if [ -z "${IOTDB_CLI_CONF}" ]; then
