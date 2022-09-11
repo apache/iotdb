@@ -64,6 +64,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class DeleteTimeSeriesProcedure
@@ -142,7 +143,14 @@ public class DeleteTimeSeriesProcedure
                 .sendAsyncRequestToDataNodeWithRetry(
                     new TConstructSchemaBlackListReq(consensusGroupIdList, patternTreeBytes),
                     handler);
-            setResponseMap(handler.getDataNodeResponseStatusMap());
+            handler
+                .getDataNodeResponseStatusMap()
+                .forEach(
+                    (k, v) -> {
+                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                        responseMap.put(k, v);
+                      }
+                    });
             return handler.getDataNodeResponseStatusMap();
           }
         };
@@ -268,9 +276,14 @@ public class DeleteTimeSeriesProcedure
                 .sendAsyncRequestToDataNodeWithRetry(
                     new TFetchSchemaBlackListReq(consensusGroupIdList, patternTreeBytes), handler);
             Map<Integer, TFetchSchemaBlackListResp> respMap = handler.getDataNodeResponseMap();
-            setResponseMap(respMap);
             Map<Integer, TSStatus> statusMap = new HashMap<>();
-            respMap.forEach((k, v) -> statusMap.put(k, v.getStatus()));
+            respMap.forEach(
+                (k, v) -> {
+                  if (v.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                    responseMap.put(k, v);
+                  }
+                  statusMap.put(k, v.getStatus());
+                });
             return statusMap;
           }
         };
@@ -455,7 +468,7 @@ public class DeleteTimeSeriesProcedure
 
     private boolean executeOnAllReplicaset = false;
 
-    private Map<Integer, T> responseMap;
+    protected Map<Integer, T> responseMap = new ConcurrentHashMap<>();
 
     RegionTask(
         String taskName,
@@ -586,10 +599,6 @@ public class DeleteTimeSeriesProcedure
 
     Map<Integer, T> getResponseMap() {
       return responseMap == null ? Collections.emptyMap() : responseMap;
-    }
-
-    protected void setResponseMap(Map<Integer, T> responseMap) {
-      this.responseMap = responseMap;
     }
 
     void setExecuteOnAllReplicaset(boolean executeOnAllReplicaset) {

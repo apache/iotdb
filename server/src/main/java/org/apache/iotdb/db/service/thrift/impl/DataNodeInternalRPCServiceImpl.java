@@ -295,12 +295,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     List<TSStatus> failureList = new ArrayList<>();
     TSStatus status;
+    int preDeletedNum = 0;
     for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
       status =
           regionManager.executeSchemaPlanNode(
               new SchemaRegionId(consensusGroupId.getId()),
               new ConstructSchemaBlackListNode(new PlanNodeId(""), patternTree));
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        preDeletedNum += Integer.parseInt(status.getMessage());
+      } else {
         failureList.add(status);
       }
     }
@@ -309,7 +312,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return RpcUtils.getStatus(failureList);
     }
 
-    return RpcUtils.SUCCESS_STATUS;
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeletedNum));
   }
 
   @Override
