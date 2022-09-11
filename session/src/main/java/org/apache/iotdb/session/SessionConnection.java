@@ -68,8 +68,8 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.StringJoiner;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class SessionConnection {
 
@@ -783,7 +783,7 @@ public class SessionConnection {
 
   private boolean reconnect() {
     boolean connectedSuccess = false;
-    Random random = new Random();
+    ThreadLocalRandom random = ThreadLocalRandom.current();
     for (int i = 1; i <= Config.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();

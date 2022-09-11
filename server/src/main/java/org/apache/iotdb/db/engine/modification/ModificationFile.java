@@ -37,7 +37,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * ModificationFile stores the Modifications of a TsFile or unseq file in another file in the same
@@ -54,7 +54,7 @@ public class ModificationFile implements AutoCloseable {
   private ModificationWriter writer;
   private ModificationReader reader;
   private String filePath;
-  private Random random = new Random();
+  private ThreadLocalRandom random = ThreadLocalRandom.current();
 
   /**
    * Construct a ModificationFile using a file as its storage.

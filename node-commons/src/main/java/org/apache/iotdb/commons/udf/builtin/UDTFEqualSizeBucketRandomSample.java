@@ -30,15 +30,15 @@ import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidExceptio
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class UDTFEqualSizeBucketRandomSample extends UDTFEqualSizeBucketSample {
 
-  private Random random;
+  private ThreadLocalRandom random;
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    random = new Random();
+    random = ThreadLocalRandom.current();
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(bucketSize))
         .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));

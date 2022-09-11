@@ -60,8 +60,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.getTsFileName;
@@ -104,7 +104,7 @@ public class TsFileResource {
 
   private TsFileLock tsFileLock = new TsFileLock();
 
-  private final Random random = new Random();
+  private final ThreadLocalRandom random = ThreadLocalRandom.current();
 
   private boolean isSeq;
 
