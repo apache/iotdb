@@ -26,9 +26,8 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
-import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -66,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowNodes
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -261,22 +261,35 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createTrigger(
-      String triggerName,
-      String className,
-      String jarPath,
-      boolean usingURI,
-      TriggerEvent triggerEvent,
-      TriggerType triggerType,
-      PartialPath pathPattern) {
+      CreateTriggerStatement createTriggerStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      // todo : createTriggerReq
-      final TSStatus executionStatus =
-          client.createTrigger(new TCreateTriggerReq(triggerName, null, null));
+      TCreateTriggerReq tCreateTriggerReq =
+          new TCreateTriggerReq(
+              createTriggerStatement.getTriggerName(),
+              createTriggerStatement.getClassName(),
+              createTriggerStatement.getJarPath(),
+              createTriggerStatement.isUsingURI(),
+              createTriggerStatement.getTriggerEvent().getId(),
+              createTriggerStatement.getTriggerType().getId(),
+              createTriggerStatement.getPathPattern().serialize(),
+              createTriggerStatement.getAttributes());
+
+      if (!createTriggerStatement.isUsingURI()) {
+        // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
+        tCreateTriggerReq.setJarFile(
+            ExecutableManager.transferToBytebuffer(createTriggerStatement.getJarPath()));
+      }
+
+      final TSStatus executionStatus = client.createTrigger(tCreateTriggerReq);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.error("[{}] Failed to create trigger {}.", executionStatus, triggerName);
+        LOGGER.error(
+            "[{}] Failed to create trigger {}. TSStatus is {}",
+            executionStatus,
+            createTriggerStatement.getTriggerName(),
+            executionStatus.message);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));

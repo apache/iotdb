@@ -257,13 +257,17 @@ public class IoTDBConfig {
   private String udfDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
-  /** External temporary lib directory for storing downloaded JAR files */
-  private String temporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+  /** External temporary lib directory for storing downloaded udf JAR files */
+  private String udfTemporaryLibDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
 
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
+
+  /** External temporary lib directory for storing downloaded trigger JAR files */
+  private String triggerTemporaryLibDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
 
   /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
@@ -984,11 +988,12 @@ public class IoTDBConfig {
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
-  /** Maximum execution time of a DriverTask */
   private int driverTaskExecutionTimeSliceInMs = 100;
 
   /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
+
+  private long RatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
 
   IoTDBConfig() {}
 
@@ -1097,8 +1102,9 @@ public class IoTDBConfig {
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
-    temporaryLibDir = addHomeDir(temporaryLibDir);
+    udfTemporaryLibDir = addHomeDir(udfTemporaryLibDir);
     triggerDir = addHomeDir(triggerDir);
+    triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
     mqttDir = addHomeDir(mqttDir);
     externalPropertiesLoaderDir = addHomeDir(externalPropertiesLoaderDir);
     externalLimiterDir = addHomeDir(externalLimiterDir);
@@ -1315,12 +1321,12 @@ public class IoTDBConfig {
     return udfDir;
   }
 
-  public String getTemporaryLibDir() {
-    return temporaryLibDir;
-  }
-
   public void setUdfDir(String udfDir) {
     this.udfDir = udfDir;
+  }
+
+  public String getUdfTemporaryLibDir() {
+    return udfTemporaryLibDir;
   }
 
   public String getTriggerDir() {
@@ -1329,6 +1335,10 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
+  }
+
+  public String getTriggerTemporaryLibDir() {
+    return triggerTemporaryLibDir;
   }
 
   public String getMqttDir() {
@@ -3138,6 +3148,15 @@ public class IoTDBConfig {
 
   public void setThrottleThreshold(long throttleThreshold) {
     this.throttleThreshold = throttleThreshold;
+  }
+
+  public long getRatisConsensusLogAppenderBufferSizeMax() {
+    return RatisConsensusLogAppenderBufferSizeMax;
+  }
+
+  public void setRatisConsensusLogAppenderBufferSizeMax(
+      long ratisConsensusLogAppenderBufferSizeMax) {
+    RatisConsensusLogAppenderBufferSizeMax = ratisConsensusLogAppenderBufferSizeMax;
   }
 
   public String getConfigMessage() {

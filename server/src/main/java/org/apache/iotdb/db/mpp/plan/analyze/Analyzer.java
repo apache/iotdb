@@ -33,18 +33,15 @@ public class Analyzer {
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
-  private final TypeProvider typeProvider;
 
   public Analyzer(
       MPPQueryContext context, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     this.context = context;
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
-    this.typeProvider = new TypeProvider();
   }
 
   public Analysis analyze(Statement statement) {
-    return new AnalyzeVisitor(partitionFetcher, schemaFetcher, typeProvider, context)
-        .process(statement, context);
+    return new AnalyzeVisitor(partitionFetcher, schemaFetcher, context).process(statement, context);
   }
 }
