@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.DeleteTimeSeriesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
@@ -56,12 +57,14 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class DeleteTimeSeriesProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteTimeSeriesState> {
@@ -88,8 +91,18 @@ public class DeleteTimeSeriesProcedure
     switch (state) {
       case CONSTRUCT_BLACK_LIST:
         LOGGER.info("Construct schema black list of timeseries {}", requestMessage);
-        constructBlackList(env);
-        break;
+        if (constructBlackList(env) > 0) {
+          setNextState(DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE);
+          break;
+        } else {
+          setFailure(
+              new ProcedureException(
+                  new PathNotExistException(
+                      patternTree.getAllPathPatterns().stream()
+                          .map(PartialPath::getFullPath)
+                          .collect(Collectors.toList()))));
+          return Flow.NO_MORE_STATE;
+        }
       case CLEAN_DATANODE_SCHEMA_CACHE:
         LOGGER.info("Invalidate cache of timeseries {}", requestMessage);
         invalidateCache(env);
@@ -109,12 +122,14 @@ public class DeleteTimeSeriesProcedure
     return Flow.HAS_MORE_STATE;
   }
 
-  private void constructBlackList(ConfigNodeProcedureEnv env) {
+  private int constructBlackList(ConfigNodeProcedureEnv env) {
+    Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup =
+        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
+    if (targetSchemaRegionGroup.isEmpty()) {
+      return 0;
+    }
     RegionTask<TSStatus> constructBlackListTask =
-        new RegionTask<TSStatus>(
-            "construct schema black list",
-            env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree)) {
+        new RegionTask<TSStatus>("construct schema black list", env, targetSchemaRegionGroup) {
           @Override
           Map<Integer, TSStatus> sendRequest(
               TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
@@ -127,15 +142,21 @@ public class DeleteTimeSeriesProcedure
                 .sendAsyncRequestToDataNodeWithRetry(
                     new TConstructSchemaBlackListReq(consensusGroupIdList, patternTreeBytes),
                     handler);
-
+            setResponseMap(handler.getDataNodeResponseStatusMap());
             return handler.getDataNodeResponseStatusMap();
           }
         };
     constructBlackListTask.execute();
 
-    if (!isFailed()) {
-      setNextState(DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE);
+    if (isFailed()) {
+      return 0;
     }
+
+    int preDeletedNum = 0;
+    for (TSStatus resp : constructBlackListTask.getResponseMap().values()) {
+      preDeletedNum += Integer.parseInt(resp.getMessage());
+    }
+    return preDeletedNum;
   }
 
   private void invalidateCache(ConfigNodeProcedureEnv env) {
@@ -564,7 +585,7 @@ public class DeleteTimeSeriesProcedure
     }
 
     Map<Integer, T> getResponseMap() {
-      return responseMap;
+      return responseMap == null ? Collections.emptyMap() : responseMap;
     }
 
     protected void setResponseMap(Map<Integer, T> responseMap) {

@@ -755,7 +755,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
-  public void constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+  public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

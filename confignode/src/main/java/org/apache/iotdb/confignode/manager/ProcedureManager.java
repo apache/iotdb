@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -140,7 +141,7 @@ public class ProcedureManager {
     if (isSucceed) {
       return StatusUtils.OK;
     } else {
-      return RpcUtils.getStatus(procedureStatus);
+      return procedureStatus.get(0);
     }
   }
 
@@ -230,9 +231,14 @@ public class ProcedureManager {
       if (finishedProcedure.isSuccess()) {
         statusList.add(StatusUtils.OK);
       } else {
-        statusList.add(
-            StatusUtils.EXECUTE_STATEMENT_ERROR.setMessage(
-                finishedProcedure.getException().getMessage()));
+        if (finishedProcedure.getException().getCause() instanceof IoTDBException) {
+          IoTDBException e = (IoTDBException) finishedProcedure.getException().getCause();
+          statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        } else {
+          statusList.add(
+              StatusUtils.EXECUTE_STATEMENT_ERROR.setMessage(
+                  finishedProcedure.getException().getMessage()));
+        }
         isSucceed = false;
       }
     }

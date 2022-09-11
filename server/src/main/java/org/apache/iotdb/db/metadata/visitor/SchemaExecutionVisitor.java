@@ -310,8 +310,8 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitConstructSchemaBlackList(
       ConstructSchemaBlackListNode node, ISchemaRegion schemaRegion) {
     try {
-      schemaRegion.constructSchemaBlackList(node.getPatternTree());
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      int preDeletedNum = schemaRegion.constructSchemaBlackList(node.getPatternTree());
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeletedNum));
     } catch (MetadataException e) {
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());

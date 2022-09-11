@@ -126,7 +126,7 @@ public interface ISchemaRegion {
    * @param patternTree
    * @throws MetadataException
    */
-  void constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+  int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
    * Rollback schema black list via setting matched timeseries to not pre deleted.

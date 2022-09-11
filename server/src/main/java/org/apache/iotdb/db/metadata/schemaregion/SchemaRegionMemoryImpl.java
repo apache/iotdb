@@ -844,10 +844,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+  public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    int preDeletedNum = 0;
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       for (PartialPath path : mtree.getMeasurementPaths(pathPattern)) {
         IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+        if (measurementMNode.isPreDeleted()) {
+          // path patterns in one patternTree may overlap with each other
+          continue;
+        }
+        preDeletedNum++;
         measurementMNode.setPreDeleted(true);
         try {
           writeToMLog(new PreDeleteTimeSeriesPlan(path));
@@ -856,6 +862,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         }
       }
     }
+    return preDeletedNum;
   }
 
   private void recoverPreDeleteTimeseries(PartialPath path) throws MetadataException {

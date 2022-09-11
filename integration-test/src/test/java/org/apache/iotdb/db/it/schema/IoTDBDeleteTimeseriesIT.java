@@ -34,6 +34,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
@@ -367,5 +368,39 @@ public class IoTDBDeleteTimeseriesIT {
   }
 
   @Test
-  public void deleteTimeSeriesAndReturnPathNotExistsTest() throws Exception {}
+  public void deleteTimeSeriesAndReturnPathNotExistsTest() throws Exception {
+    try {
+      statement.execute("delete timeseries root.**");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage().contains("304: Path [root.**] does not exist"));
+    }
+
+    String[] retArray1 = new String[] {"0,4,4,4,4"};
+
+    String insertSql = "insert into root.sg%d.d1(time, s1, s2) values(%d, %d, %d)";
+    for (int i = 1; i <= 4; i++) {
+      for (int j = 1; j <= 4; j++) {
+        statement.execute(String.format(insertSql, j, i, i, i));
+      }
+    }
+
+    int cnt = 0;
+    try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.*.d1")) {
+      while (resultSet.next()) {
+        StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
+        for (int i = 1; i <= 4; i++) {
+          ans.append(",").append(resultSet.getString(count("root.sg" + i + ".d1.s1")));
+        }
+        Assert.assertEquals(retArray1[cnt], ans.toString());
+        cnt++;
+      }
+      Assert.assertEquals(retArray1.length, cnt);
+    }
+
+    try {
+      statement.execute("delete timeseries root.*.d1.s3");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage().contains("304: Path [root.*.d1.s3] does not exist"));
+    }
+  }
 }
