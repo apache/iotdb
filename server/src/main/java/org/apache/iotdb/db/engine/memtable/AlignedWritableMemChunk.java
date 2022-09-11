@@ -400,7 +400,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
               break;
           }
         }
-
         alignedChunkWriter.nextColumn();
       }
 
