@@ -69,7 +69,7 @@ public class DeleteTimeSeriesProcedure
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteTimeSeriesProcedure.class);
 
   private PathPatternTree patternTree;
-  private byte[] patternTreeBytes;
+  private ByteBuffer patternTreeBytes;
 
   private String requestMessage;
 
@@ -125,8 +125,7 @@ public class DeleteTimeSeriesProcedure
                 new ConstructSchemaBlackListHandler(dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(
-                    new TConstructSchemaBlackListReq(
-                        consensusGroupIdList, ByteBuffer.wrap(patternTreeBytes)),
+                    new TConstructSchemaBlackListReq(consensusGroupIdList, patternTreeBytes),
                     handler);
 
             return handler.getDataNodeResponseStatusMap();
@@ -146,7 +145,7 @@ public class DeleteTimeSeriesProcedure
         new InvalidateMatchedSchemaCacheHandler(dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            new TInvalidateMatchedSchemaCacheReq(ByteBuffer.wrap(patternTreeBytes)), handler);
+            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes), handler);
     Map<Integer, TSStatus> statusMap = handler.getDataNodeResponseStatusMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schema cache
@@ -216,7 +215,8 @@ public class DeleteTimeSeriesProcedure
               AsyncDataNodeClientPool.getInstance()
                   .sendAsyncRequestToDataNodeWithRetry(
                       new TDeleteDataForDeleteTimeSeriesReq(
-                          new ArrayList<>(consensusGroupIdList), ByteBuffer.wrap(patternTreeBytes)),
+                          new ArrayList<>(consensusGroupIdList),
+                          preparePatternTreeBytesData(patternTree)),
                       handler);
               return handler.getDataNodeResponseStatusMap();
             }
@@ -245,9 +245,7 @@ public class DeleteTimeSeriesProcedure
                 new FetchSchemaBlackLsitHandler(dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(
-                    new TFetchSchemaBlackListReq(
-                        consensusGroupIdList, ByteBuffer.wrap(patternTreeBytes)),
-                    handler);
+                    new TFetchSchemaBlackListReq(consensusGroupIdList, patternTreeBytes), handler);
             Map<Integer, TFetchSchemaBlackListResp> respMap = handler.getDataNodeResponseMap();
             setResponseMap(respMap);
             Map<Integer, TSStatus> statusMap = new HashMap<>();
@@ -286,9 +284,7 @@ public class DeleteTimeSeriesProcedure
             DeleteTimeSeriesHandler handler = new DeleteTimeSeriesHandler(dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(
-                    new TDeleteTimeSeriesReq(
-                        consensusGroupIdList, ByteBuffer.wrap(patternTreeBytes)),
-                    handler);
+                    new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes), handler);
             return handler.getDataNodeResponseStatusMap();
           }
         };
@@ -301,14 +297,21 @@ public class DeleteTimeSeriesProcedure
     Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap = new HashMap<>();
     regionReplicaSetMap.forEach(
         (consensusGroupId, regionReplicaSet) -> {
-          for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-            if (dataNodeLocation.getDataNodeId() == leaderMap.get(consensusGroupId)) {
-              dataNodeConsensusGroupIdMap
-                  .computeIfAbsent(dataNodeLocation, k -> new ArrayList<>())
-                  .add(regionReplicaSet.getRegionId());
-              break;
+          Integer leaderId = leaderMap.get(consensusGroupId);
+          TDataNodeLocation leaderDataNodeLocation = null;
+          if (leaderId == null || leaderId == -1) {
+            leaderDataNodeLocation = regionReplicaSet.getDataNodeLocations().get(0);
+          } else {
+            for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+              if (dataNodeLocation.getDataNodeId() == leaderId) {
+                leaderDataNodeLocation = dataNodeLocation;
+                break;
+              }
             }
           }
+          dataNodeConsensusGroupIdMap
+              .computeIfAbsent(leaderDataNodeLocation, k -> new ArrayList<>())
+              .add(regionReplicaSet.getRegionId());
         });
     return dataNodeConsensusGroupIdMap;
   }
@@ -345,8 +348,7 @@ public class DeleteTimeSeriesProcedure
                 new RollbackSchemaBlackListHandler(dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(
-                    new TRollbackSchemaBlackListReq(
-                        consensusGroupIdList, ByteBuffer.wrap(patternTreeBytes)),
+                    new TRollbackSchemaBlackListReq(consensusGroupIdList, patternTreeBytes),
                     handler);
             return handler.getDataNodeResponseStatusMap();
           }
@@ -381,10 +383,10 @@ public class DeleteTimeSeriesProcedure
   public void setPatternTree(PathPatternTree patternTree) {
     this.patternTree = patternTree;
     requestMessage = patternTree.getAllPathPatterns().toString();
-    preparePatternTreeBytesData();
+    patternTreeBytes = preparePatternTreeBytesData(patternTree);
   }
 
-  private void preparePatternTreeBytesData() {
+  private ByteBuffer preparePatternTreeBytesData(PathPatternTree patternTree) {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
@@ -392,7 +394,7 @@ public class DeleteTimeSeriesProcedure
     } catch (IOException ignored) {
 
     }
-    patternTreeBytes = byteArrayOutputStream.toByteArray();
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
   @Override
@@ -519,18 +521,30 @@ public class DeleteTimeSeriesProcedure
         for (TConsensusGroupId consensusGroupId : consensusGroupIdList) {
           TRegionReplicaSet regionReplicaSet = targetSchemaRegionGroup.get(consensusGroupId);
           TDataNodeLocation selectedDataNode = null;
-          for (TDataNodeLocation candidateDataNode : regionReplicaSet.getDataNodeLocations()) {
-            if (!allFailedDataNodeSet.contains(candidateDataNode)) {
-              if (leaderMap.get(consensusGroupId) == candidateDataNode.getDataNodeId()) {
-                // retry on the new leader as possible
-                selectedDataNode = candidateDataNode;
-                break;
+          Integer leaderId = leaderMap.get(consensusGroupId);
+          if (leaderId == null || leaderId == -1) {
+            for (TDataNodeLocation candidateDataNode : regionReplicaSet.getDataNodeLocations()) {
+              if (!allFailedDataNodeSet.contains(candidateDataNode)) {
+                if (selectedDataNode == null) {
+                  selectedDataNode = candidateDataNode;
+                }
               }
-              if (selectedDataNode == null) {
-                selectedDataNode = candidateDataNode;
+            }
+          } else {
+            for (TDataNodeLocation candidateDataNode : regionReplicaSet.getDataNodeLocations()) {
+              if (!allFailedDataNodeSet.contains(candidateDataNode)) {
+                if (leaderId == candidateDataNode.getDataNodeId()) {
+                  // retry on the new leader as possible
+                  selectedDataNode = candidateDataNode;
+                  break;
+                }
+                if (selectedDataNode == null) {
+                  selectedDataNode = candidateDataNode;
+                }
               }
             }
           }
+
           if (selectedDataNode == null) {
             setFailure(
                 new ProcedureException(
