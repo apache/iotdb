@@ -267,6 +267,7 @@ public class DeleteTimeSeriesProcedure
         patternTree.appendPathPattern(path);
       }
     }
+    patternTree.constructTree();
     return patternTree;
   }
 
