@@ -201,7 +201,7 @@ public class AsyncDataNodeClientPool {
           case DELETE_DATA_FOR_DELETE_TIMESERIES:
             handler =
                 new DeleteDataForDeleteTimeSeriesHandler(
-                    countDownLatch, targetDataNode, dataNodeLocationMap, dataNodeResponseStatus);
+                    countDownLatch, targetDataNode, dataNodeLocationMap);
             break;
           case DELETE_TIMESERIES:
             handler =

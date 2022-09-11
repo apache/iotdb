@@ -110,8 +110,8 @@ public class DeleteTimeSeriesProcedure
   }
 
   private void constructBlackList(ConfigNodeProcedureEnv env) {
-    SchemaRegionTask<TSStatus> constructBlackListTask =
-        new SchemaRegionTask<TSStatus>(
+    RegionTask<TSStatus> constructBlackListTask =
+        new RegionTask<TSStatus>(
             "construct schema black list",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree)) {
@@ -164,7 +164,9 @@ public class DeleteTimeSeriesProcedure
     Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
     Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeSchemaRegionGroupGroupIdMap =
-        getDataNodeRegionGroupMap(env, relatedSchemaRegionGroup);
+        getLeaderDataNodeRegionGroupMap(
+            env.getConfigManager().getPartitionManager().getAllLeadership(),
+            relatedSchemaRegionGroup);
 
     // fetch schema black list by dataNode
     for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
@@ -196,32 +198,32 @@ public class DeleteTimeSeriesProcedure
 
       Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
           env.getConfigManager().getRelatedDataRegionGroup(patternTree);
-      Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeDataRegionGroupIdMap =
-          getDataNodeRegionGroupMap(env, relatedDataRegionGroup);
 
-      if (dataNodeDataRegionGroupIdMap.isEmpty()) {
+      // target timeseries has no data
+      if (relatedDataRegionGroup.isEmpty()) {
         continue;
       }
 
-      List<TSStatus> statusList = new ArrayList<>();
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-      dataNodeDataRegionGroupIdMap.forEach((k, v) -> dataNodeLocationMap.put(k.getDataNodeId(), k));
-      DeleteDataForDeleteTimeSeriesHandler handler =
-          new DeleteDataForDeleteTimeSeriesHandler(dataNodeLocationMap, statusList);
-      AsyncDataNodeClientPool.getInstance()
-          .sendAsyncRequestToDataNodeWithRetry(
-              new TDeleteDataForDeleteTimeSeriesReq(
-                  new ArrayList<>(relatedDataRegionGroup.keySet()),
-                  ByteBuffer.wrap(patternTreeBytes)),
-              handler);
-      if (statusList.get(statusList.size() - 1).getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // todo implement retry on another dataNode
-        LOGGER.error(
-            "Failed to delete data of timeseries {} on {}",
-            patternTree.getAllPathPatterns().toString(),
-            relatedDataRegionGroup.keySet());
-        setFailure(new ProcedureException("Delete data failed"));
+      RegionTask<TSStatus> deleteDataTask =
+          new RegionTask<TSStatus>("delete data", env, relatedDataRegionGroup) {
+            @Override
+            Map<Integer, TSStatus> sendRequest(
+                TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
+              Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
+              dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
+              DeleteDataForDeleteTimeSeriesHandler handler =
+                  new DeleteDataForDeleteTimeSeriesHandler(dataNodeLocationMap);
+              AsyncDataNodeClientPool.getInstance()
+                  .sendAsyncRequestToDataNodeWithRetry(
+                      new TDeleteDataForDeleteTimeSeriesReq(
+                          new ArrayList<>(consensusGroupIdList), ByteBuffer.wrap(patternTreeBytes)),
+                      handler);
+              return handler.getDataNodeResponseStatusMap();
+            }
+          };
+      deleteDataTask.setExecuteOnAllReplicaset(true);
+      deleteDataTask.execute();
+      if (isFailed()) {
         return;
       }
     }
@@ -231,8 +233,8 @@ public class DeleteTimeSeriesProcedure
   private PathPatternTree fetchSchemaBlackListOnTargetDataNode(
       ConfigNodeProcedureEnv env,
       Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup) {
-    SchemaRegionTask<TFetchSchemaBlackListResp> fetchSchemaBlackListTask =
-        new SchemaRegionTask<TFetchSchemaBlackListResp>(
+    RegionTask<TFetchSchemaBlackListResp> fetchSchemaBlackListTask =
+        new RegionTask<TFetchSchemaBlackListResp>(
             "fetch schema black list", env, targetSchemaRegionGroup) {
           @Override
           Map<Integer, TSStatus> sendRequest(
@@ -271,8 +273,8 @@ public class DeleteTimeSeriesProcedure
   }
 
   private void deleteTimeSeries(ConfigNodeProcedureEnv env) {
-    SchemaRegionTask<TSStatus> deleteTimeSeriesTask =
-        new SchemaRegionTask<TSStatus>(
+    RegionTask<TSStatus> deleteTimeSeriesTask =
+        new RegionTask<TSStatus>(
             "delete timeseries",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree)) {
@@ -293,10 +295,9 @@ public class DeleteTimeSeriesProcedure
     deleteTimeSeriesTask.execute();
   }
 
-  private Map<TDataNodeLocation, List<TConsensusGroupId>> getDataNodeRegionGroupMap(
-      ConfigNodeProcedureEnv env, Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap) {
-    Map<TConsensusGroupId, Integer> leaderMap =
-        env.getConfigManager().getPartitionManager().getAllLeadership();
+  private Map<TDataNodeLocation, List<TConsensusGroupId>> getLeaderDataNodeRegionGroupMap(
+      Map<TConsensusGroupId, Integer> leaderMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap) {
     Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap = new HashMap<>();
     regionReplicaSetMap.forEach(
         (consensusGroupId, regionReplicaSet) -> {
@@ -312,12 +313,26 @@ public class DeleteTimeSeriesProcedure
     return dataNodeConsensusGroupIdMap;
   }
 
+  private Map<TDataNodeLocation, List<TConsensusGroupId>> getAllReplicaDataNodeRegionGroupMap(
+      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap) {
+    Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap = new HashMap<>();
+    regionReplicaSetMap.forEach(
+        (consensusGroupId, regionReplicaSet) -> {
+          for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+            dataNodeConsensusGroupIdMap
+                .computeIfAbsent(dataNodeLocation, k -> new ArrayList<>())
+                .add(regionReplicaSet.getRegionId());
+          }
+        });
+    return dataNodeConsensusGroupIdMap;
+  }
+
   @Override
   protected void rollbackState(
       ConfigNodeProcedureEnv env, DeleteTimeSeriesState deleteTimeSeriesState)
       throws IOException, InterruptedException, ProcedureException {
-    SchemaRegionTask<TSStatus> rollbackStateTask =
-        new SchemaRegionTask<TSStatus>(
+    RegionTask<TSStatus> rollbackStateTask =
+        new RegionTask<TSStatus>(
             "roll back schema black list",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree)) {
@@ -408,15 +423,17 @@ public class DeleteTimeSeriesProcedure
     return Objects.hash(getProcId(), getState(), patternTree);
   }
 
-  private abstract class SchemaRegionTask<T> {
+  private abstract class RegionTask<T> {
 
     private final String taskName;
     private final ConfigNodeProcedureEnv env;
     private final Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup;
 
+    private boolean executeOnAllReplicaset = false;
+
     private Map<Integer, T> responseMap;
 
-    SchemaRegionTask(
+    RegionTask(
         String taskName,
         ConfigNodeProcedureEnv env,
         Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup) {
@@ -429,7 +446,11 @@ public class DeleteTimeSeriesProcedure
       // organize schema region by dataNode
       Set<TDataNodeLocation> allFailedDataNodeSet = new HashSet<>();
       Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap =
-          getDataNodeRegionGroupMap(env, targetSchemaRegionGroup);
+          executeOnAllReplicaset
+              ? getAllReplicaDataNodeRegionGroupMap(targetSchemaRegionGroup)
+              : getLeaderDataNodeRegionGroupMap(
+                  env.getConfigManager().getPartitionManager().getAllLeadership(),
+                  targetSchemaRegionGroup);
       while (!dataNodeConsensusGroupIdMap.isEmpty()) {
         Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
             sendSchemaRegionRequest(dataNodeConsensusGroupIdMap);
@@ -527,12 +548,16 @@ public class DeleteTimeSeriesProcedure
       return availableDataNodeLocation;
     }
 
+    Map<Integer, T> getResponseMap() {
+      return responseMap;
+    }
+
     protected void setResponseMap(Map<Integer, T> responseMap) {
       this.responseMap = responseMap;
     }
 
-    Map<Integer, T> getResponseMap() {
-      return responseMap;
+    void setExecuteOnAllReplicaset(boolean executeOnAllReplicaset) {
+      this.executeOnAllReplicaset = executeOnAllReplicaset;
     }
 
     abstract Map<Integer, TSStatus> sendRequest(
