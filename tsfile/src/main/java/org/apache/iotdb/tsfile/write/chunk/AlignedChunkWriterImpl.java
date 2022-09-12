@@ -263,7 +263,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     return false;
   }
 
-  public void writePageToPageBuffer() {
+  private void writePageToPageBuffer() {
     timeChunkWriter.writePageToPageBuffer();
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       valueChunkWriter.writePageToPageBuffer();

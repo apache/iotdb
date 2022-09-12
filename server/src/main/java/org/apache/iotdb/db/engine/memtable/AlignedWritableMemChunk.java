@@ -330,7 +330,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
 
     List<TSDataType> dataTypes = list.getTsDataTypes();
-    for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 2) {
+    for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
       for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
         // Pair of Time and Index
         Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
