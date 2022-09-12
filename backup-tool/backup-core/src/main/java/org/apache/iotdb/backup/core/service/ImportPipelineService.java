@@ -24,7 +24,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 import java.io.*;
@@ -33,11 +34,11 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.*;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
 
 /** @Author: LL @Description: @Date: create in 2022/7/1 9:41 */
-@Slf4j
 public class ImportPipelineService {
+
+  private static final Logger log = LoggerFactory.getLogger(ImportPipelineService.class);
 
   private static ImportPipelineService importPipelineService;
 

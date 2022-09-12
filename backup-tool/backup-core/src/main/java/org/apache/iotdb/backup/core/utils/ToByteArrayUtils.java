@@ -18,13 +18,17 @@
  */
 package org.apache.iotdb.backup.core.utils;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
 /** @Author: LL @Description: @Date: create in 2022/7/19 14:05 */
-@Slf4j
 public class ToByteArrayUtils {
+
+  private static final Logger log = LoggerFactory.getLogger(ToByteArrayUtils.class);
   /**
    * 把对象转变成二进制
    *

@@ -29,9 +29,9 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
 import reactor.core.publisher.ParallelFlux;
@@ -44,9 +44,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Data
-@Slf4j
 public class InRowModelFileSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRowModel> {
+
+  private static final Logger log = LoggerFactory.getLogger(InRowModelFileSink.class);
 
   private String name;
 

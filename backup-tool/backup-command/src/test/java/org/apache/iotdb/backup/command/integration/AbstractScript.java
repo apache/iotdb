@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.backup.command.integration;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.annotation.Nullable;
 
 import java.io.BufferedReader;
@@ -33,7 +32,6 @@ import java.util.Properties;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@Slf4j
 public abstract class AbstractScript {
 
   protected void testOutput(ProcessBuilder builder, @Nullable String[] output, int statusCode)
@@ -73,7 +71,7 @@ public abstract class AbstractScript {
       try {
         Thread.sleep(100);
       } catch (InterruptedException e) {
-        log.error("异常信息:", e);
+        // log.error("异常信息:", e);
         fail();
       }
     }
@@ -92,7 +90,7 @@ public abstract class AbstractScript {
     try {
       properties.load(new FileReader(target));
     } catch (IOException e) {
-      return "target/backup-command-0.13.3-SNAPSHOT";
+      return userDir.getAbsolutePath() + File.separator + "target\\backup-command-0.13.3-SNAPSHOT";
     }
     return new File(
             userDir,

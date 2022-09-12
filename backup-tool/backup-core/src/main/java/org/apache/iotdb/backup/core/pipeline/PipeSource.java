@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.backup.core.pipeline;
 
-import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 
 import java.util.function.Function;
 
-@Slf4j
 public abstract class PipeSource<T, R, V> extends PipeComponent<Function<Flux<T>, Flux<R>>, V> {
 
   @Override

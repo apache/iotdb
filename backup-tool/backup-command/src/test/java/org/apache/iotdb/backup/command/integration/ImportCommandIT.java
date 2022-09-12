@@ -16,9 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.backup.command.unit;
-
-import org.apache.iotdb.backup.command.integration.AbstractScript;
+package org.apache.iotdb.backup.command.integration;
 
 import org.junit.After;
 import org.junit.Before;
@@ -28,7 +26,7 @@ import java.io.File;
 import java.io.IOException;
 
 /** this test only test command file can run normal do not test real export import function */
-public class ExportCommandTest extends AbstractScript {
+public class ImportCommandIT extends AbstractScript {
 
   @Before
   public void setUp() {}
@@ -50,7 +48,7 @@ public class ExportCommandTest extends AbstractScript {
   protected void testOnWindows() throws IOException {
     final String[] output = {
       "````````````````````````````````````````````````",
-      "Starting IoTDB Client New Export Script",
+      "Starting IoTDB Client New Import Script",
       "````````````````````````````````````````````````",
       "Connect failed because org.apache.thrift.transport.TTransportException: "
           + "java.net.ConnectException: Connection refused"
@@ -60,7 +58,7 @@ public class ExportCommandTest extends AbstractScript {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            dir + File.separator + "commands" + File.separator + "backup-export.bat",
+            dir + File.separator + "commands" + File.separator + "backup-import.bat",
             "-h",
             "127.0.0.1",
             "-p",
@@ -71,10 +69,6 @@ public class ExportCommandTest extends AbstractScript {
             "root",
             "-f",
             "./",
-            "-i",
-            "root.**",
-            "-sy",
-            "true",
             "-se",
             "true",
             "-c",
@@ -89,7 +83,7 @@ public class ExportCommandTest extends AbstractScript {
   protected void testOnUnix() throws IOException {
     final String[] output = {
       "------------------------------------------",
-      "Starting IoTDB Client New Export Script",
+      "Starting IoTDB Client New Import Script",
       "------------------------------------------",
       "Connect failed because org.apache.thrift.transport.TTransportException: "
           + "java.net.ConnectException: Connection refused"
@@ -98,7 +92,7 @@ public class ExportCommandTest extends AbstractScript {
     ProcessBuilder builder =
         new ProcessBuilder(
             "sh",
-            dir + File.separator + "commands" + File.separator + "backup-export.sh",
+            dir + File.separator + "commands" + File.separator + "backup-import.sh",
             "-h",
             "127.0.0.1",
             "-p",
@@ -109,10 +103,6 @@ public class ExportCommandTest extends AbstractScript {
             "root",
             "-f",
             "./",
-            "-i",
-            "root.**",
-            "-sy",
-            "true",
             "-se",
             "true",
             "-c",

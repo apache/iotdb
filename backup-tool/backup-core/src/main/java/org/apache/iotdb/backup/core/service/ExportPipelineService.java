@@ -35,7 +35,6 @@ import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-import lombok.extern.slf4j.Slf4j;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import org.apache.commons.collections4.ListUtils;
@@ -44,6 +43,8 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xerial.snappy.Snappy;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
@@ -57,8 +58,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /** @Author: LL @Description: @Date: create in 2022/6/24 9:50 */
-@Slf4j
 public class ExportPipelineService {
+
+  private static final Logger log = LoggerFactory.getLogger(ExportPipelineService.class);
 
   private static final int T_LIMIT = 999;
 

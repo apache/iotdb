@@ -24,7 +24,6 @@ import org.apache.iotdb.backup.core.pipeline.PipeChannel;
 import org.apache.iotdb.backup.core.pipeline.context.PipelineContext;
 import org.apache.iotdb.backup.core.pipeline.context.model.ImportModel;
 
-import lombok.Data;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.ParallelFlux;
 
@@ -32,7 +31,6 @@ import java.util.List;
 import java.util.function.Function;
 
 /** */
-@Data
 public class FieldColumnFormatChannel
     extends PipeChannel<
         TimeSeriesRowModel,

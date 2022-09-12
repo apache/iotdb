@@ -153,7 +153,7 @@
     </build>
     <profiles>
         <profile>
-            <id>skipCliTests</id>
+            <id>skipBackupTests</id>
             <activation>
                 <property>
                     <name>skipTests</name>
@@ -167,7 +167,7 @@
             </properties>
         </profile>
         <profile>
-            <id>skipUT_CliTests</id>
+            <id>skipUT_BackupTests</id>
             <activation>
                 <property>
                     <name>skipUTs</name>

@@ -18,14 +18,10 @@
  */
 package org.apache.iotdb.backup.core.pipeline;
 
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.ParallelFlux;
 
 import java.util.function.Function;
 
-@Data
-@Slf4j
 public abstract class PipeChannel<T, R, V>
     extends PipeComponent<Function<ParallelFlux<T>, ParallelFlux<R>>, V> {
 

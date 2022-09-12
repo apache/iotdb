@@ -26,12 +26,12 @@ import org.apache.iotdb.backup.core.pipeline.context.model.ExportModel;
 import org.apache.iotdb.backup.core.pipeline.context.model.FileSinkStrategyEnum;
 import org.apache.iotdb.backup.core.service.ExportPipelineService;
 
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.ParallelFlux;
 import reactor.core.scheduler.Scheduler;
@@ -44,13 +44,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
-@Data
-@Slf4j
 public class OutCsvDataSource
     extends PipeSource<
         String,
         TimeSeriesRowModel,
         Function<ParallelFlux<TimeSeriesRowModel>, ParallelFlux<TimeSeriesRowModel>>> {
+
+  private static final Logger log = LoggerFactory.getLogger(OutCsvDataSource.class);
 
   private String name;
 

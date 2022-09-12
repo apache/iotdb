@@ -20,12 +20,9 @@ package org.apache.iotdb.backup.core.pipeline.context.model;
 
 import org.apache.iotdb.session.Session;
 
-import lombok.Data;
-
 import java.util.List;
 
 /** @Author: LL @Description: @Date: create in 2022/7/26 13:51 */
-@Data
 public class DeleteModel extends PipelineModel {
 
   private Session session;
@@ -35,4 +32,36 @@ public class DeleteModel extends PipelineModel {
   private String whereClause;
 
   private List<String> measurementList;
+
+  public Session getSession() {
+    return session;
+  }
+
+  public void setSession(Session session) {
+    this.session = session;
+  }
+
+  public String getIotdbPath() {
+    return iotdbPath;
+  }
+
+  public void setIotdbPath(String iotdbPath) {
+    this.iotdbPath = iotdbPath;
+  }
+
+  public String getWhereClause() {
+    return whereClause;
+  }
+
+  public void setWhereClause(String whereClause) {
+    this.whereClause = whereClause;
+  }
+
+  public List<String> getMeasurementList() {
+    return measurementList;
+  }
+
+  public void setMeasurementList(List<String> measurementList) {
+    this.measurementList = measurementList;
+  }
 }

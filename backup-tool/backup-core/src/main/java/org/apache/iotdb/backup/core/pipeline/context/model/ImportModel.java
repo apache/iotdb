@@ -18,10 +18,15 @@
  */
 package org.apache.iotdb.backup.core.pipeline.context.model;
 
-import lombok.Data;
-
-@Data
 public class ImportModel extends IECommonModel {
 
   private String fileName;
+
+  public String getFileName() {
+    return fileName;
+  }
+
+  public void setFileName(String fileName) {
+    this.fileName = fileName;
+  }
 }

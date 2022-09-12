@@ -18,12 +18,9 @@
  */
 package org.apache.iotdb.backup.core.model;
 
-import lombok.Data;
-
 import java.io.Serializable;
 import java.util.List;
 
-@Data
 public class TimeSeriesRowModel implements Serializable {
   public static final long serialVersionUID = 1L;
   // 时间戳
@@ -32,4 +29,28 @@ public class TimeSeriesRowModel implements Serializable {
   private DeviceModel deviceModel;
   // 行数据
   private List<IField> iFieldList;
+
+  public String getTimestamp() {
+    return timestamp;
+  }
+
+  public void setTimestamp(String timestamp) {
+    this.timestamp = timestamp;
+  }
+
+  public DeviceModel getDeviceModel() {
+    return deviceModel;
+  }
+
+  public void setDeviceModel(DeviceModel deviceModel) {
+    this.deviceModel = deviceModel;
+  }
+
+  public List<IField> getIFieldList() {
+    return iFieldList;
+  }
+
+  public void setIFieldList(List<IField> iFieldList) {
+    this.iFieldList = iFieldList;
+  }
 }

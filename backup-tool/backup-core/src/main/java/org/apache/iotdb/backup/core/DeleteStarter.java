@@ -25,15 +25,17 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 /** @Author: LL @Description: @Date: create in 2022/7/26 13:51 */
-@Slf4j
 public class DeleteStarter implements Starter<DeleteModel> {
+
+  private static final Logger log = LoggerFactory.getLogger(DeleteStarter.class);
 
   @Override
   public Disposable start(DeleteModel model) {

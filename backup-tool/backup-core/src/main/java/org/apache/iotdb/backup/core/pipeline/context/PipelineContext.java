@@ -20,12 +20,25 @@ package org.apache.iotdb.backup.core.pipeline.context;
 
 import org.apache.iotdb.backup.core.pipeline.context.model.PipelineModel;
 
-import lombok.Data;
-
-@Data
 public class PipelineContext<R extends PipelineModel> {
 
   private String name = "pipeline-context";
 
   private R model;
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public R getModel() {
+    return model;
+  }
+
+  public void setModel(R model) {
+    this.model = model;
+  }
 }

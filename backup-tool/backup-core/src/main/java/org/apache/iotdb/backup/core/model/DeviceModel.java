@@ -18,12 +18,9 @@
  */
 package org.apache.iotdb.backup.core.model;
 
-import lombok.Data;
-
 import java.io.Serializable;
 
 /** @Author: LL @Description: @Date: create in 2022/6/24 10:40 */
-@Data
 public class DeviceModel implements Serializable {
   public static final long serialVersionUID = 1L;
   // 设备实体路径，也是timeseries前缀路径
@@ -31,4 +28,20 @@ public class DeviceModel implements Serializable {
 
   // 是否是时间对齐的
   private boolean aligned;
+
+  public String getDeviceName() {
+    return deviceName;
+  }
+
+  public void setDeviceName(String deviceName) {
+    this.deviceName = deviceName;
+  }
+
+  public boolean isAligned() {
+    return aligned;
+  }
+
+  public void setAligned(boolean aligned) {
+    this.aligned = aligned;
+  }
 }

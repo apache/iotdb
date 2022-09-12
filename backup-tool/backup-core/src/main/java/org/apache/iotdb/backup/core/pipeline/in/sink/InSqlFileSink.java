@@ -25,8 +25,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.ParallelFlux;
 
@@ -34,9 +34,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
-@Data
-@Slf4j
 public class InSqlFileSink extends PipeSink<String, String> {
+
+  private static final Logger log = LoggerFactory.getLogger(InSqlFileSink.class);
 
   private String name;
 

@@ -25,8 +25,8 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SignalType;
@@ -40,9 +40,9 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-@Data
-@Slf4j
 public class CommonPipeline implements Pipeline {
+
+  private static final Logger log = LoggerFactory.getLogger(CommonPipeline.class);
 
   private List<Component> componentChain;
 
@@ -190,5 +190,29 @@ public class CommonPipeline implements Pipeline {
   public CommonPipeline withContext(Supplier<PipelineContext> supplier) {
     this.pipelineContext = supplier.get();
     return this;
+  }
+
+  public List<Component> getComponentChain() {
+    return componentChain;
+  }
+
+  public void setComponentChain(List<Component> componentChain) {
+    this.componentChain = componentChain;
+  }
+
+  public PipelineContext<IECommonModel> getPipelineContext() {
+    return pipelineContext;
+  }
+
+  public void setPipelineContext(PipelineContext<IECommonModel> pipelineContext) {
+    this.pipelineContext = pipelineContext;
+  }
+
+  public List<Disposable> getDisposableList() {
+    return disposableList;
+  }
+
+  public void setDisposableList(List<Disposable> disposableList) {
+    this.disposableList = disposableList;
   }
 }

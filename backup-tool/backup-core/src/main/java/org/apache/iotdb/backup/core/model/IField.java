@@ -18,12 +18,9 @@
  */
 package org.apache.iotdb.backup.core.model;
 
-import lombok.Data;
-
 import java.io.Serializable;
 
 /** @Author: LL @Description: @Date: create in 2022/6/24 10:06 */
-@Data
 public class IField implements Serializable {
 
   public static final long serialVersionUID = 1L;
@@ -31,4 +28,20 @@ public class IField implements Serializable {
   private String columnName;
 
   private FieldCopy field;
+
+  public String getColumnName() {
+    return columnName;
+  }
+
+  public void setColumnName(String columnName) {
+    this.columnName = columnName;
+  }
+
+  public FieldCopy getField() {
+    return field;
+  }
+
+  public void setField(FieldCopy field) {
+    this.field = field;
+  }
 }

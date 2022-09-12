@@ -20,13 +20,11 @@ package org.apache.iotdb.backup.core.pipeline.in.channel;
 
 import org.apache.iotdb.backup.core.pipeline.PipeChannel;
 
-import lombok.Data;
 import reactor.core.publisher.ParallelFlux;
 
 import java.util.function.Function;
 
 /** 转化数据，主要处理字符串 */
-@Data
 public class SpecialForSQLChannel
     extends PipeChannel<String, String, Function<ParallelFlux<String>, ParallelFlux<String>>> {
 

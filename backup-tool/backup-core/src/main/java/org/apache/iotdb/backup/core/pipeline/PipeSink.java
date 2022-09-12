@@ -17,12 +17,10 @@
  * under the License.
  */ package org.apache.iotdb.backup.core.pipeline;
 
-import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.ParallelFlux;
 
 import java.util.function.Function;
 
-@Slf4j
 public abstract class PipeSink<T, R>
     implements Component<Function<ParallelFlux<T>, ParallelFlux<R>>> {
 

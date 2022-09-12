@@ -29,12 +29,12 @@ import org.apache.iotdb.backup.core.service.ImportPipelineService;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.csv.QuoteMode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.ParallelFlux;
@@ -51,13 +51,13 @@ import java.util.function.Function;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
-@Data
-@Slf4j
 public class InStructureSource
     extends PipeSource<
         String,
         TimeSeriesRowModel,
         Function<ParallelFlux<TimeSeriesRowModel>, ParallelFlux<TimeSeriesRowModel>>> {
+
+  private static final Logger log = LoggerFactory.getLogger(InStructureSource.class);
 
   private String name;
 

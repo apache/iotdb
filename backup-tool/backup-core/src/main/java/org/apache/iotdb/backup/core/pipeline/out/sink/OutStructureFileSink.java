@@ -23,10 +23,10 @@ import org.apache.iotdb.backup.core.model.TimeSeriesRowModel;
 import org.apache.iotdb.backup.core.pipeline.PipeSink;
 import org.apache.iotdb.backup.core.service.ExportPipelineService;
 
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
 import reactor.core.publisher.ParallelFlux;
@@ -39,9 +39,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Data
-@Slf4j
 public class OutStructureFileSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRowModel> {
+
+  private static final Logger log = LoggerFactory.getLogger(OutStructureFileSink.class);
 
   private String name;
 

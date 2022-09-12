@@ -18,11 +18,8 @@
  */
 package org.apache.iotdb.backup.core.pipeline.context.model;
 
-import lombok.Data;
-
 import java.util.List;
 
-@Data
 public class ExportModel extends IECommonModel {
 
   private String iotdbPath;
@@ -30,4 +27,28 @@ public class ExportModel extends IECommonModel {
   private String whereClause;
 
   private List<String> measurementList;
+
+  public String getIotdbPath() {
+    return iotdbPath;
+  }
+
+  public void setIotdbPath(String iotdbPath) {
+    this.iotdbPath = iotdbPath;
+  }
+
+  public String getWhereClause() {
+    return whereClause;
+  }
+
+  public void setWhereClause(String whereClause) {
+    this.whereClause = whereClause;
+  }
+
+  public List<String> getMeasurementList() {
+    return measurementList;
+  }
+
+  public void setMeasurementList(List<String> measurementList) {
+    this.measurementList = measurementList;
+  }
 }

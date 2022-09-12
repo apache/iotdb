@@ -27,14 +27,12 @@ import org.apache.iotdb.backup.core.service.ExportPipelineService;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import lombok.Data;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.ParallelFlux;
 
 import java.util.function.Function;
 
 /** 转化数据，主要处理字符串 */
-@Data
 public class StringFormatIncludeNullFieldChannel
     extends PipeChannel<
         TimeSeriesRowModel,

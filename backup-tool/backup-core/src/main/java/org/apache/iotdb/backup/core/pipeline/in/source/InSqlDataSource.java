@@ -24,21 +24,26 @@ import org.apache.iotdb.backup.core.pipeline.context.model.ImportModel;
 import org.apache.iotdb.backup.core.service.ExportPipelineService;
 import org.apache.iotdb.backup.core.service.ImportPipelineService;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.ParallelFlux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
-import java.io.*;
+import java.io.File;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /** @Author: LL @Description: @Date: create in 2022/6/29 9:59 */
-@Slf4j
 public class InSqlDataSource
     extends PipeSource<String, String, Function<ParallelFlux<String>, ParallelFlux<String>>> {
+
+  private static final Logger log = LoggerFactory.getLogger(InSqlDataSource.class);
 
   private String name;
 
