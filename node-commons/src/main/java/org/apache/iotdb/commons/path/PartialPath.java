@@ -356,43 +356,42 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   /**
-   * Test if this path pattern includes input path pattern. e.g. "root.**" includes
-   * "root.sg.**", "root.*.d.s" includes "root.sg.d.s", "root.sg.**" does not include "root.**.s",
-   * "root.*.d.s" does not include "root.sg.d1.*"
+   * Test if this path pattern includes input path pattern. e.g. "root.**" includes "root.sg.**",
+   * "root.*.d.s" includes "root.sg.d.s", "root.sg.**" does not include "root.**.s", "root.*.d.s"
+   * does not include "root.sg.d1.*"
    *
    * @param rPath a pattern path of a timeseries
    * @return true if this path pattern includes input path pattern, otherwise return false
    */
   public boolean include(PartialPath rPath) {
-    // dp[i][j] means if nodes1[0:i) and nodes[0:j) overlapping
     String[] rNodes = rPath.getNodes();
-    boolean[][] dp = new boolean[this.nodes.length + 1][rNodes.length + 1];
-    dp[0][0] = true;
+    // dp[i][j] means if nodes1[0:i) includes nodes[0:j)
+    boolean[] dp = new boolean[rNodes.length + 1];
+    dp[0] = true;
     for (int i = 1; i <= this.nodes.length; i++) {
+      boolean[] newDp = new boolean[rNodes.length + 1];
       for (int j = 1; j <= rNodes.length; j++) {
-        if (this.nodes[i - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
-                || rNodes[j - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        if (this.nodes[i - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
           // if encounter MULTI_LEVEL_PATH_WILDCARD
-          if (this.nodes[i - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-            // if nodes1[i-1] is MULTI_LEVEL_PATH_WILDCARD, dp[i][k(k>=j)]=dp[i-1][j-1]
-            if (dp[i - 1][j - 1]) {
-              for (int k = j; k <= rNodes.length; k++) {
-                dp[i][k] = true;
-              }
+          if (dp[j - 1]) {
+            for (int k = j; k <= rNodes.length; k++) {
+              newDp[k] = true;
             }
+            break;
           }
         } else {
           // if without MULTI_LEVEL_PATH_WILDCARD, scan and check
-          if (this.nodes[i - 1].equals(ONE_LEVEL_PATH_WILDCARD)
-                  || rNodes[j - 1].equals(ONE_LEVEL_PATH_WILDCARD)
-                  || this.nodes[i - 1].equals(rNodes[j - 1])) {
-            // if nodes1[i-1] and nodes[2] is matched, dp[i][j] = dp[i-1][j-1]
-            dp[i][j] |= dp[i - 1][j - 1];
+          if (!rNodes[j - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
+              && (this.nodes[i - 1].equals(ONE_LEVEL_PATH_WILDCARD)
+                  || this.nodes[i - 1].equals(rNodes[j - 1]))) {
+            // if nodes1[i-1] includes rNodes[j-1], dp[i][j] = dp[i-1][j-1]
+            newDp[j] |= dp[j - 1];
           }
         }
       }
+      dp = newDp;
     }
-    return dp[this.nodes.length][rNodes.length];
+    return dp[rNodes.length];
   }
 
   /**
