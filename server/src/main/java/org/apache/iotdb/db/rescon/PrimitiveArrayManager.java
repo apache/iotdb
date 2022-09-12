@@ -40,6 +40,8 @@ public class PrimitiveArrayManager {
 
   public static final int ARRAY_SIZE = CONFIG.getPrimitiveArraySize();
 
+  public static final int TVLIST_SORT_ALGORITHM = CONFIG.getTvListSortAlgorithm();
+
   /**
    * The actual used memory will be 50% larger than the statistic, so we need to limit the size of
    * POOLED_ARRAYS_MEMORY_THRESHOLD, make it smaller than its actual allowed value.

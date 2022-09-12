@@ -1381,6 +1381,13 @@ public class IoTDBDescriptor {
     if (unseqMemTableFlushCheckInterval > 0) {
       conf.setUnseqMemtableFlushCheckInterval(unseqMemTableFlushCheckInterval);
     }
+    int tvListSortAlgorithm =
+        Integer.parseInt(
+            properties.getProperty(
+                "tvList_sort_algorithm", Integer.toString(conf.getTvListSortAlgorithm())));
+    if (tvListSortAlgorithm > 0) {
+      conf.setTvListSortAlgorithm(tvListSortAlgorithm);
+    }
   }
 
   public void loadHotModifiedProps(Properties properties) throws QueryProcessException {

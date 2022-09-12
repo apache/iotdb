@@ -24,11 +24,6 @@ public class QuickIntTVList extends IntTVList implements QuickSort {
   }
 
   @Override
-  public QuickIntTVList clone() {
-    return null;
-  }
-
-  @Override
   public int compare(int idx1, int idx2) {
     long t1 = getTime(idx1);
     long t2 = getTime(idx2);

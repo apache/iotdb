@@ -70,17 +70,17 @@ public abstract class TVList implements WALEntryValue {
   public static TVList newList(TSDataType dataType) {
     switch (dataType) {
       case TEXT:
-        return new TimBinaryTVList();
+        return BinaryTVList.newList();
       case FLOAT:
-        return new TimFloatTVList();
+        return FloatTVList.newList();
       case INT32:
-        return new TimIntTVList();
+        return IntTVList.newList();
       case INT64:
-        return new TimLongTVList();
+        return LongTVList.newList();
       case DOUBLE:
-        return new TimDoubleTVList();
+        return DoubleTVList.newList();
       case BOOLEAN:
-        return new TimBooleanTVList();
+        return BooleanTVList.newList();
       default:
         break;
     }
