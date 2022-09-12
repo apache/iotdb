@@ -365,13 +365,25 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    */
   public boolean include(PartialPath rPath) {
     String[] rNodes = rPath.getNodes();
+    String[] lNodes = nodes.clone();
+    // Replace * with ** if they are adjacent to each other
+    for (int i = 1; i < lNodes.length; i++) {
+      if (MULTI_LEVEL_PATH_WILDCARD.equals(lNodes[i - 1])
+          && ONE_LEVEL_PATH_WILDCARD.equals(lNodes[i])) {
+        lNodes[i] = MULTI_LEVEL_PATH_WILDCARD;
+      }
+      if (MULTI_LEVEL_PATH_WILDCARD.equals(lNodes[lNodes.length - i])
+          && ONE_LEVEL_PATH_WILDCARD.equals(lNodes[lNodes.length - 1 - i])) {
+        lNodes[lNodes.length - 1 - i] = MULTI_LEVEL_PATH_WILDCARD;
+      }
+    }
     // dp[i][j] means if nodes1[0:i) includes nodes[0:j)
     boolean[] dp = new boolean[rNodes.length + 1];
     dp[0] = true;
-    for (int i = 1; i <= this.nodes.length; i++) {
+    for (int i = 1; i <= lNodes.length; i++) {
       boolean[] newDp = new boolean[rNodes.length + 1];
-      for (int j = 1; j <= rNodes.length; j++) {
-        if (this.nodes[i - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      for (int j = i; j <= rNodes.length; j++) {
+        if (lNodes[i - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
           // if encounter MULTI_LEVEL_PATH_WILDCARD
           if (dp[j - 1]) {
             for (int k = j; k <= rNodes.length; k++) {
@@ -382,8 +394,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
         } else {
           // if without MULTI_LEVEL_PATH_WILDCARD, scan and check
           if (!rNodes[j - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
-              && (this.nodes[i - 1].equals(ONE_LEVEL_PATH_WILDCARD)
-                  || this.nodes[i - 1].equals(rNodes[j - 1]))) {
+              && (lNodes[i - 1].equals(ONE_LEVEL_PATH_WILDCARD)
+                  || lNodes[i - 1].equals(rNodes[j - 1]))) {
             // if nodes1[i-1] includes rNodes[j-1], dp[i][j] = dp[i-1][j-1]
             newDp[j] |= dp[j - 1];
           }

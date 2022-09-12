@@ -704,6 +704,7 @@ public class PartialPathTest {
     PartialPath[][] pathPairs =
         new PartialPath[][] {
           new PartialPath[] {new PartialPath("root.**"), new PartialPath("root.sg.**")},
+          new PartialPath[] {new PartialPath("root.**.*"), new PartialPath("root.**")},
           new PartialPath[] {new PartialPath("root.**.*"), new PartialPath("root.sg.**")},
           new PartialPath[] {new PartialPath("root.**.s"), new PartialPath("root.sg.**")},
           new PartialPath[] {new PartialPath("root.*.**"), new PartialPath("root.sg.**")},
@@ -727,11 +728,13 @@ public class PartialPathTest {
             new PartialPath("root.**.s1.s2.**"), new PartialPath("root.d1.s1.s2.*")
           },
           new PartialPath[] {new PartialPath("root.**.s1"), new PartialPath("root.**.s2")},
+          new PartialPath[] {new PartialPath("root.*.*.**"), new PartialPath("root.**.*")},
+          new PartialPath[] {new PartialPath("root.**.**"), new PartialPath("root.*.**.**.*")},
         };
     boolean[] results =
         new boolean[] {
-          true, true, false, true, true, true, false, false, false, false, false, true, false,
-          false, false, true, false, true, true, false
+          true, false, true, false, true, true, true, false, false, false, false, false, true,
+          false, false, false, true, false, true, true, false, false, true
         };
     Assert.assertEquals(pathPairs.length, results.length);
     for (int i = 0; i < pathPairs.length; i++) {
