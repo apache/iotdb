@@ -448,7 +448,8 @@ public class DataNodeRemoveHandler {
     List<TDataNodeLocation> removedDataNodes = removeDataNodePlan.getDataNodeLocations();
     int allDataNodeSize = configManager.getNodeManager().getRegisteredDataNodeCount();
 
-    // when the configuration is one replication, it will be failed if the data node is not in running state.
+    // when the configuration is one replication, it will be failed if the data node is not in
+    // running state.
     if (CONF.getSchemaReplicationFactor() == 1 || CONF.getDataReplicationFactor() == 1) {
       for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
         // check removed data node is in running state
