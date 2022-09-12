@@ -447,7 +447,9 @@ public class DataNodeRemoveHandler {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<TDataNodeLocation> removedDataNodes = removeDataNodePlan.getDataNodeLocations();
     int allDataNodeSize = configManager.getNodeManager().getRegisteredDataNodeCount();
-    if (NodeInfo.getMinimumDataNode() == 1) {
+
+    // when the configuration is one replication, it will be failed if the data node is not in running state.
+    if (CONF.getSchemaReplicationFactor() == 1 || CONF.getDataReplicationFactor() == 1) {
       for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
         // check removed data node is in running state
         BaseNodeCache nodeCache =
@@ -534,7 +536,7 @@ public class DataNodeRemoveHandler {
   private TSStatus checkClusterProtocol() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
-        && CONF.getSchemaRegionConsensusProtocolClass()
+        || CONF.getSchemaRegionConsensusProtocolClass()
             .equals(ConsensusFactory.StandAloneConsensus)) {
       status.setCode(TSStatusCode.REMOVE_DATANODE_FAILED.getStatusCode());
       status.setMessage("standalone protocol is not supported to remove data node");
