@@ -39,7 +39,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+import org.apache.iotdb.tsfile.write.writer.MemoryControlTsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
 
@@ -56,7 +56,7 @@ public class AlignedSeriesCompactionExecutor {
   private final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       readerAndChunkMetadataList;
   private final TsFileResource targetResource;
-  private final TsFileIOWriter writer;
+  private final MemoryControlTsFileIOWriter writer;
 
   private final AlignedChunkWriterImpl chunkWriter;
   private final List<IMeasurementSchema> schemaList;
@@ -73,7 +73,7 @@ public class AlignedSeriesCompactionExecutor {
       String device,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
-      TsFileIOWriter writer)
+      MemoryControlTsFileIOWriter writer)
       throws IOException {
     this.device = device;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
@@ -151,6 +151,7 @@ public class AlignedSeriesCompactionExecutor {
           chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(writer);
     }
+    writer.checkMetadataSizeAndMayFlush();
   }
 
   private void compactOneAlignedChunk(AlignedChunkReader chunkReader) throws IOException {

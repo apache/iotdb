@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+import org.apache.iotdb.tsfile.write.writer.MemoryControlTsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
 
@@ -50,7 +50,7 @@ public class SingleSeriesCompactionExecutor {
   private String device;
   private PartialPath series;
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
-  private TsFileIOWriter fileWriter;
+  private MemoryControlTsFileIOWriter fileWriter;
   private TsFileResource targetResource;
 
   private IMeasurementSchema schema;
@@ -77,7 +77,7 @@ public class SingleSeriesCompactionExecutor {
       PartialPath series,
       IMeasurementSchema measurementSchema,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
-      TsFileIOWriter fileWriter,
+      MemoryControlTsFileIOWriter fileWriter,
       TsFileResource targetResource) {
     this.device = series.getDevice();
     this.series = series;
@@ -93,7 +93,7 @@ public class SingleSeriesCompactionExecutor {
   public SingleSeriesCompactionExecutor(
       PartialPath series,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
-      TsFileIOWriter fileWriter,
+      MemoryControlTsFileIOWriter fileWriter,
       TsFileResource targetResource) {
     this.device = series.getDevice();
     this.series = series;
@@ -310,6 +310,7 @@ public class SingleSeriesCompactionExecutor {
         false,
         getChunkSize(chunk));
     fileWriter.writeChunk(chunk, chunkMetadata);
+    fileWriter.checkMetadataSizeAndMayFlush();
   }
 
   private void flushChunkWriterIfLargeEnough() throws IOException {
@@ -323,6 +324,7 @@ public class SingleSeriesCompactionExecutor {
           false,
           chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
+      fileWriter.checkMetadataSizeAndMayFlush();
       pointCountInChunkWriter = 0L;
     }
   }
@@ -345,6 +347,7 @@ public class SingleSeriesCompactionExecutor {
         false,
         chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriter);
+    fileWriter.checkMetadataSizeAndMayFlush();
     pointCountInChunkWriter = 0L;
   }
 }
