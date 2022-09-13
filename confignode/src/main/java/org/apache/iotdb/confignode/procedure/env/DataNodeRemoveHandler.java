@@ -452,7 +452,8 @@ public class DataNodeRemoveHandler {
     // running state.
     if (CONF.getSchemaReplicationFactor() == 1 || CONF.getDataReplicationFactor() == 1) {
       for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
-        // check removed data node is in running state
+        LOGGER.info("check data node {} is running", dataNodeLocation);
+        // check whether removed data node is in running state
         BaseNodeCache nodeCache =
             configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
         if (!nodeCache.getNodeStatus().getStatus().equals("Running")) {
