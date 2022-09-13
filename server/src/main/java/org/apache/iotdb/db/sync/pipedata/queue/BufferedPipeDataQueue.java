@@ -318,6 +318,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     commit(pullSerialNumber);
   }
 
+  @Override
   public void commit(long serialNumber) {
     deletePipeData(serialNumber);
     deletePipeLog();

@@ -266,6 +266,7 @@ public class ConfigNodeDescriptor {
                   "procedure_core_worker_thread_size",
                   String.valueOf(conf.getProcedureCoreWorkerThreadsSize()))));
 
+      loadRatisConsensusConfig(properties);
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
@@ -277,6 +278,14 @@ public class ConfigNodeDescriptor {
           .getMetricConfig()
           .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
     }
+  }
+
+  private void loadRatisConsensusConfig(Properties properties) {
+    conf.setRatisConsensusLogAppenderBufferSize(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_log_appender_buffer_size_max",
+                String.valueOf(conf.getRatisConsensusLogAppenderBufferSize()))));
   }
 
   /**

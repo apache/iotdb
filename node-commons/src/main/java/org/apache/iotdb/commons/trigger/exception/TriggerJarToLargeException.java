@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,20 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.predefined;
+package org.apache.iotdb.commons.trigger.exception;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
+public class TriggerJarToLargeException extends RuntimeException {
+  public TriggerJarToLargeException(String message) {
+    super(message);
+  }
 
-public interface IMetricSet {
-  /** bind related metric to metric manager */
-  void bindTo(AbstractMetricManager metricManager);
-
-  /** get type of metric set */
-  PredefinedMetric getType();
-
-  /** start async collectd metric */
-  default void startAsyncCollectedMetrics() {}
-
-  /** stop async collectd metric */
-  default void stopAsyncCollectedMetrics() {}
+  public TriggerJarToLargeException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }
