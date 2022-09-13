@@ -26,11 +26,10 @@ public class MinTimeDescAccumulator extends MinTimeAccumulator {
 
   @Override
   public int addInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
-      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();

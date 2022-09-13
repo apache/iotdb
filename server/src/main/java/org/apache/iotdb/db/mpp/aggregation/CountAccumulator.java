@@ -20,12 +20,10 @@
 package org.apache.iotdb.db.mpp.aggregation;
 
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
-import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindow;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -35,32 +33,25 @@ public class CountAccumulator implements Accumulator {
 
   public CountAccumulator() {}
 
-  // Column should be like: | Time | Value |
+  // Column should be like: | ControlColumn | Value |
   @Override
   public int addInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
-    TimeColumn timeColumn = (TimeColumn) column[0];
-    Column valueColumn = column[1];
-    long minTime = Math.min(timeColumn.getStartTime(), timeColumn.getEndTime());
-    long maxTime = Math.max(timeColumn.getStartTime(), timeColumn.getEndTime());
-
-    if (curWindow.isTimeWindow()
-        && !valueColumn.mayHaveNull()
-        && ((TimeWindow) curWindow).getCurTimeRange().contains(minTime, maxTime)) {
-      countValue += timeColumn.getPositionCount();
+    if (curWindow.contains(column[0])) {
+      countValue += column[0].getPositionCount();
     } else {
       for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+        if (!curWindow.satisfy(column[0], i)) {
           return i;
         }
         curWindow.mergeOnePoint();
-        if (!valueColumn.isNull(i)) {
+        if (!column[1].isNull(i)) {
           countValue++;
         }
       }
     }
+
     return curPositionCount;
   }
 

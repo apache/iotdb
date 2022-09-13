@@ -46,10 +46,10 @@ public interface IWindowManager {
    *
    * @return whether there is a next window
    */
-  boolean hasNext();
+  boolean hasNext(boolean hasMoreData);
 
   /** Used to mark the current window has got last point */
-  void genNextWindow();
+  void next();
 
   /**
    * Used to get the output time of current window

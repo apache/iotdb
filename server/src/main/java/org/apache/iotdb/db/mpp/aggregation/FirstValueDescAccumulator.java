@@ -36,11 +36,10 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
 
   // Don't break in advance
   protected int addIntInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
-      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
@@ -52,11 +51,10 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   protected int addLongInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
-      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
@@ -68,11 +66,10 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   protected int addFloatInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
-      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
@@ -84,11 +81,10 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   protected int addDoubleInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
-      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
@@ -100,11 +96,10 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   protected int addBooleanInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
-      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
@@ -116,11 +111,10 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   protected int addBinaryInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
-      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();

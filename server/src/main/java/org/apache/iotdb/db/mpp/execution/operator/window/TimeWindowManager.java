@@ -52,12 +52,12 @@ public class TimeWindowManager implements IWindowManager {
   }
 
   @Override
-  public boolean hasNext() {
-    return this.timeRangeIterator.hasNextTimeRange();
+  public boolean hasNext(boolean hasMoreData) {
+    return hasMoreData || this.timeRangeIterator.hasNextTimeRange();
   }
 
   @Override
-  public void genNextWindow() {
+  public void next() {
     this.initialized = false;
   }
 

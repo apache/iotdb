@@ -46,8 +46,6 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   private final IWindowManager windowManager;
 
-  private boolean finish;
-
   public RawDataAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
@@ -57,20 +55,16 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       long maxReturnSize) {
     super(operatorContext, aggregators, child, ascending, timeRangeIterator, maxReturnSize);
     this.windowManager = new TimeWindowManager(timeRangeIterator);
-    this.finish = false;
   }
 
   @Override
   public boolean hasNext() {
-    if (finish) {
-      return false;
-    }
-    return inputTsBlock != null || child.hasNext() || windowManager.hasNext();
+    return windowManager.hasNext(hasMoreData());
   }
 
   @Override
   protected boolean calculateNextAggregationResult() {
-    while (!calculateAndUpdateFromRawData()) {
+    while (!calculateFromRawData()) {
       inputTsBlock = null;
 
       // NOTE: child.next() can only be invoked once
@@ -81,71 +75,52 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         // if child still has next but can't be invoked now
         return false;
       } else {
-        if (!windowManager.isCurWindowInit()) {
-          initWindowManagerAndAggregators();
-        }
-        updateResultTsBlock();
         break;
       }
     }
 
+    updateResultTsBlock();
     return true;
   }
 
-  private boolean calculateAndUpdateFromRawData() {
-    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
-      return false;
-    }
+  private boolean calculateFromRawData() {
 
     // if window is not initialized, we should init window status and reset aggregators
     if (!windowManager.isCurWindowInit()) {
       initWindowManagerAndAggregators();
     }
 
-    if (windowManager.satisfiedCurWindow(inputTsBlock)) {
-      inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
-
-      int lastReadRowIndex = 0;
-      for (Aggregator aggregator : aggregators) {
-        // current agg method has been calculated
-        if (aggregator.hasFinalResult()) {
-          continue;
-        }
-
-        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
-      }
-      if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
-        inputTsBlock = null;
-        // for the last index of TsBlock, if we can know the aggregation calculation is over
-        // we can directly updateResultTsBlock and return true
-        if (isAllAggregatorsHasFinalResult(aggregators)) {
-          updateResultTsBlock();
-          return true;
-        }
-        return false;
-      } else {
-        inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
-        updateResultTsBlock();
-        return true;
-      }
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+      return false;
     }
-    boolean isTsBlockOutOfBound = windowManager.isTsBlockOutOfBound(inputTsBlock);
-    boolean canMakeWindow = isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound;
-    if (canMakeWindow) {
-      updateResultTsBlock();
+
+    inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
+
+    int lastReadRowIndex = 0;
+    for (Aggregator aggregator : aggregators) {
+      // current agg method has been calculated
+      if (aggregator.hasFinalResult()) {
+        continue;
+      }
+
+      lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
     }
-    return canMakeWindow;
+    if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
+      inputTsBlock = null;
+      // for the last index of TsBlock, if we can know the aggregation calculation is over
+      // we can directly updateResultTsBlock and return true
+      return isAllAggregatorsHasFinalResult(aggregators);
+    } else {
+      inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
+      return true;
+    }
   }
 
   @Override
   protected void updateResultTsBlock() {
     appendAggregationResult(resultTsBlockBuilder, aggregators, windowManager.currentOutputTime());
-    if (windowManager.hasNext()) {
-      // reset window init status to false
-      windowManager.genNextWindow();
-    } else {
-      finish = true;
-    }
+    // step into next window
+    windowManager.next();
   }
 
   private void initWindowManagerAndAggregators() {

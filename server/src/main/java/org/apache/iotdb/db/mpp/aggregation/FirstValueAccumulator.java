@@ -42,7 +42,7 @@ public class FirstValueAccumulator implements Accumulator {
     firstValue = TsPrimitiveType.getByType(seriesDataType);
   }
 
-  // Column should be like: | Time | Value |
+  // Column should be like: | ControlColumn | Value |
   @Override
   public int addInput(Column[] column, IWindow curWindow) {
     switch (seriesDataType) {
@@ -223,28 +223,19 @@ public class FirstValueAccumulator implements Accumulator {
   }
 
   protected int addIntInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
-    if (curWindow.isTimeWindow()) {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
+    for (int i = 0; i < curPositionCount; i++) {
+      if (!curWindow.satisfy(column[0], i)) {
+        return i;
+      }
+      curWindow.mergeOnePoint();
+      if (!column[1].isNull(i)) {
+        if (curWindow.isTimeWindow()) {
           updateIntFirstValue(column[1].getInt(i), column[0].getLong(i));
           return i;
-        }
-      }
-    } else {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
-          // do not assign true to hasCandidateResult
+        } else {
+          // do not assign true to initResult
           if (column[0].getLong(i) < minTime) {
             minTime = column[0].getLong(i);
             firstValue.setInt(column[1].getInt(i));
@@ -265,28 +256,19 @@ public class FirstValueAccumulator implements Accumulator {
   }
 
   protected int addLongInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
-    if (curWindow.isTimeWindow()) {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
+    for (int i = 0; i < curPositionCount; i++) {
+      if (!curWindow.satisfy(column[0], i)) {
+        return i;
+      }
+      curWindow.mergeOnePoint();
+      if (!column[1].isNull(i)) {
+        if (curWindow.isTimeWindow()) {
           updateLongFirstValue(column[1].getLong(i), column[0].getLong(i));
           return i;
-        }
-      }
-    } else {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
-          // do not assign true to hasCandidateResult
+        } else {
+          // do not assign true to initResult
           if (column[0].getLong(i) < minTime) {
             minTime = column[0].getLong(i);
             firstValue.setLong(column[1].getLong(i));
@@ -307,28 +289,19 @@ public class FirstValueAccumulator implements Accumulator {
   }
 
   protected int addFloatInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
-    if (curWindow.isTimeWindow()) {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
+    for (int i = 0; i < curPositionCount; i++) {
+      if (!curWindow.satisfy(column[0], i)) {
+        return i;
+      }
+      curWindow.mergeOnePoint();
+      if (!column[1].isNull(i)) {
+        if (curWindow.isTimeWindow()) {
           updateFloatFirstValue(column[1].getFloat(i), column[0].getLong(i));
           return i;
-        }
-      }
-    } else {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
-          // do not assign true to hasCandidateResult
+        } else {
+          // do not assign true to initResult
           if (column[0].getLong(i) < minTime) {
             minTime = column[0].getLong(i);
             firstValue.setFloat(column[1].getFloat(i));
@@ -349,28 +322,19 @@ public class FirstValueAccumulator implements Accumulator {
   }
 
   protected int addDoubleInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
-    if (curWindow.isTimeWindow()) {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
+    for (int i = 0; i < curPositionCount; i++) {
+      if (!curWindow.satisfy(column[0], i)) {
+        return i;
+      }
+      curWindow.mergeOnePoint();
+      if (!column[1].isNull(i)) {
+        if (curWindow.isTimeWindow()) {
           updateDoubleFirstValue(column[1].getDouble(i), column[0].getLong(i));
           return i;
-        }
-      }
-    } else {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
-          // do not assign true to hasCandidateResult
+        } else {
+          // do not assign true to initResult
           if (column[0].getLong(i) < minTime) {
             minTime = column[0].getLong(i);
             firstValue.setDouble(column[1].getDouble(i));
@@ -391,28 +355,19 @@ public class FirstValueAccumulator implements Accumulator {
   }
 
   protected int addBooleanInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
-    if (curWindow.isTimeWindow()) {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
+    for (int i = 0; i < curPositionCount; i++) {
+      if (!curWindow.satisfy(column[0], i)) {
+        return i;
+      }
+      curWindow.mergeOnePoint();
+      if (!column[1].isNull(i)) {
+        if (curWindow.isTimeWindow()) {
           updateBooleanFirstValue(column[1].getBoolean(i), column[0].getLong(i));
           return i;
-        }
-      }
-    } else {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
-          // do not assign true to hasCandidateResult
+        } else {
+          // do not assign true to initResult
           if (column[0].getLong(i) < minTime) {
             minTime = column[0].getLong(i);
             firstValue.setBoolean(column[1].getBoolean(i));
@@ -433,28 +388,19 @@ public class FirstValueAccumulator implements Accumulator {
   }
 
   protected int addBinaryInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
-    if (curWindow.isTimeWindow()) {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
+    for (int i = 0; i < curPositionCount; i++) {
+      if (!curWindow.satisfy(column[0], i)) {
+        return i;
+      }
+      curWindow.mergeOnePoint();
+      if (!column[1].isNull(i)) {
+        if (curWindow.isTimeWindow()) {
           updateBinaryFirstValue(column[1].getBinary(i), column[0].getLong(i));
           return i;
-        }
-      }
-    } else {
-      for (int i = 0; i < curPositionCount; i++) {
-        if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint();
-        if (!column[1].isNull(i)) {
-          // do not assign true to hasCandidateResult
+        } else {
+          // do not assign true to initResult
           if (column[0].getLong(i) < minTime) {
             minTime = column[0].getLong(i);
             firstValue.setBinary(column[1].getBinary(i));

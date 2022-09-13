@@ -19,17 +19,19 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
+import org.apache.iotdb.db.mpp.aggregation.Accumulator;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 /** Used to customize the window which stipulates where we can calculate aggregation result. */
 public interface IWindow {
 
   /**
-   * Get the index of column which stipulates the window type
+   * Get control column
    *
-   * @return the control column index
+   * @return the control column
    */
-  int getControlColumnIndex();
+  Column getControlColumn(TsBlock tsBlock);
 
   /**
    * Judge whether the point at index of column belongs to this window
@@ -48,4 +50,20 @@ public interface IWindow {
    * this window
    */
   void mergeOnePoint();
+
+  /**
+   * Used to customize whether the window has final aggregation result
+   *
+   * @param accumulator
+   * @return
+   */
+  boolean hasFinalResult(Accumulator accumulator);
+
+  /**
+   * Used to judge whether the window has contains the column
+   *
+   * @param column
+   * @return
+   */
+  boolean contains(Column column);
 }

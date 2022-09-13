@@ -83,6 +83,10 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     return child.isBlocked();
   }
 
+  protected boolean hasMoreData() {
+    return inputTsBlock != null || child.hasNext();
+  }
+
   @Override
   public TsBlock next() {
     // start stopwatch

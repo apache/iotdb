@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
+import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 public class TimeWindow implements IWindow {
 
@@ -28,8 +31,6 @@ public class TimeWindow implements IWindow {
 
   private long curMinTime;
   private long curMaxTime;
-
-  private int TIME_COLUMN_INDEX = 0;
 
   public TimeWindow() {}
 
@@ -52,8 +53,8 @@ public class TimeWindow implements IWindow {
   }
 
   @Override
-  public int getControlColumnIndex() {
-    return TIME_COLUMN_INDEX;
+  public Column getControlColumn(TsBlock tsBlock) {
+    return tsBlock.getTimeColumn();
   }
 
   @Override
@@ -70,6 +71,21 @@ public class TimeWindow implements IWindow {
   @Override
   public void mergeOnePoint() {
     // do nothing
+  }
+
+  @Override
+  public boolean hasFinalResult(Accumulator accumulator) {
+    return accumulator.hasFinalResult();
+  }
+
+  @Override
+  public boolean contains(Column column) {
+    TimeColumn timeColumn = (TimeColumn) column;
+
+    long minTime = Math.min(timeColumn.getStartTime(), timeColumn.getEndTime());
+    long maxTime = Math.max(timeColumn.getStartTime(), timeColumn.getEndTime());
+
+    return curTimeRange.contains(minTime, maxTime);
   }
 
   public void update(TimeRange curTimeRange) {

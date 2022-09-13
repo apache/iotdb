@@ -39,7 +39,7 @@ public class SumAccumulator implements Accumulator {
     this.seriesDataType = seriesDataType;
   }
 
-  // Column should be like: | Time | Value |
+  // Column should be like: | ControlColumn | Value |
   @Override
   public int addInput(Column[] column, IWindow curWindow) {
     switch (seriesDataType) {
@@ -135,11 +135,10 @@ public class SumAccumulator implements Accumulator {
   }
 
   private int addIntInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
-      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
@@ -152,11 +151,10 @@ public class SumAccumulator implements Accumulator {
   }
 
   private int addLongInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
-      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
@@ -169,11 +167,10 @@ public class SumAccumulator implements Accumulator {
   }
 
   private int addFloatInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
-      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
@@ -186,11 +183,10 @@ public class SumAccumulator implements Accumulator {
   }
 
   private int addDoubleInput(Column[] column, IWindow curWindow) {
-    int windowControlColumnIndex = curWindow.getControlColumnIndex();
-    int curPositionCount = column[windowControlColumnIndex].getPositionCount();
+    int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
-      if (!curWindow.satisfy(column[windowControlColumnIndex], i)) {
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();

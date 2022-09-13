@@ -70,11 +70,11 @@ public class Aggregator {
       checkArgument(
           inputLocations[0].getTsBlockIndex() == 0,
           "RawDataAggregateOperator can only process one tsBlock input.");
-      Column[] timeValueColumn = new Column[2];
-      timeValueColumn[0] = tsBlock.getTimeColumn();
-      timeValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+      Column[] controlAndValueColumn = new Column[2];
+      controlAndValueColumn[0] = curWindow.getControlColumn(tsBlock);
+      controlAndValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
       lastReadReadIndex =
-          Math.max(lastReadReadIndex, accumulator.addInput(timeValueColumn, curWindow));
+          Math.max(lastReadReadIndex, accumulator.addInput(controlAndValueColumn, curWindow));
     }
     return lastReadReadIndex;
   }
@@ -131,13 +131,7 @@ public class Aggregator {
   }
 
   public boolean hasFinalResult() {
-    // For other window (SessionWindow, CountWindow and StateWindow), we cannot
-    // precompute where the window ends, so we cannot judge whether the aggregation method
-    // has been calculated.
-    if (!curWindow.isTimeWindow()) {
-      return false;
-    }
-    return accumulator.hasFinalResult();
+    return curWindow.hasFinalResult(accumulator);
   }
 
   public void updateTimeRange(TimeRange curTimeRange) {
