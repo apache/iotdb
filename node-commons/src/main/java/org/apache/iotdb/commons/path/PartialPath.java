@@ -378,6 +378,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       }
     }
     // dp[i][j] means if nodes1[0:i) includes nodes[0:j)
+    // for example: "root.sg.**" includes "root.sg.d1.*"
+    // 1 0 0 0 0 |→| 1 0 0 0 0 |→| 1 0 0 0 0 |→| 1 0 0 0 0
+    // 0 0 0 0 0 |↓| 0 1 0 0 0 |→| 0 1 0 0 0 |→| 0 1 0 0 0
+    // 0 0 0 0 0 |↓| 0 0 0 0 0 |↓| 0 0 1 0 0 |→| 0 0 1 0 0
+    // 0 0 0 0 0 |↓| 0 0 0 0 0 |↓| 0 0 0 0 0 |↓| 0 0 0 1 1
+    // Since the derivation of the next line depends only on the previous line, the calculation can
+    // be performed using a one-dimensional array
     boolean[] dp = new boolean[rNodes.length + 1];
     dp[0] = true;
     for (int i = 1; i <= lNodes.length; i++) {
