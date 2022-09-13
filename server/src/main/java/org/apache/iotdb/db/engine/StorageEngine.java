@@ -53,6 +53,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -1161,6 +1162,17 @@ public class StorageEngine implements IService {
         + storageGroupProcessor.getDataRegionId();
   }
 
+  /**
+   * Get the virtual storage group name.
+   *
+   * @return virtual storage group name, like root.sg1/0
+   */
+  public String getStorageGroupName(PartialPath path) throws StorageEngineException {
+    PartialPath deviceId = path.getDevicePath();
+    DataRegion storageGroupProcessor = getProcessor(deviceId);
+    return storageGroupProcessor.getLogicalStorageGroupName();
+  }
+
   protected void getSeriesSchemas(InsertPlan insertPlan, DataRegion processor)
       throws StorageEngineException, MetadataException {
     try {
@@ -1173,6 +1185,30 @@ public class StorageEngine implements IService {
       }
     } catch (IOException e) {
       throw new StorageEngineException(e);
+    }
+  }
+
+  public void rewriteTimeseries(PartialPath fullPath) throws StorageEngineException, MetadataException {
+
+    // TODO Check whether fullPath is a storage group
+
+    // Check altering cache
+    AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
+    boolean storageGroupExsist = alteringRecordsCache.isStorageGroupExsist(fullPath);
+    if(!storageGroupExsist) {
+      throw new StorageEngineException("Rewrite Timeseries Failed. The storage group you entered is not altering");
+    }
+    StorageGroupManager storageGroupManager = getStorageGroupManager(LocalSchemaProcessor.getInstance().getStorageGroupNodeByPath(fullPath));
+    if(storageGroupManager == null) {
+      throw new StorageEngineException("Rewrite Timeseries Failed. The StorageGroupManager is null");
+    }
+    storageGroupManager.alterLock();
+    try {
+      storageGroupManager.rewriteTimeseries();
+    } catch (Exception e) {
+      throw new StorageEngineException(e);
+    } finally {
+      storageGroupManager.alterUnlock();
     }
   }
 

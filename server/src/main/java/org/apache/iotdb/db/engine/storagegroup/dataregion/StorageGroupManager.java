@@ -19,10 +19,16 @@
 package org.apache.iotdb.db.engine.storagegroup.dataregion;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.alter.RewriteTImeseriesTask;
+import org.apache.iotdb.db.engine.alter.log.AlteringLogAnalyzer;
+import org.apache.iotdb.db.engine.alter.log.AlteringLogger;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -535,5 +541,31 @@ public class StorageGroupManager {
 
   public AtomicBoolean getIsSettling() {
     return isSettling;
+  }
+
+  public void rewriteTimeseries() throws Exception {
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        List<Long> timePartitions = dataRegion.getTimePartitions();
+        if(timePartitions != null && timePartitions.size() > 0) {
+          // alter.log analyzer
+          File logFile =
+                  SystemFileFactory.INSTANCE.getFile(dataRegion.getStorageGroupSysDir(), AlteringLogger.ALTERING_LOG_NAME);
+          if (!logFile.exists()) {
+            // there is no altering timeseries in the DataRegion
+            continue;
+          }
+          AlteringLogAnalyzer analyzer = new AlteringLogAnalyzer(logFile);
+          for (Long timePartitionId :
+                  timePartitions) {
+            TsFileManager tsFileManager = dataRegion.getTsFileManager();
+            // Create tasks grouped by DataRegion TimePartition
+            // Share CompactionTaskManager
+            CompactionTaskManager.getInstance()
+                    .addTaskToWaitingQueue(new RewriteTImeseriesTask(dataRegion.getLogicalStorageGroupName(), dataRegion.getDataRegionId(),timePartitionId, tsFileManager, CompactionTaskManager.currentTaskNum, tsFileManager.getNextCompactionTaskId(), analyzer.isClearBegin(), analyzer.getDoneFiles()));
+          }
+        }
+      }
+    }
   }
 }

@@ -601,9 +601,14 @@ public class DataRegion {
     }
     // recover alter records cache
     alteringRecordsCache.startAlter();
-    alterList.forEach(
-        record ->
-            alteringRecordsCache.putRecord(record.left, record.right.left, record.right.right));
+    for (int i = 0; i < alterList.size(); i++) {
+      Pair<String, Pair<TSEncoding, CompressionType>> record = alterList.get(i);
+      try {
+        alteringRecordsCache.putRecord(record.left, record.right.left, record.right.right);
+      } catch (Exception e) {
+        throw new DataRegionException(e);
+      }
+    }
     logger.info("recoverAlter-{}: record count is {}", logKey, alterList.size());
   }
 
@@ -2194,6 +2199,8 @@ public class DataRegion {
     try (AlteringLogger alteringLogger = new AlteringLogger(logFile)) {
       alteringLogger.addAlterParam(fullPath, curEncoding, curCompressionType);
       alteringRecordsCache.putRecord(fullPath.getFullPath(), curEncoding, curCompressionType);
+    } catch (Exception e) {
+      throw new IOException("Alter failed.", e);
     }
     // flush & close TODO Both merge and clear will be rewritten using the new code(TSEncoding &
     // CompressionType), so there is no need to waste time forcing disk flushing to modify Schema
@@ -3605,6 +3612,10 @@ public class DataRegion {
    */
   public String getStorageGroupPath() {
     return logicalStorageGroupName + File.separator + dataRegionId;
+  }
+
+  public File getStorageGroupSysDir() {
+    return storageGroupSysDir;
   }
 
   public StorageGroupInfo getStorageGroupInfo() {

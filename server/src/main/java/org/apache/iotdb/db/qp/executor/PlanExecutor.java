@@ -459,8 +459,24 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private boolean rewriteTimeseries(RewriteTimeseriesPlan plan) {
-    logger.info("rewriteTimeseries begin:{}", plan);
+  private boolean rewriteTimeseries(RewriteTimeseriesPlan plan) throws QueryProcessException {
+
+    if(plan == null || plan.getPath() == null) {
+      throw new QueryProcessException("RewriteTimeseriesPlan is null");
+    }
+    PartialPath fullPath = plan.getPath();
+    final String logKey = fullPath.getFullPath();
+    AUDIT_LOGGER.info("[rewriteTimeseries] {} begin", logKey);
+    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new QueryProcessException("This command is not supported in cluster mode");
+    }
+    // storage alter
+    try {
+      StorageEngine.getInstance().rewriteTimeseries(fullPath);
+    } catch (StorageEngineException | MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    AUDIT_LOGGER.info("[rewriteTimeseries] {} end", logKey);
     return true;
   }
 
