@@ -63,7 +63,7 @@ public class LocalDataPartitionTable {
    * @return The region id for the path.
    */
   public DataRegionId getDataRegionId(PartialPath path) {
-    int idx = Math.abs(path.hashCode()) % regionNum;
+    int idx = Math.abs(path.hashCode() % regionNum);
     return regionIds[idx];
   }
 
@@ -77,7 +77,7 @@ public class LocalDataPartitionTable {
   }
 
   public DataRegionId getDataRegionWithAutoExtension(PartialPath path) {
-    int idx = Math.abs(path.hashCode()) % regionNum;
+    int idx = Math.abs(path.hashCode() % regionNum);
     if (regionIds[idx] == null) {
       int nextId = DataRegionIdGenerator.getInstance().getNextId();
       regionIds[idx] = new DataRegionId(nextId);
