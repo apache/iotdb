@@ -114,6 +114,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
               .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
+  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
+      CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER =
+          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+              .createClientManager(
+                  new DataNodeClientPoolFactory.ClusterDeletionConfigNodeClientPoolFactory());
+
   private static final class ClusterConfigTaskExecutorHolder {
     private static final ClusterConfigTaskExecutor INSTANCE = new ClusterConfigTaskExecutor();
 
@@ -784,7 +790,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     TDeleteTimeSeriesReq req =
         new TDeleteTimeSeriesReq(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(
+            ConfigNodeInfo.partitionRegionId)) {
       TSStatus tsStatus = client.deleteTimeSeries(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
