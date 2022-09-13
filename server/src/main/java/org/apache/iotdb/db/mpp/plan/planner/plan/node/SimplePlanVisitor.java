@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.trigger.exception;
+package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
-public class TriggerRegistrationException extends RuntimeException {
-  public TriggerRegistrationException(String message) {
-    super(message);
-  }
-
-  public TriggerRegistrationException(String message, Throwable cause) {
-    super(message, cause);
+public class SimplePlanVisitor<C> extends PlanVisitor<Void, C> {
+  @Override
+  public Void visitPlan(PlanNode node, C context) {
+    for (PlanNode source : node.getChildren()) {
+      source.accept(this, context);
+    }
+    return null;
   }
 }

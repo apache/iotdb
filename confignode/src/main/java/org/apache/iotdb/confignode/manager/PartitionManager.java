@@ -51,10 +51,12 @@ import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
+import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -70,7 +72,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
@@ -235,16 +236,9 @@ public class PartitionManager {
       // Map<StorageGroup, unassigned SeriesPartitionSlot count>
       Map<String, Integer> unassignedDataPartitionSlotsCountMap = new ConcurrentHashMap<>();
       unassignedDataPartitionSlotsMap.forEach(
-          (storageGroup, unassignedDataPartitionSlots) -> {
-            AtomicInteger unassignedDataPartitionSlotsCount = new AtomicInteger(0);
-            unassignedDataPartitionSlots
-                .values()
-                .forEach(
-                    timePartitionSlots ->
-                        unassignedDataPartitionSlotsCount.getAndAdd(timePartitionSlots.size()));
-            unassignedDataPartitionSlotsCountMap.put(
-                storageGroup, unassignedDataPartitionSlotsCount.get());
-          });
+          (storageGroup, unassignedDataPartitionSlots) ->
+              unassignedDataPartitionSlotsCountMap.put(
+                  storageGroup, unassignedDataPartitionSlots.size()));
       TSStatus status =
           extendRegionsIfNecessary(
               unassignedDataPartitionSlotsCountMap, TConsensusGroupType.DataRegion);
@@ -300,7 +294,8 @@ public class PartitionManager {
         float allocatedRegionCount =
             partitionInfo.getRegionCount(entry.getKey(), consensusGroupType);
         // The slotCount equals to the sum of assigned slot count and unassigned slot count
-        float slotCount = partitionInfo.getSlotCount(entry.getKey()) + entry.getValue();
+        float slotCount =
+            partitionInfo.getAssignedSeriesPartitionSlotsCount(entry.getKey()) + entry.getValue();
         float maxRegionCount =
             getClusterSchemaManager().getMaxRegionGroupCount(entry.getKey(), consensusGroupType);
         float maxSlotCount =
@@ -451,7 +446,7 @@ public class PartitionManager {
   }
 
   public void addMetrics() {
-    partitionInfo.addMetrics();
+    MetricService.getInstance().addMetricSet(new PartitionInfoMetrics(partitionInfo));
   }
 
   /**
