@@ -21,12 +21,10 @@ package org.apache.iotdb.db.mpp.plan.plan.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanBuilder;
 import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
@@ -35,16 +33,17 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class LastQueryTest {
 
@@ -197,12 +196,21 @@ public class LastQueryTest {
 
   private LogicalQueryPlan constructLastQuery(List<String> paths, MPPQueryContext context)
       throws IllegalPathException {
-    LogicalPlanBuilder builder = new LogicalPlanBuilder(context);
-    Set<Expression> expressions = new HashSet<>();
+    List<PlanNode> sourceNodeList = new ArrayList<>();
     for (String path : paths) {
-      expressions.add(new TimeSeriesOperand(new MeasurementPath(path)));
+      MeasurementPath selectPath = new MeasurementPath(path);
+      if (selectPath.isUnderAlignedEntity()) {
+        sourceNodeList.add(
+            new AlignedLastQueryScanNode(
+                context.getQueryId().genPlanNodeId(), new AlignedPath(selectPath)));
+      } else {
+        sourceNodeList.add(new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath));
+      }
     }
-    PlanNode root = builder.planLast(expressions, null, new OrderByParameter()).getRoot();
+
+    PlanNode root =
+        new LastQueryNode(
+            context.getQueryId().genPlanNodeId(), sourceNodeList, null, new OrderByParameter());
     return new LogicalQueryPlan(context, root);
   }
 }
