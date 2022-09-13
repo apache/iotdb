@@ -131,9 +131,12 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     checkTimeAndMayFlushChunkToCurrentFile(timestamps.getStartTime(), subTaskId);
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
-    TsFileResource resource = targetTsFileResources.get(seqFileIndexArray[subTaskId]);
-    resource.updateStartTime(device, timestamps.getStartTime());
-    resource.updateEndTime(device, timestamps.getEndTime());
+    synchronized (this) {
+      // we need to synchronized here to avoid multi-thread competition in sub-task
+      TsFileResource resource = targetTsFileResources.get(seqFileIndexArray[subTaskId]);
+      resource.updateStartTime(device, timestamps.getStartTime());
+      resource.updateEndTime(device, timestamps.getEndTime());
+    }
     checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
     isEmptyFile[seqFileIndexArray[subTaskId]] = false;
@@ -212,9 +215,12 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void updateStartTimeAndEndTime(String device, long time, int subTaskId) {
-    int fileIndex = seqFileIndexArray[subTaskId];
-    TsFileResource resource = targetTsFileResources.get(fileIndex);
-    resource.updateStartTime(device, time);
-    resource.updateEndTime(device, time);
+    synchronized (this) {
+      int fileIndex = seqFileIndexArray[subTaskId];
+      TsFileResource resource = targetTsFileResources.get(fileIndex);
+      // we need to synchronized here to avoid multi-thread competition in sub-task
+      resource.updateStartTime(device, time);
+      resource.updateEndTime(device, time);
+    }
   }
 }

@@ -82,8 +82,11 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
     checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
-    resource.updateStartTime(device, timestamps.getStartTime());
-    resource.updateEndTime(device, timestamps.getEndTime());
+    synchronized (this) {
+      // we need to synchronized here to avoid multi-thread competition in sub-task
+      resource.updateStartTime(device, timestamps.getStartTime());
+      resource.updateEndTime(device, timestamps.getEndTime());
+    }
     isEmptyFile = false;
   }
 
@@ -105,8 +108,11 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void updateStartTimeAndEndTime(String device, long time, int subTaskId) {
-    resource.updateStartTime(device, time);
-    resource.updateEndTime(device, time);
+    // we need to synchronized here to avoid multi-thread competition in sub-task
+    synchronized (this) {
+      resource.updateStartTime(device, time);
+      resource.updateEndTime(device, time);
+    }
   }
 
   @Override

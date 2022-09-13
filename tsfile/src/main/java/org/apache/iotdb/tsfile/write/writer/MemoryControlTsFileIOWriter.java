@@ -223,6 +223,7 @@ public class MemoryControlTsFileIOWriter extends TsFileIOWriter {
         // this series is the time column of the aligned device
         // the full series path will be like "root.sg.d."
         // we remove the last . in the series id here
+        currentPath = new Path(currentSeries);
         currentDevice = currentSeries.substring(0, currentSeries.length() - 1);
       } else {
         currentPath = new Path(currentSeries, true);
