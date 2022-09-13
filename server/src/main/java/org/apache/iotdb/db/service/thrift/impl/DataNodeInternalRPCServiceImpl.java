@@ -36,8 +36,11 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -75,6 +78,7 @@ import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -107,6 +111,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TcreateTriggerInstanceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -228,7 +233,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     }
     if (groupId instanceof DataRegionId) {
+
       writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
+
     } else {
       writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
     }
@@ -757,7 +764,37 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus createTriggerInstance(TcreateTriggerInstanceReq req) throws TException {
-    // todo: implementation
+    TriggerInformation triggerInformation = TriggerInformation.deserialize(req.triggerInformation);
+    try {
+      // set state to INACTIVE when creating trigger instance
+      triggerInformation.setTriggerState(TTriggerState.INACTIVE);
+      // save jar file at trigger_lib_dir
+      TriggerExecutableManager.getInstance()
+          .writeToLibDir(req.jarFile, triggerInformation.getJarName());
+      // register trigger information with TriggerRegistrationService
+      // config nodes take responsibility for synchronization control
+      TriggerManagementService.getInstance().register(triggerInformation);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Error occurred when creating trigger instance for trigger: {}. The cause is {}.",
+          triggerInformation.getTriggerName(),
+          e.getMessage());
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TSStatus activeTriggerInstance(TactiveTriggerInstanceReq req) throws TException {
+    try {
+      TriggerManagementService.getInstance().activeTrigger(req.triggerName);
+    } catch (Exception e) {
+      LOGGER.error("Error occurred during ");
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

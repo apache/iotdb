@@ -313,7 +313,11 @@ public class SinkHandle implements ISinkHandle {
     if (isFinished()) {
       sinkHandleListener.onFinish(this);
     }
-    localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), freedBytes);
+    // there may exist duplicate ack message in network caused by caller retrying, if so duplicate
+    // ack message's freedBytes may be zero
+    if (freedBytes > 0) {
+      localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), freedBytes);
+    }
   }
 
   public TEndPoint getRemoteEndpoint() {

@@ -276,6 +276,15 @@ public:
         checkBigEndian();
     }
 
+    void reserve(size_t n) {
+        str.reserve(n);
+    }
+
+    void clear() {
+        str.clear();
+        pos = 0;
+    }
+
     bool hasRemaining() {
         return pos < str.size();
     }
@@ -315,7 +324,7 @@ public:
         putOrderedByte((char *) &ins, 4);
     }
 
-    void putLong(int64_t ins) {
+    void putInt64(int64_t ins) {
         putOrderedByte((char *) &ins, 8);
     }
 
@@ -527,6 +536,8 @@ public:
     size_t rowSize;    //the number of rows to include in this tablet
     size_t maxRowNumber;   // the maximum number of rows for this tablet
     bool isAligned;   // whether this tablet store data of aligned timeseries or not
+
+    Tablet() = default;
 
     /**
     * Return a tablet with default specified row number. This is the standard
@@ -925,13 +936,13 @@ private:
     const static int DEFAULT_TIMEOUT_MS = 0;
     Version::Version version;
 
-    bool checkSorted(const Tablet &tablet);
+    static bool checkSorted(const Tablet &tablet);
 
-    bool checkSorted(const std::vector<int64_t> &times);
+    static bool checkSorted(const std::vector<int64_t> &times);
 
-    void sortTablet(Tablet &tablet);
+    static void sortTablet(Tablet &tablet);
 
-    void sortIndexByTimestamp(int *index, std::vector<int64_t> &timestamps, int length);
+    static void sortIndexByTimestamp(int *index, std::vector<int64_t> &timestamps, int length);
 
     std::string getTimeZone();
 
@@ -994,6 +1005,8 @@ public:
     }
 
     ~Session();
+
+    int64_t getSessionId();
 
     void open();
 
@@ -1066,6 +1079,10 @@ public:
     void insertTablet(Tablet &tablet);
 
     void insertTablet(Tablet &tablet, bool sorted);
+
+    static void buildInsertTabletReq(TSInsertTabletReq &request, int64_t sessionId, Tablet &tablet, bool sorted);
+
+    void insertTablet(const TSInsertTabletReq &request);
 
     void insertAlignedTablet(Tablet &tablet);
 
