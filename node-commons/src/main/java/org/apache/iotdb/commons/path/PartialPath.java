@@ -383,7 +383,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     // 0 0 0 0 0 |↓| 0 1 0 0 0 |→| 0 1 0 0 0 |→| 0 1 0 0 0
     // 0 0 0 0 0 |↓| 0 0 0 0 0 |↓| 0 0 1 0 0 |→| 0 0 1 0 0
     // 0 0 0 0 0 |↓| 0 0 0 0 0 |↓| 0 0 0 0 0 |↓| 0 0 0 1 1
-    // Since the derivation of the next line depends only on the previous line, the calculation can
+    // Since the derivation of the next row depends only on the previous row, the calculation can
     // be performed using a one-dimensional array
     boolean[] dp = new boolean[rNodes.length + 1];
     dp[0] = true;
