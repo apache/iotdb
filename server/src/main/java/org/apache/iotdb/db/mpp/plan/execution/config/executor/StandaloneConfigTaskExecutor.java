@@ -565,7 +565,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> deleteTimeSeries(
-      DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
+      String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     future.setException(
         new IoTDBException(
