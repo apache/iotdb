@@ -77,7 +77,7 @@ iotdb-datanode.properties 和 IoTDBConfig 默认值需要保持一致。
 如果需要对配置参数进行改动。以下文件需要同时修改：
   1. 配置文件：server/src/assembly/resources/conf/iotdb-datanode.properties
   2. 代码：IoTDBDescriptor、IoTDBConfig
-  3. 文档：docs/UserGuide/Reference/Config-Manual.md、docs/zh/UserGuide/Reference/Config-Manual.md
+  3. 文档：docs/UserGuide/Reference/DataNode-Config-Manual.md、docs/zh/UserGuide/Reference/DataNode-Config-Manual.md
 
 如果你想要在 IT 和 UT 文件中对配置参数进行修改，你需要在 @Before 修饰的方法里修改，并且在 @After 修饰的方法里重置，来避免对其他测试的影响。合并模块的参数统一放在CompactionConfigRestorer 文件里。
 

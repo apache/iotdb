@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.builder;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.IntermediateLayerVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -29,8 +28,8 @@ import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +44,7 @@ public class EvaluationDAGBuilder {
   private final Expression[] outputExpressions;
   private final LayerPointReader[] outputPointReaders;
 
-  private final TypeProvider typeProvider;
+  private final Map<NodeRef<Expression>, TSDataType> expressionTypes;
 
   private final UDTFContext udtfContext;
 
@@ -62,14 +61,14 @@ public class EvaluationDAGBuilder {
       QueryDataSetInputLayer inputLayer,
       Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,
-      TypeProvider typeProvider,
+      Map<NodeRef<Expression>, TSDataType> expressionTypes,
       UDTFContext udtfContext,
       float memoryBudgetInMB) {
     this.queryId = queryId;
     this.inputLayer = inputLayer;
     this.inputLocations = inputLocations;
     this.outputExpressions = outputExpressions;
-    this.typeProvider = typeProvider;
+    this.expressionTypes = expressionTypes;
     this.udtfContext = udtfContext;
 
     outputPointReaders = new LayerPointReader[outputExpressions.length];
@@ -94,8 +93,7 @@ public class EvaluationDAGBuilder {
     return this;
   }
 
-  public EvaluationDAGBuilder buildResultColumnPointReaders()
-      throws QueryProcessException, IOException {
+  public EvaluationDAGBuilder buildResultColumnPointReaders() {
     IntermediateLayerVisitor visitor = new IntermediateLayerVisitor();
     IntermediateLayerVisitor.IntermediateLayerVisitorContext context =
         new IntermediateLayerVisitor.IntermediateLayerVisitorContext(
@@ -103,7 +101,7 @@ public class EvaluationDAGBuilder {
             udtfContext,
             inputLayer,
             expressionIntermediateLayerMap,
-            typeProvider,
+            expressionTypes,
             memoryAssigner);
     for (int i = 0; i < outputExpressions.length; ++i) {
       outputPointReaders[i] = visitor.process(outputExpressions[i], context).constructPointReader();

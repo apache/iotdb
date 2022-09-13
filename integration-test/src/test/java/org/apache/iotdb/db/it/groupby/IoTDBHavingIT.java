@@ -35,6 +35,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.avg;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.apache.iotdb.itbase.constant.TestConstant.sum;
 
@@ -99,6 +100,9 @@ public class IoTDBHavingIT {
         "INSERT INTO root.test.sg3(time, s7, s8) aligned values(10, 10.0, 10)",
         "INSERT INTO root.test.sg5(timestamp, s1, s9) " + "values(1, true, 1)",
         "flush",
+        "CREATE TIMESERIES root.test1.d1.code TEXT",
+        "CREATE TIMESERIES root.test1.d1.tem INT32",
+        "INSERT INTO root.test1.d1(timestamp, code, tem) values(1, '123', 345);",
       };
 
   private static long prevPartitionInterval;
@@ -241,6 +245,18 @@ public class IoTDBHavingIT {
             + "GROUP BY ([1,11),2ms), level=1 "
             + "Having count(s2) > 1 "
             + "Limit 1 offset 1",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void sameConstantTest() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, avg("root.test1.d1.tem")};
+    String[] retArray = new String[] {"1,345.0,"};
+    resultSetEqualTest(
+        "select avg(tem) from root.test1.d1 "
+            + "where code='123' group by([0,5), 1ms) "
+            + "having min_value(tem)!=123",
         expectedHeader,
         retArray);
   }

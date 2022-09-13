@@ -19,20 +19,23 @@
  */
 package org.apache.iotdb.db.sync.sender.pipe;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.pipedata.queue.BufferedPipeDataQueue;
-import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
-import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
+import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueue;
+import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
+import org.apache.iotdb.db.sync.sender.manager.LocalSyncManager;
 import org.apache.iotdb.db.sync.sender.recovery.TsFilePipeLogger;
+import org.apache.iotdb.db.sync.transport.client.SenderManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,13 +44,16 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class TsFilePipe implements Pipe {
   private static final Logger logger = LoggerFactory.getLogger(TsFilePipe.class);
-  private final SchemaSyncManager schemaSyncManager = SchemaSyncManager.getInstance();
-  private final TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
+  // <DataRegionId, ISyncManager>
+  private final Map<String, ISyncManager> syncManagerMap = new ConcurrentHashMap<>();
 
   private final long createTime;
   private final String name;
@@ -55,13 +61,17 @@ public class TsFilePipe implements Pipe {
   private final long dataStartTime;
   private final boolean syncDelOp;
 
-  private final BufferedPipeDataQueue historyQueue;
-  private final BufferedPipeDataQueue realTimeQueue;
+  // <DataRegionId, PipeDataQueue>
+  private final Map<String, PipeDataQueue> historyQueueMap = new ConcurrentHashMap<>();
+  private final Map<String, PipeDataQueue> realTimeQueueMap = new ConcurrentHashMap<>();
   private final TsFilePipeLogger pipeLog;
   private final ReentrantLock collectRealTimeDataLock;
 
-  private boolean isCollectingRealTimeData;
-  private long maxSerialNumber;
+  /* handle rpc send logic in sender-side*/
+  private final SenderManager senderManager;
+
+  //  private long maxSerialNumber;
+  private AtomicLong maxSerialNumber;
 
   private PipeStatus status;
 
@@ -73,17 +83,36 @@ public class TsFilePipe implements Pipe {
     this.dataStartTime = dataStartTime;
     this.syncDelOp = syncDelOp;
 
-    this.historyQueue =
-        new BufferedPipeDataQueue(SyncPathUtil.getSenderHistoryPipeLogDir(name, createTime));
-    this.realTimeQueue =
-        new BufferedPipeDataQueue(SyncPathUtil.getSenderRealTimePipeLogDir(name, createTime));
     this.pipeLog = new TsFilePipeLogger(this);
     this.collectRealTimeDataLock = new ReentrantLock();
+    this.senderManager = new SenderManager(this, pipeSink);
 
-    this.isCollectingRealTimeData = false;
-    this.maxSerialNumber = Math.max(0L, realTimeQueue.getLastMaxSerialNumber());
+    this.maxSerialNumber = new AtomicLong(0);
 
     this.status = PipeStatus.STOP;
+    recover();
+  }
+
+  private void recover() {
+    File dir = new File(SyncPathUtil.getSenderRealTimePipeLogDir(this.name, this.createTime));
+    if (dir.exists()) {
+      File[] fileList = dir.listFiles();
+      for (File file : fileList) {
+        String dataRegionId = file.getName();
+        BufferedPipeDataQueue historyQueue =
+            new BufferedPipeDataQueue(
+                SyncPathUtil.getSenderDataRegionHistoryPipeLogDir(
+                    this.name, this.createTime, dataRegionId));
+        BufferedPipeDataQueue realTimeQueue =
+            new BufferedPipeDataQueue(
+                SyncPathUtil.getSenderDataRegionRealTimePipeLogDir(
+                    this.name, this.createTime, dataRegionId));
+        historyQueueMap.put(dataRegionId, historyQueue);
+        realTimeQueueMap.put(dataRegionId, realTimeQueue);
+        this.maxSerialNumber.set(
+            Math.max(this.maxSerialNumber.get(), realTimeQueue.getLastMaxSerialNumber()));
+      }
+    }
   }
 
   @Override
@@ -95,82 +124,47 @@ public class TsFilePipe implements Pipe {
       return;
     }
 
+    // init sync manager
+    List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
+    for (DataRegion dataRegion : dataRegions) {
+      logger.info(
+          logFormat(
+              "init syncManager for %s-%s",
+              dataRegion.getStorageGroupName(), dataRegion.getDataRegionId()));
+      getOrCreateSyncManager(dataRegion.getDataRegionId());
+    }
     try {
       if (!pipeLog.isCollectFinished()) {
         pipeLog.clear();
-        collectData();
+        collectHistoryData();
         pipeLog.finishCollect();
-      }
-      if (!isCollectingRealTimeData) {
-        registerMetadata();
-        registerTsFile();
-        isCollectingRealTimeData = true;
       }
 
       status = PipeStatus.RUNNING;
+      senderManager.start();
     } catch (IOException e) {
       logger.error(
-          String.format(
-              "Clear pipe dir %s error.", SyncPathUtil.getSenderPipeDir(name, createTime)),
+          logFormat("Clear pipe dir %s error.", SyncPathUtil.getSenderPipeDir(name, createTime)),
           e);
       throw new PipeException("Start error, can not clear pipe log.");
     }
   }
 
   /** collect data * */
-  private void collectData() {
-    registerMetadata();
-    List<PhysicalPlan> historyMetadata = collectHistoryMetadata();
-    List<File> historyTsFiles = registerAndCollectHistoryTsFile();
-    isCollectingRealTimeData = true;
-
-    // get all history data
-    int historyMetadataSize = historyMetadata.size();
-    int historyTsFilesSize = historyTsFiles.size();
-    for (int i = 0; i < historyMetadataSize; i++) {
-      long serialNumber = 1 - historyTsFilesSize - historyMetadataSize + i;
-      historyQueue.offer(new SchemaPipeData(historyMetadata.get(i), serialNumber));
+  private void collectHistoryData() {
+    // collect history TsFile
+    for (Map.Entry<String, ISyncManager> entry : syncManagerMap.entrySet()) {
+      List<File> historyTsFiles = entry.getValue().syncHistoryTsFile(dataStartTime);
+      // put history data into PipeDataQueue
+      int historyTsFilesSize = historyTsFiles.size();
+      for (int i = 0; i < historyTsFilesSize; i++) {
+        long serialNumber = 1 - historyTsFilesSize + i;
+        File tsFile = historyTsFiles.get(i);
+        historyQueueMap
+            .get(entry.getKey())
+            .offer(new TsFilePipeData(tsFile.getParent(), tsFile.getName(), serialNumber));
+      }
     }
-    for (int i = 0; i < historyTsFilesSize; i++) {
-      long serialNumber = 1 - historyTsFilesSize + i;
-      File tsFile = historyTsFiles.get(i);
-      historyQueue.offer(new TsFilePipeData(tsFile.getParent(), tsFile.getName(), serialNumber));
-    }
-  }
-
-  private void registerMetadata() {
-    schemaSyncManager.registerSyncTask(this);
-  }
-
-  private void deregisterMetadata() {
-    schemaSyncManager.deregisterSyncTask();
-  }
-
-  private List<PhysicalPlan> collectHistoryMetadata() {
-    return schemaSyncManager.collectHistoryMetadata();
-  }
-
-  public void collectRealTimeMetaData(PhysicalPlan plan) {
-    collectRealTimeDataLock.lock();
-    try {
-      maxSerialNumber += 1L;
-      PipeData metaData = new SchemaPipeData(plan, maxSerialNumber);
-      realTimeQueue.offer(metaData);
-    } finally {
-      collectRealTimeDataLock.unlock();
-    }
-  }
-
-  private void registerTsFile() {
-    tsFileSyncManager.registerSyncTask(this);
-  }
-
-  private void deregisterTsFile() {
-    tsFileSyncManager.deregisterSyncTask();
-  }
-
-  private List<File> registerAndCollectHistoryTsFile() {
-    return tsFileSyncManager.registerAndCollectHistoryTsFile(this, dataStartTime);
   }
 
   public File createHistoryTsFileHardlink(File tsFile, long modsOffset) {
@@ -182,55 +176,53 @@ public class TsFilePipe implements Pipe {
 
       return pipeLog.createTsFileAndModsHardlink(tsFile, modsOffset);
     } catch (IOException e) {
-      logger.error(
-          String.format("Create hardlink for history tsfile %s error.", tsFile.getPath()), e);
+      logger.error(logFormat("Create hardlink for history tsfile %s error.", tsFile.getPath()), e);
       return null;
     } finally {
       collectRealTimeDataLock.unlock();
     }
   }
 
-  public void collectRealTimeDeletion(Deletion deletion, String sgName) {
+  public void collectRealTimeDeletion(Deletion deletion, String sgName, String dataRegionId) {
     collectRealTimeDataLock.lock();
     try {
       if (!syncDelOp) {
         return;
       }
 
-      for (PartialPath deletePath :
-          schemaSyncManager.splitPathPatternByDevice(deletion.getPath())) {
+      for (PartialPath deletePath : LocalSyncManager.splitPathPatternByDevice(deletion.getPath())) {
         Deletion splitDeletion =
             new Deletion(
                 deletePath,
                 deletion.getFileOffset(),
                 deletion.getStartTime(),
                 deletion.getEndTime());
-        maxSerialNumber += 1L;
-        PipeData deletionData = new DeletionPipeData(sgName, splitDeletion, maxSerialNumber);
-        realTimeQueue.offer(deletionData);
+        PipeData deletionData =
+            new DeletionPipeData(sgName, splitDeletion, maxSerialNumber.incrementAndGet());
+        realTimeQueueMap.get(dataRegionId).offer(deletionData);
       }
     } catch (MetadataException e) {
-      logger.warn(String.format("Collect deletion %s error.", deletion), e);
+      logger.warn(logFormat("Collect deletion %s error.", deletion), e);
     } finally {
       collectRealTimeDataLock.unlock();
     }
   }
 
-  public void collectRealTimeTsFile(File tsFile) {
+  public void collectRealTimeTsFile(File tsFile, String dataRegionId) {
     collectRealTimeDataLock.lock();
     try {
       if (pipeLog.isHardlinkExist(tsFile)) {
         return;
       }
 
-      maxSerialNumber += 1L;
       File hardlink = pipeLog.createTsFileHardlink(tsFile);
       PipeData tsFileData =
-          new TsFilePipeData(hardlink.getParent(), hardlink.getName(), maxSerialNumber);
-      realTimeQueue.offer(tsFileData);
+          new TsFilePipeData(
+              hardlink.getParent(), hardlink.getName(), maxSerialNumber.incrementAndGet());
+      realTimeQueueMap.get(dataRegionId).offer(tsFileData);
     } catch (IOException e) {
       logger.warn(
-          String.format(
+          logFormat(
               "Create Hardlink tsfile %s on disk error, serial number is %d.",
               tsFile.getPath(), maxSerialNumber),
           e);
@@ -243,44 +235,87 @@ public class TsFilePipe implements Pipe {
     try {
       pipeLog.createTsFileResourceHardlink(tsFile);
     } catch (IOException e) {
-      logger.warn(String.format("Record tsfile resource %s on disk error.", tsFile.getPath()), e);
+      logger.warn(logFormat("Record tsfile resource %s on disk error.", tsFile.getPath()), e);
     }
   }
 
   /** transport data * */
   @Override
-  public PipeData take() throws InterruptedException {
-    if (!historyQueue.isEmpty()) {
-      return historyQueue.take();
+  public PipeData take(String dataRegionId) throws InterruptedException {
+    if (!historyQueueMap.get(dataRegionId).isEmpty()) {
+      return historyQueueMap.get(dataRegionId).take();
     }
-    return realTimeQueue.take();
+    return realTimeQueueMap.get(dataRegionId).take();
   }
 
   public List<PipeData> pull(long serialNumber) {
     List<PipeData> pullPipeData = new ArrayList<>();
-    if (!historyQueue.isEmpty()) {
-      pullPipeData.addAll(historyQueue.pull(serialNumber));
+    for (PipeDataQueue historyQueue : historyQueueMap.values()) {
+      if (!historyQueue.isEmpty()) {
+        pullPipeData.addAll(historyQueue.pull(serialNumber));
+      }
     }
-    if (serialNumber > 0) {
-      pullPipeData.addAll(realTimeQueue.pull(serialNumber));
+    for (PipeDataQueue realTimeQueue : realTimeQueueMap.values()) {
+      if (serialNumber > 0) {
+        pullPipeData.addAll(realTimeQueue.pull(serialNumber));
+      }
     }
     return pullPipeData;
   }
 
   @Override
-  public void commit() {
-    if (!historyQueue.isEmpty()) {
-      historyQueue.commit();
+  public void commit(String dataRegionId) {
+    if (!historyQueueMap.get(dataRegionId).isEmpty()) {
+      historyQueueMap.get(dataRegionId).commit();
     }
-    realTimeQueue.commit();
+    realTimeQueueMap.get(dataRegionId).commit();
+  }
+
+  @Override
+  public ISyncManager getOrCreateSyncManager(String dataRegionId) {
+    return syncManagerMap.computeIfAbsent(
+        dataRegionId,
+        id -> {
+          registerDataRegion(id);
+          return new LocalSyncManager(
+              StorageEngineV2.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(id))),
+              this);
+        });
+  }
+
+  private void registerDataRegion(String dataRegionId) {
+    historyQueueMap.put(
+        dataRegionId,
+        new BufferedPipeDataQueue(
+            SyncPathUtil.getSenderDataRegionHistoryPipeLogDir(name, createTime, dataRegionId)));
+    realTimeQueueMap.put(
+        dataRegionId,
+        new BufferedPipeDataQueue(
+            SyncPathUtil.getSenderDataRegionRealTimePipeLogDir(name, createTime, dataRegionId)));
+    senderManager.registerDataRegion(dataRegionId);
+  }
+
+  @Override
+  public void unregisterDataRegion(String dataRegionId) {
+    ISyncManager syncManager = syncManagerMap.remove(dataRegionId);
+    if (syncManager != null) {
+      syncManager.delete();
+      senderManager.unregisterDataRegion(dataRegionId);
+      realTimeQueueMap.remove(dataRegionId).clear();
+      historyQueueMap.remove(dataRegionId).clear();
+    }
   }
 
   public void commit(long serialNumber) {
-    if (!historyQueue.isEmpty()) {
-      historyQueue.commit(serialNumber);
+    for (PipeDataQueue historyQueue : historyQueueMap.values()) {
+      if (!historyQueue.isEmpty()) {
+        historyQueue.commit(serialNumber);
+      }
     }
-    if (serialNumber > 0) {
-      realTimeQueue.commit(serialNumber);
+    for (PipeDataQueue realTimeQueue : realTimeQueueMap.values()) {
+      if (serialNumber > 0) {
+        realTimeQueue.commit(serialNumber);
+      }
     }
   }
 
@@ -290,13 +325,7 @@ public class TsFilePipe implements Pipe {
       throw new PipeException(
           String.format("Can not stop pipe %s, because the pipe is drop.", name));
     }
-
-    if (!isCollectingRealTimeData) {
-      registerMetadata();
-      registerTsFile();
-      isCollectingRealTimeData = true;
-    }
-
+    senderManager.stop();
     status = PipeStatus.STOP;
   }
 
@@ -305,23 +334,23 @@ public class TsFilePipe implements Pipe {
     if (status == PipeStatus.DROP) {
       return;
     }
-
+    senderManager.close();
     clear();
     status = PipeStatus.DROP;
   }
 
   private void clear() {
-    deregisterMetadata();
-    deregisterTsFile();
-    isCollectingRealTimeData = false;
-
     try {
-      historyQueue.clear();
-      realTimeQueue.clear();
+      historyQueueMap.values().forEach(PipeDataQueue::clear);
+      realTimeQueueMap.values().forEach(PipeDataQueue::clear);
       pipeLog.clear();
     } catch (IOException e) {
-      logger.warn(String.format("Clear pipe %s %d error.", name, createTime), e);
+      logger.warn(logFormat("Clear pipe %s %d error.", name, createTime), e);
     }
+  }
+
+  private String logFormat(String format, Object... arguments) {
+    return String.format(String.format("[%s-%s] ", this.name, this.createTime) + format, arguments);
   }
 
   @Override
@@ -329,13 +358,9 @@ public class TsFilePipe implements Pipe {
     if (status == PipeStatus.DROP) {
       return;
     }
-
-    deregisterMetadata();
-    deregisterTsFile();
-    isCollectingRealTimeData = false;
-
-    historyQueue.close();
-    realTimeQueue.close();
+    historyQueueMap.values().forEach(PipeDataQueue::close);
+    realTimeQueueMap.values().forEach(PipeDataQueue::close);
+    senderManager.close();
   }
 
   @Override
@@ -374,8 +399,6 @@ public class TsFilePipe implements Pipe {
         + syncDelOp
         + ", pipeLog="
         + pipeLog
-        + ", isCollectingRealTimeData="
-        + isCollectingRealTimeData
         + ", maxSerialNumber="
         + maxSerialNumber
         + ", status="
@@ -396,5 +419,10 @@ public class TsFilePipe implements Pipe {
   @Override
   public int hashCode() {
     return Objects.hash(createTime, name, pipeSink);
+  }
+
+  @Override
+  public SenderManager getSenderManager() {
+    return senderManager;
   }
 }

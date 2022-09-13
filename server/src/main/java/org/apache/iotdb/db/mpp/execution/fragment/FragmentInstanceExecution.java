@@ -89,14 +89,6 @@ public class FragmentInstanceExecution {
         stateMachine.getState(), context.getEndTime(), context.getFailedCause());
   }
 
-  public void cancel() {
-    stateMachine.cancel();
-  }
-
-  public void abort() {
-    stateMachine.abort();
-  }
-
   // this is a separate method to ensure that the `this` reference is not leaked during construction
   private void initialize(CounterStat failedInstances, IDriverScheduler scheduler) {
     requireNonNull(failedInstances, "failedInstances is null");

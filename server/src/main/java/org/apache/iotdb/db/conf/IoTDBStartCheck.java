@@ -113,6 +113,7 @@ public class IoTDBStartCheck {
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol";
 
   private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
+
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
   public static IoTDBStartCheck getInstance() {
@@ -486,10 +487,6 @@ public class IoTDBStartCheck {
         properties.setProperty(
             SCHEMA_REGION_CONSENSUS_PROTOCOL, globalConfig.getSchemaRegionConsensusProtocolClass());
       }
-      properties.setProperty(
-          PARTITION_INTERVAL_STRING, String.valueOf(globalConfig.timePartitionInterval));
-      properties.setProperty(
-          PARTITION_INTERVAL_STRING, String.valueOf(globalConfig.timePartitionInterval));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
       if (propertiesFile.exists()) {

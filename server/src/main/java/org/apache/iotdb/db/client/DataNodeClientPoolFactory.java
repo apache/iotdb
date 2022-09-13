@@ -73,8 +73,12 @@ public class DataNodeClientPoolFactory {
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build(),
-              ThreadName.CONFIG_NODE_CLIENT_POOL_THREAD_NAME.getName()),
-          new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>().build().getConfig());
+              ThreadName.ASYNC_CONFIGNODE_CLIENT_POOL.getName()),
+          new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>()
+              .setMaxIdleClientForEachNode(conf.getCoreConnectionForInternalService())
+              .setMaxTotalClientForEachNode(conf.getMaxConnectionForInternalService())
+              .build()
+              .getConfig());
     }
   }
 
@@ -91,7 +95,11 @@ public class DataNodeClientPoolFactory {
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build()),
-          new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>().build().getConfig());
+          new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
+              .setMaxIdleClientForEachNode(conf.getCoreConnectionForInternalService())
+              .setMaxTotalClientForEachNode(conf.getMaxConnectionForInternalService())
+              .build()
+              .getConfig());
     }
   }
 
@@ -127,7 +135,7 @@ public class DataNodeClientPoolFactory {
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build(),
-              ThreadName.DATA_NODE_MPP_DATA_EXCHANGE_CLIENT_POOL_THREAD_NAME.getName()),
+              ThreadName.ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeMPPDataExchangeServiceClient>()
               .build()
               .getConfig());

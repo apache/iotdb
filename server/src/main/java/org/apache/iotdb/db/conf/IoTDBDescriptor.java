@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
@@ -238,6 +239,18 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
+
+    conf.setMaxConnectionForInternalService(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_connection_for_internal_service",
+                String.valueOf(conf.getMaxConnectionForInternalService()))));
+
+    conf.setCoreConnectionForInternalService(
+        Integer.parseInt(
+            properties.getProperty(
+                "core_connection_for_internal_service",
+                String.valueOf(conf.getCoreConnectionForInternalService()))));
 
     conf.setSelectorNumOfClientManager(
         Integer.parseInt(
@@ -589,11 +602,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "upgrade_thread_num", Integer.toString(conf.getUpgradeThreadNum()))));
-    conf.setCrossCompactionMemoryBudget(
-        Long.parseLong(
-            properties.getProperty(
-                "cross_compaction_memory_budget",
-                Long.toString(conf.getCrossCompactionMemoryBudget()))));
     conf.setCrossCompactionFileSelectionTimeBudget(
         Long.parseLong(
             properties.getProperty(
@@ -720,12 +728,6 @@ public class IoTDBDescriptor {
         properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
-
-    conf.setAllowReadOnlyWhenErrorsOccur(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "allow_read_only_when_errors_occur",
-                String.valueOf(conf.isAllowReadOnlyWhenErrorsOccur()))));
 
     // the num of memtables in each storage group
     conf.setConcurrentWritingTimePartition(
@@ -1527,7 +1529,7 @@ public class IoTDBDescriptor {
       }
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
       if (proportionSum != 0) {
-        conf.setAllocateMemoryForWrite(
+        conf.setAllocateMemoryForStorageEngine(
             maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setAllocateMemoryForRead(
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
@@ -1537,10 +1539,11 @@ public class IoTDBDescriptor {
     }
 
     logger.info("allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
-    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
+    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
     initSchemaMemoryAllocate(properties);
+    initStorageEngineAllocate(properties);
 
     conf.setMaxQueryDeduplicatedPathNum(
         Integer.parseInt(
@@ -1605,6 +1608,19 @@ public class IoTDBDescriptor {
     }
   }
 
+  private void initStorageEngineAllocate(Properties properties) {
+    String allocationRatio = properties.getProperty("storage_engine_memory_proportion", "8:2");
+    String[] proportions = allocationRatio.split(":");
+    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
+    int proportionForCompaction = Integer.parseInt(proportions[1].trim());
+    conf.setWriteProportion(
+        ((double) (proportionForMemTable)
+            / (double) (proportionForCompaction + proportionForMemTable)));
+    conf.setCompactionProportion(
+        ((double) (proportionForCompaction)
+            / (double) (proportionForCompaction + proportionForMemTable)));
+  }
+
   private void initSchemaMemoryAllocate(Properties properties) {
     long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
 
@@ -1614,15 +1630,10 @@ public class IoTDBDescriptor {
     int partitionCacheProportion = 0;
     int lastCacheProportion = 1;
 
-    if (conf.isClusterMode()) {
-      schemaRegionProportion = 5;
-      schemaCacheProportion = 3;
-      partitionCacheProportion = 1;
-    }
-
     String schemaMemoryAllocatePortion =
         properties.getProperty("schema_memory_allocate_proportion");
     if (schemaMemoryAllocatePortion != null) {
+      conf.setDefaultSchemaMemoryConfig(false);
       String[] proportions = schemaMemoryAllocatePortion.split(":");
       int loadedProportionSum = 0;
       for (String proportion : proportions) {
@@ -1636,6 +1647,8 @@ public class IoTDBDescriptor {
         partitionCacheProportion = Integer.parseInt(proportions[2].trim());
         lastCacheProportion = Integer.parseInt(proportions[3].trim());
       }
+    } else {
+      conf.setDefaultSchemaMemoryConfig(true);
     }
 
     conf.setAllocateMemoryForSchemaRegion(
@@ -1862,6 +1875,44 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
+  }
+
+  public void loadRatisConfig(TRatisConfig ratisConfig) {
+    conf.setRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getAppenderBufferSize());
+  }
+
+  public void initClusterSchemaMemoryAllocate() {
+    if (!conf.isDefaultSchemaMemoryConfig()) {
+      // the config has already been updated as user config in properties file
+      return;
+    }
+
+    // process the default schema memory allocate
+
+    long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
+
+    int proportionSum = 10;
+    int schemaRegionProportion = 5;
+    int schemaCacheProportion = 3;
+    int partitionCacheProportion = 1;
+    int lastCacheProportion = 1;
+
+    conf.setAllocateMemoryForSchemaRegion(
+        schemaMemoryTotal * schemaRegionProportion / proportionSum);
+    logger.info(
+        "Cluster allocateMemoryForSchemaRegion = {}", conf.getAllocateMemoryForSchemaRegion());
+
+    conf.setAllocateMemoryForSchemaCache(schemaMemoryTotal * schemaCacheProportion / proportionSum);
+    logger.info(
+        "Cluster allocateMemoryForSchemaCache = {}", conf.getAllocateMemoryForSchemaCache());
+
+    conf.setAllocateMemoryForPartitionCache(
+        schemaMemoryTotal * partitionCacheProportion / proportionSum);
+    logger.info(
+        "Cluster allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
+
+    conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
+    logger.info("Cluster allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
   }
 
   private static class IoTDBDescriptorHolder {

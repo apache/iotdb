@@ -26,9 +26,6 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -56,14 +53,11 @@ public class DataNodeSchemaCache {
                 (PartialPath key, SchemaCacheEntry value) ->
                     PartialPath.estimateSize(key) + SchemaCacheEntry.estimateSize(value))
             .build();
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.CACHE_HIT.toString(),
-            MetricLevel.IMPORTANT,
-            cache,
-            l -> (long) (l.stats().hitRate() * 100),
-            Tag.NAME.toString(),
-            "schemaCache");
+    MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics(this));
+  }
+
+  public double getHitRate() {
+    return cache.stats().hitRate() * 100;
   }
 
   public static DataNodeSchemaCache getInstance() {

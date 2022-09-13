@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -49,13 +50,16 @@ import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
+import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -124,6 +128,13 @@ public class NodeManager {
     dataSet.setGlobalConfig(globalConfig);
   }
 
+  private void setRatisConfig(DataNodeRegisterResp dataSet) {
+    final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    TRatisConfig ratisConfig = new TRatisConfig();
+    ratisConfig.setAppenderBufferSize(conf.getRatisConsensusLogAppenderBufferSize());
+    dataSet.setRatisConfig(ratisConfig);
+  }
+
   /**
    * Register DataNode
    *
@@ -154,6 +165,7 @@ public class NodeManager {
     dataSet.setDataNodeId(registerDataNodePlan.getInfo().getLocation().getDataNodeId());
     dataSet.setConfigNodeList(getRegisteredConfigNodes());
     setGlobalConfig(dataSet);
+    setRatisConfig(dataSet);
     return dataSet;
   }
 
@@ -278,6 +290,10 @@ public class NodeManager {
             info.setStatus(getNodeStatus(configNodeId));
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
+            info.setRoleType(
+                configNodeLocation.getInternalEndPoint().equals(CURRENT_NODE)
+                    ? RegionRoleType.Leader.name()
+                    : RegionRoleType.Follower.name());
             configNodeInfoList.add(info);
           });
     }
@@ -298,7 +314,7 @@ public class NodeManager {
   }
 
   public void addMetrics() {
-    nodeInfo.addMetrics();
+    MetricService.getInstance().addMetricSet(new NodeInfoMetrics(nodeInfo));
   }
 
   /**
@@ -411,6 +427,20 @@ public class NodeManager {
             null,
             dataNodeLocationMap,
             DataNodeRequestType.LOAD_CONFIGURATION,
+            dataNodeResponseStatus);
+    return dataNodeResponseStatus;
+  }
+
+  public List<TSStatus> setSystemStatus(String status) {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            status,
+            dataNodeLocationMap,
+            DataNodeRequestType.SET_SYSTEM_STATUS,
             dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }

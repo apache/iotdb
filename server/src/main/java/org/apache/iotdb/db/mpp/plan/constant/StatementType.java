@@ -147,5 +147,5 @@ public enum StatementType {
   CREATE_PIPE,
   START_PIPE,
   STOP_PIPE,
-  DROP_PIPE
+  DROP_PIPE,
 }

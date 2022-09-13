@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.SyncConnectionException;
+import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
@@ -34,49 +34,84 @@ import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * SenderManager handles rpc send logic in sender-side. Each SenderManager and Pipe have a
+ * one-to-one relationship. It takes PipeData from Pipe and sends PipeData to receiver.
+ */
 public class SenderManager {
   private static final Logger logger = LoggerFactory.getLogger(SenderManager.class);
 
-  protected ISyncClient syncClient;
-  private Pipe pipe;
-  private PipeSink pipeSink;
+  // <DataRegionId, ISyncClient>
+  private final Map<String, ISyncClient> clientMap;
+  // <DataRegionId, ISyncClient>
+  private final Map<String, Future> transportFutureMap;
+  private final Pipe pipe;
+  private final PipeSink pipeSink;
 
+  // Thread pool that send PipeData in parallel by DataRegion
   protected ExecutorService transportExecutorService;
-  private Future transportFuture;
 
-  public SenderManager(Pipe pipe, IoTDBPipeSink pipeSink) {
+  private boolean isRunning;
+
+  public SenderManager(Pipe pipe, PipeSink pipeSink) {
     this.pipe = pipe;
     this.pipeSink = pipeSink;
     this.transportExecutorService =
-        IoTDBThreadPoolFactory.newSingleThreadExecutor(
+        IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.SYNC_SENDER_PIPE.getName() + "-" + pipe.getName());
-    this.syncClient = SyncClientFactory.createSyncClient(pipe, pipeSink);
+    this.clientMap = new HashMap<>();
+    this.transportFutureMap = new HashMap<>();
+    this.isRunning = false;
   }
 
   public void start() {
-    transportFuture = transportExecutorService.submit(this::takePipeDataAndTransport);
+    for (Map.Entry<String, ISyncClient> entry : clientMap.entrySet()) {
+      String dataRegionId = entry.getKey();
+      ISyncClient syncClient = entry.getValue();
+      transportFutureMap.put(
+          dataRegionId,
+          transportExecutorService.submit(
+              () -> takePipeDataAndTransport(syncClient, dataRegionId)));
+    }
+    isRunning = true;
   }
 
   public void stop() {
-    if (transportFuture != null) {
-      transportFuture.cancel(true);
+    for (Future future : transportFutureMap.values()) {
+      future.cancel(true);
+    }
+    isRunning = false;
+  }
+
+  public void close() throws PipeException {
+    try {
+      boolean isClosed;
+      transportExecutorService.shutdownNow();
+      isClosed =
+          transportExecutorService.awaitTermination(
+              SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
+      if (!isClosed) {
+        throw new PipeException(
+            String.format(
+                "Close SenderManager of Pipe %s error after %s %s, please try again.",
+                pipe.getName(),
+                SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS,
+                TimeUnit.MILLISECONDS.name()));
+      }
+    } catch (InterruptedException e) {
+      throw new PipeException(
+          String.format(
+              "Interrupted when waiting for clear SenderManager of Pipe %s.", pipe.getName()));
     }
   }
 
-  public boolean close() throws InterruptedException {
-    boolean isClosed;
-    transportExecutorService.shutdownNow();
-    isClosed =
-        transportExecutorService.awaitTermination(
-            SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
-    return isClosed;
-  }
-
-  private void takePipeDataAndTransport() {
+  private void takePipeDataAndTransport(ISyncClient syncClient, String dataRegionId) {
     try {
       while (!Thread.currentThread().isInterrupted()) {
         try {
@@ -87,7 +122,7 @@ public class SenderManager {
                     String.format("Can not handshake with %s", pipeSink));
           }
           while (!Thread.currentThread().isInterrupted()) {
-            PipeData pipeData = pipe.take();
+            PipeData pipeData = pipe.take(dataRegionId);
             if (!syncClient.send(pipeData)) {
               logger.error(String.format("Can not transfer pipedata %s, skip it.", pipeData));
               // can do something.
@@ -96,9 +131,8 @@ public class SenderManager {
                       PipeMessage.MsgType.WARN,
                       String.format(
                           "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber()));
-              continue;
             }
-            pipe.commit();
+            pipe.commit(dataRegionId);
           }
         } catch (SyncConnectionException e) {
           logger.error(String.format("Connect to receiver %s error, because %s.", pipeSink, e));
@@ -112,9 +146,28 @@ public class SenderManager {
     }
   }
 
+  public void registerDataRegion(String dataRegionId) {
+    ISyncClient syncClient = SyncClientFactory.createSyncClient(pipe, pipeSink, dataRegionId);
+    clientMap.put(dataRegionId, syncClient);
+    if (isRunning) {
+      transportFutureMap.put(
+          dataRegionId,
+          transportExecutorService.submit(
+              () -> takePipeDataAndTransport(syncClient, dataRegionId)));
+    }
+  }
+
+  public void unregisterDataRegion(String dataRegionId) {
+    Future future = transportFutureMap.remove(dataRegionId);
+    if (future != null) {
+      future.cancel(true);
+      clientMap.remove(dataRegionId);
+    }
+  }
+
   /** test */
   @TestOnly
   public void setSyncClient(ISyncClient syncClient) {
-    this.syncClient = syncClient;
+    // TODO: update test env
   }
 }
