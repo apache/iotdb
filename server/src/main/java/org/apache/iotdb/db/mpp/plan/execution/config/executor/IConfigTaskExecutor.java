@@ -127,5 +127,5 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showPipe(ShowPipeStatement showPipeStatement);
 
   SettableFuture<ConfigTaskResult> deleteTimeSeries(
-      DeleteTimeSeriesStatement deleteTimeSeriesStatement);
+      String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement);
 }

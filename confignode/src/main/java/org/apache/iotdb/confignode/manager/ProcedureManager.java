@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -54,6 +55,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -125,15 +127,41 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus deleteTimeSeries(PathPatternTree patternTree) {
-    long procedureId;
+  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
+    String queryId = req.getQueryId();
+    PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    long procedureId = -1;
     synchronized (this) {
-      if (checkIsOverlapWithExistingDeleteTimeSeriesTasks(patternTree)) {
-        return RpcUtils.getStatus(
-            TSStatusCode.OVERLAP_WITH_EXISTING_DELETE_TIMESERIES_TASK,
-            "Some other task is deleting some target timeseries.");
+      boolean hasOverlappedTask = false;
+      ProcedureFactory.ProcedureType type;
+      DeleteTimeSeriesProcedure deleteTimeSeriesProcedure;
+      for (Procedure<?> procedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(procedure);
+        if (type == null
+            || !type.equals(ProcedureFactory.ProcedureType.DELETE_TIMESERIES_PROCEDURE)) {
+          continue;
+        }
+        deleteTimeSeriesProcedure = ((DeleteTimeSeriesProcedure) procedure);
+        if (queryId.equals(deleteTimeSeriesProcedure.getQueryId())) {
+          procedureId = deleteTimeSeriesProcedure.getProcId();
+          break;
+        }
+        if (patternTree.isOverlapWith(deleteTimeSeriesProcedure.getPatternTree())) {
+          hasOverlappedTask = true;
+          break;
+        }
       }
-      procedureId = this.executor.submitProcedure(new DeleteTimeSeriesProcedure(patternTree));
+
+      if (procedureId == -1) {
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_DELETE_TIMESERIES_TASK,
+              "Some other task is deleting some target timeseries.");
+        }
+        procedureId =
+            this.executor.submitProcedure(new DeleteTimeSeriesProcedure(queryId, patternTree));
+      }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
     boolean isSucceed =
@@ -143,21 +171,6 @@ public class ProcedureManager {
     } else {
       return procedureStatus.get(0);
     }
-  }
-
-  private boolean checkIsOverlapWithExistingDeleteTimeSeriesTasks(PathPatternTree patternTree) {
-    ProcedureFactory.ProcedureType type;
-    for (Procedure<?> procedure : executor.getProcedures().values()) {
-      type = ProcedureFactory.getProcedureType(procedure);
-      if (type == null
-          || !type.equals(ProcedureFactory.ProcedureType.DELETE_TIMESERIES_PROCEDURE)) {
-        continue;
-      }
-      if (patternTree.isOverlapWith(((DeleteTimeSeriesProcedure) procedure).getPatternTree())) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /** Generate a AddConfigNodeProcedure, and serially execute all the AddConfigNodeProcedure */

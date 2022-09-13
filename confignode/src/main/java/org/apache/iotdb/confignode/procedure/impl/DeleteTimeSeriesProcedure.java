@@ -48,6 +48,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +73,8 @@ public class DeleteTimeSeriesProcedure
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteTimeSeriesProcedure.class);
 
+  private String queryId;
+
   private PathPatternTree patternTree;
   private ByteBuffer patternTreeBytes;
 
@@ -81,8 +84,9 @@ public class DeleteTimeSeriesProcedure
     super();
   }
 
-  public DeleteTimeSeriesProcedure(PathPatternTree patternTree) {
+  public DeleteTimeSeriesProcedure(String queryId, PathPatternTree patternTree) {
     super();
+    this.queryId = queryId;
     setPatternTree(patternTree);
   }
 
@@ -411,6 +415,10 @@ public class DeleteTimeSeriesProcedure
     return DeleteTimeSeriesState.CONSTRUCT_BLACK_LIST;
   }
 
+  public String getQueryId() {
+    return queryId;
+  }
+
   public PathPatternTree getPatternTree() {
     return patternTree;
   }
@@ -436,12 +444,14 @@ public class DeleteTimeSeriesProcedure
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeInt(ProcedureFactory.ProcedureType.DELETE_TIMESERIES_PROCEDURE.ordinal());
     super.serialize(stream);
+    ReadWriteIOUtils.write(queryId, stream);
     patternTree.serialize(stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
+    queryId = ReadWriteIOUtils.readString(byteBuffer);
     setPatternTree(PathPatternTree.deserialize(byteBuffer));
   }
 

@@ -391,7 +391,8 @@ struct TShowPipeResp {
 }
 
 struct TDeleteTimeSeriesReq{
-  1: required binary pathPatternTree
+  1: required string queryId
+  2: required binary pathPatternTree
 }
 
 service IConfigNodeRPCService {

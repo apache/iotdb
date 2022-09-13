@@ -28,15 +28,18 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class DeleteTimeSeriesTask implements IConfigTask {
 
+  private final String queryId;
+
   private final DeleteTimeSeriesStatement deleteTimeSeriesStatement;
 
-  public DeleteTimeSeriesTask(DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
+  public DeleteTimeSeriesTask(String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
+    this.queryId = queryId;
     this.deleteTimeSeriesStatement = deleteTimeSeriesStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.deleteTimeSeries(deleteTimeSeriesStatement);
+    return configTaskExecutor.deleteTimeSeries(queryId, deleteTimeSeriesStatement);
   }
 }

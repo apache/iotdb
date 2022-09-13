@@ -307,8 +307,19 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitDeleteTimeseries(
       DeleteTimeSeriesStatement deleteTimeSeriesStatement, TaskContext context) {
-    return new DeleteTimeSeriesTask(deleteTimeSeriesStatement);
+    return new DeleteTimeSeriesTask(context.getQueryId(), deleteTimeSeriesStatement);
   }
 
-  public static class TaskContext {}
+  public static class TaskContext {
+
+    private final String queryId;
+
+    public TaskContext(String queryId) {
+      this.queryId = queryId;
+    }
+
+    public String getQueryId() {
+      return queryId;
+    }
+  }
 }

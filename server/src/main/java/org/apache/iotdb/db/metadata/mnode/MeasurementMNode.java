@@ -46,7 +46,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private long offset = -1;
   /** measurement's Schema for one timeseries represented by current leaf node */
   private IMeasurementSchema schema;
-  /** whether this measurement is been pre deleted and considered in black list */
+  /** whether this measurement is pre deleted and considered in black list */
   private boolean preDeleted = false;
   /** last value cache */
   private volatile ILastCacheContainer lastCacheContainer = null;

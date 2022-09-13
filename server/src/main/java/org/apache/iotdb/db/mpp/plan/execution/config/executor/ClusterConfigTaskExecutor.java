@@ -773,7 +773,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> deleteTimeSeries(
-      DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
+      String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath pathPattern : deleteTimeSeriesStatement.getPathPatternList()) {
@@ -788,7 +788,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // memory operation, won't happen
     }
     TDeleteTimeSeriesReq req =
-        new TDeleteTimeSeriesReq(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+        new TDeleteTimeSeriesReq(queryId, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     try (ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(
             ConfigNodeInfo.partitionRegionId)) {
