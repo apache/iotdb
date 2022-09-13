@@ -31,6 +31,8 @@ public interface PipeDataQueue {
 
   void commit();
 
+  void commit(long serialNumber);
+
   boolean isEmpty();
 
   void close();

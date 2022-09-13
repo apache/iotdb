@@ -42,7 +42,7 @@ public class SyncConfigNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncConfigNodeClientPool.class);
 
-  private static final int retryNum = 6;
+  private static final int MAX_RETRY_NUM = 6;
 
   private final IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
@@ -66,8 +66,9 @@ public class SyncConfigNodeClientPool {
 
   public Object sendSyncRequestToConfigNodeWithRetry(
       TEndPoint endPoint, Object req, ConfigNodeRequestType requestType) {
+
     Throwable lastException = null;
-    for (int retry = 0; retry < retryNum; retry++) {
+    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
       try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
         switch (requestType) {
           case REGISTER_CONFIG_NODE:
@@ -101,11 +102,8 @@ public class SyncConfigNodeClientPool {
       }
     }
     LOGGER.error("{} failed on ConfigNode {}", requestType, endPoint, lastException);
-    switch (requestType) {
-      default:
-        return RpcUtils.getStatus(
-            TSStatusCode.ALL_RETRY_FAILED, "All retry failed due to" + lastException.getMessage());
-    }
+    return RpcUtils.getStatus(
+        TSStatusCode.ALL_RETRY_FAILED, "All retry failed due to: " + lastException.getMessage());
   }
 
   /**

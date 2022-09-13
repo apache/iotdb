@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
@@ -32,6 +33,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class TimeSeriesCountOperator implements SourceOperator {
@@ -42,6 +44,7 @@ public class TimeSeriesCountOperator implements SourceOperator {
   private final String key;
   private final String value;
   private final boolean isContains;
+  private final Map<Integer, Template> templateMap;
 
   private boolean isFinished;
 
@@ -59,7 +62,8 @@ public class TimeSeriesCountOperator implements SourceOperator {
       boolean isPrefixPath,
       String key,
       String value,
-      boolean isContains) {
+      boolean isContains,
+      Map<Integer, Template> templateMap) {
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.partialPath = partialPath;
@@ -67,6 +71,7 @@ public class TimeSeriesCountOperator implements SourceOperator {
     this.key = key;
     this.value = value;
     this.isContains = isContains;
+    this.templateMap = templateMap;
     this.outputDataTypes =
         ColumnHeaderConstant.countTimeSeriesColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
@@ -93,7 +98,7 @@ public class TimeSeriesCountOperator implements SourceOperator {
         count =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
                 .getSchemaRegion()
-                .getAllTimeseriesCount(partialPath, isPrefixPath);
+                .getAllTimeseriesCount(partialPath, templateMap, isPrefixPath);
       }
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);

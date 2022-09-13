@@ -36,8 +36,10 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -48,6 +50,9 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -63,6 +68,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -77,19 +83,17 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.sync.SyncService;
-import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -113,8 +117,6 @@ import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /**
  * This class simulates the behaviour of configNode to manage the configs locally. The schema
@@ -272,10 +274,6 @@ public class LocalConfigNode {
       schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
     }
 
-    if (SchemaSyncManager.getInstance().isEnableSync()) {
-      SchemaSyncManager.getInstance().syncMetadataPlan(new SetStorageGroupPlan(storageGroup));
-    }
-
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(1);
     }
@@ -289,21 +287,11 @@ public class LocalConfigNode {
       dataPartitionTable.deleteStorageGroup(storageGroup);
     }
 
-    DeleteTimeSeriesPlan deleteTimeSeriesPlan =
-        SchemaSyncManager.getInstance().isEnableSync()
-            ? SchemaSyncManager.getInstance()
-                .splitDeleteTimeseriesPlanByDevice(
-                    storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD))
-            : null;
-
     deleteSchemaRegionsInStorageGroup(
         storageGroup, schemaPartitionTable.getSchemaRegionIdsByStorageGroup(storageGroup));
 
     for (Template template : templateManager.getTemplateMap().values()) {
       templateManager.unmarkStorageGroup(template, storageGroup.getFullPath());
-    }
-    if (SchemaSyncManager.getInstance().isEnableSync()) {
-      SchemaSyncManager.getInstance().syncMetadataPlan(deleteTimeSeriesPlan);
     }
 
     if (!config.isEnableMemControl()) {
@@ -1105,7 +1093,7 @@ public class LocalConfigNode {
           }
         }
         break;
-      case GRANT_ROLE_TO_USER:
+      case GRANT_USER_ROLE:
         iAuthorizer.grantRoleToUser(roleName, userName);
         break;
       case REVOKE_USER:
@@ -1122,7 +1110,7 @@ public class LocalConfigNode {
           }
         }
         break;
-      case REVOKE_ROLE_FROM_USER:
+      case REVOKE_USER_ROLE:
         iAuthorizer.revokeRoleFromUser(roleName, userName);
         break;
       default:
@@ -1333,6 +1321,15 @@ public class LocalConfigNode {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
+  public TSStatus executeSetSystemStatus(NodeStatus status) {
+    try {
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(status);
+    } catch (Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
   public TSStatus createPipeSink(CreatePipeSinkStatement createPipeSinkStatement) {
     try {
       syncService.addPipeSink(createPipeSinkStatement);
@@ -1358,5 +1355,46 @@ public class LocalConfigNode {
     } else {
       return Collections.singletonList(syncService.getPipeSink(pipeSinkName));
     }
+  }
+
+  public TSStatus createPipe(CreatePipeStatement createPipeStatement) {
+    try {
+      syncService.addPipe(createPipeStatement);
+    } catch (PipeException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus startPipe(String pipeName) {
+    try {
+      syncService.startPipe(pipeName);
+    } catch (PipeException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus stopPipe(String pipeName) {
+    try {
+      syncService.stopPipe(pipeName);
+    } catch (PipeException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TSStatus dropPipe(String pipeName) {
+    try {
+      syncService.dropPipe(pipeName);
+    } catch (PipeException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public TShowPipeResp showPipe(String pipeName) {
+    List<TPipeInfo> pipeInfos = SyncService.getInstance().showPipe(pipeName);
+    return new TShowPipeResp().setPipeInfoList(pipeInfos).setStatus(StatusUtils.OK);
   }
 }

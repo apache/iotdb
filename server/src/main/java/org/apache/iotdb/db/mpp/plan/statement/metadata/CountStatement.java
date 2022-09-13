@@ -33,23 +33,23 @@ import java.util.List;
  * <p>COUNT {STORAGE GROUP | DEVICES | TIMESERIES | NODES} [prefixPath] [GROUP BY] LEVEL = level
  */
 public class CountStatement extends ShowStatement {
-  protected PartialPath partialPath;
+  protected PartialPath pathPattern;
 
-  public CountStatement(PartialPath partialPath) {
-    this.partialPath = partialPath;
+  public CountStatement(PartialPath pathPattern) {
+    this.pathPattern = pathPattern;
     setType(StatementType.COUNT);
   }
 
-  public PartialPath getPartialPath() {
-    return partialPath;
+  public PartialPath getPathPattern() {
+    return pathPattern;
   }
 
-  public void setPartialPath(PartialPath partialPath) {
-    this.partialPath = partialPath;
+  public void setPathPattern(PartialPath pathPattern) {
+    this.pathPattern = pathPattern;
   }
 
   @Override
   public List<PartialPath> getPaths() {
-    return Collections.singletonList(partialPath);
+    return Collections.singletonList(pathPattern);
   }
 }

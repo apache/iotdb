@@ -77,7 +77,7 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     }
 
     return NodeStatus.isNormalStatus(status)
-        != NodeStatus.isNormalStatus(NodeStatus.valueOf(originStatus));
+        != NodeStatus.isNormalStatus(NodeStatus.parse(originStatus));
   }
 
   @Override
@@ -97,6 +97,6 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     }
 
     // Return a copy of status
-    return NodeStatus.valueOf(status.getStatus());
+    return NodeStatus.parse(status.getStatus());
   }
 }

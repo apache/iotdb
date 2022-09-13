@@ -30,13 +30,7 @@ public enum NodeStatus {
   Removing("Removing"),
 
   /** Only query statements are permitted */
-  ReadOnly("Read-Only"),
-
-  /**
-   * Unrecoverable errors occur, system will be read-only or exit according to the param
-   * allow_read_only_when_errors_occur
-   */
-  Error("Error");
+  ReadOnly("ReadOnly");
 
   private final String status;
 
@@ -46,6 +40,15 @@ public enum NodeStatus {
 
   public String getStatus() {
     return status;
+  }
+
+  public static NodeStatus parse(String status) {
+    for (NodeStatus nodeStatus : NodeStatus.values()) {
+      if (nodeStatus.status.equals(status)) {
+        return nodeStatus;
+      }
+    }
+    throw new RuntimeException(String.format("NodeStatus %s doesn't exist.", status));
   }
 
   public static boolean isNormalStatus(NodeStatus status) {
