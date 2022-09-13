@@ -452,21 +452,20 @@ public class DataNodeRemoveHandler {
     // running state.
     if (CONF.getSchemaReplicationFactor() == 1 || CONF.getDataReplicationFactor() == 1) {
       for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
-        LOGGER.info("check data node {} is running", dataNodeLocation);
         // check whether removed data node is in running state
         BaseNodeCache nodeCache =
             configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
         if (!nodeCache.getNodeStatus().getStatus().equals("Running")) {
-          removeDataNodePlan.getDataNodeLocations().remove(dataNodeLocation);
+          removedDataNodes.remove(dataNodeLocation);
           LOGGER.error(
               "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication",
               dataNodeLocation);
         }
-      }
-      if (removeDataNodePlan.getDataNodeLocations().size() == 0) {
-        status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
-        status.setMessage("Failed to remove all requested data nodes");
-        return status;
+        if (removedDataNodes.size() == 0) {
+          status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
+          status.setMessage("Failed to remove all requested data nodes");
+          return status;
+        }
       }
     }
 
