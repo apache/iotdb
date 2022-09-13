@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.migration;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
@@ -41,12 +43,12 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.metadata.idtable.IDTable.config;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class MigrationRecoverTest {
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static File MIGRATING_LOG_DIR =
       SystemFileFactory.INSTANCE.getFile(
           Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "migrating")
@@ -60,6 +62,8 @@ public class MigrationRecoverTest {
   public void setUp()
       throws MetadataException, StorageGroupProcessorException, LogicalOperatorException {
     EnvironmentUtils.envSetUp();
+
+    MIGRATING_LOG_DIR.mkdirs();
 
     testLogFile = SystemFileFactory.INSTANCE.getFile(MIGRATING_LOG_DIR, testTaskId + ".log");
 
