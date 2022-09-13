@@ -47,6 +47,7 @@ public class LocalDataPartitionTable {
     this.regionIds = new DataRegionId[regions.size()];
     for (int i = 0; i < regions.size(); ++i) {
       regionIds[i] = regions.get(i);
+      DataRegionIdGenerator.getInstance().setIfGreater(regionIds[i].getId());
     }
   }
 
@@ -104,6 +105,17 @@ public class LocalDataPartitionTable {
 
     public int getNextId() {
       return idCounter.getAndIncrement();
+    }
+
+    /**
+     * Update the id counter when recovering, make sure that after all data regions is recovered,
+     * the id counter is greater than any existed region id
+     */
+    public void setIfGreater(int id) {
+      int originVal = idCounter.get();
+      while (originVal <= id && !idCounter.compareAndSet(originVal, id + 1)) {
+        originVal = idCounter.get();
+      }
     }
 
     @TestOnly
