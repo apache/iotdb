@@ -19,15 +19,15 @@
 
 -->
 
-# 加载 TsFile
+## 加载 TsFile
 
-## 介绍
+### 介绍
 加载外部 tsfile 文件工具允许用户向正在运行中的 Apache IoTDB 中加载、删除或移出 tsfile 文件。
 
-## 使用方式
+### 使用方式
 用户通过 Cli 工具或 JDBC 向 Apache IoTDB 系统发送指定命令实现文件加载的功能。
 
-### 加载 tsfile 文件
+#### 加载 tsfile 文件
 
 加载 tsfile 文件的指令为：`load '<path/dir>' [autoregister=true/false][,sglevel=int][,verify=true/false]`
 
@@ -70,7 +70,7 @@ VERIFY 选项表示是否对载入的 tsfile 中的所有时间序列进行元�
 * `load '/Users/Desktop/data' autoregister=true,sglevel=1`
 * `load '/Users/Desktop/data' autoregister=false,sglevel=1,verify=true`
 
-### 删除 tsfile 文件
+#### 删除 tsfile 文件
 
 删除 tsfile 文件的指令为：`remove '<path>'`
 
@@ -80,7 +80,7 @@ VERIFY 选项表示是否对载入的 tsfile 中的所有时间序列进行元�
 
 * `remove '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile'`
 
-### 卸载 tsfile 文件至指定目录
+#### 卸载 tsfile 文件至指定目录
 
 卸载 tsfile 文件的指令为：`unload '<path>' '<dir>'`
 

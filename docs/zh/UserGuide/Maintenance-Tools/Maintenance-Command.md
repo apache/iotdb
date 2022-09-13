@@ -18,9 +18,10 @@
     under the License.
 
 -->
-# 运维命令
+# 运维工具
+## 运维命令
 
-## FLUSH
+### FLUSH
 
 将指定存储组的内存缓存区 Memory Table 的数据持久化到磁盘上，并将数据文件封口。
 
@@ -33,7 +34,7 @@ IoTDB> FLUSH root.ln
 IoTDB> FLUSH root.sg1,root.sg2
 ```
 
-## MERGE
+### MERGE
 
 触发层级合并和乱序合并。当前 IoTDB 支持使用如下两种 SQL 手动触发数据文件的合并：
 
@@ -45,7 +46,7 @@ IoTDB> MERGE
 IoTDB> FULL MERGE
 ```
 
-## CLEAR CACHE
+### CLEAR CACHE
 
 
 手动清除chunk, chunk metadata和timeseries metadata的缓存，在内存资源紧张时，可以通过此命令，释放查询时缓存所占的内存空间。
@@ -54,7 +55,7 @@ IoTDB> FULL MERGE
 IoTDB> CLEAR CACHE
 ```
 
-## SET STSTEM TO READONLY / WRITABLE
+### SET STSTEM TO READONLY / WRITABLE
 
 手动设置系统为只读或者可写入模式。
 
@@ -63,24 +64,24 @@ IoTDB> SET SYSTEM TO READONLY
 IoTDB> SET SYSTEM TO WRITABLE
 ```
 
-## SCHEMA SNAPSHOT
+### SCHEMA SNAPSHOT
 
 为了加快 IoTDB 重启速度，用户可以手动触发创建 schema 的快照，从而避免服务器从 mlog 文件中恢复。此功能不支持使用模板、标签或对齐序列的场景。
 ```sql
 IoTDB> CREATE SNAPSHOT FOR SCHEMA
 ```
 
-## 超时
+### 超时
 
 IoTDB 支持 Session 超时和查询超时。
 
-### Session 超时
+#### Session 超时
 
 Session 超时控制何时关闭空闲 Session。空闲 Session 指在一段时间内没有发起任何操作的 Session。
 
 Session 超时默认未开启。可以在配置文件中通过 `session_timeout_threshold` 参数进行配置。
 
-### 查询超时
+#### 查询超时
 
 对于执行时间过长的查询，IoTDB 将强行中断该查询，并抛出超时异常，如下所示：
 
@@ -101,7 +102,7 @@ session.executeQueryStatement(String sql, long timeout)
 > 如果不配置超时时间参数或将超时时间设置为负数，将使用服务器端默认的超时时间。 
 > 如果超时时间设置为0，则会禁用超时功能。
 
-### 查询中止
+#### 查询中止
 
 除了被动地等待查询超时外，IoTDB 还支持主动地中止查询，命令为：
 

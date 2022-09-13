@@ -19,11 +19,11 @@
 
 -->
 
-# 通信服务协议
+## 通信服务协议
 
-## Thrift rpc 接口
+### Thrift rpc 接口
 
-### 简介
+#### 简介
 
 Thrift 是一个远程方法调用软件框架，用来进行可扩展且跨语言的服务的开发。
 它结合了功能强大的软件堆栈和代码生成引擎，
@@ -38,7 +38,7 @@ rpc_port=6667
 ```
 更改默认接口
 
-### rpc 接口
+#### rpc 接口
 
 ```
 // 打开一个 session
@@ -147,9 +147,9 @@ TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 i64 requestStatementId(1:i64 sessionId);
 ```
 
-### IDL 定义文件位置
+#### IDL 定义文件位置
 IDL 定义文件的路径是 thrift/src/main/thrift/rpc.thrift，其中包括了结构体定义与函数定义
 
-### 生成文件位置
+#### 生成文件位置
 在 mvn 编译过程中，会调用 thrift 编译 IDL 文件，生成最终的。class 文件
 生成的文件夹路径为 thrift/target/classes/org/apache/iotdb/service/rpc/thrift

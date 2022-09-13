@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.rescon.SystemInfo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,7 +89,9 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
     if (seqFileList.isEmpty() || unSeqFileList.isEmpty()) {
       return;
     }
-    long budget = config.getCrossCompactionMemoryBudget();
+    long budget =
+        SystemInfo.getInstance().getMemorySizeForCompaction()
+            / config.getConcurrentCompactionThread();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
     CrossSpaceCompactionResource mergeResource =
         new CrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
@@ -97,6 +100,7 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
         InnerSpaceCompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);
     try {
       List[] mergeFiles = fileSelector.select();
+      List<Long> memoryCost = fileSelector.getMemoryCost();
       // avoid pending tasks holds the metadata and streams
       mergeResource.clear();
       if (mergeFiles.length == 0) {
@@ -110,9 +114,10 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
         return;
       }
       LOGGER.info(
-          "select files for cross compaction, sequence files: {}, unsequence files {}",
+          "select files for cross compaction, sequence files: {}, unsequence files {}, memory cost is {}",
           mergeFiles[0],
-          mergeFiles[1]);
+          mergeFiles[1],
+          memoryCost.get(0));
 
       if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
         AbstractCompactionTask compactionTask =
@@ -122,7 +127,8 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
                 timePartition,
                 tsFileManager,
                 mergeFiles[0],
-                mergeFiles[1]);
+                mergeFiles[1],
+                memoryCost.get(0));
         CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
         LOGGER.info(
             "{} [Compaction] submit a task with {} sequence file and {} unseq files",
