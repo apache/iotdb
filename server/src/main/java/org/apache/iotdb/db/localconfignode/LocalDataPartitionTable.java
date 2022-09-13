@@ -22,6 +22,7 @@ package org.apache.iotdb.db.localconfignode;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class LocalDataPartitionTable {
   private static final Logger LOG = LoggerFactory.getLogger(LocalDataPartitionTable.class);
@@ -86,5 +88,27 @@ public class LocalDataPartitionTable {
   public void clear() {
     // TODO: clear the table
     regionIds = null;
+  }
+
+  public static class DataRegionIdGenerator {
+    private static final DataRegionIdGenerator INSTANCE = new DataRegionIdGenerator();
+    private final AtomicInteger idCounter = new AtomicInteger(0);
+
+    public static DataRegionIdGenerator getInstance() {
+      return INSTANCE;
+    }
+
+    public void setCurrentId(int id) {
+      idCounter.set(id);
+    }
+
+    public int getNextId() {
+      return idCounter.getAndIncrement();
+    }
+
+    @TestOnly
+    public void reset() {
+      this.idCounter.set(0);
+    }
   }
 }

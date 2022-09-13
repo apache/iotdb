@@ -141,7 +141,7 @@ public class LocalConfigNode {
 
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
-  private final LocalDataPartitionInfo dataPartitionTable = LocalDataPartitionInfo.getInstance();
+  private final LocalDataPartitionInfo dataPartitionInfo = LocalDataPartitionInfo.getInstance();
 
   private final SeriesPartitionExecutor executor =
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
@@ -212,7 +212,7 @@ public class LocalConfigNode {
       if (config.isMppMode() && !config.isClusterMode()) {
         Map<String, List<DataRegionId>> recoveredLocalDataRegionInfo =
             storageEngine.getLocalDataRegionInfo();
-        dataPartitionTable.init(recoveredLocalDataRegionInfo);
+        dataPartitionInfo.init(recoveredLocalDataRegionInfo);
       }
     } catch (MetadataException | IOException e) {
       logger.error(
@@ -239,7 +239,7 @@ public class LocalConfigNode {
       storageGroupSchemaManager.clear();
       templateManager.clear();
 
-      dataPartitionTable.clear();
+      dataPartitionInfo.clear();
 
     } catch (IOException e) {
       logger.error("Error occurred when clearing LocalConfigNode:", e);
@@ -283,8 +283,8 @@ public class LocalConfigNode {
 
     if (config.isMppMode() && !config.isClusterMode()) {
       deleteDataRegionsInStorageGroup(
-          dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup));
-      dataPartitionTable.deleteStorageGroup(storageGroup);
+          dataPartitionInfo.getDataRegionIdsByStorageGroup(storageGroup));
+      dataPartitionInfo.deleteStorageGroup(storageGroup);
     }
 
     deleteSchemaRegionsInStorageGroup(
@@ -367,8 +367,7 @@ public class LocalConfigNode {
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
     if (config.isMppMode() && !config.isClusterMode()) {
-      storageEngine.setTTL(
-          dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup), dataTTL);
+      storageEngine.setTTL(dataPartitionInfo.getDataRegionIdsByStorageGroup(storageGroup), dataTTL);
     }
     storageGroupSchemaManager.setTTL(storageGroup, dataTTL);
   }
@@ -855,7 +854,7 @@ public class LocalConfigNode {
   public DataRegionId getBelongedDataRegionId(PartialPath path)
       throws MetadataException, DataRegionException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
-    DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+    DataRegionId dataRegionId = dataPartitionInfo.getDataRegionId(storageGroup, path);
     if (dataRegionId == null) {
       return null;
     }
@@ -873,10 +872,10 @@ public class LocalConfigNode {
   public DataRegionId getBelongedDataRegionIdWithAutoCreate(PartialPath devicePath)
       throws MetadataException, DataRegionException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(devicePath);
-    DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, devicePath);
+    DataRegionId dataRegionId = dataPartitionInfo.getDataRegionId(storageGroup, devicePath);
     if (dataRegionId == null) {
-      dataPartitionTable.registerStorageGroup(storageGroup);
-      dataRegionId = dataPartitionTable.allocateDataRegionForNewSlot(storageGroup, devicePath);
+      dataPartitionInfo.registerStorageGroup(storageGroup);
+      dataRegionId = dataPartitionInfo.allocateDataRegionForNewSlot(storageGroup, devicePath);
     }
     DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);
     if (dataRegion == null) {
@@ -940,10 +939,6 @@ public class LocalConfigNode {
           "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
     }
     return partitionSlotsMap;
-  }
-
-  private List<DataRegionId> getAllRegionForOneSg(PartialPath storageGroup) {
-    return dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup);
   }
 
   // region Interfaces for StandalonePartitionFetcher
