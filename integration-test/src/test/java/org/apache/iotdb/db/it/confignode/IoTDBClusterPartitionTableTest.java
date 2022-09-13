@@ -30,6 +30,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.it.env.ConfigFactory;
@@ -67,8 +69,10 @@ public class IoTDBClusterPartitionTableTest {
   private static final long testTimePartitionInterval = 86400;
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 5;
-  private static final int seriesPartitionSlotsNum = 10;
-  private static final int timePartitionSlotsNum = 100;
+  private static final int seriesPartitionSlotsNum = 10000;
+  private static final int seriesPartitionBatchSize = 1000;
+  private static final int timePartitionSlotsNum = 10;
+  private static final int timePartitionBatchSize = 10;
 
   @Before
   public void setUp() throws Exception {
@@ -205,21 +209,22 @@ public class IoTDBClusterPartitionTableTest {
   }
 
   private Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-      constructPartitionSlotsMap() {
-    final String sg = "root.sg";
+      constructPartitionSlotsMap(
+          String storageGroup,
+          int seriesSlotStart,
+          int seriesSlotEnd,
+          long timeSlotStart,
+          long timeSlotEnd) {
     Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> result = new HashMap<>();
+    result.put(storageGroup, new HashMap<>());
 
-    for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroup = sg + i;
-      result.put(storageGroup, new HashMap<>());
-      for (int j = 0; j < seriesPartitionSlotsNum; j++) {
-        TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(j);
-        result.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
-        for (long k = 0; k < timePartitionSlotsNum; k++) {
-          TTimePartitionSlot timePartitionSlot =
-              new TTimePartitionSlot(k * testTimePartitionInterval);
-          result.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
-        }
+    for (int i = seriesSlotStart; i < seriesSlotEnd; i++) {
+      TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
+      result.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
+      for (long j = timeSlotStart; j < timeSlotEnd; j++) {
+        TTimePartitionSlot timePartitionSlot =
+            new TTimePartitionSlot(j * testTimePartitionInterval);
+        result.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
       }
     }
 
@@ -227,32 +232,36 @@ public class IoTDBClusterPartitionTableTest {
   }
 
   private void checkDataPartitionMap(
+      String storageGroup,
+      int seriesSlotStart,
+      int seriesSlotEnd,
+      long timeSlotStart,
+      long timeSlotEnd,
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
           dataPartitionTable) {
-    Assert.assertEquals(storageGroupNum, dataPartitionTable.size());
-    for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroup = sg + i;
-      Assert.assertTrue(dataPartitionTable.containsKey(storageGroup));
-      Assert.assertEquals(seriesPartitionSlotsNum, dataPartitionTable.get(storageGroup).size());
-      for (int j = 0; j < seriesPartitionSlotsNum; j++) {
-        TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(j);
-        Assert.assertTrue(dataPartitionTable.get(storageGroup).containsKey(seriesPartitionSlot));
-        Assert.assertEquals(
-            timePartitionSlotsNum,
-            dataPartitionTable.get(storageGroup).get(seriesPartitionSlot).size());
 
-        Map<TTimePartitionSlot, List<TConsensusGroupId>> timePartitionSlotMap =
-            dataPartitionTable.get(storageGroup).get(seriesPartitionSlot);
-        for (long k = 0; k < timePartitionSlotsNum; k++) {
-          TTimePartitionSlot timePartitionSlot =
-              new TTimePartitionSlot(k * testTimePartitionInterval);
-          Assert.assertTrue(timePartitionSlotMap.containsKey(timePartitionSlot));
-          if (k > 0) {
-            // Check consistency
-            Assert.assertEquals(
-                timePartitionSlotMap.get(new TTimePartitionSlot(0)),
-                timePartitionSlotMap.get(timePartitionSlot));
-          }
+    Assert.assertTrue(dataPartitionTable.containsKey(storageGroup));
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+        seriesPartitionTable = dataPartitionTable.get(storageGroup);
+    Assert.assertEquals(seriesPartitionBatchSize, seriesPartitionTable.size());
+
+    for (int i = seriesSlotStart; i < seriesSlotEnd; i++) {
+      TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
+      Assert.assertTrue(seriesPartitionTable.containsKey(seriesPartitionSlot));
+      Map<TTimePartitionSlot, List<TConsensusGroupId>> timePartitionTable =
+          seriesPartitionTable.get(seriesPartitionSlot);
+      Assert.assertEquals(timePartitionBatchSize, timePartitionTable.size());
+
+      for (long j = timeSlotStart; j < timeSlotEnd; j++) {
+        TTimePartitionSlot timePartitionSlot =
+            new TTimePartitionSlot(j * testTimePartitionInterval);
+        Assert.assertTrue(timePartitionTable.containsKey(timePartitionSlot));
+        if (j > timeSlotStart) {
+          // Check consistency
+          Assert.assertEquals(
+              timePartitionTable.get(
+                  new TTimePartitionSlot(timeSlotStart * testTimePartitionInterval)),
+              timePartitionTable.get(timePartitionSlot));
         }
       }
     }
@@ -268,7 +277,7 @@ public class IoTDBClusterPartitionTableTest {
 
       // Prepare partitionSlotsMap
       Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
-          constructPartitionSlotsMap();
+          constructPartitionSlotsMap(sg + 0, 0, 10, 0, 10);
 
       // Set StorageGroups
       for (int i = 0; i < storageGroupNum; i++) {
@@ -286,22 +295,58 @@ public class IoTDBClusterPartitionTableTest {
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
       Assert.assertEquals(0, dataPartitionTableResp.getDataPartitionTableSize());
 
-      // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
-      dataPartitionTableResp = client.getOrCreateDataPartitionTable(dataPartitionReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          dataPartitionTableResp.getStatus().getCode());
-      Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
-      checkDataPartitionMap(dataPartitionTableResp.getDataPartitionTable());
+      for (int i = 0; i < storageGroupNum; i++) {
+        String storageGroup = sg + i;
+        for (int j = 0; j < seriesPartitionSlotsNum; j += seriesPartitionBatchSize) {
+          for (long k = 0; k < timePartitionSlotsNum; k += timePartitionBatchSize) {
+            partitionSlotsMap =
+                constructPartitionSlotsMap(
+                    storageGroup, j, j + seriesPartitionBatchSize, k, k + timePartitionBatchSize);
 
-      // Test getDataPartition, the result should only contain DataPartition created before
-      dataPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
-      dataPartitionTableResp = client.getDataPartitionTable(dataPartitionReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          dataPartitionTableResp.getStatus().getCode());
-      Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
-      checkDataPartitionMap(dataPartitionTableResp.getDataPartitionTable());
+            // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
+            dataPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
+            dataPartitionTableResp = client.getOrCreateDataPartitionTable(dataPartitionReq);
+            Assert.assertEquals(
+                TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                dataPartitionTableResp.getStatus().getCode());
+            Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
+            checkDataPartitionMap(
+                storageGroup,
+                j,
+                j + seriesPartitionBatchSize,
+                k,
+                k + timePartitionBatchSize,
+                dataPartitionTableResp.getDataPartitionTable());
+
+            // Test getDataPartition, the result should only contain DataPartition created before
+            dataPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
+            dataPartitionTableResp = client.getDataPartitionTable(dataPartitionReq);
+            Assert.assertEquals(
+                TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                dataPartitionTableResp.getStatus().getCode());
+            Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
+            checkDataPartitionMap(
+                storageGroup,
+                j,
+                j + seriesPartitionBatchSize,
+                k,
+                k + timePartitionBatchSize,
+                dataPartitionTableResp.getDataPartitionTable());
+          }
+        }
+      }
+
+      // Test DataPartition inherit policy
+      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
+      showRegionResp
+          .getRegionInfoList()
+          .forEach(
+              regionInfo -> {
+                // Normally, all Timeslots belonging to the same SeriesSlot are allocated to the
+                // same DataRegionGroup
+                Assert.assertEquals(
+                    regionInfo.getSeriesSlots() * timePartitionSlotsNum, regionInfo.getTimeSlots());
+              });
     }
   }
 }

@@ -1022,8 +1022,6 @@ public class IoTDBDescriptor {
     conf.setWalMode(
         WALMode.valueOf((properties.getProperty("wal_mode", conf.getWalMode().toString()))));
 
-    conf.setWalDirs(properties.getProperty("wal_dirs", conf.getWalDirs()[0]).split(","));
-
     int maxWalNodesNum =
         Integer.parseInt(
             properties.getProperty(
