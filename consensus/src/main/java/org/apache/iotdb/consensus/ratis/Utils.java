@@ -218,5 +218,12 @@ public class Utils {
     RaftServerConfigKeys.Log.setForceSyncNum(properties, config.getLog().getForceSyncNum());
     RaftServerConfigKeys.Log.setUnsafeFlushEnabled(
         properties, config.getLog().isUnsafeFlushEnabled());
+
+    RaftServerConfigKeys.Log.Appender.setBufferByteLimit(
+        properties, config.getLeaderLogAppender().getBufferByteLimit());
+    RaftServerConfigKeys.Log.Appender.setSnapshotChunkSizeMax(
+        properties, config.getLeaderLogAppender().getSnapshotChunkSizeMax());
+    RaftServerConfigKeys.Log.Appender.setInstallSnapshotEnabled(
+        properties, config.getLeaderLogAppender().isInstallSnapshotEnabled());
   }
 }

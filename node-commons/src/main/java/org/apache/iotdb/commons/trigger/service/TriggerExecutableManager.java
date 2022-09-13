@@ -20,45 +20,28 @@
 package org.apache.iotdb.commons.trigger.service;
 
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.executable.ExecutableManager;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.locks.ReentrantLock;
-
-public class TriggerRegistrationService implements IService {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerRegistrationService.class);
-
-  private final ReentrantLock registrationLock;
-
-  private TriggerRegistrationService() {
-    this.registrationLock = new ReentrantLock();
+public class TriggerExecutableManager extends ExecutableManager implements IService {
+  private TriggerExecutableManager(String temporaryLibRoot, String triggerLibRoot) {
+    super(temporaryLibRoot, triggerLibRoot);
   }
 
-  public void acquireRegistrationLock() {
-    registrationLock.lock();
-  }
-
-  public void releaseRegistrationLock() {
-    registrationLock.unlock();
-  }
-
-  // todo: implementation
-  public void register() {
-    // validate before registering
-    // add to triggerTable and set inactive
-    // throw exception if registered
-  };
-
-  public void activeTrigger(String triggerName) {
-    // active trigger in table
-  };
-
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // IService
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   @Override
-  public void start() throws StartupException {}
+  public void start() throws StartupException {
+    try {
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(temporaryLibRoot);
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot);
+    } catch (Exception e) {
+      throw new StartupException(e);
+    }
+  }
 
   @Override
   public void stop() {
@@ -67,23 +50,24 @@ public class TriggerRegistrationService implements IService {
 
   @Override
   public ServiceType getID() {
-    return ServiceType.TRIGGER_REGISTRATION_SERVICE;
+    return ServiceType.TRIGGER_EXECUTABLE_MANAGER_SERVICE;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private static TriggerRegistrationService INSTANCE = null;
+  private static TriggerExecutableManager INSTANCE = null;
 
-  public static synchronized TriggerRegistrationService setupAndGetInstance() {
+  public static synchronized TriggerExecutableManager setupAndGetInstance(
+      String temporaryLibRoot, String triggerLibRoot) {
     if (INSTANCE == null) {
-      INSTANCE = new TriggerRegistrationService();
+      INSTANCE = new TriggerExecutableManager(temporaryLibRoot, triggerLibRoot);
     }
     return INSTANCE;
   }
 
-  public static TriggerRegistrationService getInstance() {
+  public static TriggerExecutableManager getInstance() {
     return INSTANCE;
   }
 }

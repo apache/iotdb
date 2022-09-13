@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -44,6 +45,8 @@ public class MPPQueryContext {
   // in this list. And the following retry will avoid planning fragment
   // onto this node.
   private final List<TEndPoint> endPointBlackList;
+
+  private final TypeProvider typeProvider = new TypeProvider();
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -128,5 +131,9 @@ public class MPPQueryContext {
 
   public List<TEndPoint> getEndPointBlackList() {
     return endPointBlackList;
+  }
+
+  public TypeProvider getTypeProvider() {
+    return typeProvider;
   }
 }
