@@ -117,7 +117,7 @@ public class FileMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     // first stop to update the value of some metrics in async way
     if (currentServiceFuture != null) {
-      currentServiceFuture.cancel(false);
+      currentServiceFuture.cancel(true);
       currentServiceFuture = null;
     }
 
