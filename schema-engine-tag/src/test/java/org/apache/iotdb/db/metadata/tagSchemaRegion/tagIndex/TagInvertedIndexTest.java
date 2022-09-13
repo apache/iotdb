@@ -36,24 +36,24 @@ import static org.junit.Assert.assertEquals;
 public class TagInvertedIndexTest {
   private String[][] record =
       new String[][] {
-        {"tag1=q", "tag2=a", "1"},
-        {"tag1=q", "tag2=s", "2"},
-        {"tag1=q", "tag2=a", "tag3=z", "3"},
-        {"tag1=q", "tag2=s", "5"},
-        {"tag1=w", "tag2=d", "6"},
-        {"tag1=q", "tag2=d", "tag3=e", "7"},
-        {"tag1=q", "tag3=v", "4"},
-        {"tag1=r", "tag2=d", "9"},
-        {"tag1=t", "tag2=f", "10"},
-        {"tag1=t", "tag2=g", "8"},
-        {"tag1=t", "tag2=h", "11"},
-        {"tag1=y", "tag2=j", "13"},
-        {"tag1=u", "tag2=k", "14"},
-        {"tag1=q", "tag2=a", "tag3=l", "12"},
-        {"tag1=q", "tag2=a", "tag3=x", "15"},
-        {"tag1=q", "tag2=b", "tag3=x", "18"},
-        {"tag1=y", "tag2=a", "tag4=z", "17"},
-        {"tag1=q", "tag2=a", "tag4=z", "16"},
+              {"tag1=q", "tag2=a", "1"},
+              {"tag1=q", "tag2=s", "2"},
+              {"tag1=q", "tag2=a", "tag3=z", "3"},
+              {"tag1=q", "tag3=v", "4"},
+              {"tag1=q", "tag2=s", "5"},
+              {"tag1=w", "tag2=d", "6"},
+              {"tag1=q", "tag2=d", "tag3=e", "7"},
+              {"tag1=t", "tag2=g", "8"},
+              {"tag1=r", "tag2=d", "9"},
+              {"tag1=t", "tag2=f", "10"},
+              {"tag1=t", "tag2=h", "11"},
+              {"tag1=q", "tag2=a", "tag3=l", "12"},
+              {"tag1=y", "tag2=j", "13"},
+              {"tag1=u", "tag2=k", "14"},
+              {"tag1=q", "tag2=a", "tag3=x", "15"},
+              {"tag1=q", "tag2=a", "tag4=z", "16"},
+              {"tag1=y", "tag2=a", "tag4=z", "17"},
+              {"tag1=q", "tag2=b", "tag3=x", "18"},
       };
 
   private int numOfDeviceIdsInMemTable;
@@ -86,9 +86,9 @@ public class TagInvertedIndexTest {
     tagInvertedIndex.removeTags(tags.left, tags.right);
     tags = generateTag(record[1]);
     tagInvertedIndex.removeTags(tags.left, tags.right);
-    tags = generateTag(record[6]);
+    tags = generateTag(record[3]);
     tagInvertedIndex.removeTags(tags.left, tags.right);
-    tags = generateTag(record[13]);
+    tags = generateTag(record[11]);
     tagInvertedIndex.removeTags(tags.left, tags.right);
   }
 
