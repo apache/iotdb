@@ -799,7 +799,7 @@ public class ConfigManager implements IManager {
                 if (!allLeadership.isEmpty()) {
                   String regionType =
                       regionInfo.getDataNodeId()
-                              == allLeadership.get(regionInfo.getConsensusGroupId())
+                              == allLeadership.getOrDefault(regionInfo.getConsensusGroupId(), -1)
                           ? RegionRoleType.Leader.toString()
                           : RegionRoleType.Follower.toString();
                   regionInfo.setRoleType(regionType);

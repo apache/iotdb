@@ -36,7 +36,7 @@ import java.util.Objects;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SchemaPartitionTable {
 
@@ -89,23 +89,25 @@ public class SchemaPartitionTable {
    * Create SchemaPartition within the specific StorageGroup
    *
    * @param assignedSchemaPartition assigned result
-   * @return Number of SchemaPartitions added to each Region
+   * @return Map<TConsensusGroupId, Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count(always
+   *     0)>>
    */
-  public Map<TConsensusGroupId, AtomicInteger> createSchemaPartition(
+  public Map<TConsensusGroupId, Map<TSeriesPartitionSlot, AtomicLong>> createSchemaPartition(
       SchemaPartitionTable assignedSchemaPartition) {
-    Map<TConsensusGroupId, AtomicInteger> deltaMap = new ConcurrentHashMap<>();
+    Map<TConsensusGroupId, Map<TSeriesPartitionSlot, AtomicLong>> groupDeltaMap =
+        new ConcurrentHashMap<>();
 
     assignedSchemaPartition
         .getSchemaPartitionMap()
         .forEach(
             ((seriesPartitionSlot, consensusGroupId) -> {
               schemaPartitionMap.put(seriesPartitionSlot, consensusGroupId);
-              deltaMap
-                  .computeIfAbsent(consensusGroupId, empty -> new AtomicInteger(0))
-                  .getAndIncrement();
+              groupDeltaMap
+                  .computeIfAbsent(consensusGroupId, empty -> new ConcurrentHashMap<>())
+                  .put(seriesPartitionSlot, new AtomicLong(0));
             }));
 
-    return deltaMap;
+    return groupDeltaMap;
   }
 
   /**
