@@ -385,12 +385,17 @@ intoClause
     ;
 
 intoPath
-    : fullPath
-    | nodeNameWithoutWildcard (DOT nodeNameWithoutWildcard)*
+    : ROOT (DOT nodeNameInIntoPath)* #fullPathInIntoPath
+    | nodeNameInIntoPath (DOT nodeNameInIntoPath)* #suffixPathInIntoPath
     ;
 
 intoDeviceAndMeasurement
-    : intoPath LR_BRACKET nodeNameWithoutWildcard (DOT nodeNameWithoutWildcard)* RR_BRACKET
+    : intoPath LR_BRACKET nodeNameInIntoPath (COMMA nodeNameInIntoPath)* RR_BRACKET
+    ;
+
+nodeNameInIntoPath
+    : nodeNameWithoutWildcard
+    | DOUBLE_COLON
     ;
 
 specialClause

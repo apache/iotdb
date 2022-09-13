@@ -1364,40 +1364,39 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private void parseIntoClause(IoTDBSqlParser.IntoClauseContext ctx) {
     boolean isAligned = ctx.ALIGNED() != null;
-    if (ctx.intoPath() != null) {
-      List<PartialPath> intoPaths = new ArrayList<>();
-      for (IoTDBSqlParser.IntoPathContext intoPathContext : ctx.intoPath()) {
-        intoPaths.add(parseIntoPath(intoPathContext));
-      }
-      queryStatement.setIntoComponent(new AlignByTimeIntoComponent(intoPaths, isAligned));
-    } else if (ctx.intoDeviceAndMeasurement() != null) {
+    if (ctx.intoDeviceAndMeasurement().size() > 0) {
       List<Pair<PartialPath, List<PartialPath>>> intoDeviceAndMeasurementList = new ArrayList<>();
       for (IoTDBSqlParser.IntoDeviceAndMeasurementContext intoDeviceAndMeasurementContext :
           ctx.intoDeviceAndMeasurement()) {
         PartialPath intoDevice = parseIntoPath(intoDeviceAndMeasurementContext.intoPath());
         List<PartialPath> intoMeasurements =
-            intoDeviceAndMeasurementContext.nodeNameWithoutWildcard().stream()
+            intoDeviceAndMeasurementContext.nodeNameInIntoPath().stream()
                 .map(
-                    nodeNameWithoutWildcardContext ->
-                        new PartialPath(
-                            parseNodeNameWithoutWildCard(nodeNameWithoutWildcardContext), false))
+                    nodeNameInIntoPathContext ->
+                        new PartialPath(parseNodeNameInIntoPath(nodeNameInIntoPathContext), false))
                 .collect(Collectors.toList());
         intoDeviceAndMeasurementList.add(new Pair<>(intoDevice, intoMeasurements));
       }
       queryStatement.setIntoComponent(
           new AlignByDeviceIntoComponent(intoDeviceAndMeasurementList, isAligned));
+    } else {
+      List<PartialPath> intoPaths = new ArrayList<>();
+      for (IoTDBSqlParser.IntoPathContext intoPathContext : ctx.intoPath()) {
+        intoPaths.add(parseIntoPath(intoPathContext));
+      }
+      queryStatement.setIntoComponent(new AlignByTimeIntoComponent(intoPaths, isAligned));
     }
   }
 
   private PartialPath parseIntoPath(IoTDBSqlParser.IntoPathContext intoPathContext) {
-    if (intoPathContext.fullPath() != null) {
-      return parseFullPath(intoPathContext.fullPath());
+    if (intoPathContext instanceof IoTDBSqlParser.FullPathInIntoPathContext) {
+      return parseFullPathInIntoPath((IoTDBSqlParser.FullPathInIntoPathContext) intoPathContext);
     } else {
-      List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNames =
-          intoPathContext.nodeNameWithoutWildcard();
+      List<IoTDBSqlParser.NodeNameInIntoPathContext> nodeNames =
+          ((IoTDBSqlParser.SuffixPathInIntoPathContext) intoPathContext).nodeNameInIntoPath();
       String[] path = new String[nodeNames.size()];
       for (int i = 0; i < nodeNames.size(); i++) {
-        path[i] = parseNodeNameWithoutWildCard(nodeNames.get(i));
+        path[i] = parseNodeNameInIntoPath(nodeNames.get(i));
       }
       return new PartialPath(path);
     }
@@ -1524,6 +1523,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new PartialPath(path);
   }
 
+  private PartialPath parseFullPathInIntoPath(IoTDBSqlParser.FullPathInIntoPathContext ctx) {
+    List<IoTDBSqlParser.NodeNameInIntoPathContext> nodeNames = ctx.nodeNameInIntoPath();
+    String[] path = new String[nodeNames.size() + 1];
+    int i = 0;
+    if (ctx.ROOT() != null) {
+      path[0] = ctx.ROOT().getText();
+    }
+    for (IoTDBSqlParser.NodeNameInIntoPathContext nodeName : nodeNames) {
+      i++;
+      path[i] = parseNodeNameInIntoPath(nodeName);
+    }
+    return new PartialPath(path);
+  }
+
   private PartialPath parsePrefixPath(IoTDBSqlParser.PrefixPathContext ctx) {
     List<IoTDBSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
     String[] path = new String[nodeNames.size() + 1];
@@ -1548,11 +1561,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
-    return parseNodeString(ctx.getText());
+    String nodeName = parseNodeString(ctx.getText());
+    checkNodeName(nodeName);
+    return nodeName;
   }
 
   private String parseNodeNameWithoutWildCard(IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
-    return parseNodeString(ctx.getText());
+    String nodeName = parseNodeString(ctx.getText());
+    checkNodeName(nodeName);
+    return nodeName;
+  }
+
+  private String parseNodeNameInIntoPath(IoTDBSqlParser.NodeNameInIntoPathContext ctx) {
+    if (ctx.DOUBLE_COLON() != null) {
+      return ctx.getText();
+    }
+    String nodeName = parseNodeString(ctx.getText());
+    checkNodeNameInIntoPath(nodeName);
+    return nodeName;
   }
 
   private String parseNodeString(String nodeName) {
@@ -1569,7 +1595,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       return unWrapped;
     }
-    checkNodeName(nodeName);
     return nodeName;
   }
 
@@ -1579,6 +1604,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SQLParserException(
           String.format(
               "%s is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard",
+              src));
+    }
+  }
+
+  private void checkNodeNameInIntoPath(String src) {
+    // ${} are allowed
+    if (!TsFileConstant.NODE_NAME_IN_INTO_PATH_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted node name in select into clause can only consist of digits, characters, $, { and }",
               src));
     }
   }
