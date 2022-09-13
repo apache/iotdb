@@ -346,14 +346,13 @@ public class LogDispatcher {
               currentIndex,
               maxIndex,
               iteratorIndex));
+      long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.
-      if (iteratorIndex != currentIndex) {
-        walEntryiterator.skipTo(currentIndex);
-        iteratorIndex = currentIndex;
-      }
-      while (currentIndex < maxIndex
+      walEntryiterator.skipTo(targetIndex);
+
+      while (targetIndex < maxIndex
           && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
-        logger.debug("construct from WAL for one Entry, index : {}", currentIndex);
+        logger.debug("construct from WAL for one Entry, index : {}", targetIndex);
         try {
           walEntryiterator.waitForNextReady();
         } catch (InterruptedException e) {
@@ -361,38 +360,31 @@ public class LogDispatcher {
           logger.warn("wait for next WAL entry is interrupted");
         }
         IndexedConsensusRequest data = walEntryiterator.next();
-        if (currentIndex > data.getSearchIndex()) {
+        if (targetIndex > data.getSearchIndex()) {
           // if the index of request is smaller than currentIndex, then continue
           logger.warn(
               "search for one Entry which index is {}, but find a smaller one, index : {}",
-              currentIndex,
+              targetIndex,
               data.getSearchIndex());
           continue;
-        } else if (currentIndex < data.getSearchIndex()) {
+        } else if (targetIndex < data.getSearchIndex()) {
           logger.warn(
               "search for one Entry which index is {}, but find a larger one, index : {}",
-              currentIndex,
+              targetIndex,
               data.getSearchIndex());
           if (data.getSearchIndex() >= maxIndex) {
             // if the index of request is larger than maxIndex, then finish
-            walEntryiterator.skipTo(currentIndex);
             break;
           }
-          // if the index of request is larger than currentIndex, and smaller than maxIndex, then
-          // skip to index
-          currentIndex = data.getSearchIndex();
-          walEntryiterator.skipTo(currentIndex);
-          iteratorIndex = currentIndex;
         }
+        targetIndex = data.getSearchIndex() + 1;
         // construct request from wal
         for (IConsensusRequest innerRequest : data.getRequests()) {
-          logBatches.add(new TLogBatch(innerRequest.serializeToByteBuffer(), currentIndex, true));
-        }
-        if (currentIndex == maxIndex - 1) {
-          break;
+          logBatches.add(
+              new TLogBatch(innerRequest.serializeToByteBuffer(), data.getSearchIndex(), true));
         }
       }
-      return currentIndex;
+      return logBatches.size() > 0 ? logBatches.get(0).searchIndex : currentIndex;
     }
 
     private void constructBatchIndexedFromConsensusRequest(
