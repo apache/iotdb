@@ -31,22 +31,15 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import java.io.DataInputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
-public class BinaryTVList extends TVList {
-
+public abstract class BinaryTVList extends TVList {
   // list of primitive array, add 1 when expanded -> Binary primitive array
   // index relation: arrayIndex -> elementIndex
-  private List<Binary[]> values;
-
-  private Binary[][] sortedValues;
-
-  private Binary pivotValue;
+  protected List<Binary[]> values;
 
   BinaryTVList() {
     super();
@@ -88,40 +81,6 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  public BinaryTVList clone() {
-    BinaryTVList cloneList = new BinaryTVList();
-    cloneAs(cloneList);
-    for (Binary[] valueArray : values) {
-      cloneList.values.add(cloneValue(valueArray));
-    }
-    return cloneList;
-  }
-
-  private Binary[] cloneValue(Binary[] array) {
-    Binary[] cloneArray = new Binary[array.length];
-    System.arraycopy(array, 0, cloneArray, 0, array.length);
-    return cloneArray;
-  }
-
-  @Override
-  public void sort() {
-    if (sortedTimestamps == null
-        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedTimestamps =
-          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
-    }
-    if (sortedValues == null
-        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedValues =
-          (Binary[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.TEXT, rowCount);
-    }
-    sort(0, rowCount);
-    clearSortedValue();
-    clearSortedTime();
-    sorted = true;
-  }
-
-  @Override
   void clearValue() {
     if (values != null) {
       for (Binary[] dataArray : values) {
@@ -132,60 +91,8 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  void clearSortedValue() {
-    if (sortedValues != null) {
-      sortedValues = null;
-    }
-  }
-
-  @Override
-  protected void setFromSorted(int src, int dest) {
-    set(
-        dest,
-        sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
-        sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
-  }
-
-  @Override
-  protected void set(int src, int dest) {
-    long srcT = getTime(src);
-    Binary srcV = getBinary(src);
-    set(dest, srcT, srcV);
-  }
-
-  @Override
-  protected void setToSorted(int src, int dest) {
-    sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
-    sortedValues[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getBinary(src);
-  }
-
-  @Override
-  protected void reverseRange(int lo, int hi) {
-    hi--;
-    while (lo < hi) {
-      long loT = getTime(lo);
-      Binary loV = getBinary(lo);
-      long hiT = getTime(hi);
-      Binary hiV = getBinary(hi);
-      set(lo++, hiT, hiV);
-      set(hi--, loT, loV);
-    }
-  }
-
-  @Override
   protected void expandValues() {
     values.add((Binary[]) getPrimitiveArraysByType(TSDataType.TEXT));
-  }
-
-  @Override
-  protected void saveAsPivot(int pos) {
-    pivotTime = getTime(pos);
-    pivotValue = getBinary(pos);
-  }
-
-  @Override
-  protected void setPivotTo(int pos) {
-    set(pos, pivotTime, pivotValue);
   }
 
   @Override
@@ -320,18 +227,5 @@ public class BinaryTVList extends TVList {
       buffer.putLong(getTime(rowIdx));
       WALWriteUtils.write(getBinary(rowIdx), buffer);
     }
-  }
-
-  public static BinaryTVList deserialize(DataInputStream stream) throws IOException {
-    BinaryTVList tvList = new BinaryTVList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    Binary[] values = new Binary[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = ReadWriteIOUtils.readBinary(stream);
-    }
-    tvList.putBinaries(times, values, null, 0, rowCount);
-    return tvList;
   }
 }

@@ -779,7 +779,8 @@ public class OperatorMemoryTest {
               false,
               null,
               null,
-              false);
+              false,
+              Collections.emptyMap());
 
       assertEquals(4L, operator.calculateMaxPeekMemory());
       assertEquals(4L, operator.calculateMaxReturnSize());

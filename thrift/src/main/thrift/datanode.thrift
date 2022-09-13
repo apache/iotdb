@@ -20,38 +20,36 @@ include "common.thrift"
 namespace java org.apache.iotdb.mpp.rpc.thrift
 
 struct TCreateSchemaRegionReq {
-    1: required common.TRegionReplicaSet regionReplicaSet
-    2: required string storageGroup
+  1: required common.TRegionReplicaSet regionReplicaSet
+  2: required string storageGroup
 }
 
 struct TCreateDataRegionReq {
-    1: required common.TRegionReplicaSet regionReplicaSet
-    2: required string storageGroup
-    3: optional i64 ttl
+  1: required common.TRegionReplicaSet regionReplicaSet
+  2: required string storageGroup
+  3: optional i64 ttl
 }
 
 struct TInvalidateCacheReq {
-    1: required bool storageGroup
-    2: required string fullPath
-}
-
-struct TMigrateRegionReq {
-    1: required common.TConsensusGroupId regionId
-    2: required common.TDataNodeLocation fromNode
-    3: required common.TDataNodeLocation toNode
-    4: optional common.TDataNodeLocation newLeaderNode
+  1: required bool storageGroup
+  2: required string fullPath
 }
 
 struct TRegionLeaderChangeReq {
-    1: required common.TConsensusGroupId regionId
-    2: required common.TDataNodeLocation newLeaderNode
+  1: required common.TConsensusGroupId regionId
+  2: required common.TDataNodeLocation newLeaderNode
 }
 
 struct TCreatePeerReq {
-    1: required common.TConsensusGroupId regionId
-    2: required list<common.TDataNodeLocation> regionLocations
-    3: required string storageGroup
-    4: optional i64 ttl
+  1: required common.TConsensusGroupId regionId
+  2: required list<common.TDataNodeLocation> regionLocations
+  3: required string storageGroup
+  4: optional i64 ttl
+}
+
+struct TMaintainPeerReq {
+  1: required common.TConsensusGroupId regionId
+  2: required common.TDataNodeLocation destNode
 }
 
 struct TFragmentInstanceId {
@@ -172,6 +170,20 @@ struct TDropFunctionRequest {
   1: required string udfName
 }
 
+struct TcreateTriggerInstanceReq {
+  1: required binary triggerInformation
+  2: required binary jarFile
+}
+
+struct TactiveTriggerInstanceReq {
+  1: required string triggerName
+}
+
+struct TDropTriggerInstanceReq {
+  1: required string triggerName
+  2: required bool needToDeleteJarFile
+}
+
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
@@ -201,8 +213,8 @@ struct TUpdateConfigNodeGroupReq {
 }
 
 struct TUpdateTemplateReq{
-    1: required byte type
-    2: required binary templateInfo
+  1: required byte type
+  2: required binary templateInfo
 }
 
 struct TTsFilePieceReq{
@@ -275,11 +287,11 @@ service IDataNodeRPCService {
   common.TSStatus invalidatePartitionCache(TInvalidateCacheReq req)
 
   /**
-       * Config node will invalidate Schema Info cache.
-       *
-       * @param bool:isStorageGroup, string:fullPath
-       */
-    common.TSStatus invalidateSchemaCache(TInvalidateCacheReq req)
+     * Config node will invalidate Schema Info cache.
+     *
+     * @param bool:isStorageGroup, string:fullPath
+     */
+  common.TSStatus invalidateSchemaCache(TInvalidateCacheReq req)
 
   /**
      * Config node will delete a data/schema region of a certain storageGroup.
@@ -296,29 +308,32 @@ service IDataNodeRPCService {
   common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req);
 
   /**
-   * Create new peer in the given data node for region consensus group
-   * @param region id and it's expected locations
+   * Create a new Region peer in the given DataNode for the specified RegionGroup
+   *
+   * @param TCreatePeerReq which contains RegionId and its colleagues' locations
    */
-  common.TSStatus createPeerToConsensusGroup(TCreatePeerReq req);
+  common.TSStatus createNewRegionPeer(TCreatePeerReq req);
 
   /**
-   * Config node will add a region peer to a region group
-   * @param add region req which region from one node to other node
+   * Add a Region peer to the specified RegionGroup
+   *
+   * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation that selected to perform the add peer process
    */
-  common.TSStatus addRegionPeer(TMigrateRegionReq req);
+  common.TSStatus addRegionPeer(TMaintainPeerReq req);
 
   /**
-   * Config node will remove a region peer to a region group
-   * @param remove region peer region from one node to other node
+   * Remove a Region peer from the specified RegionGroup
+   *
+   * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation that selected to perform the remove peer process
    */
-  common.TSStatus removeRegionPeer(TMigrateRegionReq req);
+  common.TSStatus removeRegionPeer(TMaintainPeerReq req);
 
   /**
-   * Delete the datanode peer for the given consensus group. Usually a region group has
-   * multiple replicas, thus relates to multiple nodes.
-   * @param TMigrateRegionReq which contains the dest datanode to be removed
-  */
-  common.TSStatus deletePeerToConsensusGroup(TMigrateRegionReq req);
+   * Delete a Region peer in the given ConsensusGroup and all of its data on the specified DataNode
+   *
+   * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation where the specified Region peer located
+   */
+  common.TSStatus deleteOldRegionPeer(TMaintainPeerReq req);
 
   /**
   * Config node will disable the Data node, the Data node will not accept read/write request when disabled
@@ -360,6 +375,27 @@ service IDataNodeRPCService {
   common.TSStatus dropFunction(TDropFunctionRequest req)
 
   /**
+   * Config node will create a trigger instance on data node.
+   *
+   * @param TriggerInformation, jar file.
+   **/
+  common.TSStatus createTriggerInstance(TcreateTriggerInstanceReq req)
+
+  /**
+   * Config node will active a trigger instance on data node.
+   *
+   * @param trigger name.
+   **/
+  common.TSStatus activeTriggerInstance(TactiveTriggerInstanceReq req)
+
+  /**
+    * Config node will drop a trigger on all online config nodes and data nodes.
+    *
+    * @param trigger name, whether need to delete jar
+    **/
+  common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
+
+  /**
    * Config node will invalidate permission Info cache.
    *
    * @param string:username, list<string>:roleList
@@ -375,6 +411,8 @@ service IDataNodeRPCService {
   common.TSStatus clearCache()
 
   common.TSStatus loadConfiguration()
+
+  common.TSStatus setSystemStatus(string status)
 
   /**
    * Config node will Set the TTL for the storage group on a list of data nodes.

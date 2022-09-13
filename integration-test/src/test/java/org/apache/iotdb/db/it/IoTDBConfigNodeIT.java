@@ -675,7 +675,7 @@ public class IoTDBConfigNodeIT {
       // grant role to user
       authorizerReq =
           new TAuthorizerReq(
-              AuthorOperator.AuthorType.GRANT_ROLE_TO_USER.ordinal(),
+              AuthorOperator.AuthorType.GRANT_USER_ROLE.ordinal(),
               "tempuser0",
               "temprole0",
               "",
@@ -812,7 +812,7 @@ public class IoTDBConfigNodeIT {
       // revoke role from user
       authorizerReq =
           new TAuthorizerReq(
-              AuthorOperator.AuthorType.REVOKE_ROLE_FROM_USER.ordinal(),
+              AuthorOperator.AuthorType.REVOKE_USER_ROLE.ordinal(),
               "tempuser0",
               "temprole0",
               "",

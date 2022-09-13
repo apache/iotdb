@@ -26,6 +26,8 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -134,6 +136,10 @@ public class TsFilePlanRedoerTest {
   public void tearDown() throws Exception {
     if (tsFileResource != null) {
       tsFileResource.close();
+    }
+    File modsFile = new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX));
+    if (modsFile.exists()) {
+      modsFile.delete();
     }
     EnvironmentUtils.cleanEnv();
     // reset config
@@ -551,6 +557,33 @@ public class TsFilePlanRedoerTest {
     assertFalse(modsFile.exists());
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, false, null);
     planRedoer.redoDelete(deletePlan);
+    assertTrue(modsFile.exists());
+  }
+
+  @Test
+  public void testRedoDeleteDataNode() throws Exception {
+    // generate .tsfile and update resource in memory
+    File file = new File(FILE_NAME);
+    generateCompleteFile(file);
+    tsFileResource = new TsFileResource(file);
+    tsFileResource.updateStartTime(DEVICE1_NAME, 1);
+    tsFileResource.updateEndTime(DEVICE1_NAME, 2);
+    tsFileResource.updateStartTime(DEVICE2_NAME, 3);
+    tsFileResource.updateEndTime(DEVICE2_NAME, 4);
+
+    // generate DeletePlan
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(new PartialPath(DEVICE1_NAME)),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+
+    // redo DeletePlan, vsg processor is used to test IdTable, don't test IdTable here
+    File modsFile = new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX));
+    assertFalse(modsFile.exists());
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, false, null);
+    planRedoer.redoDelete(deleteDataNode);
     assertTrue(modsFile.exists());
   }
 

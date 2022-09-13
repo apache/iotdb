@@ -83,12 +83,12 @@ public class IoTDBPipeSinkIT {
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPESINK")) {
         String[] expectedRetSet =
             new String[] {
-              "demo3,IoTDB,ip='127.0.0.1',port=6670,", "demo1,IoTDB,ip='192.168.0.1',port=6677,"
+              "demo3,IoTDB,ip='127.0.0.1',port=6667,", "demo1,IoTDB,ip='192.168.0.1',port=6677,"
             };
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
       try (ResultSet resultSet = statement.executeQuery("SHOW PIPESINK demo3")) {
-        String[] expectedRetSet = new String[] {"demo3,IoTDB,ip='127.0.0.1',port=6670,"};
+        String[] expectedRetSet = new String[] {"demo3,IoTDB,ip='127.0.0.1',port=6667,"};
         assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
       }
     } catch (Exception e) {

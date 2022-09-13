@@ -29,10 +29,10 @@ The CSV tool can help you import data in CSV format to IoTDB or export data from
 
 ```shell
 # Unix/OS X
-> tools/export-csv.sh  -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -datatype <true/false> -q <query command> -s <sql file>]
+> tools/export-csv.sh  -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -datatype <true/false> -q <query command> -s <sql file> -linesPerFile <int>]
 
 # Windows
-> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -datatype <true/false> -q <query command> -s <sql file>]
+> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -datatype <true/false> -q <query command> -s <sql file> -linesPerFile <int>]
 ```
 
 Description:
@@ -50,6 +50,10 @@ Description:
 * `-tf <time-format>`:
   - specifying a time format that you want. The time format have to obey [ISO 8601](https://calendars.wikia.org/wiki/ISO_8601) standard. If you want to save the time as the timestamp, then setting `-tf timestamp`
   - example: `-tf yyyy-MM-dd\ HH:mm:ss` or `-tf timestamp`
+* `-linesPerFile <int>`:
+  - Specifying lines of each dump file, `10000` is default.
+  - example: `-linesPerFile 1`
+
 
 More, if you don't use one of `-s` and `-q`, you need to enter some queries after running the export script. The results of the different query will be saved to different CSV files.
 
@@ -66,6 +70,8 @@ More, if you don't use one of `-s` and `-q`, you need to enter some queries afte
 > tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s sql.txt
 # Or
 > tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt
+# Or
+> tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt -linesPerFile 10
 
 # Windows
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./
@@ -77,6 +83,8 @@ More, if you don't use one of `-s` and `-q`, you need to enter some queries afte
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s sql.txt
 # Or
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt
+# Or
+> tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt -linesPerFile 10
 ```
 
 ### Sample SQL file
@@ -174,9 +182,9 @@ Time,Device,str(TEXT),int(INT32)
 
 ```shell
 # Unix/OS X
-> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>]
+> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>] [-typeInfer <boolean=text,float=double...>]
 # Windows
-> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>]
+> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>] [-typeInfer <boolean=text,float=double...>]
 ```
 
 Description:
@@ -200,6 +208,19 @@ Description:
 * `-tp <time-precision>`:
   - specifying a time precision. Options includes `ms`(millisecond), `ns`(nanosecond), and `us`(microsecond), `ms` is default.
 
+* `-typeInfer <srcTsDataType1=dstTsDataType1,srcTsDataType2=dstTsDataType2,...>`:
+  - specifying rules of type inference. 
+  - Option `srcTsDataType` includes `boolean`,`int`,`long`,`float`,`double`,`NaN`.
+  - Option `dstTsDataType` includes `boolean`,`int`,`long`,`float`,`double`,`text`.
+  - When `srcTsDataType` is `boolean`, `dstTsDataType` should be between `boolean` and `text`.
+  - When `srcTsDataType` is `NaN`, `dstTsDataType` should be among `float`, `double` and `text`.
+  - When `srcTsDataType` is Numeric type, `dstTsDataType` precision should be greater than `srcTsDataType`.
+  - example: `-typeInfer boolean=text,float=double`
+  
+* `-linesPerFailedFile <int>`:
+  - Specifying lines of each failed file, `10000` is default.
+  - example: `-linesPerFailedFile 1`
+
 ### Example
 
 ```sh
@@ -207,12 +228,24 @@ Description:
 > tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
 # or
 > tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
+# or
+> tools\import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed -tp ns
+# or
+> tools\import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed -tp ns -typeInfer boolean=text,float=double
+# or
+> tools\import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed -tp ns -typeInfer boolean=text,float=double -linesPerFailedFile 10
+
 # Windows
 > tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv
 # or
 > tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
 # or
 > tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed -tp ns
+# or
+> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed -tp ns -typeInfer boolean=text,float=double
+# or
+> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed -tp ns -typeInfer boolean=text,float=double -linesPerFailedFile 10
+
 ```
 
 ### Note

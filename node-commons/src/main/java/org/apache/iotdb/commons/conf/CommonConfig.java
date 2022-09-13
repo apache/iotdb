@@ -18,12 +18,18 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
+  private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
   // Open ID Secret
   private String openIdProviderUrl = "";
@@ -93,6 +99,13 @@ public class CommonConfig {
 
   /** whether to use thrift compression. */
   private boolean isRpcThriftCompressionEnabled = false;
+
+  /** What will the system do when unrecoverable error occurs. */
+  private HandleSystemErrorStrategy handleSystemErrorStrategy =
+      HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY;
+
+  /** Status of current system. */
+  private volatile NodeStatus status = NodeStatus.Running;
 
   CommonConfig() {}
 
@@ -232,5 +245,36 @@ public class CommonConfig {
 
   public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
     isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
+  }
+
+  HandleSystemErrorStrategy getHandleSystemErrorStrategy() {
+    return handleSystemErrorStrategy;
+  }
+
+  void setHandleSystemErrorStrategy(HandleSystemErrorStrategy handleSystemErrorStrategy) {
+    this.handleSystemErrorStrategy = handleSystemErrorStrategy;
+  }
+
+  public boolean isReadOnly() {
+    return status == NodeStatus.ReadOnly;
+  }
+
+  public NodeStatus getNodeStatus() {
+    return status;
+  }
+
+  public void handleUnrecoverableError() {
+    handleSystemErrorStrategy.handle();
+  }
+
+  public void setNodeStatus(NodeStatus newStatus) {
+    if (newStatus == NodeStatus.ReadOnly) {
+      logger.error(
+          "Change system status to read-only! Only query statements are permitted!",
+          new RuntimeException("System mode is set to READ_ONLY"));
+    } else {
+      logger.info("Set system mode from {} to {}.", status, newStatus);
+    }
+    this.status = newStatus;
   }
 }

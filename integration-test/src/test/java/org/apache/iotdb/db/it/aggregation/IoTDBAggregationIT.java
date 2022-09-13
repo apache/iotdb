@@ -33,10 +33,8 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.Locale;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
@@ -982,30 +980,6 @@ public class IoTDBAggregationIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void timeWasNullTest() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select max_value(temperature),count(status) from root.ln.wf01.wt01 group by ([0, 600), 100ms)")) {
-        ResultSetMetaData metaData = resultSet.getMetaData();
-        int columnCount = metaData.getColumnCount();
-        while (resultSet.next()) {
-          for (int i = 1; i <= columnCount; i++) {
-            int ct = metaData.getColumnType(i);
-            if (ct == Types.TIMESTAMP) {
-              if (resultSet.wasNull()) {
-                fail();
-              }
-            }
-          }
-        }
-      }
     }
   }
 }

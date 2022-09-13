@@ -38,14 +38,14 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** PublishHandler handle the messages from MQTT clients. */
 public class PublishHandler extends AbstractInterceptHandler {
-
-  private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-  private long sessionId;
-
   private static final Logger LOG = LoggerFactory.getLogger(PublishHandler.class);
+  private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  private final ConcurrentHashMap<String, Long> clientIdToSessionIdMap = new ConcurrentHashMap<>();
 
   private final PayloadFormatter payloadFormat;
 
@@ -59,32 +59,41 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   @Override
   public String getID() {
-    return "iotdb-mqtt-broker-listener-" + sessionId;
+    return "iotdb-mqtt-broker-listener";
   }
 
   @Override
   public void onConnect(InterceptConnectMessage msg) {
-    try {
-      BasicOpenSessionResp basicOpenSessionResp =
-          SESSION_MANAGER.openSession(
-              msg.getUsername(),
-              new String(msg.getPassword()),
-              ZoneId.systemDefault().toString(),
-              TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
-      sessionId = basicOpenSessionResp.getSessionId();
-    } catch (TException e) {
-      throw new RuntimeException(e);
+    if (!clientIdToSessionIdMap.containsKey(msg.getClientID())) {
+      try {
+        BasicOpenSessionResp basicOpenSessionResp =
+            SESSION_MANAGER.openSession(
+                msg.getUsername(),
+                new String(msg.getPassword()),
+                ZoneId.systemDefault().toString(),
+                TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+        clientIdToSessionIdMap.put(msg.getClientID(), basicOpenSessionResp.getSessionId());
+      } catch (TException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
   @Override
   public void onDisconnect(InterceptDisconnectMessage msg) {
-    SESSION_MANAGER.closeSession(sessionId);
+    Long sessionId = clientIdToSessionIdMap.remove(msg.getClientID());
+    if (null != sessionId) {
+      SESSION_MANAGER.closeSession(sessionId);
+    }
   }
 
   @Override
   public void onPublish(InterceptPublishMessage msg) {
     String clientId = msg.getClientID();
+    if (!clientIdToSessionIdMap.containsKey(clientId)) {
+      return;
+    }
+    long sessionId = clientIdToSessionIdMap.get(msg.getClientID());
     ByteBuf payload = msg.getPayload();
     String topic = msg.getTopicName();
     String username = msg.getUsername();

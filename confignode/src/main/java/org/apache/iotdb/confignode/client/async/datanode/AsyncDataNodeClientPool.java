@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.client.async.handlers.LoadConfigurationHandler;
 import org.apache.iotdb.confignode.client.async.handlers.MergeHandler;
+import org.apache.iotdb.confignode.client.async.handlers.SetSystemStatusHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
@@ -64,7 +65,7 @@ public class AsyncDataNodeClientPool {
 
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager;
 
-  private final int retryNum = 6;
+  private static final int MAX_RETRY_NUM = 6;
 
   private AsyncDataNodeClientPool() {
     clientManager =
@@ -90,7 +91,7 @@ public class AsyncDataNodeClientPool {
     if (dataNodeLocationMap.isEmpty()) {
       return;
     }
-    for (int retry = 0; retry < retryNum; retry++) {
+    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
       for (TDataNodeLocation targetDataNode : dataNodeLocationMap.values()) {
         AbstractRetryHandler handler;
@@ -140,6 +141,15 @@ public class AsyncDataNodeClientPool {
           case LOAD_CONFIGURATION:
             handler =
                 new LoadConfigurationHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
+          case SET_SYSTEM_STATUS:
+            handler =
+                new SetSystemStatusHandler(
                     countDownLatch,
                     requestType,
                     targetDataNode,
@@ -210,6 +220,9 @@ public class AsyncDataNodeClientPool {
         case LOAD_CONFIGURATION:
           client.loadConfiguration((LoadConfigurationHandler) handler);
           break;
+        case SET_SYSTEM_STATUS:
+          client.setSystemStatus((String) req, (SetSystemStatusHandler) handler);
+          break;
         case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);
           break;
@@ -256,7 +269,7 @@ public class AsyncDataNodeClientPool {
     if (dataNodeLocationMap.isEmpty()) {
       return new HashMap<>();
     }
-    for (int retry = 0; retry < retryNum; retry++) {
+    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
       index = 0;
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
       for (Map.Entry<String, List<TRegionReplicaSet>> entry :

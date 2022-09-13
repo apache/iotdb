@@ -68,13 +68,13 @@ public class GroupByLevelController {
 
   private final TypeProvider typeProvider;
 
-  public GroupByLevelController(int[] levels, TypeProvider typeProvider) {
+  public GroupByLevelController(int[] levels) {
     this.levels = levels;
     this.groupedPathMap = new LinkedHashMap<>();
     this.rawPathToGroupedPathMap = new HashMap<>();
     this.columnToAliasMap = new HashMap<>();
     this.aliasToColumnMap = new HashMap<>();
-    this.typeProvider = typeProvider;
+    this.typeProvider = new TypeProvider();
   }
 
   public void control(boolean isCountStar, Expression expression, String alias) {
