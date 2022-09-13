@@ -73,14 +73,10 @@ public class RollbackSchemaBlackListHandler extends AbstractRetryHandler
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.error(
-          "Failed to rollback schema black list on DataNode {}, {}",
-          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
-          tsStatus);
+          "Failed to rollback schema black list on DataNode {}, {}", targetDataNode, tsStatus);
     } else {
       LOGGER.error(
-          "Failed to rollback schema black list on DataNode {}, {}",
-          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
-          tsStatus);
+          "Failed to rollback schema black list on DataNode {}, {}", targetDataNode, tsStatus);
     }
     countDownLatch.countDown();
   }

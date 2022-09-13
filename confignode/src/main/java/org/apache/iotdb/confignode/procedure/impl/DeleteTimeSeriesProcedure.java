@@ -333,6 +333,10 @@ public class DeleteTimeSeriesProcedure
     deleteTimeSeriesTask.execute();
   }
 
+  /**
+   * Try to get and execute request on consensus group leader as possible. If fail to get leader,
+   * select some other replica for execution.
+   */
   private Map<TDataNodeLocation, List<TConsensusGroupId>> getLeaderDataNodeRegionGroupMap(
       Map<TConsensusGroupId, Integer> leaderMap,
       Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap) {
@@ -358,6 +362,10 @@ public class DeleteTimeSeriesProcedure
     return dataNodeConsensusGroupIdMap;
   }
 
+  /**
+   * Try to execute request on all replica of one consensus group. If some replica failed, execute
+   * according request on some other replica and let consensus layer to sync it.
+   */
   private Map<TDataNodeLocation, List<TConsensusGroupId>> getAllReplicaDataNodeRegionGroupMap(
       Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap) {
     Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap = new HashMap<>();
