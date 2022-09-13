@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.lsm.context;
 
+import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -31,6 +33,7 @@ public class QueryContext extends Context {
     keys = new ArrayList<>();
     keys.addAll(Arrays.asList(ks));
     type = ContextType.QUERY;
+    accessStrategy = new PostOrderAccessStrategy();
   }
 
   public Object getKey() {

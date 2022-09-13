@@ -16,38 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 
-import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
+import org.roaringbitmap.RoaringBitmap;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+// 管理设备id集合
+public class MemChunk {
+  private RoaringBitmap roaringBitmap;
 
-public class DeleteContext extends Context {
-
-  List<Object> keys;
-
-  Object value;
-
-  public DeleteContext(Object value, Object... ks) {
-    super();
-    this.value = value;
-    keys = new ArrayList<>();
-    keys.addAll(Arrays.asList(ks));
-    type = ContextType.DELETE;
-    accessStrategy = new PostOrderAccessStrategy();
+  public MemChunk() {
+    roaringBitmap = new RoaringBitmap();
   }
 
-  public Object getKey() {
-    return keys.get(level);
+  public boolean isEmpty() {
+    if (roaringBitmap == null) return true;
+    return roaringBitmap.isEmpty();
   }
 
-  public Object getValue() {
-    return value;
+  @Override
+  public String toString() {
+    return roaringBitmap.toString();
   }
 
-  public int size() {
-    return keys.size();
+  public void put(int id) {
+    roaringBitmap.add(id);
+  }
+
+  public void remove(int id) {
+    roaringBitmap.remove(id);
+  }
+
+  public RoaringBitmap getRoaringBitmap() {
+    return this.roaringBitmap;
   }
 }

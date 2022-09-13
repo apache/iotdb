@@ -16,38 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
-import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
+import org.apache.iotdb.lsm.context.InsertContext;
+import org.apache.iotdb.lsm.levelProcess.InsertLevelProcess;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-public class DeleteContext extends Context {
-
-  List<Object> keys;
-
-  Object value;
-
-  public DeleteContext(Object value, Object... ks) {
-    super();
-    this.value = value;
-    keys = new ArrayList<>();
-    keys.addAll(Arrays.asList(ks));
-    type = ContextType.DELETE;
-    accessStrategy = new PostOrderAccessStrategy();
+public class MemChunkInsertion extends InsertLevelProcess<MemChunk, Object> {
+  @Override
+  public List<Object> getChildren(MemChunk memNode, InsertContext context) {
+    return null;
   }
 
-  public Object getKey() {
-    return keys.get(level);
-  }
-
-  public Object getValue() {
-    return value;
-  }
-
-  public int size() {
-    return keys.size();
+  @Override
+  public void insert(MemChunk memNode, InsertContext context) {
+    Integer deviceID = (Integer) context.getValue();
+    memNode.put(deviceID);
   }
 }

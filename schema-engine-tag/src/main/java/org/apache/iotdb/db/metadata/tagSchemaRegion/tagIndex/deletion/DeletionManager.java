@@ -16,38 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 
-import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
+import org.apache.iotdb.lsm.context.DeleteContext;
+import org.apache.iotdb.lsm.manager.BasicLsmManager;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-public class DeleteContext extends Context {
-
-  List<Object> keys;
-
-  Object value;
-
-  public DeleteContext(Object value, Object... ks) {
-    super();
-    this.value = value;
-    keys = new ArrayList<>();
-    keys.addAll(Arrays.asList(ks));
-    type = ContextType.DELETE;
-    accessStrategy = new PostOrderAccessStrategy();
+public class DeletionManager extends BasicLsmManager<MemTable, DeleteContext> {
+  private DeletionManager() {
+    this.nextLevel(new MemTableDeletion())
+        .nextLevel(new MemChunkGroupDeletion())
+        .nextLevel(new MemChunkDeletion());
   }
 
-  public Object getKey() {
-    return keys.get(level);
+  public static DeletionManager getInstance() {
+    return DeletionManagerHolder.INSTANCE;
   }
 
-  public Object getValue() {
-    return value;
-  }
+  private static class DeletionManagerHolder {
+    private static final DeletionManager INSTANCE = new DeletionManager();
 
-  public int size() {
-    return keys.size();
+    private DeletionManagerHolder() {}
   }
 }

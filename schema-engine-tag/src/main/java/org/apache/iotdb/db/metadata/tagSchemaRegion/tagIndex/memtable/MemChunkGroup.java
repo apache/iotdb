@@ -16,38 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 
-import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
+import java.util.HashMap;
+import java.util.Map;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+public class MemChunkGroup {
+  private Map<String, MemChunk> memChunkMap;
 
-public class DeleteContext extends Context {
-
-  List<Object> keys;
-
-  Object value;
-
-  public DeleteContext(Object value, Object... ks) {
-    super();
-    this.value = value;
-    keys = new ArrayList<>();
-    keys.addAll(Arrays.asList(ks));
-    type = ContextType.DELETE;
-    accessStrategy = new PostOrderAccessStrategy();
+  public MemChunkGroup() {
+    memChunkMap = new HashMap<>();
   }
 
-  public Object getKey() {
-    return keys.get(level);
+  public void put(String tagValue) {
+    if (!memChunkMap.containsKey(tagValue)) {
+      memChunkMap.put(tagValue, new MemChunk());
+    }
   }
 
-  public Object getValue() {
-    return value;
+  @Override
+  public String toString() {
+    return memChunkMap.toString();
   }
 
-  public int size() {
-    return keys.size();
+  public MemChunk get(String tagValue) {
+    return memChunkMap.get(tagValue);
+  }
+
+  public void remove(String tagValue) {
+    memChunkMap.remove(tagValue);
+  }
+
+  public boolean isEmpty() {
+    return memChunkMap.isEmpty();
   }
 }

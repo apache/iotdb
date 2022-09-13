@@ -16,38 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex;
 
-import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
-
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
-public class DeleteContext extends Context {
+public interface ITagInvertedIndex {
+  void addTags(Map<String, String> tags, int id);
 
-  List<Object> keys;
+  void removeTags(Map<String, String> tags, int id);
 
-  Object value;
-
-  public DeleteContext(Object value, Object... ks) {
-    super();
-    this.value = value;
-    keys = new ArrayList<>();
-    keys.addAll(Arrays.asList(ks));
-    type = ContextType.DELETE;
-    accessStrategy = new PostOrderAccessStrategy();
-  }
-
-  public Object getKey() {
-    return keys.get(level);
-  }
-
-  public Object getValue() {
-    return value;
-  }
-
-  public int size() {
-    return keys.size();
-  }
+  List<Integer> getMatchedIDs(Map<String, String> tags);
 }

@@ -16,19 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
-import java.util.List;
-import java.util.Map;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
+import org.apache.iotdb.lsm.context.InsertContext;
+import org.apache.iotdb.lsm.manager.BasicLsmManager;
 
-public interface ITagInvertedIndex {
-  void addTag(String tagKey, String tagValue, int id);
+public class InsertionManager extends BasicLsmManager<MemTable, InsertContext> {
 
-  void addTags(Map<String, String> tags, int id);
+  private InsertionManager() {
+    this.nextLevel(new MemTableInsertion())
+        .nextLevel(new MemChunkGroupInsertion())
+        .nextLevel(new MemChunkInsertion());
+  }
 
-  void removeTag(String tagKey, String tagValue, int id);
+  public static InsertionManager getInstance() {
+    return InsertionManagerHolder.INSTANCE;
+  }
 
-  void removeTags(Map<String, String> tags, int id);
+  private static class InsertionManagerHolder {
+    private static final InsertionManager INSTANCE = new InsertionManager();
 
-  List<Integer> getMatchedIDs(Map<String, String> tags);
+    private InsertionManagerHolder() {}
+  }
 }

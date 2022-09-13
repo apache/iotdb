@@ -122,6 +122,7 @@
         <module>rewrite-tsfile-tool</module>
         <module>external-api</module>
         <module>lsm</module>
+        <module>schema-engine-tag</module>
     </modules>
     <!-- Properties Management -->
     <properties>

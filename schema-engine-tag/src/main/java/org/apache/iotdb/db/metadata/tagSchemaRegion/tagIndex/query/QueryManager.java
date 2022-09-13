@@ -16,38 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
-import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
+import org.apache.iotdb.lsm.context.QueryContext;
+import org.apache.iotdb.lsm.manager.BasicLsmManager;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-public class DeleteContext extends Context {
-
-  List<Object> keys;
-
-  Object value;
-
-  public DeleteContext(Object value, Object... ks) {
-    super();
-    this.value = value;
-    keys = new ArrayList<>();
-    keys.addAll(Arrays.asList(ks));
-    type = ContextType.DELETE;
-    accessStrategy = new PostOrderAccessStrategy();
+public class QueryManager extends BasicLsmManager<MemTable, QueryContext> {
+  private QueryManager() {
+    this.nextLevel(new MemTableQuery())
+        .nextLevel(new MemChunkGroupQuery())
+        .nextLevel(new MemChunkQuery());
   }
 
-  public Object getKey() {
-    return keys.get(level);
+  public static QueryManager getInstance() {
+    return QueryManagerHolder.INSTANCE;
   }
 
-  public Object getValue() {
-    return value;
-  }
+  private static class QueryManagerHolder {
+    private static final QueryManager INSTANCE = new QueryManager();
 
-  public int size() {
-    return keys.size();
+    private QueryManagerHolder() {}
   }
 }
