@@ -46,6 +46,8 @@ public class SubCompactionTask implements Callable<Void> {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final String device;
   private final Set<String> measurementList;
+
+  private final Set<String> allMeasurements;
   private final QueryContext queryContext;
   private final QueryDataSource queryDataSource;
   private final AbstractCompactionWriter compactionWriter;
@@ -55,6 +57,7 @@ public class SubCompactionTask implements Callable<Void> {
   public SubCompactionTask(
       String device,
       Set<String> measurementList,
+      Set<String> allMeasurements,
       QueryContext queryContext,
       QueryDataSource queryDataSource,
       AbstractCompactionWriter compactionWriter,
@@ -62,6 +65,7 @@ public class SubCompactionTask implements Callable<Void> {
       int taskId) {
     this.device = device;
     this.measurementList = measurementList;
+    this.allMeasurements = allMeasurements;
     this.queryContext = queryContext;
     this.queryDataSource = queryDataSource;
     this.compactionWriter = compactionWriter;
@@ -80,7 +84,7 @@ public class SubCompactionTask implements Callable<Void> {
               device,
               Collections.singletonList(measurement),
               measurementSchemas,
-              measurementList,
+              allMeasurements,
               queryContext,
               queryDataSource,
               false);

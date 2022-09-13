@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,6 +49,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
+
+  // sorted from the newest to the oldest
   private List<TsFileResource> tsFileResources;
   private Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
   private Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
@@ -77,13 +80,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   /** Used for cross space compaction. */
   public MultiTsFileDeviceIterator(
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
-    for (TsFileResource tsFileResource : seqResources) {
-      TsFileSequenceReader reader =
-          FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
-      readerMap.put(tsFileResource, reader);
-      deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
-    }
-    for (TsFileResource tsFileResource : unseqResources) {
+    this.tsFileResources = new ArrayList<>(seqResources);
+    tsFileResources.addAll(unseqResources);
+    Collections.sort(this.tsFileResources, TsFileResource::compareFileName);
+    for (TsFileResource tsFileResource : tsFileResources) {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
       readerMap.put(tsFileResource, reader);
@@ -146,8 +146,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     return new MeasurementIterator(readerMap, device, derserializeTimeseriesMetadata);
   }
 
-  public AlignedMeasurementIterator iterateAlignedSeries(String device) {
-    return new AlignedMeasurementIterator(device, new ArrayList<>(readerMap.values()));
+  public AlignedMeasurementIterator iterateAlignedSeries() {
+    return new AlignedMeasurementIterator();
   }
 
   /**
@@ -234,21 +234,28 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   }
 
   public class AlignedMeasurementIterator {
-    private List<TsFileSequenceReader> sequenceReaders;
-    private String device;
-
-    private AlignedMeasurementIterator(String device, List<TsFileSequenceReader> sequenceReaders) {
-      this.device = device;
-      this.sequenceReaders = sequenceReaders;
-    }
-
-    public Set<String> getAllMeasurements() throws IOException {
-      Map<String, TimeseriesMetadata> deviceMeasurementsMap = new ConcurrentHashMap<>();
-      for (TsFileSequenceReader reader : sequenceReaders) {
-        deviceMeasurementsMap.putAll(reader.readDeviceMetadata(device));
+    public Map<String, MeasurementSchema> getAllMeasurementSchemas() throws IOException {
+      Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
+      for (Map.Entry<TsFileResource, TsFileDeviceIterator> entry : deviceIteratorMap.entrySet()) {
+        TsFileResource resource = entry.getKey();
+        TsFileSequenceReader reader = readerMap.get(resource);
+        List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+        reader.getDeviceTimeseriesMetadata(
+            timeseriesMetadataList,
+            deviceIteratorMap.get(resource).getMeasurementNode(),
+            schemaMap.keySet(),
+            true);
+        for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
+          if (!schemaMap.containsKey(timeseriesMetadata.getMeasurementId())
+              && !timeseriesMetadata.getChunkMetadataList().isEmpty()) {
+            schemaMap.put(
+                timeseriesMetadata.getMeasurementId(),
+                reader.getMeasurementSchema(timeseriesMetadata.getChunkMetadataList()));
+          }
+        }
       }
-      deviceMeasurementsMap.remove("");
-      return deviceMeasurementsMap.keySet();
+      schemaMap.remove("");
+      return schemaMap;
     }
   }
 
