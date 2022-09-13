@@ -45,6 +45,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   // The index of the array corresponds to subTaskId.
   protected IChunkWriter[] chunkWriters = new IChunkWriter[subTaskNum];
 
+  private final Object flushFileWriterLockObj = new Object();
+
   protected boolean isAlign;
 
   protected String deviceId;
@@ -143,7 +145,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected void flushChunkToFileWriter(TsFileIOWriter targetWriter, int subTaskId)
       throws IOException {
     writeRateLimit(chunkWriters[subTaskId].estimateMaxSeriesMemSize());
-    synchronized (targetWriter) {
+    synchronized (flushFileWriterLockObj) {
       chunkWriters[subTaskId].writeToFileWriter(targetWriter);
     }
   }
