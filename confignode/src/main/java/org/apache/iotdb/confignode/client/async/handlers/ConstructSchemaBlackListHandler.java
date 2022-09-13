@@ -29,8 +29,8 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 public class ConstructSchemaBlackListHandler extends AbstractRetryHandler
@@ -39,10 +39,13 @@ public class ConstructSchemaBlackListHandler extends AbstractRetryHandler
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ConstructSchemaBlackListHandler.class);
 
-  private Map<Integer, TSStatus> dataNodeResponseStatusMap = new HashMap<>();
+  private Map<Integer, TSStatus> dataNodeResponseStatusMap;
 
-  public ConstructSchemaBlackListHandler(Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+  public ConstructSchemaBlackListHandler(
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      Map<Integer, TSStatus> dataNodeResponseStatusMap) {
     super(DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST, dataNodeLocationMap);
+    this.dataNodeResponseStatusMap = dataNodeResponseStatusMap;
   }
 
   public ConstructSchemaBlackListHandler(
@@ -54,10 +57,7 @@ public class ConstructSchemaBlackListHandler extends AbstractRetryHandler
         DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
         targetDataNode,
         dataNodeLocationMap);
-  }
-
-  public Map<Integer, TSStatus> getDataNodeResponseStatusMap() {
-    return dataNodeResponseStatusMap;
+    this.dataNodeResponseStatusMap = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -69,14 +69,10 @@ public class ConstructSchemaBlackListHandler extends AbstractRetryHandler
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.error(
-          "Failed to construct schema black list on DataNode {}, {}",
-          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
-          tsStatus);
+          "Failed to construct schema black list on DataNode {}, {}", targetDataNode, tsStatus);
     } else {
       LOGGER.error(
-          "Failed to construct schema black list on DataNode {}, {}",
-          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
-          tsStatus);
+          "Failed to construct schema black list on DataNode {}, {}", targetDataNode, tsStatus);
     }
     countDownLatch.countDown();
   }

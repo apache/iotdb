@@ -29,8 +29,8 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 public class InvalidateMatchedSchemaCacheHandler extends AbstractRetryHandler
@@ -39,10 +39,13 @@ public class InvalidateMatchedSchemaCacheHandler extends AbstractRetryHandler
   private static final Logger LOGGER =
       LoggerFactory.getLogger(InvalidateMatchedSchemaCacheHandler.class);
 
-  private Map<Integer, TSStatus> dataNodeResponseStatusMap = new HashMap<>();
+  private Map<Integer, TSStatus> dataNodeResponseStatusMap;
 
-  public InvalidateMatchedSchemaCacheHandler(Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+  public InvalidateMatchedSchemaCacheHandler(
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      Map<Integer, TSStatus> dataNodeResponseStatusMap) {
     super(DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE, dataNodeLocationMap);
+    this.dataNodeResponseStatusMap = dataNodeResponseStatusMap;
   }
 
   public InvalidateMatchedSchemaCacheHandler(
@@ -54,6 +57,7 @@ public class InvalidateMatchedSchemaCacheHandler extends AbstractRetryHandler
         DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
         targetDataNode,
         dataNodeLocationMap);
+    this.dataNodeResponseStatusMap = new ConcurrentHashMap<>();
   }
 
   public Map<Integer, TSStatus> getDataNodeResponseStatusMap() {
@@ -68,9 +72,7 @@ public class InvalidateMatchedSchemaCacheHandler extends AbstractRetryHandler
       LOGGER.info("Successfully invalidate matched schema cache on DataNode: {}", targetDataNode);
     } else {
       LOGGER.error(
-          "Failed to invalidate matched schema cache on DataNode {}, {}",
-          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
-          tsStatus);
+          "Failed to invalidate matched schema cache on DataNode {}, {}", targetDataNode, tsStatus);
     }
     countDownLatch.countDown();
   }

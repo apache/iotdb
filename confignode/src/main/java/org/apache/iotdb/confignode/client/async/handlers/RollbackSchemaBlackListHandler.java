@@ -29,8 +29,8 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 public class RollbackSchemaBlackListHandler extends AbstractRetryHandler
@@ -39,10 +39,13 @@ public class RollbackSchemaBlackListHandler extends AbstractRetryHandler
   private static final Logger LOGGER =
       LoggerFactory.getLogger(RollbackSchemaBlackListHandler.class);
 
-  private Map<Integer, TSStatus> dataNodeResponseStatusMap = new HashMap<>();
+  private Map<Integer, TSStatus> dataNodeResponseStatusMap;
 
-  public RollbackSchemaBlackListHandler(Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+  public RollbackSchemaBlackListHandler(
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      Map<Integer, TSStatus> dataNodeResponseStatusMap) {
     super(DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST, dataNodeLocationMap);
+    this.dataNodeResponseStatusMap = dataNodeResponseStatusMap;
   }
 
   public RollbackSchemaBlackListHandler(
@@ -54,6 +57,7 @@ public class RollbackSchemaBlackListHandler extends AbstractRetryHandler
         DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
         targetDataNode,
         dataNodeLocationMap);
+    this.dataNodeResponseStatusMap = new ConcurrentHashMap<>();
   }
 
   public Map<Integer, TSStatus> getDataNodeResponseStatusMap() {

@@ -29,8 +29,8 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 public class DeleteTimeSeriesHandler extends AbstractRetryHandler
@@ -38,10 +38,13 @@ public class DeleteTimeSeriesHandler extends AbstractRetryHandler
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteTimeSeriesHandler.class);
 
-  private Map<Integer, TSStatus> dataNodeResponseStatusMap = new HashMap<>();
+  private Map<Integer, TSStatus> dataNodeResponseStatusMap;
 
-  public DeleteTimeSeriesHandler(Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+  public DeleteTimeSeriesHandler(
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      Map<Integer, TSStatus> dataNodeResponseStatusMap) {
     super(DataNodeRequestType.DELETE_TIMESERIES, dataNodeLocationMap);
+    this.dataNodeResponseStatusMap = dataNodeResponseStatusMap;
   }
 
   public DeleteTimeSeriesHandler(
@@ -50,6 +53,7 @@ public class DeleteTimeSeriesHandler extends AbstractRetryHandler
       Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     super(
         countDownLatch, DataNodeRequestType.DELETE_TIMESERIES, targetDataNode, dataNodeLocationMap);
+    dataNodeResponseStatusMap = new ConcurrentHashMap<>();
   }
 
   public Map<Integer, TSStatus> getDataNodeResponseStatusMap() {
@@ -64,15 +68,9 @@ public class DeleteTimeSeriesHandler extends AbstractRetryHandler
       LOGGER.info("Successfully delete timeseries on DataNode: {}", targetDataNode);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
-      LOGGER.error(
-          "Failed to delete timeseries on DataNode {}, {}",
-          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
-          tsStatus);
+      LOGGER.error("Failed to delete timeseries on DataNode {}, {}", targetDataNode, tsStatus);
     } else {
-      LOGGER.error(
-          "Failed to delete timeseries on DataNode {}, {}",
-          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
-          tsStatus);
+      LOGGER.error("Failed to delete timeseries on DataNode {}, {}", targetDataNode, tsStatus);
     }
     countDownLatch.countDown();
   }

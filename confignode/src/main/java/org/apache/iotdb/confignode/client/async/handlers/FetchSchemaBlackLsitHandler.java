@@ -30,8 +30,8 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 public class FetchSchemaBlackLsitHandler extends AbstractRetryHandler
@@ -39,10 +39,13 @@ public class FetchSchemaBlackLsitHandler extends AbstractRetryHandler
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FetchSchemaBlackLsitHandler.class);
 
-  private Map<Integer, TFetchSchemaBlackListResp> dataNodeResponseMap = new HashMap<>();
+  private Map<Integer, TFetchSchemaBlackListResp> dataNodeResponseMap;
 
-  public FetchSchemaBlackLsitHandler(Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+  public FetchSchemaBlackLsitHandler(
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      Map<Integer, TFetchSchemaBlackListResp> dataNodeResponseMap) {
     super(DataNodeRequestType.FETCH_SCHEMA_BLACK_LIST, dataNodeLocationMap);
+    this.dataNodeResponseMap = dataNodeResponseMap;
   }
 
   public FetchSchemaBlackLsitHandler(
@@ -54,6 +57,7 @@ public class FetchSchemaBlackLsitHandler extends AbstractRetryHandler
         DataNodeRequestType.FETCH_SCHEMA_BLACK_LIST,
         targetDataNode,
         dataNodeLocationMap);
+    this.dataNodeResponseMap = new ConcurrentHashMap<>();
   }
 
   public Map<Integer, TFetchSchemaBlackListResp> getDataNodeResponseMap() {
@@ -70,14 +74,10 @@ public class FetchSchemaBlackLsitHandler extends AbstractRetryHandler
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.error(
-          "Failed to fetch schema black list on DataNode {}, {}",
-          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
-          tsStatus);
+          "Failed to fetch schema black list on DataNode {}, {}", targetDataNode, tsStatus);
     } else {
       LOGGER.error(
-          "Failed to fetch schema black list on DataNode {}, {}",
-          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
-          tsStatus);
+          "Failed to fetch schema black list on DataNode {}, {}", targetDataNode, tsStatus);
     }
     countDownLatch.countDown();
   }

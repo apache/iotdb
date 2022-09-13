@@ -25,12 +25,12 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.ConstructSchemaBlackListHandler;
-import org.apache.iotdb.confignode.client.async.handlers.DeleteDataForDeleteTimeSeriesHandler;
-import org.apache.iotdb.confignode.client.async.handlers.DeleteTimeSeriesHandler;
-import org.apache.iotdb.confignode.client.async.handlers.FetchSchemaBlackLsitHandler;
-import org.apache.iotdb.confignode.client.async.handlers.InvalidateMatchedSchemaCacheHandler;
-import org.apache.iotdb.confignode.client.async.handlers.RollbackSchemaBlackListHandler;
+import org.apache.iotdb.confignode.client.async.task.ConstructSchemaBlackListDataNodeTask;
+import org.apache.iotdb.confignode.client.async.task.DeleteDataForDeleteTimeSeriesDataNodeTask;
+import org.apache.iotdb.confignode.client.async.task.DeleteTimeSeriesDataNodeTask;
+import org.apache.iotdb.confignode.client.async.task.FetchSchemaBlackListDataNodeTask;
+import org.apache.iotdb.confignode.client.async.task.InvalidateMatchedSchemaCacheDataNodeTask;
+import org.apache.iotdb.confignode.client.async.task.RollbackSchemaBlackListDataNodeTask;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -127,6 +127,7 @@ public class DeleteTimeSeriesProcedure
     return Flow.HAS_MORE_STATE;
   }
 
+  // return the total num of timeseries in schema black list
   private int constructBlackList(ConfigNodeProcedureEnv env) {
     Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
@@ -141,21 +142,21 @@ public class DeleteTimeSeriesProcedure
             // construct request and send
             Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
             dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            ConstructSchemaBlackListHandler handler =
-                new ConstructSchemaBlackListHandler(dataNodeLocationMap);
+            ConstructSchemaBlackListDataNodeTask dataNodeTask =
+                new ConstructSchemaBlackListDataNodeTask(dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(
                     new TConstructSchemaBlackListReq(consensusGroupIdList, patternTreeBytes),
-                    handler);
-            handler
-                .getDataNodeResponseStatusMap()
+                    dataNodeTask);
+            dataNodeTask
+                .getDataNodeResponseMap()
                 .forEach(
                     (k, v) -> {
                       if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                         responseMap.put(k, v);
                       }
                     });
-            return handler.getDataNodeResponseStatusMap();
+            return dataNodeTask.getDataNodeResponseMap();
           }
         };
     constructBlackListTask.execute();
@@ -174,12 +175,12 @@ public class DeleteTimeSeriesProcedure
   private void invalidateCache(ConfigNodeProcedureEnv env) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    InvalidateMatchedSchemaCacheHandler handler =
-        new InvalidateMatchedSchemaCacheHandler(dataNodeLocationMap);
+    InvalidateMatchedSchemaCacheDataNodeTask dataNodeTask =
+        new InvalidateMatchedSchemaCacheDataNodeTask(dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes), handler);
-    Map<Integer, TSStatus> statusMap = handler.getDataNodeResponseStatusMap();
+            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes), dataNodeTask);
+    Map<Integer, TSStatus> statusMap = dataNodeTask.getDataNodeResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schema cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -243,15 +244,15 @@ public class DeleteTimeSeriesProcedure
                 TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
               Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
               dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-              DeleteDataForDeleteTimeSeriesHandler handler =
-                  new DeleteDataForDeleteTimeSeriesHandler(dataNodeLocationMap);
+              DeleteDataForDeleteTimeSeriesDataNodeTask dataNodeTask =
+                  new DeleteDataForDeleteTimeSeriesDataNodeTask(dataNodeLocationMap);
               AsyncDataNodeClientPool.getInstance()
                   .sendAsyncRequestToDataNodeWithRetry(
                       new TDeleteDataForDeleteTimeSeriesReq(
                           new ArrayList<>(consensusGroupIdList),
                           preparePatternTreeBytesData(patternTree)),
-                      handler);
-              return handler.getDataNodeResponseStatusMap();
+                      dataNodeTask);
+              return dataNodeTask.getDataNodeResponseMap();
             }
           };
       deleteDataTask.setExecuteOnAllReplicaset(true);
@@ -274,12 +275,13 @@ public class DeleteTimeSeriesProcedure
               TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
             Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
             dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            FetchSchemaBlackLsitHandler handler =
-                new FetchSchemaBlackLsitHandler(dataNodeLocationMap);
+            FetchSchemaBlackListDataNodeTask dataNodeTask =
+                new FetchSchemaBlackListDataNodeTask(dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(
-                    new TFetchSchemaBlackListReq(consensusGroupIdList, patternTreeBytes), handler);
-            Map<Integer, TFetchSchemaBlackListResp> respMap = handler.getDataNodeResponseMap();
+                    new TFetchSchemaBlackListReq(consensusGroupIdList, patternTreeBytes),
+                    dataNodeTask);
+            Map<Integer, TFetchSchemaBlackListResp> respMap = dataNodeTask.getDataNodeResponseMap();
             Map<Integer, TSStatus> statusMap = new HashMap<>();
             respMap.forEach(
                 (k, v) -> {
@@ -320,11 +322,12 @@ public class DeleteTimeSeriesProcedure
               TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
             Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
             dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            DeleteTimeSeriesHandler handler = new DeleteTimeSeriesHandler(dataNodeLocationMap);
+            DeleteTimeSeriesDataNodeTask dataNodeTask =
+                new DeleteTimeSeriesDataNodeTask(dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(
-                    new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes), handler);
-            return handler.getDataNodeResponseStatusMap();
+                    new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes), dataNodeTask);
+            return dataNodeTask.getDataNodeResponseMap();
           }
         };
     deleteTimeSeriesTask.execute();
@@ -383,13 +386,13 @@ public class DeleteTimeSeriesProcedure
               TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
             Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
             dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            RollbackSchemaBlackListHandler handler =
-                new RollbackSchemaBlackListHandler(dataNodeLocationMap);
+            RollbackSchemaBlackListDataNodeTask dataNodeTask =
+                new RollbackSchemaBlackListDataNodeTask(dataNodeLocationMap);
             AsyncDataNodeClientPool.getInstance()
                 .sendAsyncRequestToDataNodeWithRetry(
                     new TRollbackSchemaBlackListReq(consensusGroupIdList, patternTreeBytes),
-                    handler);
-            return handler.getDataNodeResponseStatusMap();
+                    dataNodeTask);
+            return dataNodeTask.getDataNodeResponseMap();
           }
         };
     rollbackStateTask.execute();
@@ -501,24 +504,25 @@ public class DeleteTimeSeriesProcedure
       while (!dataNodeConsensusGroupIdMap.isEmpty()) {
         Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
             sendSchemaRegionRequest(dataNodeConsensusGroupIdMap);
-        // some dataNode execution failure
         if (isFailed()) {
+          // some dataNode execution failure
           return;
         }
 
         if (currentFailedDataNodeMap.isEmpty()) {
+          // all succeeded
           break;
         }
 
-        // retry failed dataNode requests caused by unexpected error on other replicates on other
+        // retry failed dataNode requests caused by unexpected error on other replicas on other
         // dataNodes
         currentFailedDataNodeMap.forEach(dataNodeConsensusGroupIdMap::remove);
         // remove dataNodes that successfully executed request
         allFailedDataNodeSet.removeAll(dataNodeConsensusGroupIdMap.keySet());
         dataNodeConsensusGroupIdMap =
             getAvailableDataNodeLocationForRetry(currentFailedDataNodeMap, allFailedDataNodeSet);
-        // some consensus group has no available dataNode
         if (isFailed()) {
+          // some consensus group has no available dataNode
           return;
         }
       }
@@ -570,9 +574,9 @@ public class DeleteTimeSeriesProcedure
           if (leaderId == null || leaderId == -1) {
             for (TDataNodeLocation candidateDataNode : regionReplicaSet.getDataNodeLocations()) {
               if (!allFailedDataNodeSet.contains(candidateDataNode)) {
-                if (selectedDataNode == null) {
-                  selectedDataNode = candidateDataNode;
-                }
+                // since leader of this group is unknown, take the first available one
+                selectedDataNode = candidateDataNode;
+                break;
               }
             }
           } else {

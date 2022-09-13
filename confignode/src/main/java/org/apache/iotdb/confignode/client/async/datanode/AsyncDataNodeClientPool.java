@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.client.async.handlers.SetSystemStatusHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
+import org.apache.iotdb.confignode.client.async.task.AbstractDataNodeTask;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -224,15 +225,17 @@ public class AsyncDataNodeClientPool {
     }
   }
 
-  public void sendAsyncRequestToDataNodeWithRetry(Object req, AbstractRetryHandler handler) {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap = handler.getDataNodeLocationMap();
+  public void sendAsyncRequestToDataNodeWithRetry(
+      Object req, AbstractDataNodeTask<?> dataNodeTask) {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = dataNodeTask.getDataNodeLocationMap();
     if (dataNodeLocationMap.isEmpty()) {
       return;
     }
     for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
-      handler.setCountDownLatch(countDownLatch);
       for (TDataNodeLocation targetDataNode : dataNodeLocationMap.values()) {
+        AbstractRetryHandler handler = dataNodeTask.getSingleRequestHandler();
+        handler.setCountDownLatch(countDownLatch);
         handler.setTargetDataNode(targetDataNode);
         sendAsyncRequestToDataNode(targetDataNode, req, handler, retry);
       }
@@ -240,7 +243,7 @@ public class AsyncDataNodeClientPool {
       try {
         countDownLatch.await();
       } catch (InterruptedException e) {
-        LOGGER.error("Interrupted during {} on ConfigNode", handler.getDataNodeRequestType());
+        LOGGER.error("Interrupted during {} on ConfigNode", dataNodeTask.getDataNodeRequestType());
       }
       // Check if there is a node that fails to send the request, and retry if there is one
       if (dataNodeLocationMap.isEmpty()) {
