@@ -88,7 +88,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
-public class Session {
+public class Session implements ISession {
 
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
   protected static final TSProtocolVersion protocolVersion =
