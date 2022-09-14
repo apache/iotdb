@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import io.airlift.concurrent.SetThreadName;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,8 +61,7 @@ public class LocalSourceHandle implements ISourceHandle {
     this.queue = Validate.notNull(queue);
     this.queue.setSourceHandle(this);
     this.sourceHandleListener = Validate.notNull(sourceHandleListener);
-    this.threadName =
-        createFullIdFrom(localFragmentInstanceId, localPlanNodeId + "." + "SourceHandle");
+    this.threadName = createFullIdFrom(localFragmentInstanceId, localPlanNodeId);
   }
 
   @Override

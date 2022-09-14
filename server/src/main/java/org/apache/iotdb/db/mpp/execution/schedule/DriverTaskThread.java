@@ -23,10 +23,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import io.airlift.concurrent.SetThreadName;
 import io.airlift.units.Duration;
 
 import java.util.concurrent.Executor;

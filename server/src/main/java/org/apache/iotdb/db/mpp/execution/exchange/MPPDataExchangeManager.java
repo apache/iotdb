@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
@@ -33,7 +34,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
-import io.airlift.concurrent.SetThreadName;
 import org.apache.commons.lang3.Validate;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -78,7 +78,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req) throws TException {
       try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(req.sourceFragmentInstanceId, "SinkHandle"))) {
+          new SetThreadName(
+              createFullId(
+                  req.sourceFragmentInstanceId.queryId,
+                  req.sourceFragmentInstanceId.fragmentId,
+                  req.sourceFragmentInstanceId.instanceId))) {
         logger.debug(
             "[ProcessGetTsBlockRequest] sequence ID in [{}, {})",
             req.getStartSequenceId(),
@@ -104,9 +108,13 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
 
     @Override
-    public void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e) throws TException {
+    public void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e) {
       try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(e.sourceFragmentInstanceId, "SinkHandle"))) {
+          new SetThreadName(
+              createFullId(
+                  e.sourceFragmentInstanceId.queryId,
+                  e.sourceFragmentInstanceId.fragmentId,
+                  e.sourceFragmentInstanceId.instanceId))) {
         logger.debug(
             "Acknowledge data block event received, for data blocks whose sequence ID in [{}, {}) from {}.",
             e.getStartSequenceId(),
@@ -130,8 +138,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onNewDataBlockEvent(TNewDataBlockEvent e) throws TException {
       try (SetThreadName fragmentInstanceName =
-          new SetThreadName(
-              createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId + ".SourceHandle"))) {
+          new SetThreadName(createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId))) {
         logger.debug(
             "New data block event received, for plan node {} of {} from {}.",
             e.getTargetPlanNodeId(),
@@ -169,8 +176,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onEndOfDataBlockEvent(TEndOfDataBlockEvent e) throws TException {
       try (SetThreadName fragmentInstanceName =
-          new SetThreadName(
-              createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId + ".SourceHandle"))) {
+          new SetThreadName(createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId))) {
         logger.debug(
             "End of data block event received, for plan node {} of {} from {}.",
             e.getTargetPlanNodeId(),

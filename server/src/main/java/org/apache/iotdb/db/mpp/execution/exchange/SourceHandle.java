@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceCl
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
@@ -35,7 +36,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import io.airlift.concurrent.SetThreadName;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,8 +111,7 @@ public class SourceHandle implements ISourceHandle {
     this.bufferRetainedSizeInBytes = 0L;
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
-    this.threadName =
-        createFullIdFrom(localFragmentInstanceId, localPlanNodeId + "." + "SourceHandle");
+    this.threadName = createFullIdFrom(localFragmentInstanceId, localPlanNodeId);
   }
 
   @Override
@@ -148,70 +147,67 @@ public class SourceHandle implements ISourceHandle {
   }
 
   private synchronized void trySubmitGetDataBlocksTask() {
-    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      if (aborted || closed) {
-        return;
-      }
-      if (blockedOnMemory != null && !blockedOnMemory.isDone()) {
-        return;
-      }
+    if (aborted || closed) {
+      return;
+    }
+    if (blockedOnMemory != null && !blockedOnMemory.isDone()) {
+      return;
+    }
 
-      final int startSequenceId = nextSequenceId;
-      int endSequenceId = nextSequenceId;
-      long reservedBytes = 0L;
-      Pair<ListenableFuture<Void>, Boolean> pair = null;
-      long blockedSize = 0L;
-      while (sequenceIdToDataBlockSize.containsKey(endSequenceId)) {
-        Long bytesToReserve = sequenceIdToDataBlockSize.get(endSequenceId);
-        if (bytesToReserve == null) {
-          throw new IllegalStateException("Data block size is null.");
-        }
-        pair =
-            localMemoryManager
-                .getQueryPool()
-                .reserve(localFragmentInstanceId.getQueryId(), bytesToReserve);
-        bufferRetainedSizeInBytes += bytesToReserve;
-        endSequenceId += 1;
-        reservedBytes += bytesToReserve;
-        if (!pair.right) {
-          blockedSize = bytesToReserve;
-          break;
-        }
+    final int startSequenceId = nextSequenceId;
+    int endSequenceId = nextSequenceId;
+    long reservedBytes = 0L;
+    Pair<ListenableFuture<Void>, Boolean> pair = null;
+    long blockedSize = 0L;
+    while (sequenceIdToDataBlockSize.containsKey(endSequenceId)) {
+      Long bytesToReserve = sequenceIdToDataBlockSize.get(endSequenceId);
+      if (bytesToReserve == null) {
+        throw new IllegalStateException("Data block size is null.");
       }
-
-      if (pair == null) {
-        // Next data block not generated yet. Do nothing.
-        return;
-      }
-      nextSequenceId = endSequenceId;
-
+      pair =
+          localMemoryManager
+              .getQueryPool()
+              .reserve(localFragmentInstanceId.getQueryId(), bytesToReserve);
+      bufferRetainedSizeInBytes += bytesToReserve;
+      endSequenceId += 1;
+      reservedBytes += bytesToReserve;
       if (!pair.right) {
-        endSequenceId--;
-        reservedBytes -= blockedSize;
-        // The future being not completed indicates,
-        //   1. Memory has been reserved for blocks in [startSequenceId, endSequenceId).
-        //   2. Memory reservation for block whose sequence ID equals endSequenceId - 1 is blocked.
-        //   3. Have not reserve memory for the rest of blocks.
-        //
-        //  startSequenceId          endSequenceId - 1  endSequenceId
-        //         |-------- reserved --------|--- blocked ---|--- not reserved ---|
-
-        // Schedule another call of trySubmitGetDataBlocksTask for the rest of blocks.
-        blockedOnMemory = pair.left;
-        final int blockedSequenceId = endSequenceId;
-        final long blockedRetainedSize = blockedSize;
-        blockedOnMemory.addListener(
-            () ->
-                executorService.submit(
-                    new GetDataBlocksTask(
-                        blockedSequenceId, blockedSequenceId + 1, blockedRetainedSize)),
-            executorService);
+        blockedSize = bytesToReserve;
+        break;
       }
+    }
 
-      if (endSequenceId > startSequenceId) {
-        executorService.submit(
-            new GetDataBlocksTask(startSequenceId, endSequenceId, reservedBytes));
-      }
+    if (pair == null) {
+      // Next data block not generated yet. Do nothing.
+      return;
+    }
+    nextSequenceId = endSequenceId;
+
+    if (!pair.right) {
+      endSequenceId--;
+      reservedBytes -= blockedSize;
+      // The future being not completed indicates,
+      //   1. Memory has been reserved for blocks in [startSequenceId, endSequenceId).
+      //   2. Memory reservation for block whose sequence ID equals endSequenceId - 1 is blocked.
+      //   3. Have not reserve memory for the rest of blocks.
+      //
+      //  startSequenceId          endSequenceId - 1  endSequenceId
+      //         |-------- reserved --------|--- blocked ---|--- not reserved ---|
+
+      // Schedule another call of trySubmitGetDataBlocksTask for the rest of blocks.
+      blockedOnMemory = pair.left;
+      final int blockedSequenceId = endSequenceId;
+      final long blockedRetainedSize = blockedSize;
+      blockedOnMemory.addListener(
+          () ->
+              executorService.submit(
+                  new GetDataBlocksTask(
+                      blockedSequenceId, blockedSequenceId + 1, blockedRetainedSize)),
+          executorService);
+    }
+
+    if (endSequenceId > startSequenceId) {
+      executorService.submit(new GetDataBlocksTask(startSequenceId, endSequenceId, reservedBytes));
     }
   }
 
