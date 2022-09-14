@@ -65,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplate
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -113,13 +114,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     analysis.getDeviceToSourceExpressions().get(deviceName),
                     analysis.getDeviceToAggregationExpressions().get(deviceName),
                     analysis.getDeviceToAggregationTransformExpressions().get(deviceName),
-                    analysis.getDeviceToTransformExpressions().get(deviceName),
+                    Collections.emptySet(),
                     analysis.getDeviceToQueryFilter() != null
                         ? analysis.getDeviceToQueryFilter().get(deviceName)
                         : null,
-                    analysis.getDeviceToHavingExpression() != null
-                        ? analysis.getDeviceToHavingExpression().get(deviceName)
-                        : null,
+                    null,
                     analysis.getDeviceToMeasurementIndexesMap().get(deviceName),
                     context));
         deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
@@ -128,9 +127,23 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       planBuilder =
           planBuilder.planDeviceView(
               deviceToSubPlanMap,
-              analysis.getOutputExpressions(),
+              analysis.getTransformInput(),
               analysis.getDeviceToMeasurementIndexesMap(),
               queryStatement.getResultTimeOrder());
+      if (queryStatement.hasHaving()) {
+        planBuilder.planFilterAndTransform(
+            analysis.getHavingExpression(),
+            analysis.getTransformOutput(),
+            queryStatement.isGroupByTime(),
+            queryStatement.getSelectComponent().getZoneId(),
+            queryStatement.getResultTimeOrder());
+      } else {
+        planBuilder.planTransform(
+            analysis.getTransformOutput(),
+            queryStatement.isGroupByTime(),
+            queryStatement.getSelectComponent().getZoneId(),
+            queryStatement.getResultTimeOrder());
+      }
     } else {
       planBuilder =
           planBuilder.withNewRoot(
@@ -305,23 +318,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 aggregationExpressions,
                 aggregationTransformExpressions,
                 analysis.getGroupByLevelExpressions());
-        if (queryStatement.isGroupByLevel()) {
-          planBuilder = // plan Having with GroupByLevel
-              planBuilder.planFilterAndTransform(
-                  havingExpression,
-                  analysis.getGroupByLevelExpressions().keySet(),
-                  queryStatement.isGroupByTime(),
-                  queryStatement.getSelectComponent().getZoneId(),
-                  queryStatement.getResultTimeOrder());
-        } else {
-          planBuilder = // plan Having without GroupByLevel
-              planBuilder.planFilterAndTransform(
-                  havingExpression,
-                  transformExpressions,
-                  queryStatement.isGroupByTime(),
-                  queryStatement.getSelectComponent().getZoneId(),
-                  queryStatement.getResultTimeOrder());
-        }
       } else {
         planBuilder =
             planBuilder.planAggregationSource(

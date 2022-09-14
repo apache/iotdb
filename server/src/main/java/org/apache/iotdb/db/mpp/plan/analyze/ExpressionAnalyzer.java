@@ -483,7 +483,6 @@ public class ExpressionAnalyzer {
    *
    * @param prefixPaths prefix paths in the FROM clause
    * @param schemaTree interface for querying schema information
-   * @param typeProvider a map to record output symbols and their data types
    * @return the expression list with full path and after binding schema
    */
   public static List<Expression> removeWildcardInFilter(
@@ -1007,7 +1006,8 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Remove alias from expression. eg: root.sg.d1.status + 1 -> root.sg.d1.s2 + 1
+   * Remove alias from expression. eg: root.sg.d1.status + 1 -> root.sg.d1.s2 + 1, and reconstruct
+   * the name of FunctionExpression to lowercase.
    *
    * @return expression after removing alias
    */
