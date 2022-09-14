@@ -244,6 +244,7 @@ public class ProcedureManager {
       if (!finishedProcedure.isFinished()) {
         // the procedure is still executing
         statusList.add(RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS));
+        isSucceed = false;
         continue;
       }
       if (finishedProcedure.isSuccess()) {
