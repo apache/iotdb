@@ -4,6 +4,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogger;
 import org.apache.iotdb.db.engine.cache.AlteringRecordsCache;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -11,6 +12,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -19,9 +22,13 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class RewriteTimeseriesTask extends AbstractCompactionTask {
 
@@ -40,9 +47,6 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
   private File logFile;
 
   private final String logKey;
-
-  protected boolean[] isHoldingReadLock;
-  protected boolean[] isHoldingWriteLock;
 
   public RewriteTimeseriesTask(
       String storageGroupName,
@@ -63,58 +67,67 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
       return;
     }
     timePartitions.forEach(
-        curTimePartition -> {
-          // get seq tsFile list
-          TsFileResourceList seqTsFileResourcList =
-              tsFileManager.getSequenceListByTimePartition(curTimePartition);
-          // Gets the device list from the cache
-          Set<String> devicesCache = alteringRecordsCache.getDevicesCache(storageGroupName);
-          if (seqTsFileResourcList != null && seqTsFileResourcList.size() > 0) {
-            seqTsFileResourcList.forEach(
-                tsFileResource -> {
-                  Set<String> devices = tsFileResource.getDevices();
-                  if (devices == null) {
+        curTimePartition ->
+            candidateResourceSelectorByTimePartition(
+                storageGroupName, tsFileManager, isClearBegin, doneFiles, curTimePartition));
+  }
+
+  private void candidateResourceSelectorByTimePartition(
+      String storageGroupName,
+      TsFileManager tsFileManager,
+      boolean isClearBegin,
+      Set<TsFileIdentifier> doneFiles,
+      Long curTimePartition) {
+    // get seq tsFile list
+    TsFileResourceList seqTsFileResourcList =
+        tsFileManager.getSequenceListByTimePartition(curTimePartition);
+    // Gets the device list from the cache
+    Set<String> devicesCache = alteringRecordsCache.getDevicesCache(storageGroupName);
+    if (seqTsFileResourcList != null && seqTsFileResourcList.size() > 0) {
+      seqTsFileResourcList.forEach(
+          tsFileResource -> {
+            Set<String> devices = tsFileResource.getDevices();
+            if (devices == null) {
+              return;
+            }
+            // AlteringLog filter
+            if (isClearBegin && doneFiles != null && doneFiles.size() > 0) {
+              for (TsFileIdentifier tsFileIdentifier : doneFiles) {
+                try {
+                  TsFileNameGenerator.TsFileName logTsFileName =
+                      TsFileNameGenerator.getTsFileName(tsFileIdentifier.getFilename());
+                  TsFileNameGenerator.TsFileName tsFileName =
+                      TsFileNameGenerator.getTsFileName(tsFileResource.getTsFile().getName());
+                  // As long as time and version are the same, they are considered to be the
+                  // same
+                  // file
+                  if (logTsFileName.getTime() == tsFileName.getTime()
+                      && logTsFileName.getVersion() == tsFileName.getVersion()) {
+                    LOGGER.info(
+                        "[rewriteTimeseries] {} the file {} has been done",
+                        logKey,
+                        tsFileResource.getTsFilePath());
                     return;
                   }
-                  // AlteringLog filter
-                  if (isClearBegin && doneFiles != null && doneFiles.size() > 0) {
-                    for (TsFileIdentifier tsFileIdentifier : doneFiles) {
-                      try {
-                        TsFileNameGenerator.TsFileName logTsFileName =
-                            TsFileNameGenerator.getTsFileName(tsFileIdentifier.getFilename());
-                        TsFileNameGenerator.TsFileName tsFileName =
-                            TsFileNameGenerator.getTsFileName(tsFileResource.getTsFile().getName());
-                        // As long as time and version are the same, they are considered to be the
-                        // same
-                        // file
-                        if (logTsFileName.getTime() == tsFileName.getTime()
-                            && logTsFileName.getVersion() == tsFileName.getVersion()) {
-                          LOGGER.info(
-                              "[rewriteTimeseries] {} the file {} has been done",
-                              logKey,
-                              tsFileResource.getTsFilePath());
-                          return;
-                        }
-                      } catch (IOException e) {
-                        LOGGER.warn("tsfile name parseFailed");
-                        return;
-                      }
-                    }
-                  }
-                  // device filter
-                  // In most scenarios, the number of devices in the tsfile file is greater than the
-                  // number of devices to be modified
-                  for (String device : devicesCache) {
-                    // Looking for intersection
-                    // TODO Use a better algorithm instead
-                    if (devices.contains(device)) {
-                      candidateResourceList.add(tsFileResource);
-                      break;
-                    }
-                  }
-                });
-          }
-        });
+                } catch (IOException e) {
+                  LOGGER.warn("tsfile name parseFailed");
+                  return;
+                }
+              }
+            }
+            // device filter
+            // In most scenarios, the number of devices in the tsfile file is greater than the
+            // number of devices to be modified
+            for (String device : devicesCache) {
+              // Looking for intersection
+              // TODO Use a better algorithm instead
+              if (devices.contains(device)) {
+                candidateResourceList.add(tsFileResource);
+                break;
+              }
+            }
+          });
+    }
   }
 
   /** Continuously trying to update the status to CANDIDATE for a certain amount of time */
@@ -146,12 +159,6 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
         break;
       }
     }
-    isHoldingReadLock = new boolean[readyResourceList.size()];
-    isHoldingWriteLock = new boolean[readyResourceList.size()];
-    for (int i = 0; i < readyResourceList.size(); ++i) {
-      isHoldingWriteLock[i] = false;
-      isHoldingReadLock[i] = false;
-    }
   }
 
   @Override
@@ -165,13 +172,18 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
       if (readyResourceList == null || readyResourceList.isEmpty()) {
         return;
       }
-      // type filter: fast done
-      typeFilterAndDone(alteringLogger);
-      for (TsFileResource tsFileResource : readyResourceList) {
+      for (int i = 0; i < readyResourceList.size(); i++) {
+        TsFileResource tsFileResource = readyResourceList.get(i);
         if (tsFileResource == null || !tsFileResource.isClosed()) {
           return;
         }
-        //                rewriteDataInTsFile(tsFileResource);
+        rewriteDataInTsFile(tsFileResource);
+        // log file done
+        alteringLogger.doneFile(tsFileResource);
+        LOGGER.info(
+            "[alter timeseries] {} rewriteDataInTsFile {} end",
+            logKey,
+            tsFileResource.getTsFilePath());
       }
     } catch (Exception e) {
       LOGGER.error("[alter timeseries] " + logKey + " error", e);
@@ -187,83 +199,79 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     }
   }
 
-  private void typeFilterAndDone(AlteringLogger alteringLogger) {}
+  private void rewriteDataInTsFile(TsFileResource tsFileResource) throws IOException {
 
-  //    private void rewriteDataInTsFile(TsFileResource tsFileResource)
-  //            throws IOException {
-  //
-  //                LOGGER.info(
-  //                        "[alter timeseries] {} rewriteDataInTsFile:{}, fileSize:{} start",
-  //                        logKey,
-  //                        tsFileResource.getTsFilePath(),
-  //                        tsFileResource.getTsFileSize());
-  //                // Generate the target tsFileResource
-  //                TsFileResource targetTsFileResource =
-  //                        TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
-  //                // Data is read from the.tsfile file, re-encoded, compressed, and written to the
-  // .alter file
-  //                TsFileRewriteExcutor tsFileRewriteExcutor =
-  //                        new TsFileRewriteExcutor(
-  //                                tsFileResource,
-  //                                targetTsFileResource,
-  //                                fullPath,
-  //                                curEncoding,
-  //                                curCompressionType,
-  //                                timePartition,
-  //                                sequence);
-  //                tsFileRewriteExcutor.execute();
-  //                // .tsfile->.alter.old .alter->.tsfile
-  //                if(LOGGER.isDebugEnabled()) {
-  //                    LOGGER.debug("[alter timeseries] {} move tsfile", logKey);
-  //                }
-  //                tsFileResource.moveTsFile(TSFILE_SUFFIX, ALTER_OLD_TMP_FILE_SUFFIX);
-  //                targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX,
-  // TSFILE_SUFFIX);
-  //                // replace
-  //                if(LOGGER.isDebugEnabled()) {
-  //                    LOGGER.debug("[alter timeseries] {} replace tsfile", logKey);
-  //                }
-  //                tsFileManager.replace(
-  //                        Collections.singletonList(tsFileResource),
-  //                        Collections.emptyList(),
-  //                        Collections.singletonList(targetTsFileResource),
-  //                        timePartition,
-  //                        true);
-  //                }
-  //                // check & delete tsfile from disk
-  //                checkAndDeleteOldTsFile(tsFileResource, targetTsFileResource, logKey);
-  //                // log file done
-  //                alteringLogger.doneFile(tsFileResource);
-  //                logger.info(
-  //                        "[alter timeseries] {} rewriteDataInTsFile {} end",
-  //                        logKey,
-  //                        tsFileResource.getTsFilePath());
-  //    }
-  //
-  //    private void checkAndDeleteOldTsFile(
-  //            TsFileResource tsFileResource, TsFileResource targetTsFileResource, String logKey)
-  //            throws IOException {
-  //        // check
-  //        logger.debug("[alter timeseries] {} check tsfile", logKey);
-  //        if (targetTsFileResource.getTsFile().exists()
-  //                && targetTsFileResource.getTsFile().length()
-  //                < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
-  //            // the file size is smaller than magic string and version number
-  //            throw new TsFileNotCompleteException(
-  //                    String.format(
-  //                            "target file %s is smaller than magic string and version number
-  // size",
-  //                            targetTsFileResource));
-  //        }
-  //
-  //        logger.debug("[alter timeseries] {} delete tsfile", logKey);
-  //        logger.info(
-  //                "[alter timeseries] {} alter {} finish, start to delete old files",
-  //                logKey,
-  //                tsFileResource.getTsFilePath());
-  //        // delete the old files
-  //        deleteTsFile(tsFileResource, logicalStorageGroupName + "-" + dataRegionId);
-  //    }
+    LOGGER.info(
+        "[alter timeseries] {} rewriteDataInTsFile:{}, fileSize:{} start",
+        logKey,
+        tsFileResource.getTsFilePath(),
+        tsFileResource.getTsFileSize());
+    // Generate the target tsFileResource
+    TsFileResource targetTsFileResource =
+        TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
+    // Data is read from the.tsfile file, re-encoded, compressed, and written to the .alter file
+    TsFileRewriteExcutor tsFileRewriteExcutor =
+          new TsFileRewriteExcutor(
+                  tsFileResource,
+                  targetTsFileResource,
+                  true);
+    boolean hasRewrite = tsFileRewriteExcutor.execute();
+    if(!hasRewrite) {
+      CompactionUtils.deleteTsFileWithoutMods(targetTsFileResource);
+      LOGGER.info(
+              "[alter timeseries] {} tsFile:{} does not need to be rewrite",
+              logKey,
+              tsFileResource.getTsFileSize());
+
+      return;
+    }
+    // .tsfile->.alter.old .alter->.tsfile
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[alter timeseries] {} move tsfile", logKey);
+    }
+    tsFileResource.moveTsFile(TSFILE_SUFFIX, ALTER_OLD_TMP_FILE_SUFFIX);
+    targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
+    // replace
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[alter timeseries] {} replace tsfile", logKey);
+    }
+    tsFileManager.replace(
+        Collections.singletonList(tsFileResource),
+        Collections.emptyList(),
+        Collections.singletonList(targetTsFileResource),
+        timePartition,
+        true);
+    // check & delete tsfile from disk
+    checkAndDeleteOldTsFile(tsFileResource, targetTsFileResource, logKey);
+  }
+
+  private void checkAndDeleteOldTsFile(
+      TsFileResource tsFileResource, TsFileResource targetTsFileResource, String logKey)
+      throws IOException {
+    // check
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[alter timeseries] {} check tsfile", logKey);
+    }
+    if (targetTsFileResource.getTsFile().exists()
+        && targetTsFileResource.getTsFile().length()
+            < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
+      // the file size is smaller than magic string and version number
+      throw new TsFileNotCompleteException(
+          String.format(
+              "target file %s is smaller than magic string and version number size",
+              targetTsFileResource));
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[alter timeseries] {} delete tsfile", logKey);
+    }
+    LOGGER.info(
+        "[alter timeseries] {} alter {} finish, start to delete old files",
+        logKey,
+        tsFileResource.getTsFilePath());
+    // delete the old files
+    CompactionUtils.deleteTsFileWithoutMods(tsFileResource);
+  }
 
   @Override
   public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
@@ -288,15 +296,13 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     try {
       for (int i = 0; i < readyResourceList.size(); ++i) {
         TsFileResource resource = readyResourceList.get(i);
-        resource.readLock();
-        isHoldingReadLock[i] = true;
         if (resource.isCompacting()
             || !resource.isClosed()
             || !resource.getTsFile().exists()
             || resource.isDeleted()) {
           // this source file cannot be compacted
           // release the lock of locked files, and return
-          releaseFileLocksAndResetMergingStatus();
+          resetMergingStatus();
           return false;
         }
       }
@@ -305,25 +311,19 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
         resource.setStatus(TsFileResourceStatus.COMPACTING);
       }
     } catch (Throwable e) {
-      releaseFileLocksAndResetMergingStatus();
+      resetMergingStatus();
       throw e;
     }
     return true;
   }
 
   /**
-   * release the read lock and write lock of files if it is held, and set the merging status of
+   * set the merging status of
    * selected files to false copy from InnerSpaceCompactionTask
    */
-  protected void releaseFileLocksAndResetMergingStatus() {
+  protected void resetMergingStatus() {
     for (int i = 0; i < readyResourceList.size(); ++i) {
       TsFileResource resource = readyResourceList.get(i);
-      if (isHoldingReadLock[i]) {
-        resource.readUnlock();
-      }
-      if (isHoldingWriteLock[i]) {
-        resource.writeUnlock();
-      }
       try {
         if (!resource.isDeleted()) {
           readyResourceList.get(i).setStatus(TsFileResourceStatus.CLOSED);

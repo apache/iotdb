@@ -3825,19 +3825,6 @@ public class DataRegion {
     this.tsFileManager.setAllowCompaction(allowCompaction);
   }
 
-  /** delete tsfile, copy from CompactionUtils TODO We need to rename CompactionUtils */
-  public static boolean deleteTsFile(TsFileResource seqFile, String storageGroupName) {
-    try {
-      logger.info("{} Start to delete TsFile {}", storageGroupName, seqFile.getTsFilePath());
-      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      seqFile.remove();
-    } catch (IOException e) {
-      logger.error(e.getMessage(), e);
-      return false;
-    }
-    return true;
-  }
-
   private enum LoadTsFileType {
     LOAD_SEQUENCE,
     LOAD_UNSEQUENCE

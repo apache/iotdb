@@ -525,6 +525,20 @@ public class TsFileResource {
     return true;
   }
 
+  /** Remove the data file, its resource file physically. */
+  public boolean removeWithoutMods() {
+    try {
+      fsFactory.deleteIfExists(file);
+    } catch (IOException e) {
+      LOGGER.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      return false;
+    }
+    if (!removeResourceFile()) {
+      return false;
+    }
+    return true;
+  }
+
   public boolean removeResourceFile() {
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX));
