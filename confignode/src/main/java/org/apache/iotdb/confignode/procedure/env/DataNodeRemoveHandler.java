@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -95,19 +94,19 @@ public class DataNodeRemoveHandler {
         "DataNodeRemoveService start broadcastDisableDataNode to cluster, disabledDataNode: {}",
         getIdWithRpcEndpoint(disabledDataNode));
 
-    List<TEndPoint> otherOnlineDataNodes =
+    List<TDataNodeConfiguration> otherOnlineDataNodes =
         configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
-            .map(TDataNodeConfiguration::getLocation)
-            .filter(loc -> !loc.equals(disabledDataNode))
-            .map(TDataNodeLocation::getInternalEndPoint)
+            .filter(node -> !node.getLocation().equals(disabledDataNode))
             .collect(Collectors.toList());
 
-    for (TEndPoint node : otherOnlineDataNodes) {
+    for (TDataNodeConfiguration node : otherOnlineDataNodes) {
       TDisableDataNodeReq disableReq = new TDisableDataNodeReq(disabledDataNode);
       TSStatus status =
           SyncDataNodeClientPool.getInstance()
               .sendSyncRequestToDataNodeWithRetry(
-                  node, disableReq, DataNodeRequestType.DISABLE_DATA_NODE);
+                  node.getLocation().getInternalEndPoint(),
+                  disableReq,
+                  DataNodeRequestType.DISABLE_DATA_NODE);
       if (!isSucceed(status)) {
         LOGGER.error(
             "broadcastDisableDataNode meets error, disabledDataNode: {}, error: {}",
