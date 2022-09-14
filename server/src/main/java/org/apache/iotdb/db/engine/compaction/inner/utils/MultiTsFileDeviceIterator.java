@@ -81,7 +81,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
     this.tsFileResources = new ArrayList<>(seqResources);
     tsFileResources.addAll(unseqResources);
-    Collections.sort(this.tsFileResources, TsFileResource::compareFileName);
+    Collections.sort(this.tsFileResources, TsFileResource::compareFileNameByDesc);
     for (TsFileResource tsFileResource : tsFileResources) {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
