@@ -146,11 +146,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
-  private final RegionManager regionManager;
+  private final DataNodeRegionManager regionManager;
 
   public DataNodeInternalRPCServiceImpl() {
     super();
-    regionManager = new RegionManager(schemaEngine, storageEngine);
+    regionManager = new DataNodeRegionManager(schemaEngine, storageEngine);
   }
 
   @Override

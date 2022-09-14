@@ -515,7 +515,7 @@ public class DeleteTimeSeriesProcedure
                   targetSchemaRegionGroup);
       while (!dataNodeConsensusGroupIdMap.isEmpty()) {
         Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
-            sendSchemaRegionRequest(dataNodeConsensusGroupIdMap);
+            sendRegionRequest(dataNodeConsensusGroupIdMap);
         if (isFailed()) {
           // some dataNode execution failure
           return;
@@ -540,7 +540,7 @@ public class DeleteTimeSeriesProcedure
       }
     }
 
-    private Map<TDataNodeLocation, List<TConsensusGroupId>> sendSchemaRegionRequest(
+    private Map<TDataNodeLocation, List<TConsensusGroupId>> sendRegionRequest(
         Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap) {
       // send request to each dataNode
       Map<TDataNodeLocation, List<TConsensusGroupId>> failedDataNodeMap = new HashMap<>();
@@ -561,8 +561,7 @@ public class DeleteTimeSeriesProcedure
                 new ProcedureException(
                     new MetadataException(
                         String.format(
-                            "Delete timeseries %s failed on when [%s]",
-                            requestMessage, taskName))));
+                            "Delete timeseries %s failed when [%s]", requestMessage, taskName))));
             break;
           } else {
             // unexpected error, retry on other replicates on other dataNodes

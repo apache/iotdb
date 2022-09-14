@@ -59,9 +59,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * This class takes the responsibility of managing regions, executing PlanNode of write type on
  * according regions and controlling the execution concurrency.
  */
-public class RegionManager {
+public class DataNodeRegionManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(RegionManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRegionManager.class);
 
   private final SchemaEngine schemaEngine;
   private final StorageEngineV2 storageEngine;
@@ -71,7 +71,7 @@ public class RegionManager {
   private final Map<DataRegionId, ReentrantReadWriteLock> dataRegionLockMap =
       new ConcurrentHashMap<>();
 
-  public RegionManager(SchemaEngine schemaEngine, StorageEngineV2 storageEngine) {
+  public DataNodeRegionManager(SchemaEngine schemaEngine, StorageEngineV2 storageEngine) {
     this.schemaEngine = schemaEngine;
     this.storageEngine = storageEngine;
     schemaEngine
@@ -199,7 +199,7 @@ public class RegionManager {
         LOGGER.error(
             "Something wrong happened while calling consensus layer's write API.",
             writeResponse.getException());
-        return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR);
+        return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
       }
       return status;
     } finally {
