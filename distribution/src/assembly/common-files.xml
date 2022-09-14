@@ -44,5 +44,8 @@
         <file>
             <source>${maven.multiModuleProjectDirectory}/RELEASE_NOTES.md</source>
         </file>
+        <file>
+            <source>${project.build.directory}/COMMIT</source>
+        </file>
     </files>
 </component>
