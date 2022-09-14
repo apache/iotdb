@@ -143,7 +143,7 @@ public class CompactionUtils {
             device,
             existedMeasurements,
             measurementSchemas,
-            new HashSet<>(existedMeasurements),
+            schemaMap.keySet(),
             queryContext,
             queryDataSource,
             true);
