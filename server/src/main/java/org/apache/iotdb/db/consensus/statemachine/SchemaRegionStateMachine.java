@@ -93,22 +93,4 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
         fragmentInstance.getId());
     return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);
   }
-
-  @Override
-  public boolean shouldRetry(TSStatus writeResult) {
-    // TODO implement this method
-    return super.shouldRetry(writeResult);
-  }
-
-  @Override
-  public TSStatus updateResult(TSStatus retryResult) {
-    // TODO implement this method
-    return super.updateResult(retryResult);
-  }
-
-  @Override
-  public long getSleepTime() {
-    // TODO implement this method
-    return super.getSleepTime();
-  }
 }

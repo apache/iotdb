@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -166,6 +167,27 @@ public class TestUtils {
 
     public List<Peer> getConfiguration() {
       return configuration;
+    }
+
+    static class Retry3Times implements IStateMachine.RetryPolicy {
+      private int retryTimes = 3;
+
+      @Override
+      public boolean shouldRetry(TSStatus writeResult) {
+        // retry when Series overflow and max retry time is 3
+        return retryTimes > 0 && writeResult.getCode() == TSStatusCode.SERIES_OVERFLOW.getStatusCode();
+      }
+
+      @Override
+      public TSStatus updateResult(TSStatus previousResult, TSStatus retryResult) {
+        retryTimes--;
+        return retryResult;
+      }
+    }
+
+    @Override
+    public RetryPolicy retryPolicy() {
+      return new Retry3Times();
     }
   }
 }

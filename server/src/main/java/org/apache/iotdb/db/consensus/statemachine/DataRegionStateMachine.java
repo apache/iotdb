@@ -379,22 +379,4 @@ public class DataRegionStateMachine extends BaseStateMachine {
       return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
     }
   }
-
-  @Override
-  public boolean shouldRetry(TSStatus writeResult) {
-    // TODO implement this method
-    return super.shouldRetry(writeResult);
-  }
-
-  @Override
-  public TSStatus updateResult(TSStatus retryResult) {
-    // TODO implement this method
-    return super.updateResult(retryResult);
-  }
-
-  @Override
-  public long getSleepTime() {
-    // TODO implement this method
-    return super.getSleepTime();
-  }
 }

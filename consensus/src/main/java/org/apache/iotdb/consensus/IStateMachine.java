@@ -95,7 +95,7 @@ public interface IStateMachine {
   /**
    * To guarantee the statemachine replication property, when {@link #write(IConsensusRequest)}
    * failed in this statemachine, Upper consensus implementation like RatisConsensus may choose to
-   * retry the operation until it exceeds.
+   * retry the operation until it succeed.
    */
   interface RetryPolicy {
 
@@ -107,10 +107,11 @@ public interface IStateMachine {
     /**
      * Use the latest write result to update final write result
      *
-     * @param retryResult the latest write result
+     * @param previousResult previous write result
+     * @param retryResult latest write result
      * @return the aggregated result upon current retry
      */
-    default TSStatus updateResult(TSStatus retryResult) {
+    default TSStatus updateResult(TSStatus previousResult, TSStatus retryResult) {
       return retryResult;
     }
 
@@ -120,8 +121,12 @@ public interface IStateMachine {
      * @return time in millis
      */
     default long getSleepTime() {
-      return 0;
+      return 100;
     };
+  }
+
+  default RetryPolicy retryPolicy() {
+    return (IStateMachine.RetryPolicy) this;
   }
 
   /** An optional API for event notifications. */
