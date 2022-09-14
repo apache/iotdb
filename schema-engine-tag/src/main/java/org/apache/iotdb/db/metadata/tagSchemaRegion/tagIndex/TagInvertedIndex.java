@@ -18,18 +18,25 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion.DeletionManager;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion.InsertionManager;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query.QueryManager;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.recover.RecoverManager;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
 import org.apache.iotdb.lsm.context.DeleteContext;
 import org.apache.iotdb.lsm.context.InsertContext;
 import org.apache.iotdb.lsm.context.QueryContext;
 
+import org.apache.iotdb.lsm.wal.WALWriter;
 import org.roaringbitmap.RoaringBitmap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -38,44 +45,61 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class TagInvertedIndex implements ITagInvertedIndex {
+  private static final Logger logger = LoggerFactory.getLogger(TagInvertedIndex.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private int numOfDeviceIdsInMemTable;
+  private final InsertionManager insertionManager;
+
+  private final DeletionManager deletionManager;
+
+  private final QueryManager queryManager;
+
+  private final WALManager walManager;
+
+  private final RecoverManager recoverManager;
+
+  private final int numOfDeviceIdsInMemTable;
+
+  private final Map<Integer, MemTable> immutableMemTables;
 
   private MemTable workingMemTable;
 
-  private MemTable unsequenceMemTable;
-
-  private Map<Integer, MemTable> immutableMemTables;
-
   private int maxDeviceID;
 
-  public TagInvertedIndex() {
+  public TagInvertedIndex(String schemaDirPath) throws IOException {
+    walManager = new WALManager(schemaDirPath);
+    insertionManager = new InsertionManager(walManager);
+    deletionManager = new DeletionManager(walManager);
+    recoverManager = new RecoverManager(walManager);
+    queryManager = new QueryManager();
     workingMemTable = new MemTable(MemTable.WORKING);
-    unsequenceMemTable = new MemTable(MemTable.UNSEQUENCE);
     immutableMemTables = new HashMap<>();
     numOfDeviceIdsInMemTable = config.getNumOfDeviceIdsInMemTable();
     maxDeviceID = 0;
+    recover();
+  }
+
+  public synchronized void recover(){
+    recoverManager.recover(this);
   }
 
   @Override
   public synchronized void addTags(Map<String, String> tags, int id) {
     MemTable memTable = null;
-    // 出现乱序
-    if (id < maxDeviceID) {
-      memTable = unsequenceMemTable;
-    } else {
-      if (!inWorkingMemTable(id)) {
-        workingMemTable.setStatus(MemTable.IMMUTABLE);
-        immutableMemTables.put(maxDeviceID / numOfDeviceIdsInMemTable, workingMemTable);
-        workingMemTable = new MemTable(MemTable.WORKING);
-      }
-      memTable = workingMemTable;
-      maxDeviceID = id;
+    if (!inWorkingMemTable(id)) {
+      workingMemTable.setStatus(MemTable.IMMUTABLE);
+      immutableMemTables.put(maxDeviceID / numOfDeviceIdsInMemTable, workingMemTable);
+      workingMemTable = new MemTable(MemTable.WORKING);
     }
-    for (Map.Entry<String, String> tag : tags.entrySet()) {
-      addTag(memTable, tag.getKey(), tag.getValue(), id);
+    memTable = workingMemTable;
+    maxDeviceID = id;
+    try {
+      for (Map.Entry<String, String> tag : tags.entrySet()) {
+        addTag(memTable, tag.getKey(), tag.getValue(), id);
+      }
+    }catch (Exception e){
+      logger.error(e.getMessage());
     }
   }
 
@@ -86,11 +110,14 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     if (inWorkingMemTable(id)) {
       memTables.add(workingMemTable);
     } else {
-      memTables.add(unsequenceMemTable);
       memTables.add(immutableMemTables.get(id / numOfDeviceIdsInMemTable));
     }
-    for (Map.Entry<String, String> tag : tags.entrySet()) {
-      removeTag(memTables, tag.getKey(), tag.getValue(), id);
+    try {
+      for (Map.Entry<String, String> tag : tags.entrySet()) {
+        removeTag(memTables, tag.getKey(), tag.getValue(), id);
+      }
+    }catch (Exception e){
+      logger.error(e.getMessage());
     }
   }
 
@@ -98,15 +125,18 @@ public class TagInvertedIndex implements ITagInvertedIndex {
   public synchronized List<Integer> getMatchedIDs(Map<String, String> tags) {
     List<MemTable> memTables = new ArrayList<>();
     memTables.add(workingMemTable);
-    memTables.add(unsequenceMemTable);
     memTables.addAll(immutableMemTables.values());
     RoaringBitmap roaringBitmap = new RoaringBitmap();
     int i = 0;
-    for (Map.Entry<String, String> tag : tags.entrySet()) {
-      RoaringBitmap rb = getMatchedIDs(memTables, tag.getKey(), tag.getValue());
-      if (i == 0) roaringBitmap = rb;
-      else roaringBitmap = RoaringBitmap.and(roaringBitmap, rb);
-      i++;
+    try {
+      for (Map.Entry<String, String> tag : tags.entrySet()) {
+        RoaringBitmap rb = getMatchedIDs(memTables, tag.getKey(), tag.getValue());
+        if (i == 0) roaringBitmap = rb;
+        else roaringBitmap = RoaringBitmap.and(roaringBitmap, rb);
+        i++;
+      }
+    }catch (Exception e){
+      logger.error(e.getMessage());
     }
     return Arrays.stream(roaringBitmap.toArray()).boxed().collect(Collectors.toList());
   }
@@ -118,8 +148,6 @@ public class TagInvertedIndex implements ITagInvertedIndex {
         + numOfDeviceIdsInMemTable
         + ", workingMemTable="
         + workingMemTable
-        + ", unsequenceMemTable="
-        + unsequenceMemTable
         + ", immutableMemTables="
         + immutableMemTables
         + ", maxDeviceID="
@@ -131,23 +159,28 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     return id / numOfDeviceIdsInMemTable == maxDeviceID / numOfDeviceIdsInMemTable;
   }
 
-  private void addTag(MemTable memTable, String tagKey, String tagValue, int id) {
+  private void addTag(MemTable memTable, String tagKey, String tagValue, int id) throws Exception {
     InsertContext insertContext = new InsertContext(id, tagKey, tagValue);
-    InsertionManager.getInstance().manager(memTable).process(insertContext);
+    insertionManager.process(memTable, insertContext);
   }
 
-  private void removeTag(List<MemTable> memTables, String tagKey, String tagValue, int id) {
+  private void removeTag(List<MemTable> memTables, String tagKey, String tagValue, int id) throws Exception {
     DeleteContext deleteContext = new DeleteContext(id, tagKey, tagValue);
     for (MemTable memTable : memTables) {
-      DeletionManager.getInstance().manager(memTable).process(deleteContext);
+      deletionManager.process(memTable, deleteContext);
     }
   }
 
-  private RoaringBitmap getMatchedIDs(List<MemTable> memTables, String tagKey, String tagValue) {
+  private RoaringBitmap getMatchedIDs(List<MemTable> memTables, String tagKey, String tagValue) throws Exception {
     QueryContext queryContext = new QueryContext(tagKey, tagValue);
     for (MemTable memTable : memTables) {
-      QueryManager.getInstance().manager(memTable).process(queryContext);
+      queryManager.process(memTable, queryContext);
     }
     return (RoaringBitmap) queryContext.getResult();
+  }
+
+  @TestOnly
+  public void clear() throws IOException {
+    walManager.close();
   }
 }

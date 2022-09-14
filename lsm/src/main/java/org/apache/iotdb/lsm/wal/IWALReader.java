@@ -16,27 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
+package org.apache.iotdb.lsm.wal;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
-import org.apache.iotdb.lsm.context.DeleteContext;
-import org.apache.iotdb.lsm.manager.BasicLsmManager;
-
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
-public class DeletionManager extends BasicLsmManager<MemTable, DeleteContext> {
+public interface IWALReader {
 
-  WALManager walManager;
+  void close() throws IOException;
 
-  public DeletionManager(WALManager walManager) {
-    this.walManager = walManager;
-    initLevelProcess();
-  }
+  boolean hasNext() throws FileNotFoundException;
 
-  private void initLevelProcess() {
-    this.nextLevel(new MemTableDeletion())
-        .nextLevel(new MemChunkGroupDeletion())
-        .nextLevel(new MemChunkDeletion());
-  }
+  WALRecord next() throws FileNotFoundException;
 }

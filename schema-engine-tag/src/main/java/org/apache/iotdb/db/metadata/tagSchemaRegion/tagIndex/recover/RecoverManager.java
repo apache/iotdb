@@ -16,27 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.recover;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.TagInvertedIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
-import org.apache.iotdb.lsm.context.DeleteContext;
-import org.apache.iotdb.lsm.manager.BasicLsmManager;
 
-import java.io.IOException;
-
-public class DeletionManager extends BasicLsmManager<MemTable, DeleteContext> {
+public class RecoverManager {
 
   WALManager walManager;
 
-  public DeletionManager(WALManager walManager) {
+  public RecoverManager(WALManager walManager) {
     this.walManager = walManager;
-    initLevelProcess();
   }
 
-  private void initLevelProcess() {
-    this.nextLevel(new MemTableDeletion())
-        .nextLevel(new MemChunkGroupDeletion())
-        .nextLevel(new MemChunkDeletion());
-  }
+  public void recover(TagInvertedIndex tagInvertedIndex) {}
 }

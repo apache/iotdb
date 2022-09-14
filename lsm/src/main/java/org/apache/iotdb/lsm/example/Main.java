@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 public class Main {
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     MemTableManager memTableManager = new MemTableManager();
     System.out.println("-------------insert--------------");
     insertionExample(memTableManager);
@@ -37,10 +37,10 @@ public class Main {
     flushExample(memTableManager);
   }
 
-  public static void insertionExample(MemTableManager memTableManager) {
+  public static void insertionExample(MemTableManager memTableManager) throws Exception {
 
     BasicLsmManager<MemTableManager, InsertContext> baseLsmManager =
-        new BasicLsmManager<MemTableManager, InsertContext>().manager(memTableManager);
+        new BasicLsmManager<MemTableManager, InsertContext>();
     baseLsmManager
         .nextLevel(
             new InsertLevelProcess<MemTableManager, MemTable>() {
@@ -127,25 +127,25 @@ public class Main {
               }
             });
 
-    baseLsmManager.process(new InsertContext(1, null, "a", "b"));
-    baseLsmManager.process(new InsertContext(2, null, "a", "d"));
-    baseLsmManager.process(new InsertContext(3, null, "a", "e"));
-    baseLsmManager.process(new InsertContext(4, null, "a", "b"));
-    baseLsmManager.process(new InsertContext(5, null, "a1", "b"));
-    baseLsmManager.process(new InsertContext(6, null, "a2", "b"));
-    baseLsmManager.process(new InsertContext(65535, null, "a", "b"));
-    baseLsmManager.process(new InsertContext(65536, null, "a", "b"));
-    baseLsmManager.process(new InsertContext(2, null, "a", "d"));
-    baseLsmManager.process(new InsertContext(3, null, "a", "e"));
-    baseLsmManager.process(new InsertContext(4, null, "a", "b"));
-    baseLsmManager.process(new InsertContext(5, null, "a1", "b"));
-    baseLsmManager.process(new InsertContext(6, null, "a2", "b"));
+    baseLsmManager.process(memTableManager, new InsertContext(1, null, "a", "b"));
+    baseLsmManager.process(memTableManager, new InsertContext(2, null, "a", "d"));
+    baseLsmManager.process(memTableManager, new InsertContext(3, null, "a", "e"));
+    baseLsmManager.process(memTableManager, new InsertContext(4, null, "a", "b"));
+    baseLsmManager.process(memTableManager, new InsertContext(5, null, "a1", "b"));
+    baseLsmManager.process(memTableManager, new InsertContext(6, null, "a2", "b"));
+    baseLsmManager.process(memTableManager, new InsertContext(65535, null, "a", "b"));
+    baseLsmManager.process(memTableManager, new InsertContext(65536, null, "a", "b"));
+    baseLsmManager.process(memTableManager, new InsertContext(2, null, "a", "d"));
+    baseLsmManager.process(memTableManager, new InsertContext(3, null, "a", "e"));
+    baseLsmManager.process(memTableManager, new InsertContext(4, null, "a", "b"));
+    baseLsmManager.process(memTableManager, new InsertContext(5, null, "a1", "b"));
+    baseLsmManager.process(memTableManager, new InsertContext(6, null, "a2", "b"));
     System.out.println(memTableManager);
   }
 
-  public static void flushExample(MemTableManager memTableManager) {
+  public static void flushExample(MemTableManager memTableManager) throws Exception {
     BasicLsmManager<MemTableManager, FlushContext> flushManager =
-        new BasicLsmManager<MemTableManager, FlushContext>().manager(memTableManager);
+        new BasicLsmManager<MemTableManager, FlushContext>();
 
     flushManager
         .nextLevel(
@@ -204,6 +204,6 @@ public class Main {
               }
             });
 
-    flushManager.process(new FlushContext());
+    flushManager.process(memTableManager, new FlushContext());
   }
 }

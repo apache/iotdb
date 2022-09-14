@@ -23,19 +23,14 @@ import org.apache.iotdb.lsm.context.QueryContext;
 import org.apache.iotdb.lsm.manager.BasicLsmManager;
 
 public class QueryManager extends BasicLsmManager<MemTable, QueryContext> {
-  private QueryManager() {
+
+  public QueryManager() {
+    initLevelProcess();
+  }
+
+  private void initLevelProcess() {
     this.nextLevel(new MemTableQuery())
         .nextLevel(new MemChunkGroupQuery())
         .nextLevel(new MemChunkQuery());
-  }
-
-  public static QueryManager getInstance() {
-    return QueryManagerHolder.INSTANCE;
-  }
-
-  private static class QueryManagerHolder {
-    private static final QueryManager INSTANCE = new QueryManager();
-
-    private QueryManagerHolder() {}
   }
 }

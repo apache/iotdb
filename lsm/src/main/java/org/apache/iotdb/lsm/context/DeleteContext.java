@@ -39,8 +39,17 @@ public class DeleteContext extends Context {
     accessStrategy = new PostOrderAccessStrategy();
   }
 
+  public DeleteContext(Object value,List<Object> keys){
+    this.value = value;
+    this.keys = keys;
+  }
+
   public Object getKey() {
     return keys.get(level);
+  }
+
+  public List<Object> getKeys() {
+    return keys;
   }
 
   public Object getValue() {

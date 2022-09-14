@@ -28,8 +28,6 @@ public class MemTable {
 
   public static final String IMMUTABLE = "immutable";
 
-  public static final String UNSEQUENCE = "unsequence";
-
   private Map<String, MemChunkGroup> memChunkGroupMap;
 
   private String status;

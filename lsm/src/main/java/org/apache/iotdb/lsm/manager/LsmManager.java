@@ -22,9 +22,8 @@ import org.apache.iotdb.lsm.context.Context;
 import org.apache.iotdb.lsm.levelProcess.LevelProcess;
 
 public interface LsmManager<T, C extends Context> {
-  LsmManager<T, C> manager(T memNode);
 
-  void process(C context);
+  void process(T memNode, C context) throws Exception;
 
   <O> LevelProcess<T, O, C> nextLevel(LevelProcess<T, O, C> next);
 }

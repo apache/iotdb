@@ -16,27 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
-
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
-import org.apache.iotdb.lsm.context.DeleteContext;
-import org.apache.iotdb.lsm.manager.BasicLsmManager;
+package org.apache.iotdb.lsm.wal;
 
 import java.io.IOException;
 
-public class DeletionManager extends BasicLsmManager<MemTable, DeleteContext> {
+public interface IWALWriter {
 
-  WALManager walManager;
+  void write(WALRecord walRecord) throws IOException;
 
-  public DeletionManager(WALManager walManager) {
-    this.walManager = walManager;
-    initLevelProcess();
-  }
+  void force() throws IOException;
 
-  private void initLevelProcess() {
-    this.nextLevel(new MemTableDeletion())
-        .nextLevel(new MemChunkGroupDeletion())
-        .nextLevel(new MemChunkDeletion());
-  }
+  void close() throws IOException;
 }

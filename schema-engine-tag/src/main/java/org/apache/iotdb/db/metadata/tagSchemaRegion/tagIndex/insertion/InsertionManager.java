@@ -19,24 +19,30 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALEntry;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
 import org.apache.iotdb.lsm.context.InsertContext;
 import org.apache.iotdb.lsm.manager.BasicLsmManager;
 
+import java.io.IOException;
+
 public class InsertionManager extends BasicLsmManager<MemTable, InsertContext> {
 
-  private InsertionManager() {
+  private WALManager walManager;
+
+  public InsertionManager(WALManager walManager){
+    this.walManager = walManager;
+    initLevelProcess();
+  }
+
+  @Override
+  public void preProcess(MemTable root, InsertContext context) throws IOException {
+    walManager.write(context);
+  }
+
+  private void initLevelProcess() {
     this.nextLevel(new MemTableInsertion())
         .nextLevel(new MemChunkGroupInsertion())
         .nextLevel(new MemChunkInsertion());
-  }
-
-  public static InsertionManager getInstance() {
-    return InsertionManagerHolder.INSTANCE;
-  }
-
-  private static class InsertionManagerHolder {
-    private static final InsertionManager INSTANCE = new InsertionManager();
-
-    private InsertionManagerHolder() {}
   }
 }

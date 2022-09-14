@@ -40,8 +40,17 @@ public class InsertContext extends Context {
     accessStrategy = new PreOrderAccessStrategy();
   }
 
+  public InsertContext(Object value,List<Object> keys){
+    this.value = value;
+    this.keys = keys;
+  }
+
   public Object getKey() {
     return keys.get(level);
+  }
+
+  public List<Object> getKeys() {
+    return keys;
   }
 
   public Object getValue() {

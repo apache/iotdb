@@ -21,21 +21,21 @@ package org.apache.iotdb.lsm.manager;
 import org.apache.iotdb.lsm.context.Context;
 import org.apache.iotdb.lsm.levelProcess.LevelProcess;
 
-public class BasicLsmManager<T, C extends Context> implements LsmManager<T, C> {
+import java.io.IOException;
 
-  T root;
+public class BasicLsmManager<T, C extends Context> implements LsmManager<T, C> {
 
   LevelProcess<T, ?, C> levelProcess;
 
-  @Override
-  public BasicLsmManager<T, C> manager(T memNode) {
-    root = memNode;
-    return this;
-  }
+  public void preProcess(T root, C context) throws Exception {}
+
+  public void postProcess(T root, C context) throws Exception{}
 
   @Override
-  public void process(C context) {
+  public void process(T root, C context) throws Exception{
+    preProcess(root, context);
     levelProcess.process(root, context);
+    postProcess(root, context);
   }
 
   @Override
