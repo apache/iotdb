@@ -114,10 +114,6 @@ public class PathPatternNode<V> {
     return name.equals(MULTI_LEVEL_PATH_WILDCARD);
   }
 
-  public boolean isOneLevelWildcard() {
-    return name.equals(MULTI_LEVEL_PATH_WILDCARD);
-  }
-
   @TestOnly
   public boolean equalWith(PathPatternNode<V> that) {
     if (this == that) {
