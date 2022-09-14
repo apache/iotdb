@@ -30,10 +30,6 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -55,6 +51,7 @@ import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class StorageGroupPartitionTable {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageGroupPartitionTable.class);
@@ -62,10 +59,6 @@ public class StorageGroupPartitionTable {
   private volatile boolean isPredeleted = false;
   // The name of storage group
   private String storageGroupName;
-
-  // Total number of SeriesPartitionSlots occupied by schema,
-  // determines whether a new Region needs to be created
-  private final AtomicInteger seriesPartitionSlotsCount;
 
   // Region
   private final Map<TConsensusGroupId, RegionGroup> regionGroupMap;
@@ -76,58 +69,11 @@ public class StorageGroupPartitionTable {
 
   public StorageGroupPartitionTable(String storageGroupName) {
     this.storageGroupName = storageGroupName;
-    this.seriesPartitionSlotsCount = new AtomicInteger(0);
 
     this.regionGroupMap = new ConcurrentHashMap<>();
 
     this.schemaPartitionTable = new SchemaPartitionTable();
     this.dataPartitionTable = new DataPartitionTable();
-
-    addMetrics();
-  }
-
-  private void addMetrics() {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.REGION.toString(),
-            MetricLevel.NORMAL,
-            this,
-            o -> o.getRegionGroupCount(TConsensusGroupType.SchemaRegion),
-            Tag.NAME.toString(),
-            storageGroupName,
-            Tag.TYPE.toString(),
-            TConsensusGroupType.SchemaRegion.toString());
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.REGION.toString(),
-            MetricLevel.NORMAL,
-            this,
-            o -> o.getRegionGroupCount(TConsensusGroupType.DataRegion),
-            Tag.NAME.toString(),
-            storageGroupName,
-            Tag.TYPE.toString(),
-            TConsensusGroupType.DataRegion.toString());
-    // TODO slot will be updated in the future
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.SLOT.toString(),
-            MetricLevel.NORMAL,
-            schemaPartitionTable,
-            o -> o.getSchemaPartitionMap().size(),
-            Tag.NAME.toString(),
-            storageGroupName,
-            Tag.TYPE.toString(),
-            "schemaSlotNumber");
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.SLOT.toString(),
-            MetricLevel.NORMAL,
-            dataPartitionTable,
-            o -> o.getDataPartitionMap().size(),
-            Tag.NAME.toString(),
-            storageGroupName,
-            Tag.TYPE.toString(),
-            "dataSlotNumber");
   }
 
   public boolean isPredeleted() {
@@ -205,8 +151,10 @@ public class StorageGroupPartitionTable {
     return result.getAndIncrement();
   }
 
-  public int getSlotsCount() {
-    return seriesPartitionSlotsCount.get();
+  public int getAssignedSeriesPartitionSlotsCount() {
+    return Math.max(
+        schemaPartitionTable.getSchemaPartitionMap().size(),
+        dataPartitionTable.getDataPartitionMap().size());
   }
 
   /**
@@ -257,17 +205,14 @@ public class StorageGroupPartitionTable {
    */
   public void createSchemaPartition(SchemaPartitionTable assignedSchemaPartition) {
     // Cache assigned result
-    Map<TConsensusGroupId, AtomicInteger> deltaMap =
+    // Map<TConsensusGroupId, Map<TSeriesPartitionSlot, deltaTimeSlotCount>>
+    Map<TConsensusGroupId, Map<TSeriesPartitionSlot, AtomicLong>> groupDeltaMap =
         schemaPartitionTable.createSchemaPartition(assignedSchemaPartition);
 
-    // Add counter
-    AtomicInteger total = new AtomicInteger(0);
-    deltaMap.forEach(
-        ((consensusGroupId, delta) -> {
-          total.getAndAdd(delta.get());
-          regionGroupMap.get(consensusGroupId).addCounter(delta.get());
-        }));
-    seriesPartitionSlotsCount.getAndAdd(total.get());
+    // Update counter
+    groupDeltaMap.forEach(
+        ((consensusGroupId, deltaMap) ->
+            regionGroupMap.get(consensusGroupId).updateSlotCountMap(deltaMap)));
   }
 
   /**
@@ -277,16 +222,14 @@ public class StorageGroupPartitionTable {
    */
   public void createDataPartition(DataPartitionTable assignedDataPartition) {
     // Cache assigned result
-    Map<TConsensusGroupId, AtomicInteger> deltaMap =
+    // Map<TConsensusGroupId, Map<TSeriesPartitionSlot, deltaTimeSlotCount>>
+    Map<TConsensusGroupId, Map<TSeriesPartitionSlot, AtomicLong>> groupDeltaMap =
         dataPartitionTable.createDataPartition(assignedDataPartition);
 
-    // Add counter
-    AtomicInteger total = new AtomicInteger(0);
-    deltaMap.forEach(
-        ((consensusGroupId, delta) -> {
-          total.getAndAdd(delta.get());
-          regionGroupMap.get(consensusGroupId).addCounter(delta.get());
-        }));
+    // Update counter
+    groupDeltaMap.forEach(
+        ((consensusGroupId, deltaMap) ->
+            regionGroupMap.get(consensusGroupId).updateSlotCountMap(deltaMap)));
   }
 
   /**
@@ -343,7 +286,7 @@ public class StorageGroupPartitionTable {
     regionGroupMap.forEach(
         (consensusGroupId, regionGroup) -> {
           if (consensusGroupId.getType().equals(type)) {
-            result.add(new Pair<>(regionGroup.getCounter(), consensusGroupId));
+            result.add(new Pair<>(regionGroup.getSeriesSlotCount(), consensusGroupId));
           }
         });
 
@@ -351,51 +294,51 @@ public class StorageGroupPartitionTable {
     return result;
   }
 
-  public void getRegionInfoList(
-      GetRegionInfoListPlan regionsInfoPlan, List<TRegionInfo> regionInfoList) {
+  public List<TRegionInfo> getRegionInfoList(GetRegionInfoListPlan regionsInfoPlan) {
+    List<TRegionInfo> regionInfoList = new Vector<>();
     final TShowRegionReq showRegionReq = regionsInfoPlan.getShowRegionReq();
+
     regionGroupMap.forEach(
         (consensusGroupId, regionGroup) -> {
-          TRegionReplicaSet replicaSet = regionGroup.getReplicaSet();
           if (showRegionReq == null || showRegionReq.getConsensusGroupType() == null) {
-            buildTRegionsInfo(regionInfoList, replicaSet, regionGroup);
-          } else if (regionsInfoPlan.getShowRegionReq().getConsensusGroupType().ordinal()
-              == replicaSet.getRegionId().getType().ordinal()) {
-            buildTRegionsInfo(regionInfoList, replicaSet, regionGroup);
+            regionInfoList.addAll(buildRegionInfoList(regionGroup));
+          } else if (showRegionReq.getConsensusGroupType().equals(regionGroup.getId().getType())) {
+            regionInfoList.addAll(buildRegionInfoList(regionGroup));
           }
         });
+
+    return regionInfoList;
   }
 
-  private void buildTRegionsInfo(
-      List<TRegionInfo> regionInfoList, TRegionReplicaSet replicaSet, RegionGroup regionGroup) {
-    replicaSet
+  private List<TRegionInfo> buildRegionInfoList(RegionGroup regionGroup) {
+    List<TRegionInfo> regionInfoList = new Vector<>();
+    final TConsensusGroupId regionId = regionGroup.getId();
+
+    regionGroup
+        .getReplicaSet()
         .getDataNodeLocations()
         .forEach(
             (dataNodeLocation) -> {
               TRegionInfo regionInfo = new TRegionInfo();
-              regionInfo.setConsensusGroupId(replicaSet.getRegionId());
+              regionInfo.setConsensusGroupId(regionId);
               regionInfo.setStorageGroup(storageGroupName);
-              if (replicaSet.getRegionId().getType() == TConsensusGroupType.DataRegion) {
-                regionInfo.setSeriesSlots(dataPartitionTable.getDataPartitionMap().size());
-                regionInfo.setTimeSlots(regionGroup.getCounter());
-              } else if (replicaSet.getRegionId().getType() == TConsensusGroupType.SchemaRegion) {
-                regionInfo.setSeriesSlots(regionGroup.getCounter());
-                regionInfo.setTimeSlots(0);
-              }
+              regionInfo.setSeriesSlots(regionGroup.getSeriesSlotCount());
+              regionInfo.setTimeSlots(regionGroup.getTimeSlotCount());
               regionInfo.setDataNodeId(dataNodeLocation.getDataNodeId());
               regionInfo.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
               regionInfo.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
-              // TODO: Wait for data migration. And then add the state
+              // TODO: Maintain Region status
               regionInfo.setStatus(RegionStatus.Up.getStatus());
               regionInfoList.add(regionInfo);
             });
+
+    return regionInfoList;
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     ReadWriteIOUtils.write(isPredeleted, outputStream);
     ReadWriteIOUtils.write(storageGroupName, outputStream);
-    ReadWriteIOUtils.write(seriesPartitionSlotsCount.get(), outputStream);
 
     ReadWriteIOUtils.write(regionGroupMap.size(), outputStream);
     for (Map.Entry<TConsensusGroupId, RegionGroup> regionInfoEntry : regionGroupMap.entrySet()) {
@@ -411,7 +354,6 @@ public class StorageGroupPartitionTable {
       throws IOException, TException {
     isPredeleted = ReadWriteIOUtils.readBool(inputStream);
     storageGroupName = ReadWriteIOUtils.readString(inputStream);
-    seriesPartitionSlotsCount.set(ReadWriteIOUtils.readInt(inputStream));
 
     int length = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < length; i++) {
@@ -482,12 +424,20 @@ public class StorageGroupPartitionTable {
     return storageGroupName;
   }
 
+  public int getDataPartitionMapSize() {
+    return dataPartitionTable.getDataPartitionMap().size();
+  }
+
+  public int getSchemaPartitionMapSize() {
+    return schemaPartitionTable.getSchemaPartitionMap().size();
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     StorageGroupPartitionTable that = (StorageGroupPartitionTable) o;
-    return isPredeleted == that.isPredeleted
+    return storageGroupName.equals(that.storageGroupName)
         && regionGroupMap.equals(that.regionGroupMap)
         && schemaPartitionTable.equals(that.schemaPartitionTable)
         && dataPartitionTable.equals(that.dataPartitionTable);
@@ -495,6 +445,6 @@ public class StorageGroupPartitionTable {
 
   @Override
   public int hashCode() {
-    return Objects.hash(isPredeleted, regionGroupMap, schemaPartitionTable, dataPartitionTable);
+    return Objects.hash(storageGroupName, regionGroupMap, schemaPartitionTable, dataPartitionTable);
   }
 }

@@ -19,19 +19,30 @@
 
 package org.apache.iotdb.commons.executable;
 
+import org.apache.iotdb.commons.trigger.exception.TriggerJarToLargeException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ExecutableManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ExecutableManager.class);
 
   protected final String temporaryLibRoot;
   protected final String libRoot;
@@ -111,5 +122,48 @@ public class ExecutableManager {
 
   public String getDirStringByName(String name) {
     return libRoot + File.separator + name + File.separator;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // transfer jar file to bytebuffer for thrift
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public static ByteBuffer transferToBytebuffer(String filePath) throws IOException {
+    try (FileChannel fileChannel = FileChannel.open(Paths.get(filePath), StandardOpenOption.READ)) {
+      long size = fileChannel.size();
+      if (size > Integer.MAX_VALUE) {
+        // Max length of Thrift Binary is Integer.MAX_VALUE bytes.
+        throw new TriggerJarToLargeException(
+            String.format("Size of file exceed %d bytes", Integer.MAX_VALUE));
+      }
+      ByteBuffer byteBuffer = ByteBuffer.allocate((int) size);
+      fileChannel.read(byteBuffer);
+      return byteBuffer;
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Error occurred during transferring file{} to ByteBuffer, the cause is {}",
+          filePath,
+          e.getMessage());
+      throw e;
+    }
+  }
+
+  /**
+   * @param byteBuffer jar data
+   * @param fileName The name of the file. Absolute Path will be libRoot + File_Separator + fileName
+   */
+  public void writeToLibDir(ByteBuffer byteBuffer, String fileName) throws IOException {
+    String destination = this.libRoot + File.separator + fileName;
+    Path path = Paths.get(destination);
+    Files.deleteIfExists(path);
+    try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE)) {
+      fileChannel.write(byteBuffer);
+    } catch (IOException e) {
+      LOGGER.warn(
+          "Error occurred during writing bytebuffer to {} , the cause is {}",
+          destination,
+          e.getMessage());
+      throw e;
+    }
   }
 }

@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.db.sync.transport.client;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
@@ -35,12 +38,19 @@ public class SyncClientFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(SyncClientFactory.class);
 
-  public static ISyncClient createSyncClient(Pipe pipe, PipeSink pipeSink) {
+  public static ISyncClient createSyncClient(Pipe pipe, PipeSink pipeSink, String dataRegionId) {
+    DataRegion dataRegion =
+        StorageEngineV2.getInstance()
+            .getDataRegion(new DataRegionId(Integer.parseInt(dataRegionId)));
     switch (pipeSink.getType()) {
       case IoTDB:
         IoTDBPipeSink ioTDBPipeSink = (IoTDBPipeSink) pipeSink;
         return new IoTDBSyncClient(
-            pipe, ioTDBPipeSink.getIp(), ioTDBPipeSink.getPort(), getLocalIP(ioTDBPipeSink));
+            pipe,
+            ioTDBPipeSink.getIp(),
+            ioTDBPipeSink.getPort(),
+            getLocalIP(ioTDBPipeSink),
+            dataRegion.getStorageGroupName());
       case ExternalPipe:
       default:
         throw new UnsupportedOperationException();

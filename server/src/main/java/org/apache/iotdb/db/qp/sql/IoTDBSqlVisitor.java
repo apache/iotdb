@@ -2246,8 +2246,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.Running);
     } else if (ctx.READONLY() != null) {
       return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.ReadOnly);
-    } else if (ctx.ERROR() != null) {
-      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.Error);
     } else {
       throw new RuntimeException("Unknown system status in set system command.");
     }

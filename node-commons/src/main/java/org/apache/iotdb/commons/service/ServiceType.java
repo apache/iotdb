@@ -46,6 +46,7 @@ public enum ServiceType {
   UDF_EXECUTABLE_MANAGER_SERVICE("UDF Executable Manager Service", ""),
   TRIGGER_CLASSLOADER_MANAGER_SERVICE("Trigger ClassLoader Manager Service", ""),
   TRIGGER_REGISTRATION_SERVICE("Trigger Registration Service", ""),
+  TRIGGER_EXECUTABLE_MANAGER_SERVICE("Trigger Executable Manager Service", ""),
   TEMPORARY_QUERY_DATA_FILE_SERVICE("Temporary Query Data File Service", ""),
   TRIGGER_REGISTRATION_SERVICE_OLD("Old Standalone Trigger Registration Service", ""),
   CACHE_HIT_RATIO_DISPLAY_SERVICE(

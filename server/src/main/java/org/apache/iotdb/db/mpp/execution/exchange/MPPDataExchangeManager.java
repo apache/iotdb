@@ -262,6 +262,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinish(ISinkHandle sinkHandle) {
+      logger.info("onFinish is invoked");
       removeFromMPPDataExchangeManager(sinkHandle);
       context.finished();
     }

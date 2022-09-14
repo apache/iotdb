@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.persistence.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -28,27 +29,34 @@ import org.apache.thrift.protocol.TProtocol;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class RegionGroup {
 
   private final TRegionReplicaSet replicaSet;
 
+  // Map<TSeriesPartitionSlot, TTimePartitionSlot Count>
+  // For SchemaRegion, each SeriesSlot constitute a SchemaPartition.
   // For DataRegion, a SeriesSlot and a TimeSlot constitute a DataPartition.
   // Eg: A DataRegion contains SeriesSlot-1 which has TimeSlot-1, TimeSlot-2 and Timeslot-3,
   // then (SeriesSlot-1 -> TimeSlot-1) constitute a DataPartition.
-  // For SchemaRegion, each SeriesSlot constitute a SchemaPartition.
-  private final AtomicLong slotCount;
+  private final Map<TSeriesPartitionSlot, AtomicLong> slotCountMap;
+
+  private final AtomicLong totalTimeSlotCount;
 
   public RegionGroup() {
     this.replicaSet = new TRegionReplicaSet();
-    this.slotCount = new AtomicLong();
+    this.slotCountMap = new ConcurrentHashMap<>();
+    this.totalTimeSlotCount = new AtomicLong();
   }
 
   public RegionGroup(TRegionReplicaSet replicaSet) {
     this.replicaSet = replicaSet;
-    this.slotCount = new AtomicLong(0);
+    this.slotCountMap = new ConcurrentHashMap<>();
+    this.totalTimeSlotCount = new AtomicLong(0);
   }
 
   public TConsensusGroupId getId() {
@@ -59,24 +67,51 @@ public class RegionGroup {
     return replicaSet;
   }
 
-  public void addCounter(long delta) {
-    slotCount.getAndAdd(delta);
+  /** @param deltaMap Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count> */
+  public void updateSlotCountMap(Map<TSeriesPartitionSlot, AtomicLong> deltaMap) {
+    deltaMap.forEach(
+        ((seriesPartitionSlot, delta) -> {
+          slotCountMap
+              .computeIfAbsent(seriesPartitionSlot, empty -> new AtomicLong(0))
+              .getAndAdd(delta.get());
+          totalTimeSlotCount.getAndAdd(delta.get());
+        }));
   }
 
-  public long getCounter() {
-    return slotCount.get();
+  public long getSeriesSlotCount() {
+    return slotCountMap.size();
+  }
+
+  public long getTimeSlotCount() {
+    return totalTimeSlotCount.get();
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     replicaSet.write(protocol);
-    ReadWriteIOUtils.write(slotCount.get(), outputStream);
+
+    ReadWriteIOUtils.write(slotCountMap.size(), outputStream);
+    for (Map.Entry<TSeriesPartitionSlot, AtomicLong> slotCountEntry : slotCountMap.entrySet()) {
+      slotCountEntry.getKey().write(protocol);
+      ReadWriteIOUtils.write(slotCountEntry.getValue().get(), outputStream);
+    }
+
+    ReadWriteIOUtils.write(totalTimeSlotCount.get(), outputStream);
   }
 
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
     replicaSet.read(protocol);
-    slotCount.set(ReadWriteIOUtils.readLong(inputStream));
+
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; i++) {
+      TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot();
+      seriesPartitionSlot.read(protocol);
+      AtomicLong slotCount = new AtomicLong(ReadWriteIOUtils.readLong(inputStream));
+      slotCountMap.put(seriesPartitionSlot, slotCount);
+    }
+
+    totalTimeSlotCount.set(ReadWriteIOUtils.readLong(inputStream));
   }
 
   @Override
@@ -84,11 +119,20 @@ public class RegionGroup {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     RegionGroup that = (RegionGroup) o;
-    return replicaSet.equals(that.replicaSet);
+    for (Map.Entry<TSeriesPartitionSlot, AtomicLong> slotCountEntry : slotCountMap.entrySet()) {
+      if (!that.slotCountMap.containsKey(slotCountEntry.getKey())) {
+        return false;
+      }
+      if (slotCountEntry.getValue().get() != that.slotCountMap.get(slotCountEntry.getKey()).get()) {
+        return false;
+      }
+    }
+    return replicaSet.equals(that.replicaSet)
+        && totalTimeSlotCount.get() == that.totalTimeSlotCount.get();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(replicaSet);
+    return Objects.hash(replicaSet, slotCountMap, totalTimeSlotCount);
   }
 }

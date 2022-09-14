@@ -60,6 +60,24 @@ public class SyncPathUtil {
     return String.format("%s-%d", pipeName, createTime);
   }
 
+  public static String getSenderDataRegionHistoryPipeLogDir(
+      String pipeName, long createTime, String dataRegionId) {
+    return getSenderPipeDir(pipeName, createTime)
+        + File.separator
+        + SyncConstant.HISTORY_PIPE_LOG_DIR_NAME
+        + File.separator
+        + dataRegionId;
+  }
+
+  public static String getSenderDataRegionRealTimePipeLogDir(
+      String pipeName, long createTime, String dataRegionId) {
+    return getSenderPipeDir(pipeName, createTime)
+        + File.separator
+        + SyncConstant.PIPE_LOG_DIR_NAME
+        + File.separator
+        + dataRegionId;
+  }
+
   public static String getSenderHistoryPipeLogDir(String pipeName, long createTime) {
     return getSenderPipeDir(pipeName, createTime)
         + File.separator
