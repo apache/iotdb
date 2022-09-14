@@ -111,7 +111,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.resource = resource;
   }
 
-  public void checkIfNeedDecodeTsFile(DataPartition dataPartition) {
+  public void checkIfNeedDecodeTsFile(DataPartition dataPartition) throws IOException {
     Set<TRegionReplicaSet> allRegionReplicaSet = new HashSet<>();
     needDecodeTsFile = false;
     for (String device : resource.getDevices()) {
@@ -123,6 +123,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       allRegionReplicaSet.addAll(dataPartition.getAllDataRegionReplicaSetForOneDevice(device));
     }
     needDecodeTsFile = !isDispatchedToLocal(allRegionReplicaSet);
+    if (!needDecodeTsFile) {
+      resource.serialize();
+    }
   }
 
   private boolean isDispatchedToLocal(Set<TRegionReplicaSet> replicaSets) {

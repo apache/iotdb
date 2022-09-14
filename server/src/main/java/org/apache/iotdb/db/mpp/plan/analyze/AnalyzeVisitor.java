@@ -31,6 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
@@ -1507,6 +1508,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 device2MaxTime.getOrDefault(device, Long.MIN_VALUE), resource.getEndTime(device)));
       }
 
+      resource.setStatus(TsFileResourceStatus.CLOSED);
       return resource;
     }
   }
