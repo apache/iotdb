@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.service.metrics.predefined;
 
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -100,7 +101,7 @@ public class FileMetrics implements IMetricSet {
         "unseq");
 
     // finally start to update the value of some metrics in async way
-    if (metricService.isEnable() && null != currentServiceFuture) {
+    if (metricService.isEnable() && null == currentServiceFuture) {
       currentServiceFuture =
           ScheduledExecutorUtil.safelyScheduleAtFixedRate(
               service,
@@ -117,7 +118,7 @@ public class FileMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     // first stop to update the value of some metrics in async way
     if (currentServiceFuture != null) {
-      currentServiceFuture.cancel(false);
+      currentServiceFuture.cancel(true);
       currentServiceFuture = null;
     }
 
@@ -135,7 +136,7 @@ public class FileMetrics implements IMetricSet {
 
   private void collect() {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
+    String[] walDirs = CommonDescriptor.getInstance().getConfig().getWalDirs();
     walFileTotalSize = WALManager.getInstance().getTotalDiskUsage();
     sequenceFileTotalSize =
         Stream.of(dataDirs)

@@ -17,30 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.binary;
+package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
-
-import java.nio.ByteBuffer;
-
-public abstract class CompareBinaryExpression extends BinaryExpression {
-
-  protected CompareBinaryExpression(Expression leftExpression, Expression rightExpression) {
-    super(leftExpression, rightExpression);
-  }
-
-  protected CompareBinaryExpression(ByteBuffer byteBuffer) {
-    super(byteBuffer);
-  }
-
+public class SimplePlanVisitor<C> extends PlanVisitor<Void, C> {
   @Override
-  public boolean isCompareBinaryExpression() {
-    return true;
-  }
-
-  @Override
-  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
-    return visitor.visitCompareBinaryExpression(this, context);
+  public Void visitPlan(PlanNode node, C context) {
+    for (PlanNode source : node.getChildren()) {
+      source.accept(this, context);
+    }
+    return null;
   }
 }

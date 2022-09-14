@@ -219,6 +219,34 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
+  public void writeByColumn(long time, int value, boolean isNull) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void writeByColumn(long time, long value, boolean isNull) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void writeByColumn(long time, boolean value, boolean isNull) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void writeByColumn(long time, float value, boolean isNull) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void writeByColumn(long time, double value, boolean isNull) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void writeByColumn(long time, Binary value, boolean isNull) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void nextColumn() {
+    valueIndex++;
+  }
+
   /**
    * check occupied memory size, if it exceeds the PageSize threshold, construct a page and put it
    * to pageBuffer
