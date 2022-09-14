@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.task.ConstructSchemaBlackListDataNodeTask;
@@ -185,7 +186,7 @@ public class DeleteTimeSeriesProcedure
       // all dataNodes must clear the related schema cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error("Failed to invalidate schema cache of timeseries {}", requestMessage);
-        setFailure(new ProcedureException("Invalidate schema cache failed"));
+        setFailure(new ProcedureException(new MetadataException("Invalidate schema cache failed")));
         return;
       }
     }
@@ -221,7 +222,9 @@ public class DeleteTimeSeriesProcedure
             "Failed to fetch schema black list for delete data of timeseries {} on {}",
             requestMessage,
             entry.getKey());
-        setFailure(new ProcedureException("Fetch schema black list forDelete data failed"));
+        setFailure(
+            new ProcedureException(
+                new MetadataException("Fetch schema black list forDelete data failed")));
         return;
       }
 
@@ -555,8 +558,10 @@ public class DeleteTimeSeriesProcedure
                 entry.getKey());
             setFailure(
                 new ProcedureException(
-                    String.format(
-                        "Delete timeseries %s failed on when [%s]", requestMessage, taskName)));
+                    new MetadataException(
+                        String.format(
+                            "Delete timeseries %s failed on when [%s]",
+                            requestMessage, taskName))));
             break;
           } else {
             // unexpected error, retry on other replicates on other dataNodes
@@ -605,9 +610,10 @@ public class DeleteTimeSeriesProcedure
           if (selectedDataNode == null) {
             setFailure(
                 new ProcedureException(
-                    String.format(
-                        "Delete timeseries %s failed when [%s] because all replicaset of schemaRegion %s failed.",
-                        requestMessage, taskName, consensusGroupId.id)));
+                    new MetadataException(
+                        String.format(
+                            "Delete timeseries %s failed when [%s] because all replicaset of schemaRegion %s failed.",
+                            requestMessage, taskName, consensusGroupId.id))));
             return availableDataNodeLocation;
           } else {
             availableDataNodeLocation
