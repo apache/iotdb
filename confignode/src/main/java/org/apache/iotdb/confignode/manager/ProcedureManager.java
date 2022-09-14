@@ -241,6 +241,11 @@ public class ProcedureManager {
       }
       Procedure<ConfigNodeProcedureEnv> finishedProcedure =
           executor.getResultOrProcedure(procedureId);
+      if (!finishedProcedure.isFinished()) {
+        // the procedure is still executing
+        statusList.add(RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS));
+        continue;
+      }
       if (finishedProcedure.isSuccess()) {
         statusList.add(StatusUtils.OK);
       } else {
