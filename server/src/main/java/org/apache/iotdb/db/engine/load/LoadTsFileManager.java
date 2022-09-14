@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -45,6 +46,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
+ * LoadCommand}. This class turn the content of a piece of loading TsFile into a new TsFile. When
+ * DataNode finish transfer pieces, this class will flush all TsFile and laod them into IoTDB, or
+ * delete all.
+ */
 public class LoadTsFileManager {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
