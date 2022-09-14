@@ -114,7 +114,7 @@ public abstract class WALBufferCommonTest {
       InsertRowPlan insertRowPlan = getInsertRowPlan(devicePath + memTableId, i);
       expectedInsertRowPlans.add(insertRowPlan);
 
-      WALEntry walEntry = new WALEntry(memTableId, insertRowPlan);
+      WALEntry walEntry = new WALInfoEntry(memTableId, insertRowPlan);
       walBuffer.write(walEntry);
     }
   }

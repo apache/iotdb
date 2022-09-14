@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.openjdk.jol.info.ClassLayout;
 
+import java.util.Arrays;
 import java.util.Optional;
 
 import static io.airlift.slice.SizeOf.sizeOf;
@@ -84,6 +85,11 @@ public class LongColumn implements Column {
   }
 
   @Override
+  public long[] getLongs() {
+    return values;
+  }
+
+  @Override
   public Object getObject(int position) {
     return getLong(position);
   }
@@ -103,6 +109,16 @@ public class LongColumn implements Column {
   public boolean isNull(int position) {
     checkReadablePosition(position);
     return valueIsNull != null && valueIsNull[position + arrayOffset];
+  }
+
+  @Override
+  public boolean[] isNull() {
+    if (valueIsNull == null) {
+      boolean[] res = new boolean[positionCount];
+      Arrays.fill(res, false);
+      return res;
+    }
+    return valueIsNull;
   }
 
   @Override

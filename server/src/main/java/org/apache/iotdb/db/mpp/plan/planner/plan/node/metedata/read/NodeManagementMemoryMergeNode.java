@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -29,34 +30,25 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 public class NodeManagementMemoryMergeNode extends ProcessNode {
-  private final Set<String> data;
+  private final Set<TSchemaNode> data;
 
   private PlanNode child;
 
-  private NodeManagementType type;
-
-  public NodeManagementMemoryMergeNode(PlanNodeId id, Set<String> data, NodeManagementType type) {
+  public NodeManagementMemoryMergeNode(PlanNodeId id, Set<TSchemaNode> data) {
     super(id);
     this.data = data;
-    this.type = type;
   }
 
-  public Set<String> getData() {
+  public Set<TSchemaNode> getData() {
     return data;
-  }
-
-  public NodeManagementType getType() {
-    return type;
-  }
-
-  public void setType(NodeManagementType type) {
-    this.type = type;
   }
 
   public PlanNode getChild() {
@@ -75,7 +67,7 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new NodeManagementMemoryMergeNode(getPlanNodeId(), this.data, this.type);
+    return new NodeManagementMemoryMergeNode(getPlanNodeId(), this.data);
   }
 
   @Override
@@ -98,18 +90,24 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
     PlanNodeType.NODE_MANAGEMENT_MEMORY_MERGE.serialize(byteBuffer);
     int size = data.size();
     ReadWriteIOUtils.write(size, byteBuffer);
-    data.forEach(node -> ReadWriteIOUtils.write(node, byteBuffer));
-    byteBuffer.put((byte) type.ordinal());
+    data.forEach(node -> ThriftCommonsSerDeUtils.serializeTSchemaNode(node, byteBuffer));
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.NODE_MANAGEMENT_MEMORY_MERGE.serialize(stream);
+    int size = data.size();
+    ReadWriteIOUtils.write(size, stream);
+    data.forEach(node -> ThriftCommonsSerDeUtils.serializeTSchemaNode(node, stream));
   }
 
   public static NodeManagementMemoryMergeNode deserialize(ByteBuffer byteBuffer) {
-    Set<String> data = new HashSet<>();
+    Set<TSchemaNode> data = new HashSet<>();
     int size = byteBuffer.getInt();
     for (int i = 0; i < size; i++) {
-      data.add(ReadWriteIOUtils.readString(byteBuffer));
+      data.add(ThriftCommonsSerDeUtils.deserializeTSchemaNode(byteBuffer));
     }
-    NodeManagementType type = NodeManagementType.findByValue(byteBuffer.get());
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new NodeManagementMemoryMergeNode(planNodeId, data, type);
+    return new NodeManagementMemoryMergeNode(planNodeId, data);
   }
 }

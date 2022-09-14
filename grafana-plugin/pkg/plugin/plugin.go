@@ -114,7 +114,7 @@ type queryParam struct {
 	EndTime      int64    `json:"endTime"`
 	Condition    string   `json:"condition"`
 	Control      string   `json:"control"`
-	Aggregated   string   `json:"aggregated"`
+	SqlType      string   `json:"sqlType"`
 	Paths        []string `json:"paths"`
 	AggregateFun string   `json:"aggregateFun"`
 	FillClauses  string   `json:"fillClauses"`
@@ -133,7 +133,7 @@ type QueryDataReq struct {
 type QueryDataResponse struct {
 	Expressions []string    `json:"expressions"`
 	Timestamps  []int64     `json:"timestamps"`
-	Values      [][]float32 `json:"values"`
+	Values      [][]interface{} `json:"values"`
 	ColumnNames interface{} `json:"columnNames"`
 	Code        int32       `json:"code"`
 	Message     string      `json:"message"`
@@ -163,7 +163,7 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 	qp.EndTime = query.TimeRange.To.UnixNano() / 1000000
 
 	client := &http.Client{}
-	if qp.Aggregated == "Aggregation" {
+	if qp.SqlType == "SQL: Drop-down List" {
 		qp.Control = ""
 		var expressions []string = qp.Paths[len(qp.Paths)-1:]
 		var paths []string = qp.Paths[0 : len(qp.Paths)-1]
@@ -185,8 +185,10 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 			qp.Control += " fill" + qp.FillClauses
 		}
 		qdReq = *NewQueryDataReq(expressions, prefixPaths, qp.StartTime, qp.EndTime, qp.Condition, qp.Control)
-	} else {
+	} else if qp.SqlType == "SQL: Full Customized" {
 		qdReq = *NewQueryDataReq(qp.Expression, qp.PrefixPath, qp.StartTime, qp.EndTime, qp.Condition, qp.Control)
+	} else {
+		return response
 	}
 	qpJson, _ := json.Marshal(qdReq)
 	reader := bytes.NewReader(qpJson)
@@ -219,11 +221,11 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 	frame := data.NewFrame("response")
 	for i := 0; i < len(queryDataResp.Expressions); i++ {
 		times := make([]time.Time, len(queryDataResp.Timestamps))
-		values := make([]float32, len(queryDataResp.Timestamps))
 		for c := 0; c < len(queryDataResp.Timestamps); c++ {
 			times[c] = time.Unix(queryDataResp.Timestamps[c]/1000, 0)
-			values[c] = queryDataResp.Values[i][c]
 		}
+		values :=  recoverType(queryDataResp.Values[i])
+
 		frame.Fields = append(frame.Fields,
 			data.NewField("time", nil, times),
 			data.NewField(queryDataResp.Expressions[i], nil, values),
@@ -232,6 +234,43 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 
 	response.Frames = append(response.Frames, frame)
 	return response
+}
+
+func recoverType(m []interface{}) interface{} {
+    if len(m) > 0 {
+        switch m[0].(type) {
+        case float64:
+            tmp := make([]float64, len(m))
+            for i := range m {
+                tmp[i] = m[i].(float64)
+            }
+            return tmp
+        case string:
+            tmp := make([]string, len(m))
+            for i := range m {
+                tmp[i] = m[i].(string)
+            }
+            return tmp
+        case bool:
+            tmp := make([]float64, len(m))
+            for i := range m {
+                if m[i].(bool) {
+                    tmp[i] = 1
+                } else {
+                    tmp[i] = 0
+                }
+            }
+            return tmp
+        default:
+            tmp := make([]float64, len(m))
+            for i := range m {
+                tmp[i] = 0
+            }
+            return tmp
+        }
+    } else {
+        return make([]float64, 0)
+    }
 }
 
 // Whether the last character of the URL for processing datasource configuration is "/"

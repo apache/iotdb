@@ -33,9 +33,10 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
+import java.util.Objects;
 
 public class FileUtils {
-  private static Logger logger = LoggerFactory.getLogger(FileUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(FileUtils.class);
 
   private static final int bufferSize = 1024;
 
@@ -53,6 +54,17 @@ public class FileUtils {
       logger.warn("{}: {}", e.getMessage(), Arrays.toString(folder.list()), e);
     } catch (Exception e) {
       logger.warn("{}: {}", e.getMessage(), folder.getName(), e);
+    }
+  }
+
+  public static void deleteDirectoryAndEmptyParent(File folder) {
+    deleteDirectory(folder);
+    final File parentFolder = folder.getParentFile();
+    if (parentFolder.isDirectory()
+        && Objects.requireNonNull(parentFolder.listFiles()).length == 0) {
+      if (!parentFolder.delete()) {
+        logger.warn("Delete folder failed: {}", parentFolder.getAbsolutePath());
+      }
     }
   }
 
@@ -123,5 +135,22 @@ public class FileUtils {
       sum += file.length();
     }
     return sum;
+  }
+
+  public static void recursiveDeleteFolder(String path) throws IOException {
+    File file = new File(path);
+    if (file.isDirectory()) {
+      File[] files = file.listFiles();
+      if (files == null || files.length == 0) {
+        org.apache.commons.io.FileUtils.deleteDirectory(file);
+      } else {
+        for (File f : files) {
+          recursiveDeleteFolder(f.getAbsolutePath());
+        }
+        org.apache.commons.io.FileUtils.deleteDirectory(file);
+      }
+    } else {
+      org.apache.commons.io.FileUtils.delete(file);
+    }
   }
 }

@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -69,7 +70,12 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     FragmentInstanceContext instanceContext = new FragmentInstanceContext(id, stateMachine);
     instanceContext.initialize();
+    instanceContext.start();
     return instanceContext;
+  }
+
+  public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
+    return new FragmentInstanceContext(queryId);
   }
 
   private FragmentInstanceContext(
@@ -77,6 +83,13 @@ public class FragmentInstanceContext extends QueryContext {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+  }
+
+  // used for compaction
+  private FragmentInstanceContext(long queryId) {
+    this.queryId = queryId;
+    this.id = null;
+    this.stateMachine = null;
   }
 
   public void start() {
@@ -150,6 +163,12 @@ public class FragmentInstanceContext extends QueryContext {
     stateMachine.failed(cause);
   }
 
+  public String getFailedCause() {
+    return stateMachine.getFailureCauses().stream()
+        .map(Throwable::getMessage)
+        .collect(Collectors.joining("; "));
+  }
+
   public void finished() {
     stateMachine.finished();
   }
@@ -158,7 +177,27 @@ public class FragmentInstanceContext extends QueryContext {
     stateMachine.transitionToFlushing();
   }
 
+  public void cancel() {
+    stateMachine.cancel();
+  }
+
+  public void abort() {
+    stateMachine.abort();
+  }
+
   public long getEndTime() {
     return executionEndTime.get();
+  }
+
+  public long getStartTime() {
+    return executionStartTime.get();
+  }
+
+  public FragmentInstanceInfo getInstanceInfo() {
+    return new FragmentInstanceInfo(stateMachine.getState(), getEndTime(), getFailedCause());
+  }
+
+  public FragmentInstanceStateMachine getStateMachine() {
+    return stateMachine;
   }
 }

@@ -20,20 +20,22 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -43,11 +45,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public abstract class InsertNode extends WritePlanNode implements IConsensusRequest {
+public abstract class InsertNode extends WritePlanNode {
+
   /** this insert node doesn't need to participate in multi-leader consensus */
-  public static final long NO_CONSENSUS_INDEX = -1;
-  /** no multi-leader consensus, all insert nodes can be safely deleted */
-  public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
+  public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
 
   /**
    * if use id table, this filed is id form of device path <br>
@@ -76,14 +77,9 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
    * value should start from 1
    */
   protected long searchIndex = NO_CONSENSUS_INDEX;
-  /**
-   * this index pass info to wal, indicating that insert nodes whose search index are before this
-   * value can be deleted safely
-   */
-  protected long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
   /** Physical address of data region after splitting */
-  TRegionReplicaSet dataRegionReplicaSet;
+  protected TRegionReplicaSet dataRegionReplicaSet;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -142,6 +138,10 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
     return dataTypes;
   }
 
+  public TSDataType getDataType(int index) {
+    return dataTypes[index];
+  }
+
   public void setDataTypes(TSDataType[] dataTypes) {
     this.dataTypes = dataTypes;
   }
@@ -163,25 +163,13 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
     this.searchIndex = searchIndex;
   }
 
-  public long getSafelyDeletedSearchIndex() {
-    return safelyDeletedSearchIndex;
-  }
-
-  public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
-    this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
-  }
-
-  /**
-   * Deserialize via {@link
-   * org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType#deserialize(ByteBuffer)}
-   */
-  @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    serializeAttributes(buffer);
-  }
-
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
   }
 
@@ -194,7 +182,13 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
       if (measurements[i] == null) {
         continue;
       }
-      byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
+      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
+      } else {
+        byteLen += ReadWriteIOUtils.sizeToWrite(measurements[i]);
+        // datatype size
+        byteLen++;
+      }
     }
     return byteLen;
   }
@@ -206,7 +200,14 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
       if (measurements[i] == null) {
         continue;
       }
-      WALWriteUtils.write(measurementSchemas[i], buffer);
+
+      // serialize measurementId only for standalone version for better write performance
+      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        WALWriteUtils.write(measurementSchemas[i], buffer);
+      } else {
+        WALWriteUtils.write(measurements[i], buffer);
+        WALWriteUtils.write(dataTypes[i], buffer);
+      }
     }
   }
 
@@ -216,7 +217,20 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
    */
   protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {
     for (int i = 0; i < measurementSchemas.length; i++) {
-      measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
+      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
+        measurements[i] = measurementSchemas[i].getMeasurementId();
+        dataTypes[i] = measurementSchemas[i].getType();
+      } else {
+        measurements[i] = ReadWriteIOUtils.readString(stream);
+        dataTypes[i] = TSDataType.deserialize(ReadWriteIOUtils.readByte(stream));
+      }
+    }
+  }
+
+  protected void deserializeMeasurementSchemas(ByteBuffer buffer) {
+    for (int i = 0; i < measurementSchemas.length; i++) {
+      measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
       measurements[i] = measurementSchemas[i].getMeasurementId();
     }
   }
@@ -226,7 +240,7 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
     return dataRegionReplicaSet;
   }
 
-  public abstract boolean validateAndSetSchema(SchemaTree schemaTree);
+  public abstract boolean validateAndSetSchema(ISchemaTree schemaTree);
 
   /** Check whether data types are matched with measurement schemas */
   protected boolean selfCheckDataTypes() {
@@ -241,12 +255,18 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
                   devicePath.getFullPath(),
                   measurements[i],
                   measurementSchemas[i].getType(),
-                  dataTypes[i]));
+                  dataTypes[i],
+                  getMinTime(),
+                  getFirstValueOfIndex(i)));
         }
       }
     }
     return true;
   }
+
+  public abstract long getMinTime();
+
+  public abstract Object getFirstValueOfIndex(int index);
 
   // region partial insert
   /**
@@ -260,6 +280,15 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
    */
   public void markFailedMeasurement(int index, Exception cause) {
     throw new UnsupportedOperationException();
+  }
+
+  public boolean hasValidMeasurements() {
+    for (Object o : measurements) {
+      if (o != null) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public boolean hasFailedMeasurements() {

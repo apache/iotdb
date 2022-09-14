@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
@@ -53,9 +55,11 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -67,7 +71,6 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EncodingInferenceUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -113,6 +116,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ALL_NODE_TYPE_ARRAY;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
@@ -262,13 +266,6 @@ public class RSchemaRegion implements ISchemaRegion {
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
-  }
-
-  @Override
-  public void createTimeseries(CreateTimeSeriesPlan plan, long offset, String version)
-      throws MetadataException {
-    throw new UnsupportedOperationException(
-        "RSchemaRegion currently doesn't support timeseries with version");
   }
 
   @TestOnly
@@ -532,13 +529,6 @@ public class RSchemaRegion implements ISchemaRegion {
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
-  }
-
-  @Override
-  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<String> versionList)
-      throws MetadataException {
-    throw new UnsupportedOperationException(
-        "RSchemaRegion currently doesn't support timeseries with version");
   }
 
   private void createEntityRecursively(String[] nodes, int start, int end, boolean aligned)
@@ -866,6 +856,20 @@ public class RSchemaRegion implements ISchemaRegion {
     return getCountByNodeType(new Character[] {NODE_TYPE_MEASUREMENT}, pathPattern.getNodes());
   }
 
+  @Override
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
+      throws MetadataException {
+    return getMatchedMeasurementPathWithTags(pathPattern.getNodes()).size();
+  }
+
   @TestOnly
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
     return getAllTimeseriesCount(pathPattern, false);
@@ -943,6 +947,63 @@ public class RSchemaRegion implements ISchemaRegion {
     return result;
   }
 
+  @Override
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern,
+      int level,
+      boolean isPrefixMatch,
+      String key,
+      String value,
+      boolean isContains)
+      throws MetadataException {
+    Map<PartialPath, Integer> result = new ConcurrentHashMap<>();
+    Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> measurementPathsAndTags =
+        getMatchedMeasurementPathWithTags(pathPattern.getNodes());
+    BiFunction<byte[], byte[], Boolean> function;
+    if (!measurementPathsAndTags.isEmpty()) {
+      function =
+          (a, b) -> {
+            String k = new String(a);
+            String partialName = splitToPartialNameByLevel(k, level);
+            if (partialName != null) {
+              PartialPath path = null;
+              try {
+                path = new PartialPath(partialName);
+              } catch (IllegalPathException e) {
+                logger.warn(e.getMessage());
+              }
+              if (!measurementPathsAndTags.keySet().contains(partialName)) {
+                result.put(path, result.get(path));
+              } else {
+                result.putIfAbsent(path, 0);
+                result.put(path, result.get(path) + 1);
+              }
+            }
+            return true;
+          };
+    } else {
+      function =
+          (a, b) -> {
+            String k = new String(a);
+            String partialName = splitToPartialNameByLevel(k, level);
+            if (partialName != null) {
+              PartialPath path = null;
+              try {
+                path = new PartialPath(partialName);
+              } catch (IllegalPathException e) {
+                logger.warn(e.getMessage());
+              }
+              result.putIfAbsent(path, 0);
+            }
+            return true;
+          };
+    }
+    traverseOutcomeBasins(
+        pathPattern.getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
+
+    return result;
+  }
+
   private String splitToPartialNameByLevel(String innerName, int level) {
     StringBuilder stringBuilder = new StringBuilder(ROOT_STRING);
     boolean currentIsFlag;
@@ -1009,14 +1070,15 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
+  public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
     // todo support wildcard
     if (pathPattern.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       throw new MetadataException(
           "Wildcards are not currently supported for this operation"
               + " [SHOW CHILD PATHS pathPattern].");
     }
-    Set<String> result = Collections.synchronizedSet(new HashSet<>());
+    Set<TSchemaNode> result = Collections.synchronizedSet(new HashSet<>());
     String innerNameByLevel =
         RSchemaUtils.getLevelPath(
                 pathPattern.getNodes(),
@@ -1026,7 +1088,9 @@ public class RSchemaRegion implements ISchemaRegion {
             + pathPattern.getNodeLength();
     Function<String, Boolean> function =
         s -> {
-          result.add(RSchemaUtils.getPathByInnerName(s));
+          result.add(
+              new TSchemaNode(
+                  RSchemaUtils.getPathByInnerName(s), MNodeType.UNIMPLEMENT.getNodeType()));
           return true;
         };
 
@@ -1038,7 +1102,10 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-    Set<String> childPath = getChildNodePathInNextLevel(pathPattern);
+    Set<String> childPath =
+        getChildNodePathInNextLevel(pathPattern).stream()
+            .map(node -> node.getNodeName())
+            .collect(Collectors.toSet());
     Set<String> childName = new HashSet<>();
     for (String str : childPath) {
       childName.add(str.substring(str.lastIndexOf(RSchemaConstants.PATH_SEPARATOR) + 1));
@@ -1132,6 +1199,12 @@ public class RSchemaRegion implements ISchemaRegion {
       throws MetadataException {
     // todo page query
     return new Pair<>(getMeasurementPaths(pathPattern, false), offset + limit);
+  }
+
+  @Override
+  public List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -1831,7 +1904,7 @@ public class RSchemaRegion implements ISchemaRegion {
           measurementList[i] = nodeMap.get(i).getName();
         }
       } catch (MetadataException e) {
-        if (IoTDB.isClusterMode()) {
+        if (config.isClusterMode()) {
           logger.debug(
               "meet error when check {}.{}, message: {}",
               devicePath,
@@ -1853,6 +1926,16 @@ public class RSchemaRegion implements ISchemaRegion {
       }
     }
     return deviceMNode;
+  }
+
+  @Override
+  public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -1900,6 +1983,17 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

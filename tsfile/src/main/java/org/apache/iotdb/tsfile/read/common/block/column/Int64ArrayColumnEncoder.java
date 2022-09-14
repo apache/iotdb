@@ -28,7 +28,29 @@ import java.nio.ByteBuffer;
 public class Int64ArrayColumnEncoder implements ColumnEncoder {
 
   @Override
-  public void readColumn(ColumnBuilder columnBuilder, ByteBuffer input, int positionCount) {
+  public TimeColumn readTimeColumn(ByteBuffer input, int positionCount) {
+
+    // Serialized data layout:
+    //    +---------------+-----------------+-------------+
+    //    | may have null | null indicators |   values    |
+    //    +---------------+-----------------+-------------+
+    //    | byte          | list[byte]      | list[int64] |
+    //    +---------------+-----------------+-------------+
+
+    boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
+    long[] values = new long[positionCount];
+    if (nullIndicators == null) {
+      for (int i = 0; i < positionCount; i++) {
+        values[i] = input.getLong();
+      }
+      return new TimeColumn(0, positionCount, values);
+    } else {
+      throw new IllegalArgumentException("TimeColumn should not contain null values.");
+    }
+  }
+
+  @Override
+  public Column readColumn(ByteBuffer input, TSDataType dataType, int positionCount) {
 
     // Serialized data layout:
     //    +---------------+-----------------+-------------+
@@ -39,23 +61,34 @@ public class Int64ArrayColumnEncoder implements ColumnEncoder {
 
     boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
 
-    TSDataType dataType = columnBuilder.getDataType();
     if (TSDataType.INT64.equals(dataType)) {
-      for (int i = 0; i < positionCount; i++) {
-        if (nullIndicators == null || !nullIndicators[i]) {
-          columnBuilder.writeLong(input.getLong());
-        } else {
-          columnBuilder.appendNull();
+      long[] values = new long[positionCount];
+      if (nullIndicators == null) {
+        for (int i = 0; i < positionCount; i++) {
+          values[i] = input.getLong();
+        }
+      } else {
+        for (int i = 0; i < positionCount; i++) {
+          if (!nullIndicators[i]) {
+            values[i] = input.getLong();
+          }
         }
       }
+      return new LongColumn(0, positionCount, nullIndicators, values);
     } else if (TSDataType.DOUBLE.equals(dataType)) {
-      for (int i = 0; i < positionCount; i++) {
-        if (nullIndicators == null || !nullIndicators[i]) {
-          columnBuilder.writeDouble(Double.longBitsToDouble(input.getLong()));
-        } else {
-          columnBuilder.appendNull();
+      double[] values = new double[positionCount];
+      if (nullIndicators == null) {
+        for (int i = 0; i < positionCount; i++) {
+          values[i] = Double.longBitsToDouble(input.getLong());
+        }
+      } else {
+        for (int i = 0; i < positionCount; i++) {
+          if (!nullIndicators[i]) {
+            values[i] = Double.longBitsToDouble(input.getLong());
+          }
         }
       }
+      return new DoubleColumn(0, positionCount, nullIndicators, values);
     } else {
       throw new IllegalArgumentException("Invalid data type: " + dataType);
     }

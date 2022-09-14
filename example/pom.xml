@@ -31,7 +31,7 @@
     <artifactId>iotdb-examples</artifactId>
     <name>IoTDB Examples</name>
     <properties>
-        <zookeeper.version>3.4.6</zookeeper.version>
+        <zookeeper.version>3.4.14</zookeeper.version>
     </properties>
     <modules>
         <module>kafka</module>
@@ -47,6 +47,8 @@
         <module>udf</module>
         <module>trigger</module>
         <module>rabbitmq</module>
+        <module>rest-java-example</module>
+        <module>influxdb-protocol-example</module>
     </modules>
     <build>
         <pluginManagement>
@@ -67,7 +69,7 @@
             <dependency>
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka_2.10</artifactId>
-                <version>0.8.2.0</version>
+                <version>0.8.2.2</version>
                 <exclusions>
                     <exclusion>
                         <groupId>org.slf4j</groupId>

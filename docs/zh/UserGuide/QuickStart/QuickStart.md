@@ -59,18 +59,16 @@ Linux 系统与 MacOS 系统启动命令如下：
 ```
 > nohup sbin/start-server.sh >/dev/null 2>&1 &
 or
-> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
+> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
 ```
 
 Windows 系统启动命令如下：
 
 ```
-> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
+> sbin\start-server.bat -c <conf_path>
 ```
-- "-c" and "-rpc_port" 都是可选的。
+- "-c"是可选的。
 - 选项 "-c" 指定了配置文件所在的文件夹。
-- 选项 "-rpc_port" 指定了启动的 rpc port。
-- 如果两个选项同时指定，那么* rpc_port *将会覆盖* conf_path *下面的配置。
 
 ### 使用 Cli 工具
 
@@ -245,19 +243,19 @@ IoTDB> exit
 Linux 系统与 MacOS 系统停止命令如下：
 
 ```
-> $sbin/stop-server.sh
+> sbin/stop-server.sh
 ```
 
 Windows 系统停止命令如下：
 
 ```
-> $sbin\stop-server.bat
+> sbin\stop-server.bat
 ```
 
 ## 基础配置
 
 配置文件在"conf"文件夹下，包括：
 
-  * 环境配置模块 (`iotdb-env.bat`, `iotdb-env.sh`), 
-  * 系统配置模块 (`iotdb-engine.properties`)
+  * 环境配置模块 (`datanode-env.bat`, `datanode-env.sh`), 
+  * 系统配置模块 (`iotdb-datanode.properties`)
   * 日志配置模块 (`logback.xml`). 

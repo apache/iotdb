@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -146,15 +145,27 @@ public class StorageGroupManager {
     return getProcessor(storageGroupMNode, dataRegionId);
   }
 
+  /**
+   * get processor from data region id
+   *
+   * @param dataRegionId dataRegionId
+   * @return virtual storage group processor
+   */
+  public DataRegion getProcessor(int dataRegionId, IStorageGroupMNode storageGroupMNode)
+      throws DataRegionException, StorageEngineException {
+    return getProcessor(storageGroupMNode, dataRegionId);
+  }
+
   @SuppressWarnings("java:S2445")
-  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public DataRegion getProcessor(IStorageGroupMNode storageGroupMNode, int dataRegionId)
       throws DataRegionException, StorageEngineException {
     DataRegion processor = dataRegion[dataRegionId];
     if (processor == null) {
       // if finish recover
       if (isDataRegionReady[dataRegionId].get()) {
-        synchronized (storageGroupMNode) {
+        // it's unsafe to synchronize MNode here because
+        // concurrent deletions and creations will create a new MNode
+        synchronized (isDataRegionReady[dataRegionId]) {
           processor = dataRegion[dataRegionId];
           if (processor == null) {
             processor =
@@ -243,7 +254,7 @@ public class StorageGroupManager {
         logger.info(
             "{} closing sg processor is called for closing {}, seq = {}",
             isSync ? "sync" : "async",
-            processor.getDataRegionId() + "-" + processor.getLogicalStorageGroupName(),
+            processor.getDataRegionId() + "-" + processor.getStorageGroupName(),
             isSeq);
       }
 
@@ -282,7 +293,7 @@ public class StorageGroupManager {
       if (processor != null) {
         logger.info(
             "async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
-            processor.getDataRegionId() + "-" + processor.getLogicalStorageGroupName(),
+            processor.getDataRegionId() + "-" + processor.getStorageGroupName(),
             isSeq,
             partitionId);
         processor.writeLock("VirtualCloseStorageGroupProcessor-242");
@@ -385,10 +396,10 @@ public class StorageGroupManager {
   }
 
   /** push deleteStorageGroup operation down to all virtual storage group processors */
-  public void deleteStorageGroupSystemFolder(String path) {
+  public void deleteStorageGroupSystemFolder(String systemDir) {
     for (DataRegion processor : dataRegion) {
       if (processor != null) {
-        processor.deleteFolder(path);
+        processor.deleteFolder(systemDir);
       }
     }
   }
@@ -454,15 +465,6 @@ public class StorageGroupManager {
     }
   }
 
-  /** collect all tsfiles whose memtable == null for sync */
-  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
-    List<File> historyTsFiles = new ArrayList<>();
-    for (DataRegion processor : this.dataRegion) {
-      historyTsFiles.addAll(processor.collectHistoryTsFileForSync(dataStartTime));
-    }
-    return historyTsFiles;
-  }
-
   /** only for test */
   public void reset() {
     Arrays.fill(dataRegion, null);
@@ -483,13 +485,17 @@ public class StorageGroupManager {
 
   public void setAllowCompaction(boolean allowCompaction) {
     for (DataRegion processor : dataRegion) {
-      processor.setAllowCompaction(allowCompaction);
+      if (processor != null) {
+        processor.setAllowCompaction(allowCompaction);
+      }
     }
   }
 
   public void abortCompaction() {
     for (DataRegion processor : dataRegion) {
-      processor.abortCompaction();
+      if (processor != null) {
+        processor.abortCompaction();
+      }
     }
   }
 

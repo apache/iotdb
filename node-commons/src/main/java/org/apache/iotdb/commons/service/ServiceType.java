@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.service;
 public enum ServiceType {
   STORAGE_ENGINE_SERVICE("Storage Engine ServerService", ""),
   JMX_SERVICE("JMX ServerService", "JMX ServerService"),
-  METRICS_SERVICE("Metrics ServerService", "MetricsService"),
+  METRIC_SERVICE("Metrics ServerService", "MetricService"),
   RPC_SERVICE("RPC ServerService", "RPCService"),
   INFLUX_SERVICE("InfluxDB Protocol Service", "InfluxDB Protocol"),
   MQTT_SERVICE("MQTTService", ""),
@@ -33,19 +33,22 @@ public enum ServiceType {
   JVM_MEM_CONTROL_SERVICE("Memory Controller", ""),
   AUTHORIZATION_SERVICE("Authorization ServerService", ""),
   FILE_READER_MANAGER_SERVICE("File reader manager ServerService", ""),
-  SYNC_SERVICE("SYNC ServerService", ""),
   UPGRADE_SERVICE("UPGRADE DataService", ""),
   SETTLE_SERVICE("SETTLE DataService", ""),
-  SENDER_SERVICE("Sync Sender service", ""),
-  RECEIVER_SERVICE("Sync Receiver service", ""),
+  SYNC_RPC_SERVICE("Sync RPC ServerService", ""),
+  SYNC_SERVICE("Sync Service", ""),
   MERGE_SERVICE("Merge Manager", "Merge Manager"),
   COMPACTION_SERVICE("Compaction Manager", "Compaction Manager"),
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE", "PERFORMANCE_STATISTIC_SERVICE"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
   UDF_CLASSLOADER_MANAGER_SERVICE("UDF Classloader Manager Service", ""),
   UDF_REGISTRATION_SERVICE("UDF Registration Service", ""),
-  TEMPORARY_QUERY_DATA_FILE_SERVICE("Temporary Query Data File Service", ""),
+  UDF_EXECUTABLE_MANAGER_SERVICE("UDF Executable Manager Service", ""),
+  TRIGGER_CLASSLOADER_MANAGER_SERVICE("Trigger ClassLoader Manager Service", ""),
   TRIGGER_REGISTRATION_SERVICE("Trigger Registration Service", ""),
+  TRIGGER_EXECUTABLE_MANAGER_SERVICE("Trigger Executable Manager Service", ""),
+  TEMPORARY_QUERY_DATA_FILE_SERVICE("Temporary Query Data File Service", ""),
+  TRIGGER_REGISTRATION_SERVICE_OLD("Old Standalone Trigger Registration Service", ""),
   CACHE_HIT_RATIO_DISPLAY_SERVICE(
       "CACHE_HIT_RATIO_DISPLAY_SERVICE",
       generateJmxName("org.apache.iotdb.service", "Cache Hit Ratio")),
@@ -68,10 +71,12 @@ public enum ServiceType {
   CLUSTER_DATA_ENGINE("Cluster Data Engine", "ClusterDataEngine"),
   REST_SERVICE("REST Service", "REST Service"),
   CONFIG_NODE_SERVICE("Config Node service", "ConfigNodeRPCServer"),
+  DATA_NODE_REGION_MIGRATE_SERVICE("Data Node Region Migrate service", ""),
   DATA_NODE_MANAGEMENT_SERVICE("Data Node management service", "DataNodeManagementServer"),
   FRAGMENT_INSTANCE_MANAGER_SERVICE("Fragment instance manager", "FragmentInstanceManager"),
-  DATA_BLOCK_MANAGER_SERVICE("Data block manager", "DataBlockManager"),
-  INTERNAL_SERVICE("Internal Service", "InternalService");
+  MPP_DATA_EXCHANGE_SERVICE("MPP Data exchange manager", "MPPDataExchangeManager"),
+  INTERNAL_SERVICE("Internal Service", "InternalService"),
+  MULTI_LEADER_CONSENSUS_SERVICE("Multi Leader consensus Service", "MultiLeaderRPCService");
 
   private final String name;
   private final String jmxName;

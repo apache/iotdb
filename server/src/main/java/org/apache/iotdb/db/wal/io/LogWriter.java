@@ -37,14 +37,12 @@ import java.nio.channels.FileChannel;
  * and writing {@link Checkpoint} into .checkpoint file.
  */
 public abstract class LogWriter implements ILogWriter {
-  public static final String FILE_PREFIX = "_";
   private static final Logger logger = LoggerFactory.getLogger(LogWriter.class);
 
-  private final File logFile;
-  private final FileOutputStream logStream;
-  private final FileChannel logChannel;
-
-  private long size;
+  protected final File logFile;
+  protected final FileOutputStream logStream;
+  protected final FileChannel logChannel;
+  protected long size;
 
   public LogWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
@@ -76,8 +74,13 @@ public abstract class LogWriter implements ILogWriter {
   }
 
   @Override
-  public long size() throws IOException {
+  public long size() {
     return size;
+  }
+
+  @Override
+  public File getLogFile() {
+    return logFile;
   }
 
   @Override

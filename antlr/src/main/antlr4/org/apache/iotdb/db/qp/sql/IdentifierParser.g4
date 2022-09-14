@@ -28,7 +28,7 @@ identifier
      ;
 
 
-// List of keywords, new keywords should be added into this list.
+// List of keywords, new keywords that can be used as identifiers should be added into this list. For example, 'not' is an identifier but can not be used as an identifier in node name.
 
 keyWords
     : ADD
@@ -51,7 +51,9 @@ keyWords
     | CACHE
     | CHILD
     | CLEAR
+    | CLUSTER
     | CONCAT
+    | CONFIGNODES
     | CONFIGURATION
     | CONTINUOUS
     | COUNT
@@ -59,6 +61,8 @@ keyWords
     | CQ
     | CQS
     | CREATE
+    | DATA
+    | DATANODES
     | DEBUG
     | DELETE
     | DESC
@@ -71,6 +75,7 @@ keyWords
     | EVERY
     | EXPLAIN
     | FILL
+    | FILE
     | FLUSH
     | FOR
     | FROM
@@ -80,6 +85,7 @@ keyWords
     | GLOBAL
     | GRANT
     | GROUP
+    | HAVING
     | INDEX
     | INFO
     | INSERT
@@ -95,6 +101,7 @@ keyWords
     | LINK
     | LIST
     | LOAD
+    | LOCAL
     | LOCK
     | MERGE
     | METADATA
@@ -110,7 +117,6 @@ keyWords
     | PATHS
     | PIPE
     | PIPES
-    | PIPESERVER
     | PIPESINK
     | PIPESINKS
     | PIPESINKTYPE
@@ -122,8 +128,10 @@ keyWords
     | PRUNE
     | QUERIES
     | QUERY
+    | RUNNING
     | READONLY
     | REGEXP
+    | REGIONS
     | REMOVE
     | RENAME
     | RESAMPLE
@@ -140,6 +148,8 @@ keyWords
     | SOFFSET
     | STORAGE
     | START
+    | STATEFUL
+    | STATELESS
     | STOP
     | SYSTEM
     | TAGS
@@ -159,6 +169,7 @@ keyWords
     | UNSET
     | UPDATE
     | UPSERT
+    | URI
     | USER
     | USING
     | VALUES
@@ -167,6 +178,5 @@ keyWords
     | WHERE
     | WITH
     | WITHOUT
-    | WRITABLE
     | PRIVILEGE_VALUE
     ;

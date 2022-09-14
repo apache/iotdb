@@ -44,7 +44,7 @@ public class SubPlan {
     result.append(
         String.format(
             "SubPlan-%s. RootNodeId: %s\n",
-            planFragment.getId(), planFragment.getRoot().getPlanNodeId()));
+            planFragment.getId(), planFragment.getPlanNodeTree().getPlanNodeId()));
     children.forEach(result::append);
     return result.toString();
   }
@@ -62,7 +62,7 @@ public class SubPlan {
     result.add(this.planFragment);
     this.children.forEach(
         child -> {
-          result.add(child.getPlanFragment());
+          result.addAll(child.getPlanFragmentList());
         });
     return result;
   }

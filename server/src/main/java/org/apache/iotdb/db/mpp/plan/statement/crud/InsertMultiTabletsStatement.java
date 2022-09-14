@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -30,6 +35,11 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
 
   /** the InsertTabletStatement list */
   List<InsertTabletStatement> insertTabletStatementList;
+
+  public InsertMultiTabletsStatement() {
+    super();
+    statementType = StatementType.MULTI_BATCH_INSERT;
+  }
 
   public List<InsertTabletStatement> getInsertTabletStatementList() {
     return insertTabletStatementList;
@@ -71,6 +81,11 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     return alignedList;
   }
 
+  @Override
+  public boolean isEmpty() {
+    return insertTabletStatementList.isEmpty();
+  }
+
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertMultiTablets(this, context);
   }
@@ -80,6 +95,20 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     List<PartialPath> result = new ArrayList<>();
     for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
       result.addAll(insertTabletStatement.getPaths());
+    }
+    return result;
+  }
+
+  @Override
+  public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
+    List<TEndPoint> result = new ArrayList<>();
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      TRegionReplicaSet regionReplicaSet =
+          dataPartition.getDataRegionReplicaSetForWriting(
+              insertTabletStatement.devicePath.getFullPath(),
+              StorageEngineV2.getTimePartitionSlot(
+                  insertTabletStatement.getTimes()[insertTabletStatement.getTimes().length - 1]));
+      result.add(regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
     }
     return result;
   }

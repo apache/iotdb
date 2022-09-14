@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.schedule;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 
+import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,14 +50,24 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
 
   @Override
   public void run() {
+    DriverTask next;
     while (!closed && !Thread.currentThread().isInterrupted()) {
       try {
-        DriverTask next = queue.poll();
-        execute(next);
+        next = queue.poll();
       } catch (InterruptedException e) {
+        logger.error("Executor " + this.getName() + "failed to poll driver task from queue");
+        Thread.currentThread().interrupt();
         break;
-      } catch (Exception e) {
-        logger.error("Executor " + this.getName() + " processes failed", e);
+      }
+      try (SetThreadName fragmentInstanceName =
+          new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
+        execute(next);
+      } catch (Throwable t) {
+        logger.error("execute failed", t);
+        if (next != null) {
+          next.setAbortCause(FragmentInstanceAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
+          scheduler.toAborted(next);
+        }
       }
     }
   }

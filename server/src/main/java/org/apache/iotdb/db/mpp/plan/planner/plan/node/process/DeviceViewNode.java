@@ -22,9 +22,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,44 +42,41 @@ import java.util.Objects;
  * same between these TsBlocks. If the input TsBlock contains n columns, the device-based view will
  * contain n+1 columns where the new column is Device column.
  */
-public class DeviceViewNode extends ProcessNode {
+public class DeviceViewNode extends MultiChildNode {
 
   // The result output order, which could sort by device and time.
-  // The size of this list is 2 and the first OrderBy in this list has higher priority.
-  private final List<OrderBy> mergeOrders;
+  // The size of this list is 2 and the first SortItem in this list has higher priority.
+  private final OrderByParameter mergeOrderParameter;
 
   // The size devices and children should be the same.
   private final List<String> devices = new ArrayList<>();
-
-  // each child node whose output TsBlock contains the data belonged to one device.
-  private final List<PlanNode> children = new ArrayList<>();
 
   // Device column and measurement columns in result output
   private final List<String> outputColumnNames;
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
-  private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
+  private final Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 
   public DeviceViewNode(
       PlanNodeId id,
-      List<OrderBy> mergeOrders,
+      OrderByParameter mergeOrderParameter,
       List<String> outputColumnNames,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
     super(id);
-    this.mergeOrders = mergeOrders;
+    this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumnNames = outputColumnNames;
     this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
   }
 
   public DeviceViewNode(
       PlanNodeId id,
-      List<OrderBy> mergeOrders,
+      OrderByParameter mergeOrderParameter,
       List<String> outputColumnNames,
       List<String> devices,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
     super(id);
-    this.mergeOrders = mergeOrders;
+    this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumnNames = outputColumnNames;
     this.devices.addAll(devices);
     this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
@@ -114,7 +113,15 @@ public class DeviceViewNode extends ProcessNode {
   @Override
   public PlanNode clone() {
     return new DeviceViewNode(
-        getPlanNodeId(), mergeOrders, outputColumnNames, devices, deviceToMeasurementIndexesMap);
+        getPlanNodeId(),
+        mergeOrderParameter,
+        outputColumnNames,
+        devices,
+        deviceToMeasurementIndexesMap);
+  }
+
+  public OrderByParameter getMergeOrderParameter() {
+    return mergeOrderParameter;
   }
 
   @Override
@@ -130,8 +137,7 @@ public class DeviceViewNode extends ProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DEVICE_VIEW.serialize(byteBuffer);
-    ReadWriteIOUtils.write(mergeOrders.get(0).ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(mergeOrders.get(1).ordinal(), byteBuffer);
+    mergeOrderParameter.serializeAttributes(byteBuffer);
     ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
     for (String column : outputColumnNames) {
       ReadWriteIOUtils.write(column, byteBuffer);
@@ -150,10 +156,30 @@ public class DeviceViewNode extends ProcessNode {
     }
   }
 
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.DEVICE_VIEW.serialize(stream);
+    mergeOrderParameter.serializeAttributes(stream);
+    ReadWriteIOUtils.write(outputColumnNames.size(), stream);
+    for (String column : outputColumnNames) {
+      ReadWriteIOUtils.write(column, stream);
+    }
+    ReadWriteIOUtils.write(devices.size(), stream);
+    for (String deviceName : devices) {
+      ReadWriteIOUtils.write(deviceName, stream);
+    }
+    ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), stream);
+    for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue().size(), stream);
+      for (Integer index : entry.getValue()) {
+        ReadWriteIOUtils.write(index, stream);
+      }
+    }
+  }
+
   public static DeviceViewNode deserialize(ByteBuffer byteBuffer) {
-    List<OrderBy> mergeOrders = new ArrayList<>();
-    mergeOrders.add(OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
-    mergeOrders.add(OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
+    OrderByParameter mergeOrderParameter = OrderByParameter.deserialize(byteBuffer);
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> outputColumnNames = new ArrayList<>();
     while (columnSize > 0) {
@@ -181,7 +207,7 @@ public class DeviceViewNode extends ProcessNode {
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new DeviceViewNode(
-        planNodeId, mergeOrders, outputColumnNames, devices, deviceToMeasurementIndexesMap);
+        planNodeId, mergeOrderParameter, outputColumnNames, devices, deviceToMeasurementIndexesMap);
   }
 
   @Override
@@ -196,7 +222,7 @@ public class DeviceViewNode extends ProcessNode {
       return false;
     }
     DeviceViewNode that = (DeviceViewNode) o;
-    return mergeOrders.equals(that.mergeOrders)
+    return mergeOrderParameter.equals(that.mergeOrderParameter)
         && devices.equals(that.devices)
         && children.equals(that.children)
         && outputColumnNames.equals(that.outputColumnNames)
@@ -207,10 +233,15 @@ public class DeviceViewNode extends ProcessNode {
   public int hashCode() {
     return Objects.hash(
         super.hashCode(),
-        mergeOrders,
+        mergeOrderParameter,
         devices,
         children,
         outputColumnNames,
         deviceToMeasurementIndexesMap);
+  }
+
+  @Override
+  public String toString() {
+    return "DeviceView-" + this.getPlanNodeId();
   }
 }

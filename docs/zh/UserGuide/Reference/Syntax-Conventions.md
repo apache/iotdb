@@ -21,9 +21,13 @@
 
 # 语法约定
 
-## 旧语法约定中的问题
+## 旧语法约定中的问题（0.14 版本不兼容的语法）
 
 在之前版本的语法约定中，为了保持兼容性，我们引入了一些会引起歧义的规定。为了避免歧义，我们设计了新的语法约定，本章将说明旧语法约定中存在的问题，以及我们做出改动的原因。
+
+### 标识符限制增强
+
+在0.13及之前版本中，不使用反引号引用的标识符（包括路径结点）允许为实数（实数路径名在 `SELECT` 子句中需要用反引号括起），且允许包含部分特殊字符，**在0.14版本中，不使用反引号引用的标识符不允许为实数，不使用反引号引用的标识符，只允许包含字母、中文字符、下划线。**
 
 ### 路径名使用的相关问题
 
@@ -72,7 +76,24 @@ select `\"a` from root.sg;
 
 在新语法约定中，特殊路径结点名统一使用反引号进行引用，在路径结点名中使用单双引号无须添加反斜杠转义，使用反引号需要双写，具体可以参考新语法约定路径结点名章节。
 
-### SQL和Session接口对字符串反转义处理不一致
+### Session 接口相关
+
+#### Session 接口语法限制
+
+在0.13版本中，对于非SQL接口中使用路径结点的限制如下：
+
+- 经参数传入的路径或路径前缀中的节点：
+  - 在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。
+  - 使用单引号或双引号括起的节点，仍需要使用单引号或双引号括起，并且要针对 JAVA 字符串进行反转义。
+  - 对于 `checkTimeseriesExists` 接口，由于内部调用了 IoTDB-SQL 接口，因此需要和 SQL 语法规范保持一致，并且针对 JAVA 字符串进行反转义。
+
+**0.14 版本中，对非SQL接口中使用路径结点的限制增强：**
+
+- **经参数传入的路径或路径前缀中的节点： 在 SQL 语句中需要使用反引号（`）进行转义的，均需要使用反引号进行转义。**
+
+- **语法说明相关代码示例可以参考：**`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
+
+#### SQL和Session接口对字符串反转义处理不一致
 
 在之前版本中，使用字符串时，SQL 和 Session 接口存在不一致的情况。比如使用 SQL 插入 Text 类型数据时，会对字符串进行反转义处理，而使用 Session 接口时不会进行这样的处理，存在不一致。**在新的语法约定中，我们统一不对字符串做反转义处理，存入什么内容，在查询时就会得到什么内容(字符串内部使用单双引号的规则可以参考本文档字符串常量章节)。**
 
@@ -141,7 +162,7 @@ insert into root.sg(time, a) values(4, "\u96d5")
 
 MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :: 9.1.1 String Literals](https://dev.mysql.com/doc/refman/8.0/en/string-literals.html)
 
-即在 IoTDB 中，字符串是由**单引号（**`**'**`**）或双引号（**`**"**`**）字符括起来的字符序列**。示例如下：
+即在 IoTDB 中，字符串是由**单引号（`'`）或双引号（`"`）字符括起来的字符序列**。示例如下：
 
 ```Plain%20Text
 'a string'
@@ -286,10 +307,9 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 **标识符命名有以下约束：**
 
 - 不使用反引号括起的标识符中，允许出现以下字符：
-  - [ 0-9 a-z A-Z _ : @ # $ { } ] （字母，数字，部分特殊字符）
-
-- ['\u2E80'..'\u9FFF'] （UNICODE 中文字符）
-
+  - [ 0-9 a-z A-Z _ ] （字母，数字，下划线）
+  - ['\u2E80'..'\u9FFF'] （UNICODE 中文字符）
+  
 - 标识符允许使用数字开头、不使用反引号括起的标识符不能全部为数字。
 
 - 标识符是大小写敏感的。
@@ -299,7 +319,7 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 **如果出现如下情况，标识符需要使用反引号进行引用：**
 
 - 标识符包含不允许的特殊字符。
-- 标识符为纯数字。
+- 标识符为实数。
 
 ### 如何在反引号引起的标识符中使用引号
 
@@ -338,14 +358,14 @@ create schema template `t1't"t`
 - UDF 名称出现上述特殊情况时需使用反引号引用：
 
   ```sql
-  # 创建名为 111 的 UDF，111 为纯数字，所以需要用反引号引用。
+  # 创建名为 111 的 UDF，111 为实数，所以需要用反引号引用。
   CREATE FUNCTION `111` AS 'org.apache.iotdb.udf.UDTFExample'
   ```
 
 - 元数据模板名称出现上述特殊情况时需使用反引号引用：
 
   ```sql
-  # 创建名为 111 的元数据模板，111 为纯数字，需要用反引号引用。
+  # 创建名为 111 的元数据模板，111 为实数，需要用反引号引用。
   create schema template `111` 
   (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
   ```
@@ -444,7 +464,7 @@ select a*b from root.sg
 # 路径结点名中包含特殊字符，时间序列各结点为["root","sg","www.`baidu.com"]
 create timeseries root.sg.`www.``baidu.com`.a with datatype=FLOAT,encoding=PLAIN;
 
-# 路径结点名为纯数字
+# 路径结点名为实数
 create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 ```
 
@@ -465,7 +485,7 @@ create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 # 路径结点名中包含特殊字符
 insert into root.sg.`www.``baidu.com`(timestamp, a) values(1, 2);
 
-# 路径结点名为纯数字
+# 路径结点名为实数
 insert into root.sg(timestamp, `111`) values (1, 2);
 ```
 
@@ -475,7 +495,7 @@ insert into root.sg(timestamp, `111`) values (1, 2);
 # 路径结点名中包含特殊字符
 select a from root.sg.`www.``baidu.com`;
 
-# 路径结点名为纯数字
+# 路径结点名为实数
 select `111` from root.sg
 ```
 
@@ -604,7 +624,7 @@ CREATE PIPE my_pipe TO my_iotdb FROM
 
 ## Session、TsFile API
 
-在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、存储组（storage group）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。
+在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、存储组（storage group）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。具体代码示例可以参考：`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
 1. 以创建时间序列 createTimeseries 为例：
 
@@ -625,7 +645,7 @@ create timeseries root.sg.a with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY
 # 路径结点名中包含特殊字符，时间序列各结点为["root","sg","a.`\"b"]
 create timeseries root.sg.`a.``"b` with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
 
-# 路径结点名为纯数字
+# 路径结点名为实数
 create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
 ```
 
@@ -689,7 +709,7 @@ select a from root.sg
 # 路径结点名中包含特殊字符
 select `a.``"b` from root.sg;
 
-# 路径结点名为纯数字
+# 路径结点名为实数
 select `111` from root.sg
 ```
 

@@ -42,7 +42,7 @@ CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoT
   - false: 只在CSV的header中打印出时间序列的名字, `Time, root.sg1.d1.s1 , root.sg1.d1.s2`
 * `-q <query command>`:
   - 在命令中直接指定想要执行的查询语句。
-  - 例如: `select * from root limit 100`, or `select * from root limit 100 align by device`
+  - 例如: `select * from root.** limit 100`, or `select * from root.** limit 100 align by device`
 * `-s <sql file>`:
   - 指定一个SQL文件，里面包含一条或多条SQL语句。如果一个SQL文件中包含多条SQL语句，SQL语句之间应该用换行符进行分割。每一条SQL语句对应一个输出的CSV文件。
 * `-td <directory>`:
@@ -50,6 +50,9 @@ CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoT
 * `-tf <time-format>`:
   - 指定一个你想要得到的时间格式。时间格式必须遵守[ISO 8601](https://calendars.wikia.org/wiki/ISO_8601)标准。如果说你想要以时间戳来保存时间，那就设置为`-tf timestamp`。
   - 例如: `-tf yyyy-MM-dd\ HH:mm:ss` or `-tf timestamp`
+* `-linesPerFile <int>`:
+  - 指定导出的dump文件最大行数，默认值为`10000`。
+  - 例如： `-linesPerFile 1`
 
 除此之外，如果你没有使用`-s`和`-q`参数，在导出脚本被启动之后你需要按照程序提示输入查询语句，不同的查询结果会被保存到不同的CSV文件中。
 
@@ -61,32 +64,36 @@ CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoT
 # Or
 > tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss
 # or
-> tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root"
+> tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
 # Or
 > tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s sql.txt
 # Or
 > tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt
+# Or
+> tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt -linesPerFile 10
 
 # Windows
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./
 # Or
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss
 # or
-> tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root"
+> tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
 # Or
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s sql.txt
 # Or
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt
+# Or
+> tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt -linesPerFile 10
 ```
 
 ### SQL 文件示例
 
 ```sql
-select * from root;
-select * from root align by device;
+select * from root.**;
+select * from root.** align by device;
 ```
 
-`select * from root`的执行结果：
+`select * from root.**`的执行结果：
 
 ```sql
 Time,root.ln.wf04.wt04.status(BOOLEAN),root.ln.wf03.wt03.hardware(TEXT),root.ln.wf02.wt02.status(BOOLEAN),root.ln.wf02.wt02.hardware(TEXT),root.ln.wf01.wt01.hardware(TEXT),root.ln.wf01.wt01.status(BOOLEAN)
@@ -94,7 +101,7 @@ Time,root.ln.wf04.wt04.status(BOOLEAN),root.ln.wf03.wt03.hardware(TEXT),root.ln.
 1970-01-01T08:00:00.002+08:00,true,"v1",,,,true
 ```
 
-`select * from root align by device`的执行结果：
+`select * from root.** align by device`的执行结果：
 
 ```sql
 Time,Device,hardware(TEXT),status(BOOLEAN)
@@ -142,12 +149,14 @@ Time,root.test.t1.str,root.test.t2.str,root.test.t2.int
 1970-01-01T08:00:00.002+08:00,"123",,
 ```
 
-通过时间对齐，并且header中包含数据类型的数据。
+通过时间对齐，并且header中包含数据类型的数据。（Text类型数据支持加双引号和不加双引号）
 
 ```sql
 Time,root.test.t1.str(TEXT),root.test.t2.str(TEXT),root.test.t2.int(INT32)
 1970-01-01T08:00:00.001+08:00,"123hello world","123\,abc",100
-1970-01-01T08:00:00.002+08:00,"123",,
+1970-01-01T08:00:00.002+08:00,123,hello world,123
+1970-01-01T08:00:00.003+08:00,"123",,
+1970-01-01T08:00:00.004+08:00,123,,12
 ```
 
 通过设备对齐，并且header中不包含数据类型的数据。
@@ -159,22 +168,23 @@ Time,Device,str,int
 1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
 ```
 
-通过设备对齐，并且header中包含数据类型的数据。
+通过设备对齐，并且header中包含数据类型的数据。（Text类型数据支持加双引号和不加双引号）
 
 ```sql
 Time,Device,str(TEXT),int(INT32)
 1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",
 1970-01-01T08:00:00.002+08:00,root.test.t1,"123",
 1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
+1970-01-01T08:00:00.002+08:00,root.test.t1,hello world,123
 ```
 
 ### 运行方法
 
 ```shell
 # Unix/OS X
->tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>]
+>tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>] [-typeInfer <boolean=text,float=double...>] [-linesPerFailedFile <int_value>]
 # Windows
->tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>]
+>tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>] [-typeInfer <boolean=text,float=double...>] [-linesPerFailedFile <int_value>]
 ```
 
 参数:
@@ -195,6 +205,22 @@ Time,Device,str(TEXT),int(INT32)
   - 用于指定每一批插入的数据的点数。如果程序报了`org.apache.thrift.transport.TTransportException: Frame size larger than protect max size`这个错的话，就可以适当的调低这个参数。
   - 例如: `-batch 100000`，`100000`是默认值。
 
+* `-tp`:
+  - 用于指定时间精度，可选值包括`ms`（毫秒），`ns`（纳秒），`us`（微秒），默认值为`ms`。
+
+* `-typeInfer <srcTsDataType1=dstTsDataType1,srcTsDataType2=dstTsDataType2,...>`:
+  - 用于指定类型推断规则.
+  - `srcTsDataType` 包括 `boolean`,`int`,`long`,`float`,`double`,`NaN`.
+  - `dstTsDataType` 包括 `boolean`,`int`,`long`,`float`,`double`,`text`.
+  - 当`srcTsDataType`为`boolean`, `dstTsDataType`只能为`boolean`或`text`.
+  - 当`srcTsDataType`为`NaN`, `dstTsDataType`只能为`float`, `double`或`text`.
+  - 当`srcTsDataType`为数值类型, `dstTsDataType`的精度需要高于`srcTsDataType`.
+  - 例如:`-typeInfer boolean=text,float=double`
+
+* `-linesPerFailedFile <int>`:
+  - 用于指定每个导入失败文件写入数据的行数，默认值为10000。
+  - 例如：`-linesPerFailedFile 1`
+
 ### 运行示例
 
 ```sh
@@ -202,10 +228,22 @@ Time,Device,str(TEXT),int(INT32)
 >tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
 # or
 >tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
+# or
+> tools\import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed -tp ns
+# or
+> tools\import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed -tp ns -typeInfer boolean=text,float=double
+# or
+> tools\import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed -tp ns -typeInfer boolean=text,float=double -linesPerFailedFile 10
 # Windows
 >tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv
 # or
 >tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
+# or
+> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed -tp ns
+# or
+> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed -tp ns -typeInfer boolean=text,float=double
+# or
+> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed -tp ns -typeInfer boolean=text,float=double -linesPerFailedFile 10
 ```
 
 ### 注意

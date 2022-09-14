@@ -20,10 +20,14 @@ package org.apache.iotdb.db.wal;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.wal.allocation.FirstCreateStrategy;
@@ -42,21 +46,30 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to manage and allocate wal nodes */
 public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static final int MAX_WAL_NODE_NUM =
-      config.getMaxWalNodesNum() > 0 ? config.getMaxWalNodesNum() : config.getWalDirs().length * 2;
+      config.getMaxWalNodesNum() > 0
+          ? config.getMaxWalNodesNum()
+          : commonConfig.getWalDirs().length * 2;
 
   /** manage all wal nodes and decide how to allocate them */
   private final NodeAllocationStrategy walNodesManager;
   /** single thread to delete old .wal files */
   private ScheduledExecutorService walDeleteThread;
+  /** total disk usage of wal files */
+  private final AtomicLong totalDiskUsage = new AtomicLong();
 
   private WALManager() {
-    if (config.isClusterMode()) {
+    if (config.isClusterMode()
+        && config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)) {
       walNodesManager = new FirstCreateStrategy();
     } else {
       walNodesManager = new RoundRobinStrategy(MAX_WAL_NODE_NUM);
@@ -72,12 +85,33 @@ public class WALManager implements IService {
     return walNodesManager.applyForWALNode(applicantUniqueId);
   }
 
-  public void registerWALNode(String applicantUniqueId, String logDirectory) {
-    if (config.getWalMode() == WALMode.DISABLE || !config.isClusterMode()) {
+  /** WAL node will be registered only when using multi-leader consensus protocol */
+  public void registerWALNode(
+      String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
+    String s = config.getDataRegionConsensusProtocolClass();
+    if (config.getWalMode() == WALMode.DISABLE
+        || !config.isClusterMode()
+        || !config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)) {
       return;
     }
 
-    ((FirstCreateStrategy) walNodesManager).registerWALNode(applicantUniqueId, logDirectory);
+    ((FirstCreateStrategy) walNodesManager)
+        .registerWALNode(applicantUniqueId, logDirectory, startFileVersion, startSearchIndex);
+  }
+
+  /** WAL node will be deleted only when using multi-leader consensus protocol */
+  public void deleteWALNode(String applicantUniqueId) {
+    if (config.getWalMode() == WALMode.DISABLE
+        || !config.isClusterMode()
+        || !config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)) {
+      return;
+    }
+
+    ((FirstCreateStrategy) walNodesManager).deleteWALNode(applicantUniqueId);
   }
 
   @Override
@@ -87,13 +121,8 @@ public class WALManager implements IService {
     }
 
     try {
-      walDeleteThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
-      walDeleteThread.scheduleWithFixedDelay(
-          this::deleteOutdatedFiles,
-          config.getDeleteWalFilesPeriodInMs(),
-          config.getDeleteWalFilesPeriodInMs(),
-          TimeUnit.MILLISECONDS);
+      registerScheduleTask(
+          config.getDeleteWalFilesPeriodInMs(), config.getDeleteWalFilesPeriodInMs());
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
@@ -110,10 +139,7 @@ public class WALManager implements IService {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
     }
     logger.info("Stop wal delete thread successfully, and now restart it.");
-    walDeleteThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
-    walDeleteThread.scheduleWithFixedDelay(
-        this::deleteOutdatedFiles, 0, config.getDeleteWalFilesPeriodInMs(), TimeUnit.MILLISECONDS);
+    registerScheduleTask(0, config.getDeleteWalFilesPeriodInMs());
     logger.info(
         "Reboot wal delete thread successfully, current period is {} ms",
         config.getDeleteWalFilesPeriodInMs());
@@ -146,6 +172,18 @@ public class WALManager implements IService {
     }
   }
 
+  public long getTotalDiskUsage() {
+    return totalDiskUsage.get();
+  }
+
+  public void addTotalDiskUsage(long size) {
+    totalDiskUsage.accumulateAndGet(size, Long::sum);
+  }
+
+  public void subtractTotalDiskUsage(long size) {
+    totalDiskUsage.accumulateAndGet(size, (x, y) -> x - y);
+  }
+
   @Override
   public void stop() {
     if (config.getWalMode() == WALMode.DISABLE) {
@@ -171,8 +209,16 @@ public class WALManager implements IService {
     }
   }
 
+  private void registerScheduleTask(long initDelayMs, long periodMs) {
+    walDeleteThread =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        walDeleteThread, this::deleteOutdatedFiles, initDelayMs, periodMs, TimeUnit.MILLISECONDS);
+  }
+
   @TestOnly
   public void clear() {
+    totalDiskUsage.set(0);
     walNodesManager.clear();
   }
 

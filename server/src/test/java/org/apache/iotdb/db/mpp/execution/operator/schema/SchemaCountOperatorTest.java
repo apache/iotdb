@@ -44,6 +44,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -140,7 +141,14 @@ public class SchemaCountOperatorTest {
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       TimeSeriesCountOperator timeSeriesCountOperator =
           new TimeSeriesCountOperator(
-              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), partialPath, true);
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              partialPath,
+              true,
+              null,
+              null,
+              false,
+              Collections.emptyMap());
       TsBlock tsBlock = null;
       while (timeSeriesCountOperator.hasNext()) {
         tsBlock = timeSeriesCountOperator.next();
@@ -152,7 +160,11 @@ public class SchemaCountOperatorTest {
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
               new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG + ".device1.*"),
-              false);
+              false,
+              null,
+              null,
+              false,
+              Collections.emptyMap());
       tsBlock = timeSeriesCountOperator2.next();
       assertFalse(timeSeriesCountOperator2.hasNext());
       assertTrue(timeSeriesCountOperator2.isFinished());
@@ -195,7 +207,10 @@ public class SchemaCountOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(0),
               partialPath,
               true,
-              2);
+              2,
+              null,
+              null,
+              false);
       TsBlock tsBlock = null;
       while (timeSeriesCountOperator.hasNext()) {
         tsBlock = timeSeriesCountOperator.next();
@@ -215,7 +230,10 @@ public class SchemaCountOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(0),
               partialPath,
               true,
-              1);
+              1,
+              null,
+              null,
+              false);
       while (timeSeriesCountOperator2.hasNext()) {
         tsBlock = timeSeriesCountOperator2.next();
       }

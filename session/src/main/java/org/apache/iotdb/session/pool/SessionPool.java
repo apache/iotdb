@@ -2096,6 +2096,7 @@ public class SessionPool {
       try {
         session.setSchemaTemplate(templateName, prefixPath);
         putBack(session);
+        return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn(
@@ -2115,6 +2116,7 @@ public class SessionPool {
       try {
         session.unsetSchemaTemplate(prefixPath, templateName);
         putBack(session);
+        return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn(
@@ -2134,6 +2136,7 @@ public class SessionPool {
       try {
         session.dropSchemaTemplate(templateName);
         putBack(session);
+        return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn(String.format("dropSchemaTemplate [%s] failed", templateName), e);
@@ -2235,12 +2238,13 @@ public class SessionPool {
   }
 
   @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
-  public SessionDataSetWrapper executeRawDataQuery(List<String> paths, long startTime, long endTime)
+  public SessionDataSetWrapper executeRawDataQuery(
+      List<String> paths, long startTime, long endTime, long timeOut)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        SessionDataSet resp = session.executeRawDataQuery(paths, startTime, endTime);
+        SessionDataSet resp = session.executeRawDataQuery(paths, startTime, endTime, timeOut);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;

@@ -69,7 +69,7 @@ on [Apache Ratis](https://ratis.apache.org/).
 ```java
 IConsensus consensusImpl =
     ConsensusFactory.getConsensusImpl(
-        "org.apache.iotdb.consensus.ratis.RatisConsensus",
+        ConsensusFactory.RatisConsensus,
         new Endpoint(conf.getRpcAddress(), conf.getInternalPort()),
         new File(conf.getConsensusDir()),
         gid -> new PartitionRegionStateMachine())
@@ -77,7 +77,7 @@ IConsensus consensusImpl =
         new IllegalArgumentException(
         String.format(
         ConsensusFactory.CONSTRUCT_FAILED_MSG,
-        "org.apache.iotdb.consensus.ratis.RatisConsensus")));
+        ConsensusFactory.RatisConsensus)));
 
 consensusImpl.start();
 ```

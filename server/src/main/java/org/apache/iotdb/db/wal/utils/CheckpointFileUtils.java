@@ -34,7 +34,8 @@ public class CheckpointFileUtils {
    */
   public static final Pattern CHECKPOINT_FILE_NAME_PATTERN =
       Pattern.compile(
-          WAL_FILE_PREFIX + "(?<" + WAL_VERSION_ID + ">\\d+)\\" + WAL_CHECKPOINT_FILE_SUFFIX);
+          String.format(
+              "%s(?<%s>\\d+)\\%s$", WAL_FILE_PREFIX, WAL_VERSION_ID, WAL_CHECKPOINT_FILE_SUFFIX));
 
   /** Return true when this file is .checkpoint file */
   public static boolean checkpointFilenameFilter(File dir, String name) {

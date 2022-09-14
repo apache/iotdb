@@ -16,23 +16,30 @@
  */
 package org.apache.iotdb.db.service.thrift.handler;
 
-import org.apache.iotdb.db.service.thrift.impl.TSIEventHandler;
+import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.thrift.impl.IClientRPCServiceWithHandler;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
-public class RPCServiceThriftHandler implements TServerEventHandler {
-  private TSIEventHandler eventHandler;
+import java.util.concurrent.atomic.AtomicLong;
 
-  public RPCServiceThriftHandler(TSIEventHandler eventHandler) {
+public class RPCServiceThriftHandler implements TServerEventHandler {
+
+  private AtomicLong thriftConnectionNumber = new AtomicLong(0);
+  private final IClientRPCServiceWithHandler eventHandler;
+
+  public RPCServiceThriftHandler(IClientRPCServiceWithHandler eventHandler) {
     this.eventHandler = eventHandler;
+    MetricService.getInstance()
+        .addMetricSet(new RPCServiceThriftHandlerMetrics(thriftConnectionNumber));
   }
 
   @Override
   public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
-    // nothing
+    thriftConnectionNumber.incrementAndGet();
     return null;
   }
 
@@ -40,6 +47,7 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
   public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
     // release query resources.
     eventHandler.handleClientExit();
+    thriftConnectionNumber.decrementAndGet();
   }
 
   @Override

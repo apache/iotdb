@@ -31,7 +31,7 @@ public class SortOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     return ProcessOperator.super.isBlocked();
   }
 
@@ -53,5 +53,20 @@ public class SortOperator implements ProcessOperator {
   @Override
   public boolean isFinished() {
     return false;
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return 0;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return 0;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0;
   }
 }

@@ -19,20 +19,32 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartitionTable;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DataPartitionResp implements DataSet {
 
   private TSStatus status;
 
-  private DataPartition dataPartition;
+  private final boolean allPartitionsExist;
 
-  public DataPartitionResp() {
-    // Empty constructor
+  private final Map<String, DataPartitionTable> dataPartition;
+
+  public DataPartitionResp(
+      TSStatus status, boolean allPartitionsExist, Map<String, DataPartitionTable> dataPartition) {
+    this.status = status;
+    this.allPartitionsExist = allPartitionsExist;
+    this.dataPartition = dataPartition;
   }
 
   public TSStatus getStatus() {
@@ -43,24 +55,36 @@ public class DataPartitionResp implements DataSet {
     this.status = status;
   }
 
-  public void setDataPartition(DataPartition dataPartition) {
-    this.dataPartition = dataPartition;
+  public boolean isAllPartitionsExist() {
+    return allPartitionsExist;
   }
 
-  public DataPartition getDataPartition() {
-    return dataPartition;
-  }
-
-  /**
-   * Convert DataPartitionDataSet to TDataPartitionResp
-   *
-   * @param resp TDataPartitionResp
-   */
-  public void convertToRpcDataPartitionResp(TDataPartitionResp resp) {
+  public TDataPartitionTableResp convertToTDataPartitionTableResp() {
+    TDataPartitionTableResp resp = new TDataPartitionTableResp();
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setDataPartitionMap(dataPartition.getDataPartitionMap());
+      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+          dataPartitionMap = new ConcurrentHashMap<>();
+
+      dataPartition.forEach(
+          (storageGroup, dataPartitionTable) -> {
+            Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+                seriesPartitionSlotMap = new ConcurrentHashMap<>();
+
+            dataPartitionTable
+                .getDataPartitionMap()
+                .forEach(
+                    (seriesPartitionSlot, seriesPartitionTable) ->
+                        seriesPartitionSlotMap.put(
+                            seriesPartitionSlot, seriesPartitionTable.getSeriesPartitionMap()));
+
+            dataPartitionMap.put(storageGroup, seriesPartitionSlotMap);
+          });
+
+      resp.setDataPartitionTable(dataPartitionMap);
     }
+
+    return resp;
   }
 }

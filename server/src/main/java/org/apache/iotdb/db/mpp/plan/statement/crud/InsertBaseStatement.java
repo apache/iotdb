@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -71,8 +73,13 @@ public abstract class InsertBaseStatement extends Statement {
     isAligned = aligned;
   }
 
+  /** Returns true when this statement is empty and no need to write into the server */
+  public abstract boolean isEmpty();
+
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
+
+  public abstract List<TEndPoint> collectRedirectInfo(DataPartition dataPartition);
 }

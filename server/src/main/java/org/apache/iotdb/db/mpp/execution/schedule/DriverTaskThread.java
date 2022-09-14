@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
+import io.airlift.concurrent.SetThreadName;
 import io.airlift.units.Duration;
 
 import java.util.concurrent.Executor;
@@ -33,10 +35,14 @@ import java.util.concurrent.TimeUnit;
 /** the worker thread of {@link DriverTask} */
 public class DriverTaskThread extends AbstractDriverThread {
 
-  public static final Duration EXECUTION_TIME_SLICE = new Duration(100, TimeUnit.MILLISECONDS);
+  public static final Duration EXECUTION_TIME_SLICE =
+      new Duration(
+          IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
+          TimeUnit.MILLISECONDS);
 
-  // As the callback is lightweight enough, there's no need to use another one thread to execute.
-  private static final Executor listeningExecutor = MoreExecutors.directExecutor();
+  // we manage thread pool size directly, so create an unlimited pool
+  private static final Executor listeningExecutor =
+      IoTDBThreadPoolFactory.newCachedThreadPool("scheduler-notification");
 
   public DriverTaskThread(
       String workerId,
@@ -54,7 +60,7 @@ public class DriverTaskThread extends AbstractDriverThread {
     }
     IDriver instance = task.getFragmentInstance();
     CpuTimer timer = new CpuTimer();
-    ListenableFuture<Void> future = instance.processFor(EXECUTION_TIME_SLICE);
+    ListenableFuture<?> future = instance.processFor(EXECUTION_TIME_SLICE);
     CpuTimer.CpuDuration duration = timer.elapsedTime();
     // long cost = System.nanoTime() - startTime;
     // If the future is cancelled, the task is in an error and should be thrown.
@@ -77,7 +83,10 @@ public class DriverTaskThread extends AbstractDriverThread {
       scheduler.runningToBlocked(task, context);
       future.addListener(
           () -> {
-            scheduler.blockedToReady(task);
+            try (SetThreadName fragmentInstanceName2 =
+                new SetThreadName(task.getFragmentInstance().getInfo().getFullId())) {
+              scheduler.blockedToReady(task);
+            }
           },
           listeningExecutor);
     }

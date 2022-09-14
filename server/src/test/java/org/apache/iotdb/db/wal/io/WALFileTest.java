@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -29,7 +30,10 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.buffer.WALEntryType;
+import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
+import org.apache.iotdb.db.wal.utils.WALFileStatus;
+import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -44,12 +48,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
 public class WALFileTest {
-  private final File walFile = new File(TestConstant.BASE_OUTPUT_PATH.concat("_0.wal"));
+  private final File walFile =
+      new File(
+          TestConstant.BASE_OUTPUT_PATH.concat(
+              WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX)));
   private final String devicePath = "root.test_sg.test_d";
 
   @Before
@@ -70,11 +78,12 @@ public class WALFileTest {
   public void testReadNormalFile() throws IOException, IllegalPathException {
     int fakeMemTableId = 1;
     List<WALEntry> expectedWALEntries = new ArrayList<>();
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowNode(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertTabletNode(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowPlan(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertTabletPlan(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getDeletePlan(devicePath)));
+    expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertRowNode(devicePath)));
+    expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertTabletNode(devicePath)));
+    expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getDeleteDataNode(devicePath)));
+    expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertRowPlan(devicePath)));
+    expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertTabletPlan(devicePath)));
+    expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getDeletePlan(devicePath)));
     // test WALEntry.serializedSize
     int size = 0;
     for (WALEntry walEntry : expectedWALEntries) {
@@ -117,11 +126,11 @@ public class WALFileTest {
   public void testReadBrokenFile() throws IOException, IllegalPathException {
     int fakeMemTableId = 1;
     List<WALEntry> expectedWALEntries = new ArrayList<>();
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowNode(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertTabletNode(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowPlan(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertTabletPlan(devicePath)));
-    expectedWALEntries.add(new WALEntry(fakeMemTableId, getDeletePlan(devicePath)));
+    expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertRowNode(devicePath)));
+    expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertTabletNode(devicePath)));
+    expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertRowPlan(devicePath)));
+    expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertTabletPlan(devicePath)));
+    expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getDeletePlan(devicePath)));
     // test WALEntry.serializedSize
     int size = Byte.BYTES;
     for (WALEntry walEntry : expectedWALEntries) {
@@ -256,15 +265,7 @@ public class WALFileTest {
             columns,
             false);
 
-    insertRowNode.setMeasurementSchemas(
-        new MeasurementSchema[] {
-          new MeasurementSchema("s1", TSDataType.DOUBLE),
-          new MeasurementSchema("s2", TSDataType.FLOAT),
-          new MeasurementSchema("s3", TSDataType.INT64),
-          new MeasurementSchema("s4", TSDataType.INT32),
-          new MeasurementSchema("s5", TSDataType.BOOLEAN),
-          new MeasurementSchema("s6", TSDataType.TEXT)
-        });
+    insertRowNode.setMeasurementSchemas(new MeasurementSchema[6]);
     return insertRowNode;
   }
 
@@ -317,21 +318,23 @@ public class WALFileTest {
             bitMaps,
             columns,
             times.length);
-
-    insertTabletNode.setMeasurementSchemas(
-        new MeasurementSchema[] {
-          new MeasurementSchema("s1", TSDataType.DOUBLE),
-          new MeasurementSchema("s2", TSDataType.FLOAT),
-          new MeasurementSchema("s3", TSDataType.INT64),
-          new MeasurementSchema("s4", TSDataType.INT32),
-          new MeasurementSchema("s5", TSDataType.BOOLEAN),
-          new MeasurementSchema("s6", TSDataType.TEXT)
-        });
+    insertTabletNode.setMeasurementSchemas(new MeasurementSchema[6]);
 
     return insertTabletNode;
   }
 
   public static DeletePlan getDeletePlan(String devicePath) throws IllegalPathException {
     return new DeletePlan(Long.MIN_VALUE, Long.MAX_VALUE, new PartialPath(devicePath));
+  }
+
+  public static DeleteDataNode getDeleteDataNode(String devicePath) throws IllegalPathException {
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(new PartialPath(devicePath)),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    deleteDataNode.setSearchIndex(100L);
+    return deleteDataNode;
   }
 }

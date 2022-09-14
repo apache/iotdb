@@ -102,7 +102,7 @@ public class IoTDBSessionSyntaxConventionIT {
 
     measurements.add("`\"a“（Φ）”b\"`");
     measurements.add("`\"a>b\"`");
-    measurements.add("`'a.b'`");
+    measurements.add("```a.b```");
     measurements.add("`'a“（Φ）”b'`");
     measurements.add("`'a>b'`");
     measurements.add("`a“（Φ）”b`");
@@ -118,7 +118,7 @@ public class IoTDBSessionSyntaxConventionIT {
 
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\"a“（Φ）”b\"`"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\"a>b\"`"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`'a.b'`"));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.```a.b```"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`'a“（Φ）”b'`"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`'a>b'`"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a“（Φ）”b`"));
@@ -136,16 +136,69 @@ public class IoTDBSessionSyntaxConventionIT {
 
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
-    measurements.add("a.b");
-    measurements.add("111");
-    measurements.add("`a");
-    measurements.add("a..b");
-
     List<String> values = new ArrayList<>();
+    measurements.add("a.b");
     values.add("1");
+    try {
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    measurements.clear();
+    values.clear();
+    measurements.add("111");
     values.add("1.2");
-    values.add("true");
-    values.add("dad");
+    try {
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    measurements.clear();
+    values.clear();
+    measurements.add("`a");
+    values.add("1.2");
+    try {
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    measurements.clear();
+    values.clear();
+    measurements.add("a..b");
+    values.add("1.2");
+    try {
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    measurements.clear();
+    values.clear();
+    measurements.add("");
+    values.add("1.2");
+    try {
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    measurements.clear();
+    values.clear();
+    measurements.add("`a``");
+    values.add("1.2");
+    try {
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    measurements.clear();
+    values.clear();
+    measurements.add("`ab````");
+    values.add("1.2");
     try {
       session.insertRecord(deviceId, 1L, measurements, values);
     } catch (Exception e) {

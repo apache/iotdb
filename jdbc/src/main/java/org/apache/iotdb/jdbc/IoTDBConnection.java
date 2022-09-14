@@ -22,9 +22,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
+import java.sql.ClientInfoStatus;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -55,6 +56,7 @@ import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -66,7 +68,7 @@ public class IoTDBConnection implements Connection {
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
   private static final String NOT_SUPPORT_PREPARE_CALL = "Does not support prepareCall";
   private static final String NOT_SUPPORT_PREPARE_STATEMENT = "Does not support prepareStatement";
-  private TSIService.Iface client = null;
+  private IClientRPCService.Iface client = null;
   private long sessionId = -1;
   private IoTDBConnectionParams params;
   private boolean isClosed = true;
@@ -77,6 +79,12 @@ public class IoTDBConnection implements Connection {
    * will use server configuration.
    */
   private int queryTimeout = 0;
+
+  /**
+   * ConnectionTimeout and SocketTimeout. Unit: ms. If not set, default value 0 will be used, which
+   * means that there's no timeout in the client side.
+   */
+  private int networkTimeout = Config.DEFAULT_CONNECTION_TIMEOUT_MS;
 
   private ZoneId zoneId;
   private boolean autoCommit;
@@ -99,11 +107,13 @@ public class IoTDBConnection implements Connection {
     params = Utils.parseUrl(url, info);
     this.url = url;
     this.userName = info.get("user").toString();
+    this.networkTimeout = params.getNetworkTimeout();
+    this.zoneId = ZoneId.of(params.getTimeZone());
     openTransport();
     if (Config.rpcThriftCompressionEnable) {
-      setClient(new TSIService.Client(new TCompactProtocol(transport)));
+      setClient(new IClientRPCService.Client(new TCompactProtocol(transport)));
     } else {
-      setClient(new TSIService.Client(new TBinaryProtocol(transport)));
+      setClient(new IClientRPCService.Client(new TBinaryProtocol(transport)));
     }
     // open client session
     openSession();
@@ -274,7 +284,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public int getNetworkTimeout() {
-    return Config.DEFAULT_CONNECTION_TIMEOUT_MS;
+    return networkTimeout;
   }
 
   @Override
@@ -404,8 +414,18 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public void setClientInfo(String arg0, String arg1) throws SQLClientInfoException {
-    throw new SQLClientInfoException("Does not support setClientInfo", null);
+  public void setClientInfo(String name, String value) throws SQLClientInfoException {
+    if (name.equalsIgnoreCase("time_zone")) {
+      try {
+        setTimeZone(value);
+      } catch (TException | IoTDBSQLException e) {
+        throw new SQLClientInfoException("Set time_zone error: ", null, e);
+      }
+    } else {
+      HashMap<String, ClientInfoStatus> hashMap = new HashMap<>();
+      hashMap.put(name, ClientInfoStatus.REASON_UNKNOWN_PROPERTY);
+      throw new SQLClientInfoException("Does not support this type of client info: ", hashMap);
+    }
   }
 
   @Override
@@ -434,7 +454,7 @@ public class IoTDBConnection implements Connection {
     throw new SQLException("Does not support setSavepoint");
   }
 
-  public TSIService.Iface getClient() {
+  public IClientRPCService.Iface getClient() {
     return client;
   }
 
@@ -442,7 +462,7 @@ public class IoTDBConnection implements Connection {
     return sessionId;
   }
 
-  public void setClient(TSIService.Iface client) {
+  public void setClient(IClientRPCService.Iface client) {
     this.client = client;
   }
 
@@ -451,7 +471,7 @@ public class IoTDBConnection implements Connection {
     RpcTransportFactory.setThriftMaxFrameSize(params.getThriftMaxFrameSize());
     transport =
         RpcTransportFactory.INSTANCE.getTransport(
-            params.getHost(), params.getPort(), Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+            params.getHost(), params.getPort(), getNetworkTimeout());
     if (!transport.isOpen()) {
       transport.open();
     }
@@ -516,9 +536,9 @@ public class IoTDBConnection implements Connection {
           transport.close();
           openTransport();
           if (Config.rpcThriftCompressionEnable) {
-            setClient(new TSIService.Client(new TCompactProtocol(transport)));
+            setClient(new IClientRPCService.Client(new TCompactProtocol(transport)));
           } else {
-            setClient(new TSIService.Client(new TBinaryProtocol(transport)));
+            setClient(new IClientRPCService.Client(new TBinaryProtocol(transport)));
           }
           openSession();
           setClient(RpcUtils.newSynchronizedClient(getClient()));
@@ -544,15 +564,15 @@ public class IoTDBConnection implements Connection {
     return zoneId.toString();
   }
 
-  public void setTimeZone(String zoneId) throws TException, IoTDBSQLException {
-    TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, zoneId);
+  public void setTimeZone(String timeZone) throws TException, IoTDBSQLException {
+    TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, timeZone);
     TSStatus resp = getClient().setTimeZone(req);
     try {
       RpcUtils.verifySuccess(resp);
     } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), resp);
     }
-    this.zoneId = ZoneId.of(zoneId);
+    this.zoneId = ZoneId.of(timeZone);
   }
 
   public ServerProperties getServerProperties() throws TException {

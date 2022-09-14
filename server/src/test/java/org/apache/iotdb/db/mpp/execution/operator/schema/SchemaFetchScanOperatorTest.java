@@ -24,9 +24,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -36,6 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -43,7 +45,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.nio.ByteBuffer;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -66,12 +69,12 @@ public class SchemaFetchScanOperatorTest {
     ISchemaRegion schemaRegion = prepareSchemaRegion();
 
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPath(new PartialPath("root.**.status"));
-    patternTree.appendPath(new PartialPath("root.**.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.**.status"));
+    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
     patternTree.constructTree();
 
     SchemaFetchScanOperator schemaFetchScanOperator =
-        new SchemaFetchScanOperator(null, null, patternTree, schemaRegion);
+        new SchemaFetchScanOperator(null, null, patternTree, Collections.emptyMap(), schemaRegion);
 
     Assert.assertTrue(schemaFetchScanOperator.hasNext());
 
@@ -80,7 +83,9 @@ public class SchemaFetchScanOperatorTest {
     Assert.assertFalse(schemaFetchScanOperator.hasNext());
 
     Binary binary = tsBlock.getColumn(0).getBinary(0);
-    SchemaTree schemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
+    InputStream inputStream = new ByteArrayInputStream(binary.getValues());
+    Assert.assertEquals(1, ReadWriteIOUtils.readByte(inputStream));
+    ISchemaTree schemaTree = ClusterSchemaTree.deserialize(inputStream);
 
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(
@@ -101,9 +106,6 @@ public class SchemaFetchScanOperatorTest {
     Assert.assertEquals(
         Arrays.asList("root.sg.d1.s2", "root.sg.d2.a.s2", "root.sg.d2.s2"),
         pair.left.stream().map(MeasurementPath::getFullPath).collect(Collectors.toList()));
-    Assert.assertEquals(
-        Arrays.asList("0", "2", "1"),
-        pair.left.stream().map(MeasurementPath::getVersion).collect(Collectors.toList()));
   }
 
   private ISchemaRegion prepareSchemaRegion() throws Exception {
@@ -129,10 +131,10 @@ public class SchemaFetchScanOperatorTest {
 
     createTimeSeriesPlan.setAlias("status");
     createTimeSeriesPlan.setPath(new PartialPath("root.sg.d1.s2"));
-    schemaRegion.createTimeseries(createTimeSeriesPlan, -1, "0");
+    schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
 
     createTimeSeriesPlan.setPath(new PartialPath("root.sg.d2.s2"));
-    schemaRegion.createTimeseries(createTimeSeriesPlan, -1, "1");
+    schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
 
     CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
         new CreateAlignedTimeSeriesPlan(
@@ -145,7 +147,7 @@ public class SchemaFetchScanOperatorTest {
             Collections.emptyList(),
             Collections.emptyList());
 
-    schemaRegion.createAlignedTimeSeries(createAlignedTimeSeriesPlan, Arrays.asList(null, "2"));
+    schemaRegion.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
 
     return schemaRegion;
   }

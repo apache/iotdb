@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-/** Type of {@link WALEntry} */
+/** Type of {@link WALEntry}, including info type and signal type */
 public enum WALEntryType {
+  // region info entry type
   /** {@link org.apache.iotdb.db.qp.physical.crud.InsertRowPlan} */
   INSERT_ROW_PLAN((byte) 0),
   /** {@link org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan} */
@@ -32,7 +33,18 @@ public enum WALEntryType {
   INSERT_ROW_NODE((byte) 4),
   /** {@link org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode} */
   INSERT_TABLET_NODE((byte) 5),
-  ;
+  /** {@link org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode} */
+  DELETE_DATA_NODE((byte) 6),
+  // endregion
+  // region signal entry type
+  /** signal wal buffer has been closed */
+  CLOSE_SIGNAL(Byte.MIN_VALUE),
+  /** signal wal buffer to roll wal log writer */
+  ROLL_WAL_LOG_WRITER_SIGNAL((byte) (Byte.MIN_VALUE + 1)),
+  /** mark the wal file info part ends */
+  WAL_FILE_INFO_END_MARKER((byte) (Byte.MIN_VALUE + 2)),
+// endregion
+;
 
   private final byte code;
 
@@ -44,12 +56,17 @@ public enum WALEntryType {
     return code;
   }
 
+  /** Returns true when this type should be searched */
+  public boolean needSearch() {
+    return this == INSERT_TABLET_NODE || this == INSERT_ROW_NODE || this == DELETE_DATA_NODE;
+  }
+
   public static WALEntryType valueOf(byte code) {
     for (WALEntryType type : WALEntryType.values()) {
       if (type.code == code) {
         return type;
       }
     }
-    return null;
+    throw new IllegalArgumentException("Invalid WALEntryType code: " + code);
   }
 }

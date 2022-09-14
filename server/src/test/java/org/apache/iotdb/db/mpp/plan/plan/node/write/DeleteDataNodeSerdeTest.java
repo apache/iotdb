@@ -38,10 +38,12 @@ public class DeleteDataNodeSerdeTest {
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
     PlanNodeId planNodeId = new PlanNodeId("DeleteDataNode");
+    long startTime = 1;
+    long endTime = 10;
     List<PartialPath> pathList = new ArrayList<>();
     pathList.add(new PartialPath("root.sg.d1.s1"));
     pathList.add(new PartialPath("root.sg.d2.*"));
-    DeleteDataNode deleteDataNode = new DeleteDataNode(planNodeId, pathList);
+    DeleteDataNode deleteDataNode = new DeleteDataNode(planNodeId, pathList, startTime, endTime);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     deleteDataNode.serialize(byteBuffer);
@@ -52,6 +54,10 @@ public class DeleteDataNodeSerdeTest {
     Assert.assertEquals(planNodeId, deserializedNode.getPlanNodeId());
 
     deleteDataNode = (DeleteDataNode) deserializedNode;
+
+    Assert.assertEquals(startTime, deleteDataNode.getDeleteStartTime());
+    Assert.assertEquals(endTime, deleteDataNode.getDeleteEndTime());
+
     List<PartialPath> deserializedPathList = deleteDataNode.getPathList();
     Assert.assertEquals(pathList.size(), deserializedPathList.size());
     for (int i = 0; i < pathList.size(); i++) {

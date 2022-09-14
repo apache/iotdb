@@ -31,7 +31,7 @@ public class DeleteTimeSeriesStatement extends Statement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return null;
+    return partialPaths;
   }
 
   public void setPartialPaths(List<PartialPath> partialPaths) {

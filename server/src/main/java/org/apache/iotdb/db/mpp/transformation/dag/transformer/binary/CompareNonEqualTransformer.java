@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.transformation.dag.transformer.binary;
 
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.util.TransformUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 public class CompareNonEqualTransformer extends CompareBinaryTransformer {
@@ -42,7 +43,7 @@ public class CompareNonEqualTransformer extends CompareBinaryTransformer {
   @Override
   protected Evaluator constructTextEvaluator() {
     return () ->
-        compare(
+        TransformUtils.compare(
                 leftPointReader.currentBinary().getStringValue(),
                 rightPointReader.currentBinary().getStringValue())
             != 0;

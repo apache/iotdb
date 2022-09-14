@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.trigger.service;
 
+import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.tsfile.utils.Pair;

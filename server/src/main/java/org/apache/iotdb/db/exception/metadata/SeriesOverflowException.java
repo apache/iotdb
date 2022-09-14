@@ -28,7 +28,7 @@ public class SeriesOverflowException extends MetadataException {
   public SeriesOverflowException() {
     super(
         "There are too many timeseries in memory, "
-            + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat, restart and create timeseries again.",
+            + "please increase MAX_HEAP_SIZE in datanode-env.sh/bat, restart and create timeseries again.",
         TSStatusCode.SERIES_OVERFLOW.getStatusCode());
   }
 }

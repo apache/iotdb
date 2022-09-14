@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
@@ -669,7 +670,7 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
     processor.compact();
     long totalWaitingTime = 0;
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+    do {
       // wait
       try {
         Thread.sleep(100);
@@ -684,7 +685,7 @@ public class StorageGroupProcessorTest {
         Assert.fail();
         break;
       }
-    }
+    } while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0);
 
     QueryDataSource queryDataSource =
         processor.query(
@@ -729,8 +730,9 @@ public class StorageGroupProcessorTest {
               processor.getSequenceFileList(),
               true,
               new ReadChunkCompactionPerformer(processor.getSequenceFileList()),
-              new AtomicInteger(0));
-      CompactionTaskManager.getInstance().submitTask(task);
+              new AtomicInteger(0),
+              0);
+      CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       Thread.sleep(20);
       StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));
       Thread.sleep(500);
@@ -750,7 +752,7 @@ public class StorageGroupProcessorTest {
                   + targetTsFileResource.getTsFile().getName()
                   + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
       Assert.assertFalse(logFile.exists());
-      Assert.assertFalse(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
+      Assert.assertFalse(CommonDescriptor.getInstance().getConfig().isReadOnly());
       Assert.assertTrue(processor.getTsFileManager().isAllowCompaction());
     } finally {
       new CompactionConfigRestorer().restoreCompactionConfig();

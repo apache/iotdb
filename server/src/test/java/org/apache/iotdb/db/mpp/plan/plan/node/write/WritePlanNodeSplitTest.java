@@ -90,6 +90,7 @@ public class WritePlanNodeSplitTest {
     dataPartitionMap = new HashMap<>();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         seriesPartitionSlotMap = new HashMap<>();
+    // sg1 has 5 data regions
     for (int i = 0; i < seriesSlotPartitionNum; i++) {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
       for (int t = 0; t < 5; t++) {
@@ -105,6 +106,7 @@ public class WritePlanNodeSplitTest {
 
     dataPartitionMap.put("root.sg1", seriesPartitionSlotMap);
 
+    // sg2 has 1 data region
     seriesPartitionSlotMap = new HashMap<>();
     for (int i = 0; i < seriesSlotPartitionNum; i++) {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
@@ -113,7 +115,7 @@ public class WritePlanNodeSplitTest {
             new TTimePartitionSlot(t * StorageEngineV2.getTimePartitionInterval()),
             Collections.singletonList(
                 new TRegionReplicaSet(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 5 - t), null)));
+                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 5), null)));
       }
 
       seriesPartitionSlotMap.put(new TSeriesPartitionSlot(i), timePartitionSlotMap);
@@ -189,6 +191,28 @@ public class WritePlanNodeSplitTest {
     analysis.setDataPartitionInfo(dataPartition);
 
     List<WritePlanNode> insertTabletNodeList = insertTabletNode.splitByPartition(analysis);
+
+    Assert.assertEquals(5, insertTabletNodeList.size());
+    for (WritePlanNode insertNode : insertTabletNodeList) {
+      Assert.assertEquals(((InsertTabletNode) insertNode).getTimes().length, 2);
+    }
+
+    insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node 2"));
+
+    insertTabletNode.setDevicePath(new PartialPath("root.sg2.d1"));
+    insertTabletNode.setTimes(new long[] {1, 60, 120, 180, 270, 290, 360, 375, 440, 470});
+    insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.INT32});
+    insertTabletNode.setColumns(new Object[] {new int[] {10, 20, 30, 40, 50, 60, 70, 80, 90, 100}});
+
+    dataPartitionQueryParam = new DataPartitionQueryParam();
+    dataPartitionQueryParam.setDevicePath(insertTabletNode.getDevicePath().getFullPath());
+    dataPartitionQueryParam.setTimePartitionSlotList(insertTabletNode.getTimePartitionSlots());
+
+    dataPartition = getDataPartition(Collections.singletonList(dataPartitionQueryParam));
+    analysis = new Analysis();
+    analysis.setDataPartitionInfo(dataPartition);
+
+    insertTabletNodeList = insertTabletNode.splitByPartition(analysis);
 
     Assert.assertEquals(5, insertTabletNodeList.size());
     for (WritePlanNode insertNode : insertTabletNodeList) {

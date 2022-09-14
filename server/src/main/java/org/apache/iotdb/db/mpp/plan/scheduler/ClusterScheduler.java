@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -26,9 +27,9 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -50,18 +51,13 @@ import java.util.concurrent.ScheduledExecutorService;
 public class ClusterScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(ClusterScheduler.class);
 
-  private MPPQueryContext queryContext;
   // The stateMachine of the QueryExecution owned by this QueryScheduler
-  private QueryStateMachine stateMachine;
-  private QueryType queryType;
+  private final QueryStateMachine stateMachine;
+  private final QueryType queryType;
   // The fragment instances which should be sent to corresponding Nodes.
-  private List<FragmentInstance> instances;
+  private final List<FragmentInstance> instances;
 
-  private ExecutorService executor;
-  private ExecutorService writeOperationExecutor;
-  private ScheduledExecutorService scheduledExecutor;
-
-  private IFragInstanceDispatcher dispatcher;
+  private final IFragInstanceDispatcher dispatcher;
   private IFragInstanceStateTracker stateTracker;
   private IQueryTerminator queryTerminator;
 
@@ -74,27 +70,34 @@ public class ClusterScheduler implements IScheduler {
       ExecutorService writeOperationExecutor,
       ScheduledExecutorService scheduledExecutor,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
-    this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.instances = instances;
     this.queryType = queryType;
-    this.executor = executor;
-    this.scheduledExecutor = scheduledExecutor;
     this.dispatcher =
         new FragmentInstanceDispatcherImpl(
-            queryType, executor, writeOperationExecutor, internalServiceClientManager);
-    this.stateTracker =
-        new FixedRateFragInsStateTracker(
-            stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
-    this.queryTerminator =
-        new SimpleQueryTerminator(
-            executor, queryContext.getQueryId(), instances, internalServiceClientManager);
+            queryType,
+            queryContext,
+            executor,
+            writeOperationExecutor,
+            internalServiceClientManager);
+    if (queryType == QueryType.READ) {
+      this.stateTracker =
+          new FixedRateFragInsStateTracker(
+              stateMachine, scheduledExecutor, instances, internalServiceClientManager);
+      this.queryTerminator =
+          new SimpleQueryTerminator(
+              scheduledExecutor, queryContext, instances, internalServiceClientManager);
+    }
+  }
+
+  private boolean needRetry(TSStatus failureStatus) {
+    return failureStatus != null
+        && failureStatus.getCode() == TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode();
   }
 
   @Override
   public void start() {
     stateMachine.transitionToDispatching();
-    logger.info("{} transit to DISPATCHING", getLogHeader());
     Future<FragInstanceDispatchResult> dispatchResultFuture = dispatcher.dispatch(instances);
 
     // NOTICE: the FragmentInstance may be dispatched to another Host due to consensus redirect.
@@ -102,12 +105,15 @@ public class ClusterScheduler implements IScheduler {
     try {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
-        logger.error("{} dispatch failed.", getLogHeader());
-        stateMachine.transitionToFailed(new IllegalStateException("Fragment cannot be dispatched"));
+        if (needRetry(result.getFailureStatus())) {
+          stateMachine.transitionToPendingRetry(result.getFailureStatus());
+        } else {
+          stateMachine.transitionToFailed(result.getFailureStatus());
+        }
         return;
       }
     } catch (InterruptedException | ExecutionException e) {
-      // If the dispatch failed, we make the QueryState as failed, and return.
+      // If the dispatch request cannot be sent or TException is caught, we will retry this query.
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
@@ -124,15 +130,10 @@ public class ClusterScheduler implements IScheduler {
     // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
     // QueryState to Running
     stateMachine.transitionToRunning();
-    logger.info("{} transit to RUNNING", getLogHeader());
-    instances.forEach(
-        instance -> {
-          stateMachine.initialFragInstanceState(instance.getId(), FragmentInstanceState.RUNNING);
-        });
 
     // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
     this.stateTracker.start();
-    logger.info("{} state tracker starts", getLogHeader());
+    logger.info("state tracker starts");
   }
 
   @Override
@@ -140,9 +141,13 @@ public class ClusterScheduler implements IScheduler {
     // TODO: It seems that it is unnecessary to check whether they are null or not. Is it a best
     // practice ?
     dispatcher.abort();
-    stateTracker.abort();
+    if (stateTracker != null) {
+      stateTracker.abort();
+    }
     // TODO: (xingtanzjr) handle the exception when the termination cannot succeed
-    queryTerminator.terminate();
+    if (queryTerminator != null) {
+      queryTerminator.terminate();
+    }
   }
 
   @Override
@@ -166,8 +171,4 @@ public class ClusterScheduler implements IScheduler {
 
   // After sending, start to collect the states of these fragment instances
   private void startMonitorInstances() {}
-
-  private String getLogHeader() {
-    return String.format("Query[%s]", queryContext.getQueryId());
-  }
 }

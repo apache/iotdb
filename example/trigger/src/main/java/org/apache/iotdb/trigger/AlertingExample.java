@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.trigger;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
-import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
 import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerConfiguration;
 import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerEvent;
 import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerHandler;
+import org.apache.iotdb.trigger.api.TriggerAttributes;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -71,7 +72,7 @@ public class AlertingExample implements Trigger {
   }
 
   @Override
-  public Double fire(long timestamp, Double value) throws Exception {
+  public Double fire(long timestamp, Double value, PartialPath path) throws Exception {
     if (value > 100.0) {
       labels.put("value", String.valueOf(value));
       labels.put("severity", "critical");
@@ -88,7 +89,7 @@ public class AlertingExample implements Trigger {
   }
 
   @Override
-  public double[] fire(long[] timestamps, double[] values) throws Exception {
+  public double[] fire(long[] timestamps, double[] values, PartialPath path) throws Exception {
     for (double value : values) {
       if (value > 100.0) {
         labels.put("value", String.valueOf(value));

@@ -20,7 +20,6 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.IStateMachine;
 
-import org.apache.ratis.io.MD5Hash;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.server.storage.FileInfo;
 import org.apache.ratis.server.storage.RaftStorage;
@@ -29,7 +28,6 @@ import org.apache.ratis.statemachine.SnapshotRetentionPolicy;
 import org.apache.ratis.statemachine.StateMachineStorage;
 import org.apache.ratis.statemachine.impl.FileListSnapshotInfo;
 import org.apache.ratis.util.FileUtils;
-import org.apache.ratis.util.MD5FileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +39,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 public class SnapshotStorage implements StateMachineStorage {
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
@@ -63,7 +60,9 @@ public class SnapshotStorage implements StateMachineStorage {
     ArrayList<Path> snapshotPaths = new ArrayList<>();
     try (DirectoryStream<Path> stream = Files.newDirectoryStream(stateMachineDir.toPath())) {
       for (Path path : stream) {
-        snapshotPaths.add(path);
+        if (path.toFile().isDirectory()) {
+          snapshotPaths.add(path);
+        }
       }
     } catch (IOException exception) {
       logger.warn("cannot construct snapshot directory stream ", exception);
@@ -87,7 +86,21 @@ public class SnapshotStorage implements StateMachineStorage {
     if (snapshots == null || snapshots.length == 0) {
       return null;
     }
-    return snapshots[snapshots.length - 1].toFile();
+    int i = snapshots.length - 1;
+    for (; i >= 0; i--) {
+      String metafilePath =
+          getMetafilePath(snapshots[i].toFile(), snapshots[i].getFileName().toString());
+      if (new File(metafilePath).exists()) {
+        break;
+      } else {
+        try {
+          FileUtils.deleteFully(snapshots[i]);
+        } catch (IOException e) {
+          logger.warn("delete incomplete snapshot directory {} failed due to {}", snapshots[i], e);
+        }
+      }
+    }
+    return i < 0 ? null : snapshots[i].toFile();
   }
 
   @Override
@@ -98,18 +111,26 @@ public class SnapshotStorage implements StateMachineStorage {
     }
     TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
 
-    List<FileInfo> fileInfos = new ArrayList<>();
-    for (File file : Objects.requireNonNull(latestSnapshotDir.listFiles())) {
-      Path filePath = file.toPath();
-      MD5Hash fileHash = null;
-      try {
-        fileHash = MD5FileUtil.computeMd5ForFile(file);
-      } catch (IOException e) {
-        logger.error("read file info failed for snapshot file ", e);
-      }
-      FileInfo fileInfo = new FileInfo(filePath, fileHash);
-      fileInfos.add(fileInfo);
+    List<Path> actualSnapshotFiles = applicationStateMachine.getSnapshotFiles(latestSnapshotDir);
+    if (actualSnapshotFiles == null) {
+      return null;
     }
+
+    List<FileInfo> fileInfos = new ArrayList<>();
+    FileInfo metafileInfo = null;
+    for (Path file : actualSnapshotFiles) {
+      if (file.endsWith(".md5")) {
+        continue;
+      }
+      FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
+      if (file.toFile().getName().startsWith(META_FILE_PREFIX)) {
+        metafileInfo = fileInfo;
+      } else {
+        fileInfos.add(fileInfo);
+      }
+    }
+    // metafile should be sent last for atomicity considerations
+    fileInfos.add(metafileInfo);
 
     return new FileListSnapshotInfo(
         fileInfos, snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());
@@ -162,11 +183,6 @@ public class SnapshotStorage implements StateMachineStorage {
     return snapshotDir.getAbsolutePath() + File.separator + META_FILE_PREFIX + termIndexMetadata;
   }
 
-  private String getMetafileMatcherRegex() {
-    // meta file should always end with term_index
-    return META_FILE_PREFIX + "\\d+_\\d+$";
-  }
-
   /**
    * After leader InstallSnapshot to a slow follower, Ratis will put all snapshot files directly
    * under statemachineDir. We need to handle this special scenario and rearrange these files to
@@ -175,7 +191,7 @@ public class SnapshotStorage implements StateMachineStorage {
    */
   void moveSnapshotFileToSubDirectory() {
     File[] potentialMetafile =
-        stateMachineDir.listFiles((dir, name) -> name.matches(getMetafileMatcherRegex()));
+        stateMachineDir.listFiles((dir, name) -> name.startsWith(META_FILE_PREFIX));
     if (potentialMetafile == null || potentialMetafile.length == 0) {
       // the statemachine dir contains no direct metafile
       return;
@@ -198,6 +214,9 @@ public class SnapshotStorage implements StateMachineStorage {
       }
 
       for (File file : snapshotFiles) {
+        if (file.equals(snapshotDir)) {
+          continue;
+        }
         boolean success = file.renameTo(new File(snapshotDir + File.separator + file.getName()));
         if (!success) {
           logger.warn(

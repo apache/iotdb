@@ -117,8 +117,16 @@ CLEAR
     : C L E A R
     ;
 
+CLUSTER
+    : C L U S T E R
+    ;
+
 CONCAT
     : C O N C A T
+    ;
+
+CONFIGNODES
+    : C O N F I G N O D E S
     ;
 
 CONFIGURATION
@@ -147,6 +155,15 @@ CQS
 
 CREATE
     : C R E A T E
+    ;
+
+DATA
+    : D A T A
+    ;
+
+DATANODES
+
+    : D A T A N O D E S
     ;
 
 DEBUG
@@ -198,6 +215,10 @@ FILL
     : F I L L
     ;
 
+FILE
+    : F I L E
+    ;
+
 FLUSH
     : F L U S H
     ;
@@ -232,6 +253,10 @@ GRANT
 
 GROUP
     : G R O U P
+    ;
+
+HAVING
+    : H A V I N G
     ;
 
 INDEX
@@ -294,6 +319,10 @@ LOAD
     : L O A D
     ;
 
+LOCAL
+    : L O C A L
+    ;
+
 LOCK
     : L O C K
     ;
@@ -354,10 +383,6 @@ PIPES
     : P I P E S
     ;
 
-PIPESERVER
-    : P I P E S E R V E R
-    ;
-
 PIPESINK
     : P I P E S I N K
     ;
@@ -402,12 +427,20 @@ QUERY
     : Q U E R Y
     ;
 
+RUNNING
+    : R U N N I N G
+    ;
+
 READONLY
     : R E A D O N L Y
     ;
 
 REGEXP
     : R E G E X P
+    ;
+
+REGIONS
+    : R E G I O N S
     ;
 
 REMOVE
@@ -476,6 +509,14 @@ STORAGE
 
 START
     : S T A R T
+    ;
+
+STATELESS
+    : S T A T E L E S S
+    ;
+
+STATEFUL
+    : S T A T E F U L
     ;
 
 STOP
@@ -562,6 +603,10 @@ UPSERT
     : U P S E R T
     ;
 
+URI
+    : U R I
+    ;
+
 USER
     : U S E R
     ;
@@ -607,12 +652,13 @@ WRITABLE
 
 PRIVILEGE_VALUE
     : SET_STORAGE_GROUP | DELETE_STORAGE_GROUP
-    | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES
+    | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES | ALTER_TIMESERIES
     | CREATE_USER | DELETE_USER | MODIFY_PASSWORD | LIST_USER
     | GRANT_USER_PRIVILEGE | REVOKE_USER_PRIVILEGE | GRANT_USER_ROLE | REVOKE_USER_ROLE
     | CREATE_ROLE | DELETE_ROLE | LIST_ROLE | GRANT_ROLE_PRIVILEGE | REVOKE_ROLE_PRIVILEGE
     | CREATE_FUNCTION | DROP_FUNCTION | CREATE_TRIGGER | DROP_TRIGGER | START_TRIGGER | STOP_TRIGGER
     | CREATE_CONTINUOUS_QUERY | DROP_CONTINUOUS_QUERY
+    | APPLY_TEMPLATE | UPDATE_TEMPLATE | READ_TEMPLATE | READ_TEMPLATE_APPLICATION
     ;
 
 SET_STORAGE_GROUP
@@ -637,6 +683,10 @@ READ_TIMESERIES
 
 DELETE_TIMESERIES
     : D E L E T E '_' T I M E S E R I E S
+    ;
+
+ALTER_TIMESERIES
+    : A L T E R '_' T I M E S E R I E S
     ;
 
 CREATE_USER
@@ -735,6 +785,22 @@ TIME_PARTITION_INTERVAL
     : T I M E '_' P A R T I T I O N '_' I N T E R V A L
     ;
 
+APPLY_TEMPLATE
+    : A P P L Y '_' T E M P L A T E
+    ;
+
+UPDATE_TEMPLATE
+    : U P D A T E '_' T E M P L A T E
+    ;
+
+READ_TEMPLATE
+    : R E A D '_' T E M P L A T E
+    ;
+
+READ_TEMPLATE_APPLICATION
+    : R E A D '_' T E M P L A T E '_' A P P L I C A T I O N
+    ;
+
 /**
  * 3. Operators
  */
@@ -756,6 +822,10 @@ OPERATOR_GTE : '>=';
 OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 OPERATOR_NEQ : '!=' | '<>';
+
+OPERATOR_BETWEEN : B E T W E E N;
+
+OPERATOR_IS : I S;
 
 OPERATOR_IN : I N;
 
@@ -860,7 +930,6 @@ NAN_LITERAL
     : N A N
     ;
 
-
 /**
  * 6. ID
  */
@@ -892,15 +961,15 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | '""' | ~('"') )* '"'
+    : '"' ( '\\"' | '""' | ~('"') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\'. | '\'\'' |~('\'') )* '\''
+    : '\'' ( '\\\'' | '\'\'' | ~('\'') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\' ~('`') | '``' | ~('`') )* '`'
+    : '`' ( '``' | ~('`') )* '`'
     ;
 
 

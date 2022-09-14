@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.udf.api.exception.UDFRegistrationException;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -48,12 +50,14 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
+import org.apache.iotdb.db.sync.common.persistence.SyncLogWriter;
 import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.udf.api.exception.UDFRegistrationException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TConfiguration;
@@ -80,6 +84,7 @@ public class EnvironmentUtils {
   private static final Logger logger = LoggerFactory.getLogger(EnvironmentUtils.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static final DirectoryManager directoryManager = DirectoryManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = 1;
@@ -103,9 +108,15 @@ public class EnvironmentUtils {
 
     // deregister all user defined classes
     try {
-      UDFRegistrationService.getInstance().deregisterAll();
-      TriggerRegistrationService.getInstance().deregisterAll();
-      ContinuousQueryService.getInstance().deregisterAll();
+      if (UDFRegistrationService.getInstance() != null) {
+        UDFRegistrationService.getInstance().deregisterAll();
+      }
+      if (TriggerRegistrationService.getInstance() != null) {
+        TriggerRegistrationService.getInstance().deregisterAll();
+      }
+      if (ContinuousQueryService.getInstance() != null) {
+        ContinuousQueryService.getInstance().deregisterAll();
+      }
     } catch (UDFRegistrationException | TriggerManagementException | ContinuousQueryException e) {
       fail(e.getMessage());
     }
@@ -139,6 +150,7 @@ public class EnvironmentUtils {
 
     // clean wal manager
     WALManager.getInstance().clear();
+    WALRecoverManager.getInstance().clear();
 
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
@@ -146,7 +158,7 @@ public class EnvironmentUtils {
       fail();
     }
 
-    IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
+    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
     // unit tests.
     IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);
@@ -180,8 +192,8 @@ public class EnvironmentUtils {
     // clear last query executor
     LastQueryExecutor.clear();
 
-    // clear pipe data queue
-    PipeDataQueueFactory.clear();
+    // clear SyncLogger
+    SyncLogWriter.getInstance().close();
 
     // delete all directory
     cleanAllDir();
@@ -255,14 +267,18 @@ public class EnvironmentUtils {
     cleanDir(config.getUdfDir());
     // delete tlog
     cleanDir(config.getTriggerDir());
+    // delete extPipe
+    cleanDir(config.getExtPipeDir());
+    // delete ext
+    cleanDir(config.getExtDir());
     // delete mqtt dir
     cleanDir(config.getMqttDir());
     // delete wal
-    for (String walDir : config.getWalDirs()) {
+    for (String walDir : commonConfig.getWalDirs()) {
       cleanDir(walDir);
     }
     // delete sync dir
-    cleanDir(config.getSyncDir());
+    cleanDir(commonConfig.getSyncFolder());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -335,6 +351,7 @@ public class EnvironmentUtils {
     IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
     WALManager.getInstance().clear();
+    WALRecoverManager.getInstance().clear();
     reactiveDaemon();
   }
 
@@ -353,12 +370,12 @@ public class EnvironmentUtils {
     String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     createDir(sgDir);
     // create sync
-    createDir(config.getSyncDir());
+    createDir(commonConfig.getSyncFolder());
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
     // create wal
-    for (String walDir : config.getWalDirs()) {
+    for (String walDir : commonConfig.getWalDirs()) {
       createDir(walDir);
     }
     // create data
@@ -377,5 +394,22 @@ public class EnvironmentUtils {
   private static void createDir(String dir) {
     File file = new File(dir);
     file.mkdirs();
+  }
+
+  public static void recursiveDeleteFolder(String path) throws IOException {
+    File file = new File(path);
+    if (file.isDirectory()) {
+      File[] files = file.listFiles();
+      if (files == null || files.length == 0) {
+        FileUtils.deleteDirectory(file);
+      } else {
+        for (File f : files) {
+          recursiveDeleteFolder(f.getAbsolutePath());
+        }
+        FileUtils.deleteDirectory(file);
+      }
+    } else {
+      FileUtils.delete(file);
+    }
   }
 }

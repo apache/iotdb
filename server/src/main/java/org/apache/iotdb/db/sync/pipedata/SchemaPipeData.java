@@ -35,6 +35,10 @@ public class SchemaPipeData extends PipeData {
 
   private PhysicalPlan plan;
 
+  public SchemaPipeData() {
+    super();
+  }
+
   public SchemaPipeData(PhysicalPlan plan, long serialNumber) {
     super(serialNumber);
     this.plan = plan;
@@ -64,13 +68,11 @@ public class SchemaPipeData extends PipeData {
     return bytes;
   }
 
-  public static SchemaPipeData deserialize(DataInputStream stream)
-      throws IOException, IllegalPathException {
-    long serialNumber = stream.readLong();
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+    super.deserialize(stream);
     byte[] bytes = new byte[stream.readInt()];
     stream.read(bytes);
-    PhysicalPlan plan = PhysicalPlan.Factory.create(ByteBuffer.wrap(bytes));
-    return new SchemaPipeData(plan, serialNumber);
+    plan = PhysicalPlan.Factory.create(ByteBuffer.wrap(bytes));
   }
 
   @Override

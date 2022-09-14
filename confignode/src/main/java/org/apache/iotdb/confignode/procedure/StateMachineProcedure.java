@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -87,7 +89,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
    * @throws IOException temporary failure, the rollback will retry later
    */
   protected abstract void rollbackState(Env env, TState state)
-      throws IOException, InterruptedException;
+      throws IOException, InterruptedException, ProcedureException;
 
   /**
    * Convert an ordinal (or state id) to an Enum (or more descriptive) state object.
@@ -197,7 +199,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   @Override
-  protected void rollback(final Env env) throws IOException, InterruptedException {
+  protected void rollback(final Env env)
+      throws IOException, InterruptedException, ProcedureException {
     if (isEofState()) {
       stateCount--;
     }
@@ -300,11 +303,11 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    super.serialize(byteBuffer);
-    byteBuffer.putInt(stateCount);
+  public void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    stream.writeInt(stateCount);
     for (int i = 0; i < stateCount; ++i) {
-      byteBuffer.putInt(states[i]);
+      stream.writeInt(states[i]);
     }
   }
 

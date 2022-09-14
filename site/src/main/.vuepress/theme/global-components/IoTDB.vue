@@ -48,9 +48,9 @@
     <p class="home-title" style="font-size: 50px;">Scenarios</p>
 
     <div class="block">
-        <el-carousel trigger="click" :height="autoHeight" indicator-position="outside">
-          <el-carousel-item v-for="(item,index) in imgBlock" :key="index"  style="text-align:center;">
-            <img :src="item.src" height="500px">
+        <el-carousel trigger="click" height="100vh" indicator-position="none">
+          <el-carousel-item v-for="(item,index) in imgBlock" :key="index"  style="text-align:center;height: auto;">
+            <img :src="item.src" style="width: 80%; height: auto;">
             <h3 style="font-size: 30px;color: #fcac45;text-align: center;line-height: normal;">{{item.des}}</h3>
             <p style="font-size: 18px;line-height: 22px;padding:15px;text-align:justify!important;font-weight:bold;">{{item.detail}}</p>
           </el-carousel-item>
@@ -171,22 +171,6 @@ export default {
       isHover: false
     };
   },
-  computed: {
-    autoHeight() {
-      let _w = document.documentElement.clientWidth || document.body.clientWidth;
-      let _h = 0;
-      if (_w >= 200 && _w < 768) {
-        _h = 925;
-      } else if (_w >= 768 && _w < 992) {
-        _h = 825;
-      } else if (_w >= 992 && _w < 1200) {
-        _h = 825;
-      } else if (_w >= 1200) {
-        _h = 750;
-      }
-      return _h + "px";
-    }
-  },
   methods: {
     addRoutes1() {
       this.$router.push("/Download/");
@@ -251,43 +235,35 @@ export default {
      background-color: #d3dce6;
   }
 
-
-@media (min-width: 200px) {
-  .carousel-inner {
-    min-height: 530px;
-  }
-  .carousel-title {
-    padding-top:0;
+@media only screen and (min-width:320px)  {
+  .block {
+    margin-bottom: -200px;
   }
 }
 
-@media (min-width: 768px) {
-  .feature-item {
-    min-height: 220px;
-  }
-  .carousel-inner {
-    min-height: 520px;
+@media only screen and (min-width:481px)  {
+  .block {
+    margin-bottom: -500px;
   }
 }
 
-@media (min-width: 992px) {
-  .feature-item {
-    min-height: 240px;
-  }
-  .carousel-inner {
-    min-height: 580px;
+@media only screen and (min-width:769px)  {
+  .block {
+    margin-bottom: -500px;
   }
 }
 
-@media (min-width: 1200px) {
-  .feature-item {
-    min-height: 210px;
-  }
-  .carousel-inner {
-    min-height: 650px;
+@media only screen and (min-width:1025px) {
+  .block {
+    margin-bottom: 0;
   }
 }
 
+@media only screen and (min-width:1201px) {
+  .block {
+    margin-bottom: 0;
+  }
+}
 
 .Scenarios {
   padding: 5px 10px;

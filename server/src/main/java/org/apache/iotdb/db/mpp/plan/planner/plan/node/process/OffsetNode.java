@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -84,6 +86,12 @@ public class OffsetNode extends ProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.OFFSET.serialize(byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.OFFSET.serialize(stream);
+    ReadWriteIOUtils.write(offset, stream);
   }
 
   public static OffsetNode deserialize(ByteBuffer byteBuffer) {

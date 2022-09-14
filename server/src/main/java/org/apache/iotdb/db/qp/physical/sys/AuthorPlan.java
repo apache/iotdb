@@ -19,14 +19,15 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -36,6 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class AuthorPlan extends PhysicalPlan {
 
@@ -44,7 +46,7 @@ public class AuthorPlan extends PhysicalPlan {
   private String password;
   private String newPassword;
   private Set<Integer> permissions;
-  private PartialPath nodeName;
+  private List<PartialPath> nodeNameList;
   private String userName;
 
   /**
@@ -56,7 +58,7 @@ public class AuthorPlan extends PhysicalPlan {
    * @param password password
    * @param newPassword new password
    * @param authorizationList authorization list in String[] structure
-   * @param nodeName node name in Path structure
+   * @param nodeNameList node name in Path structure
    * @throws AuthException Authentication Exception
    */
   public AuthorPlan(
@@ -66,7 +68,7 @@ public class AuthorPlan extends PhysicalPlan {
       String password,
       String newPassword,
       String[] authorizationList,
-      PartialPath nodeName)
+      List<PartialPath> nodeNameList)
       throws AuthException {
     super(Operator.OperatorType.AUTHOR);
     this.authorType = authorType;
@@ -74,8 +76,8 @@ public class AuthorPlan extends PhysicalPlan {
     this.roleName = roleName;
     this.password = password;
     this.newPassword = newPassword;
-    this.permissions = strToPermissions(authorizationList);
-    this.nodeName = nodeName;
+    this.permissions = AuthUtils.strToPermissions(authorizationList);
+    this.nodeNameList = nodeNameList;
     switch (authorType) {
       case DROP_ROLE:
         this.setOperatorType(Operator.OperatorType.DELETE_ROLE);
@@ -104,10 +106,10 @@ public class AuthorPlan extends PhysicalPlan {
       case UPDATE_USER:
         this.setOperatorType(Operator.OperatorType.MODIFY_PASSWORD);
         break;
-      case GRANT_ROLE_TO_USER:
-        this.setOperatorType(Operator.OperatorType.GRANT_ROLE_PRIVILEGE);
+      case GRANT_USER_ROLE:
+        this.setOperatorType(Operator.OperatorType.GRANT_USER_ROLE);
         break;
-      case REVOKE_ROLE_FROM_USER:
+      case REVOKE_USER_ROLE:
         this.setOperatorType(Operator.OperatorType.REVOKE_USER_ROLE);
         break;
       case LIST_USER_PRIVILEGE:
@@ -117,14 +119,6 @@ public class AuthorPlan extends PhysicalPlan {
       case LIST_ROLE_PRIVILEGE:
         this.setQuery(true);
         this.setOperatorType(Operator.OperatorType.LIST_ROLE_PRIVILEGE);
-        break;
-      case LIST_USER_ROLES:
-        this.setQuery(true);
-        this.setOperatorType(Operator.OperatorType.LIST_USER_ROLES);
-        break;
-      case LIST_ROLE_USERS:
-        this.setQuery(true);
-        this.setOperatorType(Operator.OperatorType.LIST_ROLE_USERS);
         break;
       case LIST_USER:
         this.setQuery(true);
@@ -157,7 +151,7 @@ public class AuthorPlan extends PhysicalPlan {
         type = AuthorType.CREATE_USER;
         break;
       case REVOKE_USER_ROLE:
-        type = AuthorType.REVOKE_ROLE_FROM_USER;
+        type = AuthorType.REVOKE_USER_ROLE;
         break;
       case REVOKE_ROLE_PRIVILEGE:
         type = AuthorType.REVOKE_ROLE;
@@ -166,13 +160,13 @@ public class AuthorPlan extends PhysicalPlan {
         type = AuthorType.REVOKE_USER;
         break;
       case GRANT_ROLE_PRIVILEGE:
-        type = AuthorType.GRANT_ROLE_TO_USER;
+        type = AuthorType.GRANT_ROLE;
         break;
       case GRANT_USER_PRIVILEGE:
         type = AuthorType.GRANT_USER;
         break;
       case GRANT_USER_ROLE:
-        type = AuthorType.GRANT_ROLE;
+        type = AuthorType.GRANT_USER_ROLE;
         break;
       case MODIFY_PASSWORD:
         type = AuthorType.UPDATE_USER;
@@ -214,34 +208,12 @@ public class AuthorPlan extends PhysicalPlan {
     this.permissions = permissions;
   }
 
-  public PartialPath getNodeName() {
-    return nodeName;
+  public List<PartialPath> getNodeNameList() {
+    return nodeNameList != null ? nodeNameList : Collections.emptyList();
   }
 
   public String getUserName() {
     return userName;
-  }
-
-  public static Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
-    Set<Integer> result = new HashSet<>();
-    if (authorizationList == null) {
-      return result;
-    }
-    for (String s : authorizationList) {
-      PrivilegeType[] types = PrivilegeType.values();
-      boolean legal = false;
-      for (PrivilegeType privilegeType : types) {
-        if (s.equalsIgnoreCase(privilegeType.name())) {
-          result.add(privilegeType.ordinal());
-          legal = true;
-          break;
-        }
-      }
-      if (!legal) {
-        throw new AuthException("No such privilege " + s);
-      }
-    }
-    return result;
   }
 
   @Override
@@ -257,14 +229,14 @@ public class AuthorPlan extends PhysicalPlan {
         + "\npermissions: "
         + permissions
         + "\nnodeName: "
-        + nodeName
+        + nodeNameList
         + "\nauthorType: "
         + authorType;
   }
 
   @Override
   public List<PartialPath> getPaths() {
-    return nodeName != null ? Collections.singletonList(nodeName) : Collections.emptyList();
+    return nodeNameList != null ? nodeNameList : Collections.emptyList();
   }
 
   @Override
@@ -282,7 +254,7 @@ public class AuthorPlan extends PhysicalPlan {
         && Objects.equals(getPassword(), that.getPassword())
         && Objects.equals(getNewPassword(), that.getNewPassword())
         && Objects.equals(getPermissions(), that.getPermissions())
-        && Objects.equals(getNodeName(), that.getNodeName());
+        && Objects.equals(getNodeNameList(), that.getNodeNameList());
   }
 
   @Override
@@ -294,7 +266,7 @@ public class AuthorPlan extends PhysicalPlan {
         getPassword(),
         getNewPassword(),
         getPermissions(),
-        getNodeName());
+        getNodeNameList());
   }
 
   @Override
@@ -315,10 +287,11 @@ public class AuthorPlan extends PhysicalPlan {
         stream.writeInt(permission);
       }
     }
-    if (nodeName == null) {
-      putString(stream, null);
+    if (nodeNameList == null) {
+      ReadWriteIOUtils.writeStringList(Collections.emptyList(), stream);
     } else {
-      putString(stream, nodeName.getFullPath());
+      ReadWriteIOUtils.writeStringList(
+          nodeNameList.stream().map(PartialPath::getFullPath).collect(Collectors.toList()), stream);
     }
 
     stream.writeLong(index);
@@ -342,10 +315,11 @@ public class AuthorPlan extends PhysicalPlan {
         buffer.putInt(permission);
       }
     }
-    if (nodeName == null) {
-      putString(buffer, null);
+    if (nodeNameList == null) {
+      ReadWriteIOUtils.writeStringList(Collections.emptyList(), buffer);
     } else {
-      putString(buffer, nodeName.getFullPath());
+      ReadWriteIOUtils.writeStringList(
+          nodeNameList.stream().map(PartialPath::getFullPath).collect(Collectors.toList()), buffer);
     }
 
     buffer.putLong(index);
@@ -368,11 +342,21 @@ public class AuthorPlan extends PhysicalPlan {
         permissions.add(buffer.getInt());
       }
     }
-    String nodeNameStr = readString(buffer);
-    if (nodeNameStr == null) {
-      this.nodeName = null;
+    List<String> nodeNameList = ReadWriteIOUtils.readStringList(buffer);
+    if (nodeNameList.size() == 0) {
+      this.nodeNameList = null;
     } else {
-      this.nodeName = new PartialPath(nodeNameStr);
+      this.nodeNameList =
+          nodeNameList.stream()
+              .map(
+                  path -> {
+                    try {
+                      return new PartialPath(path);
+                    } catch (IllegalPathException e) {
+                      throw new IllegalArgumentException("Deserialize node paths failed.");
+                    }
+                  })
+              .collect(Collectors.toList());
     }
 
     this.index = buffer.getLong();

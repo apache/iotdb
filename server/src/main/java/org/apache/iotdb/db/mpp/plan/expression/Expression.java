@@ -21,9 +21,7 @@ package org.apache.iotdb.db.mpp.plan.expression;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
@@ -41,25 +39,26 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
+import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -68,11 +67,22 @@ import java.util.Map;
 import java.util.Set;
 
 /** A skeleton class for expression */
-public abstract class Expression {
+public abstract class Expression extends StatementNode {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // Expression type inferring for execution plan generation //////////////////////////////////////
+  // Operations that Class Expression is not responsible for should be done through a visitor
   /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /** Accessible for {@link ExpressionVisitor}, use {@link ExpressionVisitor#process} instead. */
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitExpression(this, context);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Expression type inferring for execution plan generation
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public abstract ExpressionType getExpressionType();
 
   public boolean isBuiltInAggregationFunctionExpression() {
     return false;
@@ -85,6 +95,29 @@ public abstract class Expression {
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
   }
+
+  public boolean isCompareBinaryExpression() {
+    return false;
+  }
+
+  public abstract boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes);
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // isConstantOperand
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  protected Boolean isConstantOperandCache = null;
+
+  /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
+  public final boolean isConstantOperand() {
+    if (isConstantOperandCache == null) {
+      isConstantOperandCache = isConstantOperandInternal();
+    }
+    return isConstantOperandCache;
+  }
+
+  /** Sub-classes should override this method indicating if the expression is a constant operand */
+  protected abstract boolean isConstantOperandInternal();
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Operations for time series paths
@@ -113,24 +146,6 @@ public abstract class Expression {
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // type inference
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  public abstract TSDataType inferTypes(TypeProvider typeProvider);
-
-  protected static void checkInputExpressionDataType(
-      String expressionString, TSDataType actual, TSDataType... expected) {
-    for (TSDataType type : expected) {
-      if (actual.equals(type)) {
-        return;
-      }
-    }
-    throw new SemanticException(
-        String.format(
-            "Invalid input expression data type. expression: %s, actual data type: %s, expected data type(s): %s.",
-            expressionString, actual.name(), Arrays.toString(expected)));
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
   // For expression evaluation DAG building
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -143,44 +158,11 @@ public abstract class Expression {
   public abstract void bindInputLayerColumnIndexWithExpression(
       Map<String, List<InputLocation>> inputLocations);
 
-  public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
-
-  // TODO: remove after MPP finish
-  @Deprecated
-  public abstract IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException;
-
-  public abstract IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      TypeProvider typeProvider,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException;
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // isConstantOperand
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  protected Boolean isConstantOperandCache = null;
-
-  /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
-  public final boolean isConstantOperand() {
-    if (isConstantOperandCache == null) {
-      isConstantOperandCache = isConstantOperandInternal();
-    }
-    return isConstantOperandCache;
+  public Integer getInputColumnIndex() {
+    return inputColumnIndex;
   }
 
-  /** Sub-classes should override this method indicating if the expression is a constant operand */
-  protected abstract boolean isConstantOperandInternal();
+  public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // toString
@@ -237,44 +219,6 @@ public abstract class Expression {
     return getExpressionString().equals(((Expression) o).getExpressionString());
   }
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // iterator: level-order traversal iterator
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  /** returns an iterator to traverse all the successor expressions in a level-order */
-  public final Iterator<Expression> iterator() {
-    return new ExpressionIterator(this);
-  }
-
-  /** the iterator of an Expression tree with level-order traversal */
-  private static class ExpressionIterator implements Iterator<Expression> {
-
-    private final Deque<Expression> queue = new LinkedList<>();
-
-    public ExpressionIterator(Expression expression) {
-      queue.add(expression);
-    }
-
-    @Override
-    public boolean hasNext() {
-      return !queue.isEmpty();
-    }
-
-    @Override
-    public Expression next() {
-      if (!hasNext()) {
-        return null;
-      }
-      Expression current = queue.pop();
-      if (current != null) {
-        for (Expression subExp : current.getExpressions()) {
-          queue.push(subExp);
-        }
-      }
-      return current;
-    }
-  }
-
   /**
    * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
    */
@@ -293,6 +237,17 @@ public abstract class Expression {
     ReadWriteIOUtils.write(expression.inputColumnIndex != null, byteBuffer);
     if (expression.inputColumnIndex != null) {
       ReadWriteIOUtils.write(expression.inputColumnIndex, byteBuffer);
+    }
+  }
+
+  public static void serialize(Expression expression, DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(expression.getExpressionType().getExpressionTypeInShortEnum(), stream);
+
+    expression.serialize(stream);
+
+    ReadWriteIOUtils.write(expression.inputColumnIndex != null, stream);
+    if (expression.inputColumnIndex != null) {
+      ReadWriteIOUtils.write(expression.inputColumnIndex, stream);
     }
   }
 
@@ -365,14 +320,22 @@ public abstract class Expression {
         break;
 
       case 15:
-        expression = new InExpression(byteBuffer);
+        expression = new IsNullExpression(byteBuffer);
         break;
 
       case 16:
-        expression = new LogicAndExpression(byteBuffer);
+        expression = new BetweenExpression(byteBuffer);
         break;
 
       case 17:
+        expression = new InExpression(byteBuffer);
+        break;
+
+      case 18:
+        expression = new LogicAndExpression(byteBuffer);
+        break;
+
+      case 19:
         expression = new LogicOrExpression(byteBuffer);
         break;
 
@@ -388,7 +351,45 @@ public abstract class Expression {
     return expression;
   }
 
-  public abstract ExpressionType getExpressionType();
-
   protected abstract void serialize(ByteBuffer byteBuffer);
+
+  protected abstract void serialize(DataOutputStream stream) throws IOException;
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // iterator: level-order traversal iterator
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /** returns an iterator to traverse all the successor expressions in a level-order */
+  public final Iterator<Expression> iterator() {
+    return new ExpressionIterator(this);
+  }
+
+  /** the iterator of an Expression tree with level-order traversal */
+  private static class ExpressionIterator implements Iterator<Expression> {
+
+    private final Deque<Expression> queue = new LinkedList<>();
+
+    public ExpressionIterator(Expression expression) {
+      queue.add(expression);
+    }
+
+    @Override
+    public boolean hasNext() {
+      return !queue.isEmpty();
+    }
+
+    @Override
+    public Expression next() {
+      if (!hasNext()) {
+        return null;
+      }
+      Expression current = queue.pop();
+      if (current != null) {
+        for (Expression subExp : current.getExpressions()) {
+          queue.push(subExp);
+        }
+      }
+      return current;
+    }
+  }
 }

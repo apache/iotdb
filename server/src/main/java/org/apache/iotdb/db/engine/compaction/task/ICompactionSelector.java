@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.compaction.cross.utils.ReadPointCrossCompactio
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -53,6 +54,10 @@ public interface ICompactionSelector {
     {
       throw new RuntimeException("This kind of selector cannot be used to select cross space task");
     }
+  }
+
+  default List<Long> getCompactionMemoryCost() {
+    return Collections.emptyList();
   }
 
   static AbstractCompactionEstimator getCompactionEstimator(

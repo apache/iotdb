@@ -21,20 +21,20 @@
 
 FROM openjdk:11-jre-slim
 
-ADD distribution/target/apache-iotdb-*-server-bin.zip /
+ADD distribution/target/apache-iotdb-*-datanode-bin.zip /
 
 RUN apt update \
   && apt install lsof dos2unix procps unzip -y \
   && unzip /apache-iotdb-*-bin.zip -d / \
   && rm /apache-iotdb-*-bin.zip \
   && mv /apache-iotdb-* /iotdb \
-  && sed -i '/^# enable_influxdb_rpc_service=false/a enable_influxdb_rpc_service=true' /iotdb/sbin/../conf/iotdb-engine.properties \
+  && sed -i '/^# enable_influxdb_rpc_service=false/a enable_influxdb_rpc_service=true' /iotdb/sbin/../conf/iotdb-datanode.properties \
   && apt remove unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
   && apt clean -y
-RUN dos2unix /iotdb/sbin/start-server.sh
-RUN dos2unix /iotdb/sbin/../conf/iotdb-env.sh
+RUN dos2unix /iotdb/sbin/start-new-server.sh
+RUN dos2unix /iotdb/sbin/../conf/datanode-env.sh
 EXPOSE 6667
 EXPOSE 31999
 EXPOSE 5555
@@ -43,4 +43,4 @@ EXPOSE 8181
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
 ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
-ENTRYPOINT ["/iotdb/sbin/start-server.sh"]
+ENTRYPOINT ["/iotdb/sbin/start-new-server.sh"]

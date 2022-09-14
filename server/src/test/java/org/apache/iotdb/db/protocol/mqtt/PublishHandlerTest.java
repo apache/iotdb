@@ -63,6 +63,7 @@ public class PublishHandlerTest {
   public void onPublish() throws ClassNotFoundException {
     PayloadFormatter payloadFormat = PayloadFormatManager.getPayloadFormat("json");
     PublishHandler handler = new PublishHandler(payloadFormat);
+    String clientId = "clientId";
 
     String payload =
         "{\n"
@@ -76,7 +77,12 @@ public class PublishHandlerTest {
 
     // connect
     MqttConnectPayload mqttConnectPayload =
-        new MqttConnectPayload(null, null, "test", "root", "root");
+        new MqttConnectPayload(
+            clientId,
+            null,
+            "test".getBytes(StandardCharsets.UTF_8),
+            "root",
+            "root".getBytes(StandardCharsets.UTF_8));
     MqttConnectMessage mqttConnectMessage = new MqttConnectMessage(null, null, mqttConnectPayload);
     InterceptConnectMessage interceptConnectMessage =
         new InterceptConnectMessage(mqttConnectMessage);
@@ -87,12 +93,12 @@ public class PublishHandlerTest {
     MqttFixedHeader fixedHeader =
         new MqttFixedHeader(MqttMessageType.PUBLISH, false, MqttQoS.AT_LEAST_ONCE, false, 1);
     MqttPublishMessage publishMessage = new MqttPublishMessage(fixedHeader, variableHeader, buf);
-    InterceptPublishMessage message = new InterceptPublishMessage(publishMessage, null, null);
+    InterceptPublishMessage message = new InterceptPublishMessage(publishMessage, clientId, null);
     handler.onPublish(message);
 
     // disconnect
     InterceptDisconnectMessage interceptDisconnectMessage =
-        new InterceptDisconnectMessage(null, null);
+        new InterceptDisconnectMessage(clientId, null);
     handler.onDisconnect(interceptDisconnectMessage);
 
     String[] retArray = new String[] {"1586076045524,0.530635,"};

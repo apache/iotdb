@@ -21,7 +21,8 @@ package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -66,8 +67,7 @@ public class DataNodeSchemaCacheTest {
                     o ->
                         new SchemaCacheEntry(
                             (MeasurementSchema) o.getMeasurementSchema(),
-                            o.isUnderAlignedEntity(),
-                            null)));
+                            o.isUnderAlignedEntity())));
     Assert.assertEquals(
         TSDataType.INT32,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s1")).getTsDataType());
@@ -94,8 +94,7 @@ public class DataNodeSchemaCacheTest {
                     o ->
                         new SchemaCacheEntry(
                             (MeasurementSchema) o.getMeasurementSchema(),
-                            o.isUnderAlignedEntity(),
-                            null)));
+                            o.isUnderAlignedEntity())));
     Assert.assertEquals(
         TSDataType.BOOLEAN,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
@@ -175,52 +174,46 @@ public class DataNodeSchemaCacheTest {
     Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
   }
 
-  private SchemaTree generateSchemaTree1() throws IllegalPathException {
-    SchemaTree schemaTree = new SchemaTree();
+  private ISchemaTree generateSchemaTree1() throws IllegalPathException {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
 
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s1"),
         new MeasurementSchema("s1", TSDataType.INT32),
         null,
-        false,
-        null);
+        false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s2"),
         new MeasurementSchema("s2", TSDataType.FLOAT),
         null,
-        false,
-        null);
+        false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s3"),
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
         null,
-        false,
-        null);
+        false);
 
     return schemaTree;
   }
 
-  private SchemaTree generateSchemaTree2() throws IllegalPathException {
-    SchemaTree schemaTree = new SchemaTree();
+  private ISchemaTree generateSchemaTree2() throws IllegalPathException {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
 
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s3"),
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
         null,
-        false,
-        null);
+        false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s4"),
         new MeasurementSchema("s4", TSDataType.TEXT),
         null,
-        false,
-        null);
+        false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s5"),
         new MeasurementSchema("s5", TSDataType.INT64),
         null,
-        false,
-        null);
+        false);
 
     return schemaTree;
   }

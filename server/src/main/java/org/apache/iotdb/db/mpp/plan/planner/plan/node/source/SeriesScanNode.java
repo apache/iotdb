@@ -25,8 +25,9 @@ import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -35,6 +36,8 @@ import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -54,7 +57,7 @@ public class SeriesScanNode extends SeriesSourceNode {
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
-  private OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
+  private Ordering scanOrder = Ordering.ASC;
 
   // time filter for current series, could be null if doesn't exist
   @Nullable private Filter timeFilter;
@@ -76,7 +79,7 @@ public class SeriesScanNode extends SeriesSourceNode {
     this.seriesPath = seriesPath;
   }
 
-  public SeriesScanNode(PlanNodeId id, MeasurementPath seriesPath, OrderBy scanOrder) {
+  public SeriesScanNode(PlanNodeId id, MeasurementPath seriesPath, Ordering scanOrder) {
     this(id, seriesPath);
     this.scanOrder = scanOrder;
   }
@@ -84,7 +87,7 @@ public class SeriesScanNode extends SeriesSourceNode {
   public SeriesScanNode(
       PlanNodeId id,
       MeasurementPath seriesPath,
-      OrderBy scanOrder,
+      Ordering scanOrder,
       @Nullable Filter timeFilter,
       @Nullable Filter valueFilter,
       int limit,
@@ -130,11 +133,11 @@ public class SeriesScanNode extends SeriesSourceNode {
     this.offset = offset;
   }
 
-  public OrderBy getScanOrder() {
+  public Ordering getScanOrder() {
     return scanOrder;
   }
 
-  public void setScanOrder(OrderBy scanOrder) {
+  public void setScanOrder(Ordering scanOrder) {
     this.scanOrder = scanOrder;
   }
 
@@ -215,9 +218,30 @@ public class SeriesScanNode extends SeriesSourceNode {
     ReadWriteIOUtils.write(offset, byteBuffer);
   }
 
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.SERIES_SCAN.serialize(stream);
+    seriesPath.serialize(stream);
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+    if (timeFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      timeFilter.serialize(stream);
+    }
+    if (valueFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      valueFilter.serialize(stream);
+    }
+    ReadWriteIOUtils.write(limit, stream);
+    ReadWriteIOUtils.write(offset, stream);
+  }
+
   public static SeriesScanNode deserialize(ByteBuffer byteBuffer) {
     MeasurementPath partialPath = (MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer);
-    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
     Filter timeFilter = null;
     if (isNull == 1) {
@@ -239,7 +263,9 @@ public class SeriesScanNode extends SeriesSourceNode {
   public String toString() {
     return String.format(
         "SeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
-        this.getPlanNodeId(), this.getSeriesPath(), this.getRegionReplicaSet());
+        this.getPlanNodeId(),
+        this.getSeriesPath(),
+        PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
   }
 
   @Override

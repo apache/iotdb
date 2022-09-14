@@ -36,6 +36,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,6 +108,24 @@ public class TagManager {
     }
   }
 
+  public static TagManager loadFromSnapshot(File snapshotDir, String sgSchemaDirPath)
+      throws IOException {
+    File tagSnapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.TAG_LOG_SNAPSHOT);
+    File tagFile = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
+    if (tagFile.exists()) {
+      tagFile.delete();
+    }
+
+    try {
+      FileUtils.copyFile(tagSnapshot, tagFile);
+      return new TagManager(sgSchemaDirPath);
+    } catch (IOException e) {
+      tagFile.delete();
+      throw e;
+    }
+  }
+
   public boolean recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
     Map<String, String> tags = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
     if (tags == null || tags.isEmpty()) {
@@ -140,6 +159,45 @@ public class TagManager {
     if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
       tagIndex.get(tagKey).remove(tagValue);
     }
+  }
+
+  public List<String> getMatchedTimeseriesInIndex(String key, String value, boolean isContains) {
+    if (!tagIndex.containsKey(key)) {
+      return Collections.emptyList();
+    }
+    Map<String, Set<IMeasurementMNode>> value2Node = tagIndex.get(key);
+    if (value2Node.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<String> timeseries = new ArrayList<>();
+    List<IMeasurementMNode> allMatchedNodes = new ArrayList<>();
+    if (isContains) {
+      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
+        String tagValue = entry.getKey();
+        if (tagValue.contains(value)) {
+          allMatchedNodes.addAll(entry.getValue());
+        }
+      }
+    } else {
+      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
+        String tagValue = entry.getKey();
+        if (value.equals(tagValue)) {
+          allMatchedNodes.addAll(entry.getValue());
+        }
+      }
+    }
+    allMatchedNodes =
+        allMatchedNodes.stream()
+            .sorted(Comparator.comparing(IMNode::getFullPath))
+            .collect(toList());
+    allMatchedNodes.forEach(measurementMNode -> timeseries.add(measurementMNode.getFullPath()));
+    return timeseries;
   }
 
   public List<IMeasurementMNode> getMatchedTimeseriesInIndex(

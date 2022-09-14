@@ -120,6 +120,7 @@ var config = {
 					  { text: 'Become a Contributor', link: '/Development/HowToJoin'},
 					  { text: 'Become a Committer', link: '/Development/Committer'},
 					  { text: 'ContributeGuide', link: '/Development/ContributeGuide'},
+					  { text: 'How to Contribute Code', link: '/Development/HowtoContributeCode'},
 					  { text: 'Changelist of TsFile', link: '/Development/format-changelist'},
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
 					]
@@ -765,7 +766,7 @@ var config = {
 						title: 'Maintenance Tools',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','Maintenance Command'],
-							['Maintenance-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
+							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
@@ -788,7 +789,8 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS'],
+							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
 						]
 					},
 					{
@@ -949,7 +951,7 @@ var config = {
 						title: 'Maintenance Tools',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','Maintenance Command'],
-							['Maintenance-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
+							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
@@ -962,24 +964,25 @@ var config = {
 					{
 						title: 'Ecosystem Integration',
 						children: [
-							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
-							['Ecosystem Integration/Grafana Connector','Grafana Connector (Not Recommended)'],
-							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
-							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
-							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
-							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
-							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
-							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
-							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+							['Ecosystem-Integration/Grafana-Plugin','Grafana-Plugin'],
+							['Ecosystem-Integration/Grafana-Connector','Grafana-Connector (Not Recommended)'],
+							['Ecosystem-Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem-Integration/DBeaver','DBeaver-IoTDB'],
+							['Ecosystem-Integration/MapReduce-TsFile','MapReduce-TsFile'],
+							['Ecosystem-Integration/Spark-TsFile','Spark-TsFile'],
+							['Ecosystem-Integration/Spark-IoTDB','Spark-IoTDB'],
+							['Ecosystem-Integration/Hive-TsFile','Hive-TsFile'],
+							['Ecosystem-Integration/Flink-IoTDB','Flink-IoTDB'],
+							['Ecosystem-Integration/Flink-TsFile','Flink-TsFile'],
+							['Ecosystem-Integration/Writing-Data-on-HDFS','Writing-Data-on-HDFS'],
+							['Ecosystem-Integration/NiFi-IoTDB','NiFi-IoTDB'],
 						]
 					},
 					{
-						title: 'Cluster Setup',
+						title: 'Cluster',
 						children: [
-							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+							['Cluster/Cluster-Concept','Cluster Concept'],
+							['Cluster/Cluster-Setup','Cluster Setup']
 						]
 					},
 					{
@@ -994,6 +997,7 @@ var config = {
 					        ['UDF-Library/Data-Quality', 'Data Quality'],
 					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
 					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
+					        ['UDF-Library/Series-Processing', 'Series Processing'],
                             ['UDF-Library/String-Processing', 'String Processing'],
                             ['UDF-Library/M4', 'M4']
 					    ]
@@ -1001,7 +1005,8 @@ var config = {
 					{
 						title: 'Reference',
 						children: [
-							['Reference/Config-Manual','Config Manual'],
+							['Reference/ConfigNode-Config-Manual','ConfigNode Config Manual'],
+							['Reference/DataNode-Config-Manual','DataNode Config Manual'],
 							['Reference/Keywords','Keywords'],
 							['Reference/Frequently-asked-questions','Frequently asked questions'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
@@ -1067,6 +1072,7 @@ var config = {
 					  { text: '成为Contributor', link: '/zh/Development/HowToJoin'},
 					  { text: '成为Committer', link: '/zh/Development/Committer'},
 					  { text: '项目开发指南', link: '/zh/Development/ContributeGuide'},
+					  { text: '技术贡献指南', link: '/zh/Development/HowtoContributeCode'},
 					  { text: 'TsFile的更改列表', link: '/zh/Development/format-changelist'},
 					  { text: 'RPC变更清单', link: '/zh/Development/rpc-changelist'},
 					]
@@ -1693,7 +1699,7 @@ var config = {
 						title: '运维工具',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','运维命令'],
-							['Maintenance-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
+							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
@@ -1717,6 +1723,7 @@ var config = {
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
 							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
 						]
 					},
 					{
@@ -1877,7 +1884,7 @@ var config = {
 						title: '运维工具',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','运维命令'],
-							['Maintenance-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
+							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
@@ -1890,24 +1897,25 @@ var config = {
 					{
 						title: '系统集成',
 						children: [
-							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
-							['Ecosystem Integration/Grafana Connector','Grafana Connector（不推荐）'],
-							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
-							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
-							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
-							['Ecosystem Integration/MapReduce TsFile','Hadoop-TsFile'],
-							['Ecosystem Integration/Spark IoTDB','Spark-IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive-TsFile'],
-							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
-							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
-							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+							['Ecosystem-Integration/Grafana-Plugin','Grafana-Plugin'],
+							['Ecosystem-Integration/Grafana-Connector','Grafana-Connector（不推荐）'],
+							['Ecosystem-Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem-Integration/DBeaver','DBeaver-IoTDB'],
+							['Ecosystem-Integration/Spark-TsFile','Spark-TsFile'],
+							['Ecosystem-Integration/MapReduce-TsFile','Hadoop-TsFile'],
+							['Ecosystem-Integration/Spark-IoTDB','Spark-IoTDB'],
+							['Ecosystem-Integration/Hive-TsFile','Hive-TsFile'],
+							['Ecosystem-Integration/Flink-TsFile','Flink-TsFile'],
+							['Ecosystem-Integration/Flink-IoTDB','Flink-IoTDB'],
+							['Ecosystem-Integration/Writing-Data-on-HDFS','HDFS集成'],
+							['Ecosystem-Integration/NiFi-IoTDB','NiFi-IoTDB'],
 						]
 					},
 					{
-						title: '集群搭建',
+						title: '分布式',
 						children: [
-							['Cluster/Cluster-Setup','集群搭建'],
-							['Cluster/Cluster-Setup-Example','集群搭建示例']
+							['Cluster/Cluster-Concept','基本概念'],
+							['Cluster/Cluster-Setup','分布式部署']
 						]
 					},
 					{
@@ -1922,6 +1930,7 @@ var config = {
                             ['UDF-Library/Data-Quality', '数据质量'],
                             ['UDF-Library/Data-Repairing', '数据修复'],
                             ['UDF-Library/Series-Discovery', '序列发现'],
+                            ['UDF-Library/Series-Processing', '序列处理'],
                             ['UDF-Library/String-Processing', '字符串处理'],
                             ['UDF-Library/M4', 'M4']
                         ]
@@ -1929,7 +1938,8 @@ var config = {
 					{
 						title: '参考',
 						children: [
-							['Reference/Config-Manual','配置参数'],
+							['Reference/ConfigNode-Config-Manual','ConfigNode配置参数'],
+							['Reference/DataNode-Config-Manual','DataNode配置参数'],
 							['Reference/Keywords','关键字'],
 							['Reference/Frequently-asked-questions','常见问题'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']

@@ -21,29 +21,72 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class TimeSeriesCountNode extends SchemaQueryScanNode {
 
-  public TimeSeriesCountNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
+  private final String key;
+  private final String value;
+  private final boolean isContains;
+
+  private final Map<Integer, Template> templateMap;
+
+  public TimeSeriesCountNode(
+      PlanNodeId id,
+      PartialPath partialPath,
+      boolean isPrefixPath,
+      String key,
+      String value,
+      boolean isContains,
+      Map<Integer, Template> templateMap) {
     super(id, partialPath, isPrefixPath);
+    this.key = key;
+    this.value = value;
+    this.isContains = isContains;
+    this.templateMap = templateMap;
+  }
+
+  public String getKey() {
+    return key;
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  public boolean isContains() {
+    return isContains;
+  }
+
+  public Map<Integer, Template> getTemplateMap() {
+    return templateMap;
   }
 
   @Override
   public PlanNode clone() {
-    return new TimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath);
+    return new TimeSeriesCountNode(
+        getPlanNodeId(), path, isPrefixPath, key, value, isContains, templateMap);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return HeaderConstant.countTimeSeriesHeader.getRespColumns();
+    return ColumnHeaderConstant.countTimeSeriesColumnHeaders.stream()
+        .map(ColumnHeader::getColumnName)
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -51,6 +94,27 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     PlanNodeType.TIME_SERIES_COUNT.serialize(byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
+    ReadWriteIOUtils.write(key, byteBuffer);
+    ReadWriteIOUtils.write(value, byteBuffer);
+    ReadWriteIOUtils.write(isContains, byteBuffer);
+    ReadWriteIOUtils.write(templateMap.size(), byteBuffer);
+    for (Template template : templateMap.values()) {
+      template.serialize(byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TIME_SERIES_COUNT.serialize(stream);
+    ReadWriteIOUtils.write(path.getFullPath(), stream);
+    ReadWriteIOUtils.write(isPrefixPath, stream);
+    ReadWriteIOUtils.write(key, stream);
+    ReadWriteIOUtils.write(value, stream);
+    ReadWriteIOUtils.write(isContains, stream);
+    ReadWriteIOUtils.write(templateMap.size(), stream);
+    for (Template template : templateMap.values()) {
+      template.serialize(stream);
+    }
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
@@ -62,7 +126,21 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
       throw new IllegalArgumentException("Cannot deserialize DevicesSchemaScanNode", e);
     }
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
+    String key = ReadWriteIOUtils.readString(buffer);
+    String value = ReadWriteIOUtils.readString(buffer);
+    boolean isContains = ReadWriteIOUtils.readBool(buffer);
+
+    int templateNum = ReadWriteIOUtils.readInt(buffer);
+    Map<Integer, Template> templateMap = new HashMap<>();
+    Template template;
+    for (int i = 0; i < templateNum; i++) {
+      template = new Template();
+      template.deserialize(buffer);
+      templateMap.put(template.getId(), template);
+    }
+
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new TimeSeriesCountNode(planNodeId, path, isPrefixPath);
+    return new TimeSeriesCountNode(
+        planNodeId, path, isPrefixPath, key, value, isContains, templateMap);
   }
 }

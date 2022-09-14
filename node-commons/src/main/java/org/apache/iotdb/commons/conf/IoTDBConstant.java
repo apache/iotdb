@@ -18,13 +18,23 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class IoTDBConstant {
 
   private IoTDBConstant() {}
 
-  public static final String ENV_FILE_NAME = "iotdb-env";
+  public static final String ENV_FILE_NAME = "datanode-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
+
+  public static final String RPC_ADDRESS = "rpc_address";
+  public static final String RPC_PORT = "rpc_port";
+  public static final String INTERNAL_ADDRESS = "internal_address";
+  public static final String INTERNAL_PORT = "internal_port";
+  public static final String CONSENSUS_PORT = "consensus_port";
+  public static final String TARGET_CONFIG_NODES = "target_config_nodes";
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
@@ -63,6 +73,14 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final String LAST_VALUE = "last_value";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
+  public static final Set<String> reservedWords =
+      new HashSet<String>() {
+        {
+          add("TIME");
+          add("TIMESTAMP");
+          add("ROOT");
+        }
+      };
 
   // show info
   public static final String COLUMN_ITEM = "                             item";
@@ -75,6 +93,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TIMESERIES_COMPRESSION = "compression";
   public static final String COLUMN_TIMESERIES_COMPRESSOR = "compressor";
   public static final String COLUMN_CHILD_PATHS = "child paths";
+  public static final String COLUMN_CHILD_PATHS_TYPES = "node types";
   public static final String COLUMN_CHILD_NODES = "child nodes";
   public static final String COLUMN_DEVICES = "devices";
   public static final String COLUMN_COLUMN = "column";
@@ -82,6 +101,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
   public static final String COLUMN_IS_ALIGNED = "isAligned";
+  public static final String COLUMN_DISTRIBUTION_PLAN = "distribution plan";
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
 
@@ -129,6 +149,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
 
   // sync module
+  // TODO(sync): delete this in new-standalone version
   public static final String COLUMN_PIPESERVER_STATUS = "enable";
   public static final String COLUMN_PIPESINK_NAME = "name";
   public static final String COLUMN_PIPESINK_TYPE = "type";
@@ -139,6 +160,8 @@ public class IoTDBConstant {
   public static final String COLUMN_PIPE_REMOTE = "remote";
   public static final String COLUMN_PIPE_STATUS = "status";
   public static final String COLUMN_PIPE_MSG = "message";
+  public static final String COLUMN_PIPE_ERRORS = "errors";
+  public static final String COLUMN_PIPE_PERF_INFO = "performance_info";
 
   public static final String ONE_LEVEL_PATH_WILDCARD = "*";
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
@@ -173,9 +196,17 @@ public class IoTDBConstant {
   public static final String TRACING_LOG = "tracing.txt";
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
+  public static final String UDF_TMP_FOLDER_NAME = "udf_temporary";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
+
+  public static final String TRIGGER_TMP_FOLDER_NAME = "trigger_temporary";
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";
+  public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
+
+  public static final String EXT_PROPERTIES_LOADER_FOLDER_NAME = "loader";
+
+  public static final String EXT_LIMITER = "limiter";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
@@ -216,6 +247,13 @@ public class IoTDBConstant {
   public static final String WAL_CHECKPOINT_FILE_SUFFIX = ".checkpoint";
   public static final String WAL_VERSION_ID = "versionId";
   public static final String WAL_START_SEARCH_INDEX = "startSearchIndex";
+  public static final String WAL_STATUS_CODE = "statusCode";
+
+  // show cluster status
+  public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
+  public static final String NODE_TYPE_DATA_NODE = "DataNode";
+  public static final String NODE_STATUS_RUNNING = "Running";
+  public static final String NODE_STATUS_Down = "Down";
 
   // client version number
   public enum ClientVersion {

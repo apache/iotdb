@@ -21,6 +21,8 @@ package org.apache.iotdb.db.engine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
@@ -178,6 +180,9 @@ public class StorageEngine implements IService {
   }
 
   public static long getTimePartition(long time) {
+    if (timePartitionInterval == -1) {
+      initTimePartition();
+    }
     return enablePartition ? time / timePartitionInterval : 0;
   }
 
@@ -289,8 +294,12 @@ public class StorageEngine implements IService {
     recover();
 
     ttlCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TTL-Check");
-    ttlCheckThread.scheduleAtFixedRate(
-        this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        ttlCheckThread,
+        this::checkTTL,
+        TTL_CHECK_INTERVAL,
+        TTL_CHECK_INTERVAL,
+        TimeUnit.MILLISECONDS);
     logger.info("start ttl check thread successfully.");
 
     startTimedService();
@@ -314,7 +323,8 @@ public class StorageEngine implements IService {
       seqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FlUSH_SEQ_MEMTABLE.getName());
-      seqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
+      ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+          seqMemtableTimedFlushCheckThread,
           this::timedFlushSeqMemTable,
           config.getSeqMemtableFlushCheckInterval(),
           config.getSeqMemtableFlushCheckInterval(),
@@ -326,7 +336,8 @@ public class StorageEngine implements IService {
       unseqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE.getName());
-      unseqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
+      ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+          unseqMemtableTimedFlushCheckThread,
           this::timedFlushUnseqMemTable,
           config.getUnseqMemtableFlushCheckInterval(),
           config.getUnseqMemtableFlushCheckInterval(),
@@ -336,22 +347,14 @@ public class StorageEngine implements IService {
   }
 
   private void timedFlushSeqMemTable() {
-    try {
-      for (StorageGroupManager processor : processorMap.values()) {
-        processor.timedFlushSeqMemTable();
-      }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing sequence memtables", e);
+    for (StorageGroupManager processor : processorMap.values()) {
+      processor.timedFlushSeqMemTable();
     }
   }
 
   private void timedFlushUnseqMemTable() {
-    try {
-      for (StorageGroupManager processor : processorMap.values()) {
-        processor.timedFlushUnseqMemTable();
-      }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing unsequence memtables", e);
+    for (StorageGroupManager processor : processorMap.values()) {
+      processor.timedFlushUnseqMemTable();
     }
   }
 
@@ -452,6 +455,24 @@ public class StorageEngine implements IService {
   }
 
   /**
+   * This method is for sync, delete tsfile or sth like them, just get storage group directly by
+   * dataRegionId
+   *
+   * @param path storage group path
+   * @param dataRegionId dataRegionId
+   * @return storage group processor
+   */
+  public DataRegion getProcessorDirectly(PartialPath path, int dataRegionId)
+      throws StorageEngineException {
+    try {
+      IStorageGroupMNode storageGroupMNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(path);
+      return getStorageGroupProcessorById(dataRegionId, storageGroupMNode);
+    } catch (DataRegionException | MetadataException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
+  /**
    * This method is for insert and query or sth like them, this may get a virtual storage group
    *
    * @param path device path
@@ -511,6 +532,19 @@ public class StorageEngine implements IService {
     return getStorageGroupManager(storageGroupMNode).getProcessor(devicePath, storageGroupMNode);
   }
 
+  /**
+   * get storage group processor by dataRegionId
+   *
+   * @param dataRegionId dataRegionId
+   * @param storageGroupMNode mnode of the storage group, we need synchronize this to avoid
+   *     modification in mtree
+   * @return found or new storage group processor
+   */
+  private DataRegion getStorageGroupProcessorById(
+      int dataRegionId, IStorageGroupMNode storageGroupMNode)
+      throws DataRegionException, StorageEngineException {
+    return getStorageGroupManager(storageGroupMNode).getProcessor(dataRegionId, storageGroupMNode);
+  }
   /**
    * get storage group manager by storage group mnode
    *
@@ -765,7 +799,7 @@ public class StorageEngine implements IService {
    * @throws StorageEngineException StorageEngineException
    */
   public void upgradeAll() throws StorageEngineException {
-    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException(
           "Current system mode is read only, does not support file upgrade");
     }
@@ -806,7 +840,7 @@ public class StorageEngine implements IService {
    * @throws StorageEngineException StorageEngineException
    */
   public void mergeAll() throws StorageEngineException {
-    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
 
@@ -831,12 +865,14 @@ public class StorageEngine implements IService {
   }
 
   /** delete all data of storage groups' timeseries. */
+  @TestOnly
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
     for (PartialPath storageGroup : IoTDB.schemaProcessor.getAllStorageGroupPaths()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
+    processorMap.clear();
     return true;
   }
 
@@ -856,8 +892,7 @@ public class StorageEngine implements IService {
     abortCompactionTaskForStorageGroup(storageGroupPath);
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
-    storageGroupManager.deleteStorageGroupSystemFolder(
-        systemDir + File.pathSeparator + storageGroupPath);
+    storageGroupManager.deleteStorageGroupSystemFolder(systemDir);
     storageGroupManager.stopSchedulerPool();
   }
 
@@ -875,7 +910,7 @@ public class StorageEngine implements IService {
       throws LoadFileException, StorageEngineException, MetadataException {
     Set<String> deviceSet = newTsFileResource.getDevices();
     if (deviceSet == null || deviceSet.isEmpty()) {
-      throw new StorageEngineException("Can not get the corresponding storage group.");
+      throw new StorageEngineException("The TsFile is empty, cannot be loaded.");
     }
     String device = deviceSet.iterator().next();
     PartialPath devicePath = new PartialPath(device);
@@ -885,13 +920,17 @@ public class StorageEngine implements IService {
 
   public boolean deleteTsfile(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile, true)))
+    return getProcessorDirectly(
+            new PartialPath(getSgByEngineFile(deletedTsfile, true)),
+            getDataRegionIdByEngineFile(deletedTsfile, true))
         .deleteTsfile(deletedTsfile);
   }
 
   public boolean unloadTsfile(File tsfileToBeUnloaded, File targetDir)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeUnloaded, true)))
+    return getProcessorDirectly(
+            new PartialPath(getSgByEngineFile(tsfileToBeUnloaded, true)),
+            getDataRegionIdByEngineFile(tsfileToBeUnloaded, true))
         .unloadTsfile(tsfileToBeUnloaded, targetDir);
   }
 
@@ -927,7 +966,43 @@ public class StorageEngine implements IService {
     }
   }
 
-  /** @return TsFiles (seq or unseq) grouped by their storage group and partition number. */
+  /**
+   * The internal file means that the file is in the engine, which is different from those external
+   * files which are not loaded.
+   *
+   * @param file internal file
+   * @param needCheck check if the tsfile is an internal TsFile. If you make sure it is inside, no
+   *     need to check
+   * @return dataRegionId
+   * @throws IllegalPathException throw if tsfile is not an internal TsFile
+   */
+  public int getDataRegionIdByEngineFile(File file, boolean needCheck) throws IllegalPathException {
+    if (needCheck) {
+      File dataDir =
+          file.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile();
+      if (dataDir.exists()) {
+        String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+        for (String dir : dataDirs) {
+          try {
+            if (Files.isSameFile(Paths.get(dir), dataDir.toPath())) {
+              return Integer.parseInt(file.getParentFile().getParentFile().getName());
+            }
+          } catch (IOException e) {
+            throw new IllegalPathException(file.getAbsolutePath(), e.getMessage());
+          }
+        }
+      }
+      throw new IllegalPathException(file.getAbsolutePath(), "it's not an internal tsfile.");
+    } else {
+      return Integer.parseInt(file.getParentFile().getParentFile().getName());
+    }
+  }
+
+  /**
+   * Get all the closed tsfiles of each storage group.
+   *
+   * @return TsFiles (seq or unseq) grouped by their storage group and partition number.
+   */
   public Map<PartialPath, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
     Map<PartialPath, Map<Long, List<TsFileResource>>> ret = new HashMap<>();
     for (Entry<PartialPath, StorageGroupManager> entry : processorMap.entrySet()) {
@@ -1031,11 +1106,15 @@ public class StorageEngine implements IService {
     list.forEach(DataRegion::readUnlock);
   }
 
-  /** @return virtual storage group name, like root.sg1/0 */
+  /**
+   * Get the virtual storage group name.
+   *
+   * @return virtual storage group name, like root.sg1/0
+   */
   public String getStorageGroupPath(PartialPath path) throws StorageEngineException {
     PartialPath deviceId = path.getDevicePath();
     DataRegion storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.getLogicalStorageGroupName()
+    return storageGroupProcessor.getStorageGroupName()
         + File.separator
         + storageGroupProcessor.getDataRegionId();
   }

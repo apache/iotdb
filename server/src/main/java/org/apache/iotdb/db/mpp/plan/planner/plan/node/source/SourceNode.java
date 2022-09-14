@@ -19,18 +19,17 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
-public abstract class SourceNode extends PlanNode implements AutoCloseable {
+public abstract class SourceNode extends PlanNode implements AutoCloseable, IPartitionRelatedNode {
 
   public SourceNode(PlanNodeId id) {
     super(id);
   }
 
   public abstract void open() throws Exception;
-
-  public abstract TRegionReplicaSet getRegionReplicaSet();
 
   public abstract void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet);
 }

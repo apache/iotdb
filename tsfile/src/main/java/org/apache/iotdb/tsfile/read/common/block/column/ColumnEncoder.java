@@ -19,14 +19,21 @@
 
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public interface ColumnEncoder {
 
+  /** Read a time column from the specified input. */
+  default TimeColumn readTimeColumn(ByteBuffer input, int positionCount) {
+    throw new UnsupportedOperationException();
+  }
+
   /** Read a column from the specified input. */
-  void readColumn(ColumnBuilder columnBuilder, ByteBuffer input, int positionCount);
+  Column readColumn(ByteBuffer input, TSDataType dataType, int positionCount);
 
   /** Write the specified column to the specified output */
   void writeColumn(DataOutputStream output, Column column) throws IOException;

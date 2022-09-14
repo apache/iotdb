@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.driver;
 
-import org.apache.iotdb.db.mpp.execution.datatransfer.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -34,7 +34,7 @@ public class SchemaDriver extends Driver {
   }
 
   @Override
-  protected boolean init(SettableFuture<Void> blockedFuture) {
+  protected boolean init(SettableFuture<?> blockedFuture) {
     return true;
   }
 

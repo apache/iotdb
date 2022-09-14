@@ -38,7 +38,7 @@
 
 # Overview
 
-IoTDB (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
+IoTDB (Internet of Things Database) is a data management system for time series data, which provides users with specific services including data collection, storage and analysis. Due to its light weight structure, high performance and usable features, together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
 
 # Main Features
 
@@ -46,7 +46,7 @@ Main features of IoTDB are as follows:
 
 1. Flexible deployment strategy. IoTDB provides users a one-click installation tool on either the cloud platform or the terminal devices, and a data synchronization tool bridging the data on cloud platform and terminals.
 2. Low cost on hardware. IoTDB can reach a high compression ratio of disk storage.
-3. Efficient directory structure. IoTDB supports efficient organization for complex time series data structure from intelligent networking devices, organization for time series data from devices of the same type, fuzzy searching strategy for massive and complex directory of time series data.
+3. Efficient directory structure. IoTDB supports efficient organization for complex time series data structures from intelligent networking devices, organization for time series data from devices of the same type, and fuzzy searching strategy for massive and complex directory of time series data.
 4. High-throughput read and write. IoTDB supports millions of low-power devices' strong connection data access, high-speed data read and write for intelligent networking devices and mixed devices mentioned above.
 5. Rich query semantics. IoTDB supports time alignment for time series data across devices and measurements, computation in time series field (frequency domain transformation) and rich aggregation function support in time dimension.
 6. Easy to get started. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
@@ -175,33 +175,19 @@ and "`antlr/target/generated-sources/antlr4`" need to be added to sources roots 
 **In IDEA, you just need to right click on the root project name and choose "`Maven->Reload Project`" after 
 you run `mvn package` successfully.**
 
-#### Spotless problem
-**NOTE**: IF you are using JDK16+, you have to create a file called `jvm.config`,
-put it under `.mvn/`, before you use `spotless:apply`. The file contains the following content:
-```
---add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
---add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
---add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
---add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
---add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
-```
-
-This is [an issue of Spotless](https://github.com/diffplug/spotless/issues/834),
-Once the issue is fixed, we can remove this file.
-
 ### Configurations
 
 configuration files are under "conf" folder
 
-  * environment config module (`iotdb-env.bat`, `iotdb-env.sh`),
-  * system config module (`iotdb-engine.properties`)
+  * environment config module (`datanode-env.bat`, `datanode-env.sh`),
+  * system config module (`iotdb-datanode.properties`)
   * log config module (`logback.xml`).
 
 For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/Master/Reference/Config-Manual.html).
 
 ## Start
 
-You can go through the following steps to test the installation, if there is no error returned after execution, the installation is completed.
+You can go through the following steps to test the installation. If there is no error returned after execution, the installation is completed.
 
 ### Start IoTDB
 
@@ -211,16 +197,14 @@ Users can start IoTDB by the start-server script under the sbin folder.
 # Unix/OS X
 > nohup sbin/start-server.sh >/dev/null 2>&1 &
 or
-> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
+> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
 
 # Windows
-> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
+> sbin\start-server.bat -c <conf_path>
 ```
 
-- "-c" and "-rpc_port" are optional.
+- "-c" is optional.
 - option "-c" specifies the system configuration file directory.
-- option "-rpc_port" specifies the rpc port.
-- if both option specified, the *rpc_port* will overrides the rpc_port in *conf_path*.
 
 
 ### Use IoTDB

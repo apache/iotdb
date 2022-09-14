@@ -28,6 +28,8 @@ public class DataPartitionQueryParam {
   private String devicePath;
   private List<TTimePartitionSlot> timePartitionSlotList = new ArrayList<>();
 
+  public DataPartitionQueryParam() {}
+
   public String getDevicePath() {
     return devicePath;
   }

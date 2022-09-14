@@ -21,23 +21,32 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceGroupSchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
 
@@ -48,17 +57,21 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public SchemaTree fetchSchema(PathPatternTree patternTree) {
+  public ClusterSchemaTree fetchSchema(PathPatternTree patternTree) {
+    patternTree.constructTree();
     Set<String> storageGroupSet = new HashSet<>();
-    SchemaTree schemaTree = new SchemaTree();
-    List<PartialPath> partialPathList = patternTree.splitToPathList();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    List<PartialPath> pathPatterns = patternTree.getAllPathPatterns();
     try {
-      for (PartialPath path : partialPathList) {
-        String storageGroup = localConfigNode.getBelongedStorageGroup(path).getFullPath();
-        storageGroupSet.add(storageGroup);
-        SchemaRegionId schemaRegionId = localConfigNode.getBelongedSchemaRegionId(path);
-        ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
-        schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
+      for (PartialPath pathPattern : pathPatterns) {
+        List<PartialPath> storageGroups = localConfigNode.getBelongedStorageGroups(pathPattern);
+        for (PartialPath storageGroupPath : storageGroups) {
+          storageGroupSet.add(storageGroupPath.getFullPath());
+          SchemaRegionId schemaRegionId =
+              localConfigNode.getBelongedSchemaRegionId(storageGroupPath);
+          ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+          schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(pathPattern, false));
+        }
       }
     } catch (MetadataException e) {
       throw new RuntimeException(e);
@@ -68,23 +81,94 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public SchemaTree fetchSchemaWithAutoCreate(
-      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
+  public ISchemaTree fetchSchemaWithAutoCreate(
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned) {
+    DeviceSchemaInfo deviceSchemaInfo =
+        getDeviceSchemaInfoWithAutoCreate(devicePath, measurements, getDataType, aligned);
+    DeviceGroupSchemaTree schemaTree = new DeviceGroupSchemaTree();
+    schemaTree.addDeviceInfo(deviceSchemaInfo);
+    return schemaTree;
+  }
+
+  private DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned) {
+    try {
+      SchemaRegionId schemaRegionId = localConfigNode.getBelongedSchemaRegionId(devicePath);
+      ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+      return schemaRegion.getDeviceSchemaInfoWithAutoCreate(
+          devicePath, measurements, getDataType, aligned);
+    } catch (MetadataException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
+  public ISchemaTree fetchSchemaListWithAutoCreate(
+      List<PartialPath> devicePathList,
+      List<String[]> measurementsList,
+      List<TSDataType[]> tsDataTypesList,
+      List<Boolean> isAlignedList) {
+    Map<PartialPath, List<Integer>> deviceMap = new HashMap<>();
+    for (int i = 0, size = devicePathList.size(); i < size; i++) {
+      deviceMap.computeIfAbsent(devicePathList.get(i), k -> new ArrayList<>()).add(i);
+    }
+
+    DeviceGroupSchemaTree schemaTree = new DeviceGroupSchemaTree();
+
+    for (Map.Entry<PartialPath, List<Integer>> entry : deviceMap.entrySet()) {
+      int totalSize = 0;
+      boolean isAligned = isAlignedList.get(entry.getValue().get(0));
+      for (int index : entry.getValue()) {
+        if (isAlignedList.get(entry.getValue().get(index)) != isAligned) {
+          throw new StatementAnalyzeException(
+              String.format("Inconsistent device alignment of %s in insert plan.", entry.getKey()));
+        }
+        totalSize += measurementsList.get(index).length;
+      }
+
+      String[] measurements = new String[totalSize];
+      TSDataType[] tsDataTypes = new TSDataType[totalSize];
+
+      int curPos = 0;
+      for (int index : entry.getValue()) {
+        System.arraycopy(
+            measurementsList.get(index),
+            0,
+            measurements,
+            curPos,
+            measurementsList.get(index).length);
+        System.arraycopy(
+            tsDataTypesList.get(index), 0, tsDataTypes, curPos, tsDataTypesList.get(index).length);
+        curPos += measurementsList.get(index).length;
+      }
+
+      schemaTree.addDeviceInfo(
+          getDeviceSchemaInfoWithAutoCreate(
+              entry.getKey(), measurements, index -> tsDataTypes[index], isAligned));
+    }
+
+    return schemaTree;
+  }
+
+  @Override
+  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path) {
     return null;
   }
 
   @Override
-  public SchemaTree fetchSchemaListWithAutoCreate(
-      List<PartialPath> devicePath,
-      List<String[]> measurements,
-      List<TSDataType[]> tsDataTypes,
-      List<Boolean> aligned) {
-    Map<PartialPath, List<String>> deviceToMeasurementMap = new HashMap<>();
-    for (int i = 0; i < devicePath.size(); i++) {
-      deviceToMeasurementMap.put(devicePath.get(i), Arrays.asList(measurements.get(i)));
-    }
-    // todo implement auto create schema
-    return fetchSchema(new PathPatternTree(deviceToMeasurementMap));
+  public Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern) {
+    return null;
+  }
+
+  @Override
+  public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
+    return null;
   }
 
   @Override

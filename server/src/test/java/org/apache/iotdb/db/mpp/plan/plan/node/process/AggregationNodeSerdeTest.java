@@ -29,7 +29,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.operator.In;
@@ -57,11 +57,11 @@ public class AggregationNodeSerdeTest {
             new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.MAX_TIME,
+                    AggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.INTERMEDIATE,
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
-            OrderBy.TIMESTAMP_ASC,
+            Ordering.ASC,
             new In<>(Sets.newHashSet("s1", "s2"), VALUE_FILTER, true),
             groupByTimeParameter,
             null);
@@ -71,11 +71,12 @@ public class AggregationNodeSerdeTest {
             Collections.singletonList(seriesAggregationScanNode),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.MAX_TIME,
+                    AggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
-            groupByTimeParameter);
+            groupByTimeParameter,
+            Ordering.ASC);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     aggregationNode.serialize(byteBuffer);
@@ -95,7 +96,7 @@ public class AggregationNodeSerdeTest {
     for (AggregationType aggregationType : aggregationTypeList) {
       descriptorList.add(
           new AggregationDescriptor(
-              aggregationType,
+              aggregationType.name().toLowerCase(),
               AggregationStep.PARTIAL,
               Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     }
@@ -112,7 +113,7 @@ public class AggregationNodeSerdeTest {
     for (AggregationType aggregationType : aggregationTypeList) {
       descriptorList.add(
           new AggregationDescriptor(
-              aggregationType,
+              aggregationType.name().toLowerCase(),
               AggregationStep.PARTIAL,
               Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     }
@@ -128,7 +129,7 @@ public class AggregationNodeSerdeTest {
     for (AggregationType aggregationType : aggregationTypeList) {
       descriptorList.add(
           new AggregationDescriptor(
-              aggregationType,
+              aggregationType.name().toLowerCase(),
               AggregationStep.PARTIAL,
               Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     }
@@ -141,7 +142,7 @@ public class AggregationNodeSerdeTest {
     for (AggregationType aggregationType : aggregationTypeList) {
       descriptorList.add(
           new AggregationDescriptor(
-              aggregationType,
+              aggregationType.name().toLowerCase(),
               AggregationStep.SINGLE,
               Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     }
@@ -163,7 +164,7 @@ public class AggregationNodeSerdeTest {
     for (AggregationType aggregationType : aggregationTypeList) {
       descriptorList.add(
           new AggregationDescriptor(
-              aggregationType,
+              aggregationType.name().toLowerCase(),
               AggregationStep.PARTIAL,
               Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     }
@@ -179,7 +180,7 @@ public class AggregationNodeSerdeTest {
     for (AggregationType aggregationType : aggregationTypeList) {
       descriptorList.add(
           new AggregationDescriptor(
-              aggregationType,
+              aggregationType.name().toLowerCase(),
               AggregationStep.PARTIAL,
               Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     }
@@ -192,7 +193,7 @@ public class AggregationNodeSerdeTest {
     for (AggregationType aggregationType : aggregationTypeList) {
       descriptorList.add(
           new AggregationDescriptor(
-              aggregationType,
+              aggregationType.name().toLowerCase(),
               AggregationStep.SINGLE,
               Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     }
@@ -213,7 +214,7 @@ public class AggregationNodeSerdeTest {
     for (AggregationType aggregationType : aggregationTypeList) {
       descriptorList.add(
           new AggregationDescriptor(
-              aggregationType,
+              aggregationType.name().toLowerCase(),
               AggregationStep.PARTIAL,
               Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     }
@@ -229,7 +230,7 @@ public class AggregationNodeSerdeTest {
     for (AggregationType aggregationType : aggregationTypeList) {
       descriptorList.add(
           new AggregationDescriptor(
-              aggregationType,
+              aggregationType.name().toLowerCase(),
               AggregationStep.PARTIAL,
               Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     }
@@ -242,7 +243,7 @@ public class AggregationNodeSerdeTest {
     for (AggregationType aggregationType : aggregationTypeList) {
       descriptorList.add(
           new AggregationDescriptor(
-              aggregationType,
+              aggregationType.name().toLowerCase(),
               AggregationStep.SINGLE,
               Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     }
@@ -260,12 +261,12 @@ public class AggregationNodeSerdeTest {
     List<AggregationDescriptor> descriptorList = new ArrayList<>();
     descriptorList.add(
         new AggregationDescriptor(
-            AggregationType.AVG,
+            AggregationType.AVG.name().toLowerCase(),
             AggregationStep.PARTIAL,
             Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     descriptorList.add(
         new AggregationDescriptor(
-            AggregationType.COUNT,
+            AggregationType.COUNT.name().toLowerCase(),
             AggregationStep.PARTIAL,
             Collections.singletonList(new TimeSeriesOperand(seriesPath2))));
 
@@ -278,12 +279,12 @@ public class AggregationNodeSerdeTest {
     descriptorList = new ArrayList<>();
     descriptorList.add(
         new AggregationDescriptor(
-            AggregationType.FIRST_VALUE,
+            AggregationType.FIRST_VALUE.name().toLowerCase(),
             AggregationStep.PARTIAL,
             Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     descriptorList.add(
         new AggregationDescriptor(
-            AggregationType.MIN_TIME,
+            AggregationType.MIN_TIME.name().toLowerCase(),
             AggregationStep.PARTIAL,
             Collections.singletonList(new TimeSeriesOperand(seriesPath2))));
 
@@ -295,12 +296,12 @@ public class AggregationNodeSerdeTest {
     descriptorList = new ArrayList<>();
     descriptorList.add(
         new AggregationDescriptor(
-            AggregationType.LAST_VALUE,
+            AggregationType.LAST_VALUE.name().toLowerCase(),
             AggregationStep.PARTIAL,
             Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
     descriptorList.add(
         new AggregationDescriptor(
-            AggregationType.MAX_TIME,
+            AggregationType.MAX_TIME.name().toLowerCase(),
             AggregationStep.PARTIAL,
             Collections.singletonList(new TimeSeriesOperand(seriesPath2))));
 

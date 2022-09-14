@@ -22,9 +22,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,19 +41,19 @@ import java.util.stream.Collectors;
 public class TimeJoinNode extends MultiChildNode {
 
   // This parameter indicates the order when executing multiway merge sort.
-  private final OrderBy mergeOrder;
+  private final Ordering mergeOrder;
 
-  public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
+  public TimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
     super(id, new ArrayList<>());
     this.mergeOrder = mergeOrder;
   }
 
-  public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder, List<PlanNode> children) {
+  public TimeJoinNode(PlanNodeId id, Ordering mergeOrder, List<PlanNode> children) {
     super(id, children);
     this.mergeOrder = mergeOrder;
   }
 
-  public OrderBy getMergeOrder() {
+  public Ordering getMergeOrder() {
     return mergeOrder;
   }
 
@@ -95,8 +97,14 @@ public class TimeJoinNode extends MultiChildNode {
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
   }
 
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TIME_JOIN.serialize(stream);
+    ReadWriteIOUtils.write(mergeOrder.ordinal(), stream);
+  }
+
   public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
-    OrderBy mergeOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering mergeOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new TimeJoinNode(planNodeId, mergeOrder);
   }

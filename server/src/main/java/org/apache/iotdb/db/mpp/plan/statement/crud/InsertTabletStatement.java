@@ -18,13 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class InsertTabletStatement extends InsertBaseStatement {
@@ -34,6 +39,11 @@ public class InsertTabletStatement extends InsertBaseStatement {
   private Object[] columns;
 
   private int rowCount = 0;
+
+  public InsertTabletStatement() {
+    super();
+    statementType = StatementType.BATCH_INSERT;
+  }
 
   public int getRowCount() {
     return rowCount;
@@ -67,6 +77,15 @@ public class InsertTabletStatement extends InsertBaseStatement {
     this.times = times;
   }
 
+  @Override
+  public boolean isEmpty() {
+    return rowCount == 0
+        || times.length == 0
+        || measurements.length == 0
+        || dataTypes.length == 0
+        || columns.length == 0;
+  }
+
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     List<TTimePartitionSlot> result = new ArrayList<>();
     long startTime =
@@ -86,6 +105,16 @@ public class InsertTabletStatement extends InsertBaseStatement {
     }
     result.add(timePartitionSlot);
     return result;
+  }
+
+  @Override
+  public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
+    TRegionReplicaSet regionReplicaSet =
+        dataPartition.getDataRegionReplicaSetForWriting(
+            devicePath.getFullPath(),
+            StorageEngineV2.getTimePartitionSlot(times[times.length - 1]));
+    return Collections.singletonList(
+        regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
   }
 
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {

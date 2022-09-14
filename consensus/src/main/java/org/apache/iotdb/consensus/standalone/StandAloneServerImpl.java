@@ -48,11 +48,18 @@ public class StandAloneServerImpl implements IStateMachine {
   @Override
   public void start() {
     stateMachine.start();
+    // Notify itself as the leader
+    stateMachine.event().notifyLeaderChanged(peer.getGroupId(), peer.getEndpoint());
   }
 
   @Override
   public void stop() {
     stateMachine.stop();
+  }
+
+  @Override
+  public boolean isReadOnly() {
+    return stateMachine.isReadOnly();
   }
 
   @Override

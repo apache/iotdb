@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 public class BinaryArrayColumnEncoder implements ColumnEncoder {
 
   @Override
-  public void readColumn(ColumnBuilder columnBuilder, ByteBuffer input, int positionCount) {
+  public Column readColumn(ByteBuffer input, TSDataType dataType, int positionCount) {
     // Serialized data layout:
     //    +---------------+-----------------+-------------+
     //    | may have null | null indicators |   values    |
@@ -44,23 +44,30 @@ public class BinaryArrayColumnEncoder implements ColumnEncoder {
     //    | int32         | bytes |
     //    +---------------+-------+
 
-    boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
+    if (!TSDataType.TEXT.equals(dataType)) {
+      throw new IllegalArgumentException("Invalid data type: " + dataType);
+    }
 
-    TSDataType dataType = columnBuilder.getDataType();
-    if (TSDataType.TEXT.equals(dataType)) {
+    boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
+    Binary[] values = new Binary[positionCount];
+    if (nullIndicators == null) {
       for (int i = 0; i < positionCount; i++) {
-        if (nullIndicators == null || !nullIndicators[i]) {
+        int length = input.getInt();
+        byte[] value = new byte[length];
+        input.get(value);
+        values[i] = new Binary(value);
+      }
+    } else {
+      for (int i = 0; i < positionCount; i++) {
+        if (!nullIndicators[i]) {
           int length = input.getInt();
           byte[] value = new byte[length];
           input.get(value);
-          columnBuilder.writeBinary(new Binary(value));
-        } else {
-          columnBuilder.appendNull();
+          values[i] = new Binary(value);
         }
       }
-    } else {
-      throw new IllegalArgumentException("Invalid data type: " + dataType);
     }
+    return new BinaryColumn(0, positionCount, nullIndicators, values);
   }
 
   @Override

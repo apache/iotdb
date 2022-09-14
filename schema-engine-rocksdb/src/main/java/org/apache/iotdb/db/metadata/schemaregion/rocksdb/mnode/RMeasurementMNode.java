@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
@@ -151,16 +152,6 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
-  public String getVersion() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setVersion(String version) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     throw new UnsupportedOperationException();
   }
@@ -248,6 +239,11 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   @Override
   public boolean isMeasurement() {
     return true;
+  }
+
+  @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return MNodeType.MEASUREMENT;
   }
 
   public Map<String, String> getTags() {

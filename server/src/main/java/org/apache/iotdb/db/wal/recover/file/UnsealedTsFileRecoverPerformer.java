@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -203,6 +204,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case INSERT_TABLET_NODE:
           walRedoer.redoInsert((InsertNode) walEntry.getValue());
           break;
+        case DELETE_DATA_NODE:
+          walRedoer.redoDelete((DeleteDataNode) walEntry.getValue());
+          break;
       }
     } catch (Exception e) {
       logger.warn("meet error when redo wal of {}", tsFileResource.getTsFile(), e);
@@ -227,7 +231,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       }
       // flush memTable
       try {
-        if (!recoveryMemTable.isEmpty()) {
+        if (!recoveryMemTable.isEmpty() && recoveryMemTable.getSeriesNumber() != 0) {
           MemTableFlushTask tableFlushTask =
               new MemTableFlushTask(
                   recoveryMemTable,

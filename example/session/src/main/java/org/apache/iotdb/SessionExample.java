@@ -31,12 +31,15 @@ import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,7 +81,7 @@ public class SessionExample {
       }
     }
 
-    // createTemplate();
+    //     createTemplate();
     createTimeseries();
     createMultiTimeseries();
     insertRecord();
@@ -86,6 +89,7 @@ public class SessionExample {
     //    insertTabletWithNullValues();
     //    insertTablets();
     //    insertRecords();
+    //    insertText();
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
@@ -597,6 +601,44 @@ public class SessionExample {
     }
   }
 
+  /**
+   * This example shows how to insert data of TSDataType.TEXT. You can use the session interface to
+   * write data of String type or Binary type.
+   */
+  private static void insertText() throws IoTDBConnectionException, StatementExecutionException {
+    String device = "root.sg1.text";
+    // the first data is String type and the second data is Binary type
+    List<Object> datas = Arrays.asList("String", new Binary("Binary"));
+    // insertRecord example
+    for (int i = 0; i < datas.size(); i++) {
+      // write data of String type or Binary type
+      session.insertRecord(
+          device,
+          i,
+          Collections.singletonList("s1"),
+          Collections.singletonList(TSDataType.TEXT),
+          datas.get(i));
+    }
+
+    // insertTablet example
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s2", TSDataType.TEXT));
+    Tablet tablet = new Tablet(device, schemaList, 100);
+    for (int i = 0; i < datas.size(); i++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, i);
+      //  write data of String type or Binary type
+      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, datas.get(i));
+    }
+    session.insertTablet(tablet);
+    try (SessionDataSet dataSet = session.executeQueryStatement("select s1, s2 from " + device)) {
+      System.out.println(dataSet.getColumnNames());
+      while (dataSet.hasNext()) {
+        System.out.println(dataSet.next());
+      }
+    }
+  }
+
   private static void selectInto() throws IoTDBConnectionException, StatementExecutionException {
     session.executeNonQueryStatement(
         "select s1, s2, s3 into into_s1, into_s2, into_s3 from root.sg1.d1");
@@ -712,8 +754,9 @@ public class SessionExample {
     paths.add(ROOT_SG1_D1_S3);
     long startTime = 10L;
     long endTime = 200L;
+    long timeOut = 60000;
 
-    try (SessionDataSet dataSet = session.executeRawDataQuery(paths, startTime, endTime)) {
+    try (SessionDataSet dataSet = session.executeRawDataQuery(paths, startTime, endTime, timeOut)) {
 
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024);
@@ -728,7 +771,7 @@ public class SessionExample {
     paths.add(ROOT_SG1_D1_S1);
     paths.add(ROOT_SG1_D1_S2);
     paths.add(ROOT_SG1_D1_S3);
-    try (SessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3)) {
+    try (SessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3, 60000)) {
       System.out.println(sessionDataSet.getColumnNames());
       sessionDataSet.setFetchSize(1024);
       while (sessionDataSet.hasNext()) {

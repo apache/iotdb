@@ -52,11 +52,9 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 
  - 对于 IoTDB-SQL 接口：传入的 SQL 参数需要符合 [语法规范](../Reference/Syntax-Conventions.md) ，并且针对 JAVA 字符串进行反转义，如双引号前需要加反斜杠。（即：经 JAVA 转义之后与命令行执行的 SQL 语句一致。） 
  - 对于其他接口： 
-   - 经参数传入的路径或路径前缀中的节点： 
-     - 在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。 
-     - 使用单引号或双引号括起的节点，仍需要使用单引号或双引号括起，并且要针对 JAVA 字符串进行反转义。 
-     - 对于 `checkTimeseriesExists` 接口，由于内部调用了 IoTDB-SQL 接口，因此需要和 SQL 语法规范保持一致，并且针对 JAVA 字符串进行反转义。
-   - 经参数传入的标识符（如模板名）：在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。
+   - 经参数传入的路径或路径前缀中的节点： 在 SQL 语句中需要使用反引号（`）进行转义的，此处均需要进行转义。 
+   - 经参数传入的标识符（如模板名）：在 SQL 语句中需要使用反引号（`）进行转义的，均可以不用进行转义。
+ - 语法说明相关代码示例可以参考：`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
 ## 基本接口说明
 
@@ -352,6 +350,17 @@ void insertTablets(Map<String, Tablet> tablets)
 ```
 
 * 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。这里的 value 是 Object 类型，相当于提供了一个公用接口，后面可以通过 TSDataType 将 value 强转为原类型
+
+  其中，Object 类型与 TSDataType 类型的对应关系如下表所示：
+
+  | TSDataType | Object         |
+  | ---------- | -------------- |
+  | BOOLEAN    | Boolean        |
+  | INT32      | Integer        |
+  | INT64      | Long           |
+  | FLOAT      | Float          |
+  | DOUBLE     | Double         |
+  | TEXT       | String, Binary |
 
 ```java
 void insertRecord(String prefixPath, long time, List<String> measurements,

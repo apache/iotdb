@@ -22,12 +22,14 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -72,8 +74,9 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Operation;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -122,7 +125,8 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
+import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -162,13 +166,13 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNonQueryException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 /** Thrift RPC implementation at server side. */
-public class TSServiceImpl implements TSIEventHandler {
+public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private class QueryTask implements Callable<TSExecuteStatementResp> {
 
-    private PhysicalPlan plan;
+    private final PhysicalPlan plan;
     private final long queryStartTime;
     private final long sessionId;
     private final String statement;
@@ -771,6 +775,10 @@ public class TSServiceImpl implements TSIEventHandler {
 
   private TSExecuteStatementResp submitQueryTask(
       PhysicalPlan physicalPlan, long startTime, TSExecuteStatementReq req) throws Exception {
+    TSStatus status = SESSION_MANAGER.checkAuthority(physicalPlan, req.getSessionId());
+    if (status != null) {
+      return new TSExecuteStatementResp(status);
+    }
     QueryTask queryTask =
         new QueryTask(
             physicalPlan,
@@ -804,7 +812,9 @@ public class TSServiceImpl implements TSIEventHandler {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,
-              "No permissions for this operation " + plan.getOperatorType()));
+              "No permissions for this operation, please add privilege "
+                  + OperatorType.values()[
+                      AuthorityChecker.translateToPermissionId(plan.getOperatorType())]));
     }
 
     long queryId = context.getQueryId();
@@ -1120,6 +1130,7 @@ public class TSServiceImpl implements TSIEventHandler {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
       closeSession(req);
     }
+    SyncService.getInstance().handleClientExit();
   }
 
   @Override
@@ -1168,7 +1179,7 @@ public class TSServiceImpl implements TSIEventHandler {
         IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMarkRate());
     properties.setWatermarkParamMaxRightBit(
         IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMaxRightBit());
-    properties.setIsReadOnly(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
+    properties.setIsReadOnly(CommonDescriptor.getInstance().getConfig().isReadOnly());
     properties.setThriftMaxFrameSize(
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
     return properties;
@@ -1193,7 +1204,7 @@ public class TSServiceImpl implements TSIEventHandler {
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       try {
         // check whether measurement is legal according to syntax convention
-        isLegalSingleMeasurements(req.getMeasurementsList().get(i));
+        PathUtils.isLegalSingleMeasurements(req.getMeasurementsList().get(i));
         InsertRowPlan plan =
             new InsertRowPlan(
                 new PartialPath(req.getPrefixPaths().get(i)),
@@ -1266,7 +1277,7 @@ public class TSServiceImpl implements TSIEventHandler {
     List<TSStatus> statusList = new ArrayList<>();
     try {
       // check whether measurement is legal according to syntax convention
-      isLegalSingleMeasurementLists(req.getMeasurementsList());
+      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
       InsertRowsOfOneDevicePlan plan =
           new InsertRowsOfOneDevicePlan(
               new PartialPath(req.getPrefixPath()),
@@ -1317,7 +1328,7 @@ public class TSServiceImpl implements TSIEventHandler {
       InsertRowPlan plan = new InsertRowPlan();
       try {
         // check whether measurement is legal according to syntax convention
-        isLegalSingleMeasurements(req.getMeasurementsList().get(i));
+        PathUtils.isLegalSingleMeasurements(req.getMeasurementsList().get(i));
         plan.setDevicePath(new PartialPath(req.getPrefixPath()));
         plan.setTime(req.getTimestamps().get(i));
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
@@ -1377,7 +1388,7 @@ public class TSServiceImpl implements TSIEventHandler {
       InsertRowPlan plan = new InsertRowPlan();
       try {
         // check whether measurement is legal according to syntax convention
-        isLegalSingleMeasurements(req.getMeasurementsList().get(i));
+        PathUtils.isLegalSingleMeasurements(req.getMeasurementsList().get(i));
         plan.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
@@ -1487,7 +1498,7 @@ public class TSServiceImpl implements TSIEventHandler {
 
       // check whether measurement is legal according to syntax convention
 
-      isLegalSingleMeasurements(req.getMeasurements());
+      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
 
       InsertRowPlan plan =
           new InsertRowPlan(
@@ -1520,7 +1531,7 @@ public class TSServiceImpl implements TSIEventHandler {
           req.getTimestamp());
 
       // check whether measurement is legal according to syntax convention
-      isLegalSingleMeasurements(req.getMeasurements());
+      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
 
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDevicePath(new PartialPath(req.getPrefixPath()));
@@ -1576,7 +1587,7 @@ public class TSServiceImpl implements TSIEventHandler {
 
       // check whether measurement is legal according to syntax convention
 
-      isLegalSingleMeasurements(req.getMeasurements());
+      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
 
       InsertTabletPlan insertTabletPlan =
           new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
@@ -1627,7 +1638,7 @@ public class TSServiceImpl implements TSIEventHandler {
   private InsertTabletPlan constructInsertTabletPlan(TSInsertTabletsReq req, int i)
       throws MetadataException {
     // check whether measurement is legal according to syntax convention
-    isLegalSingleMeasurementLists(req.getMeasurementsList());
+    PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(new PartialPath(req.prefixPaths.get(i)), req.measurementsList.get(i));
     insertTabletPlan.setTimes(
@@ -1719,7 +1730,7 @@ public class TSServiceImpl implements TSIEventHandler {
       }
 
       // measurementAlias is also a nodeName
-      isLegalSingleMeasurements(Collections.singletonList(req.getMeasurementAlias()));
+      PathUtils.isLegalSingleMeasurements(Collections.singletonList(req.getMeasurementAlias()));
       CreateTimeSeriesPlan plan =
           new CreateTimeSeriesPlan(
               new PartialPath(req.path),
@@ -1747,22 +1758,11 @@ public class TSServiceImpl implements TSIEventHandler {
         return getNotLoggedInStatus();
       }
 
-      // if measurements.size() == 1, convert to create timeseries
-      if (req.measurements.size() == 1) {
-        return createTimeseries(
-            new TSCreateTimeseriesReq(
-                req.sessionId,
-                req.prefixPath + "." + req.measurements.get(0),
-                req.dataTypes.get(0),
-                req.encodings.get(0),
-                req.compressors.get(0)));
-      }
-
       // check whether measurement is legal according to syntax convention
 
-      isLegalSingleMeasurements(req.getMeasurements());
+      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
 
-      isLegalSingleMeasurements(req.getMeasurementAlias());
+      PathUtils.isLegalSingleMeasurements(req.getMeasurementAlias());
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
@@ -1823,7 +1823,7 @@ public class TSServiceImpl implements TSIEventHandler {
 
       // measurementAlias is also a nodeName
 
-      isLegalSingleMeasurements(req.measurementAliasList);
+      PathUtils.isLegalSingleMeasurements(req.measurementAliasList);
 
       CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
       List<PartialPath> paths = new ArrayList<>(req.paths.size());
@@ -1943,7 +1943,7 @@ public class TSServiceImpl implements TSIEventHandler {
       ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
       plan = CreateTemplatePlan.deserializeFromReq(buffer);
       // check whether measurement is legal according to syntax convention
-      isLegalMeasurementLists(plan.getMeasurements());
+      PathUtils.isLegalMeasurementLists(plan.getMeasurements());
       TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
 
       return status != null ? status : executeNonQueryPlan(plan);
@@ -1959,7 +1959,7 @@ public class TSServiceImpl implements TSIEventHandler {
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
     try {
       // check whether measurement is legal according to syntax convention
-      isLegalMeasurements(req.getMeasurements());
+      PathUtils.isLegalMeasurements(req.getMeasurements());
     } catch (IoTDBException e) {
       onIoTDBException(e, OperationType.EXECUTE_NON_QUERY_PLAN, e.getErrorCode());
     }
@@ -2104,6 +2104,21 @@ public class TSServiceImpl implements TSIEventHandler {
     return status != null ? status : executeNonQueryPlan(plan);
   }
 
+  @Override
+  public TSStatus handshake(TSyncIdentityInfo info) throws TException {
+    return SyncService.getInstance().handshake(info);
+  }
+
+  @Override
+  public TSStatus sendPipeData(ByteBuffer buff) throws TException {
+    return SyncService.getInstance().transportPipeData(buff);
+  }
+
+  @Override
+  public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
+    return SyncService.getInstance().transportFile(metaInfo, buff);
+  }
+
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     try {
       return serviceProvider.executeNonQuery(plan)
@@ -2123,105 +2138,15 @@ public class TSServiceImpl implements TSIEventHandler {
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .histogram(
               System.currentTimeMillis() - startTime,
               "operation_histogram",
               MetricLevel.IMPORTANT,
               "name",
               operation.getName());
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
-    }
-  }
-
-  /**
-   * check whether measurement is legal according to syntax convention measurement can only be a
-   * single node name
-   */
-  protected void isLegalSingleMeasurementLists(List<List<String>> measurementLists)
-      throws MetadataException {
-    if (measurementLists == null) {
-      return;
-    }
-    StringBuilder path = new StringBuilder(IoTDBConstant.PATH_ROOT);
-    for (List<String> measurementList : measurementLists) {
-      for (String measurement : measurementList) {
-        if (measurement != null) {
-          if (measurement.contains(TsFileConstant.PATH_SEPARATOR)
-              && !(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
-                  && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
-            throw new IllegalPathException(measurement);
-          } else {
-            path.append(TsFileConstant.PATH_SEPARATOR);
-            path.append(measurement);
-          }
-        }
-      }
-    }
-    try {
-      PathUtils.isLegalPath(path.toString());
-    } catch (IllegalPathException e) {
-      throw new MetadataException("find wrong node name according to syntax convention");
-    }
-  }
-
-  /**
-   * check whether measurement is legal according to syntax convention measurement can only be a
-   * single node name
-   */
-  protected void isLegalSingleMeasurements(List<String> measurements) throws MetadataException {
-    if (measurements == null) {
-      return;
-    }
-    StringBuilder path = new StringBuilder(IoTDBConstant.PATH_ROOT);
-    for (String measurement : measurements) {
-      if (measurement != null) {
-        if (measurement.contains(TsFileConstant.PATH_SEPARATOR)
-            && !(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
-                && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
-          throw new IllegalPathException(measurement);
-        } else {
-          path.append(TsFileConstant.PATH_SEPARATOR);
-          path.append(measurement);
-        }
-      }
-    }
-    try {
-      PathUtils.isLegalPath(path.toString());
-    } catch (IllegalPathException e) {
-      throw new MetadataException("find wrong node name according to syntax convention");
-    }
-  }
-
-  /**
-   * check whether measurement is legal according to syntax convention measurement could be like a.b
-   * (more than one node name), in template?
-   */
-  protected void isLegalMeasurementLists(List<List<String>> measurementLists)
-      throws IllegalPathException {
-    if (measurementLists == null) {
-      return;
-    }
-    for (List<String> measurementList : measurementLists) {
-      isLegalMeasurements(measurementList);
-    }
-  }
-
-  /**
-   * check whether measurement is legal according to syntax convention measurement could be like a.b
-   * (more than one node name), in template?
-   */
-  protected void isLegalMeasurements(List<String> measurements) throws IllegalPathException {
-    if (measurements == null) {
-      return;
-    }
-    for (String measurement : measurements) {
-      if (measurement != null) {
-        PathUtils.isLegalPath(measurement);
-      }
     }
   }
 }

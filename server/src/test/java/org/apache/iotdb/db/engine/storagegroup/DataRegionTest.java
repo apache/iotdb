@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
@@ -252,7 +253,8 @@ public class DataRegionTest {
 
   @Test
   public void testIoTDBTabletWriteAndSyncClose()
-      throws QueryProcessException, IllegalPathException, TriggerExecutionException {
+      throws QueryProcessException, IllegalPathException, TriggerExecutionException,
+          WriteProcessException {
     String[] measurements = new String[2];
     measurements[0] = "s0";
     measurements[1] = "s1";
@@ -416,7 +418,8 @@ public class DataRegionTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet1()
-      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
+      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
+          WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -508,7 +511,8 @@ public class DataRegionTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet2()
-      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
+      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
+          WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -600,7 +604,8 @@ public class DataRegionTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet3()
-      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
+      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
+          WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -721,7 +726,7 @@ public class DataRegionTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     dataRegion.compact();
     long totalWaitingTime = 0;
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+    do {
       // wait
       try {
         Thread.sleep(100);
@@ -736,7 +741,7 @@ public class DataRegionTest {
         Assert.fail();
         break;
       }
-    }
+    } while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0);
 
     QueryDataSource queryDataSource =
         dataRegion.query(
@@ -781,8 +786,9 @@ public class DataRegionTest {
               dataRegion.getSequenceFileList(),
               true,
               new ReadChunkCompactionPerformer(dataRegion.getSequenceFileList()),
-              new AtomicInteger(0));
-      CompactionTaskManager.getInstance().submitTask(task);
+              new AtomicInteger(0),
+              0);
+      CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       Thread.sleep(20);
       StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));
       Thread.sleep(500);
@@ -802,7 +808,7 @@ public class DataRegionTest {
                   + targetTsFileResource.getTsFile().getName()
                   + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
       Assert.assertFalse(logFile.exists());
-      Assert.assertFalse(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
+      Assert.assertFalse(CommonDescriptor.getInstance().getConfig().isReadOnly());
       Assert.assertTrue(dataRegion.getTsFileManager().isAllowCompaction());
     } finally {
       new CompactionConfigRestorer().restoreCompactionConfig();
@@ -911,6 +917,170 @@ public class DataRegionTest {
 
     config.setEnableTimedFlushUnseqMemtable(prevEnableTimedFlushUnseqMemtable);
     config.setUnseqMemtableFlushInterval(preFLushInterval);
+  }
+
+  /**
+   * Totally 5 tsfiles<br>
+   * file 0, file 2 and file 4 has d0 ~ d1, time range is 0 ~ 99, 200 ~ 299, 400 ~ 499<br>
+   * file 1, file 3 has d0 ~ d2, time range is 100 ~ 199, 300 ~ 399<br>
+   * delete d2 in time range 50 ~ 150 and 150 ~ 450. Therefore, only file 1 and file 3 has mods.
+   */
+  @Test
+  public void testDeleteDataNotInFile()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException,
+          InterruptedException, IOException {
+    for (int i = 0; i < 5; i++) {
+      if (i % 2 == 0) {
+        for (int d = 0; d < 2; d++) {
+          for (int count = i * 100; count < i * 100 + 100; count++) {
+            TSRecord record = new TSRecord(count, "root.vehicle.d" + d);
+            record.addTuple(
+                DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(count)));
+            dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+          }
+        }
+      } else {
+        for (int d = 0; d < 3; d++) {
+          for (int count = i * 100; count < i * 100 + 100; count++) {
+            TSRecord record = new TSRecord(count, "root.vehicle.d" + d);
+            record.addTuple(
+                DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(count)));
+            dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+          }
+        }
+      }
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
+    }
+
+    // delete root.vehicle.d2.s0 data in the second file
+    dataRegion.delete(new PartialPath("root.vehicle.d2.s0"), 50, 150, 0, null);
+
+    // delete root.vehicle.d2.s0 data in the third file
+    dataRegion.delete(new PartialPath("root.vehicle.d2.s0"), 150, 450, 0, null);
+
+    for (int i = 0; i < dataRegion.getSequenceFileList().size(); i++) {
+      TsFileResource resource = dataRegion.getSequenceFileList().get(i);
+      if (i == 1) {
+        Assert.assertTrue(resource.getModFile().exists());
+        Assert.assertEquals(2, resource.getModFile().getModifications().size());
+      } else if (i == 3) {
+        Assert.assertTrue(resource.getModFile().exists());
+        Assert.assertEquals(1, resource.getModFile().getModifications().size());
+      } else {
+        Assert.assertFalse(resource.getModFile().exists());
+      }
+    }
+
+    StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));
+    Thread.sleep(500);
+
+    for (TsFileResource resource : dataRegion.getSequenceFileList()) {
+      Assert.assertFalse(resource.getTsFile().exists());
+    }
+  }
+
+  @Test
+  public void testDeleteDataNotInFlushingMemtable()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+    for (int j = 0; j < 100; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+    tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
+
+    // delete data which is in memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d2.s0"), 50, 70, 0, null);
+
+    // delete data which is not in memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+  }
+
+  @Test
+  public void testDeleteDataInSeqFlushingMemtable()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+    tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
+
+    // delete data which is not in flushing memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in flushing memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 100, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 150, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 100, 300, 0, null);
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertTrue(tsFileResource.getModFile().exists());
+    Assert.assertEquals(3, tsFileResource.getModFile().getModifications().size());
+  }
+
+  @Test
+  public void testDeleteDataInUnSeqFlushingMemtable()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+
+    // delete data which is not in work memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in work memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 100, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 150, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 100, 300, 0, null);
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+
+    // insert unseq data points
+    for (int j = 50; j < 100; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    // delete data which is not in work memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 200, 299, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in work memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 80, 85, 0, null);
+
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+
+    tsFileResource = dataRegion.getTsFileManager().getTsFileList(false).get(0);
+    TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+    tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
+
+    // delete data which is not in flushing memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 0, 49, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 100, 200, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in flushing memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 25, 50, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 80, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 99, 150, 0, null);
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertTrue(tsFileResource.getModFile().exists());
+    Assert.assertEquals(3, tsFileResource.getModFile().getModifications().size());
   }
 
   static class DummyDataRegion extends DataRegion {

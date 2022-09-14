@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final Logger logger = LoggerFactory.getLogger(ApplicationStateMachineProxy.class);
@@ -116,10 +117,35 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
               log.getStateMachineLogEntry().getLogData().asReadOnlyByteBuffer());
     }
 
-    TSStatus result = applicationStateMachine.write(applicationRequest);
-    Message ret = new ResponseMessage(result);
+    Message ret;
+    waitUntilSystemNotReadOnly();
+    do {
+      try {
+        TSStatus result = applicationStateMachine.write(applicationRequest);
+        ret = new ResponseMessage(result);
+        break;
+      } catch (Exception rte) {
+        logger.error("application statemachine throws a runtime exception: ", rte);
+        ret = Message.valueOf("internal error. statemachine throws a runtime exception: " + rte);
+        if (applicationStateMachine.isReadOnly()) {
+          waitUntilSystemNotReadOnly();
+        } else {
+          break;
+        }
+      }
+    } while (!applicationStateMachine.isReadOnly());
 
     return CompletableFuture.completedFuture(ret);
+  }
+
+  private void waitUntilSystemNotReadOnly() {
+    while (applicationStateMachine.isReadOnly()) {
+      try {
+        TimeUnit.SECONDS.sleep(60);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   @Override
@@ -148,29 +174,36 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     // delete snapshotDir fully in case of last takeSnapshot() crashed
     FileUtils.deleteFully(snapshotDir);
 
-    snapshotDir.mkdir();
+    snapshotDir.mkdirs();
     if (!snapshotDir.isDirectory()) {
       logger.error("Unable to create snapshotDir at {}", snapshotDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
 
     boolean applicationTakeSnapshotSuccess = applicationStateMachine.takeSnapshot(snapshotDir);
-    boolean addTermIndexMetafileSuccess =
-        snapshotStorage.addTermIndexMetaFile(snapshotDir, metadata);
-
-    if (!applicationTakeSnapshotSuccess || !addTermIndexMetafileSuccess) {
-      // this takeSnapshot failed, clean up files and directories
-      // statemachine is supposed to clear snapshotDir on failure
-      boolean isEmpty = snapshotDir.delete();
-      if (!isEmpty) {
-        logger.warn(
-            "StateMachine take snapshot failed but leave unexpected remaining files at "
-                + snapshotDir.getAbsolutePath());
-        FileUtils.deleteFully(snapshotDir);
-      }
+    if (!applicationTakeSnapshotSuccess) {
+      deleteIncompleteSnapshot(snapshotDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
+
+    boolean addTermIndexMetafileSuccess =
+        snapshotStorage.addTermIndexMetaFile(snapshotDir, metadata);
+    if (!addTermIndexMetafileSuccess) {
+      deleteIncompleteSnapshot(snapshotDir);
+      return RaftLog.INVALID_LOG_INDEX;
+    }
+
     return lastApplied.getIndex();
+  }
+
+  private void deleteIncompleteSnapshot(File snapshotDir) throws IOException {
+    // this takeSnapshot failed, clean up files and directories
+    // statemachine is supposed to clear snapshotDir on failure
+    boolean isEmpty = snapshotDir.delete();
+    if (!isEmpty) {
+      logger.info("Snapshot directory is incomplete, deleting " + snapshotDir.getAbsolutePath());
+      FileUtils.deleteFully(snapshotDir);
+    }
   }
 
   private void loadSnapshot(File latestSnapshotDir) {

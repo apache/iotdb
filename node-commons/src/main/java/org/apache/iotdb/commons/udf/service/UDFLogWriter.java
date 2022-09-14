@@ -25,14 +25,18 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.List;
 
 public class UDFLogWriter {
 
-  public static final Byte REGISTER_TYPE = 0;
+  public static final Byte REGISTER_WITHOUT_URIS_TYPE = 0;
   public static final Byte DEREGISTER_TYPE = 1;
+  public static final Byte REGISTER_WITH_URIS_TYPE = 2;
 
-  private static final String REGISTER_TYPE_STRING = REGISTER_TYPE.toString();
+  private static final String REGISTER_WITHOUT_URIS_TYPE_STRING =
+      REGISTER_WITHOUT_URIS_TYPE.toString();
   private static final String DEREGISTER_TYPE_STRING = DEREGISTER_TYPE.toString();
+  private static final String REGISTER_WITH_URIS_TYPE_STRING = REGISTER_WITH_URIS_TYPE.toString();
 
   private final File logFile;
   private final BufferedWriter writer;
@@ -53,8 +57,17 @@ public class UDFLogWriter {
     }
   }
 
-  public void register(String functionName, String className) throws IOException {
-    writer.write(String.format("%s,%s,%s", REGISTER_TYPE_STRING, functionName, className));
+  public void register(String functionName, String className, List<String> uris)
+      throws IOException {
+    if (uris.isEmpty()) {
+      writer.write(
+          String.format("%s,%s,%s", REGISTER_WITHOUT_URIS_TYPE_STRING, functionName, className));
+    } else {
+      writer.write(
+          String.format(
+              "%s,%s,%s,%s",
+              REGISTER_WITH_URIS_TYPE_STRING, functionName, className, String.join(",", uris)));
+    }
     writeLineAndFlush();
   }
 

@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.wal.node;
 
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -27,8 +27,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
-
-import java.util.List;
 
 /** This class provides fake wal node when wal is disabled or exception happens. */
 public class WALFakeNode implements IWALNode {
@@ -45,29 +43,34 @@ public class WALFakeNode implements IWALNode {
   }
 
   @Override
-  public WALFlushListener log(int memTableId, InsertRowPlan insertRowPlan) {
+  public WALFlushListener log(long memTableId, InsertRowPlan insertRowPlan) {
     return getResult();
   }
 
   @Override
-  public WALFlushListener log(int memTableId, InsertRowNode insertRowNode) {
-    return getResult();
-  }
-
-  @Override
-  public WALFlushListener log(
-      int memTableId, InsertTabletPlan insertTabletPlan, int start, int end) {
+  public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
     return getResult();
   }
 
   @Override
   public WALFlushListener log(
-      int memTableId, InsertTabletNode insertTabletNode, int start, int end) {
+      long memTableId, InsertTabletPlan insertTabletPlan, int start, int end) {
     return getResult();
   }
 
   @Override
-  public WALFlushListener log(int memTableId, DeletePlan deletePlan) {
+  public WALFlushListener log(
+      long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
+    return getResult();
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, DeletePlan deletePlan) {
+    return getResult();
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode) {
     return getResult();
   }
 
@@ -100,12 +103,7 @@ public class WALFakeNode implements IWALNode {
   }
 
   @Override
-  public IConsensusRequest getReq(long index) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public List<IConsensusRequest> getReqs(long startIndex, int num) {
+  public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
     throw new UnsupportedOperationException();
   }
 
@@ -117,6 +115,16 @@ public class WALFakeNode implements IWALNode {
   @Override
   public void close() {
     // do nothing
+  }
+
+  @Override
+  public long getCurrentSearchIndex() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public long getTotalSize() {
+    return 0;
   }
 
   public static WALFakeNode getFailureInstance(Exception e) {

@@ -1038,7 +1038,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 NOW()
 Eg. INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false) 
 Eg. DELETE FROM root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature WHERE time < NOW()
-Eg. SELECT * FROM root WHERE time < NOW()
+Eg. SELECT * FROM root.** WHERE time < NOW()
 Eg. SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE time < NOW()
 ```
 

@@ -182,6 +182,10 @@ public class TsBlock {
     return new TsBlock(subTimeColumn, subValueColumns);
   }
 
+  public TsBlock skipFirst() {
+    return this.subTsBlock(1);
+  }
+
   public long getTimeByIndex(int index) {
     return timeColumn.getLong(index);
   }
@@ -192,6 +196,10 @@ public class TsBlock {
 
   public TimeColumn getTimeColumn() {
     return timeColumn;
+  }
+
+  public Column[] getValueColumns() {
+    return valueColumns;
   }
 
   public Column getColumn(int columnIndex) {
@@ -347,7 +355,8 @@ public class TsBlock {
       int columnCount = getValueColumnCount();
       Object[] row = new Object[columnCount + 1];
       for (int i = 0; i < columnCount; ++i) {
-        row[i] = valueColumns[i].getObject(rowIndex);
+        final Column column = valueColumns[i];
+        row[i] = column.isNull(rowIndex) ? null : column.getObject(rowIndex);
       }
       row[columnCount] = timeColumn.getObject(rowIndex);
 

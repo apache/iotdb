@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -29,6 +31,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.mpp.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 
+import io.airlift.concurrent.SetThreadName;
 import io.airlift.stats.CounterStat;
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -39,6 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
@@ -61,6 +65,9 @@ public class FragmentInstanceManager {
   // record failed instances count
   private final CounterStat failedInstances = new CounterStat();
 
+  private static final long QUERY_TIMEOUT_MS =
+      IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
+
   public static FragmentInstanceManager getInstance() {
     return FragmentInstanceManager.InstanceHolder.INSTANCE;
   }
@@ -75,14 +82,11 @@ public class FragmentInstanceManager {
 
     this.infoCacheTime = new Duration(15, TimeUnit.MINUTES);
 
-    instanceManagementExecutor.scheduleWithFixedDelay(
-        () -> {
-          try {
-            removeOldInstances();
-          } catch (Throwable e) {
-            logger.warn("Error removing old tasks", e);
-          }
-        },
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        instanceManagementExecutor, this::removeOldInstances, 200, 200, TimeUnit.MILLISECONDS);
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        instanceManagementExecutor,
+        this::cancelTimeoutFlushingInstances,
         200,
         200,
         TimeUnit.MILLISECONDS);
@@ -90,39 +94,47 @@ public class FragmentInstanceManager {
 
   public FragmentInstanceInfo execDataQueryFragmentInstance(
       FragmentInstance instance, DataRegion dataRegion) {
+
     FragmentInstanceId instanceId = instance.getId();
+    try (SetThreadName fragmentInstanceName = new SetThreadName(instanceId.getFullId())) {
+      FragmentInstanceExecution execution =
+          instanceExecution.computeIfAbsent(
+              instanceId,
+              id -> {
+                FragmentInstanceStateMachine stateMachine =
+                    new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
-    FragmentInstanceExecution execution =
-        instanceExecution.computeIfAbsent(
-            instanceId,
-            id -> {
-              FragmentInstanceStateMachine stateMachine =
-                  new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+                FragmentInstanceContext context =
+                    instanceContext.computeIfAbsent(
+                        instanceId,
+                        fragmentInstanceId ->
+                            createFragmentInstanceContext(fragmentInstanceId, stateMachine));
 
-              FragmentInstanceContext context =
-                  instanceContext.computeIfAbsent(
+                try {
+                  DataDriver driver =
+                      planner.plan(
+                          instance.getFragment().getPlanNodeTree(),
+                          instance.getFragment().getTypeProvider(),
+                          context,
+                          instance.getTimeFilter(),
+                          dataRegion);
+                  return createFragmentInstanceExecution(
+                      scheduler,
                       instanceId,
-                      fragmentInstanceId ->
-                          createFragmentInstanceContext(fragmentInstanceId, stateMachine));
+                      context,
+                      driver,
+                      stateMachine,
+                      failedInstances,
+                      instance.getTimeOut());
+                } catch (Throwable t) {
+                  logger.error("error when create FragmentInstanceExecution.", t);
+                  stateMachine.failed(t);
+                  return null;
+                }
+              });
 
-              try {
-                DataDriver driver =
-                    planner.plan(
-                        instance.getFragment().getRoot(),
-                        instance.getFragment().getTypeProvider(),
-                        context,
-                        instance.getTimeFilter(),
-                        dataRegion);
-                return createFragmentInstanceExecution(
-                    scheduler, instanceId, context, driver, stateMachine, failedInstances);
-              } catch (Throwable t) {
-                logger.error("error when create FragmentInstanceExecution.", t);
-                stateMachine.failed(t);
-                return null;
-              }
-            });
-
-    return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+      return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+    }
   }
 
   public FragmentInstanceInfo execSchemaQueryFragmentInstance(
@@ -143,10 +155,17 @@ public class FragmentInstanceManager {
 
               try {
                 SchemaDriver driver =
-                    planner.plan(instance.getFragment().getRoot(), context, schemaRegion);
+                    planner.plan(instance.getFragment().getPlanNodeTree(), context, schemaRegion);
                 return createFragmentInstanceExecution(
-                    scheduler, instanceId, context, driver, stateMachine, failedInstances);
+                    scheduler,
+                    instanceId,
+                    context,
+                    driver,
+                    stateMachine,
+                    failedInstances,
+                    instance.getTimeOut());
               } catch (Throwable t) {
+                logger.error("Execute error caused by ", t);
                 stateMachine.failed(t);
                 return null;
               }
@@ -154,26 +173,27 @@ public class FragmentInstanceManager {
     return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
   }
 
-  /** Aborts a FragmentInstance. */
+  /** Aborts a FragmentInstance. keep FragmentInstanceContext for later state tracking */
   public FragmentInstanceInfo abortFragmentInstance(FragmentInstanceId fragmentInstanceId) {
-    FragmentInstanceExecution execution = instanceExecution.remove(fragmentInstanceId);
-    if (execution != null) {
-      instanceContext.remove(fragmentInstanceId);
-      execution.abort();
-      return execution.getInstanceInfo();
+    instanceExecution.remove(fragmentInstanceId);
+    FragmentInstanceContext context = instanceContext.get(fragmentInstanceId);
+    if (context != null) {
+      context.abort();
+      return context.getInstanceInfo();
     }
     return null;
   }
 
   /** Cancels a FragmentInstance. */
   public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId) {
+    logger.debug("cancelTask");
     requireNonNull(instanceId, "taskId is null");
 
-    FragmentInstanceExecution execution = instanceExecution.remove(instanceId);
-    if (execution != null) {
-      instanceContext.remove(instanceId);
-      execution.cancel();
-      return execution.getInstanceInfo();
+    FragmentInstanceContext context = instanceContext.remove(instanceId);
+    if (context != null) {
+      instanceExecution.remove(instanceId);
+      context.cancel();
+      return context.getInstanceInfo();
     }
     return null;
   }
@@ -186,11 +206,11 @@ public class FragmentInstanceManager {
    */
   public FragmentInstanceInfo getInstanceInfo(FragmentInstanceId instanceId) {
     requireNonNull(instanceId, "instanceId is null");
-    FragmentInstanceExecution execution = instanceExecution.get(instanceId);
-    if (execution == null) {
+    FragmentInstanceContext context = instanceContext.get(instanceId);
+    if (context == null) {
       return null;
     }
-    return execution.getInstanceInfo();
+    return context.getInstanceInfo();
   }
 
   public CounterStat getFailedInstances() {
@@ -198,8 +218,9 @@ public class FragmentInstanceManager {
   }
 
   private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {
+    FragmentInstanceContext context = instanceContext.get(instanceId);
     return new FragmentInstanceInfo(
-        FragmentInstanceState.FAILED, instanceContext.get(instanceId).getEndTime());
+        FragmentInstanceState.FAILED, context.getEndTime(), context.getFailedCause());
   }
 
   private void removeOldInstances() {
@@ -208,19 +229,21 @@ public class FragmentInstanceManager {
         .entrySet()
         .removeIf(
             entry -> {
-              FragmentInstanceId instanceId = entry.getKey();
-              FragmentInstanceExecution execution = instanceExecution.get(instanceId);
-              if (execution == null) {
-                return true;
-              }
-              long endTime = execution.getInstanceInfo().getEndTime();
-              if (endTime != -1 && endTime <= oldestAllowedInstance) {
-                instanceContext.remove(instanceId);
-                return true;
-              } else {
-                return false;
-              }
+              long endTime = entry.getValue().getEndTime();
+              return endTime != -1 && endTime <= oldestAllowedInstance;
             });
+  }
+
+  private void cancelTimeoutFlushingInstances() {
+    long now = System.currentTimeMillis();
+    instanceContext.entrySet().stream()
+        .filter(
+            entry -> {
+              FragmentInstanceContext context = entry.getValue();
+              return context.getStateMachine().getState() == FragmentInstanceState.FLUSHING
+                  && (now - context.getStartTime()) > QUERY_TIMEOUT_MS;
+            })
+        .forEach(entry -> entry.getValue().failed(new TimeoutException()));
   }
 
   private static class InstanceHolder {

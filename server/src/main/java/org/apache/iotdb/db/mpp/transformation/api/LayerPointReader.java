@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
 
-public interface LayerPointReader {
+public interface LayerPointReader extends YieldableReader {
 
   boolean isConstantPointReader();
 

@@ -24,11 +24,13 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,36 +54,28 @@ public class AggregationNode extends MultiChildNode {
   // The parameter of `group by time`.
   // Its value will be null if there is no `group by time` clause.
   @Nullable protected GroupByTimeParameter groupByTimeParameter;
-  protected OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
 
-  public AggregationNode(
-      PlanNodeId id,
-      List<PlanNode> children,
-      List<AggregationDescriptor> aggregationDescriptorList) {
-    this(id, children, aggregationDescriptorList, null);
-  }
-
-  public AggregationNode(
-      PlanNodeId id,
-      List<PlanNode> children,
-      List<AggregationDescriptor> aggregationDescriptorList,
-      @Nullable GroupByTimeParameter groupByTimeParameter) {
-    super(id, children);
-    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
-    this.groupByTimeParameter = groupByTimeParameter;
-  }
-
-  public AggregationNode(PlanNodeId id, List<AggregationDescriptor> aggregationDescriptorList) {
-    this(id, aggregationDescriptorList, null);
-  }
+  protected Ordering scanOrder;
 
   public AggregationNode(
       PlanNodeId id,
       List<AggregationDescriptor> aggregationDescriptorList,
-      @Nullable GroupByTimeParameter groupByTimeParameter) {
+      @Nullable GroupByTimeParameter groupByTimeParameter,
+      Ordering scanOrder) {
     super(id, new ArrayList<>());
     this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
     this.groupByTimeParameter = groupByTimeParameter;
+    this.scanOrder = scanOrder;
+  }
+
+  public AggregationNode(
+      PlanNodeId id,
+      List<PlanNode> children,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      @Nullable GroupByTimeParameter groupByTimeParameter,
+      Ordering scanOrder) {
+    this(id, aggregationDescriptorList, groupByTimeParameter, scanOrder);
+    this.children = children;
   }
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
@@ -93,7 +87,7 @@ public class AggregationNode extends MultiChildNode {
     return groupByTimeParameter;
   }
 
-  public OrderBy getScanOrder() {
+  public Ordering getScanOrder() {
     return scanOrder;
   }
 
@@ -115,7 +109,7 @@ public class AggregationNode extends MultiChildNode {
   @Override
   public PlanNode clone() {
     return new AggregationNode(
-        getPlanNodeId(), getAggregationDescriptorList(), getGroupByTimeParameter());
+        getPlanNodeId(), getAggregationDescriptorList(), getGroupByTimeParameter(), getScanOrder());
   }
 
   @Override
@@ -132,7 +126,7 @@ public class AggregationNode extends MultiChildNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitRowBasedSeriesAggregate(this, context);
+    return visitor.visitAggregation(this, context);
   }
 
   @Override
@@ -148,6 +142,23 @@ public class AggregationNode extends MultiChildNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       groupByTimeParameter.serialize(byteBuffer);
     }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.AGGREGATE.serialize(stream);
+    ReadWriteIOUtils.write(aggregationDescriptorList.size(), stream);
+    for (AggregationDescriptor aggregationDescriptor : aggregationDescriptorList) {
+      aggregationDescriptor.serialize(stream);
+    }
+    if (groupByTimeParameter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      groupByTimeParameter.serialize(stream);
+    }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
   }
 
   public static AggregationNode deserialize(ByteBuffer byteBuffer) {
@@ -162,8 +173,10 @@ public class AggregationNode extends MultiChildNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new AggregationNode(planNodeId, aggregationDescriptorList, groupByTimeParameter);
+    return new AggregationNode(
+        planNodeId, aggregationDescriptorList, groupByTimeParameter, scanOrder);
   }
 
   @Override
@@ -178,15 +191,15 @@ public class AggregationNode extends MultiChildNode {
       return false;
     }
     AggregationNode that = (AggregationNode) o;
-    return aggregationDescriptorList.equals(that.aggregationDescriptorList)
+    return Objects.equals(aggregationDescriptorList, that.aggregationDescriptorList)
         && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
-        && Objects.equals(children, that.children);
+        && scanOrder == that.scanOrder;
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        super.hashCode(), aggregationDescriptorList, groupByTimeParameter, children);
+        super.hashCode(), aggregationDescriptorList, groupByTimeParameter, scanOrder);
   }
 
   /**

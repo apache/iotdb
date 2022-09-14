@@ -22,15 +22,16 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.execution.QueryIdGenerator;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.execution.QueryExecution;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.ConfigExecution;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 
+import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,21 +56,10 @@ public class Coordinator {
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
 
   private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
-  private static final int COORDINATOR_EXECUTOR_SIZE = 10;
   private static final String COORDINATOR_WRITE_EXECUTOR_NAME = "MPPCoordinatorWrite";
-  private static final int COORDINATOR_WRITE_EXECUTOR_SIZE = 10;
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
-  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 1;
-
-  private static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
-      new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
-          IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
-
-  private static final TEndPoint LOCAL_HOST_INTERNAL_ENDPOINT =
-      new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
-          IoTDBDescriptor.getInstance().getConfig().getInternalPort());
+  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       INTERNAL_SERVICE_CLIENT_MANAGER =
@@ -76,17 +67,15 @@ public class Coordinator {
               .createClientManager(
                   new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
-  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
-      CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
-              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
 
+  private final QueryIdGenerator queryIdGenerator = new QueryIdGenerator();
+
   private static final Coordinator INSTANCE = new Coordinator();
 
-  private final ConcurrentHashMap<QueryId, IQueryExecution> queryExecutionMap;
+  private final ConcurrentHashMap<Long, IQueryExecution> queryExecutionMap;
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
@@ -99,10 +88,14 @@ public class Coordinator {
       Statement statement,
       MPPQueryContext queryContext,
       IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher) {
+      ISchemaFetcher schemaFetcher,
+      long timeOut,
+      long startTime) {
+    queryContext.setTimeOut(timeOut);
+    queryContext.setStartTime(startTime);
     if (statement instanceof IConfigStatement) {
       queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
-      return new ConfigExecution(queryContext, statement, executor, CONFIG_NODE_CLIENT_MANAGER);
+      return new ConfigExecution(queryContext, statement, executor);
     }
     return new QueryExecution(
         statement,
@@ -117,48 +110,87 @@ public class Coordinator {
 
   public ExecutionResult execute(
       Statement statement,
-      QueryId queryId,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      long timeOut) {
+    long startTime = System.currentTimeMillis();
+    QueryId globalQueryId = queryIdGenerator.createNextQueryId();
+    try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
+      if (sql != null && sql.length() > 0) {
+        LOGGER.info("start executing sql: {}", sql);
+      }
+      MPPQueryContext queryContext =
+          new MPPQueryContext(
+              sql,
+              globalQueryId,
+              session,
+              DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+              DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
+      IQueryExecution execution =
+          createQueryExecution(
+              statement,
+              queryContext,
+              partitionFetcher,
+              schemaFetcher,
+              timeOut > 0 ? timeOut : config.getQueryTimeoutThreshold(),
+              startTime);
+      if (execution.isQuery()) {
+        queryExecutionMap.put(queryId, execution);
+      } else {
+        // we won't limit write operation's execution time
+        queryContext.setTimeOut(Long.MAX_VALUE);
+      }
+      execution.start();
+
+      return execution.getStatus();
+    }
+  }
+
+  /** This method is called by the write method. So it does not set the timeout parameter. */
+  public ExecutionResult execute(
+      Statement statement,
+      long queryId,
       SessionInfo session,
       String sql,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-
-    IQueryExecution execution =
-        createQueryExecution(
-            statement,
-            new MPPQueryContext(
-                sql,
-                queryId,
-                session,
-                LOCAL_HOST_DATA_BLOCK_ENDPOINT,
-                LOCAL_HOST_INTERNAL_ENDPOINT),
-            partitionFetcher,
-            schemaFetcher);
-    queryExecutionMap.put(queryId, execution);
-    execution.start();
-
-    return execution.getStatus();
+    return execute(
+        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE);
   }
 
-  public IQueryExecution getQueryExecution(QueryId queryId) {
+  public IQueryExecution getQueryExecution(Long queryId) {
     return queryExecutionMap.get(queryId);
+  }
+
+  public void removeQueryExecution(Long queryId) {
+    queryExecutionMap.remove(queryId);
   }
 
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
+    int coordinatorReadExecutorSize =
+        config.isClusterMode() ? config.getCoordinatorReadExecutorSize() : 1;
     return IoTDBThreadPoolFactory.newFixedThreadPool(
-        COORDINATOR_EXECUTOR_SIZE, COORDINATOR_EXECUTOR_NAME);
+        coordinatorReadExecutorSize, COORDINATOR_EXECUTOR_NAME);
   }
 
   private ExecutorService getWriteExecutor() {
+    int coordinatorWriteExecutorSize = config.getCoordinatorWriteExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
-        COORDINATOR_WRITE_EXECUTOR_SIZE, COORDINATOR_WRITE_EXECUTOR_NAME);
+        coordinatorWriteExecutorSize, COORDINATOR_WRITE_EXECUTOR_NAME);
   }
 
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
         COORDINATOR_SCHEDULED_EXECUTOR_SIZE, COORDINATOR_SCHEDULED_EXECUTOR_NAME);
+  }
+
+  public QueryId createQueryId() {
+    return queryIdGenerator.createNextQueryId();
   }
 
   public static Coordinator getInstance() {

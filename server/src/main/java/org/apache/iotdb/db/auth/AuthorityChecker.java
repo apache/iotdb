@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -40,7 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class AuthorityChecker {
 
@@ -104,8 +103,7 @@ public class AuthorityChecker {
    * @return if permission-check is passed
    */
   public static boolean checkPermission(
-      String username, List<? extends PartialPath> paths, StatementType type, String targetUser)
-      throws AuthException, ConfigNodeConnectionException {
+      String username, List<? extends PartialPath> paths, StatementType type, String targetUser) {
     if (SUPER_USER.equals(username)) {
       return true;
     }
@@ -128,7 +126,7 @@ public class AuthorityChecker {
       allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE);
     }
 
-    TSStatus status = authorizerManager.checkPermissionCache(username, allPath, permission);
+    TSStatus status = authorizerManager.checkPath(username, allPath, permission);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return true;
     } else {
@@ -156,21 +154,23 @@ public class AuthorityChecker {
       if (!checkAuthorization(statement, sessionManager.getUsername(sessionId))) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
-            "No permissions for this operation " + statement.getType());
+            "No permissions for this operation, please add privilege "
+                + PrivilegeType.values()[
+                    AuthorityChecker.translateToPermissionId(statement.getType())]);
       }
     } catch (AuthException e) {
       logger.warn("meet error while checking authorization.", e);
       return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return onQueryException(
+          e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   /** Check whether specific user has the authorization to given plan. */
   public static boolean checkAuthorization(Statement statement, String username)
-      throws AuthException, ConfigNodeConnectionException {
+      throws AuthException {
     if (!statement.isAuthenticationRequired()) {
       return true;
     }
@@ -182,7 +182,7 @@ public class AuthorityChecker {
         username, statement.getPaths(), statement.getType(), targetUser);
   }
 
-  private static int translateToPermissionId(Operator.OperatorType type) {
+  public static int translateToPermissionId(Operator.OperatorType type) {
     switch (type) {
       case GRANT_ROLE_PRIVILEGE:
         return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
@@ -207,16 +207,20 @@ public class AuthorityChecker {
       case REVOKE_USER_ROLE:
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
+      case TTL:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();
       case DELETE_STORAGE_GROUP:
         return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
+      case CREATE_MULTI_TIMESERIES:
         return PrivilegeType.CREATE_TIMESERIES.ordinal();
       case DELETE_TIMESERIES:
       case DELETE:
       case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
+      case ALTER_TIMESERIES:
+        return PrivilegeType.ALTER_TIMESERIES.ordinal();
       case SHOW:
       case QUERY:
       case GROUP_BY_TIME:
@@ -269,39 +273,43 @@ public class AuthorityChecker {
 
   private static int translateToPermissionId(StatementType type) {
     switch (type) {
-      case GRANT_ROLE_PRIVILEGE:
-        return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
       case CREATE_ROLE:
         return PrivilegeType.CREATE_ROLE.ordinal();
       case CREATE_USER:
         return PrivilegeType.CREATE_USER.ordinal();
-      case MODIFY_PASSWORD:
-        return PrivilegeType.MODIFY_PASSWORD.ordinal();
-      case GRANT_USER_PRIVILEGE:
-        return PrivilegeType.GRANT_USER_PRIVILEGE.ordinal();
-      case REVOKE_ROLE_PRIVILEGE:
-        return PrivilegeType.REVOKE_ROLE_PRIVILEGE.ordinal();
-      case REVOKE_USER_PRIVILEGE:
-        return PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal();
-      case GRANT_USER_ROLE:
-        return PrivilegeType.GRANT_USER_ROLE.ordinal();
       case DELETE_USER:
         return PrivilegeType.DELETE_USER.ordinal();
       case DELETE_ROLE:
         return PrivilegeType.DELETE_ROLE.ordinal();
+      case MODIFY_PASSWORD:
+        return PrivilegeType.MODIFY_PASSWORD.ordinal();
+      case GRANT_USER_PRIVILEGE:
+        return PrivilegeType.GRANT_USER_PRIVILEGE.ordinal();
+      case GRANT_ROLE_PRIVILEGE:
+        return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
+      case REVOKE_USER_PRIVILEGE:
+        return PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal();
+      case REVOKE_ROLE_PRIVILEGE:
+        return PrivilegeType.REVOKE_ROLE_PRIVILEGE.ordinal();
+      case GRANT_USER_ROLE:
+        return PrivilegeType.GRANT_USER_ROLE.ordinal();
       case REVOKE_USER_ROLE:
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
+      case TTL:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();
       case DELETE_STORAGE_GROUP:
         return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
+      case CREATE_MULTI_TIMESERIES:
         return PrivilegeType.CREATE_TIMESERIES.ordinal();
       case DELETE_TIMESERIES:
       case DELETE:
       case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
+      case ALTER_TIMESERIES:
+        return PrivilegeType.ALTER_TIMESERIES.ordinal();
       case SHOW:
       case QUERY:
       case GROUP_BY_TIME:
@@ -313,6 +321,7 @@ public class AuthorityChecker {
       case FILL:
       case GROUP_BY_FILL:
       case SELECT_INTO:
+      case COUNT:
         return PrivilegeType.READ_TIMESERIES.ordinal();
       case INSERT:
       case LOAD_DATA:
@@ -346,6 +355,17 @@ public class AuthorityChecker {
         return PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal();
       case DROP_CONTINUOUS_QUERY:
         return PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal();
+      case CREATE_TEMPLATE:
+        return PrivilegeType.UPDATE_TEMPLATE.ordinal();
+      case SET_TEMPLATE:
+      case ACTIVATE_TEMPLATE:
+        return PrivilegeType.APPLY_TEMPLATE.ordinal();
+      case SHOW_SCHEMA_TEMPLATE:
+      case SHOW_NODES_IN_SCHEMA_TEMPLATE:
+        return PrivilegeType.READ_TEMPLATE.ordinal();
+      case SHOW_PATH_SET_SCHEMA_TEMPLATE:
+      case SHOW_PATH_USING_SCHEMA_TEMPLATE:
+        return PrivilegeType.READ_TEMPLATE_APPLICATION.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

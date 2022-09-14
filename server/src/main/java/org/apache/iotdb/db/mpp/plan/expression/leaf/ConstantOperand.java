@@ -20,22 +20,18 @@
 package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.ConstantIntermediateLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.Validate;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -56,6 +52,11 @@ public class ConstantOperand extends LeafOperand {
   public ConstantOperand(ByteBuffer byteBuffer) {
     dataType = TSDataType.deserializeFrom(byteBuffer);
     valueString = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  @Override
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitConstantOperand(this, context);
   }
 
   public TSDataType getDataType() {
@@ -95,12 +96,6 @@ public class ConstantOperand extends LeafOperand {
   }
 
   @Override
-  public TSDataType inferTypes(TypeProvider typeProvider) {
-    typeProvider.setType(toString(), dataType);
-    return dataType;
-  }
-
-  @Override
   public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
     // Do nothing
   }
@@ -117,43 +112,6 @@ public class ConstantOperand extends LeafOperand {
   }
 
   @Override
-  public IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      expressionDataTypeMap.put(this, this.getDataType());
-      IntermediateLayer intermediateLayer =
-          new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
-      expressionIntermediateLayerMap.put(this, intermediateLayer);
-    }
-
-    return expressionIntermediateLayerMap.get(this);
-  }
-
-  @Override
-  public IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      TypeProvider typeProvider,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      IntermediateLayer intermediateLayer =
-          new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
-      expressionIntermediateLayerMap.put(this, intermediateLayer);
-    }
-
-    return expressionIntermediateLayerMap.get(this);
-  }
-
-  @Override
   public String getExpressionStringInternal() {
     return valueString;
   }
@@ -167,5 +125,11 @@ public class ConstantOperand extends LeafOperand {
   protected void serialize(ByteBuffer byteBuffer) {
     dataType.serializeTo(byteBuffer);
     ReadWriteIOUtils.write(valueString, byteBuffer);
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    dataType.serializeTo(stream);
+    ReadWriteIOUtils.write(valueString, stream);
   }
 }

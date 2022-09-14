@@ -24,11 +24,9 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,7 +62,9 @@ public class UDFClassLoaderManager implements IService {
   public void finalizeUDFQuery(long queryId) {
     UDFClassLoader classLoader = queryIdToUDFClassLoaderMap.remove(queryId);
     try {
-      classLoader.release();
+      if (classLoader != null) {
+        classLoader.release();
+      }
     } catch (IOException e) {
       LOGGER.warn(
           "Failed to close UDFClassLoader (queryId: {}), because {}", queryId, e.toString());
@@ -82,22 +82,18 @@ public class UDFClassLoaderManager implements IService {
     return activeClassLoader;
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // IService
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
   @Override
   public void start() throws StartupException {
     try {
-      makeDirIfNecessary();
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot);
       activeClassLoader = new UDFClassLoader(libRoot);
     } catch (IOException e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
-  }
-
-  private void makeDirIfNecessary() throws IOException {
-    File file = SystemFileFactory.INSTANCE.getFile(libRoot);
-    if (file.exists() && file.isDirectory()) {
-      return;
-    }
-    FileUtils.forceMkdir(file);
   }
 
   @Override
@@ -109,6 +105,10 @@ public class UDFClassLoaderManager implements IService {
   public ServiceType getID() {
     return ServiceType.UDF_CLASSLOADER_MANAGER_SERVICE;
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // singleton instance holder
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   private static UDFClassLoaderManager INSTANCE = null;
 

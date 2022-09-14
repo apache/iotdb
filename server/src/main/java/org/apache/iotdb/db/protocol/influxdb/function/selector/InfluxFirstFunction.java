@@ -45,10 +45,7 @@ public class InfluxFirstFunction extends InfluxSelector {
 
   @Override
   public void updateValueIoTDBFunc(InfluxFunctionValue... functionValues) {
-    if (value == null && getTimestamp() == null) {
-      value = functionValues[0].getValue();
-      setTimestamp(functionValues[0].getTimestamp());
-    } else if (getTimestamp() < functionValues[0].getTimestamp()) {
+    if (functionValues[0].getTimestamp() < getTimestamp()) {
       value = functionValues[0].getValue();
       setTimestamp(functionValues[0].getTimestamp());
     }

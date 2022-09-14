@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.concurrent.threadpool;
 
+import org.apache.iotdb.commons.concurrent.WrappedCallable;
+import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
 
@@ -31,6 +33,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 public class WrappedSingleThreadScheduledExecutor
     implements ScheduledExecutorService, WrappedSingleThreadScheduledExecutorMBean {
@@ -47,24 +50,26 @@ public class WrappedSingleThreadScheduledExecutor
 
   @Override
   public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit) {
-    return service.schedule(command, delay, unit);
+    return service.schedule(WrappedRunnable.wrap(command), delay, unit);
   }
 
   @Override
   public <V> ScheduledFuture<V> schedule(Callable<V> callable, long delay, TimeUnit unit) {
-    return service.schedule(callable, delay, unit);
+    return service.schedule(WrappedCallable.wrap(callable), delay, unit);
   }
 
   @Override
+  @SuppressWarnings("unsafeThreadSchedule")
   public ScheduledFuture<?> scheduleAtFixedRate(
       Runnable command, long initialDelay, long period, TimeUnit unit) {
-    return service.scheduleAtFixedRate(command, initialDelay, period, unit);
+    return service.scheduleAtFixedRate(WrappedRunnable.wrap(command), initialDelay, period, unit);
   }
 
   @Override
+  @SuppressWarnings("unsafeThreadSchedule")
   public ScheduledFuture<?> scheduleWithFixedDelay(
       Runnable command, long initialDelay, long delay, TimeUnit unit) {
-    return service.scheduleWithFixedDelay(command, initialDelay, delay, unit);
+    return service.scheduleWithFixedDelay(WrappedRunnable.wrap(command), initialDelay, delay, unit);
   }
 
   @Override
@@ -96,46 +101,50 @@ public class WrappedSingleThreadScheduledExecutor
 
   @Override
   public <T> Future<T> submit(Callable<T> task) {
-    return service.submit(task);
+    return service.submit(WrappedCallable.wrap(task));
   }
 
   @Override
   public <T> Future<T> submit(Runnable task, T result) {
-    return service.submit(task, result);
+    return service.submit(WrappedRunnable.wrap(task), result);
   }
 
   @Override
   public Future<?> submit(Runnable task) {
-    return service.submit(task);
+    return service.submit(WrappedRunnable.wrap(task));
   }
 
   @Override
   public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks)
       throws InterruptedException {
-    return service.invokeAll(tasks);
+    return service.invokeAll(
+        tasks.stream().map(WrappedCallable::wrap).collect(Collectors.toList()));
   }
 
   @Override
   public <T> List<Future<T>> invokeAll(
       Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
       throws InterruptedException {
-    return service.invokeAll(tasks, timeout, unit);
+    return service.invokeAll(
+        tasks.stream().map(WrappedCallable::wrap).collect(Collectors.toList()), timeout, unit);
   }
 
   @Override
   public <T> T invokeAny(Collection<? extends Callable<T>> tasks)
       throws InterruptedException, ExecutionException {
-    return service.invokeAny(tasks);
+    return service.invokeAny(
+        tasks.stream().map(WrappedCallable::wrap).collect(Collectors.toList()));
   }
 
   @Override
   public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
       throws InterruptedException, ExecutionException, TimeoutException {
-    return service.invokeAny(tasks, timeout, unit);
+    return service.invokeAny(
+        tasks.stream().map(WrappedCallable::wrap).collect(Collectors.toList()), timeout, unit);
   }
 
   @Override
   public void execute(Runnable command) {
-    service.execute(command);
+    service.execute(WrappedRunnable.wrap(command));
   }
 }

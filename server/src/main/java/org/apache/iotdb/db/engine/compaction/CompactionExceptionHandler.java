@@ -20,11 +20,9 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
@@ -212,11 +210,9 @@ public class CompactionExceptionHandler {
 
     // delete source files
     for (TsFileResource resource : sourceSeqResourceList) {
-      resource.setStatus(TsFileResourceStatus.DELETED);
       resource.remove();
     }
     for (TsFileResource resource : sourceUnseqResourceList) {
-      resource.setStatus(TsFileResourceStatus.DELETED);
       resource.remove();
     }
 
@@ -238,7 +234,6 @@ public class CompactionExceptionHandler {
             fullStorageGroupName,
             targetResource,
             lostSourceResources);
-        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         return false;
       }
     }

@@ -136,6 +136,35 @@ public class PathPatternTreeTest {
             new PartialPath("root.sg1.d3.t1")));
   }
 
+  /** This use case is used to test the de-duplication of getAllPathPatterns results */
+  @Test
+  public void pathPatternTreeTest7() throws IllegalPathException, IOException {
+    checkPathPatternTree(
+        Arrays.asList(
+            new PartialPath("root.sg1.d1.s1"),
+            new PartialPath("root.sg1.*.s2"),
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.*.s1"),
+            new PartialPath("root.sg1.**.s1")),
+        Arrays.asList(new PartialPath("root.sg1.*.s2"), new PartialPath("root.sg1.**.s1")),
+        Arrays.asList(new PartialPath("root.sg1.*"), new PartialPath("root.sg1.**")));
+  }
+
+  /** This use case is used to test the de-duplication of getAllDevicePatterns results */
+  @Test
+  public void pathPatternTreeTest8() throws IllegalPathException, IOException {
+    checkPathPatternTree(
+        Arrays.asList(new PartialPath("root.sg1.d1.s1"), new PartialPath("root.sg1.d1.s2")),
+        Arrays.asList(new PartialPath("root.sg1.d1.s1"), new PartialPath("root.sg1.d1.s2")),
+        Collections.singletonList(new PartialPath("root.sg1.d1")));
+  }
+
+  /**
+   * @param paths PartialPath list to create PathPatternTree
+   * @param compressedPaths Expected PartialPath list of getAllPathPatterns
+   * @param compressedDevicePaths Expected PartialPath list of getAllDevicePatterns
+   * @throws IOException
+   */
   private void checkPathPatternTree(
       List<PartialPath> paths,
       List<PartialPath> compressedPaths,
@@ -143,13 +172,17 @@ public class PathPatternTreeTest {
       throws IOException {
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : paths) {
-      patternTree.appendPath(path);
+      patternTree.appendPathPattern(path);
     }
     patternTree.constructTree();
 
+    Assert.assertEquals(
+        compressedPaths.stream().sorted().collect(Collectors.toList()),
+        patternTree.getAllPathPatterns().stream().sorted().collect(Collectors.toList()));
+
     PathPatternTree resultPatternTree = new PathPatternTree();
     for (PartialPath path : compressedPaths) {
-      resultPatternTree.appendPath(path);
+      resultPatternTree.appendPathPattern(path);
     }
     resultPatternTree.constructTree();
 
@@ -160,7 +193,7 @@ public class PathPatternTreeTest {
             .map(PartialPath::getFullPath)
             .sorted()
             .collect(Collectors.toList()),
-        patternTree.findAllDevicePaths().stream().sorted().collect(Collectors.toList()));
+        patternTree.getAllDevicePatterns().stream().sorted().collect(Collectors.toList()));
 
     PublicBAOS outputStream = new PublicBAOS();
     resultPatternTree.serialize(outputStream);
@@ -182,12 +215,12 @@ public class PathPatternTreeTest {
 
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : partialPathList) {
-      patternTree.appendPath(path);
+      patternTree.appendPathPattern(path);
     }
     patternTree.constructTree();
 
     Assert.assertEquals(
         Arrays.asList(new PartialPath("root.sg1.*.t1.s1"), new PartialPath("root.sg1.d1.t2.s2")),
-        patternTree.splitToPathList());
+        patternTree.getAllPathPatterns());
   }
 }

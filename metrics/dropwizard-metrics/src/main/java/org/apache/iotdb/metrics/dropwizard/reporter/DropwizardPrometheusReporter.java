@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.metrics.dropwizard.reporter;
 
-import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager;
 import org.apache.iotdb.metrics.reporter.Reporter;
@@ -41,23 +40,20 @@ import java.time.Duration;
 
 public class DropwizardPrometheusReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(DropwizardPrometheusReporter.class);
-  private static final MetricConfig metricConfig =
-      MetricConfigDescriptor.getInstance().getMetricConfig();
 
-  private MetricManager dropwizardMetricManager = null;
+  private AbstractMetricManager dropwizardMetricManager = null;
   private DisposableServer httpServer = null;
 
   @Override
   public boolean start() {
     if (httpServer != null) {
-      LOGGER.warn("Dropwizard Prometheus Reporter already start!");
       return false;
     }
+    int port = MetricConfigDescriptor.getInstance().getMetricConfig().getPrometheusExporterPort();
     httpServer =
         HttpServer.create()
-            .idleTimeout(Duration.ofMillis(30_000L))
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
-            .port(Integer.parseInt(metricConfig.getPrometheusExporterPort()))
+            .port(port)
             .route(
                 routes ->
                     routes.get(
@@ -65,8 +61,7 @@ public class DropwizardPrometheusReporter implements Reporter {
                         (request, response) -> response.sendString(Mono.just(scrape()))))
             .bindNow();
 
-    LOGGER.info(
-        "http server for metrics started, listen on {}", metricConfig.getPrometheusExporterPort());
+    LOGGER.info("http server for metrics started, listen on {}", port);
     return true;
   }
 
@@ -98,7 +93,7 @@ public class DropwizardPrometheusReporter implements Reporter {
   public boolean stop() {
     if (httpServer != null) {
       try {
-        httpServer.disposeNow();
+        httpServer.disposeNow(Duration.ofSeconds(10));
         httpServer = null;
       } catch (Exception e) {
         LOGGER.error("failed to stop server", e);
@@ -114,7 +109,7 @@ public class DropwizardPrometheusReporter implements Reporter {
   }
 
   @Override
-  public void setMetricManager(MetricManager metricManager) {
+  public void setMetricManager(AbstractMetricManager metricManager) {
     this.dropwizardMetricManager = metricManager;
   }
 }

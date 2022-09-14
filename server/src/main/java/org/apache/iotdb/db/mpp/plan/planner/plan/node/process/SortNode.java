@@ -22,11 +22,13 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -39,19 +41,19 @@ public class SortNode extends ProcessNode {
 
   private PlanNode child;
 
-  private final OrderBy sortOrder;
+  private final Ordering sortOrder;
 
-  public SortNode(PlanNodeId id, OrderBy sortOrder) {
+  public SortNode(PlanNodeId id, Ordering sortOrder) {
     super(id);
     this.sortOrder = sortOrder;
   }
 
-  public SortNode(PlanNodeId id, PlanNode child, OrderBy sortOrder) {
+  public SortNode(PlanNodeId id, PlanNode child, Ordering sortOrder) {
     this(id, sortOrder);
     this.child = child;
   }
 
-  public OrderBy getSortOrder() {
+  public Ordering getSortOrder() {
     return sortOrder;
   }
 
@@ -91,8 +93,14 @@ public class SortNode extends ProcessNode {
     ReadWriteIOUtils.write(sortOrder.ordinal(), byteBuffer);
   }
 
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.SORT.serialize(stream);
+    ReadWriteIOUtils.write(sortOrder.ordinal(), stream);
+  }
+
   public static SortNode deserialize(ByteBuffer byteBuffer) {
-    OrderBy orderBy = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering orderBy = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SortNode(planNodeId, orderBy);
   }

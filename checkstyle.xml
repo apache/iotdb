@@ -40,7 +40,32 @@
     <module name="FileTabCharacter">
         <property name="eachLine" value="true"/>
     </module>
+    <module name="LineLength">
+        <property name="max" value="100"/>
+        <property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
+    </module>
+    <module name="SuppressWarningsFilter" />
     <module name="TreeWalker">
+        <module name="SuppressWarningsHolder" />
+        <!--ERROR severity rules, each Java file should obey this -->
+        <module name="AvoidStarImport">
+            <property name="severity" value="error"/>
+        </module>
+        <module name="RegexpSinglelineJava">
+            <property name="id" value="unsafeThreadSchedule"/>
+            <property name="format" value="schedule(AtFixedRate|WithFixedDelay)\("/>
+            <property name="severity" value="error"/>
+            <property name="ignoreComments" value="true"/>
+            <property name="message" value="Using ScheduledExecutorService::schedule(AtFixedRate|WithFixedDelay) directly is unsafe, please use ScheduledExecutorUtil::(unsafely|safely)Schedule(AtFixedRate|WithFixedDelay) instead."/>
+        </module>
+        <module name="RegexpSinglelineJava">
+            <property name="id" value="invalidPlanNodeTypeUsage"/>
+            <property name="format" value="PlanNodeType\.[a-zA-Z_]*\.ordinal\("/>
+            <property name="severity" value="error"/>
+            <property name="ignoreComments" value="true"/>
+            <property name="message" value="Please use PlanNodeType::getNodeType instead."/>
+        </module>
+        <!--WARNING severity rules, which may be promoted to error level-->
         <module name="OuterTypeFilename"/>
         <module name="IllegalTokenText">
             <property name="tokens" value="STRING_LITERAL, CHAR_LITERAL"/>
@@ -51,13 +76,6 @@
             <property name="allowEscapesForControlCharacters" value="true"/>
             <property name="allowByTailComment" value="true"/>
             <property name="allowNonPrintableEscapes" value="true"/>
-        </module>
-        <module name="LineLength">
-            <property name="max" value="100"/>
-            <property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
-        </module>
-        <module name="AvoidStarImport">
-            <property name="severity" value="error"/>
         </module>
         <module name="OneTopLevelClass"/>
         <module name="NoLineWrap"/>
@@ -212,13 +230,10 @@
             <property name="target" value="CLASS_DEF, INTERFACE_DEF, ENUM_DEF, METHOD_DEF, CTOR_DEF, VARIABLE_DEF"/>
         </module>
         <module name="JavadocMethod">
-            <property name="scope" value="public"/>
             <property name="allowMissingParamTags" value="true"/>
-            <property name="allowMissingThrowsTags" value="true"/>
+            <property name="validateThrows" value="true"/>
             <property name="allowMissingReturnTag" value="true"/>
-            <property name="minLineCount" value="2"/>
             <property name="allowedAnnotations" value="Override, Test"/>
-            <property name="allowThrowsTagsForSubclasses" value="true"/>
         </module>
         <module name="MethodName">
             <property name="format" value="^[a-z][a-z0-9][a-zA-Z0-9_]*$"/>

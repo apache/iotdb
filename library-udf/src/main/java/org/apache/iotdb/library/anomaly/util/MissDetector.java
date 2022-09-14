@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.library.anomaly.util;
 
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.access.RowIterator;
 import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowIterator;
 
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
