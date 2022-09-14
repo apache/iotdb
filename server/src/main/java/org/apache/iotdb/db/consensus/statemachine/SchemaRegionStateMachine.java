@@ -94,7 +94,6 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);
   }
 
-
   @Override
   public boolean shouldRetry(TSStatus writeResult) {
     // TODO implement this method
