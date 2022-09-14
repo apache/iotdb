@@ -28,6 +28,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.apache.thrift.TException;
+
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.List;
@@ -161,6 +163,8 @@ public interface ISession extends AutoCloseable {
 
   void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException;
+
+  String getTimestampPrecision() throws TException;
 
   void insertAlignedRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
