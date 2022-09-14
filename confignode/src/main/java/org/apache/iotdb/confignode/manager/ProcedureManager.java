@@ -23,9 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
@@ -113,7 +113,7 @@ public class ProcedureManager {
     boolean isSucceed = waitingProcedureFinished(procedureIds, procedureStatus);
     // clear the previously deleted regions
     final PartitionManager partitionManager = getConfigManager().getPartitionManager();
-    partitionManager.getRegionCleaner().submit(partitionManager::clearDeletedRegions);
+    partitionManager.getRegionMaintainer().submit(partitionManager::maintainRegionReplicas);
     if (isSucceed) {
       return StatusUtils.OK;
     } else {

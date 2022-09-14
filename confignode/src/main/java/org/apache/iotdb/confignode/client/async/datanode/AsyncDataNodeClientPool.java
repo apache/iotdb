@@ -41,7 +41,7 @@ import org.apache.iotdb.confignode.client.async.handlers.SetSystemStatusHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
@@ -195,10 +195,10 @@ public class AsyncDataNodeClientPool {
         case SET_TTL:
           client.setTTL((TSetTTLReq) req, (SetTTLHandler) handler);
           break;
-        case CREATE_DATA_REGIONS:
+        case CREATE_DATA_REGION:
           client.createDataRegion((TCreateDataRegionReq) req, (CreateRegionHandler) handler);
           break;
-        case CREATE_SCHEMA_REGIONS:
+        case CREATE_SCHEMA_REGION:
           client.createSchemaRegion((TCreateSchemaRegionReq) req, (CreateRegionHandler) handler);
           break;
         case CREATE_FUNCTION:
@@ -249,7 +249,7 @@ public class AsyncDataNodeClientPool {
    * Execute CreateRegionGroupsPlan asynchronously
    *
    * @param ttlMap Map<StorageGroupName, TTL>
-   * @return Those RegionGroups that failed to create
+   * @return Those RegionReplicas that failed to create
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> createRegionGroups(
       CreateRegionGroupsPlan createRegionGroupsPlan, Map<String, Long> ttlMap) {
@@ -285,7 +285,7 @@ public class AsyncDataNodeClientPool {
                   handler =
                       new CreateRegionHandler(
                           countDownLatch,
-                          DataNodeRequestType.CREATE_SCHEMA_REGIONS,
+                          DataNodeRequestType.CREATE_SCHEMA_REGION,
                           regionReplicaSet.regionId,
                           targetDataNode,
                           dataNodeLocationMap,
@@ -300,7 +300,7 @@ public class AsyncDataNodeClientPool {
                   handler =
                       new CreateRegionHandler(
                           countDownLatch,
-                          DataNodeRequestType.CREATE_DATA_REGIONS,
+                          DataNodeRequestType.CREATE_DATA_REGION,
                           regionReplicaSet.regionId,
                           targetDataNode,
                           dataNodeLocationMap,

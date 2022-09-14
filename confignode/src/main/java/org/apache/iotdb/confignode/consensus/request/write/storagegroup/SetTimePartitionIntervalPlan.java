@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -27,44 +27,55 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class DeleteStorageGroupPlan extends ConfigPhysicalPlan {
+public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
 
-  private String name;
+  private String storageGroup;
 
-  public DeleteStorageGroupPlan() {
-    super(ConfigPhysicalPlanType.DeleteStorageGroup);
+  private long timePartitionInterval;
+
+  public SetTimePartitionIntervalPlan() {
+    super(ConfigPhysicalPlanType.SetTimePartitionInterval);
   }
 
-  public DeleteStorageGroupPlan(String name) {
+  public SetTimePartitionIntervalPlan(String storageGroup, long timePartitionInterval) {
     this();
-    this.name = name;
+    this.storageGroup = storageGroup;
+    this.timePartitionInterval = timePartitionInterval;
   }
 
-  public String getName() {
-    return name;
+  public String getStorageGroup() {
+    return storageGroup;
+  }
+
+  public long getTimePartitionInterval() {
+    return timePartitionInterval;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.DeleteStorageGroup.ordinal());
-    BasicStructureSerDeUtil.write(name, stream);
+    stream.writeInt(getType().ordinal());
+
+    BasicStructureSerDeUtil.write(storageGroup, stream);
+    stream.writeLong(timePartitionInterval);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    name = BasicStructureSerDeUtil.readString(buffer);
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    timePartitionInterval = buffer.getLong();
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    DeleteStorageGroupPlan that = (DeleteStorageGroupPlan) o;
-    return name.equals(that.name);
+    SetTimePartitionIntervalPlan that = (SetTimePartitionIntervalPlan) o;
+    return timePartitionInterval == that.timePartitionInterval
+        && storageGroup.equals(that.storageGroup);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name);
+    return Objects.hash(storageGroup, timePartitionInterval);
   }
 }

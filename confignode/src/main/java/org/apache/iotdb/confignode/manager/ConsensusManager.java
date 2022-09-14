@@ -165,13 +165,13 @@ public class ConsensusManager {
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusWriteResponse write(ConfigPhysicalPlan req) {
-    return consensusImpl.write(consensusGroupId, req);
+  public ConsensusWriteResponse write(ConfigPhysicalPlan plan) {
+    return consensusImpl.write(consensusGroupId, plan);
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusReadResponse read(ConfigPhysicalPlan req) {
-    return consensusImpl.read(consensusGroupId, req);
+  public ConsensusReadResponse read(ConfigPhysicalPlan plan) {
+    return consensusImpl.read(consensusGroupId, plan);
   }
 
   public boolean isLeader() {

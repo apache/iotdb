@@ -16,33 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.persistence.partition;
 
-package org.apache.iotdb.confignode.client;
+import org.junit.Test;
 
-public enum DataNodeRequestType {
-  DELETE_REGION,
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
-  CREATE_NEW_REGION_PEER,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  DELETE_OLD_REGION_PEER,
-  DISABLE_DATA_NODE,
-  STOP_DATA_NODE,
+public class RegionMaintainTaskTest {
 
-  SET_TTL,
-  CREATE_DATA_REGION,
-  CREATE_SCHEMA_REGION,
-  CREATE_FUNCTION,
-  DROP_FUNCTION,
-  FLUSH,
-  UPDATE_REGION_ROUTE_MAP,
-  BROADCAST_LATEST_CONFIG_NODE_GROUP,
-  UPDATE_TEMPLATE,
-  CLEAR_CACHE,
-  MERGE,
-  FULL_MERGE,
-  LOAD_CONFIGURATION,
-  SET_SYSTEM_STATUS,
+  @Test
+  public void RegionCleanEntrySerDeTest() {}
 }

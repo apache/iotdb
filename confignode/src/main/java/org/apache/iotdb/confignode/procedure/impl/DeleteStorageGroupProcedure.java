@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.confignode.procedure.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.persistence.partition.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -40,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class DeleteStorageGroupProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteStorageGroupState> {
@@ -92,7 +96,25 @@ public class DeleteStorageGroupProcedure
           break;
         case DELETE_CONFIG:
           LOG.info("Delete config info of {}", deleteSgSchema.getName());
+
+          // Submit RegionDeleteTasks
+          OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
+          List<TRegionReplicaSet> regionReplicaSets =
+              env.getAllReplicaSets(deleteSgSchema.getName());
+          regionReplicaSets.forEach(
+              regionReplicaSet ->
+                  regionReplicaSet
+                      .getDataNodeLocations()
+                      .forEach(
+                          targetDataNode ->
+                              offerPlan.appendRegionMaintainTask(
+                                  new RegionDeleteTask(
+                                      targetDataNode, regionReplicaSet.getRegionId()))));
+          env.getConfigManager().getConsensusManager().write(offerPlan);
+
+          // Delete StorageGroupPartitionTable
           TSStatus status = env.deleteConfig(deleteSgSchema.getName());
+
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return Flow.NO_MORE_STATE;
           } else if (getCycles() > retryThreshold) {

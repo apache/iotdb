@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -27,28 +27,28 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
+public class SetSchemaReplicationFactorPlan extends ConfigPhysicalPlan {
 
   private String storageGroup;
 
-  private long timePartitionInterval;
+  private int schemaReplicationFactor;
 
-  public SetTimePartitionIntervalPlan() {
-    super(ConfigPhysicalPlanType.SetTimePartitionInterval);
+  public SetSchemaReplicationFactorPlan() {
+    super(ConfigPhysicalPlanType.SetSchemaReplicationFactor);
   }
 
-  public SetTimePartitionIntervalPlan(String storageGroup, long timePartitionInterval) {
+  public SetSchemaReplicationFactorPlan(String storageGroup, int schemaReplicationFactor) {
     this();
     this.storageGroup = storageGroup;
-    this.timePartitionInterval = timePartitionInterval;
+    this.schemaReplicationFactor = schemaReplicationFactor;
   }
 
   public String getStorageGroup() {
     return storageGroup;
   }
 
-  public long getTimePartitionInterval() {
-    return timePartitionInterval;
+  public int getSchemaReplicationFactor() {
+    return schemaReplicationFactor;
   }
 
   @Override
@@ -56,26 +56,26 @@ public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
     stream.writeInt(getType().ordinal());
 
     BasicStructureSerDeUtil.write(storageGroup, stream);
-    stream.writeLong(timePartitionInterval);
+    stream.writeInt(schemaReplicationFactor);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     storageGroup = BasicStructureSerDeUtil.readString(buffer);
-    timePartitionInterval = buffer.getLong();
+    schemaReplicationFactor = buffer.getInt();
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    SetTimePartitionIntervalPlan that = (SetTimePartitionIntervalPlan) o;
-    return timePartitionInterval == that.timePartitionInterval
+    SetSchemaReplicationFactorPlan that = (SetSchemaReplicationFactorPlan) o;
+    return schemaReplicationFactor == that.schemaReplicationFactor
         && storageGroup.equals(that.storageGroup);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroup, timePartitionInterval);
+    return Objects.hash(storageGroup, schemaReplicationFactor);
   }
 }
