@@ -90,12 +90,11 @@ public class DataNodeRemoveHandler {
    *
    * @param disabledDataNode TDataNodeLocation
    */
-  public TSStatus broadcastDisableDataNode(TDataNodeLocation disabledDataNode) {
+  public void broadcastDisableDataNode(TDataNodeLocation disabledDataNode) {
     LOGGER.info(
-        "DataNodeRemoveService start send disable the Data Node to cluster, {}",
+        "DataNodeRemoveService start broadcastDisableDataNode to cluster, disabledDataNode: {}",
         getIdWithRpcEndpoint(disabledDataNode));
 
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<TEndPoint> otherOnlineDataNodes =
         configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
             .map(TDataNodeConfiguration::getLocation)
@@ -103,21 +102,24 @@ public class DataNodeRemoveHandler {
             .map(TDataNodeLocation::getInternalEndPoint)
             .collect(Collectors.toList());
 
-    for (TEndPoint server : otherOnlineDataNodes) {
+    for (TEndPoint node : otherOnlineDataNodes) {
       TDisableDataNodeReq disableReq = new TDisableDataNodeReq(disabledDataNode);
-      status =
+      TSStatus status =
           SyncDataNodeClientPool.getInstance()
               .sendSyncRequestToDataNodeWithRetry(
-                  server, disableReq, DataNodeRequestType.DISABLE_DATA_NODE);
+                  node, disableReq, DataNodeRequestType.DISABLE_DATA_NODE);
       if (!isSucceed(status)) {
-        return status;
+        LOGGER.error(
+            "broadcastDisableDataNode meets error, disabledDataNode: {}, error: {}",
+            getIdWithRpcEndpoint(disabledDataNode),
+            status);
+        return;
       }
     }
+
     LOGGER.info(
-        "DataNodeRemoveService finished send disable the Data Node to cluster, {}",
+        "DataNodeRemoveService finished broadcastDisableDataNode to cluster, disabledDataNode: {}",
         getIdWithRpcEndpoint(disabledDataNode));
-    status.setMessage("Succeed disable the Data Node from cluster");
-    return status;
   }
 
   /**
