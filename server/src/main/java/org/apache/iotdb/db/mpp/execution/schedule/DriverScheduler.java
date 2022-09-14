@@ -93,13 +93,13 @@ public class DriverScheduler implements IDriverScheduler, IService {
   public void start() throws StartupException {
     for (int i = 0; i < WORKER_THREAD_NUM; i++) {
       AbstractDriverThread t =
-          new DriverTaskThread("Worker-Thread-" + i, workerGroups, readyQueue, scheduler);
+          new DriverTaskThread("Query-Worker-Thread-" + i, workerGroups, readyQueue, scheduler);
       threads.add(t);
       t.start();
     }
     AbstractDriverThread t =
         new DriverTaskTimeoutSentinelThread(
-            "Sentinel-Thread", workerGroups, timeoutQueue, scheduler);
+            "Query-Sentinel-Thread", workerGroups, timeoutQueue, scheduler);
     threads.add(t);
     t.start();
   }

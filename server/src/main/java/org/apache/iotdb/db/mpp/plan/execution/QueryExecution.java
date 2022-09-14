@@ -339,7 +339,7 @@ public class QueryExecution implements IQueryExecution {
           // Once the resultHandle is finished, we should transit the state of this query to
           // FINISHED.
           // So that the corresponding cleanup work could be triggered.
-          logger.warn("[ResultHandleFinished]");
+          logger.info("[ResultHandleFinished]");
           stateMachine.transitionToFinished();
           return Optional.empty();
         }
