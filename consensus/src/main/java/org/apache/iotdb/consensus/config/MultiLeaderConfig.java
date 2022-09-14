@@ -204,6 +204,7 @@ public class MultiLeaderConfig {
     private final long maxRetryWaitTimeMs;
     private final long walThrottleThreshold;
     private final long throttleTimeOutMs;
+    private final long checkpointGap;
 
     private Replication(
         int maxPendingRequestNumPerNode,
@@ -213,7 +214,8 @@ public class MultiLeaderConfig {
         long basicRetryWaitTimeMs,
         long maxRetryWaitTimeMs,
         long walThrottleThreshold,
-        long throttleTimeOutMs) {
+        long throttleTimeOutMs,
+        long checkpointGap) {
       this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
       this.maxRequestPerBatch = maxRequestPerBatch;
       this.maxPendingBatch = maxPendingBatch;
@@ -222,6 +224,7 @@ public class MultiLeaderConfig {
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
       this.walThrottleThreshold = walThrottleThreshold;
       this.throttleTimeOutMs = throttleTimeOutMs;
+      this.checkpointGap = checkpointGap;
     }
 
     public int getMaxPendingRequestNumPerNode() {
@@ -256,6 +259,10 @@ public class MultiLeaderConfig {
       return throttleTimeOutMs;
     }
 
+    public long getCheckpointGap() {
+      return checkpointGap;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
@@ -271,6 +278,7 @@ public class MultiLeaderConfig {
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);
       private long walThrottleThreshold = 50 * 1024 * 1024 * 1024L;
       private long throttleTimeOutMs = TimeUnit.SECONDS.toMillis(30);
+      private long checkpointGap = 500;
 
       public Replication.Builder setMaxPendingRequestNumPerNode(int maxPendingRequestNumPerNode) {
         this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
@@ -322,7 +330,8 @@ public class MultiLeaderConfig {
             basicRetryWaitTimeMs,
             maxRetryWaitTimeMs,
             walThrottleThreshold,
-            throttleTimeOutMs);
+            throttleTimeOutMs,
+            checkpointGap);
       }
     }
   }
