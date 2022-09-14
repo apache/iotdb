@@ -646,7 +646,7 @@ public class LogicalPlanBuilder {
       boolean isGroupByTime,
       ZoneId zoneId,
       Ordering scanOrder) {
-    if (queryFilter == null) {
+    if (queryFilter == null || selectExpressions.isEmpty()) {
       return this;
     }
 

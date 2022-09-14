@@ -410,7 +410,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
             havingExpression = // construct Filter from Having
                 analyzeHaving(
-                    queryStatement,
+                    analysis,
                     analysis.getGroupByLevelExpressions(),
                     transformExpressionsInHaving,
                     aggregationExpressionsInHaving);
@@ -595,15 +595,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             transformInput.add(measurementExpression);
             analyzeExpression(analysis, measurementExpression);
           }
-        } else {
-          /*List<Expression> sourceExpressions = new ArrayList<>();
-          for (Expression transformExpression : transformExpressions) {
-            sourceExpressions.addAll(ExpressionAnalyzer.searchSourceExpressions(transformExpression, true));
-          }
-          transformInput.addAll(sourceExpressions.stream().map(ExpressionAnalyzer::getMeasurementExpression).collect(Collectors.toList()));
-          for (Expression expression : transformInput) {
-            analyzeExpression(analysis, expression);
-          }*/
         }
         for (Expression transformExpression : transformExpressions) {
           Expression measurementExpression =
@@ -887,10 +878,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private Expression analyzeHaving(
-      QueryStatement queryStatement,
+      Analysis analysis,
       Map<Expression, Set<Expression>> groupByLevelExpressions,
       Set<Expression> transformExpressionsInHaving,
       List<Expression> aggregationExpressionsInHaving) {
+    QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
 
     if (queryStatement.isGroupByLevel()) {
       Map<Expression, Expression> rawPathToGroupedPathMapInHaving =
@@ -898,9 +890,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               queryStatement, aggregationExpressionsInHaving, groupByLevelExpressions);
       List<Expression> convertedPredicates = new ArrayList<>();
       for (Expression expression : transformExpressionsInHaving) {
-        convertedPredicates.add(
+        Expression convertedPredicate =
             ExpressionAnalyzer.replaceRawPathWithGroupedPath(
-                expression, rawPathToGroupedPathMapInHaving));
+                expression, rawPathToGroupedPathMapInHaving);
+        convertedPredicates.add(convertedPredicate);
+        analyzeExpression(analysis, expression);
       }
       return ExpressionUtils.constructQueryFilter(
           convertedPredicates.stream().distinct().collect(Collectors.toList()));
