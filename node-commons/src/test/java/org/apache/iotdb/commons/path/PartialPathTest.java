@@ -699,6 +699,49 @@ public class PartialPathTest {
     }
   }
 
+  @Test
+  public void testInclude() throws IllegalPathException {
+    PartialPath[][] pathPairs =
+        new PartialPath[][] {
+          new PartialPath[] {new PartialPath("root.**"), new PartialPath("root.sg.**")},
+          new PartialPath[] {new PartialPath("root.**.*"), new PartialPath("root.**")},
+          new PartialPath[] {new PartialPath("root.**.*"), new PartialPath("root.sg.**")},
+          new PartialPath[] {new PartialPath("root.**.s"), new PartialPath("root.sg.**")},
+          new PartialPath[] {new PartialPath("root.*.**"), new PartialPath("root.sg.**")},
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg1.d.s")},
+          new PartialPath[] {new PartialPath("root.**.s"), new PartialPath("root.*.d.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.**.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg.*.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg.d2.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s.*"), new PartialPath("root.sg.d.s")},
+          new PartialPath[] {new PartialPath("root.**.d.s"), new PartialPath("root.**.d2.s")},
+          new PartialPath[] {new PartialPath("root.**.*.s"), new PartialPath("root.**.d2.s")},
+          new PartialPath[] {new PartialPath("root.**.d1.*"), new PartialPath("root.*")},
+          new PartialPath[] {new PartialPath("root.**.d1.*"), new PartialPath("root.d2.*.s")},
+          new PartialPath[] {new PartialPath("root.**.d1.**"), new PartialPath("root.d2.**")},
+          new PartialPath[] {
+            new PartialPath("root.**.*.**.**"), new PartialPath("root.d2.*.s1.**")
+          },
+          new PartialPath[] {new PartialPath("root.**.s1.d1"), new PartialPath("root.s1.d1.**")},
+          new PartialPath[] {new PartialPath("root.**.s1"), new PartialPath("root.**.s2.s1")},
+          new PartialPath[] {
+            new PartialPath("root.**.s1.s2.**"), new PartialPath("root.d1.s1.s2.*")
+          },
+          new PartialPath[] {new PartialPath("root.**.s1"), new PartialPath("root.**.s2")},
+          new PartialPath[] {new PartialPath("root.*.*.**"), new PartialPath("root.**.*")},
+          new PartialPath[] {new PartialPath("root.**.**"), new PartialPath("root.*.**.**.*")},
+        };
+    boolean[] results =
+        new boolean[] {
+          true, false, true, false, true, true, true, false, false, false, false, false, true,
+          false, false, false, true, false, true, true, false, false, true
+        };
+    Assert.assertEquals(pathPairs.length, results.length);
+    for (int i = 0; i < pathPairs.length; i++) {
+      Assert.assertEquals(results[i], pathPairs[i][0].include(pathPairs[i][1]));
+    }
+  }
+
   private void checkNodes(String[] expected, String[] actual) {
     Assert.assertEquals(expected.length, actual.length);
     for (int i = 0; i < expected.length; i++) {

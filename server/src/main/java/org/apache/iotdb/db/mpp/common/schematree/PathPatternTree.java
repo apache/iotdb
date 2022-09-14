@@ -33,8 +33,10 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class PathPatternTree {
@@ -79,7 +81,7 @@ public class PathPatternTree {
   public void appendPathPattern(PartialPath pathPattern) {
     boolean isExist = false;
     for (PartialPath path : pathPatternList) {
-      if (path.matchFullPath(pathPattern)) {
+      if (path.include(pathPattern)) {
         // path already exists in pathPatternList
         isExist = true;
         break;
@@ -88,7 +90,7 @@ public class PathPatternTree {
     if (!isExist) {
       // remove duplicate path in pathPatternList
       pathPatternList.removeAll(
-          pathPatternList.stream().filter(pathPattern::matchFullPath).collect(Collectors.toList()));
+          pathPatternList.stream().filter(pathPattern::include).collect(Collectors.toList()));
       pathPatternList.add(pathPattern);
     }
   }
@@ -134,13 +136,13 @@ public class PathPatternTree {
 
   public List<String> getAllDevicePatterns() {
     List<String> nodes = new ArrayList<>();
-    List<String> results = new ArrayList<>();
+    Set<String> results = new HashSet<>();
     searchDevicePattern(root, nodes, results);
-    return results;
+    return new ArrayList<>(results);
   }
 
   private void searchDevicePattern(
-      PathPatternNode curNode, List<String> nodes, List<String> results) {
+      PathPatternNode curNode, List<String> nodes, Set<String> results) {
     nodes.add(curNode.getName());
     if (curNode.isLeaf()) {
       if (!curNode.getName().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
