@@ -185,7 +185,7 @@ public class TagInvertedIndex implements ITagInvertedIndex {
         + '}';
   }
 
-  private synchronized boolean inWorkingMemTable(int id) {
+  private boolean inWorkingMemTable(int id) {
     return id / numOfDeviceIdsInMemTable == maxDeviceID / numOfDeviceIdsInMemTable;
   }
 
