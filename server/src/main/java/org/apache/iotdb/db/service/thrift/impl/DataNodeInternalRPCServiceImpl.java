@@ -128,6 +128,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
@@ -854,7 +855,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus stopDataNode() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    LOGGER.info("stopping Data Node");
+    LOGGER.info("Execute stopDataNode RPC method");
+
+    // kill the datanode process 30 seconds later
+    // if remove this step, datanode process will still alive
+    new Thread(
+            () -> {
+              try {
+                TimeUnit.SECONDS.sleep(30);
+              } catch (InterruptedException e) {
+                LOGGER.error("Meets InterruptedException in stopDataNode RPC method");
+              } finally {
+                LOGGER.info("Executing system.exit(0) in stopDataNode RPC method after 30 seconds");
+                System.exit(0);
+              }
+            })
+        .start();
+
     try {
       DataNode.getInstance().stop();
       status.setMessage("stop datanode succeed");

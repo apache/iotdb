@@ -159,7 +159,10 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
             removeResp.getStatus().toString(), removeResp.getStatus().getCode());
       }
       logger.info(
-          "Submit remove datanode request successfully, you can see more details in the confignode logs.");
+          "Submit remove datanode request successfully, "
+              + "more details are shown in the logs of confignode-leader and removed-datanode, "
+              + "and after the process of remove-datanode is over, "
+              + "you are supposed to delete directory and data of the removed-datanode manually");
     }
   }
 

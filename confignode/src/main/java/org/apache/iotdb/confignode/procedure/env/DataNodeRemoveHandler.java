@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
@@ -57,6 +59,8 @@ public class DataNodeRemoveHandler {
 
   /** region migrate lock */
   private final LockQueue regionMigrateLock = new LockQueue();
+
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   public DataNodeRemoveHandler(ConfigManager configManager) {
     this.configManager = configManager;
@@ -235,6 +239,30 @@ public class DataNodeRemoveHandler {
    */
   public TSStatus deleteOldRegionPeer(
       TDataNodeLocation originalDataNode, TConsensusGroupId regionId) {
+
+    //
+    if (CONF.getSchemaReplicationFactor() == 1
+        && TConsensusGroupType.SchemaRegion.equals(regionId.getType())) {
+      String errorMessage =
+          "deleteOldRegionPeer is not supported for schemaRegion when SchemaReplicationFactor equals 1, "
+              + "you are supposed to delete the region data of datanode manually";
+      LOGGER.info(errorMessage);
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(errorMessage);
+      return status;
+    }
+
+    if (CONF.getDataReplicationFactor() == 1
+        && TConsensusGroupType.DataRegion.equals(regionId.getType())) {
+      String errorMessage =
+          "deleteOldRegionPeer is not supported for dataRegion when DataReplicationFactor equals 1, "
+              + "you are supposed to delete the region data of datanode manually";
+      LOGGER.info(errorMessage);
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(errorMessage);
+      return status;
+    }
+
     TSStatus status;
     TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
     status =
@@ -244,7 +272,7 @@ public class DataNodeRemoveHandler {
                 maintainPeerReq,
                 DataNodeRequestType.DELETE_OLD_REGION_PEER);
     LOGGER.info(
-        "Send region {} delete peer action to {}, wait it finished",
+        "Send action deleteOldRegionPeer to regionId {} on dataNodeId {}, wait it finished",
         regionId,
         originalDataNode.getInternalEndPoint());
     return status;
@@ -369,7 +397,7 @@ public class DataNodeRemoveHandler {
    * @throws ProcedureException procedure exception
    */
   public TSStatus stopDataNode(TDataNodeLocation dataNode) throws ProcedureException {
-    LOGGER.info("begin to stop Data Node {}", dataNode);
+    LOGGER.info("Begin to stop Data Node {}", dataNode);
     AsyncDataNodeClientPool.getInstance().resetClient(dataNode.getInternalEndPoint());
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
