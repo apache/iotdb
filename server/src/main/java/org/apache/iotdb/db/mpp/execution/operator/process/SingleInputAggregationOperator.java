@@ -96,7 +96,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     // reset operator state
     canCallNext = true;
 
-    while (hasNext() && !resultTsBlockBuilder.isFull()) {
+    while (System.nanoTime() - start < maxRuntime && hasNext() && !resultTsBlockBuilder.isFull()) {
       // calculate aggregation result on current time window
       if (!calculateNextAggregationResult()) {
         break;
