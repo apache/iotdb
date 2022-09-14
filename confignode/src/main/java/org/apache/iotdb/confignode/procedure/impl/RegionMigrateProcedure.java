@@ -94,7 +94,7 @@ public class RegionMigrateProcedure
           tsStatus = env.getDataNodeRemoveHandler().addRegionPeer(destDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId);
-            LOG.info("Wait for region add peer finished, regionId: {}", consensusGroupId);
+            LOG.info("Wait for ADD_REGION_PEER finished, regionId: {}", consensusGroupId);
           } else {
             throw new ProcedureException("Failed to add region peer");
           }
@@ -110,7 +110,7 @@ public class RegionMigrateProcedure
                   .removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId);
-            LOG.info("Wait for region {} remove peer finished", consensusGroupId);
+            LOG.info("Wait REMOVE_REGION_PEER finished, regionId: {}", consensusGroupId);
           } else {
             throw new ProcedureException("Failed to remove region peer");
           }
@@ -122,7 +122,7 @@ public class RegionMigrateProcedure
                   .deleteOldRegionPeer(originalDataNode, consensusGroupId);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId);
-            LOG.info("Wait for delete old region peer finished, regionId: {}", consensusGroupId);
+            LOG.info("Wait for DELETE_OLD_REGION_PEER finished, regionId: {}", consensusGroupId);
           }
           // remove consensus group after a node stop, which will be failed, but we will
           // continuously execute.
@@ -136,14 +136,14 @@ public class RegionMigrateProcedure
     } catch (Exception e) {
       LOG.error(
           "Meets error in region migrate state, please do the rollback operation yourself manually according to the error message!!! "
-              + "state: {}, migrateResult: {}",
+              + "error state: {}, migrateResult: {}",
           state,
           migrateResult);
       if (isRollbackSupported(state)) {
         setFailure(new ProcedureException("Region migrate failed at state: " + state));
       } else {
         LOG.error(
-            "Failed state is not support rollback, state {}, originalDataNode: {}",
+            "Failed state is not support rollback, filed state {}, originalDataNode: {}",
             state,
             originalDataNode);
         if (getCycles() > RETRY_THRESHOLD) {
@@ -282,7 +282,7 @@ public class RegionMigrateProcedure
       TSStatus migrateStatus = req.getMigrateResult();
       // migrate failed
       if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-        LOG.info("Region migrate failed, {}", migrateStatus);
+        LOG.info("Region migrate executed failed in DataNode, migrateStatus: {}", migrateStatus);
         migrateSuccess = false;
         migrateResult = migrateStatus.toString();
       }

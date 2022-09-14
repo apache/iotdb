@@ -94,6 +94,7 @@ public class DataNodeRemoveHandler {
     LOGGER.info(
         "DataNodeRemoveService start send disable the Data Node to cluster, {}",
         getIdWithRpcEndpoint(disabledDataNode));
+
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<TEndPoint> otherOnlineDataNodes =
         configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
@@ -138,6 +139,7 @@ public class DataNodeRemoveHandler {
     Optional<TDataNodeLocation> newNode = pickNewReplicaNodeForRegion(regionReplicaNodes);
     if (!newNode.isPresent()) {
       LOGGER.warn("No enough Data node to migrate region: {}", regionId);
+      return null;
     }
     return newNode.get();
   }
@@ -242,7 +244,8 @@ public class DataNodeRemoveHandler {
   public TSStatus deleteOldRegionPeer(
       TDataNodeLocation originalDataNode, TConsensusGroupId regionId) {
 
-    //
+    // when SchemaReplicationFactor==1, execute deleteOldRegionPeer method will cause error
+    // user must delete the related data manually
     if (CONF.getSchemaReplicationFactor() == 1
         && TConsensusGroupType.SchemaRegion.equals(regionId.getType())) {
       String errorMessage =
@@ -254,6 +257,9 @@ public class DataNodeRemoveHandler {
       return status;
     }
 
+    // when DataReplicationFactor==1, execute deleteOldRegionPeer method will cause error
+    // user must delete the related data manually
+    // TODO if multi-leader supports deleteOldRegionPeer when DataReplicationFactor==1?
     if (CONF.getDataReplicationFactor() == 1
         && TConsensusGroupType.DataRegion.equals(regionId.getType())) {
       String errorMessage =
