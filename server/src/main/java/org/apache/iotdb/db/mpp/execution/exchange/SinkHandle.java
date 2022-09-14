@@ -167,7 +167,7 @@ public class SinkHandle implements ISinkHandle {
   }
 
   private void sendEndOfDataBlockEvent() throws Exception {
-    logger.info("send end of data block event");
+    logger.info("[NotifyNoMoreTsBlock]");
     int attempt = 0;
     TEndOfDataBlockEvent endOfDataBlockEvent =
         new TEndOfDataBlockEvent(
@@ -193,7 +193,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void setNoMoreTsBlocks() {
-    logger.info("start to set no-more-tsblocks");
+    logger.info("[StartSetNoMoreTsBlocks]");
     if (aborted || closed) {
       return;
     }
@@ -202,20 +202,17 @@ public class SinkHandle implements ISinkHandle {
     } catch (Exception e) {
       throw new RuntimeException("Send EndOfDataBlockEvent failed", e);
     }
-    logger.info("set noMoreTsBlocks to true");
     noMoreTsBlocks = true;
 
     if (isFinished()) {
-      logger.info("revoke onFinish() of sinkHandleListener");
       sinkHandleListener.onFinish(this);
     }
-    logger.info("revoke onEndOfBlocks() of sinkHandleListener");
     sinkHandleListener.onEndOfBlocks(this);
   }
 
   @Override
   public synchronized void abort() {
-    logger.info("SinkHandle is being aborted.");
+    logger.info("[StartAbortSinkHandle]");
     sequenceIdToTsBlock.clear();
     aborted = true;
     bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
@@ -226,12 +223,12 @@ public class SinkHandle implements ISinkHandle {
       bufferRetainedSizeInBytes = 0;
     }
     sinkHandleListener.onAborted(this);
-    logger.info("SinkHandle is aborted");
+    logger.info("[EndAbortSinkHandle]");
   }
 
   @Override
   public synchronized void close() {
-    logger.info("SinkHandle is being closed.");
+    logger.info("[StartCloseSinkHandle]");
     sequenceIdToTsBlock.clear();
     closed = true;
     bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
@@ -242,7 +239,7 @@ public class SinkHandle implements ISinkHandle {
       bufferRetainedSizeInBytes = 0;
     }
     sinkHandleListener.onFinish(this);
-    logger.info("SinkHandle is closed");
+    logger.info("[EndCloseSinkHandle]");
   }
 
   @Override
@@ -307,7 +304,7 @@ public class SinkHandle implements ISinkHandle {
         freedBytes += entry.getValue().right;
         bufferRetainedSizeInBytes -= entry.getValue().right;
         iterator.remove();
-        logger.info("ack TsBlock {}.", entry.getKey());
+        logger.info("[ACKTsBlock] {}.", entry.getKey());
       }
     }
     if (isFinished()) {
@@ -381,9 +378,7 @@ public class SinkHandle implements ISinkHandle {
     public void run() {
       try (SetThreadName sinkHandleName = new SetThreadName(threadName)) {
         logger.info(
-            "Send new data block event [{}, {})",
-            startSequenceId,
-            startSequenceId + blockSizes.size());
+            "[NotifyNewTsBlock] [{}, {})", startSequenceId, startSequenceId + blockSizes.size());
         int attempt = 0;
         TNewDataBlockEvent newDataBlockEvent =
             new TNewDataBlockEvent(

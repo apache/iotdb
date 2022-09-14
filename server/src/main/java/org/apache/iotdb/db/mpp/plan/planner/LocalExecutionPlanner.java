@@ -134,7 +134,7 @@ public class LocalExecutionPlanner {
         freeMemoryForOperators -= estimatedMemorySize;
         LOGGER.info(
             String.format(
-                "consume memory: %d, current remaining memory: %d",
+                "[ConsumeMemory] consume: %d, current remaining memory: %d",
                 estimatedMemorySize, freeMemoryForOperators));
       }
     }
@@ -148,7 +148,7 @@ public class LocalExecutionPlanner {
                 this.freeMemoryForOperators += estimatedMemorySize;
                 LOGGER.info(
                     String.format(
-                        "release memory: %d, current remaining memory: %d",
+                        "[ReleaseMemory] release: %d, current remaining memory: %d",
                         estimatedMemorySize, freeMemoryForOperators));
               }
             }

@@ -80,10 +80,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       try (SetThreadName fragmentInstanceName =
           new SetThreadName(createFullIdFrom(req.sourceFragmentInstanceId, "SinkHandle"))) {
         logger.debug(
-            "Get data block request received, for data blocks whose sequence ID in [{}, {}) from {}.",
+            "[ProcessGetTsBlockRequest] sequence ID in [{}, {})",
             req.getStartSequenceId(),
-            req.getEndSequenceId(),
-            req.getSourceFragmentInstanceId());
+            req.getEndSequenceId());
         if (!sinkHandles.containsKey(req.getSourceFragmentInstanceId())) {
           throw new TException(
               "Source fragment instance not found. Fragment instance ID: "
@@ -215,12 +214,12 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinished(ISourceHandle sourceHandle) {
-      logger.info("finished and release resources");
+      logger.info("[ScHListenerOnFinish]");
       if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
           || !sourceHandles
               .get(sourceHandle.getLocalFragmentInstanceId())
               .containsKey(sourceHandle.getLocalPlanNodeId())) {
-        logger.info("resources has already been released");
+        logger.warn("[ScHListenerAlreadyReleased]");
       } else {
         sourceHandles
             .get(sourceHandle.getLocalFragmentInstanceId())
@@ -234,7 +233,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onAborted(ISourceHandle sourceHandle) {
-      logger.info("onAborted is invoked");
+      logger.info("[ScHListenerOnAbort]");
       onFinished(sourceHandle);
     }
 
@@ -262,28 +261,29 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinish(ISinkHandle sinkHandle) {
-      logger.info("onFinish is invoked");
+      logger.info("[SkHListenerOnFinish]");
       removeFromMPPDataExchangeManager(sinkHandle);
       context.finished();
     }
 
     @Override
     public void onEndOfBlocks(ISinkHandle sinkHandle) {
+      logger.info("[SkHListenerOnEndOfTsBlocks]");
       context.transitionToFlushing();
     }
 
     @Override
     public void onAborted(ISinkHandle sinkHandle) {
-      logger.info("onAborted is invoked");
+      logger.info("[SkHListenerOnAbort]");
       removeFromMPPDataExchangeManager(sinkHandle);
     }
 
     private void removeFromMPPDataExchangeManager(ISinkHandle sinkHandle) {
-      logger.info("release resources of finished sink handle");
-      if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
-        logger.info("resources already been released");
+      if (sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId()) == null) {
+        logger.warn("[RemoveNoSinkHandle]");
+      } else {
+        logger.info("[RemoveSinkHandle]");
       }
-      sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId());
     }
 
     @Override
@@ -493,7 +493,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    * <p>This method should be called when a fragment instance finished in an abnormal state.
    */
   public void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
-    logger.info("Force deregister fragment instance");
+    logger.info("[StartForceReleaseFIDataExchangeResource]");
     if (sinkHandles.containsKey(fragmentInstanceId)) {
       ISinkHandle sinkHandle = sinkHandles.get(fragmentInstanceId);
       sinkHandle.abort();
@@ -502,11 +502,12 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     if (sourceHandles.containsKey(fragmentInstanceId)) {
       Map<String, ISourceHandle> planNodeIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
       for (Entry<String, ISourceHandle> entry : planNodeIdToSourceHandle.entrySet()) {
-        logger.info("Close source handle {}", sourceHandles);
+        logger.info("[CloseSourceHandle] {}", entry.getKey());
         entry.getValue().abort();
       }
       sourceHandles.remove(fragmentInstanceId);
     }
+    logger.info("[EndForceReleaseFIDataExchangeResource]");
   }
 
   /** @param suffix should be like [PlanNodeId].SourceHandle/SinHandle */

@@ -95,7 +95,9 @@ public class LocalSourceHandle implements ISourceHandle {
       if (tsBlock != null) {
         currSequenceId++;
         logger.info(
-            "Receive {} TsdBlock, size is {}", currSequenceId, tsBlock.getRetainedSizeInBytes());
+            "[GetTsBlockFromQueue] TsBlock:{} size:{}",
+            currSequenceId,
+            tsBlock.getRetainedSizeInBytes());
       }
       checkAndInvokeOnFinished();
       return tsBlock;
@@ -139,7 +141,7 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      logger.info("Source handle is being aborted.");
+      logger.info("[StartAbortLocalSourceHandle]");
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -150,7 +152,7 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
-      logger.info("Source handle is aborted");
+      logger.info("[EndAbortLocalSourceHandle]");
     }
   }
 
@@ -160,7 +162,7 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      logger.info("Source handle is being closed.");
+      logger.info("[StartCloseLocalSourceHandle]");
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -171,7 +173,7 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onFinished(this);
         }
       }
-      logger.info("Source handle is closed");
+      logger.info("[EndCloseLocalSourceHandle]");
     }
   }
 
