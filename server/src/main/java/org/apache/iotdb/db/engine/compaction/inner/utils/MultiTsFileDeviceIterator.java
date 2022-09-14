@@ -51,10 +51,10 @@ import java.util.stream.Collectors;
 public class MultiTsFileDeviceIterator implements AutoCloseable {
 
   // sorted from the newest to the oldest
-  private List<TsFileResource> tsFileResources;
-  private Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
-  private Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
-  private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
+  private final List<TsFileResource> tsFileResources;
+  private final Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
+  private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
+  private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<String, Boolean> currentDevice = null;
 
   /** Used for inner space compaction. */
@@ -134,6 +134,30 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     return currentDevice;
   }
 
+  public Map<String, MeasurementSchema> getAllMeasurementSchemas() throws IOException {
+    Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
+    for (Map.Entry<TsFileResource, TsFileDeviceIterator> entry : deviceIteratorMap.entrySet()) {
+      TsFileResource resource = entry.getKey();
+      TsFileSequenceReader reader = readerMap.get(resource);
+      List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+      reader.getDeviceTimeseriesMetadata(
+          timeseriesMetadataList,
+          deviceIteratorMap.get(resource).getMeasurementNode(),
+          schemaMap.keySet(),
+          true);
+      for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
+        if (!schemaMap.containsKey(timeseriesMetadata.getMeasurementId())
+            && !timeseriesMetadata.getChunkMetadataList().isEmpty()) {
+          schemaMap.put(
+              timeseriesMetadata.getMeasurementId(),
+              reader.getMeasurementSchema(timeseriesMetadata.getChunkMetadataList()));
+        }
+      }
+    }
+    schemaMap.remove("");
+    return schemaMap;
+  }
+
   /**
    * return MeasurementIterator, who iterates the measurements of not aligned device
    *
@@ -144,10 +168,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public MeasurementIterator iterateNotAlignedSeries(
       String device, boolean derserializeTimeseriesMetadata) throws IOException {
     return new MeasurementIterator(readerMap, device, derserializeTimeseriesMetadata);
-  }
-
-  public AlignedMeasurementIterator iterateAlignedSeries() {
-    return new AlignedMeasurementIterator();
   }
 
   /**
@@ -230,32 +250,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public void close() throws IOException {
     for (TsFileSequenceReader reader : readerMap.values()) {
       reader.close();
-    }
-  }
-
-  public class AlignedMeasurementIterator {
-    public Map<String, MeasurementSchema> getAllMeasurementSchemas() throws IOException {
-      Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
-      for (Map.Entry<TsFileResource, TsFileDeviceIterator> entry : deviceIteratorMap.entrySet()) {
-        TsFileResource resource = entry.getKey();
-        TsFileSequenceReader reader = readerMap.get(resource);
-        List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
-        reader.getDeviceTimeseriesMetadata(
-            timeseriesMetadataList,
-            deviceIteratorMap.get(resource).getMeasurementNode(),
-            schemaMap.keySet(),
-            true);
-        for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-          if (!schemaMap.containsKey(timeseriesMetadata.getMeasurementId())
-              && !timeseriesMetadata.getChunkMetadataList().isEmpty()) {
-            schemaMap.put(
-                timeseriesMetadata.getMeasurementId(),
-                reader.getMeasurementSchema(timeseriesMetadata.getChunkMetadataList()));
-          }
-        }
-      }
-      schemaMap.remove("");
-      return schemaMap;
     }
   }
 

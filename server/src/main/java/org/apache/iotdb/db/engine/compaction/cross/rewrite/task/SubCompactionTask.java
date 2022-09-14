@@ -47,17 +47,17 @@ public class SubCompactionTask implements Callable<Void> {
   private final String device;
   private final Set<String> measurementList;
 
-  private final Set<String> allMeasurements;
   private final QueryContext queryContext;
   private final QueryDataSource queryDataSource;
   private final AbstractCompactionWriter compactionWriter;
+
+  // schema of all measurements of this device
   private final Map<String, MeasurementSchema> schemaMap;
   private final int taskId;
 
   public SubCompactionTask(
       String device,
       Set<String> measurementList,
-      Set<String> allMeasurements,
       QueryContext queryContext,
       QueryDataSource queryDataSource,
       AbstractCompactionWriter compactionWriter,
@@ -65,7 +65,6 @@ public class SubCompactionTask implements Callable<Void> {
       int taskId) {
     this.device = device;
     this.measurementList = measurementList;
-    this.allMeasurements = allMeasurements;
     this.queryContext = queryContext;
     this.queryDataSource = queryDataSource;
     this.compactionWriter = compactionWriter;
@@ -84,7 +83,7 @@ public class SubCompactionTask implements Callable<Void> {
               device,
               Collections.singletonList(measurement),
               measurementSchemas,
-              allMeasurements,
+              schemaMap.keySet(),
               queryContext,
               queryDataSource,
               false);
