@@ -29,15 +29,10 @@ public class TimeWindow implements IWindow {
 
   private TimeRange curTimeRange;
 
-  private long curMinTime;
-  private long curMaxTime;
-
   public TimeWindow() {}
 
   public TimeWindow(TimeRange curTimeRange) {
     this.curTimeRange = curTimeRange;
-    this.curMinTime = curTimeRange.getMin();
-    this.curMaxTime = curTimeRange.getMax();
   }
 
   public TimeRange getCurTimeRange() {
@@ -45,11 +40,11 @@ public class TimeWindow implements IWindow {
   }
 
   public long getCurMinTime() {
-    return curMinTime;
+    return curTimeRange.getMin();
   }
 
   public long getCurMaxTime() {
-    return curMaxTime;
+    return curTimeRange.getMax();
   }
 
   @Override
@@ -60,7 +55,7 @@ public class TimeWindow implements IWindow {
   @Override
   public boolean satisfy(Column column, int index) {
     long curTime = column.getLong(index);
-    return curTime <= this.curMaxTime && curTime >= this.curMinTime;
+    return curTime <= getCurMaxTime() && curTime >= getCurMinTime();
   }
 
   @Override
@@ -90,7 +85,5 @@ public class TimeWindow implements IWindow {
 
   public void update(TimeRange curTimeRange) {
     this.curTimeRange = curTimeRange;
-    this.curMinTime = curTimeRange.getMin();
-    this.curMaxTime = curTimeRange.getMax();
   }
 }

@@ -53,12 +53,13 @@ public class TimeWindowManager implements IWindowManager {
 
   @Override
   public boolean hasNext(boolean hasMoreData) {
-    return hasMoreData || this.timeRangeIterator.hasNextTimeRange();
+    return this.curWindow.getCurTimeRange() != null || this.timeRangeIterator.hasNextTimeRange();
   }
 
   @Override
   public void next() {
     this.initialized = false;
+    this.curWindow.update(null);
   }
 
   @Override
