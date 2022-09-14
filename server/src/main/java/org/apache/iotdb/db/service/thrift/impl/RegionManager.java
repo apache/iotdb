@@ -79,12 +79,13 @@ public class RegionManager {
         .forEach(
             schemaRegion -> {
               schemaRegionLockMap.put(
-                  schemaRegion.getSchemaRegionId(), new ReentrantReadWriteLock());
+                  schemaRegion.getSchemaRegionId(), new ReentrantReadWriteLock(false));
             });
 
     storageEngine
         .getAllDataRegionIds()
-        .forEach(dataRegionId -> dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock()));
+        .forEach(
+            dataRegionId -> dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock(false)));
   }
 
   public TSendPlanNodeResp executePlanNode(ConsensusGroupId groupId, PlanNode planNode) {
@@ -212,7 +213,7 @@ public class RegionManager {
       PartialPath storageGroupPartitionPath = new PartialPath(storageGroup);
       SchemaRegionId schemaRegionId = new SchemaRegionId(regionReplicaSet.getRegionId().getId());
       schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
-      schemaRegionLockMap.put(schemaRegionId, new ReentrantReadWriteLock());
+      schemaRegionLockMap.put(schemaRegionId, new ReentrantReadWriteLock(false));
       List<Peer> peers = new ArrayList<>();
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         TEndPoint endpoint =
@@ -248,7 +249,7 @@ public class RegionManager {
     try {
       DataRegionId dataRegionId = new DataRegionId(regionReplicaSet.getRegionId().getId());
       storageEngine.createDataRegion(dataRegionId, storageGroup, ttl);
-      dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock());
+      dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock(false));
       List<Peer> peers = new ArrayList<>();
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         TEndPoint endpoint =
@@ -280,11 +281,11 @@ public class RegionManager {
       if (regionId instanceof DataRegionId) {
         DataRegionId dataRegionId = (DataRegionId) regionId;
         storageEngine.createDataRegion(dataRegionId, storageGroup, ttl);
-        dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock());
+        dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock(false));
       } else {
         SchemaRegionId schemaRegionId = (SchemaRegionId) regionId;
         schemaEngine.createSchemaRegion(new PartialPath(storageGroup), schemaRegionId);
-        schemaRegionLockMap.put(schemaRegionId, new ReentrantReadWriteLock());
+        schemaRegionLockMap.put(schemaRegionId, new ReentrantReadWriteLock(false));
       }
     } catch (Exception e) {
       LOGGER.error("create new region {} error", regionId, e);
