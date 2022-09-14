@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.recover;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.TagInvertedIndex;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.ITagInvertedIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
 import org.apache.iotdb.lsm.context.Context;
 import org.apache.iotdb.lsm.context.DeleteContext;
@@ -32,7 +32,7 @@ public class RecoverManager {
     this.walManager = walManager;
   }
 
-  public void recover(TagInvertedIndex tagInvertedIndex) {
+  public void recover(ITagInvertedIndex tagInvertedIndex) {
     while (true) {
       Context context = walManager.read();
       switch (context.getType()) {
