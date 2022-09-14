@@ -170,7 +170,7 @@ public class DataNodeRemoveHandler {
     }
 
     // Send addRegionPeer request to the selected DataNode
-    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, selectedDataNode.get());
+    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, destDataNode);
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
@@ -213,7 +213,7 @@ public class DataNodeRemoveHandler {
     }
 
     // Send addRegionPeer request to the selected DataNode
-    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, selectedDataNode.get());
+    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
