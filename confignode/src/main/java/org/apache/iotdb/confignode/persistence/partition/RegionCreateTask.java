@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class RegionCreateTask extends RegionMaintainTask {
 
@@ -43,28 +44,29 @@ public class RegionCreateTask extends RegionMaintainTask {
     super(RegionMaintainType.CREATE);
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public RegionCreateTask(
+      TDataNodeLocation targetDataNode, String storageGroup, TRegionReplicaSet regionReplicaSet) {
+    super(RegionMaintainType.CREATE);
+    this.targetDataNode = targetDataNode;
+    this.storageGroup = storageGroup;
+    this.regionReplicaSet = regionReplicaSet;
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
+  public String getStorageGroup() {
+    return storageGroup;
   }
 
   public TRegionReplicaSet getRegionReplicaSet() {
     return regionReplicaSet;
   }
 
-  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
-    this.regionReplicaSet = regionReplicaSet;
-  }
-
   public long getTTL() {
     return TTL;
   }
 
-  public void setTTL(long TTL) {
+  public RegionCreateTask setTTL(long TTL) {
     this.TTL = TTL;
+    return this;
   }
 
   @Override
@@ -113,5 +115,21 @@ public class RegionCreateTask extends RegionMaintainTask {
     if (TConsensusGroupType.DataRegion.equals(regionReplicaSet.getRegionId().getType())) {
       this.TTL = ReadWriteIOUtils.readLong(inputStream);
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (!(o instanceof RegionCreateTask)) return false;
+    if (!super.equals(o)) return false;
+    RegionCreateTask that = (RegionCreateTask) o;
+    return TTL == that.TTL
+        && storageGroup.equals(that.storageGroup)
+        && regionReplicaSet.equals(that.regionReplicaSet);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), storageGroup, regionReplicaSet, TTL);
   }
 }

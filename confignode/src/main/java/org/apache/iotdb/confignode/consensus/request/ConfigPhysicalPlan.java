@@ -46,7 +46,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
@@ -67,6 +67,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public abstract class ConfigPhysicalPlan implements IConsensusRequest {
 
@@ -147,8 +148,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case OfferRegionMaintainTasks:
           req = new OfferRegionMaintainTasksPlan();
           break;
-        case PollRegionMaintainTasks:
-          req = new PollRegionMaintainTasksPlan();
+        case PollRegionMaintainTask:
+          req = new PollRegionMaintainTaskPlan();
           break;
         case GetSchemaPartition:
           req = new GetSchemaPartitionPlan();
@@ -251,5 +252,18 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
     private Factory() {
       // empty constructor
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ConfigPhysicalPlan that = (ConfigPhysicalPlan) o;
+    return type == that.type;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type);
   }
 }

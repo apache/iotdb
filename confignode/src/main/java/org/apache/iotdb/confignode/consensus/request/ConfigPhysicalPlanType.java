@@ -33,7 +33,7 @@ public enum ConfigPhysicalPlanType {
   CountStorageGroup,
   CreateRegionGroups,
   OfferRegionMaintainTasks,
-  PollRegionMaintainTasks,
+  PollRegionMaintainTask,
   DeleteRegionGroups,
   GetSchemaPartition,
   CreateSchemaPartition,

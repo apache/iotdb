@@ -104,10 +104,9 @@ public class CreateRegionGroupsProcedure
                                   .getDataNodeLocations()
                                   .forEach(
                                       targetDataNode -> {
-                                        RegionCreateTask createTask = new RegionCreateTask();
-                                        createTask.setTargetDataNode(targetDataNode);
-                                        createTask.setStorageGroup(storageGroup);
-                                        createTask.setRegionReplicaSet(regionReplicaSet);
+                                        RegionCreateTask createTask =
+                                            new RegionCreateTask(
+                                                targetDataNode, storageGroup, regionReplicaSet);
                                         if (TConsensusGroupType.DataRegion.equals(
                                             regionReplicaSet.getRegionId().getType())) {
                                           try {
@@ -124,12 +123,13 @@ public class CreateRegionGroupsProcedure
                               regionReplicaSet
                                   .getDataNodeLocations()
                                   .forEach(
-                                      dataNodeLocation -> {
+                                      targetDataNode -> {
                                         if (!failedRegionReplicas
                                             .getDataNodeLocations()
-                                            .contains(dataNodeLocation)) {
-                                          RegionDeleteTask deleteTask = new RegionDeleteTask();
-                                          deleteTask.setRegionId(regionReplicaSet.getRegionId());
+                                            .contains(targetDataNode)) {
+                                          RegionDeleteTask deleteTask =
+                                              new RegionDeleteTask(
+                                                  targetDataNode, regionReplicaSet.getRegionId());
                                           offerPlan.appendRegionMaintainTask(deleteTask);
                                         }
                                       });

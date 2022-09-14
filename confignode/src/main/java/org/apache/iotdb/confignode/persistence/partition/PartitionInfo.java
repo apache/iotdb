@@ -170,11 +170,11 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Offer a batch of RegionMaintainEntries for the RegionMaintainer
+   * Offer a batch of RegionMaintainTasks for the RegionMaintainer
    *
    * @return SUCCESS_STATUS
    */
-  public TSStatus offerRegionMaintainEntries(
+  public TSStatus offerRegionMaintainTasks(
       OfferRegionMaintainTasksPlan offerRegionMaintainTasksPlan) {
     synchronized (regionMaintainTaskList) {
       regionMaintainTaskList.addAll(offerRegionMaintainTasksPlan.getRegionMaintainTaskList());
@@ -183,12 +183,12 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Poll the head of RegionMaintainEntries from the regionMaintainEntrySet after it's executed
+   * Poll the head of RegionMaintainTasks from the regionMaintainTaskList after it's executed
    * successfully
    *
    * @return SUCCESS_STATUS
    */
-  public TSStatus pollRegionMaintainEntry() {
+  public TSStatus pollRegionMaintainTask() {
     synchronized (regionMaintainTaskList) {
       regionMaintainTaskList.remove(0);
       return RpcUtils.SUCCESS_STATUS;

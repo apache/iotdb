@@ -44,7 +44,7 @@ import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
@@ -578,7 +578,7 @@ public class PartitionManager {
 
                     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                       // Poll the head entry if success
-                      getConsensusManager().write(new PollRegionMaintainTasksPlan());
+                      getConsensusManager().write(new PollRegionMaintainTaskPlan());
                     } else {
                       // Here we just break and wait until next schedule task
                       // due to all the RegionMaintainEntry should be executed by

@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class RegionDeleteTask extends RegionMaintainTask {
 
@@ -48,10 +49,6 @@ public class RegionDeleteTask extends RegionMaintainTask {
 
   public TConsensusGroupId getRegionId() {
     return regionId;
-  }
-
-  public void setRegionId(TConsensusGroupId regionId) {
-    this.regionId = regionId;
   }
 
   @Override
@@ -83,5 +80,19 @@ public class RegionDeleteTask extends RegionMaintainTask {
     this.targetDataNode.read(protocol);
     this.regionId = new TConsensusGroupId();
     this.regionId.read(protocol);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (!(o instanceof RegionDeleteTask)) return false;
+    if (!super.equals(o)) return false;
+    RegionDeleteTask that = (RegionDeleteTask) o;
+    return regionId.equals(that.regionId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), regionId);
   }
 }

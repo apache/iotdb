@@ -25,19 +25,19 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PollRegionMaintainTasksPlan extends ConfigPhysicalPlan {
+public class PollRegionMaintainTaskPlan extends ConfigPhysicalPlan {
 
-  public PollRegionMaintainTasksPlan() {
-    super(ConfigPhysicalPlanType.PollRegionMaintainTasks);
-  }
-
-  public PollRegionMaintainTasksPlan(ConfigPhysicalPlanType type) {
-    super(type);
+  public PollRegionMaintainTaskPlan() {
+    super(ConfigPhysicalPlanType.PollRegionMaintainTask);
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {}
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigPhysicalPlanType.PollRegionMaintainTask.ordinal());
+  }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    // Do nothing
+  }
 }

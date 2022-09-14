@@ -193,10 +193,9 @@ public class ConfigPlanExecutor {
       case CreateRegionGroups:
         return partitionInfo.createRegionGroups((CreateRegionGroupsPlan) physicalPlan);
       case OfferRegionMaintainTasks:
-        return partitionInfo.offerRegionMaintainEntries(
-            (OfferRegionMaintainTasksPlan) physicalPlan);
-      case PollRegionMaintainTasks:
-        return partitionInfo.pollRegionMaintainEntry();
+        return partitionInfo.offerRegionMaintainTasks((OfferRegionMaintainTasksPlan) physicalPlan);
+      case PollRegionMaintainTask:
+        return partitionInfo.pollRegionMaintainTask();
       case CreateSchemaPartition:
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionPlan) physicalPlan);
       case CreateDataPartition:

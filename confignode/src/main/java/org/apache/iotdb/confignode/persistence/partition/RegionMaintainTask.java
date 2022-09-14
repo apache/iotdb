@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public abstract class RegionMaintainTask {
 
@@ -113,5 +114,18 @@ public abstract class RegionMaintainTask {
     private Factory() {
       // Empty constructor
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (!(o instanceof RegionMaintainTask)) return false;
+    RegionMaintainTask task = (RegionMaintainTask) o;
+    return type == task.type && targetDataNode.equals(task.targetDataNode);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, targetDataNode);
   }
 }
