@@ -94,26 +94,31 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       return false;
     }
 
-    inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
+    if (windowManager.satisfiedCurWindow(inputTsBlock)) {
+      inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
 
-    int lastReadRowIndex = 0;
-    for (Aggregator aggregator : aggregators) {
-      // current agg method has been calculated
-      if (aggregator.hasFinalResult()) {
-        continue;
+      int lastReadRowIndex = 0;
+      for (Aggregator aggregator : aggregators) {
+        // current agg method has been calculated
+        if (aggregator.hasFinalResult()) {
+          continue;
+        }
+
+        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
       }
+      if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
+        inputTsBlock = null;
+        // for the last index of TsBlock, if we can know the aggregation calculation is over
+        // we can directly updateResultTsBlock and return true
+        return isAllAggregatorsHasFinalResult(aggregators);
+      } else {
+        inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
+        return true;
+      }
+    }
 
-      lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
-    }
-    if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
-      inputTsBlock = null;
-      // for the last index of TsBlock, if we can know the aggregation calculation is over
-      // we can directly updateResultTsBlock and return true
-      return isAllAggregatorsHasFinalResult(aggregators);
-    } else {
-      inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
-      return true;
-    }
+    boolean isTsBlockOutOfBound = windowManager.isTsBlockOutOfBound(inputTsBlock);
+    return isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound;
   }
 
   @Override
