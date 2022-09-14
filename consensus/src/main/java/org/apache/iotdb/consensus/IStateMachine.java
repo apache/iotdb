@@ -125,10 +125,6 @@ public interface IStateMachine {
     };
   }
 
-  default RetryPolicy retryPolicy() {
-    return (IStateMachine.RetryPolicy) this;
-  }
-
   /** An optional API for event notifications. */
   interface EventApi {
     /**

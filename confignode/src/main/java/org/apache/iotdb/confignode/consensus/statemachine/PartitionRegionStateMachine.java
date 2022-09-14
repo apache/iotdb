@@ -170,4 +170,22 @@ public class PartitionRegionStateMachine
   public boolean isReadOnly() {
     return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
+
+  @Override
+  public boolean shouldRetry(TSStatus writeResult) {
+    // TODO implement this
+    return RetryPolicy.super.shouldRetry(writeResult);
+  }
+
+  @Override
+  public TSStatus updateResult(TSStatus previousResult, TSStatus retryResult) {
+    // TODO implement this
+    return RetryPolicy.super.updateResult(previousResult, retryResult);
+  }
+
+  @Override
+  public long getSleepTime() {
+    // TODO implement this
+    return RetryPolicy.super.getSleepTime();
+  }
 }
