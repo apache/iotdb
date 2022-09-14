@@ -52,7 +52,7 @@ public class AlteringLogger implements AutoCloseable {
     logStream.close();
   }
 
-  public void addAlterParam(
+  public synchronized void addAlterParam(
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
       throws IOException {
     if (fullPath == null || curEncoding == null || curCompressionType == null) {
@@ -69,13 +69,29 @@ public class AlteringLogger implements AutoCloseable {
     logStream.flush();
   }
 
+  public static void clearBegin(File logFile) throws IOException {
+
+    try (BufferedWriter tempLogWriter = new BufferedWriter(new FileWriter(logFile, true))) {
+      tempLogWriter.write(FLAG_CLEAR_BEGIN);
+      tempLogWriter.newLine();
+      tempLogWriter.flush();
+    }
+  }
+
   public void clearBegin() throws IOException {
+
     logStream.write(FLAG_CLEAR_BEGIN);
     logStream.newLine();
     logStream.flush();
   }
 
-  public void doneFile(TsFileResource file) throws IOException {
+  /**
+   * need to be thread-safe
+   *
+   * @param file
+   * @throws IOException
+   */
+  public synchronized void doneFile(TsFileResource file) throws IOException {
     if (file == null) {
       throw new IOException("file is null");
     }

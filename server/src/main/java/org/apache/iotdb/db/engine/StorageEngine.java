@@ -1188,19 +1188,24 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void rewriteTimeseries(PartialPath fullPath) throws StorageEngineException, MetadataException {
+  public void rewriteTimeseries(PartialPath fullPath)
+      throws StorageEngineException, MetadataException {
 
     // TODO Check whether fullPath is a storage group
 
     // Check altering cache
     AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
     boolean storageGroupExsist = alteringRecordsCache.isStorageGroupExsist(fullPath);
-    if(!storageGroupExsist) {
-      throw new StorageEngineException("Rewrite Timeseries Failed. The storage group you entered is not altering");
+    if (!storageGroupExsist) {
+      throw new StorageEngineException(
+          "Rewrite Timeseries Failed. The storage group you entered is not altering");
     }
-    StorageGroupManager storageGroupManager = getStorageGroupManager(LocalSchemaProcessor.getInstance().getStorageGroupNodeByPath(fullPath));
-    if(storageGroupManager == null) {
-      throw new StorageEngineException("Rewrite Timeseries Failed. The StorageGroupManager is null");
+    StorageGroupManager storageGroupManager =
+        getStorageGroupManager(
+            LocalSchemaProcessor.getInstance().getStorageGroupNodeByPath(fullPath));
+    if (storageGroupManager == null) {
+      throw new StorageEngineException(
+          "Rewrite Timeseries Failed. The StorageGroupManager is null");
     }
     storageGroupManager.alterLock();
     try {

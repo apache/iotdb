@@ -41,13 +41,14 @@ public class AlteringRecordsCache {
 
   private static final Logger logger = LoggerFactory.getLogger(AlteringRecordsCache.class);
 
+  // measurement->(encoding, compression)
   private final Map<String, Pair<TSEncoding, CompressionType>> alteringRecords =
       new ConcurrentHashMap<>(32);
-
-  // sg->deviceId's'
-  private final Map<String, Set<String>> alteringRecordsMapping = new ConcurrentHashMap<>(32);
-
-  private final Set<String> alteringStorageGroups = Collections.synchronizedSet(new HashSet<>(4));
+  // device->measurement->(encoding, compression)
+  private final Map<String, Map<String, Pair<TSEncoding, CompressionType>>> alteringDeviceRecords =
+      new ConcurrentHashMap<>(32);
+  // sg->deviceIds
+  private final Map<String, Set<String>> sgDeviceMap = new ConcurrentHashMap<>(2);
 
   private final AtomicBoolean isAltering = new AtomicBoolean(false);
 
@@ -57,23 +58,26 @@ public class AlteringRecordsCache {
     isAltering.set(true);
   }
 
-  public void putRecord(String fullPath, TSEncoding encoding, CompressionType compressionType) throws Exception {
+  public void putRecord(String fullPath, TSEncoding encoding, CompressionType compressionType)
+      throws Exception {
     if (fullPath != null) {
       PartialPath path = new PartialPath(fullPath);
-      alteringRecords.put(fullPath, new Pair<>(encoding, compressionType));
+      String device = path.getDevice();
       String storageGroupName = StorageEngine.getInstance().getStorageGroupName(path);
-      alteringStorageGroups.add(storageGroupName);
-      Set<String> devices = alteringRecordsMapping.computeIfAbsent(storageGroupName, id -> Collections.synchronizedSet(new HashSet<>()));
-      devices.add(path.getDevice());
+      Set<String> devices =
+          sgDeviceMap.computeIfAbsent(
+              storageGroupName, id -> Collections.synchronizedSet(new HashSet<>()));
+      devices.add(device);
+      Pair<TSEncoding, CompressionType> record = new Pair<>(encoding, compressionType);
+      alteringRecords.put(fullPath, record);
+      Map<String, Pair<TSEncoding, CompressionType>> deviceRecordMap =
+          alteringDeviceRecords.computeIfAbsent(device, id -> new ConcurrentHashMap<>());
+      deviceRecordMap.put(fullPath, record);
     }
   }
 
-  public boolean containsRecord(String fullPath) {
-    return alteringRecords.containsKey(fullPath);
-  }
-
   public Set<String> getDevicesCache(String storageGroupName) {
-    return alteringRecordsMapping.get(storageGroupName);
+    return sgDeviceMap.get(storageGroupName);
   }
 
   public Pair<TSEncoding, CompressionType> getRecord(String fullPath) {
@@ -84,13 +88,17 @@ public class AlteringRecordsCache {
     return alteringRecords.get(fullPath);
   }
 
+  public Map<String, Pair<TSEncoding, CompressionType>> getDeviceRecords(String device) {
+    return alteringDeviceRecords.get(device);
+  }
+
   public boolean isStorageGroupExsist(PartialPath path) throws StorageEngineException {
 
-    if(path == null) {
+    if (path == null) {
       return false;
     }
     String storageGroupName = StorageEngine.getInstance().getStorageGroupName(path);
-    return alteringStorageGroups.contains(storageGroupName);
+    return sgDeviceMap.get(storageGroupName) != null;
   }
 
   public static AlteringRecordsCache getInstance() {
@@ -99,7 +107,8 @@ public class AlteringRecordsCache {
 
   public synchronized void clear() {
     alteringRecords.clear();
-    alteringStorageGroups.clear();
+    alteringDeviceRecords.clear();
+    sgDeviceMap.clear();
     isAltering.set(false);
   }
 

@@ -461,7 +461,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean rewriteTimeseries(RewriteTimeseriesPlan plan) throws QueryProcessException {
 
-    if(plan == null || plan.getPath() == null) {
+    if (plan == null || plan.getPath() == null) {
       throw new QueryProcessException("RewriteTimeseriesPlan is null");
     }
     PartialPath fullPath = plan.getPath();

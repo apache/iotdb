@@ -955,6 +955,8 @@ public class IoTDBConfig {
   /** TsFileManager Rewrite lock timeout */
   private long rewriteLockWaitTimeoutInMS = (int) TimeUnit.MINUTES.toMillis(1);
 
+  private long rewriteCandidateStatusWaitTimeoutInMs = TimeUnit.MINUTES.toMillis(10);
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -3039,5 +3041,13 @@ public class IoTDBConfig {
 
   public void setRewriteLockWaitTimeoutInMS(long rewriteLockWaitTimeoutInMS) {
     this.rewriteLockWaitTimeoutInMS = rewriteLockWaitTimeoutInMS;
+  }
+
+  public long getRewriteCandidateStatusWaitTimeoutInMs() {
+    return rewriteCandidateStatusWaitTimeoutInMs;
+  }
+
+  public void setRewriteCandidateStatusWaitTimeoutInMs(long rewriteCandidateStatusWaitTimeoutInMs) {
+    this.rewriteCandidateStatusWaitTimeoutInMs = rewriteCandidateStatusWaitTimeoutInMs;
   }
 }
