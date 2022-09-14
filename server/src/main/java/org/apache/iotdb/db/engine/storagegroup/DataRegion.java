@@ -2659,7 +2659,7 @@ public class DataRegion {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
-    //    try {
+    //    try { TODO: support last cache
     //      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId);
     //    } catch (MetadataException e) {
     //      // the path doesn't cache in cluster mode now, ignore

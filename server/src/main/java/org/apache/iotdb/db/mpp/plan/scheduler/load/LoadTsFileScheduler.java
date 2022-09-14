@@ -54,6 +54,13 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+/**
+ * {@link LoadTsFileScheduler} is used for scheduling {@link LoadSingleTsFileNode} and {@link
+ * LoadTsFilePieceNode}. because these two nodes need two phases to finish transfer.
+ *
+ * <p>for more details please check: <a
+ * href="https://apache-iotdb.feishu.cn/docx/doxcnyBYWzek8ksSEU6obZMpYLe">...</a>;
+ */
 public class LoadTsFileScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
 
