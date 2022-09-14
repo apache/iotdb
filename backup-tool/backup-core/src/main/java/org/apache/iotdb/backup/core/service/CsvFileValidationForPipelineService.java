@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 /** @Author: LL @Description: @Date: create in 2022/8/3 9:53 */
-public class CsvFileValidationService0_13_1 extends CsvFileValidationService {
+public class CsvFileValidationForPipelineService extends CsvFileValidationService {
 
   @Override
   public void dataValidateWithServer(

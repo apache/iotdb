@@ -31,7 +31,7 @@ import reactor.core.Disposable;
 import java.io.File;
 
 /** @Author: LL @Description: @Date: create in 2022/7/7 14:29 */
-public class ImportTool13_1 extends AbstractCsvTool {
+public class ImportTool extends AbstractCsvTool {
 
   private static final String TSFILEDB_CLI_PREFIX = "ImportTool";
 

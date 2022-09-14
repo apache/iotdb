@@ -28,7 +28,7 @@ pushd %~dp0..
 if NOT DEFINED IOTDB_UTILS_HOME set IOTDB_UTILS_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.backup.command.ExportTool13_1
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.backup.command.ExportTool
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------

@@ -146,7 +146,7 @@ public class ImExIT extends CommonScript {
                   return false;
                 });
         for (String s : filepath) {
-          CsvFileValidation.dataValidation0_13_1(
+          CsvFileValidation.dataValidation(
               exportModel.getFileFolder() + "\\" + s,
               session,
               exportModel.getCharSet(),
