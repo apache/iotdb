@@ -26,7 +26,7 @@ import org.apache.iotdb.lsm.context.InsertContext;
 
 public class RecoverManager {
 
-  WALManager walManager;
+  private WALManager walManager;
 
   public RecoverManager(WALManager walManager) {
     this.walManager = walManager;

@@ -25,7 +25,7 @@ import org.apache.iotdb.lsm.manager.BasicLsmManager;
 
 public class DeletionManager extends BasicLsmManager<MemTable, DeleteContext> {
 
-  WALManager walManager;
+  private WALManager walManager;
 
   public DeletionManager(WALManager walManager) {
     this.walManager = walManager;
