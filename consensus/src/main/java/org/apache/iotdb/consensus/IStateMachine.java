@@ -92,6 +92,38 @@ public interface IStateMachine {
     return Utils.listAllRegularFilesRecursively(latestSnapshotRootDir);
   }
 
+  /**
+   * To guarantee the statemachine replication property, when {@link #write(IConsensusRequest)}
+   * failed in this statemachine, Upper consensus implementation like RatisConsensus may choose to
+   * retry the operation until it exceeds.
+   */
+  interface RetryPolicy {
+
+    /** Given the last write result, should we retry? */
+    default boolean shouldRetry(TSStatus writeResult) {
+      return false;
+    }
+
+    /**
+     * Use the latest write result to update final write result
+     *
+     * @param retryResult the latest write result
+     * @return the aggregated result upon current retry
+     */
+    default TSStatus updateResult(TSStatus retryResult) {
+      return retryResult;
+    }
+
+    /**
+     * sleep time before the next retry
+     *
+     * @return time in millis
+     */
+    default long getSleepTime() {
+      return 0;
+    };
+  }
+
   /** An optional API for event notifications. */
   interface EventApi {
     /**
