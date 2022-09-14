@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.engine.modification.Modification;
 
 import java.util.HashSet;
 
@@ -28,5 +29,12 @@ public class PatternTreeMapFactory {
         HashSet::new,
         (triggerName, set) -> set.add(triggerName),
         (triggerName, set) -> set.remove(triggerName));
+  }
+
+  public static PatternTreeMap<Modification> getModsPatternTreeMap() {
+    return new PatternTreeMap<>(
+        HashSet::new,
+        (mod, set) -> set.add(mod),
+        (mod, set) -> set.remove(mod));
   }
 }

@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.query.context;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 
@@ -47,7 +49,8 @@ public class QueryContext {
    * use this field because each call of Modification.getModifications() return a copy of the
    * Modifications, and we do not want it to create multiple copies within a query.
    */
-  private final Map<String, List<Modification>> fileModCache = new HashMap<>();
+  private final Map<String, PatternTreeMap<Modification>> fileModCache = new HashMap<>();
+//  private final Map<String, List<Modification>> fileModCache = new HashMap<>();
 
   protected long queryId;
 
@@ -100,21 +103,27 @@ public class QueryContext {
     return fileModifications.computeIfAbsent(
         path.getFullPath(),
         k -> {
-          List<Modification> allModifications = fileModCache.get(modFile.getFilePath());
+//          List<Modification> allModifications = fileModCache.get(modFile.getFilePath());
+          PatternTreeMap<Modification> allModifications = fileModCache.get(modFile.getFilePath());
           if (allModifications == null) {
-            allModifications = (List<Modification>) modFile.getModifications();
+            allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
+            for(Modification modification:modFile.getModifications()){
+              allModifications.append(modification.getPath(),modification);
+            }
+//            allModifications = (List<Modification>) modFile.getModifications();
             fileModCache.put(modFile.getFilePath(), allModifications);
           }
-          List<Modification> finalPathModifications = new ArrayList<>();
-          if (!allModifications.isEmpty()) {
-            allModifications.forEach(
-                modification -> {
-                  if (modification.getPath().matchFullPath(path)) {
-                    finalPathModifications.add(modification);
-                  }
-                });
-          }
-          return finalPathModifications;
+//          List<Modification> finalPathModifications = new ArrayList<>();
+//          if (!allModifications.isEmpty()) {
+//            allModifications.forEach(
+//                modification -> {
+//                  if (modification.getPath().matchFullPath(path)) {
+//                    finalPathModifications.add(modification);
+//                  }
+//                });
+//          }
+//          return finalPathModifications;
+          return allModifications.getOverlapped(path);
         });
   }
 
@@ -203,5 +212,19 @@ public class QueryContext {
 
   public boolean isInterrupted() {
     return isInterrupted;
+  }
+
+  public static void main(String[] args) throws Exception{
+    QueryContext queryContext = new QueryContext();
+
+    long time1 = System.currentTimeMillis();
+    for (int i = 0; i < 500; i++) {
+      queryContext.getPathModifications(
+              new ModificationFile("/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/data/data/sequence/root.sg1/0/0/1663075238609-1-0-0.tsfile.mods"),
+              new PartialPath(String.format("root.sg1.d%d.s1",i))
+      );
+    }
+    long time2 = System.currentTimeMillis();
+    System.out.println(time2-time1);
   }
 }
