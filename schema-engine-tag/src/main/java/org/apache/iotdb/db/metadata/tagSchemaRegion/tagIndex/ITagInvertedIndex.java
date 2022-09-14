@@ -18,11 +18,19 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex;
 
+import org.apache.iotdb.lsm.context.DeleteContext;
+import org.apache.iotdb.lsm.context.InsertContext;
+
 import java.util.List;
 import java.util.Map;
 
 public interface ITagInvertedIndex {
+
+  void addTags(InsertContext context);
+
   void addTags(Map<String, String> tags, int id);
+
+  void removeTags(DeleteContext context);
 
   void removeTags(Map<String, String> tags, int id);
 

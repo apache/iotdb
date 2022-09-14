@@ -30,23 +30,31 @@ public class InsertContext extends Context {
 
   Object value;
 
+  public InsertContext() {
+    super();
+    type = ContextType.INSERT;
+    accessStrategy = new PreOrderAccessStrategy();
+  }
+
   public InsertContext(Object value, Object... keys) {
     super();
     this.value = value;
     this.keys = new ArrayList<>();
     this.keys.addAll(Arrays.asList(keys));
-    level = 0;
     type = ContextType.INSERT;
     accessStrategy = new PreOrderAccessStrategy();
   }
 
-  public InsertContext(Object value,List<Object> keys){
-    this.value = value;
+  public Object getKey() {
+    return keys.get(level);
+  }
+
+  public void setKeys(List<Object> keys) {
     this.keys = keys;
   }
 
-  public Object getKey() {
-    return keys.get(level);
+  public void setValue(Object value) {
+    this.value = value;
   }
 
   public List<Object> getKeys() {

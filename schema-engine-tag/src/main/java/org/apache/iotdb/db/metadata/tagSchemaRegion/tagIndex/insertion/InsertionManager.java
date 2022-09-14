@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
 import org.apache.iotdb.lsm.context.InsertContext;
 import org.apache.iotdb.lsm.manager.BasicLsmManager;
@@ -30,14 +29,16 @@ public class InsertionManager extends BasicLsmManager<MemTable, InsertContext> {
 
   private WALManager walManager;
 
-  public InsertionManager(WALManager walManager){
+  public InsertionManager(WALManager walManager) {
     this.walManager = walManager;
     initLevelProcess();
   }
 
   @Override
   public void preProcess(MemTable root, InsertContext context) throws IOException {
-    walManager.write(context);
+    if (!context.isRecover()) {
+      walManager.write(context);
+    }
   }
 
   private void initLevelProcess() {

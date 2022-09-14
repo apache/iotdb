@@ -67,6 +67,7 @@ public class WALManager {
     }
   }
 
+  // 用于recover
   public synchronized Context read() {
     if (walReader.hasNext()) {
       WALEntry walEntry = (WALEntry) walReader.next();
@@ -81,12 +82,22 @@ public class WALManager {
   }
 
   private InsertContext generateInsertContext(WALEntry walEntry) {
-    InsertContext insertContext = new InsertContext(walEntry.getDeviceID(), walEntry.getKeys());
+    InsertContext insertContext = new InsertContext();
+    List<Object> objects = new ArrayList<>();
+    objects.addAll(walEntry.getKeys());
+    insertContext.setKeys(objects);
+    insertContext.setValue(walEntry.getDeviceID());
+    insertContext.setRecover(true);
     return insertContext;
   }
 
   private DeleteContext generateDeleteContext(WALEntry walEntry) {
     DeleteContext deleteContext = new DeleteContext(walEntry.getDeviceID(), walEntry.getKeys());
+    List<Object> objects = new ArrayList<>();
+    objects.addAll(walEntry.getKeys());
+    deleteContext.setKeys(objects);
+    deleteContext.setValue(walEntry.getDeviceID());
+    deleteContext.setRecover(true);
     return deleteContext;
   }
 

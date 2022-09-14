@@ -31,7 +31,6 @@ import org.apache.iotdb.lsm.context.DeleteContext;
 import org.apache.iotdb.lsm.context.InsertContext;
 import org.apache.iotdb.lsm.context.QueryContext;
 
-import org.apache.iotdb.lsm.wal.WALWriter;
 import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,25 +79,57 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     recover();
   }
 
-  public synchronized void recover(){
+  public synchronized void recover() {
     recoverManager.recover(this);
   }
 
   @Override
-  public synchronized void addTags(Map<String, String> tags, int id) {
-    MemTable memTable = null;
+  public synchronized void addTags(InsertContext context) {
+    int id = (int) context.getValue();
     if (!inWorkingMemTable(id)) {
       workingMemTable.setStatus(MemTable.IMMUTABLE);
       immutableMemTables.put(maxDeviceID / numOfDeviceIdsInMemTable, workingMemTable);
       workingMemTable = new MemTable(MemTable.WORKING);
     }
-    memTable = workingMemTable;
+    MemTable memTable = workingMemTable;
+    maxDeviceID = id;
+    try {
+      insertionManager.process(memTable, context);
+    } catch (Exception e) {
+      logger.error(e.getMessage());
+    }
+  }
+
+  @Override
+  public synchronized void addTags(Map<String, String> tags, int id) {
+    if (!inWorkingMemTable(id)) {
+      workingMemTable.setStatus(MemTable.IMMUTABLE);
+      immutableMemTables.put(maxDeviceID / numOfDeviceIdsInMemTable, workingMemTable);
+      workingMemTable = new MemTable(MemTable.WORKING);
+    }
+    MemTable memTable = workingMemTable;
     maxDeviceID = id;
     try {
       for (Map.Entry<String, String> tag : tags.entrySet()) {
         addTag(memTable, tag.getKey(), tag.getValue(), id);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
+      logger.error(e.getMessage());
+    }
+  }
+
+  @Override
+  public void removeTags(DeleteContext context) {
+    int id = (int) context.getValue();
+    MemTable memTable = null;
+    if (inWorkingMemTable(id)) {
+      memTable = workingMemTable;
+    } else {
+      memTable = immutableMemTables.get(id / numOfDeviceIdsInMemTable);
+    }
+    try {
+      deletionManager.process(memTable, context);
+    } catch (Exception e) {
       logger.error(e.getMessage());
     }
   }
@@ -106,7 +137,6 @@ public class TagInvertedIndex implements ITagInvertedIndex {
   @Override
   public synchronized void removeTags(Map<String, String> tags, int id) {
     List<MemTable> memTables = new ArrayList<>();
-    // 出现乱序
     if (inWorkingMemTable(id)) {
       memTables.add(workingMemTable);
     } else {
@@ -116,7 +146,7 @@ public class TagInvertedIndex implements ITagInvertedIndex {
       for (Map.Entry<String, String> tag : tags.entrySet()) {
         removeTag(memTables, tag.getKey(), tag.getValue(), id);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       logger.error(e.getMessage());
     }
   }
@@ -135,7 +165,7 @@ public class TagInvertedIndex implements ITagInvertedIndex {
         else roaringBitmap = RoaringBitmap.and(roaringBitmap, rb);
         i++;
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       logger.error(e.getMessage());
     }
     return Arrays.stream(roaringBitmap.toArray()).boxed().collect(Collectors.toList());
@@ -164,14 +194,16 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     insertionManager.process(memTable, insertContext);
   }
 
-  private void removeTag(List<MemTable> memTables, String tagKey, String tagValue, int id) throws Exception {
+  private void removeTag(List<MemTable> memTables, String tagKey, String tagValue, int id)
+      throws Exception {
     DeleteContext deleteContext = new DeleteContext(id, tagKey, tagValue);
     for (MemTable memTable : memTables) {
       deletionManager.process(memTable, deleteContext);
     }
   }
 
-  private RoaringBitmap getMatchedIDs(List<MemTable> memTables, String tagKey, String tagValue) throws Exception {
+  private RoaringBitmap getMatchedIDs(List<MemTable> memTables, String tagKey, String tagValue)
+      throws Exception {
     QueryContext queryContext = new QueryContext(tagKey, tagValue);
     for (MemTable memTable : memTables) {
       queryManager.process(memTable, queryContext);

@@ -27,6 +27,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -110,8 +111,6 @@ public class TagInvertedIndexTest {
   @Test
   public void getMatchedIDs() {
     addTags();
-    System.out.println("------------addTags------------");
-    System.out.println(tagInvertedIndex);
     Map<String, String> tags1 = new HashMap<>();
     tags1.put("tag1", "q");
 
@@ -128,8 +127,7 @@ public class TagInvertedIndexTest {
     assertEquals(verify, ids);
 
     removeTags();
-    System.out.println("------------removeTags------------");
-    System.out.println(tagInvertedIndex);
+
     ids = tagInvertedIndex.getMatchedIDs(tags1);
     verify = Arrays.asList(3, 5, 7, 15, 16, 18);
     assertEquals(verify, ids);
@@ -137,9 +135,29 @@ public class TagInvertedIndexTest {
     ids = tagInvertedIndex.getMatchedIDs(tags2);
     verify = Arrays.asList(3, 15, 16);
     assertEquals(verify, ids);
+  }
 
-    System.out.println("------------query------------");
-    System.out.println(tagInvertedIndex);
+  @Test
+  public void testRecover() throws IOException {
+    Map<String, String> tags1 = new HashMap<>();
+    tags1.put("tag1", "q");
+
+    Map<String, String> tags2 = new HashMap<>();
+    tags2.put("tag1", "q");
+    tags2.put("tag2", "a");
+    addTags();
+    removeTags();
+
+    tagInvertedIndex.clear();
+    tagInvertedIndex = new TagInvertedIndex(schemaRegionDirPath);
+
+    List<Integer> ids = tagInvertedIndex.getMatchedIDs(tags1);
+    List<Integer> verify = Arrays.asList(3, 5, 7, 15, 16, 18);
+    assertEquals(verify, ids);
+
+    ids = tagInvertedIndex.getMatchedIDs(tags2);
+    verify = Arrays.asList(3, 15, 16);
+    assertEquals(verify, ids);
   }
 
   private List<Pair<Map<String, String>, Integer>> generateTags() {

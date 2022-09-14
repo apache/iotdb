@@ -41,12 +41,16 @@ public class Context {
   // 返回值
   Object result;
 
+  // 是否正在recover
+  boolean recover;
+
   public Context() {
     accessStrategy = new PreOrderAccessStrategy();
     type = ContextType.NONE;
     level = 0;
     threadNums = 1;
     levelUpperBound = Integer.MAX_VALUE;
+    recover = false;
   }
 
   public void setLevel(int level) {
@@ -95,5 +99,13 @@ public class Context {
 
   public void setLevelUpperBound(int levelUpperBound) {
     this.levelUpperBound = levelUpperBound;
+  }
+
+  public boolean isRecover() {
+    return recover;
+  }
+
+  public void setRecover(boolean recover) {
+    this.recover = recover;
   }
 }

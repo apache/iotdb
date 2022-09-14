@@ -23,8 +23,6 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
 import org.apache.iotdb.lsm.context.DeleteContext;
 import org.apache.iotdb.lsm.manager.BasicLsmManager;
 
-import java.io.IOException;
-
 public class DeletionManager extends BasicLsmManager<MemTable, DeleteContext> {
 
   WALManager walManager;
@@ -32,6 +30,13 @@ public class DeletionManager extends BasicLsmManager<MemTable, DeleteContext> {
   public DeletionManager(WALManager walManager) {
     this.walManager = walManager;
     initLevelProcess();
+  }
+
+  @Override
+  public void preProcess(MemTable root, DeleteContext context) throws Exception {
+    if (!context.isRecover()) {
+      walManager.write(context);
+    }
   }
 
   private void initLevelProcess() {

@@ -30,6 +30,12 @@ public class DeleteContext extends Context {
 
   Object value;
 
+  public DeleteContext() {
+    super();
+    type = ContextType.DELETE;
+    accessStrategy = new PostOrderAccessStrategy();
+  }
+
   public DeleteContext(Object value, Object... ks) {
     super();
     this.value = value;
@@ -39,9 +45,12 @@ public class DeleteContext extends Context {
     accessStrategy = new PostOrderAccessStrategy();
   }
 
-  public DeleteContext(Object value,List<Object> keys){
-    this.value = value;
+  public void setKeys(List<Object> keys) {
     this.keys = keys;
+  }
+
+  public void setValue(Object value) {
+    this.value = value;
   }
 
   public Object getKey() {
