@@ -857,16 +857,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     LOGGER.info("Execute stopDataNode RPC method");
 
-    // kill the datanode process 30 seconds later
-    // if remove this step, datanode process will still alive
+    // kill the datanode process 20 seconds later
+    // because datanode process cannot exit normally for the reason of InterruptedException
     new Thread(
             () -> {
               try {
-                TimeUnit.SECONDS.sleep(30);
+                TimeUnit.SECONDS.sleep(20);
               } catch (InterruptedException e) {
                 LOGGER.error("Meets InterruptedException in stopDataNode RPC method");
               } finally {
-                LOGGER.info("Executing system.exit(0) in stopDataNode RPC method after 30 seconds");
+                LOGGER.info("Executing system.exit(0) in stopDataNode RPC method after 20 seconds");
                 System.exit(0);
               }
             })
