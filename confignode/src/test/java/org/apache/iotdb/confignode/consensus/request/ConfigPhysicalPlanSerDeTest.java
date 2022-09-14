@@ -66,6 +66,7 @@ import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.impl.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -88,6 +89,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
+import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion;
+import static org.junit.Assert.assertEquals;
 
 public class ConfigPhysicalPlanSerDeTest {
 
@@ -639,13 +644,59 @@ public class ConfigPhysicalPlanSerDeTest {
     TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
     storageGroupSchema.setName("root.sg");
     procedure.setDeleteSgSchema(storageGroupSchema);
-    UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan();
-    updateProcedurePlan.setProcedure(procedure);
-    UpdateProcedurePlan reqNew =
+    UpdateProcedurePlan updateProcedurePlan0 = new UpdateProcedurePlan();
+    updateProcedurePlan0.setProcedure(procedure);
+    UpdateProcedurePlan updateProcedurePlan1 =
         (UpdateProcedurePlan)
-            ConfigPhysicalPlan.Factory.create(updateProcedurePlan.serializeToByteBuffer());
-    Procedure proc = reqNew.getProcedure();
+            ConfigPhysicalPlan.Factory.create(updateProcedurePlan0.serializeToByteBuffer());
+    Procedure proc = updateProcedurePlan1.getProcedure();
     Assert.assertEquals(proc, procedure);
+
+    TDataNodeLocation dataNodeLocation0 = new TDataNodeLocation();
+    dataNodeLocation0.setDataNodeId(5);
+    dataNodeLocation0.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation0.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
+    dataNodeLocation0.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation0.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation0.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+
+    TDataNodeLocation dataNodeLocation1 = new TDataNodeLocation();
+    dataNodeLocation1.setDataNodeId(6);
+    dataNodeLocation1.setClientRpcEndPoint(new TEndPoint("0.0.0.1", 6667));
+    dataNodeLocation1.setInternalEndPoint(new TEndPoint("0.0.0.1", 9003));
+    dataNodeLocation1.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.1", 8777));
+    dataNodeLocation1.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.1", 40010));
+    dataNodeLocation1.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.1", 50010));
+
+    TConsensusGroupId schemaRegionGroupId = new TConsensusGroupId(SchemaRegion, 1);
+    TConsensusGroupId dataRegionGroupId = new TConsensusGroupId(DataRegion, 0);
+
+    TRegionReplicaSet schemaRegionSet =
+            new TRegionReplicaSet(schemaRegionGroupId, Collections.singletonList(dataNodeLocation0));
+    TRegionReplicaSet dataRegionSet =
+            new TRegionReplicaSet(dataRegionGroupId, Collections.singletonList(dataNodeLocation1));
+
+    // to test the equals method of Map<TConsensusGroupId, TRegionReplicaSet>
+    Map<TConsensusGroupId, TRegionReplicaSet> failedRegions0 =
+            new HashMap<TConsensusGroupId, TRegionReplicaSet>() {
+              {
+                put(dataRegionGroupId, dataRegionSet);
+                put(schemaRegionGroupId, schemaRegionSet);
+              }
+            };
+
+    CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
+    createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
+
+    CreateRegionGroupsProcedure procedure0 =
+            new CreateRegionGroupsProcedure(createRegionGroupsPlan, failedRegions0);
+
+    updateProcedurePlan0.setProcedure(procedure0);
+    updateProcedurePlan1 =
+            (UpdateProcedurePlan)
+                    ConfigPhysicalPlan.Factory.create(updateProcedurePlan0.serializeToByteBuffer());
+    assertEquals(updateProcedurePlan0, updateProcedurePlan1);
   }
 
   @Test
