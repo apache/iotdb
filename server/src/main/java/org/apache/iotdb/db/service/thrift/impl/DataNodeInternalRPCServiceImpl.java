@@ -368,7 +368,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             schemaEngine
                 .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                 .fetchSchemaBlackList(patternTree)) {
-          result.appendPathPattern(path);
+          result.appendFullPath(path);
         }
       } catch (MetadataException e) {
         LOGGER.error(e.getMessage(), e);

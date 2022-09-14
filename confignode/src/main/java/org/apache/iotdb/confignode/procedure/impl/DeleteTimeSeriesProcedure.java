@@ -212,6 +212,7 @@ public class DeleteTimeSeriesProcedure
               consensusGroupId ->
                   targetSchemaRegionGroup.put(
                       consensusGroupId, relatedSchemaRegionGroup.get(consensusGroupId)));
+      // resolve original path pattern into specific timeseries full path
       PathPatternTree patternTree =
           fetchSchemaBlackListOnTargetDataNode(env, targetSchemaRegionGroup);
       if (isFailed()) {
@@ -307,7 +308,7 @@ public class DeleteTimeSeriesProcedure
       for (PartialPath path :
           PathPatternTree.deserialize(ByteBuffer.wrap(resp.getPathPatternTree()))
               .getAllPathPatterns()) {
-        patternTree.appendPathPattern(path);
+        patternTree.appendFullPath(path);
       }
     }
     patternTree.constructTree();
