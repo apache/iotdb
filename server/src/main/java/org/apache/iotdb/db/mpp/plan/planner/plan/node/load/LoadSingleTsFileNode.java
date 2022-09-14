@@ -23,36 +23,25 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.load.AlignedChunkData;
 import org.apache.iotdb.db.engine.load.ChunkData;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.VerifyMetadataException;
-import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -65,14 +54,12 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +69,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -119,12 +105,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     super(id);
   }
 
-  public LoadSingleTsFileNode(PlanNodeId id, File tsFile) throws IOException {
+  public LoadSingleTsFileNode(PlanNodeId id, TsFileResource resource) throws IOException {
     super(id);
-    this.tsFile = tsFile;
-    this.resource = new TsFileResource(tsFile);
-
-    FileLoaderUtils.loadOrGenerateResource(resource);
+    this.tsFile = resource.getTsFile();
+    this.resource = resource;
   }
 
   public void checkIfNeedDecodeTsFile(DataPartition dataPartition) {
@@ -159,180 +143,6 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private boolean isDispatchedToLocal(TEndPoint endPoint) {
     return IoTDBDescriptor.getInstance().getConfig().getInternalAddress().equals(endPoint.getIp())
         && IoTDBDescriptor.getInstance().getConfig().getInternalPort() == endPoint.port;
-  }
-
-  public void autoRegisterSchema(
-      boolean needVerifySchema, int sgLevel, Set<String> registeredDevices)
-      throws IOException, IllegalPathException,
-          VerifyMetadataException { // TODO: only support sg level=1
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      List<PartialPath> deviceList = new ArrayList<>();
-      List<String[]> measurementList = new ArrayList<>();
-      List<TSDataType[]> dataTypeList = new ArrayList<>();
-      List<TSEncoding[]> encodingsList = new ArrayList<>();
-      List<CompressionType[]> compressionTypesList = new ArrayList<>();
-      List<Boolean> isAlignedList = new ArrayList<>();
-
-      Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
-      for (String device : device2Metadata.keySet()) {
-        deviceList.add(new PartialPath(device));
-      }
-      autoCreateSg(deviceList, sgLevel, registeredDevices);
-
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
-        List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
-        boolean isAligned =
-            timeseriesMetadataList.stream()
-                    .mapToInt(o -> o.getTSDataType().equals(TSDataType.VECTOR) ? 1 : 0)
-                    .sum()
-                != 0;
-        int measurementSize = timeseriesMetadataList.size() - (isAligned ? 1 : 0);
-        String[] measurements = new String[measurementSize];
-        TSDataType[] tsDataTypes = new TSDataType[measurementSize];
-        TSEncoding[] encodings = new TSEncoding[measurementSize];
-        CompressionType[] compressionTypes = new CompressionType[measurementSize];
-
-        int index = 0;
-        for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-          TSDataType dataType = timeseriesMetadata.getTSDataType();
-          if (!dataType.equals(TSDataType.VECTOR)) {
-            measurements[index] = timeseriesMetadata.getMeasurementId();
-            tsDataTypes[index] = dataType;
-            ChunkHeader chunkHeader =
-                getChunkHeaderByTimeseriesMetadata(reader, timeseriesMetadata);
-            encodings[index] = chunkHeader.getEncodingType();
-            compressionTypes[index++] = chunkHeader.getCompressionType();
-          }
-        }
-        measurementList.add(measurements);
-        dataTypeList.add(tsDataTypes);
-        encodingsList.add(encodings);
-        compressionTypesList.add(compressionTypes);
-        isAlignedList.add(isAligned);
-      }
-
-      ISchemaTree schemaTree =
-          SchemaValidator.validate(
-              deviceList,
-              measurementList,
-              dataTypeList,
-              encodingsList,
-              compressionTypesList,
-              isAlignedList);
-      if (needVerifySchema) {
-        verifySchema(
-            schemaTree,
-            deviceList,
-            measurementList,
-            dataTypeList,
-            encodingsList,
-            compressionTypesList,
-            isAlignedList);
-      }
-    }
-  }
-
-  private void autoCreateSg(
-      List<PartialPath> devicePathList, int sgLevel, Set<String> registeredDevices)
-      throws VerifyMetadataException {
-    for (PartialPath device : devicePathList) {
-      if (!registeredDevices.contains(device.toString())) {
-        String[] nodes = device.getNodes();
-        String[] sgNodes = new String[sgLevel];
-        if (nodes.length < sgLevel) {
-          throw new VerifyMetadataException(
-              String.format("Sg level %d is longer than device %s.", sgLevel, device));
-        }
-        for (int i = 0; i < sgLevel; i++) {
-          sgNodes[i] = nodes[i];
-        }
-
-        SetStorageGroupStatement statement = new SetStorageGroupStatement();
-        statement.setStorageGroupPath(new PartialPath(sgNodes));
-        executeSetStorageGroupStatement(statement);
-
-        registeredDevices.add(device.toString());
-      }
-    }
-  }
-
-  private void executeSetStorageGroupStatement(Statement statement) {
-    long queryId = SESSION_MANAGER.requestQueryId(false);
-    ExecutionResult result =
-        COORDINATOR.execute(
-            statement,
-            queryId,
-            null,
-            "",
-            PARTITION_FETCHER,
-            SCHEMA_FETCHER,
-            CONFIG.getQueryTimeoutThreshold());
-    if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      logger.warn(String.format("Set Storage group error, statement: %s.", statement));
-      logger.warn(String.format("Set storage group result status : %s.", result.status));
-    }
-  }
-
-  private ChunkHeader getChunkHeaderByTimeseriesMetadata(
-      TsFileSequenceReader reader, TimeseriesMetadata timeseriesMetadata) throws IOException {
-    IChunkMetadata chunkMetadata = timeseriesMetadata.getChunkMetadataList().get(0);
-    reader.position(chunkMetadata.getOffsetOfChunkHeader());
-    return reader.readChunkHeader(reader.readMarker());
-  }
-
-  private void verifySchema(
-      ISchemaTree schemaTree,
-      List<PartialPath> deviceList,
-      List<String[]> measurementsList,
-      List<TSDataType[]> tsDataTypesList,
-      List<TSEncoding[]> encodingsList,
-      List<CompressionType[]> compressionTypeList,
-      List<Boolean> isAlignedList)
-      throws VerifyMetadataException {
-    int deviceSize = deviceList.size();
-    for (int i = 0; i < deviceSize; i++) {
-      DeviceSchemaInfo schemaInfo =
-          schemaTree.searchDeviceSchemaInfo(
-              deviceList.get(i), Arrays.asList(measurementsList.get(i)));
-      String device = deviceList.get(i).toString();
-      if (schemaInfo.isAligned() != isAlignedList.get(i)) {
-        throw new VerifyMetadataException(
-            device,
-            "Is aligned",
-            isAlignedList.get(i).toString(),
-            tsFile.getPath(),
-            String.valueOf(schemaInfo.isAligned()));
-      }
-      List<MeasurementSchema> measurementSchemaList = schemaInfo.getMeasurementSchemaList();
-      int measurementSize = measurementSchemaList.size();
-      for (int j = 0; j < measurementSize; j++) {
-        MeasurementSchema measurementSchema = measurementSchemaList.get(j);
-        if (tsDataTypesList.get(i)[j] != measurementSchema.getType()) {
-          throw new VerifyMetadataException(
-              device + measurementsList.get(i)[j],
-              "Datatype",
-              tsDataTypesList.get(i)[j].name(),
-              tsFile.getPath(),
-              measurementSchema.getType().name());
-        }
-        if (!encodingsList.get(i)[j].equals(measurementSchema.getEncodingType())) {
-          throw new VerifyMetadataException(
-              device + measurementsList.get(i)[j],
-              "Encoding",
-              encodingsList.get(i)[j].name(),
-              tsFile.getPath(),
-              measurementSchema.getEncodingType().name());
-        }
-        if (!compressionTypeList.get(i)[j].equals(measurementSchema.getCompressor())) {
-          throw new VerifyMetadataException(
-              device + measurementsList.get(i)[j],
-              "Compress type",
-              compressionTypeList.get(i)[j].name(),
-              tsFile.getPath(),
-              measurementSchema.getCompressor().name());
-        }
-      }
-    }
   }
 
   public boolean needDecodeTsFile() {
