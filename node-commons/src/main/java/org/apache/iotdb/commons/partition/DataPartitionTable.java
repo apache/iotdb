@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class DataPartitionTable {
 
@@ -119,11 +119,12 @@ public class DataPartitionTable {
    * Create DataPartition within the specific StorageGroup
    *
    * @param assignedDataPartition Assigned result
-   * @return Number of DataPartitions added to each Region
+   * @return Map<TConsensusGroupId, Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count>>
    */
-  public Map<TConsensusGroupId, AtomicInteger> createDataPartition(
+  public Map<TConsensusGroupId, Map<TSeriesPartitionSlot, AtomicLong>> createDataPartition(
       DataPartitionTable assignedDataPartition) {
-    Map<TConsensusGroupId, AtomicInteger> deltaMap = new ConcurrentHashMap<>();
+    Map<TConsensusGroupId, Map<TSeriesPartitionSlot, AtomicLong>> groupDeltaMap =
+        new ConcurrentHashMap<>();
 
     assignedDataPartition
         .getDataPartitionMap()
@@ -131,9 +132,10 @@ public class DataPartitionTable {
             ((seriesPartitionSlot, seriesPartitionTable) ->
                 dataPartitionMap
                     .computeIfAbsent(seriesPartitionSlot, empty -> new SeriesPartitionTable())
-                    .createDataPartition(seriesPartitionTable, deltaMap)));
+                    .createDataPartition(
+                        seriesPartitionTable, seriesPartitionSlot, groupDeltaMap)));
 
-    return deltaMap;
+    return groupDeltaMap;
   }
 
   /**
