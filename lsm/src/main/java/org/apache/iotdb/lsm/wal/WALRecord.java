@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public abstract class WALRecord implements Cloneable {
+
   public abstract void serialize(ByteBuffer buffer);
 
   public abstract void deserialize(DataInputStream stream) throws IOException;
