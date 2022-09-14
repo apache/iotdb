@@ -102,14 +102,20 @@ public class DeleteStorageGroupProcedure
           List<TRegionReplicaSet> regionReplicaSets =
               env.getAllReplicaSets(deleteSgSchema.getName());
           regionReplicaSets.forEach(
-              regionReplicaSet ->
-                  regionReplicaSet
-                      .getDataNodeLocations()
-                      .forEach(
-                          targetDataNode ->
-                              offerPlan.appendRegionMaintainTask(
-                                  new RegionDeleteTask(
-                                      targetDataNode, regionReplicaSet.getRegionId()))));
+              regionReplicaSet -> {
+                regionReplicaSet
+                    .getDataNodeLocations()
+                    .forEach(
+                        targetDataNode ->
+                            offerPlan.appendRegionMaintainTask(
+                                new RegionDeleteTask(
+                                    targetDataNode, regionReplicaSet.getRegionId())));
+
+                // Clear heartbeat cache along the way
+                env.getConfigManager()
+                    .getPartitionManager()
+                    .removeRegionGroupCache(regionReplicaSet.getRegionId());
+              });
           env.getConfigManager().getConsensusManager().write(offerPlan);
 
           // Delete StorageGroupPartitionTable
