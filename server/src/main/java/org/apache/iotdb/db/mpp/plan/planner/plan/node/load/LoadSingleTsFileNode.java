@@ -24,24 +24,15 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.load.AlignedChunkData;
 import org.apache.iotdb.db.engine.load.ChunkData;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
-import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -77,21 +68,6 @@ import java.util.Set;
 
 public class LoadSingleTsFileNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
-  private static final Coordinator COORDINATOR = Coordinator.getInstance();
-  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private final IPartitionFetcher PARTITION_FETCHER;
-  private final ISchemaFetcher SCHEMA_FETCHER;
-
-  {
-    if (CONFIG.isClusterMode()) {
-      PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-      SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
-    } else {
-      PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
-      SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
-    }
-  }
 
   private File tsFile;
   private boolean needDecodeTsFile;
@@ -105,7 +81,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     super(id);
   }
 
-  public LoadSingleTsFileNode(PlanNodeId id, TsFileResource resource) throws IOException {
+  public LoadSingleTsFileNode(PlanNodeId id, TsFileResource resource) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;

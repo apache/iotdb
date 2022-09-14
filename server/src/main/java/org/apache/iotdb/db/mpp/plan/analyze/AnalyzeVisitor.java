@@ -108,6 +108,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -1664,7 +1665,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       for (int j = 0; j < measurementSize; j++) {
         MeasurementSchema originSchema = originSchemaList.get(j);
         MeasurementSchema tsFileSchema = tsFileSchemas[j];
-        String measurementPath = device + originSchema.getMeasurementId();
+        String measurementPath =
+            device + TsFileConstant.PATH_SEPARATOR + originSchema.getMeasurementId();
         if (!tsFileSchema.getType().equals(originSchema.getType())) {
           throw new VerifyMetadataException(
               measurementPath,
