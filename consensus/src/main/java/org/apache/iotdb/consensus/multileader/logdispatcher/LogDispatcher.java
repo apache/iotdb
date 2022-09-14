@@ -385,7 +385,9 @@ public class LogDispatcher {
               new TLogBatch(innerRequest.serializeToByteBuffer(), data.getSearchIndex(), true));
         }
       }
-      return logBatches.size() > 0 ? logBatches.get(0).searchIndex : currentIndex;
+      return logBatches.size() > 0
+          ? logBatches.get(logBatches.size() - 1).searchIndex
+          : currentIndex;
     }
 
     private void constructBatchIndexedFromConsensusRequest(
