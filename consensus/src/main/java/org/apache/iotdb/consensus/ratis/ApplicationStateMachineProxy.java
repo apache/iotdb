@@ -59,7 +59,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   public ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
     applicationStateMachine = stateMachine;
-    retryPolicy = (IStateMachine.RetryPolicy) applicationStateMachine;
+    retryPolicy =
+        applicationStateMachine instanceof IStateMachine.RetryPolicy
+            ? (IStateMachine.RetryPolicy) applicationStateMachine
+            : new IStateMachine.RetryPolicy() {};
     snapshotStorage = new SnapshotStorage(applicationStateMachine);
     applicationStateMachine.start();
     groupId = id;
@@ -123,19 +126,30 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     waitUntilSystemNotReadOnly();
     TSStatus finalStatus = null;
     boolean shouldRetry = false;
+    boolean firstTry = true;
     do {
       try {
+        if (!firstTry) {
+          Thread.sleep(retryPolicy.getSleepTime());
+        }
         TSStatus result = applicationStateMachine.write(applicationRequest);
 
-        finalStatus =
-            (finalStatus == null) ? result : retryPolicy.updateResult(finalStatus, result);
-        shouldRetry = retryPolicy.shouldRetry(finalStatus);
+        if (firstTry) {
+          finalStatus = result;
+          firstTry = false;
+        } else {
+          finalStatus = retryPolicy.updateResult(finalStatus, result);
+        }
 
+        shouldRetry = retryPolicy.shouldRetry(finalStatus);
         if (!shouldRetry) {
           ret = new ResponseMessage(finalStatus);
           break;
         }
-      } catch (Exception rte) {
+      } catch (InterruptedException i) {
+        logger.warn("{} interrupted when retry sleep", this);
+        Thread.currentThread().interrupt();
+      } catch (Throwable rte) {
         logger.error("application statemachine throws a runtime exception: ", rte);
         ret = Message.valueOf("internal error. statemachine throws a runtime exception: " + rte);
         if (applicationStateMachine.isReadOnly()) {
