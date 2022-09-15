@@ -17,18 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.trigger.enums;
+package org.apache.iotdb.trigger.api.enums;
 
-public enum TriggerEvent {
-  BEFORE_INSERT((byte) 0, "BEFORE_INSERT"),
-  AFTER_INSERT((byte) 1, "AFTER_INSERT");
+public enum TriggerType {
+  STATEFUL((byte) 0, "STATEFUL"),
+  STATELESS((byte) 0, "STATELESS");
 
   private final byte id;
-  private final String event;
+  private final String type;
 
-  TriggerEvent(byte id, String event) {
+  TriggerType(byte id, String type) {
     this.id = id;
-    this.event = event;
+    this.type = type;
   }
 
   public byte getId() {
@@ -37,17 +37,17 @@ public enum TriggerEvent {
 
   @Override
   public String toString() {
-    return event;
+    return type;
   }
 
-  public static TriggerEvent construct(byte id) {
+  public static TriggerType construct(byte id) {
     switch (id) {
       case 0:
-        return BEFORE_INSERT;
+        return STATEFUL;
       case 1:
-        return AFTER_INSERT;
+        return STATELESS;
       default:
-        throw new IllegalArgumentException(String.format("No such trigger event (id: %d)", id));
+        throw new IllegalArgumentException(String.format("No such trigger type (id: %d)", id));
     }
   }
 }
