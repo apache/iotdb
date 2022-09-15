@@ -114,7 +114,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     analysis.getDeviceToSourceExpressions().get(deviceName),
                     analysis.getDeviceToAggregationExpressions().get(deviceName),
                     analysis.getDeviceToAggregationTransformExpressions().get(deviceName),
-                    Collections.emptySet(),
+                    analysis.getDeviceToQueryFilter() != null
+                        ? analysis.getDeviceToTransformExpressions().get(deviceName)
+                        : Collections.emptySet(),
                     analysis.getDeviceToQueryFilter() != null
                         ? analysis.getDeviceToQueryFilter().get(deviceName)
                         : null,

@@ -475,7 +475,6 @@ public class IoTDBAlignByDeviceIT {
           "103,root.vehicle.d0,99,",
           "104,root.vehicle.d0,90,",
           "105,root.vehicle.d0,99,",
-          "946684800000,root.vehicle.d0,null",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -484,7 +483,8 @@ public class IoTDBAlignByDeviceIT {
       // single device
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s0 from root.vehicle.d0 where s1 < 200 align by device")) {
+          statement.executeQuery(
+              "select s0 from root.vehicle.d0 where s1 < 200 && s0 is not null align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
