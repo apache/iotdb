@@ -61,6 +61,7 @@ public class DiskTSMIterator extends TSMIterator {
     this.endPosForEachDevice = endPosForEachDevice;
     this.input = new LocalTsFileInput(cmtFile.toPath());
     this.fileLength = cmtFile.length();
+    this.nextEndPosForDevice = endPosForEachDevice.removeFirst();
   }
 
   @Override
@@ -87,12 +88,12 @@ public class DiskTSMIterator extends TSMIterator {
   private TimeseriesMetadata getTimeSerisMetadataFromFile() throws IOException {
     if (currentPos == nextEndPosForDevice) {
       // deserialize the current device name
-      currentDevice = ReadWriteIOUtils.readVarIntString(input.wrapAsInputStream());
+      currentDevice = ReadWriteIOUtils.readString(input.wrapAsInputStream());
       nextEndPosForDevice =
           endPosForEachDevice.size() > 0 ? endPosForEachDevice.removeFirst() : fileLength;
     }
     // deserialize public info for measurement
-    String measurementUid = ReadWriteIOUtils.readVarIntString(input.wrapAsInputStream());
+    String measurementUid = ReadWriteIOUtils.readString(input.wrapAsInputStream());
     byte dataTypeInByte = ReadWriteIOUtils.readByte(input.wrapAsInputStream());
     TSDataType dataType = TSDataType.getTsDataType(dataTypeInByte);
     int chunkBufferSize = ReadWriteIOUtils.readInt(input.wrapAsInputStream());
@@ -103,6 +104,7 @@ public class DiskTSMIterator extends TSMIterator {
           String.format(
               "Expected to read %s bytes, but actually read %s bytes", chunkBufferSize, readSize));
     }
+    chunkBuffer.flip();
 
     // deserialize chunk metadata from chunk buffer
     List<IChunkMetadata> chunkMetadataList = new ArrayList<>();

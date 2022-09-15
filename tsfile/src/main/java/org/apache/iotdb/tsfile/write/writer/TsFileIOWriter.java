@@ -116,7 +116,7 @@ public class TsFileIOWriter implements AutoCloseable {
   protected int pathCount = 0;
   protected boolean enableMemoryControl = false;
   Path lastSerializePath = null;
-  private LinkedList<Long> endPosInCMTForDevice = new LinkedList<>();
+  protected LinkedList<Long> endPosInCMTForDevice = new LinkedList<>();
   public static final String CHUNK_METADATA_TEMP_FILE_SUFFIX = ".cmt";
 
   /** empty construct function. */
@@ -158,6 +158,7 @@ public class TsFileIOWriter implements AutoCloseable {
     this(file);
     this.enableMemoryControl = enableMemoryControl;
     this.maxMetadataSize = maxMetadataSize;
+    chunkMetadataTempFile = new File(file.getAbsolutePath() + CHUNK_METADATA_TEMP_FILE_SUFFIX);
   }
 
   /**
@@ -674,6 +675,7 @@ public class TsFileIOWriter implements AutoCloseable {
       List<IChunkMetadata> iChunkMetadataList = entry.getValue();
       writeChunkMetadata(iChunkMetadataList, seriesPath, tempOutput);
       lastSerializePath = seriesPath;
+      logger.debug("Flushing {}", seriesPath);
     }
     // clear the cache metadata to release the memory
     chunkGroupMetadataList.clear();
@@ -685,11 +687,6 @@ public class TsFileIOWriter implements AutoCloseable {
   private void writeChunkMetadata(
       List<IChunkMetadata> iChunkMetadataList, Path seriesPath, LocalTsFileOutput output)
       throws IOException {
-    if (tempOutput == null) {
-      tempOutput =
-          new LocalTsFileOutput(
-              new FileOutputStream(file.getAbsolutePath() + CHUNK_METADATA_TEMP_FILE_SUFFIX));
-    }
     // [DeviceId] measurementId datatype size chunkMetadataBuffer
     if (lastSerializePath == null
         || !seriesPath.getDevice().equals(lastSerializePath.getDevice())) {
@@ -709,6 +706,6 @@ public class TsFileIOWriter implements AutoCloseable {
       totalSize += chunkMetadata.serializeTo(buffer, true);
     }
     ReadWriteIOUtils.write(totalSize, tempOutput.wrapAsStream());
-    tempOutput.write(buffer.getBuf());
+    buffer.writeTo(tempOutput);
   }
 }
