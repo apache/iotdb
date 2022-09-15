@@ -49,8 +49,9 @@ public class QueryContext {
    * use this field because each call of Modification.getModifications() return a copy of the
    * Modifications, and we do not want it to create multiple copies within a query.
    */
+  //    private final Map<String, PatternTreeMap<TimeRange>> fileModCache = new HashMap<>();
   private final Map<String, PatternTreeMap<Modification>> fileModCache = new HashMap<>();
-//  private final Map<String, List<Modification>> fileModCache = new HashMap<>();
+  //  private final Map<String, List<Modification>> fileModCache = new HashMap<>();
 
   protected long queryId;
 
@@ -103,30 +104,17 @@ public class QueryContext {
     return fileModifications.computeIfAbsent(
         path.getFullPath(),
         k -> {
-//          List<Modification> allModifications = fileModCache.get(modFile.getFilePath());
           PatternTreeMap<Modification> allModifications = fileModCache.get(modFile.getFilePath());
           if (allModifications == null) {
             allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
-            for(Modification modification:modFile.getModifications()){
-              allModifications.append(modification.getPath(),modification);
+            for (Modification modification : modFile.getModifications()) {
+              allModifications.append(modification.getPath(), modification);
             }
-//            allModifications = (List<Modification>) modFile.getModifications();
             fileModCache.put(modFile.getFilePath(), allModifications);
           }
-//          List<Modification> finalPathModifications = new ArrayList<>();
-//          if (!allModifications.isEmpty()) {
-//            allModifications.forEach(
-//                modification -> {
-//                  if (modification.getPath().matchFullPath(path)) {
-//                    finalPathModifications.add(modification);
-//                  }
-//                });
-//          }
-//          return finalPathModifications;
           return allModifications.getOverlapped(path);
         });
   }
-
   /**
    * Find the modifications of all aligned 'paths' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
@@ -214,17 +202,17 @@ public class QueryContext {
     return isInterrupted;
   }
 
-  public static void main(String[] args) throws Exception{
+  public static void main(String[] args) throws Exception {
     QueryContext queryContext = new QueryContext();
 
     long time1 = System.currentTimeMillis();
     for (int i = 0; i < 500; i++) {
       queryContext.getPathModifications(
-              new ModificationFile("/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/data/data/sequence/root.sg1/0/0/1663075238609-1-0-0.tsfile.mods"),
-              new PartialPath(String.format("root.sg1.d%d.s1",i))
-      );
+          new ModificationFile(
+              "/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/data/data/sequence/root.sg1/0/0/1663075238609-1-0-0.tsfile.mods"),
+          new PartialPath(String.format("root.sg1.d%d.s1", i)));
     }
     long time2 = System.currentTimeMillis();
-    System.out.println(time2-time1);
+    System.out.println(time2 - time1);
   }
 }

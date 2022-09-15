@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -27,6 +28,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 public class PatternTreeMapTest {
 
@@ -50,17 +52,17 @@ public class PatternTreeMapTest {
     checkOverlapped(
         patternTreeMap,
         new PartialPath("root.sg1.d1.s1"),
-        new HashSet(Arrays.asList("A", "B", "C", "D", "E", "G", "H", "I", "J")));
+        new HashSet<>(Arrays.asList("A", "B", "C", "D", "E", "G", "H", "I", "J")));
     checkOverlapped(
-        patternTreeMap, new PartialPath("root.sg2.s1"), new HashSet(Arrays.asList("B", "J")));
+        patternTreeMap, new PartialPath("root.sg2.s1"), new HashSet<>(Arrays.asList("B", "J")));
     checkOverlapped(
         patternTreeMap,
         new PartialPath("root.sg1.d1.s2"),
-        new HashSet(Arrays.asList("E", "F", "G", "H", "I", "J")));
+        new HashSet<>(Arrays.asList("E", "F", "G", "H", "I", "J")));
     checkOverlapped(
         patternTreeMap,
         new PartialPath("root.sg1.d1.v1.s1"),
-        new HashSet(Arrays.asList("B", "E", "H", "I", "J")));
+        new HashSet<>(Arrays.asList("B", "E", "H", "I", "J")));
     // delete leaf node with common parent
     patternTreeMap.delete(new PartialPath("root.**.d1.*"), "G");
     // only delete value, no delete leaf node
@@ -70,15 +72,56 @@ public class PatternTreeMapTest {
     checkOverlapped(
         patternTreeMap,
         new PartialPath("root.sg1.d1.s1"),
-        new HashSet(Arrays.asList("A", "B", "C", "E", "H", "I")));
+        new HashSet<>(Arrays.asList("A", "B", "C", "E", "H", "I")));
     checkOverlapped(
         patternTreeMap,
         new PartialPath("root.sg1.d1.s2"),
-        new HashSet(Arrays.asList("E", "F", "H", "I")));
+        new HashSet<>(Arrays.asList("E", "F", "H", "I")));
     checkOverlapped(
         patternTreeMap,
         new PartialPath("root.sg1.d1.v1.s1"),
-        new HashSet(Arrays.asList("B", "E", "H", "I")));
+        new HashSet<>(Arrays.asList("B", "E", "H", "I")));
+  }
+
+  @Test
+  public void timeRangePatternTreeMapTest() throws IllegalPathException {
+    PatternTreeMap<TimeRange> patternTreeMap =
+        new PatternTreeMap<>(
+            TreeSet::new,
+            (range, set) -> {
+              TreeSet<TimeRange> treeSet = (TreeSet) set;
+              TimeRange tr = treeSet.floor(range);
+              while (tr != null && tr.intersects(range)) {
+                range.merge(tr);
+                treeSet.remove(tr);
+                tr = treeSet.floor(range);
+              }
+              tr = treeSet.ceiling(range);
+              while (tr != null && tr.intersects(range)) {
+                range.merge(tr);
+                treeSet.remove(tr);
+                tr = treeSet.ceiling(range);
+              }
+              set.add(range);
+            },
+            null);
+    // [1,3] [6,10] [15,20] [22,30]
+    patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), new TimeRange(1, 3));
+    patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), new TimeRange(6, 10));
+    patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), new TimeRange(15, 20));
+    patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), new TimeRange(22, 30));
+
+    // [1,20] [22,30]
+    patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), new TimeRange(1, 3));
+    patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), new TimeRange(3, 5));
+    patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), new TimeRange(8, 12));
+    patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), new TimeRange(12, 16));
+    patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), new TimeRange(25, 26));
+
+    checkOverlapped(
+        patternTreeMap,
+        new PartialPath("root.sg1.d1.s1"),
+        new HashSet<>(Arrays.asList(new TimeRange(1, 20), new TimeRange(22, 30))));
   }
 
   private void checkOverlapped(

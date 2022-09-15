@@ -20,8 +20,10 @@ package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.util.HashSet;
+import java.util.TreeSet;
 
 public class PatternTreeMapFactory {
   public static PatternTreeMap<String> getTriggerPatternTreeMap() {
@@ -33,8 +35,50 @@ public class PatternTreeMapFactory {
 
   public static PatternTreeMap<Modification> getModsPatternTreeMap() {
     return new PatternTreeMap<>(
-        HashSet::new,
-        (mod, set) -> set.add(mod),
-        (mod, set) -> set.remove(mod));
+        HashSet::new, (mod, set) -> set.add(mod), (mod, set) -> set.remove(mod));
+  }
+
+  public static PatternTreeMap<TimeRange> getModsPatternTreeMap2() {
+    return new PatternTreeMap<>(
+        TreeSet::new,
+        (range, set) -> {
+          TreeSet<TimeRange> treeSet = (TreeSet) set;
+          TimeRange tr = treeSet.floor(range);
+          while (tr != null && tr.intersects(range)) {
+            range.merge(tr);
+            treeSet.remove(tr);
+            tr = treeSet.floor(range);
+          }
+          tr = treeSet.ceiling(range);
+          while (tr != null && tr.intersects(range)) {
+            range.merge(tr);
+            treeSet.remove(tr);
+            tr = treeSet.ceiling(range);
+          }
+          set.add(range);
+        },
+        null);
+  }
+
+  public static PatternTreeMap<TimeRange> getModsPatternTreeMap3() {
+    return new PatternTreeMap<>(
+        TreeSet::new,
+        (range, set) -> {
+          //          TreeSet<TimeRange> treeSet = (TreeSet) set;
+          //          TimeRange tr = treeSet.floor(range);
+          //          while (tr != null && tr.intersects(range)) {
+          //            range.merge(tr);
+          //            treeSet.remove(tr);
+          //            tr = treeSet.floor(range);
+          //          }
+          //          tr = treeSet.ceiling(range);
+          //          while (tr != null && tr.intersects(range)) {
+          //            range.merge(tr);
+          //            treeSet.remove(tr);
+          //            tr = treeSet.ceiling(range);
+          //          }
+          set.add(range);
+        },
+        null);
   }
 }

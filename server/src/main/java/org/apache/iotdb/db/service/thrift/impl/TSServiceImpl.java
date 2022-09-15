@@ -624,7 +624,11 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
                   SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
-        return submitQueryTask(physicalPlan, startTime, req);
+        long time1 = System.currentTimeMillis();
+        TSExecuteStatementResp resp = submitQueryTask(physicalPlan, startTime, req);
+        long time2 = System.currentTimeMillis();
+        System.out.println(time2 - time1);
+        return resp;
       } else {
         return executeUpdateStatement(
             statement,
