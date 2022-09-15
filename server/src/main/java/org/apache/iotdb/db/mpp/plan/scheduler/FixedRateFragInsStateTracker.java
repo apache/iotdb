@@ -27,8 +27,8 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.utils.SetThreadName;
 
-import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,7 +100,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
             instanceStateMap.computeIfAbsent(
                 instance.getId(), k -> new InstanceStateMetrics(instance.isRoot()));
         if (needPrintState(metrics.lastState, state, metrics.durationToLastPrintInMS)) {
-          logger.info("State is {}", state);
+          logger.info("[PrintFIState] state is {}", state);
           metrics.reset(state);
         } else {
           metrics.addDuration(STATE_FETCH_INTERVAL_IN_MS);

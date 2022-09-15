@@ -961,11 +961,11 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\"' | '""' | ~('"') )* '"'
+    : '"' ( '""' | ~('"') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\\'' | '\'\'' | ~('\'') )* '\''
+    : '\'' ( '\'\'' | ~('\'') )* '\''
     ;
 
 fragment BQUOTA_STRING

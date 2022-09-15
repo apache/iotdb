@@ -254,11 +254,11 @@ public interface IManager {
   TSStatus registerConfigNode(TConfigNodeRegisterReq req);
 
   /**
-   * Add Consensus Group in new node.
+   * Create peer in new node to build consensus group.
    *
    * @return status
    */
-  TSStatus addConsensusGroup(List<TConfigNodeLocation> configNodeLocations);
+  TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations);
 
   /**
    * Remove ConfigNode

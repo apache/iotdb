@@ -36,11 +36,11 @@ public abstract class AbstractNodeProcedure<TState>
     configNodeProcedureEnv.getSchedulerLock().lock();
     try {
       if (configNodeProcedureEnv.getNodeLock().tryLock(this)) {
-        LOG.info("{} acquire lock.", getProcId());
+        LOG.info("procedureId {} acquire lock.", getProcId());
         return ProcedureLockState.LOCK_ACQUIRED;
       }
       configNodeProcedureEnv.getNodeLock().waitProcedure(this);
-      LOG.info("{} wait for lock.", getProcId());
+      LOG.info("procedureId {} wait for lock.", getProcId());
       return ProcedureLockState.LOCK_EVENT_WAIT;
     } finally {
       configNodeProcedureEnv.getSchedulerLock().unlock();
@@ -51,7 +51,7 @@ public abstract class AbstractNodeProcedure<TState>
   protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     configNodeProcedureEnv.getSchedulerLock().lock();
     try {
-      LOG.info("{} release lock.", getProcId());
+      LOG.info("procedureId {} release lock.", getProcId());
       if (configNodeProcedureEnv.getNodeLock().releaseLock(this)) {
         configNodeProcedureEnv
             .getNodeLock()

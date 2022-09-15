@@ -16,38 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.utils;
 
-package org.apache.iotdb.commons.trigger.enums;
+import java.io.Closeable;
 
-public enum TriggerType {
-  STATEFUL((byte) 0, "STATEFUL"),
-  STATELESS((byte) 0, "STATELESS");
+import static java.util.Objects.requireNonNull;
 
-  private final byte id;
-  private final String type;
+public class SetThreadName implements Closeable {
+  private final String originalThreadName;
 
-  TriggerType(byte id, String type) {
-    this.id = id;
-    this.type = type;
-  }
-
-  public byte getId() {
-    return id;
+  public SetThreadName(String suffix) {
+    requireNonNull(suffix, "suffix is null");
+    originalThreadName = Thread.currentThread().getName();
+    int index = originalThreadName.indexOf("$");
+    if (index < 0) {
+      Thread.currentThread().setName(String.format("%s$%s", originalThreadName, suffix));
+    } else {
+      Thread.currentThread()
+          .setName(String.format("%s$%s", originalThreadName.substring(0, index), suffix));
+    }
   }
 
   @Override
-  public String toString() {
-    return type;
-  }
-
-  public static TriggerType construct(byte id) {
-    switch (id) {
-      case 0:
-        return STATEFUL;
-      case 1:
-        return STATELESS;
-      default:
-        throw new IllegalArgumentException(String.format("No such trigger type (id: %d)", id));
-    }
+  public void close() {
+    Thread.currentThread().setName(originalThreadName);
   }
 }

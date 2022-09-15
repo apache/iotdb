@@ -79,6 +79,7 @@ import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -118,7 +119,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import com.google.common.collect.ImmutableList;
-import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,6 +128,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
@@ -651,14 +652,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
     List<Peer> peers =
         req.getRegionLocations().stream()
-            .map(n -> getConsensusEndPoint(n, regionId))
-            .map(node -> new Peer(regionId, node))
+            .map(location -> new Peer(regionId, getConsensusEndPoint(location, regionId)))
             .collect(Collectors.toList());
     TSStatus status = createNewRegion(regionId, req.getStorageGroup(), req.getTtl());
     if (!isSucceed(status)) {
       return status;
     }
-    return addConsensusGroup(regionId, peers);
+    return createNewRegionPeer(regionId, peers);
   }
 
   @Override
@@ -669,13 +669,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(
-          "Successfully submit a add region peer task for region: {} on DataNode: {}",
+          "Successfully submit addRegionPeer task for region: {} on DataNode: {}",
           regionId,
           selectedDataNodeIP);
       return status;
     }
     status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-    status.setMessage("submit add region peer task failed, region: " + regionId);
+    status.setMessage("Submit addRegionPeer task failed, region: " + regionId);
     return status;
   }
 
@@ -687,13 +687,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(
-          "Successfully to submit a remove region peer task for region: {} on DataNode: {}",
+          "Successfully submit removeRegionPeer task for region: {} on DataNode: {}",
           regionId,
           selectedDataNodeIP);
       return status;
     }
     status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-    status.setMessage("submit add region peer task failed, region: " + regionId);
+    status.setMessage("Submit removeRegionPeer task failed, region: " + regionId);
     return status;
   }
 
@@ -701,19 +701,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus deleteOldRegionPeer(TMaintainPeerReq req) throws TException {
     TConsensusGroupId regionId = req.getRegionId();
     String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
-    boolean submitSucceed =
-        RegionMigrateService.getInstance().submitRemoveRegionConsensusGroupTask(req);
+    boolean submitSucceed = RegionMigrateService.getInstance().submitDeleteOldRegionPeerTask(req);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(
-          "Successfully to submit a remove region consensus group task for region: {} on DataNode: {}",
+          "Successfully submit deleteOldRegionPeer task for region: {} on DataNode: {}",
           regionId,
           selectedDataNodeIP);
       return status;
     }
     status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-    status.setMessage(
-        "submit region remove region consensus group task failed, region: " + regionId);
+    status.setMessage("Submit deleteOldRegionPeer task failed, region: " + regionId);
     return status;
   }
 
@@ -819,8 +817,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
-  private TSStatus addConsensusGroup(ConsensusGroupId regionId, List<Peer> peers) {
-    LOGGER.info("Start to add consensus group {} to region {}", peers, regionId);
+  private TSStatus createNewRegionPeer(ConsensusGroupId regionId, List<Peer> peers) {
+    LOGGER.info("Start to createNewRegionPeer {} to region {}", peers, regionId);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     ConsensusGenericResponse resp;
     if (regionId instanceof DataRegionId) {
@@ -830,13 +828,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     if (!resp.isSuccess()) {
       LOGGER.error(
-          "add peers {} to region {} consensus group error", peers, regionId, resp.getException());
+          "CreateNewRegionPeer error, peers: {}, regionId: {}, errorMessage",
+          peers,
+          regionId,
+          resp.getException());
       status.setCode(TSStatusCode.REGION_MIGRATE_FAILED.getStatusCode());
       status.setMessage(resp.getException().getMessage());
       return status;
     }
-    LOGGER.info("succeed to add peers {} to region {} consensus group", peers, regionId);
-    status.setMessage("add peers to region consensus group " + regionId + "succeed");
+    LOGGER.info("Succeed to createNewRegionPeer {} for region {}", peers, regionId);
+    status.setMessage("createNewRegionPeer succeed, regionId: " + regionId);
     return status;
   }
 
@@ -854,7 +855,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus stopDataNode() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    LOGGER.info("stopping Data Node");
+    LOGGER.info("Execute stopDataNode RPC method");
+
+    // kill the datanode process 20 seconds later
+    // because datanode process cannot exit normally for the reason of InterruptedException
+    new Thread(
+            () -> {
+              try {
+                TimeUnit.SECONDS.sleep(20);
+              } catch (InterruptedException e) {
+                LOGGER.error("Meets InterruptedException in stopDataNode RPC method");
+              } finally {
+                LOGGER.info("Executing system.exit(0) in stopDataNode RPC method after 20 seconds");
+                System.exit(0);
+              }
+            })
+        .start();
+
     try {
       DataNode.getInstance().stop();
       status.setMessage("stop datanode succeed");
