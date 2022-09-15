@@ -1770,6 +1770,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private void internalCreateTimeseries(
       PartialPath path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
       throws MetadataException {
+    if (encoding == null) {
+      encoding = getDefaultEncoding(dataType);
+    }
+    if (compressor == null) {
+      compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    }
     createTimeseries(path, dataType, encoding, compressor, Collections.emptyMap());
   }
 
