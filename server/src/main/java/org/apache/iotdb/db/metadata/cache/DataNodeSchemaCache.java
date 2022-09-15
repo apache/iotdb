@@ -47,7 +47,8 @@ public class DataNodeSchemaCache {
 
   private final Cache<PartialPath, SchemaCacheEntry> cache;
 
-  private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+  // cache update or clean have higher priority than cache read
+  private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
   private DataNodeSchemaCache() {
     cache =
