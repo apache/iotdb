@@ -47,10 +47,10 @@ public class MinTimeAccumulator implements Accumulator {
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateMinTime(column[0].getLong(i));
+          updateMinTime(column[1].getLong(i));
           return i;
         } else {
-          minTime = Math.min(minTime, column[0].getLong(i));
+          minTime = Math.min(minTime, column[1].getLong(i));
         }
       }
     }

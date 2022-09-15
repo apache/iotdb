@@ -34,7 +34,7 @@ public class MinTimeDescAccumulator extends MinTimeAccumulator {
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        updateMinTime(column[0].getLong(i));
+        updateMinTime(column[1].getLong(i));
       }
     }
     return curPositionCount;

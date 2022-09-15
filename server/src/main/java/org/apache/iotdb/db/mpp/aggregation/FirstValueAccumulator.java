@@ -232,12 +232,12 @@ public class FirstValueAccumulator implements Accumulator {
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateIntFirstValue(column[2].getInt(i), column[0].getLong(i));
+          updateIntFirstValue(column[2].getInt(i), column[1].getLong(i));
           return i;
         } else {
           // do not assign true to initResult
-          if (column[0].getLong(i) < minTime) {
-            minTime = column[0].getLong(i);
+          if (column[1].getLong(i) < minTime) {
+            minTime = column[1].getLong(i);
             firstValue.setInt(column[2].getInt(i));
           }
         }
@@ -265,12 +265,12 @@ public class FirstValueAccumulator implements Accumulator {
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateLongFirstValue(column[2].getLong(i), column[0].getLong(i));
+          updateLongFirstValue(column[2].getLong(i), column[1].getLong(i));
           return i;
         } else {
           // do not assign true to initResult
-          if (column[0].getLong(i) < minTime) {
-            minTime = column[0].getLong(i);
+          if (column[1].getLong(i) < minTime) {
+            minTime = column[1].getLong(i);
             firstValue.setLong(column[2].getLong(i));
           }
         }
@@ -298,12 +298,12 @@ public class FirstValueAccumulator implements Accumulator {
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateFloatFirstValue(column[2].getFloat(i), column[0].getLong(i));
+          updateFloatFirstValue(column[2].getFloat(i), column[1].getLong(i));
           return i;
         } else {
           // do not assign true to initResult
-          if (column[0].getLong(i) < minTime) {
-            minTime = column[0].getLong(i);
+          if (column[1].getLong(i) < minTime) {
+            minTime = column[1].getLong(i);
             firstValue.setFloat(column[2].getFloat(i));
           }
         }
@@ -331,12 +331,12 @@ public class FirstValueAccumulator implements Accumulator {
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateDoubleFirstValue(column[2].getDouble(i), column[0].getLong(i));
+          updateDoubleFirstValue(column[2].getDouble(i), column[1].getLong(i));
           return i;
         } else {
           // do not assign true to initResult
-          if (column[0].getLong(i) < minTime) {
-            minTime = column[0].getLong(i);
+          if (column[1].getLong(i) < minTime) {
+            minTime = column[1].getLong(i);
             firstValue.setDouble(column[2].getDouble(i));
           }
         }
@@ -364,12 +364,12 @@ public class FirstValueAccumulator implements Accumulator {
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateBooleanFirstValue(column[2].getBoolean(i), column[0].getLong(i));
+          updateBooleanFirstValue(column[2].getBoolean(i), column[1].getLong(i));
           return i;
         } else {
           // do not assign true to initResult
-          if (column[0].getLong(i) < minTime) {
-            minTime = column[0].getLong(i);
+          if (column[1].getLong(i) < minTime) {
+            minTime = column[1].getLong(i);
             firstValue.setBoolean(column[2].getBoolean(i));
           }
         }
@@ -397,12 +397,12 @@ public class FirstValueAccumulator implements Accumulator {
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateBinaryFirstValue(column[2].getBinary(i), column[0].getLong(i));
+          updateBinaryFirstValue(column[2].getBinary(i), column[1].getLong(i));
           return i;
         } else {
           // do not assign true to initResult
-          if (column[0].getLong(i) < minTime) {
-            minTime = column[0].getLong(i);
+          if (column[1].getLong(i) < minTime) {
+            minTime = column[1].getLong(i);
             firstValue.setBinary(column[2].getBinary(i));
           }
         }

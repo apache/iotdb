@@ -38,7 +38,7 @@ public class CountAccumulator implements Accumulator {
   public int addInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
-    if (!column[2].mayHaveNull() && curWindow.contains(column[0])) {
+    if (!column[2].mayHaveNull() && curWindow.contains(column[1])) {
       countValue += column[0].getPositionCount();
     } else {
       for (int i = 0; i < curPositionCount; i++) {

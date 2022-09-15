@@ -37,10 +37,10 @@ public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateMaxTime(column[0].getLong(i));
+          updateMaxTime(column[1].getLong(i));
           return i;
         } else {
-          maxTime = Math.max(maxTime, column[0].getLong(i));
+          maxTime = Math.max(maxTime, column[1].getLong(i));
         }
       }
     }

@@ -230,7 +230,7 @@ public class LastValueAccumulator implements Accumulator {
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        updateIntLastValue(column[2].getInt(i), column[0].getLong(i));
+        updateIntLastValue(column[2].getInt(i), column[1].getLong(i));
       }
     }
     return curPositionCount;
@@ -253,7 +253,7 @@ public class LastValueAccumulator implements Accumulator {
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        updateLongLastValue(column[2].getLong(i), column[0].getLong(i));
+        updateLongLastValue(column[2].getLong(i), column[1].getLong(i));
       }
     }
     return curPositionCount;
@@ -276,7 +276,7 @@ public class LastValueAccumulator implements Accumulator {
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        updateFloatLastValue(column[2].getFloat(i), column[0].getLong(i));
+        updateFloatLastValue(column[2].getFloat(i), column[1].getLong(i));
       }
     }
     return curPositionCount;
@@ -299,7 +299,7 @@ public class LastValueAccumulator implements Accumulator {
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        updateDoubleLastValue(column[2].getDouble(i), column[0].getLong(i));
+        updateDoubleLastValue(column[2].getDouble(i), column[1].getLong(i));
       }
     }
     return curPositionCount;
@@ -322,7 +322,7 @@ public class LastValueAccumulator implements Accumulator {
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        updateBooleanLastValue(column[2].getBoolean(i), column[0].getLong(i));
+        updateBooleanLastValue(column[2].getBoolean(i), column[1].getLong(i));
       }
     }
     return curPositionCount;
@@ -345,7 +345,7 @@ public class LastValueAccumulator implements Accumulator {
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        updateBinaryLastValue(column[2].getBinary(i), column[0].getLong(i));
+        updateBinaryLastValue(column[2].getBinary(i), column[1].getLong(i));
       }
     }
     return curPositionCount;

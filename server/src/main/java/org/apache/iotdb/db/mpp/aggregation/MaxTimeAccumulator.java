@@ -46,7 +46,7 @@ public class MaxTimeAccumulator implements Accumulator {
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        updateMaxTime(column[0].getLong(i));
+        updateMaxTime(column[1].getLong(i));
       }
     }
     return curPositionCount;
