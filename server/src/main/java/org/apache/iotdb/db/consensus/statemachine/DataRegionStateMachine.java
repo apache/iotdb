@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
@@ -70,7 +71,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
   private DataRegion region;
 
   private static final int MAX_REQUEST_CACHE_SIZE = 5;
-  private static final long CACHE_WINDOW_TIME_IN_MS = 10_000;
+  private static final long CACHE_WINDOW_TIME_IN_MS =
+      IoTDBDescriptor.getInstance().getConfig().getCacheWindowTimeInMs();
 
   private final Lock queueLock = new ReentrantLock();
   private final Condition queueSortCondition = queueLock.newCondition();
