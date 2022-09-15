@@ -32,8 +32,8 @@ import java.util.function.Supplier;
 public class PatternTreeMap<V> {
   private final PathPatternNode<V> root;
   private final Supplier<? extends Set<V>> supplier;
-  private BiConsumer<V, Set<V>> appendFunction;
-  private BiConsumer<V, Set<V>> deleteFunction;
+  private final BiConsumer<V, Set<V>> appendFunction;
+  private final BiConsumer<V, Set<V>> deleteFunction;
 
   /**
    * Create PatternTreeMap.
@@ -120,7 +120,7 @@ public class PatternTreeMap<V> {
    */
   public List<V> getOverlapped(PartialPath fullPath) {
     List<V> res = new ArrayList<>();
-    searchOverlapped(root, fullPath.getNodes(), 0, res, false);
+    searchOverlapped(root, fullPath.getNodes(), 0, res);
     return res;
   }
 
@@ -131,26 +131,18 @@ public class PatternTreeMap<V> {
    * @param pathNodes pathNodes of key
    * @param pos current index of pathNodes
    * @param resultList result list
-   * @param fromMultiWildCard true if node in caller is '**', so there is no need to traverse the
-   *     remaining pathNodes
    */
   public void searchOverlapped(
-      PathPatternNode<V> node,
-      String[] pathNodes,
-      int pos,
-      List<V> resultList,
-      boolean fromMultiWildCard) {
+      PathPatternNode<V> node, String[] pathNodes, int pos, List<V> resultList) {
     if (pos == pathNodes.length - 1) {
       resultList.addAll(node.getValues());
       return;
     }
-    if (node.isMultiLevelWildcard() && !fromMultiWildCard) {
-      for (int i = pos + 1; i < pathNodes.length; i++) {
-        searchOverlapped(node, pathNodes, i, resultList, true);
-      }
+    if (node.isMultiLevelWildcard()) {
+      searchOverlapped(node, pathNodes, pos + 1, resultList);
     }
     for (PathPatternNode<V> child : node.getMatchChildren(pathNodes[pos + 1])) {
-      searchOverlapped(child, pathNodes, pos + 1, resultList, false);
+      searchOverlapped(child, pathNodes, pos + 1, resultList);
     }
   }
 }

@@ -131,6 +131,9 @@ public class PathPatternNode<V> {
     if (that.getChildren().size() != this.getChildren().size()) {
       return false;
     }
+    if (that.getValues() != null && !that.getValues().equals(this.getValues())) {
+      return false;
+    }
     for (Map.Entry<String, PathPatternNode<V>> entry : this.getChildren().entrySet()) {
       String nodeName = entry.getKey();
       if (that.getChildren(nodeName) == null
