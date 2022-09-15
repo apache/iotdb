@@ -46,9 +46,12 @@ public class SubCompactionTask implements Callable<Void> {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final String device;
   private final Set<String> measurementList;
+
   private final QueryContext queryContext;
   private final QueryDataSource queryDataSource;
   private final AbstractCompactionWriter compactionWriter;
+
+  // schema of all measurements of this device
   private final Map<String, MeasurementSchema> schemaMap;
   private final int taskId;
 
@@ -80,7 +83,7 @@ public class SubCompactionTask implements Callable<Void> {
               device,
               Collections.singletonList(measurement),
               measurementSchemas,
-              measurementList,
+              schemaMap.keySet(),
               queryContext,
               queryDataSource,
               false);
