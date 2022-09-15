@@ -103,7 +103,7 @@ public class StorageGroupPartitionTable {
     replicaSets.forEach(replicaSet -> regionGroupMap.remove(replicaSet.getRegionId()));
   }
 
-  /** @return All Regions' RegionReplicaSet within one StorageGroup */
+  /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup */
   public List<TRegionReplicaSet> getAllReplicaSets() {
     List<TRegionReplicaSet> result = new ArrayList<>();
 
@@ -328,7 +328,7 @@ public class StorageGroupPartitionTable {
               regionInfo.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
               regionInfo.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
               // TODO: Maintain Region status
-              regionInfo.setStatus(RegionStatus.Up.getStatus());
+              regionInfo.setStatus(RegionStatus.Running.getStatus());
               regionInfoList.add(regionInfo);
             });
 
