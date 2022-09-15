@@ -17,26 +17,37 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.analyze;
+package org.apache.iotdb.trigger.api.enums;
 
-import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
+public enum TriggerEvent {
+  BEFORE_INSERT((byte) 0, "BEFORE_INSERT"),
+  AFTER_INSERT((byte) 1, "AFTER_INSERT");
 
-/** Analyze the statement and generate Analysis. */
-public class Analyzer {
-  private final MPPQueryContext context;
+  private final byte id;
+  private final String event;
 
-  private final IPartitionFetcher partitionFetcher;
-  private final ISchemaFetcher schemaFetcher;
-
-  public Analyzer(
-      MPPQueryContext context, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
-    this.context = context;
-    this.partitionFetcher = partitionFetcher;
-    this.schemaFetcher = schemaFetcher;
+  TriggerEvent(byte id, String event) {
+    this.id = id;
+    this.event = event;
   }
 
-  public Analysis analyze(Statement statement) {
-    return new AnalyzeVisitor(partitionFetcher, schemaFetcher, context).process(statement, context);
+  public byte getId() {
+    return id;
+  }
+
+  @Override
+  public String toString() {
+    return event;
+  }
+
+  public static TriggerEvent construct(byte id) {
+    switch (id) {
+      case 0:
+        return BEFORE_INSERT;
+      case 1:
+        return AFTER_INSERT;
+      default:
+        throw new IllegalArgumentException(String.format("No such trigger event (id: %d)", id));
+    }
   }
 }

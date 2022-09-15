@@ -394,7 +394,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus addConsensusGroup(TAddConsensusGroupReq registerResp) {
-    return configManager.addConsensusGroup(registerResp.getConfigNodeList());
+    return configManager.createPeerForConsensusGroup(registerResp.getConfigNodeList());
   }
 
   @Override
