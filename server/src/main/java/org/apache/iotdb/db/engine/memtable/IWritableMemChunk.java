@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,6 +31,9 @@ import java.util.List;
 
 public interface IWritableMemChunk extends WALEntryValue {
 
+  long maxChunkRawSizeThreshold =
+      IoTDBDescriptor.getInstance().getConfig().getMaxChunkRawSizeThreshold();
+
   void putLong(long t, long v);
 
   void putInt(long t, int v);
@@ -40,9 +44,13 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   void putBinary(long t, Binary v);
 
+  boolean putBinaryWithFlushCheck(long t, Binary v);
+
   void putBoolean(long t, boolean v);
 
   void putAlignedValue(long t, Object[] v, int[] columnIndexArray);
+
+  boolean putAlignedValueWithFlushCheck(long t, Object[] v, int[] columnIndexArray);
 
   void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
 
@@ -54,16 +62,25 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end);
 
+  boolean putBinariesWithFlushCheck(long[] t, Binary[] v, BitMap bitMap, int start, int end);
+
   void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end);
 
   void putAlignedValues(
       long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end);
 
+  boolean putAlignedValuesWithFlushCheck(
+      long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end);
+
   void write(long insertTime, Object objectValue);
+
+  boolean writeWithFlushCheck(long insertTime, Object objectValue);
 
   void writeAlignedValue(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
 
+  boolean writeAlignedValueWithFlushCheck(
+      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
   /**
    * write data in the range [start, end). Null value in the valueList will be replaced by the
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
@@ -71,7 +88,18 @@ public interface IWritableMemChunk extends WALEntryValue {
   void write(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end);
 
+  boolean writeWithFlushCheck(
+      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end);
+
   void writeAlignedValues(
+      long[] times,
+      Object[] valueList,
+      BitMap[] bitMaps,
+      List<IMeasurementSchema> schemaList,
+      int start,
+      int end);
+
+  boolean writeAlignedValuesWithFlushCheck(
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,

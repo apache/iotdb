@@ -35,15 +35,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 
 public abstract class BinaryTVList extends TVList {
   // list of primitive array, add 1 when expanded -> Binary primitive array
   // index relation: arrayIndex -> elementIndex
   protected List<Binary[]> values;
 
+  long rawSize;
+
   BinaryTVList() {
     super();
     values = new ArrayList<>();
+    rawSize = 0;
   }
 
   @Override
@@ -58,6 +62,12 @@ public abstract class BinaryTVList extends TVList {
     if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
       sorted = false;
     }
+    rawSize += getBinarySize(value);
+  }
+
+  @Override
+  public long getBinaryListRawSize() {
+    return rawSize;
   }
 
   @Override
@@ -148,6 +158,11 @@ public abstract class BinaryTVList extends TVList {
       end -= nullCnt;
     } else {
       updateMinTimeAndSorted(time, start, end);
+    }
+
+    // update raw size
+    for (int i = idx; i < end; i++) {
+      rawSize += getBinarySize(value[i]);
     }
 
     while (idx < end) {

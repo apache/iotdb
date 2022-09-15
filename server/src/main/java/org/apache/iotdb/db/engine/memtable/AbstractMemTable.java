@@ -436,7 +436,10 @@ public abstract class AbstractMemTable implements IMemTable {
       Object[] objectValue) {
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
-    memChunkGroup.write(insertTime, objectValue, schemaList);
+    //    memChunkGroup.write(insertTime, objectValue, schemaList);
+    if (memChunkGroup.writeWithFlushCheck(insertTime, objectValue, schemaList)) {
+      shouldFlush = true;
+    }
   }
 
   @Override
@@ -447,7 +450,10 @@ public abstract class AbstractMemTable implements IMemTable {
       Object[] objectValue) {
     IWritableMemChunkGroup memChunkGroup =
         createAlignedMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
-    memChunkGroup.write(insertTime, objectValue, schemaList);
+    // memChunkGroup.write(insertTime, objectValue, schemaList);
+    if (memChunkGroup.writeWithFlushCheck(insertTime, objectValue, schemaList)) {
+      shouldFlush = true;
+    }
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
@@ -468,13 +474,15 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(insertTabletPlan.getDeviceID(), schemaList);
-    memChunkGroup.writeValues(
+    if (memChunkGroup.writeValuesWithFlushCheck(
         insertTabletPlan.getTimes(),
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),
         schemaList,
         start,
-        end);
+        end)) {
+      shouldFlush = true;
+    }
   }
 
   public void write(InsertTabletNode insertTabletNode, int start, int end) {
@@ -494,13 +502,15 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(insertTabletNode.getDeviceID(), schemaList);
-    memChunkGroup.writeValues(
+    if (memChunkGroup.writeValuesWithFlushCheck(
         insertTabletNode.getTimes(),
         insertTabletNode.getColumns(),
         insertTabletNode.getBitMaps(),
         schemaList,
         start,
-        end);
+        end)) {
+      shouldFlush = true;
+    }
   }
 
   @Override
@@ -523,13 +533,15 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     IWritableMemChunkGroup memChunkGroup =
         createAlignedMemChunkGroupIfNotExistAndGet(insertTabletPlan.getDeviceID(), schemaList);
-    memChunkGroup.writeValues(
+    if (memChunkGroup.writeValuesWithFlushCheck(
         insertTabletPlan.getTimes(),
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),
         schemaList,
         start,
-        end);
+        end)) {
+      shouldFlush = true;
+    }
   }
 
   public void writeAlignedTablet(InsertTabletNode insertTabletNode, int start, int end) {
@@ -552,13 +564,15 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     IWritableMemChunkGroup memChunkGroup =
         createAlignedMemChunkGroupIfNotExistAndGet(insertTabletNode.getDeviceID(), schemaList);
-    memChunkGroup.writeValues(
+    if (memChunkGroup.writeValuesWithFlushCheck(
         insertTabletNode.getTimes(),
         insertTabletNode.getColumns(),
         insertTabletNode.getBitMaps(),
         schemaList,
         start,
-        end);
+        end)) {
+      shouldFlush = true;
+    }
   }
 
   @Override

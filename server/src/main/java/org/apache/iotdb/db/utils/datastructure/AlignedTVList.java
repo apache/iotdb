@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
@@ -50,6 +51,8 @@ public abstract class AlignedTVList extends TVList {
 
   // data types of this aligned tvList
   protected List<TSDataType> dataTypes;
+
+  protected long[] valueChunkRawSize;
 
   // data type list -> list of TVList, add 1 when expanded -> primitive array of basic type
   // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
@@ -68,6 +71,8 @@ public abstract class AlignedTVList extends TVList {
   AlignedTVList(List<TSDataType> types) {
     super();
     indices = new ArrayList<>(types.size());
+    valueChunkRawSize = new long[dataTypes.size()];
+
     dataTypes = types;
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
@@ -100,6 +105,7 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
           ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
               columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
+          valueChunkRawSize[i] += columnValue != null ? getBinarySize((Binary) columnValue) : 0;
           break;
         case FLOAT:
           ((float[]) columnValues.get(arrayIndex))[elementIndex] =
