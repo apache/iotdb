@@ -50,6 +50,7 @@ import java.util.concurrent.TimeUnit;
 public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final Logger logger = LoggerFactory.getLogger(ApplicationStateMachineProxy.class);
   private final IStateMachine applicationStateMachine;
+  private final IStateMachine.RetryPolicy retryPolicy;
 
   // Raft Storage sub dir for statemachine data, default (_sm)
   private File statemachineDir;
@@ -58,6 +59,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   public ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
     applicationStateMachine = stateMachine;
+    retryPolicy = (IStateMachine.RetryPolicy) applicationStateMachine;
     snapshotStorage = new SnapshotStorage(applicationStateMachine);
     applicationStateMachine.start();
     groupId = id;
@@ -117,23 +119,33 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
               log.getStateMachineLogEntry().getLogData().asReadOnlyByteBuffer());
     }
 
-    Message ret;
+    Message ret = null;
     waitUntilSystemNotReadOnly();
+    TSStatus finalStatus = null;
+    boolean shouldRetry = false;
     do {
       try {
         TSStatus result = applicationStateMachine.write(applicationRequest);
-        ret = new ResponseMessage(result);
-        break;
+
+        finalStatus =
+            (finalStatus == null) ? result : retryPolicy.updateResult(finalStatus, result);
+        shouldRetry = retryPolicy.shouldRetry(finalStatus);
+
+        if (!shouldRetry) {
+          ret = new ResponseMessage(finalStatus);
+          break;
+        }
       } catch (Exception rte) {
         logger.error("application statemachine throws a runtime exception: ", rte);
         ret = Message.valueOf("internal error. statemachine throws a runtime exception: " + rte);
         if (applicationStateMachine.isReadOnly()) {
           waitUntilSystemNotReadOnly();
+          shouldRetry = true;
         } else {
           break;
         }
       }
-    } while (!applicationStateMachine.isReadOnly());
+    } while (shouldRetry);
 
     return CompletableFuture.completedFuture(ret);
   }
