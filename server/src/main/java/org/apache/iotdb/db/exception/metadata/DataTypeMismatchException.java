@@ -25,8 +25,8 @@ public class DataTypeMismatchException extends MetadataException {
   public DataTypeMismatchException(
       String deviceName,
       String measurementName,
+      TSDataType typeInSchema,
       TSDataType insertType,
-      TSDataType realType,
       long time,
       Object value) {
     super(
@@ -34,7 +34,7 @@ public class DataTypeMismatchException extends MetadataException {
             "data type of %s.%s is not consistent, registered type %s, inserting type %s, timestamp %s, value %s",
             deviceName,
             measurementName,
-            realType,
+            typeInSchema,
             insertType,
             time,
             value == null
