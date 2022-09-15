@@ -34,9 +34,9 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTim
 
 public class SlidingWindowAggregationOperator extends SingleInputAggregationOperator {
 
-  protected final ITimeRangeIterator timeRangeIterator;
+  private final ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
-  protected TimeRange curTimeRange;
+  private TimeRange curTimeRange;
 
   private final ITimeRangeIterator subTimeRangeIterator;
   // current interval of pre-aggregation window [curStartTime, curEndTime)

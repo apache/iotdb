@@ -39,7 +39,7 @@ public class SumAccumulator implements Accumulator {
     this.seriesDataType = seriesDataType;
   }
 
-  // Column should be like: | ControlColumn | Value |
+  // Column should be like: | ControlColumn | Time | Value |
   @Override
   public int addInput(Column[] column, IWindow curWindow) {
     switch (seriesDataType) {
@@ -142,9 +142,9 @@ public class SumAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         initResult = true;
-        sumValue += column[1].getInt(i);
+        sumValue += column[2].getInt(i);
       }
     }
     return curPositionCount;
@@ -158,9 +158,9 @@ public class SumAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         initResult = true;
-        sumValue += column[1].getLong(i);
+        sumValue += column[2].getLong(i);
       }
     }
     return curPositionCount;
@@ -174,9 +174,9 @@ public class SumAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         initResult = true;
-        sumValue += column[1].getFloat(i);
+        sumValue += column[2].getFloat(i);
       }
     }
     return curPositionCount;
@@ -190,9 +190,9 @@ public class SumAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         initResult = true;
-        sumValue += column[1].getDouble(i);
+        sumValue += column[2].getDouble(i);
       }
     }
     return curPositionCount;

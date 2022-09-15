@@ -42,7 +42,7 @@ public class LastValueAccumulator implements Accumulator {
     lastValue = TsPrimitiveType.getByType(seriesDataType);
   }
 
-  // Column should be like: | ControlColumn | Value |
+  // Column should be like: | ControlColumn | Time | Value |
   @Override
   public int addInput(Column[] column, IWindow curWindow) {
     switch (seriesDataType) {
@@ -229,8 +229,8 @@ public class LastValueAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateIntLastValue(column[1].getInt(i), column[0].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateIntLastValue(column[2].getInt(i), column[0].getLong(i));
       }
     }
     return curPositionCount;
@@ -252,8 +252,8 @@ public class LastValueAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateLongLastValue(column[1].getLong(i), column[0].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateLongLastValue(column[2].getLong(i), column[0].getLong(i));
       }
     }
     return curPositionCount;
@@ -275,8 +275,8 @@ public class LastValueAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateFloatLastValue(column[1].getFloat(i), column[0].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateFloatLastValue(column[2].getFloat(i), column[0].getLong(i));
       }
     }
     return curPositionCount;
@@ -298,8 +298,8 @@ public class LastValueAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateDoubleLastValue(column[1].getDouble(i), column[0].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateDoubleLastValue(column[2].getDouble(i), column[0].getLong(i));
       }
     }
     return curPositionCount;
@@ -321,8 +321,8 @@ public class LastValueAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateBooleanLastValue(column[1].getBoolean(i), column[0].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateBooleanLastValue(column[2].getBoolean(i), column[0].getLong(i));
       }
     }
     return curPositionCount;
@@ -344,8 +344,8 @@ public class LastValueAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateBinaryLastValue(column[1].getBinary(i), column[0].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateBinaryLastValue(column[2].getBinary(i), column[0].getLong(i));
       }
     }
     return curPositionCount;

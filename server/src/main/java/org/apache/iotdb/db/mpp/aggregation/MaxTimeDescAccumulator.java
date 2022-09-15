@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
 
-  // Column should be like: | ControlColumn | Value |
+  // Column should be like: | ControlColumn | Time | Value |
   // Value is used to judge isNull()
   @Override
   public int addInput(Column[] column, IWindow curWindow) {
@@ -35,7 +35,7 @@ public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
           updateMaxTime(column[0].getLong(i));
           return i;

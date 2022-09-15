@@ -47,15 +47,15 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateIntLastValue(column[1].getInt(i), column[0].getLong(i));
+          updateIntLastValue(column[2].getInt(i), column[0].getLong(i));
           return i;
         } else {
           // do not assign true to initResult
           if (column[0].getLong(i) > maxTime) {
             maxTime = column[0].getLong(i);
-            lastValue.setInt(column[1].getInt(i));
+            lastValue.setInt(column[2].getInt(i));
           }
         }
       }
@@ -72,15 +72,15 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateLongLastValue(column[1].getLong(i), column[0].getLong(i));
+          updateLongLastValue(column[2].getLong(i), column[0].getLong(i));
           return i;
         } else {
           // do not assign true to initResult
           if (column[0].getLong(i) > maxTime) {
             maxTime = column[0].getLong(i);
-            lastValue.setLong(column[1].getLong(i));
+            lastValue.setLong(column[2].getLong(i));
           }
         }
       }
@@ -97,15 +97,15 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateFloatLastValue(column[1].getFloat(i), column[0].getLong(i));
+          updateFloatLastValue(column[2].getFloat(i), column[0].getLong(i));
           return i;
         } else {
           // do not assign true to initResult
           if (column[0].getLong(i) > maxTime) {
             maxTime = column[0].getLong(i);
-            lastValue.setFloat(column[1].getFloat(i));
+            lastValue.setFloat(column[2].getFloat(i));
           }
         }
       }
@@ -122,15 +122,15 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateDoubleLastValue(column[1].getDouble(i), column[0].getLong(i));
+          updateDoubleLastValue(column[2].getDouble(i), column[0].getLong(i));
           return i;
         } else {
           // do not assign true to initResult
           if (column[0].getLong(i) > maxTime) {
             maxTime = column[0].getLong(i);
-            lastValue.setDouble(column[1].getDouble(i));
+            lastValue.setDouble(column[2].getDouble(i));
           }
         }
       }
@@ -147,15 +147,15 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateBooleanLastValue(column[1].getBoolean(i), column[0].getLong(i));
+          updateBooleanLastValue(column[2].getBoolean(i), column[0].getLong(i));
           return i;
         } else {
           // do not assign true to initResult
           if (column[0].getLong(i) > maxTime) {
             maxTime = column[0].getLong(i);
-            lastValue.setBoolean(column[1].getBoolean(i));
+            lastValue.setBoolean(column[2].getBoolean(i));
           }
         }
       }
@@ -172,15 +172,15 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         if (curWindow.isTimeWindow()) {
-          updateBinaryLastValue(column[1].getBinary(i), column[0].getLong(i));
+          updateBinaryLastValue(column[2].getBinary(i), column[0].getLong(i));
           return i;
         } else {
           // do not assign true to initResult
           if (column[0].getLong(i) > maxTime) {
             maxTime = column[0].getLong(i);
-            lastValue.setBinary(column[1].getBinary(i));
+            lastValue.setBinary(column[2].getBinary(i));
           }
         }
       }

@@ -211,8 +211,8 @@ public class ExtremeAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateIntResult(column[1].getInt(i));
+      if (!column[2].isNull(i)) {
+        updateIntResult(column[2].getInt(i));
       }
     }
     return curPositionCount;
@@ -239,8 +239,8 @@ public class ExtremeAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateLongResult(column[1].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateLongResult(column[2].getLong(i));
       }
     }
     return curPositionCount;
@@ -267,8 +267,8 @@ public class ExtremeAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateFloatResult(column[1].getFloat(i));
+      if (!column[2].isNull(i)) {
+        updateFloatResult(column[2].getFloat(i));
       }
     }
     return curPositionCount;
@@ -295,8 +295,8 @@ public class ExtremeAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateDoubleResult(column[1].getDouble(i));
+      if (!column[2].isNull(i)) {
+        updateDoubleResult(column[2].getDouble(i));
       }
     }
     return curPositionCount;

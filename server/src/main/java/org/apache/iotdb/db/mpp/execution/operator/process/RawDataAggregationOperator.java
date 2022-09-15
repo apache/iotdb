@@ -57,6 +57,10 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     this.windowManager = new TimeWindowManager(timeRangeIterator);
   }
 
+  private boolean hasMoreData() {
+    return inputTsBlock != null || child.hasNext();
+  }
+
   @Override
   public boolean hasNext() {
     return windowManager.hasNext(hasMoreData());

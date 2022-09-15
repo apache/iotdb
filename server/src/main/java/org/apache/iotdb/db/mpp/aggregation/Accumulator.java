@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 public interface Accumulator {
 
   /**
-   * Column should be like: | ControlColumn | Value |
+   * Column should be like: | ControlColumn | Time | Value |
    *
    * <p>Return the last read row index of current timeColumn
    */

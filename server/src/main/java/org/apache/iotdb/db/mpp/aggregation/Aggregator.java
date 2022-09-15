@@ -70,11 +70,12 @@ public class Aggregator {
       checkArgument(
           inputLocations[0].getTsBlockIndex() == 0,
           "RawDataAggregateOperator can only process one tsBlock input.");
-      Column[] controlAndValueColumn = new Column[2];
-      controlAndValueColumn[0] = curWindow.getControlColumn(tsBlock);
-      controlAndValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+      Column[] controlTimeAndValueColumn = new Column[3];
+      controlTimeAndValueColumn[0] = curWindow.getControlColumn(tsBlock);
+      controlTimeAndValueColumn[1] = tsBlock.getTimeColumn();
+      controlTimeAndValueColumn[2] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
       lastReadReadIndex =
-          Math.max(lastReadReadIndex, accumulator.addInput(controlAndValueColumn, curWindow));
+          Math.max(lastReadReadIndex, accumulator.addInput(controlTimeAndValueColumn, curWindow));
     }
     return lastReadReadIndex;
   }

@@ -83,10 +83,6 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     return child.isBlocked();
   }
 
-  protected boolean hasMoreData() {
-    return inputTsBlock != null || child.hasNext();
-  }
-
   @Override
   public TsBlock next() {
     // start stopwatch
@@ -96,7 +92,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     // reset operator state
     canCallNext = true;
 
-    while (System.nanoTime() - start < maxRuntime && hasNext() && !resultTsBlockBuilder.isFull()) {
+    while (hasNext() && !resultTsBlockBuilder.isFull()) {
       // calculate aggregation result on current time window
       if (!calculateNextAggregationResult()) {
         break;

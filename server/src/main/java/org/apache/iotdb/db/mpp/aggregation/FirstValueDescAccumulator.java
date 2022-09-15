@@ -43,8 +43,8 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateIntFirstValue(column[1].getInt(i), column[0].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateIntFirstValue(column[2].getInt(i), column[0].getLong(i));
       }
     }
     return curPositionCount;
@@ -58,8 +58,8 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateLongFirstValue(column[1].getLong(i), column[0].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateLongFirstValue(column[2].getLong(i), column[0].getLong(i));
       }
     }
     return curPositionCount;
@@ -73,8 +73,8 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateFloatFirstValue(column[1].getFloat(i), column[0].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateFloatFirstValue(column[2].getFloat(i), column[0].getLong(i));
       }
     }
     return curPositionCount;
@@ -88,8 +88,8 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateDoubleFirstValue(column[1].getDouble(i), column[0].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateDoubleFirstValue(column[2].getDouble(i), column[0].getLong(i));
       }
     }
     return curPositionCount;
@@ -103,8 +103,8 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateBooleanFirstValue(column[1].getBoolean(i), column[0].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateBooleanFirstValue(column[2].getBoolean(i), column[0].getLong(i));
       }
     }
     return curPositionCount;
@@ -118,8 +118,8 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
-        updateBinaryFirstValue(column[1].getBinary(i), column[0].getLong(i));
+      if (!column[2].isNull(i)) {
+        updateBinaryFirstValue(column[2].getBinary(i), column[0].getLong(i));
       }
     }
     return curPositionCount;

@@ -34,7 +34,7 @@ public class MaxTimeAccumulator implements Accumulator {
 
   public MaxTimeAccumulator() {}
 
-  // Column should be like: | ControlColumn | Value |
+  // Column should be like: | ControlColumn | Time | Value |
   // Value is used to judge isNull()
   @Override
   public int addInput(Column[] column, IWindow curWindow) {
@@ -45,7 +45,7 @@ public class MaxTimeAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         updateMaxTime(column[0].getLong(i));
       }
     }

@@ -154,10 +154,10 @@ public class AvgAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         initResult = true;
         countValue++;
-        sumValue += column[1].getInt(i);
+        sumValue += column[2].getInt(i);
       }
     }
     return curPositionCount;
@@ -171,10 +171,10 @@ public class AvgAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         initResult = true;
         countValue++;
-        sumValue += column[1].getLong(i);
+        sumValue += column[2].getLong(i);
       }
     }
     return curPositionCount;
@@ -188,10 +188,10 @@ public class AvgAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         initResult = true;
         countValue++;
-        sumValue += column[1].getFloat(i);
+        sumValue += column[2].getFloat(i);
       }
     }
     return curPositionCount;
@@ -205,10 +205,10 @@ public class AvgAccumulator implements Accumulator {
         return i;
       }
       curWindow.mergeOnePoint();
-      if (!column[1].isNull(i)) {
+      if (!column[2].isNull(i)) {
         initResult = true;
         countValue++;
-        sumValue += column[1].getDouble(i);
+        sumValue += column[2].getDouble(i);
       }
     }
     return curPositionCount;
