@@ -665,9 +665,9 @@ public class ConfigPhysicalPlanSerDeTest {
     TConsensusGroupId schemaRegionGroupId = new TConsensusGroupId(SchemaRegion, 1);
     TConsensusGroupId dataRegionGroupId = new TConsensusGroupId(DataRegion, 0);
     TRegionReplicaSet schemaRegionSet =
-            new TRegionReplicaSet(schemaRegionGroupId, Collections.singletonList(dataNodeLocation0));
+        new TRegionReplicaSet(schemaRegionGroupId, Collections.singletonList(dataNodeLocation0));
     TRegionReplicaSet dataRegionSet =
-            new TRegionReplicaSet(dataRegionGroupId, Collections.singletonList(dataNodeLocation0));
+        new TRegionReplicaSet(dataRegionGroupId, Collections.singletonList(dataNodeLocation0));
     Map<TConsensusGroupId, TRegionReplicaSet> failedRegions = new HashMap<>();
     failedRegions.put(dataRegionGroupId, dataRegionSet);
     failedRegions.put(schemaRegionGroupId, schemaRegionSet);
@@ -675,12 +675,12 @@ public class ConfigPhysicalPlanSerDeTest {
     createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
     createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
     CreateRegionGroupsProcedure procedure0 =
-            new CreateRegionGroupsProcedure(createRegionGroupsPlan, failedRegions);
+        new CreateRegionGroupsProcedure(createRegionGroupsPlan, failedRegions);
 
     updateProcedurePlan0.setProcedure(procedure0);
     updateProcedurePlan1 =
-            (UpdateProcedurePlan)
-                    ConfigPhysicalPlan.Factory.create(updateProcedurePlan0.serializeToByteBuffer());
+        (UpdateProcedurePlan)
+            ConfigPhysicalPlan.Factory.create(updateProcedurePlan0.serializeToByteBuffer());
     assertEquals(updateProcedurePlan0, updateProcedurePlan1);
   }
 

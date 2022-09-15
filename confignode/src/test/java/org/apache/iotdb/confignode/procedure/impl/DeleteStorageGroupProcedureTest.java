@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
 import org.junit.Test;
 
 import java.io.DataOutputStream;
@@ -29,30 +30,31 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class DeleteStorageGroupProcedureTest {
 
-    @Test
-    public void serializeDeserializeTest() {
-        String sg0 = "root.sg0";
-        TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema(sg0);
+  @Test
+  public void serializeDeserializeTest() {
+    String sg0 = "root.sg0";
+    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema(sg0);
 
-        DeleteStorageGroupProcedure p1 =
-                new DeleteStorageGroupProcedure(storageGroupSchema);
+    DeleteStorageGroupProcedure p1 = new DeleteStorageGroupProcedure(storageGroupSchema);
 
-        PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-        try {
-            p1.serialize(outputStream);
-            ByteBuffer buffer =
-                    ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    try {
+      p1.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
 
-            DeleteStorageGroupProcedure p2 = (DeleteStorageGroupProcedure) ProcedureFactory.getInstance().create(buffer);
-            assertEquals(p1, p2);
+      DeleteStorageGroupProcedure p2 =
+          (DeleteStorageGroupProcedure) ProcedureFactory.getInstance().create(buffer);
+      assertEquals(p1, p2);
 
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    } catch (IOException e) {
+      fail();
     }
+  }
 }
