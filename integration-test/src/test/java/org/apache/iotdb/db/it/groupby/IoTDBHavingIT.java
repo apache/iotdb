@@ -282,14 +282,14 @@ public class IoTDBHavingIT {
         expectedHeader,
         retArray);
 
-    /*expectedHeader = new String[] {TIMESTAMP_STR, lastValue("root.test.*.s1")};
+    expectedHeader = new String[] {TIMESTAMP_STR, lastValue("root.test.*.s1")};
     retArray = new String[] {"1,true,", "5,true,", "7,true,", "9,true,"};
     resultSetEqualTest(
         "select last_value(s1) from root.** "
             + "GROUP BY ([1,11),2ms), level=1 "
             + "Having LAST_VALUE(s2) > 0 ",
         expectedHeader,
-        retArray);*/
+        retArray);
 
     expectedHeader = new String[] {TIMESTAMP_STR, "Device", lastValue("s1")};
     retArray =

@@ -887,7 +887,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (queryStatement.isGroupByLevel()) {
       Map<Expression, Expression> rawPathToGroupedPathMapInHaving =
           analyzeGroupByLevelInHaving(
-              queryStatement, aggregationExpressionsInHaving, groupByLevelExpressions);
+              analysis, aggregationExpressionsInHaving, groupByLevelExpressions);
       List<Expression> convertedPredicates = new ArrayList<>();
       for (Expression expression : transformExpressionsInHaving) {
         Expression convertedPredicate =
@@ -905,15 +905,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private Map<Expression, Expression> analyzeGroupByLevelInHaving(
-      QueryStatement queryStatement,
+      Analysis analysis,
       List<Expression> inputExpressions,
       Map<Expression, Set<Expression>> groupByLevelExpressions) {
+    QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
     GroupByLevelController groupByLevelController =
         new GroupByLevelController(queryStatement.getGroupByLevelComponent().getLevels());
     for (Expression inputExpression : inputExpressions) {
       groupByLevelController.control(false, inputExpression, null);
     }
     Map<Expression, Set<Expression>> groupedPathMap = groupByLevelController.getGroupedPathMap();
+    groupedPathMap.keySet().forEach(expression -> analyzeExpression(analysis, expression));
     groupByLevelExpressions.putAll(groupedPathMap);
     return groupByLevelController.getRawPathToGroupedPathMap();
   }
