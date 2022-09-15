@@ -136,7 +136,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public Map<String, MeasurementSchema> getAllMeasurementSchemas() throws IOException {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file
-    for (TsFileResource resource : tsFileResources) {
+    for (TsFileResource resource : deviceIteratorMap.keySet()) {
       TsFileSequenceReader reader = readerMap.get(resource);
       List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
       reader.getDeviceTimeseriesMetadata(
