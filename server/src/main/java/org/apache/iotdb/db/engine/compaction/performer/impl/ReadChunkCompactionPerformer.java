@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.writer.MemoryControlTsFileIOWriter;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,8 +71,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
             * 5
             / 100L;
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles);
-        MemoryControlTsFileIOWriter writer =
-            new MemoryControlTsFileIOWriter(targetResource.getTsFile(), sizeForFileWriter)) {
+        TsFileIOWriter writer =
+            new TsFileIOWriter(targetResource.getTsFile(), true, sizeForFileWriter)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
@@ -114,7 +114,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private void compactAlignedSeries(
       String device,
       TsFileResource targetResource,
-      MemoryControlTsFileIOWriter writer,
+      TsFileIOWriter writer,
       MultiTsFileDeviceIterator deviceIterator)
       throws IOException, InterruptedException {
     checkThreadInterrupted();
@@ -137,7 +137,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private void compactNotAlignedSeries(
       String device,
       TsFileResource targetResource,
-      MemoryControlTsFileIOWriter writer,
+      TsFileIOWriter writer,
       MultiTsFileDeviceIterator deviceIterator)
       throws IOException, MetadataException, InterruptedException {
     MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =

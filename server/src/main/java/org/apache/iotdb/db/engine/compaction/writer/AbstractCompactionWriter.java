@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.MemoryControlTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -185,7 +184,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   public void checkAndMayFlushChunkMetadata() throws IOException {
     List<TsFileIOWriter> writers = this.getFileIOWriter();
     for (TsFileIOWriter writer : writers) {
-      ((MemoryControlTsFileIOWriter) writer).checkMetadataSizeAndMayFlush();
+      writer.checkMetadataSizeAndMayFlush();
     }
   }
 }

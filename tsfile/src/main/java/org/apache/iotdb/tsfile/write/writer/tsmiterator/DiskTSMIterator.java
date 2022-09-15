@@ -1,0 +1,123 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.tsfile.write.writer.tsmiterator;
+
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+public class DiskTSMIterator extends TSMIterator {
+
+  private static final Logger LOG = LoggerFactory.getLogger(DiskTSMIterator.class);
+
+  LinkedList<Long> endPosForEachDevice;
+  File cmtFile;
+  LocalTsFileInput input;
+  long fileLength = 0;
+  long currentPos = 0;
+  long nextEndPosForDevice = 0;
+  String currentDevice;
+  boolean remainsInFile = true;
+
+  protected DiskTSMIterator(
+      File cmtFile,
+      List<ChunkGroupMetadata> chunkGroupMetadataList,
+      LinkedList<Long> endPosForEachDevice)
+      throws IOException {
+    super(chunkGroupMetadataList);
+    this.cmtFile = cmtFile;
+    this.endPosForEachDevice = endPosForEachDevice;
+    this.input = new LocalTsFileInput(cmtFile.toPath());
+    this.fileLength = cmtFile.length();
+  }
+
+  @Override
+  public boolean hasNext() {
+    return remainsInFile || iterator.hasNext();
+  }
+
+  @Override
+  public TimeseriesMetadata next() {
+    try {
+      if (remainsInFile) {
+        // deserialize from file
+        return getTimeSerisMetadataFromFile();
+      } else {
+        // get from memory iterator
+        return super.next();
+      }
+    } catch (IOException e) {
+      LOG.error("Meets IOException when reading timeseries metadata from disk", e);
+      return null;
+    }
+  }
+
+  private TimeseriesMetadata getTimeSerisMetadataFromFile() throws IOException {
+    if (currentPos == nextEndPosForDevice) {
+      // deserialize the current device name
+      currentDevice = ReadWriteIOUtils.readVarIntString(input.wrapAsInputStream());
+      nextEndPosForDevice =
+          endPosForEachDevice.size() > 0 ? endPosForEachDevice.removeFirst() : fileLength;
+    }
+    // deserialize public info for measurement
+    String measurementUid = ReadWriteIOUtils.readVarIntString(input.wrapAsInputStream());
+    byte dataTypeInByte = ReadWriteIOUtils.readByte(input.wrapAsInputStream());
+    TSDataType dataType = TSDataType.getTsDataType(dataTypeInByte);
+    int chunkBufferSize = ReadWriteIOUtils.readInt(input.wrapAsInputStream());
+    ByteBuffer chunkBuffer = ByteBuffer.allocate(chunkBufferSize);
+    int readSize = ReadWriteIOUtils.readAsPossible(input, chunkBuffer);
+    if (readSize < chunkBufferSize) {
+      throw new IOException(
+          String.format(
+              "Expected to read %s bytes, but actually read %s bytes", chunkBufferSize, readSize));
+    }
+
+    // deserialize chunk metadata from chunk buffer
+    List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+    while (chunkBuffer.hasRemaining()) {
+      chunkMetadataList.add(ChunkMetadata.deserializeFrom(chunkBuffer, dataType));
+    }
+    updateCurrentPos();
+    return constructOneTimeseriesMetadata(
+        new Path(currentDevice, measurementUid), chunkMetadataList);
+  }
+
+  private void updateCurrentPos() throws IOException {
+    currentPos = input.position();
+    if (currentPos >= fileLength) {
+      remainsInFile = false;
+    }
+  }
+}

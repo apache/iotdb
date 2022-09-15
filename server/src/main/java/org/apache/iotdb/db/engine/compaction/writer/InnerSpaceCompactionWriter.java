@@ -24,7 +24,6 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.writer.MemoryControlTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -32,7 +31,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
-  private MemoryControlTsFileIOWriter fileWriter;
+  private TsFileIOWriter fileWriter;
 
   private boolean isEmptyFile;
   private TsFileResource resource;
@@ -43,8 +42,7 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
             / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
             * 5
             / 100L;
-    this.fileWriter =
-        new MemoryControlTsFileIOWriter(targetFileResource.getTsFile(), sizeForFileWriter);
+    this.fileWriter = new TsFileIOWriter(targetFileResource.getTsFile(), true, sizeForFileWriter);
     isEmptyFile = true;
     resource = targetFileResource;
   }

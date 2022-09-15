@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.writer.MemoryControlTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -73,8 +72,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
             / targetResources.size();
     for (int i = 0; i < targetResources.size(); i++) {
       this.fileWriterList.add(
-          new MemoryControlTsFileIOWriter(
-              targetResources.get(i).getTsFile(), memorySizeForEachWriter));
+          new TsFileIOWriter(targetResources.get(i).getTsFile(), true, memorySizeForEachWriter));
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;

@@ -127,8 +127,7 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
       writer.tempOutput.flush();
 
       ChunkMetadataReadIterator window =
-          writer
-          .new ChunkMetadataReadIterator(
+          new ChunkMetadataReadIterator(
               0,
               writer.chunkMetadataTempFile.length(),
               new LocalTsFileInput(writer.chunkMetadataTempFile.toPath()));
@@ -168,8 +167,7 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
       writer.tempOutput.flush();
 
       ChunkMetadataReadIterator window =
-          writer
-          .new ChunkMetadataReadIterator(
+          new ChunkMetadataReadIterator(
               0,
               writer.chunkMetadataTempFile.length(),
               new LocalTsFileInput(writer.chunkMetadataTempFile.toPath()));
@@ -248,8 +246,7 @@ public class MemoryControlTsFileIOWriterTest extends MemoryControlTsFileIOWriter
       writer.tempOutput.flush();
 
       ChunkMetadataReadIterator window =
-          writer
-          .new ChunkMetadataReadIterator(
+          new ChunkMetadataReadIterator(
               0,
               writer.chunkMetadataTempFile.length(),
               new LocalTsFileInput(writer.chunkMetadataTempFile.toPath()));
