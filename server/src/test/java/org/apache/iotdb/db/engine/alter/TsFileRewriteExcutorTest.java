@@ -248,83 +248,83 @@ public class TsFileRewriteExcutorTest {
 //    }
 //  }
 
-  @Test
-  public void tsFileRewriteExcutorAlignedTest() {
-
-    String curMeasurementId = sensorPrefix + "1";
-    TSEncoding curEncoding = TSEncoding.TS_2DIFF;
-    CompressionType curCompressionType = CompressionType.SNAPPY;
-    File targetTsFile = null;
-    TsFileRewriteExcutor excutor = null;
-    try {
-      File f = FSFactoryProducer.getFSFactory().getFile(path);
-      if (!f.exists()) {
-        throw new RuntimeException("tsfile not exists " + f.getAbsolutePath());
-      }
-      TsFileResource tsFileResource = new TsFileResource(f);
-      tsFileResource.close();
-      TsFileResource targetTsFileResource =
-          TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
-      PartialPath fullPath = new PartialPath(alignedDevice, curMeasurementId);
-      excutor =
-          new TsFileRewriteExcutor(
-              tsFileResource,
-              targetTsFileResource,
-              true);
-      excutor.execute();
-      targetTsFile = targetTsFileResource.getTsFile();
-    } catch (Exception e) {
-      Assert.fail(e.getMessage());
-    }
-    if (targetTsFile == null || !targetTsFile.exists()) {
-      throw new RuntimeException("target not exists " + targetTsFile.getAbsolutePath());
-    }
-    targetPath = targetTsFile.getAbsolutePath();
-    try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(targetTsFile.getAbsolutePath(), true)) {
-      TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
-
-      while (deviceIterator.hasNext()) {
-        Pair<String, Boolean> deviceInfo = deviceIterator.next();
-        String device = deviceInfo.left;
-        boolean aligned = deviceInfo.right;
-        if (aligned && this.alignedDevice.equals(device)) {
-          List<AlignedChunkMetadata> alignedChunkMetadatas = reader.getAlignedChunkMetadata(device);
-          if (excutor == null) {
-            throw new RuntimeException("excutor is null");
-          }
-          List<IMeasurementSchema> schemaList =
-              excutor.collectSchemaList(alignedChunkMetadatas, reader, curMeasurementId, true).left;
-          TsFileAlignedSeriesReaderIterator readerIterator =
-              new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaList);
-          while (readerIterator.hasNext()) {
-            Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
-            AlignedChunkReader chunkReader = chunkReaderAndChunkSize.left;
-            while (chunkReader.hasNextSatisfiedPage()) {
-              IBatchDataIterator batchDataIterator =
-                  chunkReader.nextPageData().getBatchDataIterator();
-              while (batchDataIterator.hasNext()) {
-                batchDataIterator.next();
-              }
-            }
-          }
-        }
-      }
-    } catch (IOException e) {
-      Assert.fail(e.getMessage());
-    } finally {
-      if (targetPath != null) {
-        try {
-          File file = new File(targetPath);
-          if (file.exists()) {
-            FileUtils.forceDelete(file);
-          }
-        } catch (IOException e) {
-          Assert.fail(e.getMessage());
-        }
-      }
-    }
-  }
+//  @Test
+//  public void tsFileRewriteExcutorAlignedTest() {
+//
+//    String curMeasurementId = sensorPrefix + "1";
+//    TSEncoding curEncoding = TSEncoding.TS_2DIFF;
+//    CompressionType curCompressionType = CompressionType.SNAPPY;
+//    File targetTsFile = null;
+//    TsFileRewriteExcutor excutor = null;
+//    try {
+//      File f = FSFactoryProducer.getFSFactory().getFile(path);
+//      if (!f.exists()) {
+//        throw new RuntimeException("tsfile not exists " + f.getAbsolutePath());
+//      }
+//      TsFileResource tsFileResource = new TsFileResource(f);
+//      tsFileResource.close();
+//      TsFileResource targetTsFileResource =
+//          TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
+//      PartialPath fullPath = new PartialPath(alignedDevice, curMeasurementId);
+//      excutor =
+//          new TsFileRewriteExcutor(
+//              tsFileResource,
+//              targetTsFileResource,
+//              true);
+//      excutor.execute();
+//      targetTsFile = targetTsFileResource.getTsFile();
+//    } catch (Exception e) {
+//      Assert.fail(e.getMessage());
+//    }
+//    if (targetTsFile == null || !targetTsFile.exists()) {
+//      throw new RuntimeException("target not exists " + targetTsFile.getAbsolutePath());
+//    }
+//    targetPath = targetTsFile.getAbsolutePath();
+//    try (TsFileSequenceReader reader =
+//        new TsFileSequenceReader(targetTsFile.getAbsolutePath(), true)) {
+//      TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+//
+//      while (deviceIterator.hasNext()) {
+//        Pair<String, Boolean> deviceInfo = deviceIterator.next();
+//        String device = deviceInfo.left;
+//        boolean aligned = deviceInfo.right;
+//        if (aligned && this.alignedDevice.equals(device)) {
+//          List<AlignedChunkMetadata> alignedChunkMetadatas = reader.getAlignedChunkMetadata(device);
+//          if (excutor == null) {
+//            throw new RuntimeException("excutor is null");
+//          }
+//          List<IMeasurementSchema> schemaList =
+//              excutor.collectSchemaList(alignedChunkMetadatas, reader, curMeasurementId, true).left;
+//          TsFileAlignedSeriesReaderIterator readerIterator =
+//              new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaList);
+//          while (readerIterator.hasNext()) {
+//            Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
+//            AlignedChunkReader chunkReader = chunkReaderAndChunkSize.left;
+//            while (chunkReader.hasNextSatisfiedPage()) {
+//              IBatchDataIterator batchDataIterator =
+//                  chunkReader.nextPageData().getBatchDataIterator();
+//              while (batchDataIterator.hasNext()) {
+//                batchDataIterator.next();
+//              }
+//            }
+//          }
+//        }
+//      }
+//    } catch (IOException e) {
+//      Assert.fail(e.getMessage());
+//    } finally {
+//      if (targetPath != null) {
+//        try {
+//          File file = new File(targetPath);
+//          if (file.exists()) {
+//            FileUtils.forceDelete(file);
+//          }
+//        } catch (IOException e) {
+//          Assert.fail(e.getMessage());
+//        }
+//      }
+//    }
+//  }
 
   @After
   public void tearDown() {

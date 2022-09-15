@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.engine.alter;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogger;
 import org.apache.iotdb.db.engine.cache.AlteringRecordsCache;
@@ -12,6 +13,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
@@ -42,9 +44,9 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
 
   private final List<TsFileResource> readyResourceList = new ArrayList<>(32);
 
-  private AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
+  private final AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
 
-  private File logFile;
+  private final File logFile;
 
   private final String logKey;
 
@@ -62,6 +64,7 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     super(storageGroupName, dataRegionId, 0L, tsFileManager, currentTaskNum, serialId);
     this.logKey = storageGroupName + dataRegionId;
     this.logFile = logFile;
+    this.performer = new TsFileRewriteExcutor();
     if (timePartitions == null || timePartitions.size() <= 0) {
       LOGGER.warn("[rewriteTimeseries] {} timePartitions is null or empty!!!!!!", logKey);
       return;
@@ -164,15 +167,15 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
   @Override
   protected void doCompaction() {
 
-    LOGGER.info("[alter timeseries] writeLock");
     // rewrite target tsfiles
-    boolean done = false;
     try (AlteringLogger alteringLogger = new AlteringLogger(logFile)) {
-      LOGGER.info("[alter timeseries] {} rewriteDataInTsFiles seq({})", logKey, timePartition);
-      if (readyResourceList == null || readyResourceList.isEmpty()) {
+      LOGGER.info("[alter timeseries] {} rewriteDataInTsFiles", logKey);
+      if (readyResourceList.isEmpty()) {
         return;
       }
-      for (int i = 0; i < readyResourceList.size(); i++) {
+      int size = readyResourceList.size();
+      LOGGER.info("[alter timeseries] {} rewrite begin, ready resource size:{}", logKey, size);
+      for (int i = 0; i < size; i++) {
         TsFileResource tsFileResource = readyResourceList.get(i);
         if (tsFileResource == null || !tsFileResource.isClosed()) {
           return;
@@ -181,15 +184,15 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
         // log file done
         alteringLogger.doneFile(tsFileResource);
         LOGGER.info(
-            "[alter timeseries] {} rewriteDataInTsFile {} end",
+            "[alter timeseries] {} rewriteDataInTsFile {} end, fileNum:{}/{}, fileSize:{}",
             logKey,
-            tsFileResource.getTsFilePath());
+            tsFileResource.getTsFilePath(), i+1, size, tsFileResource.getTsFileSize());
       }
     } catch (Exception e) {
       LOGGER.error("[alter timeseries] " + logKey + " error", e);
     } finally {
       // The process is complete and the logFile is deleted
-      if (done && logFile.exists()) {
+      if (logFile.exists()) {
         try {
           FileUtils.delete(logFile);
         } catch (IOException e) {
@@ -199,29 +202,32 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     }
   }
 
-  private void rewriteDataInTsFile(TsFileResource tsFileResource) throws IOException {
+  private void rewriteDataInTsFile(TsFileResource tsFileResource) throws IOException, StorageEngineException, InterruptedException, MetadataException {
 
-    LOGGER.info(
-        "[alter timeseries] {} rewriteDataInTsFile:{}, fileSize:{} start",
-        logKey,
-        tsFileResource.getTsFilePath(),
-        tsFileResource.getTsFileSize());
+    if(LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+              "[alter timeseries] {} rewriteDataInTsFile:{}, fileSize:{} start",
+              logKey,
+              tsFileResource.getTsFilePath(),
+              tsFileResource.getTsFileSize());
+    }
     // Generate the target tsFileResource
     TsFileResource targetTsFileResource =
         TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
     // Data is read from the.tsfile file, re-encoded, compressed, and written to the .alter file
-    TsFileRewriteExcutor tsFileRewriteExcutor =
-          new TsFileRewriteExcutor(
-                  tsFileResource,
-                  targetTsFileResource,
-                  true);
-    boolean hasRewrite = tsFileRewriteExcutor.execute();
+    this.performer.setSourceFiles(Collections.singletonList(tsFileResource));
+    this.performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
+    this.performer.setSummary(this.summary);
+    this.performer.perform();
+    boolean hasRewrite = ((TsFileRewriteExcutor)this.performer).hasRewrite();
     if(!hasRewrite) {
       CompactionUtils.deleteTsFileWithoutMods(targetTsFileResource);
-      LOGGER.info(
-              "[alter timeseries] {} tsFile:{} does not need to be rewrite",
-              logKey,
-              tsFileResource.getTsFileSize());
+      if(LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+                "[alter timeseries] {} tsFile:{} does not need to be rewrite",
+                logKey,
+                tsFileResource.getTsFileSize());
+      }
 
       return;
     }
@@ -280,13 +286,11 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     }
     RewriteTimeseriesTask task = (RewriteTimeseriesTask) otherTask;
     return task.getStorageGroupName().equals(this.getStorageGroupName())
-        && this.getDataRegionId().equals(this.getDataRegionId());
+        && task.getDataRegionId().equals(this.getDataRegionId());
   }
 
   /**
    * copy from InnerSpaceCompactionTask
-   *
-   * @return
    */
   @Override
   public boolean checkValidAndSetMerging() {
@@ -294,12 +298,11 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
       return false;
     }
     try {
-      for (int i = 0; i < readyResourceList.size(); ++i) {
-        TsFileResource resource = readyResourceList.get(i);
+      for (TsFileResource resource : readyResourceList) {
         if (resource.isCompacting()
-            || !resource.isClosed()
-            || !resource.getTsFile().exists()
-            || resource.isDeleted()) {
+                || !resource.isClosed()
+                || !resource.getTsFile().exists()
+                || resource.isDeleted()) {
           // this source file cannot be compacted
           // release the lock of locked files, and return
           resetMergingStatus();
@@ -322,11 +325,10 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
    * selected files to false copy from InnerSpaceCompactionTask
    */
   protected void resetMergingStatus() {
-    for (int i = 0; i < readyResourceList.size(); ++i) {
-      TsFileResource resource = readyResourceList.get(i);
+    for (TsFileResource resource : readyResourceList) {
       try {
         if (!resource.isDeleted()) {
-          readyResourceList.get(i).setStatus(TsFileResourceStatus.CLOSED);
+          resource.setStatus(TsFileResourceStatus.CLOSED);
         }
       } catch (Throwable e) {
         LOGGER.error("Exception occurs when resetting resource status", e);
