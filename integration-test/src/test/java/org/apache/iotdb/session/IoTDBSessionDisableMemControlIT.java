@@ -38,12 +38,15 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -100,7 +103,7 @@ public class IoTDBSessionDisableMemControlIT {
           try {
             session.insertTablet(tablet, true);
           } catch (StatementExecutionException e) {
-            assertEquals(313, e.getStatusCode());
+            assertTrue(e.getStatusCode() == 303 || e.getStatusCode() == 313);
           }
           tablet.reset();
         }
@@ -111,7 +114,7 @@ public class IoTDBSessionDisableMemControlIT {
         try {
           session.insertTablet(tablet);
         } catch (StatementExecutionException e) {
-          assertEquals(313, e.getStatusCode());
+          assertTrue(e.getStatusCode() == 303 || e.getStatusCode() == 313);
         }
         tablet.reset();
       }
@@ -175,7 +178,7 @@ public class IoTDBSessionDisableMemControlIT {
           try {
             session.insertAlignedTablet(tablet, true);
           } catch (StatementExecutionException e) {
-            assertEquals(313, e.getStatusCode());
+            assertTrue(e.getStatusCode() == 303 || e.getStatusCode() == 313);
           }
           tablet.reset();
         }
@@ -186,7 +189,7 @@ public class IoTDBSessionDisableMemControlIT {
         try {
           session.insertAlignedTablet(tablet);
         } catch (StatementExecutionException e) {
-          assertEquals(313, e.getStatusCode());
+          assertTrue(e.getStatusCode() == 303 || e.getStatusCode() == 313);
         }
         tablet.reset();
       }
