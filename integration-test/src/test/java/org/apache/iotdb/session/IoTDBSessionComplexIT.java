@@ -37,8 +37,8 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -53,10 +53,10 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSessionComplexIT {
   @Before
   public void setUp() throws Exception {
@@ -70,6 +70,7 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertByStrTest() {
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -152,6 +153,7 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertByObjectTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
 
@@ -181,6 +183,7 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void alignByDeviceTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
 
@@ -261,6 +264,7 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testBatchInsertSeqAndUnseq()
       throws SQLException, IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -297,7 +301,7 @@ public class IoTDBSessionComplexIT {
       final ResultSetMetaData metaData = resultSet.getMetaData();
       final int colCount = metaData.getColumnCount();
       for (int i = 0; i < colCount; i++) {
-        Assert.assertTrue(standards.contains(metaData.getColumnLabel(i + 1)));
+        assertTrue(standards.contains(metaData.getColumnLabel(i + 1)));
       }
 
       int count = 0;
@@ -310,9 +314,9 @@ public class IoTDBSessionComplexIT {
     }
   }
 
+  @Ignore
   @Test
-  public void insertTabletWithTriggersTest()
-      throws StatementExecutionException, IoTDBConnectionException, TriggerManagementException {
+  public void insertTabletWithTriggersTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.setStorageGroup("root.sg1");
       createTimeseries(session);
@@ -364,6 +368,7 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  @Category({ClusterIT.class})
   public void sessionClusterTest() {
     ArrayList<String> nodeList = new ArrayList<>();
     List<DataNodeWrapper> dataNodeWrappersList = EnvFactory.getEnv().getDataNodeWrapperList();
@@ -385,6 +390,7 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  @Category({ClusterIT.class})
   public void errorSessionClusterTest() {
     ArrayList<String> nodeList = new ArrayList<>();
     List<DataNodeWrapper> dataNodeWrappersList = EnvFactory.getEnv().getDataNodeWrapperList();
@@ -393,10 +399,9 @@ public class IoTDBSessionComplexIT {
     }
     // test Format error
     nodeList.add("127.0.0.16669");
-    try {
-      EnvFactory.getEnv().getSessionConnection(nodeList);
+    try (ISession ignored = EnvFactory.getEnv().getSessionConnection(nodeList)) {
     } catch (Exception e) {
-      Assert.assertEquals("NodeUrl Incorrect format", e.getMessage());
+      assertEquals("NodeUrl Incorrect format", e.getMessage());
     }
   }
 }
