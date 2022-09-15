@@ -183,7 +183,7 @@ public class DataNodeRegionManager {
       LOGGER.error(
           "Something wrong happened while calling consensus layer's write API.",
           writeResponse.getException());
-      return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
     return status;
   }
