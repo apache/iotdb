@@ -691,8 +691,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus addConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    consensusManager.addConsensusGroup(configNodeLocations);
+  public TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
+    consensusManager.createPeerForConsensusGroup(configNodeLocations);
     return StatusUtils.OK;
   }
 
@@ -799,7 +799,7 @@ public class ConfigManager implements IManager {
                 if (!allLeadership.isEmpty()) {
                   String regionType =
                       regionInfo.getDataNodeId()
-                              == allLeadership.get(regionInfo.getConsensusGroupId())
+                              == allLeadership.getOrDefault(regionInfo.getConsensusGroupId(), -1)
                           ? RegionRoleType.Leader.toString()
                           : RegionRoleType.Follower.toString();
                   regionInfo.setRoleType(regionType);
