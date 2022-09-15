@@ -25,8 +25,8 @@ public class DataTypeMismatchException extends MetadataException {
   public DataTypeMismatchException(
       String deviceName,
       String measurementName,
-      TSDataType typeInSchema,
       TSDataType insertType,
+      TSDataType typeInSchema,
       long time,
       Object value) {
     super(

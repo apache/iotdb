@@ -86,8 +86,8 @@ public class SchemaRegionUtils {
       throw new DataTypeMismatchException(
           device,
           measurement,
-          dataTypeInSchema,
           insertDataType,
+          dataTypeInSchema,
           plan.getMinTime(),
           plan.getFirstValueOfIndex(loc));
     }

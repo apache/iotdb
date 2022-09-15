@@ -225,8 +225,8 @@ public class TsFilePlanRedoer {
             new DataTypeMismatchException(
                 tPlan.getDevicePath().getFullPath(),
                 mNodes[i].getName(),
-                mNodes[i].getSchema().getType(),
                 tPlan.getDataTypes()[i],
+                mNodes[i].getSchema().getType(),
                 tPlan.getMinTime(),
                 tPlan.getFirstValueOfIndex(i)));
       }
