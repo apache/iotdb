@@ -16,27 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.utils;
 
-package org.apache.iotdb.db.mpp.plan.analyze;
+import java.io.Closeable;
 
-import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import static java.util.Objects.requireNonNull;
 
-/** Analyze the statement and generate Analysis. */
-public class Analyzer {
-  private final MPPQueryContext context;
+public class SetThreadName implements Closeable {
+  private final String originalThreadName;
 
-  private final IPartitionFetcher partitionFetcher;
-  private final ISchemaFetcher schemaFetcher;
-
-  public Analyzer(
-      MPPQueryContext context, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
-    this.context = context;
-    this.partitionFetcher = partitionFetcher;
-    this.schemaFetcher = schemaFetcher;
+  public SetThreadName(String suffix) {
+    requireNonNull(suffix, "suffix is null");
+    originalThreadName = Thread.currentThread().getName();
+    int index = originalThreadName.indexOf("$");
+    if (index < 0) {
+      Thread.currentThread().setName(String.format("%s$%s", originalThreadName, suffix));
+    } else {
+      Thread.currentThread()
+          .setName(String.format("%s$%s", originalThreadName.substring(0, index), suffix));
+    }
   }
 
-  public Analysis analyze(Statement statement) {
-    return new AnalyzeVisitor(partitionFetcher, schemaFetcher, context).process(statement, context);
+  @Override
+  public void close() {
+    Thread.currentThread().setName(originalThreadName);
   }
 }
