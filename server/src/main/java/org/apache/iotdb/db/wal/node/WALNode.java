@@ -295,7 +295,6 @@ public class WALNode implements IWALNode {
       // judge DEFAULT_SAFELY_DELETED_SEARCH_INDEX for standalone, Long.MIN_VALUE for multi-leader
       int endFileIndex =
           safelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
-                  || safelyDeletedSearchIndex == Long.MIN_VALUE
               ? filesToDelete.length
               : WALFileUtils.binarySearchFileBySearchIndex(
                   filesToDelete, safelyDeletedSearchIndex + 1);
