@@ -68,7 +68,7 @@ public class RegionGroupCache {
     for (Map.Entry<Integer, RegionCache> cacheEntry : regionCacheMap.entrySet()) {
       cacheEntry.getValue().updateStatistics();
       Pair<Long, Boolean> isLeader = cacheEntry.getValue().isLeader();
-      if (isLeader.getLeft() > updateVersion) {
+      if (isLeader.getLeft() > updateVersion && isLeader.getRight()) {
         updateVersion = isLeader.getLeft();
         leaderDataNodeId = cacheEntry.getKey();
       }
