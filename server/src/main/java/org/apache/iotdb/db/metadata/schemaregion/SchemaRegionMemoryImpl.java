@@ -1787,15 +1787,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       List<TSEncoding> encodings,
       List<CompressionType> compressors)
       throws MetadataException {
-    int measurementsSize = measurements.size();
-    for (int i = 0; i < measurementsSize; i++) {
-      if (encodings.get(i) == null) {
-        encodings.set(i, getDefaultEncoding(dataTypes.get(i)));
-      }
-      if (compressors.get(i) == null) {
-        compressors.set(i, TSFileDescriptor.getInstance().getConfig().getCompressor());
-      }
-    }
     createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
   }
 
@@ -1830,13 +1821,17 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         if (measurementMNode == null) {
           if (config.isAutoCreateSchemaEnabled()) {
             if (aligned) {
+              TSDataType dataType = getDataType.apply(i);
               internalAlignedCreateTimeseries(
                   devicePath,
                   Collections.singletonList(measurements[i]),
-                  Collections.singletonList(getDataType.apply(i)),
-                  Collections.singletonList(encodings[i]),
-                  Collections.singletonList(compressionTypes[i]));
-
+                  Collections.singletonList(dataType),
+                  Collections.singletonList(
+                      encodings[i] == null ? getDefaultEncoding(dataType) : encodings[i]),
+                  Collections.singletonList(
+                      compressionTypes[i] == null
+                          ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                          : compressionTypes[i]));
             } else {
               internalCreateTimeseries(
                   devicePath.concatNode(measurements[i]),
