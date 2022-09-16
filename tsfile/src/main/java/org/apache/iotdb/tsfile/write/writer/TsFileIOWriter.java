@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.writer.tsmiterator.TSMIterator;
@@ -354,7 +355,9 @@ public class TsFileIOWriter implements AutoCloseable {
     while (tsmIterator.hasNext()) {
       // read in all chunk metadata of one series
       // construct the timeseries metadata for this series
-      TimeseriesMetadata timeseriesMetadata = tsmIterator.next();
+      Pair<String, TimeseriesMetadata> timeseriesMetadataPair = tsmIterator.next();
+      TimeseriesMetadata timeseriesMetadata = timeseriesMetadataPair.right;
+      currentSeries = timeseriesMetadataPair.left;
 
       indexCount++;
       // build bloom filter
@@ -408,12 +411,6 @@ public class TsFileIOWriter implements AutoCloseable {
         prevDevice,
         generateRootNode(
             measurementMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
-
-    if (indexCount != pathCount) {
-      throw new IOException(
-          String.format(
-              "Expected path count is %d, index path count is %d", pathCount, indexCount));
-    }
 
     MetadataIndexNode metadataIndex = checkAndBuildLevelIndex(deviceMetadataIndexMap, out);
 
@@ -673,7 +670,7 @@ public class TsFileIOWriter implements AutoCloseable {
         pathCount++;
       }
       List<IChunkMetadata> iChunkMetadataList = entry.getValue();
-      writeChunkMetadata(iChunkMetadataList, seriesPath, tempOutput);
+      writeChunkMetadataToTempFile(iChunkMetadataList, seriesPath, tempOutput);
       lastSerializePath = seriesPath;
       logger.debug("Flushing {}", seriesPath);
     }
@@ -684,7 +681,7 @@ public class TsFileIOWriter implements AutoCloseable {
     }
   }
 
-  private void writeChunkMetadata(
+  private void writeChunkMetadataToTempFile(
       List<IChunkMetadata> iChunkMetadataList, Path seriesPath, LocalTsFileOutput output)
       throws IOException {
     // [DeviceId] measurementId datatype size chunkMetadataBuffer
@@ -697,7 +694,7 @@ public class TsFileIOWriter implements AutoCloseable {
     }
     if (!seriesPath.equals(lastSerializePath) && iChunkMetadataList.size() > 0) {
       // serialize the public info of this measurement
-      ReadWriteIOUtils.write(seriesPath.getMeasurement(), tempOutput.wrapAsStream());
+      ReadWriteIOUtils.writeVar(seriesPath.getMeasurement(), tempOutput.wrapAsStream());
       ReadWriteIOUtils.write(iChunkMetadataList.get(0).getDataType(), tempOutput.wrapAsStream());
     }
     PublicBAOS buffer = new PublicBAOS();

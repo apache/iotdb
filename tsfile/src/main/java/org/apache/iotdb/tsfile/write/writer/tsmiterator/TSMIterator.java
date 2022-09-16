@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
@@ -39,7 +40,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class TSMIterator implements Iterator<TimeseriesMetadata> {
+/**
+ * TSMIterator returns full path of series and its TimeseriesMetadata iteratively. It accepts data
+ * source from memory or disk. Static method getTSMIteratorInMemory returns a TSMIterator that reads
+ * from memory, and static method getTSMIteratorInDisk returns a TSMIterator that reads from disk.
+ */
+public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
   private static Logger LOG = LoggerFactory.getLogger(TSMIterator.class);
   protected Map<Path, List<IChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
   protected Iterator<Map.Entry<Path, List<IChunkMetadata>>> iterator;
@@ -65,10 +71,12 @@ public class TSMIterator implements Iterator<TimeseriesMetadata> {
   }
 
   @Override
-  public TimeseriesMetadata next() {
+  public Pair<String, TimeseriesMetadata> next() {
     Map.Entry<Path, List<IChunkMetadata>> nextEntry = iterator.next();
     try {
-      return constructOneTimeseriesMetadata(nextEntry.getKey(), nextEntry.getValue());
+      return new Pair<>(
+          nextEntry.getKey().getFullPath(),
+          constructOneTimeseriesMetadata(nextEntry.getKey(), nextEntry.getValue()));
     } catch (IOException e) {
       LOG.error("Meets IOException when getting next TimeseriesMetadata", e);
       return null;

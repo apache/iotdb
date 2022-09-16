@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -70,7 +71,7 @@ public class DiskTSMIterator extends TSMIterator {
   }
 
   @Override
-  public TimeseriesMetadata next() {
+  public Pair<String, TimeseriesMetadata> next() {
     try {
       if (remainsInFile) {
         // deserialize from file
@@ -85,7 +86,7 @@ public class DiskTSMIterator extends TSMIterator {
     }
   }
 
-  private TimeseriesMetadata getTimeSerisMetadataFromFile() throws IOException {
+  private Pair<String, TimeseriesMetadata> getTimeSerisMetadataFromFile() throws IOException {
     if (currentPos == nextEndPosForDevice) {
       // deserialize the current device name
       currentDevice = ReadWriteIOUtils.readString(input.wrapAsInputStream());
@@ -93,7 +94,7 @@ public class DiskTSMIterator extends TSMIterator {
           endPosForEachDevice.size() > 0 ? endPosForEachDevice.removeFirst() : fileLength;
     }
     // deserialize public info for measurement
-    String measurementUid = ReadWriteIOUtils.readString(input.wrapAsInputStream());
+    String measurementUid = ReadWriteIOUtils.readVarIntString(input.wrapAsInputStream());
     byte dataTypeInByte = ReadWriteIOUtils.readByte(input.wrapAsInputStream());
     TSDataType dataType = TSDataType.getTsDataType(dataTypeInByte);
     int chunkBufferSize = ReadWriteIOUtils.readInt(input.wrapAsInputStream());
@@ -112,14 +113,16 @@ public class DiskTSMIterator extends TSMIterator {
       chunkMetadataList.add(ChunkMetadata.deserializeFrom(chunkBuffer, dataType));
     }
     updateCurrentPos();
-    return constructOneTimeseriesMetadata(
-        new Path(currentDevice, measurementUid), chunkMetadataList);
+    return new Pair<>(
+        currentDevice + "." + measurementUid,
+        constructOneTimeseriesMetadata(new Path(currentDevice, measurementUid), chunkMetadataList));
   }
 
   private void updateCurrentPos() throws IOException {
     currentPos = input.position();
     if (currentPos >= fileLength) {
       remainsInFile = false;
+      input.close();
     }
   }
 }
