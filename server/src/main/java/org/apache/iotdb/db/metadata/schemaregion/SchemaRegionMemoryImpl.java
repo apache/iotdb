@@ -849,10 +849,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       for (PartialPath path : mtree.getMeasurementPaths(pathPattern)) {
         IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
-        if (measurementMNode.isPreDeleted()) {
-          // path patterns in one patternTree may overlap with each other
-          continue;
-        }
+        // Given pathPatterns may match one timeseries multi times, which may results in the
+        // preDeletedNum larger than the actual num of timeseries. It doesn't matter since the main
+        // purpose is to check whether there's timeseries to be deleted.
         preDeletedNum++;
         measurementMNode.setPreDeleted(true);
         try {
