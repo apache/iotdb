@@ -268,5 +268,4 @@ public abstract class DoubleTVList extends TVList {
     tvList.putDoubles(times, values, null, 0, rowCount);
     return tvList;
   }
-
 }

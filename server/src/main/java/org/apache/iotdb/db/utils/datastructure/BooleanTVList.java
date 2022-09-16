@@ -263,5 +263,4 @@ public abstract class BooleanTVList extends TVList {
     tvList.putBooleans(times, values, null, 0, rowCount);
     return tvList;
   }
-
 }
