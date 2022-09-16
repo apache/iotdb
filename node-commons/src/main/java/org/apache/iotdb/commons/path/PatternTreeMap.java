@@ -29,12 +29,12 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 @NotThreadSafe
-public class PatternTreeMap<V> {
-  private final PathPatternNode<V> root;
+public class PatternTreeMap<V, Serializer extends PathPatternNode.Serializer<V>> {
+  private final PathPatternNode<V, Serializer> root;
   private final Supplier<? extends Set<V>> supplier;
   private final BiConsumer<V, Set<V>> appendFunction;
   private final BiConsumer<V, Set<V>> deleteFunction;
-
+  private final Serializer serializer;
   /**
    * Create PatternTreeMap.
    *
@@ -45,11 +45,13 @@ public class PatternTreeMap<V> {
   public PatternTreeMap(
       Supplier<? extends Set<V>> supplier,
       BiConsumer<V, Set<V>> appendFunction,
-      BiConsumer<V, Set<V>> deleteFunction) {
-    this.root = new PathPatternNode<>(IoTDBConstant.PATH_ROOT, supplier);
+      BiConsumer<V, Set<V>> deleteFunction,
+      Serializer serializer) {
+    this.root = new PathPatternNode<>(IoTDBConstant.PATH_ROOT, supplier, serializer);
     this.supplier = supplier;
     this.appendFunction = appendFunction;
     this.deleteFunction = deleteFunction;
+    this.serializer = serializer;
   }
 
   /**
@@ -63,11 +65,11 @@ public class PatternTreeMap<V> {
       throw new UnsupportedOperationException();
     }
     String[] pathNodes = key.getNodes();
-    PathPatternNode<V> curNode = root;
+    PathPatternNode<V, Serializer> curNode = root;
     for (int i = 1; i < pathNodes.length; i++) {
-      PathPatternNode<V> nextNode = curNode.getChildren(pathNodes[i]);
+      PathPatternNode<V, Serializer> nextNode = curNode.getChildren(pathNodes[i]);
       if (nextNode == null) {
-        nextNode = new PathPatternNode<>(pathNodes[i], supplier);
+        nextNode = new PathPatternNode<>(pathNodes[i], supplier, serializer);
         curNode.addChild(nextNode);
       }
       curNode = nextNode;
@@ -97,14 +99,15 @@ public class PatternTreeMap<V> {
    * @param value the value to be deleted
    * @return true if current PathPatternNode can be removed
    */
-  private boolean deletePathNode(PathPatternNode<V> node, String[] pathNodes, int pos, V value) {
+  private boolean deletePathNode(
+      PathPatternNode<V, Serializer> node, String[] pathNodes, int pos, V value) {
     if (node == null) {
       return false;
     }
     if (pos == pathNodes.length - 1) {
       node.deleteValue(value, deleteFunction);
     } else {
-      PathPatternNode<V> child = node.getChildren(pathNodes[pos + 1]);
+      PathPatternNode<V, Serializer> child = node.getChildren(pathNodes[pos + 1]);
       if (deletePathNode(child, pathNodes, pos + 1, value)) {
         node.deleteChild(child);
       }
@@ -133,7 +136,7 @@ public class PatternTreeMap<V> {
    * @param resultList result list
    */
   public void searchOverlapped(
-      PathPatternNode<V> node, String[] pathNodes, int pos, List<V> resultList) {
+      PathPatternNode<V, Serializer> node, String[] pathNodes, int pos, List<V> resultList) {
     if (pos == pathNodes.length - 1) {
       resultList.addAll(node.getValues());
       return;
@@ -141,7 +144,7 @@ public class PatternTreeMap<V> {
     if (node.isMultiLevelWildcard()) {
       searchOverlapped(node, pathNodes, pos + 1, resultList);
     }
-    for (PathPatternNode<V> child : node.getMatchChildren(pathNodes[pos + 1])) {
+    for (PathPatternNode<V, Serializer> child : node.getMatchChildren(pathNodes[pos + 1])) {
       searchOverlapped(child, pathNodes, pos + 1, resultList);
     }
   }

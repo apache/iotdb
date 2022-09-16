@@ -18,15 +18,17 @@
  */
 package org.apache.iotdb.db.metadata.path;
 
+import org.apache.iotdb.commons.path.PathPatternNode.StringSerializer;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 
 import java.util.HashSet;
 
 public class PatternTreeMapFactory {
-  public static PatternTreeMap<String> getTriggerPatternTreeMap() {
+  public static PatternTreeMap<String, StringSerializer> getTriggerPatternTreeMap() {
     return new PatternTreeMap<>(
         HashSet::new,
         (triggerName, set) -> set.add(triggerName),
-        (triggerName, set) -> set.remove(triggerName));
+        (triggerName, set) -> set.remove(triggerName),
+        StringSerializer.getInstance());
   }
 }

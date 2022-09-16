@@ -16,9 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.path;
+package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternNode.StringSerializer;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -32,11 +35,8 @@ public class PatternTreeMapTest {
 
   @Test
   public void stringAppendPatternTreeMapTest() throws IllegalPathException {
-    PatternTreeMap<String> patternTreeMap =
-        new PatternTreeMap<>(
-            HashSet::new,
-            (triggerName, set) -> set.add(triggerName),
-            (triggerName, set) -> set.remove(triggerName));
+    PatternTreeMap<String, StringSerializer> patternTreeMap =
+        PatternTreeMapFactory.getTriggerPatternTreeMap();
     patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), "A");
     patternTreeMap.append(new PartialPath("root.**.s1"), "B");
     patternTreeMap.append(new PartialPath("root.sg1.*.s1"), "C");
