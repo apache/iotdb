@@ -69,7 +69,7 @@ public class SystemMetrics implements IMetricSet {
         FileStore fileStore = Files.getFileStore(path);
         fileStores.add(fileStore);
       } catch (IOException e) {
-        logger.error("Failed to get storage path of {}", dataDir);
+        logger.error("Failed to get storage path of {}, because", dataDir, e);
       }
     }
     collectSystemDiskInfo(metricService);
@@ -220,7 +220,7 @@ public class SystemMetrics implements IMetricSet {
         sysTotalSpace += fileStore.getTotalSpace();
         sysFreeSpace += fileStore.getUsableSpace();
       } catch (IOException e) {
-        logger.error("Failed to statistic the size of {}", fileStore);
+        logger.error("Failed to statistic the size of {}, because", fileStore, e);
       }
     }
     systemDiskTotalSpace = sysTotalSpace;
