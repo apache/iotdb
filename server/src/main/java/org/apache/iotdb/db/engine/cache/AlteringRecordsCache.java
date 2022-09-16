@@ -88,7 +88,7 @@ public class AlteringRecordsCache {
       alteringRecords.put(fullPath, record);
       Map<String, Pair<TSEncoding, CompressionType>> deviceRecordMap =
               alteringDeviceRecords.computeIfAbsent(device, id -> new ConcurrentHashMap<>());
-      deviceRecordMap.put(fullPath, record);
+      deviceRecordMap.put(path.getMeasurement(), record);
     }
   }
 

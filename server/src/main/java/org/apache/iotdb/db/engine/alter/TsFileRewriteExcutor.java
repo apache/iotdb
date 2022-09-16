@@ -142,6 +142,8 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
       // write index,bloom,footer, end file
       writer.endFile();
       targetTsFileResource.close();
+    } catch (Exception e) {
+      throw new IOException(e);
     } finally {
       tsFileResource.readUnlock();
     }
@@ -239,7 +241,7 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
       return;
     }
     Map<String, Pair<TSEncoding, CompressionType>> deviceRecords = alteringRecordsCache.getDeviceRecords(device);
-    boolean isAlteringDevice = (deviceRecords == null || deviceRecords.isEmpty());
+    boolean isAlteringDevice = (deviceRecords != null && !deviceRecords.isEmpty());
     Pair<Boolean, Pair<List<IMeasurementSchema>, List<IMeasurementSchema>>> schemaPair =
             collectSchemaList(alignedChunkMetadatas, reader, deviceRecords, isAlteringDevice);
     Boolean allSame = schemaPair.left;
@@ -321,7 +323,10 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
         if (measurementSet.contains(measurementId)) {
           continue;
         }
-        Pair<TSEncoding, CompressionType> alterType = deviceRecords.get(measurementId);
+        Pair<TSEncoding, CompressionType> alterType = null;
+        if(deviceRecords != null) {
+          alterType = deviceRecords.get(measurementId);
+        }
         measurementSet.add(measurementId);
         Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
         ChunkHeader header = chunk.getHeader();
@@ -365,10 +370,6 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
       return;
     }
     Map<String, Pair<TSEncoding, CompressionType>> deviceRecords = alteringRecordsCache.getDeviceRecords(device);
-    boolean isAlteringDevice = (deviceRecords == null || deviceRecords.isEmpty());
-    if(isAlteringDevice) {
-      throw new MetadataException("deviceRecords cache can not be null");
-    }
     for (Map.Entry<String, List<ChunkMetadata>> next : measurementMap.entrySet()) {
       String measurementId = next.getKey();
       List<ChunkMetadata> chunkMetadatas = next.getValue();
@@ -379,7 +380,10 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
       // target chunk writer
       ChunkMetadata firstChunkMetadata = chunkMetadatas.get(0);
       ChunkWriterImpl chunkWriter = null;
-      Pair<TSEncoding, CompressionType> alterType = deviceRecords.get(measurementId);
+      Pair<TSEncoding, CompressionType> alterType = null;
+      if(deviceRecords != null) {
+        alterType = deviceRecords.get(measurementId);
+      }
       for (ChunkMetadata chunkMetadata : chunkMetadatas) {
         // old mem chunk
         Chunk currentChunk = reader.readMemChunk(chunkMetadata);
@@ -400,7 +404,7 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
                                   curEncoding,
                                   curCompressionType));
         }
-        if (alterType == null || (chunkWriter.getEncoding() == curEncoding && chunkWriter.getCompressionType() == curCompressionType)) {
+        if (alterType == null || (chunkWriter.getEncoding() == header.getEncodingType() && chunkWriter.getCompressionType() == header.getCompressionType())) {
           // fast write chunk
           writer.writeChunk(currentChunk, chunkMetadata);
           continue;
