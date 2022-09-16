@@ -68,12 +68,16 @@ public abstract class AlignedTVList extends TVList {
   // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   protected List<List<BitMap>> bitMaps;
 
+  // if a sensor chunk size of Text datatype reaches the threshold, this flag will be set true
+  boolean reachMaxChunkSizeFlag;
+
   AlignedTVList(List<TSDataType> types) {
     super();
     indices = new ArrayList<>(types.size());
     valueChunkRawSize = new long[dataTypes.size()];
-
     dataTypes = types;
+    reachMaxChunkSizeFlag = false;
+
     values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
       values.add(new ArrayList<>());
@@ -106,6 +110,9 @@ public abstract class AlignedTVList extends TVList {
           ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
               columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
           valueChunkRawSize[i] += columnValue != null ? getBinarySize((Binary) columnValue) : 0;
+          if (valueChunkRawSize[i] >= maxChunkRawSizeThreshold) {
+            reachMaxChunkSizeFlag = true;
+          }
           break;
         case FLOAT:
           ((float[]) columnValues.get(arrayIndex))[elementIndex] =
@@ -588,6 +595,11 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
+  @Override
+  public boolean reachMaxChunkSizeThreshold() {
+    return false;
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void putAlignedValues(
@@ -658,6 +670,14 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
           Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
           System.arraycopy(value[columnIndexArray[i]], idx, arrayT, elementIndex, remaining);
+
+          // update raw size of Text chunk
+          for (int i1 = 0; i1 < remaining; i1++) {
+            valueChunkRawSize[i] += getBinarySize(arrayT[elementIndex + i1]);
+          }
+          if (valueChunkRawSize[i] > maxChunkRawSizeThreshold) {
+            reachMaxChunkSizeFlag = true;
+          }
           break;
         case FLOAT:
           float[] arrayF = ((float[]) columnValues.get(arrayIndex));

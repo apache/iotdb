@@ -231,8 +231,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public boolean putBinaryWithFlushCheck(long t, Binary v) {
     list.putBinary(t, v);
-    long rawSize = list.getBinaryListRawSize();
-    return rawSize >= maxChunkRawSizeThreshold;
+    return list.reachMaxChunkSizeThreshold();
   }
 
   @Override
@@ -279,8 +278,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   public boolean putBinariesWithFlushCheck(
       long[] t, Binary[] v, BitMap bitMap, int start, int end) {
     list.putBinaries(t, v, bitMap, start, end);
-    long rawSize = list.getBinaryListRawSize();
-    return rawSize >= maxChunkRawSizeThreshold;
+    return list.reachMaxChunkSizeThreshold();
   }
 
   @Override

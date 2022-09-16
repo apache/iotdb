@@ -130,7 +130,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public boolean putAlignedValueWithFlushCheck(long t, Object[] v, int[] columnIndexArray) {
     list.putAlignedValue(t, v, columnIndexArray);
-    return false;
+    return list.reachMaxChunkSizeThreshold();
   }
 
   @Override
@@ -179,7 +179,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   public boolean putAlignedValuesWithFlushCheck(
       long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end) {
     list.putAlignedValues(t, v, bitMaps, columnIndexArray, start, end);
-    return false;
+    return list.reachMaxChunkSizeThreshold();
   }
 
   @Override

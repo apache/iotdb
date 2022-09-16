@@ -98,8 +98,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   @Override
   public boolean writeWithFlushCheck(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    memChunk.writeAlignedValue(insertTime, objectValue, schemaList);
-    return false;
+    return memChunk.writeAlignedValueWithFlushCheck(insertTime, objectValue, schemaList);
   }
 
   @Override

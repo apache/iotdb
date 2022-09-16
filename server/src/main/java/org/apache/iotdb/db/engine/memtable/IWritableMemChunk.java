@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,9 +29,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import java.util.List;
 
 public interface IWritableMemChunk extends WALEntryValue {
-
-  long maxChunkRawSizeThreshold =
-      IoTDBDescriptor.getInstance().getConfig().getMaxChunkRawSizeThreshold();
 
   void putLong(long t, long v);
 

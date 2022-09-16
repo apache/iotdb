@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
@@ -48,6 +49,8 @@ public abstract class TVList implements WALEntryValue {
 
   protected static final int SMALL_ARRAY_LENGTH = 32;
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
+  long maxChunkRawSizeThreshold =
+      IoTDBDescriptor.getInstance().getConfig().getMaxChunkRawSizeThreshold();
   // list of timestamp array, add 1 when expanded -> data point timestamp array
   // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;
@@ -147,8 +150,8 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public long getBinaryListRawSize() {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  public boolean reachMaxChunkSizeThreshold() {
+    return false;
   }
 
   public void putBoolean(long time, boolean value) {
