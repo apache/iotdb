@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
@@ -120,6 +121,32 @@ public interface ISchemaRegion {
    */
   Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
+
+  /**
+   * Construct schema black list via setting matched timeseries to pre deleted.
+   *
+   * @param patternTree
+   * @throws MetadataException
+   */
+  int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+
+  /**
+   * Rollback schema black list via setting matched timeseries to not pre deleted.
+   *
+   * @param patternTree
+   * @throws MetadataException
+   */
+  void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+
+  List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+
+  /**
+   * Delete timeseries in schema black list.
+   *
+   * @param patternTree
+   * @throws MetadataException
+   */
+  void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException;
   // endregion
 
   // region Interfaces for auto create device

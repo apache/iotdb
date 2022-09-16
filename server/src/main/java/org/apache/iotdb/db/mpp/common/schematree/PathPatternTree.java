@@ -218,6 +218,16 @@ public class PathPatternTree {
     return new PartialPath(nodeList.toArray(new String[0]));
   }
 
+  public boolean isOverlapWith(PathPatternTree patternTree) {
+    // todo improve this implementation
+    for (PartialPath pathPattern : getAllPathPatterns()) {
+      if (!patternTree.getOverlappedPathPatterns(pathPattern).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // serialize & deserialize
   /////////////////////////////////////////////////////////////////////////////////////////////////
