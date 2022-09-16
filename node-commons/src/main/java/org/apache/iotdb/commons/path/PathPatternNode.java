@@ -222,6 +222,11 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     return node;
   }
 
+  /**
+   * Interface to support serialize and deserialize valueSet.
+   *
+   * @param <T> Type of value.
+   */
   public interface Serializer<T> {
 
     void write(T t, ByteBuffer buffer);
