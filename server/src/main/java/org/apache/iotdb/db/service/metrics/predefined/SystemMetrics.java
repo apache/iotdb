@@ -69,7 +69,14 @@ public class SystemMetrics implements IMetricSet {
         FileStore fileStore = Files.getFileStore(path);
         fileStores.add(fileStore);
       } catch (IOException e) {
-        logger.error("Failed to get storage path of {}, because", dataDir, e);
+        // try to get parent
+        path = path.getParent();
+        try {
+          FileStore fileStore = Files.getFileStore(path);
+          fileStores.add(fileStore);
+        } catch (IOException innerException) {
+          logger.error("Failed to get storage path of {}, because", dataDir, innerException);
+        }
       }
     }
     collectSystemDiskInfo(metricService);
