@@ -71,13 +71,20 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
       try {
         plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
       } catch (Exception e) {
-        LOGGER.error("Deserialization error for write plan : {}", request, e);
+        LOGGER.error(
+            "Deserialization error for write plan, request: {}, bytebuffer: {}",
+            request,
+            request.serializeToByteBuffer(),
+            e);
         return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
     } else if (request instanceof ConfigPhysicalPlan) {
       plan = (ConfigPhysicalPlan) request;
     } else {
-      LOGGER.error("Unexpected write plan : {}", request);
+      LOGGER.error(
+          "Unexpected write plan, request: {}, bytebuffer: {}",
+          request,
+          request.serializeToByteBuffer());
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     return write(plan);

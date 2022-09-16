@@ -642,9 +642,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void updateProcedureTest() throws IOException {
     // test procedure equals DeleteStorageGroupProcedure
     DeleteStorageGroupProcedure deleteStorageGroupProcedure = new DeleteStorageGroupProcedure();
-    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
-    storageGroupSchema.setName("root.sg");
-    deleteStorageGroupProcedure.setDeleteSgSchema(storageGroupSchema);
+    deleteStorageGroupProcedure.setDeleteSgSchema(new TStorageGroupSchema("root.sg"));
     UpdateProcedurePlan updateProcedurePlan0 = new UpdateProcedurePlan();
     updateProcedurePlan0.setProcedure(deleteStorageGroupProcedure);
     UpdateProcedurePlan updateProcedurePlan1 =
@@ -653,7 +651,7 @@ public class ConfigPhysicalPlanSerDeTest {
     Procedure proc = updateProcedurePlan1.getProcedure();
     Assert.assertEquals(proc, deleteStorageGroupProcedure);
 
-    // test procedure equals Create
+    // test procedure equals CreateRegionGroupsProcedure
     TDataNodeLocation dataNodeLocation0 = new TDataNodeLocation();
     dataNodeLocation0.setDataNodeId(5);
     dataNodeLocation0.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));

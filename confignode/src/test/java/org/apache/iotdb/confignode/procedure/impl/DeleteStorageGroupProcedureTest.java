@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.junit.Test;
 
 import java.io.DataOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertEquals;
@@ -36,13 +35,11 @@ public class DeleteStorageGroupProcedureTest {
 
   @Test
   public void serializeDeserializeTest() {
-    String sg0 = "root.sg0";
-    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema(sg0);
-
-    DeleteStorageGroupProcedure p1 = new DeleteStorageGroupProcedure(storageGroupSchema);
 
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    DeleteStorageGroupProcedure p1 =
+        new DeleteStorageGroupProcedure(new TStorageGroupSchema("root.sg"));
 
     try {
       p1.serialize(outputStream);
@@ -53,7 +50,7 @@ public class DeleteStorageGroupProcedureTest {
           (DeleteStorageGroupProcedure) ProcedureFactory.getInstance().create(buffer);
       assertEquals(p1, p2);
 
-    } catch (IOException e) {
+    } catch (Exception e) {
       fail();
     }
   }
