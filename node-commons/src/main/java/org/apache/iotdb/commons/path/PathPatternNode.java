@@ -40,20 +40,20 @@ import java.util.function.Supplier;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
-public class PathPatternNode<V, Serializer extends PathPatternNode.Serializer<V>> {
+public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V>> {
 
   private final String name;
-  private final Map<String, PathPatternNode<V, Serializer>> children;
+  private final Map<String, PathPatternNode<V, VSerializer>> children;
   private Set<V> valueSet;
-  private final Serializer serializer;
+  private final VSerializer serializer;
 
-  public PathPatternNode(String name, Serializer serializer) {
+  public PathPatternNode(String name, VSerializer serializer) {
     this.name = name;
     this.children = new HashMap<>();
     this.serializer = serializer;
   }
 
-  public PathPatternNode(String name, Supplier<? extends Set<V>> supplier, Serializer serialize) {
+  public PathPatternNode(String name, Supplier<? extends Set<V>> supplier, VSerializer serialize) {
     this.name = name;
     this.children = new HashMap<>();
     valueSet = supplier.get();
@@ -64,12 +64,12 @@ public class PathPatternNode<V, Serializer extends PathPatternNode.Serializer<V>
     return name;
   }
 
-  public PathPatternNode<V, Serializer> getChildren(String nodeName) {
+  public PathPatternNode<V, VSerializer> getChildren(String nodeName) {
     return children.getOrDefault(nodeName, null);
   }
 
-  public List<PathPatternNode<V, Serializer>> getMatchChildren(String nodeName) {
-    List<PathPatternNode<V, Serializer>> res = new ArrayList<>();
+  public List<PathPatternNode<V, VSerializer>> getMatchChildren(String nodeName) {
+    List<PathPatternNode<V, VSerializer>> res = new ArrayList<>();
     if (children.containsKey(nodeName)) {
       res.add(children.get(nodeName));
     }
@@ -82,15 +82,15 @@ public class PathPatternNode<V, Serializer extends PathPatternNode.Serializer<V>
     return res;
   }
 
-  public Map<String, PathPatternNode<V, Serializer>> getChildren() {
+  public Map<String, PathPatternNode<V, VSerializer>> getChildren() {
     return children;
   }
 
-  public void addChild(PathPatternNode<V, Serializer> tmpNode) {
+  public void addChild(PathPatternNode<V, VSerializer> tmpNode) {
     children.put(tmpNode.getName(), tmpNode);
   }
 
-  public void deleteChild(PathPatternNode<V, Serializer> tmpNode) {
+  public void deleteChild(PathPatternNode<V, VSerializer> tmpNode) {
     children.remove(tmpNode.getName());
   }
 
@@ -119,7 +119,7 @@ public class PathPatternNode<V, Serializer extends PathPatternNode.Serializer<V>
   }
 
   @TestOnly
-  public boolean equalWith(PathPatternNode<V, Serializer> that) {
+  public boolean equalWith(PathPatternNode<V, VSerializer> that) {
     if (this == that) {
       return true;
     }
@@ -138,7 +138,7 @@ public class PathPatternNode<V, Serializer extends PathPatternNode.Serializer<V>
     if (that.getValues() != null && !that.getValues().equals(this.getValues())) {
       return false;
     }
-    for (Map.Entry<String, PathPatternNode<V, Serializer>> entry : this.getChildren().entrySet()) {
+    for (Map.Entry<String, PathPatternNode<V, VSerializer>> entry : this.getChildren().entrySet()) {
       String nodeName = entry.getKey();
       if (that.getChildren(nodeName) == null
           || !that.getChildren(nodeName).equalWith(this.getChildren(nodeName))) {
@@ -156,7 +156,7 @@ public class PathPatternNode<V, Serializer extends PathPatternNode.Serializer<V>
   }
 
   void serializeChildren(ByteBuffer buffer) {
-    for (PathPatternNode<V, Serializer> childNode : children.values()) {
+    for (PathPatternNode<V, VSerializer> childNode : children.values()) {
       childNode.serialize(buffer);
     }
   }
@@ -190,13 +190,13 @@ public class PathPatternNode<V, Serializer extends PathPatternNode.Serializer<V>
   }
 
   void serializeChildren(PublicBAOS outputStream) throws IOException {
-    for (PathPatternNode<V, Serializer> childNode : children.values()) {
+    for (PathPatternNode<V, VSerializer> childNode : children.values()) {
       childNode.serialize(outputStream);
     }
   }
 
   void serializeChildren(DataOutputStream outputStream) throws IOException {
-    for (PathPatternNode<V, Serializer> childNode : children.values()) {
+    for (PathPatternNode<V, VSerializer> childNode : children.values()) {
       childNode.serialize(outputStream);
     }
   }

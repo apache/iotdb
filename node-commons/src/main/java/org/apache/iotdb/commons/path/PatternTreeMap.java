@@ -29,12 +29,12 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 @NotThreadSafe
-public class PatternTreeMap<V, Serializer extends PathPatternNode.Serializer<V>> {
-  private final PathPatternNode<V, Serializer> root;
+public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>> {
+  private final PathPatternNode<V, VSerializer> root;
   private final Supplier<? extends Set<V>> supplier;
   private final BiConsumer<V, Set<V>> appendFunction;
   private final BiConsumer<V, Set<V>> deleteFunction;
-  private final Serializer serializer;
+  private final VSerializer serializer;
   /**
    * Create PatternTreeMap.
    *
@@ -46,7 +46,7 @@ public class PatternTreeMap<V, Serializer extends PathPatternNode.Serializer<V>>
       Supplier<? extends Set<V>> supplier,
       BiConsumer<V, Set<V>> appendFunction,
       BiConsumer<V, Set<V>> deleteFunction,
-      Serializer serializer) {
+      VSerializer serializer) {
     this.root = new PathPatternNode<>(IoTDBConstant.PATH_ROOT, supplier, serializer);
     this.supplier = supplier;
     this.appendFunction = appendFunction;
@@ -65,9 +65,9 @@ public class PatternTreeMap<V, Serializer extends PathPatternNode.Serializer<V>>
       throw new UnsupportedOperationException();
     }
     String[] pathNodes = key.getNodes();
-    PathPatternNode<V, Serializer> curNode = root;
+    PathPatternNode<V, VSerializer> curNode = root;
     for (int i = 1; i < pathNodes.length; i++) {
-      PathPatternNode<V, Serializer> nextNode = curNode.getChildren(pathNodes[i]);
+      PathPatternNode<V, VSerializer> nextNode = curNode.getChildren(pathNodes[i]);
       if (nextNode == null) {
         nextNode = new PathPatternNode<>(pathNodes[i], supplier, serializer);
         curNode.addChild(nextNode);
@@ -100,14 +100,14 @@ public class PatternTreeMap<V, Serializer extends PathPatternNode.Serializer<V>>
    * @return true if current PathPatternNode can be removed
    */
   private boolean deletePathNode(
-      PathPatternNode<V, Serializer> node, String[] pathNodes, int pos, V value) {
+      PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, V value) {
     if (node == null) {
       return false;
     }
     if (pos == pathNodes.length - 1) {
       node.deleteValue(value, deleteFunction);
     } else {
-      PathPatternNode<V, Serializer> child = node.getChildren(pathNodes[pos + 1]);
+      PathPatternNode<V, VSerializer> child = node.getChildren(pathNodes[pos + 1]);
       if (deletePathNode(child, pathNodes, pos + 1, value)) {
         node.deleteChild(child);
       }
@@ -136,7 +136,7 @@ public class PatternTreeMap<V, Serializer extends PathPatternNode.Serializer<V>>
    * @param resultList result list
    */
   public void searchOverlapped(
-      PathPatternNode<V, Serializer> node, String[] pathNodes, int pos, List<V> resultList) {
+      PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, List<V> resultList) {
     if (pos == pathNodes.length - 1) {
       resultList.addAll(node.getValues());
       return;
@@ -144,7 +144,7 @@ public class PatternTreeMap<V, Serializer extends PathPatternNode.Serializer<V>>
     if (node.isMultiLevelWildcard()) {
       searchOverlapped(node, pathNodes, pos + 1, resultList);
     }
-    for (PathPatternNode<V, Serializer> child : node.getMatchChildren(pathNodes[pos + 1])) {
+    for (PathPatternNode<V, VSerializer> child : node.getMatchChildren(pathNodes[pos + 1])) {
       searchOverlapped(child, pathNodes, pos + 1, resultList);
     }
   }
