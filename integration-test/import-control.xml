@@ -49,5 +49,8 @@
   <allow pkg="org\.apache\.iotdb\.tsfile\.read.*" regex="true" />
   <allow pkg="org\.apache\.iotdb\.tsfile\.utils.*" regex="true" />
   <allow pkg="org\.apache\.iotdb\.tsfile\.write.*" regex="true" />
+  <allow pkg="org\.apache\.iotdb\.commons\.exception.*" regex="true" />
+  <allow pkg="org\.apache\.iotdb\.commons\.path.*" regex="true" />
+  <allow pkg="org\.apache\.iotdb\.db\.engine\.modification.*" regex="true" />
   <allow pkg="org\.slf4j.*" regex="true" />
 </import-control>

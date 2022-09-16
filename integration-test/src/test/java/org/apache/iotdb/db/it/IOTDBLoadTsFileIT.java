@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -54,6 +58,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.TreeSet;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -294,6 +299,72 @@ public class IOTDBLoadTsFileIT {
     }
   }
 
+  @Test
+  public void testLoadWithMods() throws Exception {
+    long writtenPoint1 = 0;
+    // device 0, device 1, sg 0
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_0),
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_00,
+              SchemaConfig.MEASUREMENT_01,
+              SchemaConfig.MEASUREMENT_02,
+              SchemaConfig.MEASUREMENT_03));
+      generator.registerAlignedTimeseries(
+          new Path(SchemaConfig.DEVICE_1),
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_10,
+              SchemaConfig.MEASUREMENT_11,
+              SchemaConfig.MEASUREMENT_12,
+              SchemaConfig.MEASUREMENT_13));
+      generator.generateData(new Path(SchemaConfig.DEVICE_0), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_1), 10000, true);
+      generator.generateDeletion(new Path(SchemaConfig.DEVICE_0), 10);
+      generator.generateDeletion(new Path(SchemaConfig.DEVICE_1), 10);
+      writtenPoint1 = generator.getTotalNumber();
+    }
+
+    long writtenPoint2 = 0;
+    // device 2, device 3, device4, sg 1
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_2), Arrays.asList(SchemaConfig.MEASUREMENT_20));
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_3), Arrays.asList(SchemaConfig.MEASUREMENT_30));
+      generator.registerAlignedTimeseries(
+          new Path(SchemaConfig.DEVICE_4), Arrays.asList(SchemaConfig.MEASUREMENT_40));
+      generator.generateData(new Path(SchemaConfig.DEVICE_2), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_3), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_4), 10000, true);
+      generator.generateDeletion(new Path(SchemaConfig.DEVICE_2), 10);
+      generator.generateDeletion(new Path(SchemaConfig.DEVICE_4), 10);
+      generator.generateData(new Path(SchemaConfig.DEVICE_2), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_4), 10000, true);
+      generator.generateDeletion(new Path(SchemaConfig.DEVICE_2), 10);
+      generator.generateDeletion(new Path(SchemaConfig.DEVICE_4), 10);
+      writtenPoint2 = generator.getTotalNumber();
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+        if (resultSet.next()) {
+          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          Assert.assertEquals(writtenPoint1, sg1Count);
+          long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          Assert.assertEquals(writtenPoint2, sg2Count);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+    }
+  }
+
   private static class SchemaConfig {
     private static final String STORAGE_GROUP_0 = "root.sg.test_0";
     private static final String STORAGE_GROUP_1 = "root.sg.test_1";
@@ -339,18 +410,16 @@ public class IOTDBLoadTsFileIT {
   public class TsFileGenerator implements AutoCloseable {
     private final File tsFile;
     private final TsFileWriter writer;
-    private final Map<Path, Integer> device2Number;
+    private final Map<Path, TreeSet<Long>> device2TimeSet;
     private final Map<Path, List<MeasurementSchema>> device2MeasurementSchema;
     private Random random;
-    private long totalNumber;
 
     public TsFileGenerator(File tsFile) throws IOException {
       this.tsFile = tsFile;
       this.writer = new TsFileWriter(tsFile);
-      this.device2Number = new HashMap<>();
+      this.device2TimeSet = new HashMap<>();
       this.device2MeasurementSchema = new HashMap<>();
       this.random = new Random();
-      this.totalNumber = 0;
     }
 
     public void resetRandom() {
@@ -362,41 +431,42 @@ public class IOTDBLoadTsFileIT {
     }
 
     public void registerTimeseries(Path path, List<MeasurementSchema> measurementSchemaList) {
-      if (device2Number.containsKey(path)) {
+      if (device2MeasurementSchema.containsKey(path)) {
         LOGGER.error(String.format("Register same device %s.", path));
         return;
       }
       writer.registerTimeseries(path, measurementSchemaList);
-      device2Number.put(path, 0);
+      device2TimeSet.put(path, new TreeSet<>());
       device2MeasurementSchema.put(path, measurementSchemaList);
     }
 
     public void registerAlignedTimeseries(Path path, List<MeasurementSchema> measurementSchemaList)
         throws WriteProcessException {
-      if (device2Number.containsKey(path)) {
+      if (device2MeasurementSchema.containsKey(path)) {
         LOGGER.error(String.format("Register same device %s.", path));
         return;
       }
       writer.registerAlignedTimeseries(path, measurementSchemaList);
-      device2Number.put(path, 0);
+      device2TimeSet.put(path, new TreeSet<>());
       device2MeasurementSchema.put(path, measurementSchemaList);
     }
 
-    public void generateData(Path path, int number, boolean isAligned)
+    public void generateData(Path device, int number, boolean isAligned)
         throws IOException, WriteProcessException {
-      List<MeasurementSchema> schemas = device2MeasurementSchema.get(path);
-      Tablet tablet = new Tablet(path.getFullPath(), schemas);
+      List<MeasurementSchema> schemas = device2MeasurementSchema.get(device);
+      TreeSet<Long> timeSet = device2TimeSet.get(device);
+      Tablet tablet = new Tablet(device.getFullPath(), schemas);
       long[] timestamps = tablet.timestamps;
       Object[] values = tablet.values;
       long sensorNum = schemas.size();
-      long startTime = device2Number.get(path);
+      long startTime = timeSet.isEmpty() ? 0L : timeSet.last();
 
       for (long r = 0; r < number; r++) {
         int row = tablet.rowSize++;
-        timestamps[row] = startTime++;
+        timestamps[row] = ++startTime;
+        timeSet.add(startTime);
         for (int i = 0; i < sensorNum; i++) {
           generateDataPoint(values[i], row, schemas.get(i));
-          totalNumber += 1;
         }
         // write
         if (tablet.rowSize == tablet.getMaxRowNumber()) {
@@ -417,7 +487,6 @@ public class IOTDBLoadTsFileIT {
         }
         tablet.reset();
       }
-      device2Number.compute(path, (k, v) -> v + number);
     }
 
     private void generateDataPoint(Object obj, int row, MeasurementSchema schema) {
@@ -475,12 +544,31 @@ public class IOTDBLoadTsFileIT {
       binaries[row] = new Binary(String.format("test point %d", random.nextInt()));
     }
 
-    public int getNumber(Path path) {
-      return device2Number.get(path);
+    public void generateDeletion(Path device, int number) throws IOException, IllegalPathException {
+      try (ModificationFile modificationFile =
+          new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+        TreeSet<Long> timeSet = device2TimeSet.get(device);
+        if (timeSet.isEmpty()) {
+          return;
+        }
+
+        long fileOffset = tsFile.length();
+        long maxTime = timeSet.last();
+        for (int i = 0; i < number; i++) {
+          int endTime = random.nextInt((int) (maxTime)) + 1;
+          int startTime = random.nextInt(endTime);
+          Deletion deletion =
+              new Deletion(new PartialPath(device.getFullPath()), fileOffset, startTime, endTime);
+          modificationFile.write(deletion);
+          for (long j = startTime; j < endTime; j++) {
+            timeSet.remove(j);
+          }
+        }
+      }
     }
 
     public long getTotalNumber() {
-      return totalNumber;
+      return device2TimeSet.values().stream().mapToInt(TreeSet::size).sum();
     }
 
     @Override
