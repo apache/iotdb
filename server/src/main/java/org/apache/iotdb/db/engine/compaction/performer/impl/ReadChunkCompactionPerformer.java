@@ -66,10 +66,12 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       throws IOException, MetadataException, InterruptedException, StorageEngineException {
     // size for file writer is 5% of per compaction task memory budget
     long sizeForFileWriter =
-        SystemInfo.getInstance().getMemorySizeForCompaction()
-            / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-            * 5
-            / 100L;
+        (long)
+            (SystemInfo.getInstance().getMemorySizeForCompaction()
+                / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                * IoTDBDescriptor.getInstance()
+                    .getConfig()
+                    .getChunkMetadataSizeProportionInCompaction());
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles);
         TsFileIOWriter writer =
             new TsFileIOWriter(targetResource.getTsFile(), true, sizeForFileWriter)) {

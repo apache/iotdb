@@ -38,10 +38,12 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
 
   public InnerSpaceCompactionWriter(TsFileResource targetFileResource) throws IOException {
     long sizeForFileWriter =
-        SystemInfo.getInstance().getMemorySizeForCompaction()
-            / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-            * 5
-            / 100L;
+        (long)
+            (SystemInfo.getInstance().getMemorySizeForCompaction()
+                / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                * IoTDBDescriptor.getInstance()
+                    .getConfig()
+                    .getChunkMetadataSizeProportionInCompaction());
     this.fileWriter = new TsFileIOWriter(targetFileResource.getTsFile(), true, sizeForFileWriter);
     isEmptyFile = true;
     resource = targetFileResource;

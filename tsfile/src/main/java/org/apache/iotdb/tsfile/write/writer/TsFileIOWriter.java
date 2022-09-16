@@ -630,9 +630,10 @@ public class TsFileIOWriter implements AutoCloseable {
 
   /**
    * Check if the size of chunk metadata in memory is greater than the given threshold. If so, the
-   * chunk metadata will be written to a temp files. <b>Notice! If you are writing a aligned device,
-   * you should make sure all data of current writing device has been written before this method is
-   * called.</b> For not aligned series, there is no such limitation.
+   * chunk metadata will be written to a temp files. <b>Notice! If you are writing a aligned device
+   * in row, you should make sure all data of current writing device has been written before this
+   * method is called. For writing not aligned series or writing aligned series in column, you
+   * should make sure that all data of one series is written before you call this function.</b>
    *
    * @throws IOException
    */
@@ -690,6 +691,7 @@ public class TsFileIOWriter implements AutoCloseable {
       // mark the end position of last device
       endPosInCMTForDevice.add(tempOutput.getPosition());
       // serialize the device
+      // for each device, we only serialize it once, in order to save io
       ReadWriteIOUtils.write(seriesPath.getDevice(), tempOutput.wrapAsStream());
     }
     if (!seriesPath.equals(lastSerializePath) && iChunkMetadataList.size() > 0) {

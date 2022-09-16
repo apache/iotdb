@@ -65,11 +65,13 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     isEmptyFile = new boolean[seqFileResources.size()];
     isDeviceExistedInTargetFiles = new boolean[targetResources.size()];
     long memorySizeForEachWriter =
-        SystemInfo.getInstance().getMemorySizeForCompaction()
-            / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-            * 5
-            / 100L
-            / targetResources.size();
+        (long)
+            (SystemInfo.getInstance().getMemorySizeForCompaction()
+                / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                * IoTDBDescriptor.getInstance()
+                    .getConfig()
+                    .getChunkMetadataSizeProportionInCompaction()
+                / targetResources.size());
     for (int i = 0; i < targetResources.size(); i++) {
       this.fileWriterList.add(
           new TsFileIOWriter(targetResources.get(i).getTsFile(), true, memorySizeForEachWriter));

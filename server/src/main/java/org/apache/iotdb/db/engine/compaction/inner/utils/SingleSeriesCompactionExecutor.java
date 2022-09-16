@@ -151,6 +151,7 @@ public class SingleSeriesCompactionExecutor {
     } else if (pointCountInChunkWriter != 0L) {
       flushChunkWriter();
     }
+    fileWriter.checkMetadataSizeAndMayFlush();
     targetResource.updateStartTime(device, minStartTimestamp);
     targetResource.updateEndTime(device, maxEndTimestamp);
   }
@@ -310,7 +311,6 @@ public class SingleSeriesCompactionExecutor {
         false,
         getChunkSize(chunk));
     fileWriter.writeChunk(chunk, chunkMetadata);
-    fileWriter.checkMetadataSizeAndMayFlush();
   }
 
   private void flushChunkWriterIfLargeEnough() throws IOException {
@@ -324,7 +324,6 @@ public class SingleSeriesCompactionExecutor {
           false,
           chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
-      fileWriter.checkMetadataSizeAndMayFlush();
       pointCountInChunkWriter = 0L;
     }
   }
@@ -347,7 +346,6 @@ public class SingleSeriesCompactionExecutor {
         false,
         chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriter);
-    fileWriter.checkMetadataSizeAndMayFlush();
     pointCountInChunkWriter = 0L;
   }
 }

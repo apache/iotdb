@@ -384,6 +384,93 @@ public class TsFileIOWriterMemoryControlTest {
   }
 
   /**
+   * Write a file with 10 devices and 5 series in each device. For each series, we write 100 chunks
+   * for it. We maintain some chunk metadata in memory when calling endFile().
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testWriteCompleteFileWithMetadataRemainsInMemoryWhenEndFile() throws IOException {
+    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData = new HashMap<>();
+    try (TsFileIOWriter writer = new TsFileIOWriter(testFile, true, 1024)) {
+      for (int i = 0; i < 10; ++i) {
+        String deviceId = sortedDeviceId.get(i);
+        writer.startChunkGroup(deviceId);
+        for (int j = 0; j < 5; ++j) {
+          ChunkWriterImpl chunkWriter;
+          switch (j) {
+            case 0:
+              for (int k = 0; k < 10; ++k) {
+                List<Pair<Long, TsPrimitiveType>> valList = new ArrayList<>();
+                chunkWriter = generateIntData(j, (long) TEST_CHUNK_SIZE * k, valList);
+                chunkWriter.writeToFileWriter(writer);
+                originData
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(sortedSeriesId.get(j), x -> new ArrayList<>())
+                    .add(valList);
+              }
+              break;
+            case 1:
+              for (int k = 0; k < 10; ++k) {
+                List<Pair<Long, TsPrimitiveType>> valList = new ArrayList<>();
+                chunkWriter = generateBooleanData(j, (long) TEST_CHUNK_SIZE * k, valList);
+                chunkWriter.writeToFileWriter(writer);
+                originData
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(sortedSeriesId.get(j), x -> new ArrayList<>())
+                    .add(valList);
+              }
+              break;
+            case 2:
+              for (int k = 0; k < 10; ++k) {
+                List<Pair<Long, TsPrimitiveType>> valList = new ArrayList<>();
+                chunkWriter = generateFloatData(j, (long) TEST_CHUNK_SIZE * k, valList);
+                chunkWriter.writeToFileWriter(writer);
+                originData
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(sortedSeriesId.get(j), x -> new ArrayList<>())
+                    .add(valList);
+              }
+              break;
+            case 3:
+              for (int k = 0; k < 10; ++k) {
+                List<Pair<Long, TsPrimitiveType>> valList = new ArrayList<>();
+                chunkWriter = generateDoubleData(j, (long) TEST_CHUNK_SIZE * k, valList);
+                chunkWriter.writeToFileWriter(writer);
+                originData
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(sortedSeriesId.get(j), x -> new ArrayList<>())
+                    .add(valList);
+              }
+              break;
+            case 4:
+            default:
+              for (int k = 0; k < 10; ++k) {
+                List<Pair<Long, TsPrimitiveType>> valList = new ArrayList<>();
+                chunkWriter = generateTextData(j, (long) TEST_CHUNK_SIZE * k, valList);
+                chunkWriter.writeToFileWriter(writer);
+                originData
+                    .computeIfAbsent(deviceId, x -> new HashMap<>())
+                    .computeIfAbsent(sortedSeriesId.get(j), x -> new ArrayList<>())
+                    .add(valList);
+              }
+              break;
+          }
+          if (i < 9) {
+            writer.checkMetadataSizeAndMayFlush();
+          }
+        }
+        writer.endChunkGroup();
+      }
+      Assert.assertTrue(writer.hasChunkMetadataInDisk);
+      Assert.assertFalse(writer.chunkMetadataList.isEmpty());
+      writer.endFile();
+    }
+    TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
+    TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originData);
+  }
+
+  /**
    * Write a file with 2 devices and 5 series in each device. For each series, we write 1024 chunks
    * for it. This test make sure that each chunk
    *

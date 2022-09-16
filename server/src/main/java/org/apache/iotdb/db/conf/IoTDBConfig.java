@@ -157,6 +157,8 @@ public class IoTDBConfig {
   /** The proportion of write memory for memtable */
   private double writeProportion = 0.8;
 
+  private double chunkMetadataSizeProportionInWrite = 0.1;
+
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
@@ -433,6 +435,8 @@ public class IoTDBConfig {
    * types
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
+
+  private double chunkMetadataSizeProportionInCompaction = 0.05;
 
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
@@ -3139,6 +3143,23 @@ public class IoTDBConfig {
 
   public void setThrottleThreshold(long throttleThreshold) {
     this.throttleThreshold = throttleThreshold;
+  }
+
+  public double getChunkMetadataSizeProportionInWrite() {
+    return chunkMetadataSizeProportionInWrite;
+  }
+
+  public void setChunkMetadataSizeProportionInWrite(double chunkMetadataSizeProportionInWrite) {
+    this.chunkMetadataSizeProportionInWrite = chunkMetadataSizeProportionInWrite;
+  }
+
+  public double getChunkMetadataSizeProportionInCompaction() {
+    return chunkMetadataSizeProportionInCompaction;
+  }
+
+  public void setChunkMetadataSizeProportionInCompaction(
+      double chunkMetadataSizeProportionInCompaction) {
+    this.chunkMetadataSizeProportionInCompaction = chunkMetadataSizeProportionInCompaction;
   }
 
   public String getConfigMessage() {
