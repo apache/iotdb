@@ -59,6 +59,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.MeasurementSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -72,6 +73,8 @@ import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.PreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.RollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -440,6 +443,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         ActivateTemplateInClusterPlan activateTemplateInClusterPlan =
             (ActivateTemplateInClusterPlan) plan;
         recoverActivatingSchemaTemplate(activateTemplateInClusterPlan);
+        break;
+      case PRE_DELETE_TIMESERIES_IN_CLUSTER:
+        PreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan = (PreDeleteTimeSeriesPlan) plan;
+        recoverPreDeleteTimeseries(preDeleteTimeSeriesPlan.getPath());
+        break;
+      case ROLLBACK_PRE_DELETE_TIMESERIES:
+        RollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan =
+            (RollbackPreDeleteTimeSeriesPlan) plan;
+        recoverRollbackPreDeleteTimeseries(rollbackPreDeleteTimeSeriesPlan.getPath());
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -829,6 +841,97 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
+  }
+
+  @Override
+  public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    int preDeletedNum = 0;
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (PartialPath path : mtree.getMeasurementPaths(pathPattern)) {
+        IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+        // Given pathPatterns may match one timeseries multi times, which may results in the
+        // preDeletedNum larger than the actual num of timeseries. It doesn't matter since the main
+        // purpose is to check whether there's timeseries to be deleted.
+        preDeletedNum++;
+        measurementMNode.setPreDeleted(true);
+        try {
+          writeToMLog(new PreDeleteTimeSeriesPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+    return preDeletedNum;
+  }
+
+  private void recoverPreDeleteTimeseries(PartialPath path) throws MetadataException {
+    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+    measurementMNode.setPreDeleted(true);
+  }
+
+  @Override
+  public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (PartialPath path : mtree.getMeasurementPaths(pathPattern)) {
+        IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+        measurementMNode.setPreDeleted(false);
+        try {
+          writeToMLog(new RollbackPreDeleteTimeSeriesPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+  }
+
+  @Override
+  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+      throws MetadataException {
+    List<PartialPath> pathList = new ArrayList<>();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      pathList.addAll(mtree.getPreDeleteTimeseries(pathPattern));
+    }
+    return pathList;
+  }
+
+  @Override
+  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (PartialPath path : mtree.getPreDeleteTimeseries(pathPattern)) {
+        try {
+          deleteSingleTimeseriesInBlackList(path);
+          writeToMLog(new DeleteTimeSeriesPlan(Collections.singletonList(path)));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+  }
+
+  private void deleteSingleTimeseriesInBlackList(PartialPath path)
+      throws MetadataException, IOException {
+    Pair<PartialPath, IMeasurementMNode> pair =
+        mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
+
+    IMeasurementMNode measurementMNode = pair.right;
+    removeFromTagInvertedIndex(measurementMNode);
+
+    IMNode node = measurementMNode.getParent();
+
+    if (node.isUseTemplate() && node.getSchemaTemplate().hasSchema(measurementMNode.getName())) {
+      // measurement represent by template doesn't affect the MTree structure and memory control
+      return;
+    }
+
+    mNodeCache.invalidate(node.getPartialPath());
+
+    schemaStatisticsManager.deleteTimeseries(1);
+    seriesNumerLimiter.deleteTimeSeries(1);
+  }
+
+  private void recoverRollbackPreDeleteTimeseries(PartialPath path) throws MetadataException {
+    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+    measurementMNode.setPreDeleted(false);
   }
 
   /**

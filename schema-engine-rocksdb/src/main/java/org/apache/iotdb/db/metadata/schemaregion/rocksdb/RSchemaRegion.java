@@ -56,6 +56,7 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -679,6 +680,27 @@ public class RSchemaRegion implements ISchemaRegion {
     } finally {
       deleteUpdateLock.writeLock().unlock();
     }
+  }
+
+  @Override
+  public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   private void traverseOutcomeBasins(

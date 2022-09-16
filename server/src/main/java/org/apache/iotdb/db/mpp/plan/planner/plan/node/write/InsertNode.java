@@ -254,8 +254,8 @@ public abstract class InsertNode extends WritePlanNode {
               new DataTypeMismatchException(
                   devicePath.getFullPath(),
                   measurements[i],
-                  measurementSchemas[i].getType(),
                   dataTypes[i],
+                  measurementSchemas[i].getType(),
                   getMinTime(),
                   getFirstValueOfIndex(i)));
         }

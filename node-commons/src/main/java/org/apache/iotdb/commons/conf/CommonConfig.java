@@ -223,14 +223,6 @@ public class CommonConfig {
     this.walDirs = walDirs;
   }
 
-  public NodeStatus getStatus() {
-    return status;
-  }
-
-  public void setStatus(NodeStatus status) {
-    this.status = status;
-  }
-
   public FSType getSystemFileStorageFs() {
     return systemFileStorageFs;
   }
@@ -289,6 +281,11 @@ public class CommonConfig {
 
   public void handleUnrecoverableError() {
     handleSystemErrorStrategy.handle();
+  }
+
+  public void setNodeStatusToShutdown() {
+    logger.info("System will reject write operations when shutting down.");
+    this.status = NodeStatus.ReadOnly;
   }
 
   public void setNodeStatus(NodeStatus newStatus) {

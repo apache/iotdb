@@ -36,12 +36,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
@@ -134,7 +136,9 @@ public enum PlanNodeType {
   INTERNAL_CREATE_TIMESERIES((short) 52),
   ACTIVATE_TEMPLATE((short) 53),
   PATHS_USING_TEMPLATE_SCAN((short) 54),
-  LOAD_TSFILE((short) 55);
+  LOAD_TSFILE((short) 55),
+  CONSTRUCT_SCHEMA_BLACK_LIST_NODE((short) 56),
+  ROLLBACK_SCHEMA_BLACK_LIST_NODE((short) 57);
 
   public static final int BYTES = Short.BYTES;
 
@@ -295,6 +299,10 @@ public enum PlanNodeType {
         return PathsUsingTemplateScanNode.deserialize(buffer);
       case 55:
         return LoadTsFilePieceNode.deserialize(buffer);
+      case 56:
+        return ConstructSchemaBlackListNode.deserialize(buffer);
+      case 57:
+        return RollbackSchemaBlackListNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
