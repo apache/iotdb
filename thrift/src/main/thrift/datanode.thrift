@@ -216,6 +216,23 @@ struct TUpdateTemplateReq{
   2: required binary templateInfo
 }
 
+struct TTsFilePieceReq{
+    1: required binary body
+    2: required string uuid
+    3: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TLoadCommandReq{
+    1: required i32 commandType
+    2: required string uuid
+}
+
+struct TLoadResp{
+  1: required bool accepted
+  2: optional string message
+  3: optional common.TSStatus status
+}
+
 struct TConstructSchemaBlackListReq{
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
@@ -273,6 +290,10 @@ service IDataNodeRPCService {
   TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
   TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req)
+
+  TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
+
+  TLoadResp sendLoadCommand(TLoadCommandReq req);
 
 
   // -----------------------------------For Config Node-----------------------------------------------
