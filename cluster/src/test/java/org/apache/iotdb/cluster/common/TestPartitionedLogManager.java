@@ -36,7 +36,7 @@ public class TestPartitionedLogManager extends PartitionedSnapshotLogManager {
         null,
         null,
         null,
-        stateMachine);
+        null);
   }
 
   public TestPartitionedLogManager(
@@ -48,7 +48,7 @@ public class TestPartitionedLogManager extends PartitionedSnapshotLogManager {
         new Node("localhost", 30001, 1, 40001, Constants.RPC_PORT, "localhost"),
         factory,
         null,
-        stateMachine);
+        null);
   }
 
   @Override

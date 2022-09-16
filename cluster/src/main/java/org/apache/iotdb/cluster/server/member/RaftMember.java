@@ -296,6 +296,8 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   private ThreadLocal<String> threadBaseName = new ThreadLocal<>();
 
+  private boolean isVerifier = false;
+
   protected RaftMember(IStateMachine stateMachine) {
     this.stateMachine = stateMachine;
   }

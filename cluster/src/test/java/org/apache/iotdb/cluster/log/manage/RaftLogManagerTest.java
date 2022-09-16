@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
+import org.apache.iotdb.cluster.impl.PlanBasedStateMachine;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -62,7 +63,7 @@ public class RaftLogManagerTest {
 
     public TestRaftLogManager(
         StableEntryManager stableEntryManager, LogApplier applier, String name) {
-      super(stableEntryManager, applier, name);
+      super(stableEntryManager, applier, name, new PlanBasedStateMachine());
     }
 
     public TestRaftLogManager(

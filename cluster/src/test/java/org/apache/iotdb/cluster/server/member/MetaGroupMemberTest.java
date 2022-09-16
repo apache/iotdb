@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.impl.PlanBasedStateMachine;
 import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
@@ -88,6 +89,9 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -187,7 +191,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
     dataGroupEngine =
         new DataGroupEngine(
-            new DataGroupMember.Factory(new Factory(), testMetaMember) {
+            new DataGroupMember.Factory(testMetaMember) {
               @Override
               public DataGroupMember create(Node thisNode, PartitionGroup partitionGroup) {
                 return getDataGroupMember(partitionGroup, thisNode);
@@ -231,7 +235,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
   private DataGroupMember getDataGroupMember(PartitionGroup group, Node node) {
     DataGroupMember dataGroupMember =
-        new DataGroupMember(node, group, testMetaMember) {
+        new DataGroupMember(node, group, testMetaMember.getStateMachine()) {
           @Override
           public boolean syncLeader(CheckConsistency checkConsistency) {
             return true;
@@ -241,20 +245,20 @@ public class MetaGroupMemberTest extends BaseMember {
           public void pullSlots(NodeRemovalResult removalResult) {}
 
           @Override
-          public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+          public ConsensusWriteResponse executeRequest(IConsensusRequest request) {
             try {
-              planExecutor.processNonQuery(plan);
-              return StatusUtils.OK;
+              planExecutor.processNonQuery(((PhysicalPlan) request));
+              return new ConsensusWriteResponse(null, StatusUtils.OK);
             } catch (QueryProcessException
                 | StorageGroupNotSetException
                 | StorageEngineException e) {
-              return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
+              return new ConsensusWriteResponse(new ConsensusException(e.getMessage(), e), StatusUtils.EXECUTE_STATEMENT_ERROR);
             }
           }
 
           @Override
-          public TSStatus forwardPlan(PhysicalPlan plan, Node node, RaftNode header) {
-            return executeNonQueryPlan(plan);
+          public TSStatus forwardPlan(IConsensusRequest request, Node node, RaftNode header) {
+            return executeRequest(request).getStatus();
           }
 
           @Override
@@ -355,7 +359,7 @@ public class MetaGroupMemberTest extends BaseMember {
   @Override
   protected MetaGroupMember getMetaGroupMember(Node node) {
     MetaGroupMember metaGroupMember =
-        new MetaGroupMember(node, new Coordinator()) {
+        new MetaGroupMember(node, new Coordinator(), new PlanBasedStateMachine()) {
 
           @Override
           public void applyAddNode(AddNodeLog addNodeLog) {

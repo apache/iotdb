@@ -70,7 +70,7 @@ public class AsyncDataLogApplierTest {
         log -> {
           if (log instanceof RequestLog) {
             RequestLog requestLog = (RequestLog) log;
-            PhysicalPlan plan = requestLog.getRequest();
+            PhysicalPlan plan = ((PhysicalPlan) requestLog.getRequest());
             if (plan instanceof InsertRowPlan) {
               appliedLogs.add(log);
               log.setApplied(true);
@@ -118,7 +118,7 @@ public class AsyncDataLogApplierTest {
         log -> {
           if (log instanceof RequestLog) {
             RequestLog requestLog = (RequestLog) log;
-            PhysicalPlan plan = requestLog.getRequest();
+            PhysicalPlan plan = ((PhysicalPlan) requestLog.getRequest());
             if (plan instanceof InsertRowPlan) {
               appliedLogs.add(log);
               log.setApplied(true);

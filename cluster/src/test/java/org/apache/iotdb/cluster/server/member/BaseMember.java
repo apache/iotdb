@@ -275,7 +275,7 @@ public class BaseMember {
   private PartitionedSnapshotLogManager getLogManager(
       PartitionGroup partitionGroup, DataGroupMember dataGroupMember) {
     return new TestPartitionedLogManager(
-        new DataLogApplier(testMetaMember, dataGroupMember),
+        new DataLogApplier(dataGroupMember),
         testMetaMember.getPartitionTable(),
         partitionGroup.getHeader().getNode(),
         FileSnapshot.Factory.INSTANCE) {

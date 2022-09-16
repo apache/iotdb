@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.common;
 
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.impl.PlanBasedStateMachine;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotManager;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
@@ -32,13 +33,14 @@ public class TestDataGroupMember extends DataGroupMember {
 
   public TestDataGroupMember() {
     super(
-        TestUtils.getNode(0), new PartitionGroup(Collections.singletonList(TestUtils.getNode(0))));
+        TestUtils.getNode(0), new PartitionGroup(Collections.singletonList(TestUtils.getNode(0))),
+            new PlanBasedStateMachine());
     setQueryManager(new ClusterQueryManager());
     this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null, "");
   }
 
   public TestDataGroupMember(Node thisNode, PartitionGroup allNodes) {
-    super(thisNode, allNodes);
+    super(thisNode, allNodes, new PlanBasedStateMachine());
     this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null, "");
     setQueryManager(new ClusterQueryManager());
   }

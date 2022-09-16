@@ -170,7 +170,7 @@ public class DataGroupMemberTest extends BaseMember {
   private PartitionedSnapshotLogManager getLogManager(
       PartitionGroup partitionGroup, DataGroupMember dataGroupMember) {
     return new TestPartitionedLogManager(
-        new DataLogApplier(testMetaMember, dataGroupMember),
+        new DataLogApplier(dataGroupMember),
         testMetaMember.getPartitionTable(),
         partitionGroup.getHeader().getNode(),
         FileSnapshot.Factory.INSTANCE) {
@@ -197,7 +197,7 @@ public class DataGroupMemberTest extends BaseMember {
 
   private DataGroupMember getDataGroupMember(Node node, PartitionGroup nodes) {
     DataGroupMember dataGroupMember =
-        new DataGroupMember(node, nodes, testMetaMember) {
+        new DataGroupMember(node, nodes, testMetaMember.getStateMachine()) {
           @Override
           public boolean syncLeader(CheckConsistency checkConsistency) {
             return true;
@@ -605,7 +605,7 @@ public class DataGroupMemberTest extends BaseMember {
             Collections.emptyMap(),
             Collections.emptyMap(),
             null);
-    assertEquals(200, dataGroupMember.executeRequest(createTimeSeriesPlan).code);
+    assertEquals(200, dataGroupMember.executeRequest(createTimeSeriesPlan).getStatus().code);
     assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
   }
 
@@ -633,7 +633,7 @@ public class DataGroupMemberTest extends BaseMember {
         getLogManager(
             partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(0), 0)),
             dataGroupMember));
-    assertEquals(200, dataGroupMember.executeRequest(createTimeSeriesPlan).code);
+    assertEquals(200, dataGroupMember.executeRequest(createTimeSeriesPlan).getStatus().code);
     assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     testThreadPool.shutdownNow();
   }

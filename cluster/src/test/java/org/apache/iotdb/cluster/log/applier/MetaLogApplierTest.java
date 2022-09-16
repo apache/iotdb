@@ -68,7 +68,7 @@ public class MetaLogApplierTest extends IoTDBTest {
         }
       };
 
-  private LogApplier applier = new MetaLogApplier(testMetaGroupMember);
+  private LogApplier applier = new MetaLogApplier(testMetaGroupMember, testMetaGroupMember.getStateMachine());
 
   @Override
   @After

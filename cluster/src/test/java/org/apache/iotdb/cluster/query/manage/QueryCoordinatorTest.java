@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.query.manage;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.impl.PlanBasedStateMachine;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
@@ -71,7 +72,7 @@ public class QueryCoordinatorTest {
     }
 
     MetaGroupMember metaGroupMember =
-        new MetaGroupMember() {
+        new MetaGroupMember(new PlanBasedStateMachine()) {
           @Override
           public AsyncClient getAsyncClient(Node node) {
             try {

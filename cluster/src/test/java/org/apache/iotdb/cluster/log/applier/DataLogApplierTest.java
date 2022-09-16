@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
+import org.apache.iotdb.cluster.impl.PlanBasedStateMachine;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
@@ -281,7 +282,7 @@ public class DataLogApplierTest extends IoTDBTest {
             });
     ((CSchemaProcessor) IoTDB.schemaProcessor).setMetaGroupMember(testMetaGroupMember);
     testDataGroupMember.setMetaGroupMember(testMetaGroupMember);
-    applier = new DataLogApplier(testMetaGroupMember, testDataGroupMember);
+    applier = new DataLogApplier(testDataGroupMember);
   }
 
   @Override
@@ -463,18 +464,21 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyDeletePartitionFilter() throws QueryProcessException {
-    applier.setS(
-        new PlanExecutor() {
-          @Override
-          public boolean processNonQuery(PhysicalPlan plan) {
-            assertTrue(plan instanceof DeletePlan);
-            DeletePlan deletePlan = (DeletePlan) plan;
-            TimePartitionFilter planFilter = deletePlan.getPartitionFilter();
-            TimePartitionFilter memberFilter = testDataGroupMember.getTimePartitionFilter();
-            assertEquals(planFilter, memberFilter);
-            return true;
-          }
-        });
+    applier.setStateMachine(
+            new PlanBasedStateMachine().setPlanExecutor(
+                    new PlanExecutor() {
+                      @Override
+                      public boolean processNonQuery(PhysicalPlan plan) {
+                        assertTrue(plan instanceof DeletePlan);
+                        DeletePlan deletePlan = (DeletePlan) plan;
+                        TimePartitionFilter planFilter = deletePlan.getPartitionFilter();
+                        TimePartitionFilter memberFilter = testDataGroupMember.getTimePartitionFilter();
+                        assertEquals(planFilter, memberFilter);
+                        return true;
+                      }
+                    }
+            )
+        );
 
     DeletePlan deletePlan = new DeletePlan();
     RequestLog log = new RequestLog(deletePlan);

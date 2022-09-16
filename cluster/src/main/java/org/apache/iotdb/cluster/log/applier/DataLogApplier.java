@@ -50,8 +50,8 @@ public class DataLogApplier extends BaseApplier {
 
   protected DataGroupMember dataGroupMember;
 
-  public DataLogApplier(DataGroupMember dataGroupMember, IStateMachine stateMachine) {
-    super(stateMachine);
+  public DataLogApplier(DataGroupMember dataGroupMember) {
+    super(dataGroupMember.getStateMachine());
     this.dataGroupMember = dataGroupMember;
   }
 

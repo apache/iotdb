@@ -66,24 +66,23 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       LoggerFactory.getLogger(FilePartitionedSnapshotLogManager.class);
 
   public FilePartitionedSnapshotLogManager(
-      IStateMachine stateMachine,
       PartitionTable partitionTable,
       Node header,
       Node thisNode,
       DataGroupMember dataGroupMember) {
     super(
-        createLogApplier(dataGroupMember, stateMachine),
+        createLogApplier(dataGroupMember),
         partitionTable,
         header,
         thisNode,
         Factory.INSTANCE,
         dataGroupMember,
-        stateMachine);
+        dataGroupMember.getStateMachine());
   }
 
   private static LogApplier createLogApplier(
-      DataGroupMember dataGroupMember, IStateMachine stateMachine) {
-    LogApplier applier = new DataLogApplier(dataGroupMember, stateMachine);
+      DataGroupMember dataGroupMember) {
+    LogApplier applier = new DataLogApplier(dataGroupMember);
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()
         && ClusterDescriptor.getInstance().getConfig().getReplicationNum() != 1) {
       applier = new AsyncDataLogApplier(applier, dataGroupMember.getName());

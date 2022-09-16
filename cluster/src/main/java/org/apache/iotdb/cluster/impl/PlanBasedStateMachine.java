@@ -23,12 +23,14 @@ import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 import org.slf4j.Logger;
@@ -40,7 +42,7 @@ public class PlanBasedStateMachine implements IStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(PlanBasedStateMachine.class);
 
-  private ClusterPlanExecutor planExecutor;
+  private PlanExecutor planExecutor;
   private MetaGroupMember metaGroupMember;
 
   public PlanBasedStateMachine() {}
@@ -91,5 +93,11 @@ public class PlanBasedStateMachine implements IStateMachine {
 
   public void setMetaGroupMember(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
+  }
+
+  @TestOnly
+  public IStateMachine setPlanExecutor(PlanExecutor planExecutor) {
+    this.planExecutor = planExecutor;
+    return this;
   }
 }

@@ -53,12 +53,12 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
   private long commitIndex;
   private long term;
 
-  public MetaSingleSnapshotLogManager(IStateMachine stateMachine, MetaGroupMember metaGroupMember) {
+  public MetaSingleSnapshotLogManager(MetaGroupMember metaGroupMember) {
     super(
         new SyncLogDequeSerializer(0),
-        new MetaLogApplier(metaGroupMember, stateMachine),
+        new MetaLogApplier(metaGroupMember, metaGroupMember.getStateMachine()),
         metaGroupMember.getName(),
-        stateMachine);
+        metaGroupMember.getStateMachine());
     this.metaGroupMember = metaGroupMember;
   }
 

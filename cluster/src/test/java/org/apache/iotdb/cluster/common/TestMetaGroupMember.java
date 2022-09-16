@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.common;
 
 import org.apache.iotdb.cluster.client.ClientManager;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.impl.PlanBasedStateMachine;
 import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -28,10 +29,10 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 public class TestMetaGroupMember extends MetaGroupMember {
 
   public TestMetaGroupMember() {
-    super();
+    super(new PlanBasedStateMachine());
 
     MetaSingleSnapshotLogManager manager =
-        new MetaSingleSnapshotLogManager(new TestLogApplier(), this);
+        new MetaSingleSnapshotLogManager(this);
     setLogManager(manager);
 
     PartitionGroup group = new PartitionGroup();

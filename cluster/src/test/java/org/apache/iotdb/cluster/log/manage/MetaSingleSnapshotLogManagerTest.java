@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
+import org.apache.iotdb.cluster.impl.PlanBasedStateMachine;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
@@ -51,11 +52,11 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
   @Before
   public void setUp() throws QueryProcessException, StartupException, IllegalPathException {
     super.setUp();
-    MetaGroupMember metaGroupMember = new MetaGroupMember();
+    MetaGroupMember metaGroupMember = new MetaGroupMember(new PlanBasedStateMachine());
     Coordinator coordinator = new Coordinator(metaGroupMember);
     metaGroupMember.setCoordinator(coordinator);
     metaGroupMember.setPartitionTable(new SlotPartitionTable(new Node()));
-    logManager = new MetaSingleSnapshotLogManager(new TestLogApplier(), metaGroupMember);
+    logManager = new MetaSingleSnapshotLogManager(metaGroupMember);
   }
 
   @Override

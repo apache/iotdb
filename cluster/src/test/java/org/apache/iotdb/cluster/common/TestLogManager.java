@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.common;
 
+import org.apache.iotdb.cluster.impl.PlanBasedStateMachine;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
@@ -26,7 +27,7 @@ import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 public class TestLogManager extends RaftLogManager {
 
   public TestLogManager(int nodeIdentifier) {
-    super(new SyncLogDequeSerializer(nodeIdentifier), new TestLogApplier(), "Test");
+    super(new SyncLogDequeSerializer(nodeIdentifier), new TestLogApplier(), "Test", new PlanBasedStateMachine());
   }
 
   @Override

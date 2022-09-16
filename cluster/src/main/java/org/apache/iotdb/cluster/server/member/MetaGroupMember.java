@@ -225,7 +225,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     initPeerMap();
 
     // committed logs are applied to the state machine (the IoTDB instance) through the applier
-    logManager = new MetaSingleSnapshotLogManager(stateMachine, this);
+    logManager = new MetaSingleSnapshotLogManager(this);
     logSequencer = SEQUENCER_FACTORY.create(this, logManager);
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();

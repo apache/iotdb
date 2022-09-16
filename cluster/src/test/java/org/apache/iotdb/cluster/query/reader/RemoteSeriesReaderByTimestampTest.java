@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.impl.PlanBasedStateMachine;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -151,7 +152,7 @@ public class RemoteSeriesReaderByTimestampTest {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 
-  private MetaGroupMember metaGroupMember = new MetaGroupMember();
+  private MetaGroupMember metaGroupMember = new MetaGroupMember(new PlanBasedStateMachine());
 
   @Test
   public void test() throws IOException, StorageEngineException {
