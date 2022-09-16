@@ -49,31 +49,27 @@ public class SyncInfo {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(SyncInfo.class);
 
-  // <pipeFolderName, pipeMsg>
-  protected Map<String, List<PipeMessage>> pipeMessageMap;
-
   private Map<String, PipeSink> pipeSinks;
 
   private PipeInfo runningPipe;
-  private List<PipeInfo> pipes;
+  // <PipeName, <CreateTime, PipeInfo>>
+  private Map<String, Map<Long, PipeInfo>> pipes;
 
   protected SyncLogWriter syncLogWriter;
 
   public SyncInfo() {
     syncLogWriter = SyncLogWriter.getInstance();
     SyncLogReader logReader = new SyncLogReader();
+    this.pipes = new ConcurrentHashMap<>();
     try {
       logReader.recover();
       pipeSinks = logReader.getAllPipeSinks();
       pipes = logReader.getAllPipeInfos();
       runningPipe = logReader.getRunningPipeInfo();
-      pipeMessageMap = logReader.getPipeMessageMap();
     } catch (StartupException e) {
       LOGGER.error(
           "Cannot recover ReceiverInfo because {}. Use default info values.", e.getMessage());
       pipeSinks = new ConcurrentHashMap<>();
-      pipes = new ArrayList<>();
-      pipeMessageMap = new ConcurrentHashMap<>();
     }
   }
 
@@ -160,7 +156,9 @@ public class SyncInfo {
 
     PipeSink runningPipeSink = getPipeSink(plan.getPipeSinkName());
     runningPipe = SyncPipeUtil.parseCreatePipePlanAsPipeInfo(plan, runningPipeSink, createTime);
-    pipes.add(runningPipe);
+    pipes
+        .computeIfAbsent(runningPipe.getPipeName(), i -> new ConcurrentHashMap<>())
+        .computeIfAbsent(runningPipe.getCreateTime(), i -> runningPipe);
     syncLogWriter.addPipe(plan, createTime);
   }
 
@@ -182,7 +180,9 @@ public class SyncInfo {
     runningPipe =
         SyncPipeUtil.parseCreatePipePlanAsPipeInfo(
             createPipeStatement, runningPipeSink, createTime);
-    pipes.add(runningPipe);
+    pipes
+        .computeIfAbsent(runningPipe.getPipeName(), i -> new ConcurrentHashMap<>())
+        .computeIfAbsent(runningPipe.getCreateTime(), i -> runningPipe);
     syncLogWriter.addPipe(createPipeStatement, createTime);
   }
 
@@ -205,8 +205,16 @@ public class SyncInfo {
     syncLogWriter.operatePipe(pipeName, statementType);
   }
 
+  public PipeInfo getPipeInfo(String pipeName, long createTime) {
+    return pipes.get(pipeName).get(createTime);
+  }
+
   public List<PipeInfo> getAllPipeInfos() {
-    return pipes;
+    List<PipeInfo> pipeInfos = new ArrayList<>();
+    for (Map<Long, PipeInfo> timePipeInfoMap : pipes.values()) {
+      pipeInfos.addAll(timePipeInfoMap.values());
+    }
+    return pipeInfos;
   }
 
   /** @return null if no pipe has been created */
@@ -229,78 +237,18 @@ public class SyncInfo {
   // endregion
 
   /**
-   * write a single message and serialize to disk
+   * Change Pipe Message. It will record the most important message about one pipe. ERROR > WARN >
+   * NORMAL.
    *
    * @param pipeName name of pipe
    * @param createTime createTime of pipe
-   * @param message pipe message
+   * @param messageType pipe message type
    */
-  public synchronized void writePipeMessage(String pipeName, long createTime, PipeMessage message) {
-    String pipeIdentifier = SyncPathUtil.getSenderPipeDir(pipeName, createTime);
-    try {
-      syncLogWriter.writePipeMsg(pipeIdentifier, message);
-    } catch (IOException e) {
-      LOGGER.error(
-          "Can not write pipe message {} from {} to disk because {}",
-          message,
-          pipeIdentifier,
-          e.getMessage());
+  public void changePipeMessage(
+      String pipeName, long createTime, PipeMessage.PipeMessageType messageType) {
+    if (messageType.compareTo(pipes.get(pipeName).get(createTime).getMessageType()) > 0) {
+      pipes.get(pipeName).get(createTime).setMessageType(messageType);
     }
-    pipeMessageMap.computeIfAbsent(pipeIdentifier, i -> new ArrayList<>()).add(message);
-  }
-
-  /**
-   * read recent messages about one pipe
-   *
-   * @param pipeName name of pipe
-   * @param createTime createTime of pipe
-   * @param consume if consume is true, these messages will not be deleted. Otherwise, these
-   *     messages can be read next time.
-   * @return recent messages
-   */
-  public synchronized List<PipeMessage> getPipeMessages(
-      String pipeName, long createTime, boolean consume) {
-    List<PipeMessage> pipeMessageList = new ArrayList<>();
-    String pipeIdentifier = SyncPathUtil.getSenderPipeDir(pipeName, createTime);
-    if (consume) {
-      try {
-        syncLogWriter.comsumePipeMsg(pipeIdentifier);
-      } catch (IOException e) {
-        LOGGER.error(
-            "Can not read pipe message about {} from disk because {}",
-            pipeIdentifier,
-            e.getMessage());
-      }
-    }
-    if (pipeMessageMap.containsKey(pipeIdentifier)) {
-      pipeMessageList = pipeMessageMap.get(pipeIdentifier);
-      if (consume) {
-        pipeMessageMap.remove(pipeIdentifier);
-      }
-    }
-    return pipeMessageList;
-  }
-
-  /**
-   * read the most important message about one pipe. ERROR > WARN > INFO.
-   *
-   * @param pipeName name of pipe
-   * @param createTime createTime of pipe
-   * @param consume if consume is true, recent messages will not be deleted. Otherwise, these
-   *     messages can be read next time.
-   * @return the most important message
-   */
-  public PipeMessage getPipeMessage(String pipeName, long createTime, boolean consume) {
-    List<PipeMessage> pipeMessageList = getPipeMessages(pipeName, createTime, consume);
-    PipeMessage message = new PipeMessage(PipeMessage.MsgType.INFO, "");
-    if (!pipeMessageList.isEmpty()) {
-      for (PipeMessage pipeMessage : pipeMessageList) {
-        if (pipeMessage.getType().getValue() > message.getType().getValue()) {
-          message = pipeMessage;
-        }
-      }
-    }
-    return message;
   }
 
   private void createDir(String pipeName, String remoteIp, long createTime) {
