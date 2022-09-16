@@ -49,23 +49,10 @@ public abstract class DoubleTVList extends TVList {
   }
 
   public static DoubleTVList newList() {
-    if (TVLIST_SORT_ALGORITHM == 1) {
+    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
       return new QuickDoubleTVList();
     }
     return new TimDoubleTVList();
-  }
-
-  public static DoubleTVList deserialize(DataInputStream stream) throws IOException {
-    DoubleTVList tvList = DoubleTVList.newList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    double[] values = new double[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = stream.readDouble();
-    }
-    tvList.putDoubles(times, values, null, 0, rowCount);
-    return tvList;
   }
 
   @Override
@@ -268,4 +255,18 @@ public abstract class DoubleTVList extends TVList {
       buffer.putDouble(getDouble(rowIdx));
     }
   }
+
+  public static DoubleTVList deserialize(DataInputStream stream) throws IOException {
+    DoubleTVList tvList = DoubleTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    double[] values = new double[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readDouble();
+    }
+    tvList.putDoubles(times, values, null, 0, rowCount);
+    return tvList;
+  }
+
 }

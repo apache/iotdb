@@ -48,23 +48,10 @@ public abstract class LongTVList extends TVList {
   }
 
   public static LongTVList newList() {
-    if (TVLIST_SORT_ALGORITHM == 1) {
+    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
       return new QuickLongTVList();
     }
     return new TimLongTVList();
-  }
-
-  public static LongTVList deserialize(DataInputStream stream) throws IOException {
-    LongTVList tvList = LongTVList.newList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    long[] values = new long[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = stream.readLong();
-    }
-    tvList.putLongs(times, values, null, 0, rowCount);
-    return tvList;
   }
 
   @Override
@@ -260,5 +247,18 @@ public abstract class LongTVList extends TVList {
       buffer.putLong(getTime(rowIdx));
       buffer.putLong(getLong(rowIdx));
     }
+  }
+
+  public static LongTVList deserialize(DataInputStream stream) throws IOException {
+    LongTVList tvList = LongTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    long[] values = new long[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readLong();
+    }
+    tvList.putLongs(times, values, null, 0, rowCount);
+    return tvList;
   }
 }

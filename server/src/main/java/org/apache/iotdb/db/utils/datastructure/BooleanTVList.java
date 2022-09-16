@@ -49,23 +49,10 @@ public abstract class BooleanTVList extends TVList {
   }
 
   public static BooleanTVList newList() {
-    if (TVLIST_SORT_ALGORITHM == 1) {
+    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
       return new QuickBooleanTVList();
     }
     return new TimBooleanTVList();
-  }
-
-  public static BooleanTVList deserialize(DataInputStream stream) throws IOException {
-    BooleanTVList tvList = BooleanTVList.newList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    boolean[] values = new boolean[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = ReadWriteIOUtils.readBool(stream);
-    }
-    tvList.putBooleans(times, values, null, 0, rowCount);
-    return tvList;
   }
 
   @Override
@@ -263,4 +250,18 @@ public abstract class BooleanTVList extends TVList {
       WALWriteUtils.write(getBoolean(rowIdx), buffer);
     }
   }
+
+  public static BooleanTVList deserialize(DataInputStream stream) throws IOException {
+    BooleanTVList tvList = BooleanTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    boolean[] values = new boolean[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = ReadWriteIOUtils.readBool(stream);
+    }
+    tvList.putBooleans(times, values, null, 0, rowCount);
+    return tvList;
+  }
+
 }

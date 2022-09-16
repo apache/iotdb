@@ -38,6 +38,7 @@ import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -1381,13 +1382,11 @@ public class IoTDBDescriptor {
     if (unseqMemTableFlushCheckInterval > 0) {
       conf.setUnseqMemtableFlushCheckInterval(unseqMemTableFlushCheckInterval);
     }
-    int tvListSortAlgorithm =
-        Integer.parseInt(
+
+    conf.setTvListSortAlgorithm(
+        TVListSortAlgorithm.valueOf(
             properties.getProperty(
-                "tvList_sort_algorithm", Integer.toString(conf.getTvListSortAlgorithm())));
-    if (tvListSortAlgorithm > 0) {
-      conf.setTvListSortAlgorithm(tvListSortAlgorithm);
-    }
+                "tvList_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
   }
 
   public void loadHotModifiedProps(Properties properties) throws QueryProcessException {

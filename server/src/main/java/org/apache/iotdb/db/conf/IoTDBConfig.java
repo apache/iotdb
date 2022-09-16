@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
+import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -382,7 +383,7 @@ public class IoTDBConfig {
   private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
 
   /** The sort algorithm used in TVList */
-  private int tvListSortAlgorithm = 0;
+  private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 100000;
@@ -1903,11 +1904,11 @@ public class IoTDBConfig {
     this.unseqMemtableFlushCheckInterval = unseqMemtableFlushCheckInterval;
   }
 
-  public int getTvListSortAlgorithm() {
+  public TVListSortAlgorithm getTvListSortAlgorithm() {
     return tvListSortAlgorithm;
   }
 
-  public void setTvListSortAlgorithm(int tvListSortAlgorithm) {
+  public void setTvListSortAlgorithm(TVListSortAlgorithm tvListSortAlgorithm) {
     this.tvListSortAlgorithm = tvListSortAlgorithm;
   }
 

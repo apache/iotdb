@@ -50,23 +50,10 @@ public abstract class BinaryTVList extends TVList {
   }
 
   public static BinaryTVList newList() {
-    if (TVLIST_SORT_ALGORITHM == 1) {
+    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
       return new QuickBinaryTVList();
     }
     return new TimBinaryTVList();
-  }
-
-  public static BinaryTVList deserialize(DataInputStream stream) throws IOException {
-    BinaryTVList tvList = BinaryTVList.newList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    Binary[] values = new Binary[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = ReadWriteIOUtils.readBinary(stream);
-    }
-    tvList.putBinaries(times, values, null, 0, rowCount);
-    return tvList;
   }
 
   @Override
@@ -266,5 +253,18 @@ public abstract class BinaryTVList extends TVList {
       buffer.putLong(getTime(rowIdx));
       WALWriteUtils.write(getBinary(rowIdx), buffer);
     }
+  }
+
+  public static BinaryTVList deserialize(DataInputStream stream) throws IOException {
+    BinaryTVList tvList = BinaryTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    Binary[] values = new Binary[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = ReadWriteIOUtils.readBinary(stream);
+    }
+    tvList.putBinaries(times, values, null, 0, rowCount);
+    return tvList;
   }
 }

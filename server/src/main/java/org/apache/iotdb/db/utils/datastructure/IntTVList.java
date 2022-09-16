@@ -48,7 +48,7 @@ public abstract class IntTVList extends TVList {
   }
 
   public static IntTVList newList() {
-    if (TVLIST_SORT_ALGORITHM == 1) {
+    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
       return new QuickIntTVList();
     }
     return new TimIntTVList();
