@@ -15,39 +15,27 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.commons.trigger.enums;
+package org.apache.iotdb.db.exception.metadata;
 
-public enum TriggerEvent {
-  BEFORE_INSERT((byte) 0, "BEFORE_INSERT"),
-  AFTER_INSERT((byte) 1, "AFTER_INSERT");
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  private final byte id;
-  private final String event;
+public class MeasurementInBlackListException extends MetadataException {
 
-  TriggerEvent(byte id, String event) {
-    this.id = id;
-    this.event = event;
+  private final PartialPath path;
+
+  public MeasurementInBlackListException(PartialPath path) {
+    super(
+        String.format("Some task is deleting timeseries [%s]", path),
+        TSStatusCode.MEASUREMENT_IN_BLACK_LIST.getStatusCode());
+    this.path = path;
   }
 
-  public byte getId() {
-    return id;
-  }
-
-  @Override
-  public String toString() {
-    return event;
-  }
-
-  public static TriggerEvent construct(byte id) {
-    switch (id) {
-      case 0:
-        return BEFORE_INSERT;
-      case 1:
-        return AFTER_INSERT;
-      default:
-        throw new IllegalArgumentException(String.format("No such trigger event (id: %d)", id));
-    }
+  public PartialPath getPath() {
+    return path;
   }
 }

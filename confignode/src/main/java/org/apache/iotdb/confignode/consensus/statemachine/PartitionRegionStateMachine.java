@@ -41,7 +41,8 @@ import java.io.File;
 import java.io.IOException;
 
 /** StateMachine for PartitionRegion */
-public class PartitionRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
+public class PartitionRegionStateMachine
+    implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
   private final ConfigPlanExecutor executor;
@@ -168,5 +169,23 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   @Override
   public boolean isReadOnly() {
     return CommonDescriptor.getInstance().getConfig().isReadOnly();
+  }
+
+  @Override
+  public boolean shouldRetry(TSStatus writeResult) {
+    // TODO implement this
+    return RetryPolicy.super.shouldRetry(writeResult);
+  }
+
+  @Override
+  public TSStatus updateResult(TSStatus previousResult, TSStatus retryResult) {
+    // TODO implement this
+    return RetryPolicy.super.updateResult(previousResult, retryResult);
+  }
+
+  @Override
+  public long getSleepTime() {
+    // TODO implement this
+    return RetryPolicy.super.getSleepTime();
   }
 }

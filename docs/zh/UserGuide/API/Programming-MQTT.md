@@ -60,7 +60,7 @@ MQTT 主题与 IoTDB 时间序列相对应。
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
 
 ### MQTT 配置
-默认情况下，IoTDB MQTT 服务从`${IOTDB_HOME}/${IOTDB_CONF}/iotdbengine.properties`加载配置。
+默认情况下，IoTDB MQTT 服务从`${IOTDB_HOME}/${IOTDB_CONF}/iotdb-datanode.properties`加载配置。
 
 配置如下：
 
