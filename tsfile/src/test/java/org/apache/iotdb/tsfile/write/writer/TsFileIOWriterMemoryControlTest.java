@@ -1036,6 +1036,112 @@ public class TsFileIOWriterMemoryControlTest {
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originData);
   }
 
+  @Test
+  public void testWritingAlignedSeriesByColumn() throws IOException {
+    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originValue = new HashMap<>();
+    try (TsFileIOWriter writer = new TsFileIOWriter(testFile, true, 1024)) {
+      for (int i = 0; i < 5; i++) {
+        String deviceId = sortedDeviceId.get(i);
+        writer.startChunkGroup(deviceId);
+        TSEncoding timeEncoding =
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+        TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
+        Encoder encoder = TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
+        TimeChunkWriter timeChunkWriter =
+            new TimeChunkWriter("", CompressionType.SNAPPY, TSEncoding.PLAIN, encoder);
+        for (int j = 0; j < TEST_CHUNK_SIZE; ++j) {
+          timeChunkWriter.write(j);
+        }
+        timeChunkWriter.writeToFileWriter(writer);
+        writer.sortAndFlushChunkMetadata();
+        Assert.assertTrue(writer.hasChunkMetadataInDisk);
+        for (int k = 0; k < 5; ++k) {
+          TSEncodingBuilder builder = TSEncodingBuilder.getEncodingBuilder(TSEncoding.PLAIN);
+          builder.initFromProps(null);
+          ValueChunkWriter chunkWriter =
+              new ValueChunkWriter(
+                  sortedSeriesId.get(k),
+                  CompressionType.SNAPPY,
+                  TSDataType.DOUBLE,
+                  TSEncoding.PLAIN,
+                  builder.getEncoder(TSDataType.DOUBLE));
+          Random random = new Random();
+          List<Pair<Long, TsPrimitiveType>> valueList = new ArrayList<>();
+          for (int j = 0; j < TEST_CHUNK_SIZE; ++j) {
+            double val = random.nextDouble();
+            chunkWriter.write(j, val, false);
+            valueList.add(new Pair<>((long) j, new TsPrimitiveType.TsDouble(val)));
+          }
+          chunkWriter.writeToFileWriter(writer);
+          originValue
+              .computeIfAbsent(deviceId, x -> new HashMap<>())
+              .computeIfAbsent(sortedSeriesId.get(k), x -> new ArrayList<>())
+              .add(valueList);
+          writer.sortAndFlushChunkMetadata();
+        }
+        writer.endChunkGroup();
+      }
+      writer.endFile();
+    }
+    TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
+    TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originValue);
+  }
+
+  @Test
+  public void testWritingAlignedSeriesByColumnWithMultiChunks() throws IOException {
+    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originValue = new HashMap<>();
+    try (TsFileIOWriter writer = new TsFileIOWriter(testFile, true, 1024)) {
+      for (int i = 0; i < 5; i++) {
+        String deviceId = sortedDeviceId.get(i);
+        writer.startChunkGroup(deviceId);
+        TSEncoding timeEncoding =
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+        TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
+        Encoder encoder = TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
+        for (int chunkIdx = 0; chunkIdx < 10; ++chunkIdx) {
+          TimeChunkWriter timeChunkWriter =
+              new TimeChunkWriter("", CompressionType.SNAPPY, TSEncoding.PLAIN, encoder);
+          for (long j = TEST_CHUNK_SIZE * chunkIdx; j < TEST_CHUNK_SIZE * (chunkIdx + 1); ++j) {
+            timeChunkWriter.write(j);
+          }
+          timeChunkWriter.writeToFileWriter(writer);
+        }
+        writer.sortAndFlushChunkMetadata();
+        Assert.assertTrue(writer.hasChunkMetadataInDisk);
+        for (int k = 0; k < 5; ++k) {
+          TSEncodingBuilder builder = TSEncodingBuilder.getEncodingBuilder(TSEncoding.PLAIN);
+          builder.initFromProps(null);
+          for (int chunkIdx = 0; chunkIdx < 10; ++chunkIdx) {
+            ValueChunkWriter chunkWriter =
+                new ValueChunkWriter(
+                    sortedSeriesId.get(k),
+                    CompressionType.SNAPPY,
+                    TSDataType.DOUBLE,
+                    TSEncoding.PLAIN,
+                    builder.getEncoder(TSDataType.DOUBLE));
+            Random random = new Random();
+            List<Pair<Long, TsPrimitiveType>> valueList = new ArrayList<>();
+            for (long j = TEST_CHUNK_SIZE * chunkIdx; j < TEST_CHUNK_SIZE * (chunkIdx + 1); ++j) {
+              double val = random.nextDouble();
+              chunkWriter.write(j, val, false);
+              valueList.add(new Pair<>((long) j, new TsPrimitiveType.TsDouble(val)));
+            }
+            chunkWriter.writeToFileWriter(writer);
+            originValue
+                .computeIfAbsent(deviceId, x -> new HashMap<>())
+                .computeIfAbsent(sortedSeriesId.get(k), x -> new ArrayList<>())
+                .add(valueList);
+          }
+          writer.sortAndFlushChunkMetadata();
+        }
+        writer.endChunkGroup();
+      }
+      writer.endFile();
+    }
+    TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
+    TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originValue);
+  }
+
   /** The following tests is for writing mixed of normal series and aligned series */
   private ChunkWriterImpl generateIntData(
       int idx, long startTime, List<Pair<Long, TsPrimitiveType>> record) {
