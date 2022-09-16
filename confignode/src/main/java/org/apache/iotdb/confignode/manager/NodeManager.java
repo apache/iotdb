@@ -313,6 +313,7 @@ public class NodeManager {
               dataRegionNumMap.getOrDefault(dataNodesInfo.getDataNodeId(), zero).get());
         }));
 
+    dataNodeInfoList.sort(Comparator.comparingInt(TDataNodeInfo::getDataNodeId));
     return dataNodeInfoList;
   }
 
