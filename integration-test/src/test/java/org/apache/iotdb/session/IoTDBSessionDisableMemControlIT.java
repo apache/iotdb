@@ -102,7 +102,7 @@ public class IoTDBSessionDisableMemControlIT {
           try {
             session.insertTablet(tablet, true);
           } catch (StatementExecutionException e) {
-            assertTrue(Arrays.asList(303, 313).contains(e.getStatusCode()));
+            assertTrue(Arrays.asList(303, 313, 411).contains(e.getStatusCode()));
           }
           tablet.reset();
         }
@@ -188,7 +188,7 @@ public class IoTDBSessionDisableMemControlIT {
         try {
           session.insertAlignedTablet(tablet);
         } catch (StatementExecutionException e) {
-          assertTrue(Arrays.asList(303, 313).contains(e.getStatusCode()));
+          assertTrue(Arrays.asList(303, 313, 411).contains(e.getStatusCode()));
         }
         tablet.reset();
       }
