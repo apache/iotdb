@@ -775,17 +775,12 @@ public class WALNode implements IWALNode {
     return logDirectory;
   }
 
-  @TestOnly
-  boolean isAllWALEntriesConsumed() {
+  /** Return true when all wal entries all consumed and flushed */
+  public boolean isAllWALEntriesConsumed() {
     return buffer.isAllWALEntriesConsumed();
   }
 
-  @TestOnly
-  long getCurrentLogVersion() {
-    return buffer.getCurrentWALFileVersion();
-  }
-
-  @TestOnly
+  /** Roll wal file */
   public void rollWALFile() {
     WALEntry rollWALFileSignal = new WALSignalEntry(WALEntryType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
     WALFlushListener walFlushListener = log(rollWALFileSignal);
@@ -795,5 +790,10 @@ public class WALNode implements IWALNode {
           identifier,
           walFlushListener.getCause());
     }
+  }
+
+  @TestOnly
+  long getCurrentLogVersion() {
+    return buffer.getCurrentWALFileVersion();
   }
 }
