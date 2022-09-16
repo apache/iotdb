@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.service.metrics.predefined;
 
-import com.sun.management.OperatingSystemMXBean;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
@@ -28,6 +27,8 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+
+import com.sun.management.OperatingSystemMXBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +63,7 @@ public class SystemMetrics implements IMetricSet {
     collectSystemCpuInfo(metricService);
     //
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    for (String dataDir: dataDirs) {
+    for (String dataDir : dataDirs) {
       Path path = Paths.get(dataDir);
       try {
         FileStore fileStore = Files.getFileStore(path);
@@ -214,7 +215,7 @@ public class SystemMetrics implements IMetricSet {
   private void collect() {
     long sysTotalSpace = 0L;
     long sysFreeSpace = 0L;
-    for (FileStore fileStore: fileStores) {
+    for (FileStore fileStore : fileStores) {
       try {
         sysTotalSpace += fileStore.getTotalSpace();
         sysFreeSpace += fileStore.getUsableSpace();
