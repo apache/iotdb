@@ -226,9 +226,9 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
 
     void write(T t, ByteBuffer buffer);
 
-    void write(T t, PublicBAOS buffer);
+    void write(T t, PublicBAOS buffer) throws IOException;
 
-    void write(T t, DataOutputStream buffer);
+    void write(T t, DataOutputStream buffer) throws IOException;
 
     T read(ByteBuffer buffer);
   }
@@ -253,21 +253,13 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     }
 
     @Override
-    public void write(String s, PublicBAOS buffer) {
-      try {
-        ReadWriteIOUtils.write(s, buffer);
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
+    public void write(String s, PublicBAOS buffer) throws IOException {
+      ReadWriteIOUtils.write(s, buffer);
     }
 
     @Override
-    public void write(String s, DataOutputStream buffer) {
-      try {
-        ReadWriteIOUtils.write(s, buffer);
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
+    public void write(String s, DataOutputStream buffer) throws IOException {
+      ReadWriteIOUtils.write(s, buffer);
     }
 
     @Override
