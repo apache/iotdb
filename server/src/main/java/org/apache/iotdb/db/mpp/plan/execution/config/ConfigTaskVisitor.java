@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupT
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateFunctionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateTriggerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteTimeSeriesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropFunctionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropTriggerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
@@ -61,6 +62,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -302,5 +304,22 @@ public class ConfigTaskVisitor
     return new StopPipeTask(stopPipeStatement);
   }
 
-  public static class TaskContext {}
+  @Override
+  public IConfigTask visitDeleteTimeseries(
+      DeleteTimeSeriesStatement deleteTimeSeriesStatement, TaskContext context) {
+    return new DeleteTimeSeriesTask(context.getQueryId(), deleteTimeSeriesStatement);
+  }
+
+  public static class TaskContext {
+
+    private final String queryId;
+
+    public TaskContext(String queryId) {
+      this.queryId = queryId;
+    }
+
+    public String getQueryId() {
+      return queryId;
+    }
+  }
 }
