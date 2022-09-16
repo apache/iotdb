@@ -19,103 +19,78 @@
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
-public class RegionGroupCache implements IRegionGroupCache {
+public class RegionGroupCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionGroupCache.class);
 
-  // TODO: This class might be split into SchemaRegionGroupCache and DataRegionGroupCache
-
-  private static final int maximumWindowSize = 100;
-
   private final TConsensusGroupId consensusGroupId;
 
-  // Map<DataNodeId(where a RegionReplica resides), LinkedList<RegionHeartbeatSample>>
-  private final Map<Integer, LinkedList<RegionHeartbeatSample>> slidingWindow;
+  // Map<DataNodeId(where a RegionReplica resides), RegionCache>
+  private final Map<Integer, RegionCache> regionCacheMap;
 
-  // Indicates the version of the statistics
-  private final AtomicLong versionTimestamp;
   // The DataNode where the leader resides
-  private final AtomicInteger leaderDataNodeId;
+  private volatile int leaderDataNodeId;
 
   public RegionGroupCache(TConsensusGroupId consensusGroupId) {
     this.consensusGroupId = consensusGroupId;
-
-    this.slidingWindow = new ConcurrentHashMap<>();
-
-    this.versionTimestamp = new AtomicLong(0);
-    this.leaderDataNodeId = new AtomicInteger(-1);
+    this.regionCacheMap = new ConcurrentHashMap<>();
+    this.leaderDataNodeId = -1;
   }
 
-  @Override
   public void cacheHeartbeatSample(RegionHeartbeatSample newHeartbeatSample) {
-    slidingWindow.putIfAbsent(newHeartbeatSample.getBelongedDataNodeId(), new LinkedList<>());
-    synchronized (slidingWindow.get(newHeartbeatSample.getBelongedDataNodeId())) {
-      LinkedList<RegionHeartbeatSample> samples =
-          slidingWindow.get(newHeartbeatSample.getBelongedDataNodeId());
-
-      // Only sequential HeartbeatSamples are accepted.
-      // And un-sequential HeartbeatSamples will be discarded.
-      if (samples.size() == 0
-          || samples.getLast().getSendTimestamp() < newHeartbeatSample.getSendTimestamp()) {
-        samples.add(newHeartbeatSample);
-      }
-
-      if (samples.size() > maximumWindowSize) {
-        samples.removeFirst();
-      }
-    }
+    regionCacheMap
+        .computeIfAbsent(newHeartbeatSample.getBelongedDataNodeId(), empty -> new RegionCache())
+        .cacheHeartbeatSample(newHeartbeatSample);
   }
 
-  @Override
-  public boolean updateLoadStatistic() {
+  /**
+   * Update RegionReplicas' statistics, including:
+   *
+   * <p>1. RegionStatus
+   *
+   * <p>2. Leadership
+   *
+   * @return True if the leader changed, false otherwise
+   */
+  public boolean updateRegionStatistics() {
     long updateVersion = Long.MIN_VALUE;
-    int updateLeaderDataNodeId = -1;
-    int originLeaderDataNodeId = leaderDataNodeId.get();
+    int originLeaderDataNodeId = leaderDataNodeId;
 
-    synchronized (slidingWindow) {
-      for (LinkedList<RegionHeartbeatSample> samples : slidingWindow.values()) {
-        if (samples.size() > 0) {
-          RegionHeartbeatSample lastSample = samples.getLast();
-          if (lastSample.getSendTimestamp() > updateVersion && lastSample.isLeader()) {
-            updateVersion = lastSample.getSendTimestamp();
-            updateLeaderDataNodeId = lastSample.getBelongedDataNodeId();
-          }
-        }
+    for (Map.Entry<Integer, RegionCache> cacheEntry : regionCacheMap.entrySet()) {
+      cacheEntry.getValue().updateStatistics();
+      Pair<Long, Boolean> isLeader = cacheEntry.getValue().isLeader();
+      if (isLeader.getLeft() > updateVersion) {
+        updateVersion = isLeader.getLeft();
+        leaderDataNodeId = cacheEntry.getKey();
       }
     }
 
-    if (updateVersion > versionTimestamp.get()) {
-      // Only update when the leadership information is latest
-      versionTimestamp.set(updateVersion);
-      leaderDataNodeId.set(updateLeaderDataNodeId);
-    }
-
-    return originLeaderDataNodeId != leaderDataNodeId.get();
+    return originLeaderDataNodeId != leaderDataNodeId;
   }
 
-  @Override
-  public void removeCacheIfExists(Integer dataNodeId) {
-    synchronized (slidingWindow) {
-      slidingWindow.remove(dataNodeId);
-    }
+  public void removeCacheIfExists(int dataNodeId) {
+    regionCacheMap.remove(dataNodeId);
   }
 
-  @Override
   public int getLeaderDataNodeId() {
-    return leaderDataNodeId.get();
+    return leaderDataNodeId;
   }
 
-  @Override
+  public RegionStatus getRegionStatus(int dataNodeId) {
+    return regionCacheMap.containsKey(dataNodeId)
+        ? regionCacheMap.get(dataNodeId).getStatus()
+        : RegionStatus.Unknown;
+  }
+
   public TConsensusGroupId getConsensusGroupId() {
     return consensusGroupId;
   }

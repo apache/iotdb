@@ -196,7 +196,7 @@ public class LoadManager {
         .values()
         .forEach(
             regionGroupCache -> {
-              boolean updateResult = regionGroupCache.updateLoadStatistic();
+              boolean updateResult = regionGroupCache.updateRegionStatistics();
               switch (regionGroupCache.getConsensusGroupId().getType()) {
                   // Check if some RegionGroups change their leader
                 case SchemaRegion:
