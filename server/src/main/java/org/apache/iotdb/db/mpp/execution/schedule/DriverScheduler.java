@@ -34,9 +34,9 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.L2PriorityQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskID;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,13 +93,13 @@ public class DriverScheduler implements IDriverScheduler, IService {
   public void start() throws StartupException {
     for (int i = 0; i < WORKER_THREAD_NUM; i++) {
       AbstractDriverThread t =
-          new DriverTaskThread("Worker-Thread-" + i, workerGroups, readyQueue, scheduler);
+          new DriverTaskThread("Query-Worker-Thread-" + i, workerGroups, readyQueue, scheduler);
       threads.add(t);
       t.start();
     }
     AbstractDriverThread t =
         new DriverTaskTimeoutSentinelThread(
-            "Sentinel-Thread", workerGroups, timeoutQueue, scheduler);
+            "Query-Sentinel-Thread", workerGroups, timeoutQueue, scheduler);
     threads.add(t);
     t.start();
   }

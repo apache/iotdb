@@ -54,7 +54,7 @@ public class SystemMetrics implements IMetricSet {
     collectSystemMemInfo(metricService);
 
     // finally start to update the value of some metrics in async way
-    if (metricService.isEnable() && null != currentServiceFuture) {
+    if (metricService.isEnable() && null == currentServiceFuture) {
       currentServiceFuture =
           ScheduledExecutorUtil.safelyScheduleAtFixedRate(
               service,
@@ -71,7 +71,7 @@ public class SystemMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     // first stop to update the value of some metrics in async way
     if (currentServiceFuture != null) {
-      currentServiceFuture.cancel(false);
+      currentServiceFuture.cancel(true);
       currentServiceFuture = null;
     }
 

@@ -38,7 +38,6 @@ public class ConfigFactory {
             break;
           case "LocalStandaloneOnMpp":
           case "Cluster1":
-          case "Cluster2":
             config = new MppConfig();
             break;
           case "Remote":

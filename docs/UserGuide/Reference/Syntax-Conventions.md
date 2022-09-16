@@ -246,7 +246,6 @@ Usages of string literals:
 
 There are several ways to include quote characters within a string:
 
- - Precede the quote character by an escape character (\\).
  - `'` inside a string quoted with `"` needs no special treatment and need not be doubled or escaped. In the same way, `"` inside a string quoted with `'` needs no special treatment.
  - A `'` inside a string quoted with `'` may be written as `''`.
 - A `"` inside a string quoted with `"` may be written as `""`.
@@ -256,15 +255,11 @@ The following examples demonstrate how quoting and escaping work:
 'string'  // string
 '"string"'  // "string"
 '""string""'  // ""string""
-'str\'ing'  // str'ing
-'\'string'  // 'string
 '''string'  // 'string
 
 "string" // string
 "'string'"  // 'string'
 "''string''"  // ''string''
-"str\"ing"  // str"ing
-"\"string"  // "string
 """string"  // "string
 ```
 

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.sync.sender.pipe;
 
+import java.util.Objects;
+
 public class TsFilePipeInfo extends PipeInfo {
   private boolean syncDelOp;
   private long dataStartTimestamp;
@@ -59,5 +61,43 @@ public class TsFilePipeInfo extends PipeInfo {
 
   public void setDataStartTimestamp(long dataStartTimestamp) {
     this.dataStartTimestamp = dataStartTimestamp;
+  }
+
+  @Override
+  public String toString() {
+    return "TsFilePipeInfo{"
+        + "pipeName='"
+        + pipeName
+        + '\''
+        + ", pipeSinkName='"
+        + pipeSinkName
+        + '\''
+        + ", status="
+        + status
+        + ", createTime="
+        + createTime
+        + ", syncDelOp="
+        + syncDelOp
+        + ", dataStartTimestamp="
+        + dataStartTimestamp
+        + '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TsFilePipeInfo that = (TsFilePipeInfo) o;
+    return syncDelOp == that.syncDelOp
+        && dataStartTimestamp == that.dataStartTimestamp
+        && createTime == that.createTime
+        && Objects.equals(pipeName, that.pipeName)
+        && Objects.equals(pipeSinkName, that.pipeSinkName)
+        && status == that.status;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(syncDelOp, dataStartTimestamp, pipeName, pipeSinkName, status, createTime);
   }
 }

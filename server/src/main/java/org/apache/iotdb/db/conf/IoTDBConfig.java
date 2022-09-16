@@ -993,6 +993,9 @@ public class IoTDBConfig {
   /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
+  /** Maximum wait time of write cache in MultiLeader consensus. Unit: ms */
+  private long cacheWindowTimeInMs = Long.MAX_VALUE;
+
   private long RatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
 
   IoTDBConfig() {}
@@ -3137,6 +3140,14 @@ public class IoTDBConfig {
 
   public void setThrottleThreshold(long throttleThreshold) {
     this.throttleThreshold = throttleThreshold;
+  }
+
+  public long getCacheWindowTimeInMs() {
+    return cacheWindowTimeInMs;
+  }
+
+  public void setCacheWindowTimeInMs(long cacheWindowTimeInMs) {
+    this.cacheWindowTimeInMs = cacheWindowTimeInMs;
   }
 
   public long getRatisConsensusLogAppenderBufferSizeMax() {

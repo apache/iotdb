@@ -104,6 +104,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       if (typeNum >= ConfigPhysicalPlanType.values().length) {
         throw new IOException("unrecognized log type " + typeNum);
       }
+
       ConfigPhysicalPlanType type = ConfigPhysicalPlanType.values()[typeNum];
       ConfigPhysicalPlan req;
       switch (type) {
