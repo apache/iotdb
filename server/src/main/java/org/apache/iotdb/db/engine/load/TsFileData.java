@@ -39,7 +39,7 @@ public interface TsFileData {
   void serialize(DataOutputStream stream, File tsFile) throws IOException;
 
   static TsFileData deserialize(InputStream stream)
-          throws IOException, PageException, IllegalPathException {
+      throws IOException, PageException, IllegalPathException {
     boolean isModification = ReadWriteIOUtils.readBool(stream);
     return isModification ? DeletionData.deserialize(stream) : ChunkData.deserialize(stream);
   }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.load;
 
-import org.antlr.v4.runtime.tree.Tree;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;

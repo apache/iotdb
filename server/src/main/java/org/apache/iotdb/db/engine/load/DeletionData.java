@@ -47,7 +47,7 @@ public class DeletionData implements TsFileData {
   public void writeToFileWriter(TsFileIOWriter writer) throws IOException {
     File tsFile = writer.getFile();
     try (ModificationFile modificationFile =
-                 new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
       deletion.setFileOffset(tsFile.length());
       modificationFile.write(deletion);
     }
@@ -65,7 +65,7 @@ public class DeletionData implements TsFileData {
   }
 
   public static DeletionData deserialize(InputStream stream)
-          throws IllegalPathException, IOException {
+      throws IllegalPathException, IOException {
     return new DeletionData(Deletion.deserializeWithoutFileOffset(new DataInputStream(stream)));
   }
 }
