@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.load;
 
+import org.antlr.v4.runtime.tree.Tree;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -28,6 +29,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.load.AlignedChunkData;
 import org.apache.iotdb.db.engine.load.ChunkData;
+import org.apache.iotdb.db.engine.load.DeletionData;
+import org.apache.iotdb.db.engine.load.TsFileData;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -65,6 +71,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 public class LoadSingleTsFileNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
@@ -196,9 +203,12 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public void splitTsFileByDataPartition(DataPartition dataPartition) throws IOException {
     replicaSet2Pieces = new HashMap<>();
-    List<ChunkData> chunkDataList = new ArrayList<>();
+    List<TsFileData> tsFileDataList = new ArrayList<>();
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      TreeMap<Long, Deletion> offset2Deletion = new TreeMap<>();
+      getAllModification(offset2Deletion);
+
       if (!checkMagic(reader)) {
         throw new TsFileRuntimeException(
             String.format("Magic String check error when parsing TsFile %s.", tsFile.getPath()));
@@ -218,6 +228,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
             long chunkOffset = reader.position();
+            handleModification(offset2Deletion, tsFileDataList, chunkOffset);
+
             ChunkHeader header = reader.readChunkHeader(marker);
             if (header.getDataSize() == 0) {
               throw new TsFileRuntimeException(
@@ -242,7 +254,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                     .add((AlignedChunkData) chunkData);
               }
               chunkData.setNotDecode(chunkMetadata);
-              chunkDataList.add(chunkData);
+              tsFileDataList.add(chunkData);
               reader.position(reader.position() + header.getDataSize());
               break;
             }
@@ -274,7 +286,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                 TTimePartitionSlot pageTimePartitionSlot =
                     StorageEngineV2.getTimePartitionSlot(startTime);
                 if (!timePartitionSlot.equals(pageTimePartitionSlot)) {
-                  chunkDataList.add(chunkData);
+                  tsFileDataList.add(chunkData);
                   timePartitionSlot = pageTimePartitionSlot;
                   chunkData = ChunkData.createChunkData(isAligned, pageOffset, curDevice, header);
                   chunkData.setTimePartitionSlot(timePartitionSlot);
@@ -305,7 +317,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                             .add((AlignedChunkData) chunkData);
                       }
                     }
-                    chunkDataList.add(chunkData);
+                    tsFileDataList.add(chunkData);
 
                     chunkData =
                         ChunkData.createChunkData(
@@ -328,7 +340,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
               dataSize -= pageDataSize;
             }
 
-            chunkDataList.add(chunkData);
+            tsFileDataList.add(chunkData);
             break;
           case MetaMarker.VALUE_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
@@ -381,11 +393,31 @@ public class LoadSingleTsFileNode extends WritePlanNode {
             MetaMarker.handleUnexpectedMarker(marker);
         }
       }
+
+      handleModification(offset2Deletion, tsFileDataList, Long.MAX_VALUE);
     }
 
-    for (ChunkData chunkData : chunkDataList) {
-      getPieceNode(chunkData.getDevice(), chunkData.getTimePartitionSlot(), dataPartition)
-          .addChunkData(chunkData);
+    for (TsFileData tsFileData : tsFileDataList) {
+      if (!tsFileData.isModification()) {
+        ChunkData chunkData = (ChunkData) tsFileData;
+        getPieceNode(chunkData.getDevice(), chunkData.getTimePartitionSlot(), dataPartition)
+            .addTsFileData(chunkData);
+      } else {
+        for (Map.Entry<TRegionReplicaSet, List<LoadTsFilePieceNode>> entry :
+            replicaSet2Pieces.entrySet()) {
+          LoadTsFilePieceNode pieceNode = entry.getValue().get(entry.getValue().size() - 1);
+          pieceNode.addTsFileData(tsFileData);
+        }
+      }
+    }
+  }
+
+  private void getAllModification(Map<Long, Deletion> offset2Deletion) throws IOException {
+    try (ModificationFile modificationFile =
+        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+      for (Modification modification : modificationFile.getModifications()) {
+        offset2Deletion.put(modification.getFileOffset(), (Deletion) modification);
+      }
     }
   }
 
@@ -419,6 +451,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
           offset2ChunkMetadata.put(chunkMetadata.getOffsetOfChunkHeader(), chunkMetadata);
         }
       }
+    }
+  }
+
+  private void handleModification(
+      TreeMap<Long, Deletion> offset2Deletion, List<TsFileData> tsFileDataList, long chunkOffset) {
+    while (!offset2Deletion.isEmpty() && offset2Deletion.firstEntry().getKey() <= chunkOffset) {
+      tsFileDataList.add(new DeletionData(offset2Deletion.pollFirstEntry().getValue()));
     }
   }
 

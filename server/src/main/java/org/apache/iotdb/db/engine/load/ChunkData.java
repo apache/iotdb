@@ -31,12 +31,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
-public interface ChunkData {
+public interface ChunkData extends TsFileData {
   String getDevice();
 
   TTimePartitionSlot getTimePartitionSlot();
-
-  long getDataSize();
 
   void addDataSize(long pageSize);
 
@@ -52,9 +50,10 @@ public interface ChunkData {
 
   boolean isAligned();
 
-  void writeToFileWriter(TsFileIOWriter writer) throws IOException;
-
-  void serialize(DataOutputStream stream, File tsFile) throws IOException;
+  @Override
+  default boolean isModification() {
+    return false;
+  }
 
   static ChunkData deserialize(InputStream stream) throws PageException, IOException {
     boolean isAligned = ReadWriteIOUtils.readBool(stream);

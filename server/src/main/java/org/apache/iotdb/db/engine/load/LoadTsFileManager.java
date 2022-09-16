@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -86,9 +88,14 @@ public class LoadTsFileManager {
     TsFileWriterManager writerManager =
         uuid2WriterManager.computeIfAbsent(
             uuid, o -> new TsFileWriterManager(SystemFileFactory.INSTANCE.getFile(loadDir, uuid)));
-    for (ChunkData chunkData : pieceNode.getAllChunkData()) {
-      writerManager.write(
-          new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
+    for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
+      if (!tsFileData.isModification()) {
+        ChunkData chunkData = (ChunkData) tsFileData;
+        writerManager.write(
+            new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
+      } else {
+        writerManager.writeDeletion(tsFileData);
+      }
     }
   }
 
@@ -158,6 +165,12 @@ public class LoadTsFileManager {
         dataPartition2LastDevice.put(partitionInfo, chunkData.getDevice());
       }
       chunkData.writeToFileWriter(writer);
+    }
+
+    private void writeDeletion(TsFileData deletionData) throws IOException {
+      for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
+        deletionData.writeToFileWriter(entry.getValue());
+      }
     }
 
     private void loadAll() throws IOException, LoadFileException {
