@@ -28,6 +28,9 @@ The backup-core project contains the main business logic and implementation meth
 The backup-command project is a tool class package,The function implementation depends on the core project and provides a command line tool.  
 
 ## how to compile
+Precondition:
+1. Java >= 1.8, the JAVA_HOME environment variable needs to be configured  
+2. Maven >= 3.6  
 you can use the command below to compile this project or install it:  
 ````
 mvn clean package;  
@@ -39,23 +42,98 @@ Since the core-jar has not been placed on the remote repository, to compile the 
 The integration tests need a real iotdbserver，you can config the server in "test/resource/sesseinConfig.properties"
 
 ## Features    
-- Iotdb-session based  
-- Pipeline-based import and export tool  
-- React based  
-- support more situations,such as export and import a storage,export and import the timeseries structure,the device's align properties  
+- based on iotdb-session  
+- Pipeline-based import and export tool, easy to expand  
+    1. ````
+       Pipeline design document: https://apache-iotdb.feishu.cn/wiki/wikcn8zaxOegcQ4vBASwtmbmE4f
+       ````
+- Based on project reactor framework, multi-track execution, support back pressure mechanism  
+- Data export takes the device as the smallest unit  
+  1. The data export takes the device as the smallest unit, that is, one device corresponds to one file, and this file contains all the measurement data of the device. Because the smallest export unit is the device, the corresponding path should be the smallest device-level path.  
+- Data can be exported from one or more storage groups  
+- Guarantee the consistency of time series structure  
+  1. It can ensure that the structure of the time series will not change during the import and export process. When exporting data, you can choose whether to export the structure information of the time series. This information will be saved in a file separately; it records the properties of the time series in detail. The type of each field, the compression format, whether it is an aligned time series, etc., create a corresponding time series according to this file when importing, to ensure that the time series structure will not change.  
+- Support incremental/full export  
+  1. The "where" parameter supports the selected time range, and currently does not support non-time parameters  
+- Supports the export of more than 1000 time series  
+  1. Since this tool relies on iotdb-session, and session queries are limited, the time series results of a one-time query are not allowed to exceed 1000. This tool solves this problem and is the time series in the query results. More than 1000 can also be exported normally.  
+- The core function provides jar package, which is convenient for third-party integration  
+- Rich export formats:  
+  1. The export file that can be viewed, provides two file formats : sql and csv, which can be viewed directly  
+  2. Unviewable export files, export files in compressed format, take up less disk space, suitable for some backup work; now supported compression formats SNAPPY, GZIP, etc.  
 
-## How to use it
+## Export
+Export command tool: backup-export.bat/backup-export.sh
 ````
--  backup-export.bat -h 127.0.0.1 -p 6667 -u root -pw root -f d:\\validate_test\\83 -i root.** -sy true -se true -c gzip  
--  backup-import.1.bat -h 127.0.0.1 -p 6667 -u root -pw root -f D:\validate_test\83 -se true -c gzip
-- -h  // iotdb host address
-- -p  // port
-- -u  // username
-- -pw // password
-- -f  // fileFolder
-- -sy // Whether a time series structure is required,if true the tool will export a new file which will record the timeseries structure
-- -se // file generation strategy
-- -c  // compress type : SQL、CSV、SNAPPY、GZIP、LZ4
-- -w  // where 
-- -i  // iotdbPath
+ -h  // iotdb host address
+ -p  // port
+ -u  // username
+ -pw // password
+ -f  // fileFolder
+ -i  // iotdbPath
+ -sy // file generation strategy
+ -se // Whether a time series structure is required,if true the tool will export a new file which will record the timeseries structure
+ -c  // compress type : SQL、CSV、SNAPPY、GZIP、LZ4
+ -w  // where 
+
+````
+
+## Import
+Import command tool: backup-import.bat/backup-import.sh
+````
+ -h  // iotdb host address
+ -p  // port
+ -u  // username
+ -pw // password
+ -f  // fileFolder
+ -se // Whether a time series structure is required,if true the tool will export a new file which will record the timeseries structure
+ -c  // compress type : SQL、CSV、SNAPPY、GZIP、LZ4
+````
+
+## example
+Scenario description:
+- Storage group:
+  1. root.ln.company1
+  2. root.ln.company2
+- Timeseries:  
+  1.root.ln.company1.diggingMachine.d1.position
+  2.root.ln.company1.diggingMachine.d1.weight
+  3.root.ln.company1.diggingMachine.d2.position
+  4.root.ln.company1.diggingMachine.d2.weight
+  5.root.ln.company2.taxiFleet.team1.mileage
+  6.root.ln.company2.taxiFleet.team1.oilConsumption
+  
+ > There are two excavators d1 and d2 under the storage group root.ln.company1
+ > There is a taxi fleet team1 under the storage group root.ln.company2
+ 
+ > Export the d1 device, export the file to d:/company1/machine, select the second file strategy (extra file), need to generate a time series structure, the file format is gzip
+ ````
+backup-export.bat -h 127.0.0.1 -p 6667 -u root -pw root -f d:\\company1\\machine -i root.ln.company1.diggingMachine.d1 -sy true -se true -c gzip
+ ````
+> Export results:
+> TIMESERIES_STRUCTURE.STRUCTURE records the time series structure
+> CATALOG_COMPRESS.CATALOG records the correspondence between file names and device paths
+> 1.gz.bin
+
+> Export all devices under company1, export the file to d:/company1/machine, select the first file strategy, do not need to generate a time series structure, the file format is csv
+````
+backup-export.bat -h 127.0.0.1 -p 6667 -u root -pw root -f d:\\company1\\machine -i root.ln.company1.** -sy false -se false -c csv
+````
+> Export results:
+> d2.csv
+> d1.csv
+
+> Export all devices under root.ln, export files to d:/all/devices, select the first file strategy, need to generate time series structure, file format csv
+````
+backup-export.bat -h 127.0.0.1 -p 6667 -u root -pw root -f d:\\all\\devices -i root.ln.** -sy false -se true -c csv -w "time > 1651036025230"
+````
+> Export results:
+> TIMESERIES_STRUCTURE.STRUCTURE records the time series structure
+> d2.csv
+> d1.csv
+> team1.csv
+
+> Import data, specify the folder d:/all/devices to export data, need to import time series, file format csv
+````
+backup-import.bat -h 127.0.0.1 -p 6667 -u root -pw root -f d:\\all\\devices -se true -c csv
 ````
