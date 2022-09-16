@@ -125,7 +125,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       int totalSize = 0;
       boolean isAligned = isAlignedList.get(entry.getValue().get(0));
       for (int index : entry.getValue()) {
-        if (isAlignedList.get(entry.getValue().get(index)) != isAligned) {
+        if (isAlignedList.get(index) != isAligned) {
           throw new StatementAnalyzeException(
               String.format("Inconsistent device alignment of %s in insert plan.", entry.getKey()));
         }
