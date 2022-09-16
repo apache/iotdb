@@ -38,8 +38,6 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -50,7 +48,6 @@ public class SystemMetrics implements IMetricSet {
   private com.sun.management.OperatingSystemMXBean osMXBean;
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-  private Set<FileStore> fileStores = new HashSet<>();
   private long systemDiskTotalSpace = 0L;
   private long systemDiskFreeSpace = 0L;
 
@@ -61,24 +58,6 @@ public class SystemMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     collectSystemCpuInfo(metricService);
-    //
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    for (String dataDir : dataDirs) {
-      Path path = Paths.get(dataDir);
-      try {
-        FileStore fileStore = Files.getFileStore(path);
-        fileStores.add(fileStore);
-      } catch (IOException e) {
-        // try to get parent
-        path = path.getParent();
-        try {
-          FileStore fileStore = Files.getFileStore(path);
-          fileStores.add(fileStore);
-        } catch (IOException innerException) {
-          logger.error("Failed to get storage path of {}, because", dataDir, innerException);
-        }
-      }
-    }
     collectSystemDiskInfo(metricService);
     collectSystemMemInfo(metricService);
 
@@ -222,7 +201,23 @@ public class SystemMetrics implements IMetricSet {
   private void collect() {
     long sysTotalSpace = 0L;
     long sysFreeSpace = 0L;
-    for (FileStore fileStore : fileStores) {
+
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    for (String dataDir : dataDirs) {
+      Path path = Paths.get(dataDir);
+      FileStore fileStore = null;
+      try {
+        fileStore = Files.getFileStore(path);
+      } catch (IOException e) {
+        // check parent if path is not exists
+        path = path.getParent();
+        try {
+          fileStore = Files.getFileStore(path);
+        } catch (IOException innerException) {
+          logger.error("Failed to get storage path of {}, because", dataDir, innerException);
+          continue;
+        }
+      }
       try {
         sysTotalSpace += fileStore.getTotalSpace();
         sysFreeSpace += fileStore.getUsableSpace();
