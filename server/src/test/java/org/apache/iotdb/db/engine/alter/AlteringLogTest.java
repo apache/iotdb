@@ -92,10 +92,10 @@ public class AlteringLogTest {
 
     File f = FSFactoryProducer.getFSFactory().getFile(path);
     try (AlteringLogger logger = new AlteringLogger(f)) {
-      logger.addAlterParam(
-          new PartialPath("root.alt1.d1", "m1"), TSEncoding.TS_2DIFF, CompressionType.GZIP);
-      logger.addAlterParam(
-          new PartialPath("root.alt1.d2", "m1"), TSEncoding.GORILLA, CompressionType.SNAPPY);
+      PartialPath pm1 = new PartialPath("root.alt1.d1", "m1");
+      PartialPath pm2 = new PartialPath("root.alt1.d2", "m1");
+      logger.addAlterParam(pm1, TSEncoding.TS_2DIFF, CompressionType.GZIP);
+      logger.addAlterParam(pm2, TSEncoding.GORILLA, CompressionType.SNAPPY);
       logger.clearBegin();
       logger.doneFile(new TsFileResource(new File(f1)));
       logger.doneFile(new TsFileResource(new File(f2)));
@@ -109,8 +109,8 @@ public class AlteringLogTest {
       Assert.assertEquals(alterList.size(), 2);
       Pair<String, Pair<TSEncoding, CompressionType>> p1 = alterList.get(0);
       Pair<String, Pair<TSEncoding, CompressionType>> p2 = alterList.get(1);
-      Assert.assertEquals(p1.left, new PartialPath("root.alt1.d1", "m1").getFullPath());
-      Assert.assertEquals(p2.left, new PartialPath("root.alt1.d2", "m1").getFullPath());
+      Assert.assertEquals(p1.left, pm1.getFullPath());
+      Assert.assertEquals(p2.left, pm2.getFullPath());
       Assert.assertEquals(p1.right.left, TSEncoding.TS_2DIFF);
       Assert.assertEquals(p1.right.right, CompressionType.GZIP);
       Assert.assertEquals(p2.right.left, TSEncoding.GORILLA);
@@ -124,6 +124,7 @@ public class AlteringLogTest {
       TsFileIdentifier if2 = it.next();
       Assert.assertEquals(TsFileIdentifier.getFileIdentifierFromFilePath(f1), if1);
       Assert.assertEquals(TsFileIdentifier.getFileIdentifierFromFilePath(f2), if2);
+
 
     } catch (Exception e) {
       Assert.fail(e.getMessage());

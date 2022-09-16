@@ -559,7 +559,11 @@ public class DataRegion {
     }
 
     // recover alter records cache
-    recoverAlter();
+    try {
+      recoverAlter();
+    } catch (IOException e) {
+      throw new DataRegionException(e);
+    }
     // recover and start timed compaction thread
     initCompaction();
 
@@ -576,7 +580,7 @@ public class DataRegion {
     }
   }
 
-  private void recoverAlter() throws DataRegionException {
+  private void recoverAlter() throws DataRegionException, IOException {
 
     final String logKey = this.getStorageGroupPath();
     // alter.log analyzer
@@ -586,6 +590,7 @@ public class DataRegion {
       return;
     }
     AlteringLogAnalyzer analyzer = new AlteringLogAnalyzer(logFile);
+    analyzer.analyzer();
     List<Pair<String, Pair<TSEncoding, CompressionType>>> alterList = analyzer.getAlterList();
     if (alterList == null || alterList.size() <= 0) {
       try {
@@ -601,7 +606,7 @@ public class DataRegion {
     for (int i = 0; i < alterList.size(); i++) {
       Pair<String, Pair<TSEncoding, CompressionType>> record = alterList.get(i);
       try {
-        alteringRecordsCache.putRecord(record.left, record.right.left, record.right.right);
+        alteringRecordsCache.putRecord(logicalStorageGroupName, record.left, record.right.left, record.right.right);
       } catch (Exception e) {
         throw new DataRegionException(e);
       }

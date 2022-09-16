@@ -62,16 +62,32 @@ public class AlteringRecordsCache {
       throws Exception {
     if (fullPath != null) {
       PartialPath path = new PartialPath(fullPath);
-      String device = path.getDevice();
       String storageGroupName = StorageEngine.getInstance().getStorageGroupName(path);
+      putRecord(storageGroupName, fullPath, encoding, compressionType);
+    }
+  }
+
+  /**
+   * only for recover
+   * @param storageGroupName
+   * @param fullPath
+   * @param encoding
+   * @param compressionType
+   * @throws Exception
+   */
+  public void putRecord(String storageGroupName, String fullPath, TSEncoding encoding, CompressionType compressionType)
+          throws Exception {
+    if (fullPath != null) {
+      PartialPath path = new PartialPath(fullPath);
+      String device = path.getDevice();
       Set<String> devices =
-          sgDeviceMap.computeIfAbsent(
-              storageGroupName, id -> Collections.synchronizedSet(new HashSet<>()));
+              sgDeviceMap.computeIfAbsent(
+                      storageGroupName, id -> Collections.synchronizedSet(new HashSet<>()));
       devices.add(device);
       Pair<TSEncoding, CompressionType> record = new Pair<>(encoding, compressionType);
       alteringRecords.put(fullPath, record);
       Map<String, Pair<TSEncoding, CompressionType>> deviceRecordMap =
-          alteringDeviceRecords.computeIfAbsent(device, id -> new ConcurrentHashMap<>());
+              alteringDeviceRecords.computeIfAbsent(device, id -> new ConcurrentHashMap<>());
       deviceRecordMap.put(fullPath, record);
     }
   }
