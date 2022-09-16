@@ -1191,11 +1191,13 @@ public class StorageEngine implements IService {
   public void rewriteTimeseries(PartialPath fullPath)
       throws StorageEngineException, MetadataException {
 
-    // TODO Check whether fullPath is a storage group
-
+    if(fullPath == null) {
+      throw new StorageEngineException(
+              "Rewrite Timeseries Failed. The storageGroupName is null");
+    }
     // Check altering cache
     AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
-    boolean storageGroupExsist = alteringRecordsCache.isStorageGroupExsist(fullPath);
+    boolean storageGroupExsist = alteringRecordsCache.isStorageGroupExsist(fullPath.getFullPath());
     if (!storageGroupExsist) {
       throw new StorageEngineException(
           "Rewrite Timeseries Failed. The storage group you entered is not altering");

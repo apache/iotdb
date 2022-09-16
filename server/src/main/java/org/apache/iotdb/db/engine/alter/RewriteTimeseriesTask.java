@@ -169,12 +169,12 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
 
     // rewrite target tsfiles
     try (AlteringLogger alteringLogger = new AlteringLogger(logFile)) {
-      LOGGER.info("[alter timeseries] {} rewriteDataInTsFiles", logKey);
+      LOGGER.info("[rewriteTimeseries] {} rewriteDataInTsFiles", logKey);
       if (readyResourceList.isEmpty()) {
         return;
       }
       int size = readyResourceList.size();
-      LOGGER.info("[alter timeseries] {} rewrite begin, ready resource size:{}", logKey, size);
+      LOGGER.info("[rewriteTimeseries] {} rewrite begin, ready resource size:{}", logKey, size);
       for (int i = 0; i < size; i++) {
         TsFileResource tsFileResource = readyResourceList.get(i);
         if (tsFileResource == null || !tsFileResource.isClosed()) {
@@ -184,19 +184,19 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
         // log file done
         alteringLogger.doneFile(tsFileResource);
         LOGGER.info(
-            "[alter timeseries] {} rewriteDataInTsFile {} end, fileNum:{}/{}, fileSize:{}",
+            "[rewriteTimeseries] {} rewriteDataInTsFile {} end, fileNum:{}/{}, fileSize:{}",
             logKey,
             tsFileResource.getTsFilePath(), i+1, size, tsFileResource.getTsFileSize());
       }
     } catch (Exception e) {
-      LOGGER.error("[alter timeseries] " + logKey + " error", e);
+      LOGGER.error("[rewriteTimeseries] " + logKey + " error", e);
     } finally {
       // The process is complete and the logFile is deleted
       if (logFile.exists()) {
         try {
           FileUtils.delete(logFile);
         } catch (IOException e) {
-          LOGGER.error("[alter timeseries] " + logKey + " logFile delete failed", e);
+          LOGGER.error("[rewriteTimeseries] " + logKey + " logFile delete failed", e);
         }
       }
     }
@@ -206,7 +206,7 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
 
     if(LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-              "[alter timeseries] {} rewriteDataInTsFile:{}, fileSize:{} start",
+              "[rewriteTimeseries] {} rewriteDataInTsFile:{}, fileSize:{} start",
               logKey,
               tsFileResource.getTsFilePath(),
               tsFileResource.getTsFileSize());
@@ -224,7 +224,7 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
       CompactionUtils.deleteTsFileWithoutMods(targetTsFileResource);
       if(LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-                "[alter timeseries] {} tsFile:{} does not need to be rewrite",
+                "[rewriteTimeseries] {} tsFile:{} does not need to be rewrite",
                 logKey,
                 tsFileResource.getTsFileSize());
       }
@@ -233,13 +233,13 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     }
     // .tsfile->.alter.old .alter->.tsfile
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[alter timeseries] {} move tsfile", logKey);
+      LOGGER.debug("[rewriteTimeseries] {} move tsfile", logKey);
     }
     tsFileResource.moveTsFile(TSFILE_SUFFIX, ALTER_OLD_TMP_FILE_SUFFIX);
     targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
     // replace
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[alter timeseries] {} replace tsfile", logKey);
+      LOGGER.debug("[rewriteTimeseries] {} replace tsfile", logKey);
     }
     tsFileManager.replace(
         Collections.singletonList(tsFileResource),
@@ -256,7 +256,7 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
       throws IOException {
     // check
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[alter timeseries] {} check tsfile", logKey);
+      LOGGER.debug("[rewriteTimeseries] {} check tsfile", logKey);
     }
     if (targetTsFileResource.getTsFile().exists()
         && targetTsFileResource.getTsFile().length()
@@ -269,10 +269,10 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     }
 
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[alter timeseries] {} delete tsfile", logKey);
+      LOGGER.debug("[rewriteTimeseries] {} delete tsfile", logKey);
     }
     LOGGER.info(
-        "[alter timeseries] {} alter {} finish, start to delete old files",
+        "[rewriteTimeseries] {} alter {} finish, start to delete old files",
         logKey,
         tsFileResource.getTsFilePath());
     // delete the old files

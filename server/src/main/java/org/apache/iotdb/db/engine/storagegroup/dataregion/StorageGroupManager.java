@@ -557,6 +557,7 @@ public class StorageGroupManager {
             continue;
           }
           AlteringLogAnalyzer analyzer = new AlteringLogAnalyzer(logFile);
+          analyzer.analyzer();
           // clear begin
           if (!analyzer.isClearBegin()) {
             AlteringLogger.clearBegin(logFile);

@@ -108,12 +108,11 @@ public class AlteringRecordsCache {
     return alteringDeviceRecords.get(device);
   }
 
-  public boolean isStorageGroupExsist(PartialPath path) throws StorageEngineException {
+  public boolean isStorageGroupExsist(String storageGroupName) {
 
-    if (path == null) {
+    if (storageGroupName == null) {
       return false;
     }
-    String storageGroupName = StorageEngine.getInstance().getStorageGroupName(path);
     return sgDeviceMap.get(storageGroupName) != null;
   }
 
