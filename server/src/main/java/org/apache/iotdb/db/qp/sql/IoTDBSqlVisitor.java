@@ -2959,26 +2959,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private Expression parseRegularExpression(
       ExpressionContext context, boolean inWithoutNull, boolean isQueryFilter) {
-    if (isQueryFilter) {
-      return new RegularExpression(
-          parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-          context.STRING_LITERAL().getText());
-    }
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseLikeExpression(
       ExpressionContext context, boolean inWithoutNull, boolean isQueryFilter) {
-    if (isQueryFilter) {
-      return new LikeExpression(
-          parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-          context.STRING_LITERAL().getText());
-    }
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
@@ -3310,23 +3300,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       if ((src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"')
           || (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
         return "'" + parseStringLiteral(src) + "'";
-      }
-    }
-    return src;
-  }
-
-  private String parseStringLiteralInLikeOrRegular(String src) {
-    if (2 <= src.length()) {
-      String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
-        // replace "" with "
-        String replaced = unescapeString.replace("\"\"", "\"");
-        return replaced.length() == 0 ? "" : replaced;
-      }
-      if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
-        // replace '' with '
-        String replaced = unescapeString.replace("''", "'");
-        return replaced.length() == 0 ? "" : replaced;
       }
     }
     return src;
