@@ -40,6 +40,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -101,7 +102,7 @@ public class IoTDBSessionDisableMemControlIT {
           try {
             session.insertTablet(tablet, true);
           } catch (StatementExecutionException e) {
-            assertTrue(e.getStatusCode() == 303 || e.getStatusCode() == 313);
+            assertTrue(Arrays.asList(303, 313).contains(e.getStatusCode()));
           }
           tablet.reset();
         }
@@ -187,7 +188,7 @@ public class IoTDBSessionDisableMemControlIT {
         try {
           session.insertAlignedTablet(tablet);
         } catch (StatementExecutionException e) {
-          assertTrue(e.getStatusCode() == 303 || e.getStatusCode() == 313);
+          assertTrue(Arrays.asList(303, 313).contains(e.getStatusCode()));
         }
         tablet.reset();
       }
