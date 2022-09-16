@@ -82,11 +82,9 @@ public class TsFileIOWriterMemoryControlTest {
     if (testFile.exists()) {
       FileUtils.delete(testFile);
     }
-    if (new File(testFile.getPath() + MemoryControlTsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
-        .exists()) {
+    if (new File(testFile.getPath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX).exists()) {
       FileUtils.delete(
-          new File(
-              testFile.getPath() + MemoryControlTsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX));
+          new File(testFile.getPath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX));
     }
     if (emptyFile.exists()) {
       FileUtils.delete(emptyFile);

@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.MemoryControlTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -78,7 +77,7 @@ public class SingleSeriesCompactionExecutor {
       PartialPath series,
       IMeasurementSchema measurementSchema,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
-      MemoryControlTsFileIOWriter fileWriter,
+      TsFileIOWriter fileWriter,
       TsFileResource targetResource) {
     this.device = series.getDevice();
     this.series = series;
