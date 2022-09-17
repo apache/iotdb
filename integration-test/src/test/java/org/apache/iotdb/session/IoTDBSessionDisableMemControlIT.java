@@ -19,6 +19,7 @@
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -38,6 +39,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,6 +54,8 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSessionDisableMemControlIT {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionDisableMemControlIT.class);
 
   protected static boolean enableMemControl;
 
@@ -102,7 +107,9 @@ public class IoTDBSessionDisableMemControlIT {
           try {
             session.insertTablet(tablet, true);
           } catch (StatementExecutionException e) {
-            assertTrue(Arrays.asList(303, 313).contains(e.getStatusCode()));
+            LOGGER.error(String.valueOf( e.getStatusCode()));
+            LOGGER.error(e.getMessage());
+            assertTrue(Arrays.asList(303, 313, 411).contains(e.getStatusCode()));
           }
           tablet.reset();
         }
@@ -113,7 +120,9 @@ public class IoTDBSessionDisableMemControlIT {
         try {
           session.insertTablet(tablet);
         } catch (StatementExecutionException e) {
-          assertTrue(Arrays.asList(303, 313).contains(e.getStatusCode()));
+          LOGGER.error(String.valueOf( e.getStatusCode()));
+          LOGGER.error(e.getMessage());
+          assertTrue(Arrays.asList(303, 313, 411).contains(e.getStatusCode()));
         }
         tablet.reset();
       }
@@ -177,7 +186,9 @@ public class IoTDBSessionDisableMemControlIT {
           try {
             session.insertAlignedTablet(tablet, true);
           } catch (StatementExecutionException e) {
-            assertTrue(Arrays.asList(303, 313).contains(e.getStatusCode()));
+            LOGGER.error(String.valueOf( e.getStatusCode()));
+            LOGGER.error(e.getMessage());
+            assertTrue(Arrays.asList(303, 313, 411).contains(e.getStatusCode()));
           }
           tablet.reset();
         }
@@ -188,7 +199,9 @@ public class IoTDBSessionDisableMemControlIT {
         try {
           session.insertAlignedTablet(tablet);
         } catch (StatementExecutionException e) {
-          assertTrue(Arrays.asList(303, 313).contains(e.getStatusCode()));
+          LOGGER.error(String.valueOf( e.getStatusCode()));
+          LOGGER.error(e.getMessage());
+          assertTrue(Arrays.asList(303, 313, 411).contains(e.getStatusCode()));
         }
         tablet.reset();
       }
