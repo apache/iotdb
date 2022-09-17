@@ -37,11 +37,13 @@ public class PatternTreeMapTest {
   public void stringAppendPatternTreeMapTest() throws IllegalPathException {
     PatternTreeMap<String, StringSerializer> patternTreeMap =
         PatternTreeMapFactory.getTriggerPatternTreeMap();
+
+
     patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), "A");
-    patternTreeMap.append(new PartialPath("root.**.s1"), "B");
+           patternTreeMap.append(new PartialPath("root.**.s1"), "B");
     patternTreeMap.append(new PartialPath("root.sg1.*.s1"), "C");
     patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), "D");
-    patternTreeMap.append(new PartialPath("root.sg1.**"), "E");
+           patternTreeMap.append(new PartialPath("root.sg1.**"), "E");
     patternTreeMap.append(new PartialPath("root.sg1.**.s2"), "F");
     patternTreeMap.append(new PartialPath("root.**.d1.*"), "G");
     patternTreeMap.append(new PartialPath("root.**.d1.**"), "H");
