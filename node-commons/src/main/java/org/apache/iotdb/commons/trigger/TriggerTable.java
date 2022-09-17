@@ -61,6 +61,10 @@ public class TriggerTable {
     triggerTable.get(triggerName).setTriggerState(TTriggerState.ACTIVE);
   }
 
+  public TriggerInformation getTriggerInformation(String triggerName) {
+    return triggerTable.get(triggerName);
+  }
+
   // for showTrigger
   public Map<String, TTriggerState> getAllTriggerStates() {
     Map<String, TTriggerState> allTriggerStates = new HashMap<>(triggerTable.size());

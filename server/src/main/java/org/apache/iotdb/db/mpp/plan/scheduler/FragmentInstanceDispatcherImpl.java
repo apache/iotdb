@@ -39,6 +39,8 @@ import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
+import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -47,6 +49,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 
 import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
@@ -277,7 +280,28 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         }
         ConsensusWriteResponse writeResponse;
         if (groupId instanceof DataRegionId) {
-          writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
+          TriggerFireVisitor visitor = new TriggerFireVisitor();
+          // fire Trigger before the insertion
+          TriggerFireResult result = planNode.accept(visitor, TriggerEvent.BEFORE_INSERT);
+          if (result.equals(TriggerFireResult.TERMINATION)) {
+            TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
+            triggerError.setMessage(
+                "Failed to complete the insertion because trigger error before the insertion.");
+            writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
+          } else {
+            writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
+            // fire Trigger after the insertion
+            if (writeResponse.isSuccessful()) {
+              result = planNode.accept(visitor, TriggerEvent.AFTER_INSERT);
+              if (!result.equals(TriggerFireResult.SUCCESS)) {
+                TSStatus triggerError =
+                    new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
+                triggerError.setMessage(
+                    "Failed to complete the insertion because trigger error after the insertion.");
+                writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
+              }
+            }
+          }
         } else {
           writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
         }

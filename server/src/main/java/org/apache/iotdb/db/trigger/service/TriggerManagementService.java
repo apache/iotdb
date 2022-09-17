@@ -79,7 +79,17 @@ public class TriggerManagementService implements IService {
 
   public void activeTrigger(String triggerName) {
     triggerTable.activeTrigger(triggerName);
-  };
+  }
+
+  public TriggerExecutor getExecutor(String triggerName) {
+    return executorMap.get(triggerName);
+  }
+
+  public boolean needToFireOnAnotherDataNode(String triggerName) {
+    TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
+    return triggerInformation.isStateful()
+        && !triggerInformation.getDataNodeLocation().equals(getTDataNodeLocation());
+  }
 
   private void checkIfRegistered(TriggerInformation triggerInformation)
       throws TriggerManagementException {

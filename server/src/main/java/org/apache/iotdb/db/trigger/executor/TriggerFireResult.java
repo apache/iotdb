@@ -19,17 +19,26 @@
 
 package org.apache.iotdb.db.trigger.executor;
 
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.trigger.api.enums.TriggerEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+public enum TriggerFireResult {
+  SUCCESS(0, "Trigger fires successfully"),
 
-public class TriggerEngine {
+  FAILED_NO_TERMINATION(1, "Exception occurred when firing an trigger with optimistic strategy"),
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TriggerEngine.class);
+  TERMINATION(2, "Exception occurred when firing an trigger with pessimistic strategy");
 
-    public static void fire(TriggerEvent event, InsertNode insertNode){
+  private final int id;
+  private final String event;
 
-    }
+  TriggerFireResult(int id, String event) {
+    this.id = id;
+    this.event = event;
+  }
 
+  public int getId() {
+    return id;
+  }
+
+  public String getEvent() {
+    return event;
+  }
 }

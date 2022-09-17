@@ -102,6 +102,40 @@ public class Tablet {
     reset();
   }
 
+  /**
+   * Return a tablet with specified timestamps and values. Only call this constructor directly for
+   * Trigger.
+   *
+   * @param deviceId the name of the device specified to be written in
+   * @param schemas the list of measurement schemas for creating the row batch, only measurementId
+   *     and type take effects
+   * @param timestamps given timestamps
+   * @param values given values
+   * @param bitMaps given bitmaps
+   * @param maxRowNumber the maximum number of rows for this tablet
+   */
+  public Tablet(
+      String deviceId,
+      List<MeasurementSchema> schemas,
+      long[] timestamps,
+      Object[] values,
+      BitMap[] bitMaps,
+      int maxRowNumber) {
+    this.deviceId = deviceId;
+    this.schemas = schemas;
+    this.timestamps = timestamps;
+    this.values = values;
+    this.bitMaps = bitMaps;
+    this.maxRowNumber = maxRowNumber;
+
+    measurementIndex = new HashMap<>();
+    int indexInSchema = 0;
+    for (MeasurementSchema schema : schemas) {
+      measurementIndex.put(schema.getMeasurementId(), indexInSchema);
+      indexInSchema++;
+    }
+  }
+
   public void setDeviceId(String deviceId) {
     this.deviceId = deviceId;
   }

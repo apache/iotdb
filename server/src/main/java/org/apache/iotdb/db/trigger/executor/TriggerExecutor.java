@@ -23,6 +23,9 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.TriggerAttributes;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
+import org.apache.iotdb.trigger.api.enums.TriggerEvent;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
 public class TriggerExecutor {
   private final TriggerInformation triggerInformation;
@@ -44,6 +47,20 @@ public class TriggerExecutor {
     } catch (Exception e) {
       onTriggerExecutionError("validate/onCreate(TriggerAttributes)", e);
     }
+  }
+
+  public void fire(Tablet tablet, TriggerEvent event) throws TriggerExecutionException {
+    if (event.equals(triggerInformation.getEvent())) {
+      try {
+        trigger.fire(tablet);
+      } catch (Exception e) {
+        onTriggerExecutionError("fire(Tablet)", e);
+      }
+    }
+  }
+
+  public FailureStrategy getFailureStrategy() {
+    return trigger.getFailureStrategy();
   }
 
   private void onTriggerExecutionError(String methodName, Exception e)

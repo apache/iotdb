@@ -78,6 +78,8 @@ import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
+import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
@@ -115,6 +117,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TcreateTriggerInstanceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import com.google.common.collect.ImmutableList;
@@ -233,12 +236,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     }
     if (groupId instanceof DataRegionId) {
-
-      writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
-
+      TriggerFireVisitor visitor = new TriggerFireVisitor();
+      // fire Trigger before the insertion
+      TriggerFireResult result = planNode.accept(visitor, TriggerEvent.BEFORE_INSERT);
+      if (result.equals(TriggerFireResult.TERMINATION)) {
+        TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
+        triggerError.setMessage(
+            "Failed to complete the insertion because trigger error before the insertion.");
+        writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
+      } else {
+        writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
+        // fire Trigger after the insertion
+        if (writeResponse.isSuccessful()) {
+          result = planNode.accept(visitor, TriggerEvent.AFTER_INSERT);
+          if (!result.equals(TriggerFireResult.SUCCESS)) {
+            TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
+            triggerError.setMessage(
+                "Failed to complete the insertion because trigger error after the insertion.");
+            writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
+          }
+        }
+      }
     } else {
       writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
     }
+
     // TODO need consider more status
     if (writeResponse.getStatus() != null) {
       response.setAccepted(
