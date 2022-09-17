@@ -43,21 +43,17 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        if (curWindow.isTimeWindow()) {
-          updateIntLastValue(column[2].getInt(i), column[1].getLong(i));
-          return i;
-        } else {
-          // do not assign true to initResult
-          if (column[1].getLong(i) > maxTime) {
-            maxTime = column[1].getLong(i);
-            lastValue.setInt(column[2].getInt(i));
-          }
-        }
+        updateIntLastValue(column[2].getInt(i), column[1].getLong(i));
+        return i;
       }
     }
 
@@ -68,21 +64,17 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        if (curWindow.isTimeWindow()) {
-          updateLongLastValue(column[2].getLong(i), column[1].getLong(i));
-          return i;
-        } else {
-          // do not assign true to initResult
-          if (column[1].getLong(i) > maxTime) {
-            maxTime = column[1].getLong(i);
-            lastValue.setLong(column[2].getLong(i));
-          }
-        }
+        updateLongLastValue(column[2].getLong(i), column[1].getLong(i));
+        return i;
       }
     }
 
@@ -93,21 +85,17 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        if (curWindow.isTimeWindow()) {
-          updateFloatLastValue(column[2].getFloat(i), column[1].getLong(i));
-          return i;
-        } else {
-          // do not assign true to initResult
-          if (column[1].getLong(i) > maxTime) {
-            maxTime = column[1].getLong(i);
-            lastValue.setFloat(column[2].getFloat(i));
-          }
-        }
+        updateFloatLastValue(column[2].getFloat(i), column[1].getLong(i));
+        return i;
       }
     }
 
@@ -118,21 +106,17 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        if (curWindow.isTimeWindow()) {
-          updateDoubleLastValue(column[2].getDouble(i), column[1].getLong(i));
-          return i;
-        } else {
-          // do not assign true to initResult
-          if (column[1].getLong(i) > maxTime) {
-            maxTime = column[1].getLong(i);
-            lastValue.setDouble(column[2].getDouble(i));
-          }
-        }
+        updateDoubleLastValue(column[2].getDouble(i), column[1].getLong(i));
+        return i;
       }
     }
 
@@ -143,21 +127,17 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        if (curWindow.isTimeWindow()) {
-          updateBooleanLastValue(column[2].getBoolean(i), column[1].getLong(i));
-          return i;
-        } else {
-          // do not assign true to initResult
-          if (column[1].getLong(i) > maxTime) {
-            maxTime = column[1].getLong(i);
-            lastValue.setBoolean(column[2].getBoolean(i));
-          }
-        }
+        updateBooleanLastValue(column[2].getBoolean(i), column[1].getLong(i));
+        return i;
       }
     }
 
@@ -168,21 +148,17 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        if (curWindow.isTimeWindow()) {
-          updateBinaryLastValue(column[2].getBinary(i), column[1].getLong(i));
-          return i;
-        } else {
-          // do not assign true to initResult
-          if (column[1].getLong(i) > maxTime) {
-            maxTime = column[1].getLong(i);
-            lastValue.setBinary(column[2].getBinary(i));
-          }
-        }
+        updateBinaryLastValue(column[2].getBinary(i), column[1].getLong(i));
+        return i;
       }
     }
 

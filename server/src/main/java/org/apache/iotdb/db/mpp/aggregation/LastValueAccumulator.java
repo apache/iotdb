@@ -225,6 +225,10 @@ public class LastValueAccumulator implements Accumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
@@ -248,6 +252,10 @@ public class LastValueAccumulator implements Accumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
@@ -271,6 +279,10 @@ public class LastValueAccumulator implements Accumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
@@ -294,6 +306,10 @@ public class LastValueAccumulator implements Accumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
@@ -317,6 +333,10 @@ public class LastValueAccumulator implements Accumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
@@ -340,6 +360,10 @@ public class LastValueAccumulator implements Accumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }

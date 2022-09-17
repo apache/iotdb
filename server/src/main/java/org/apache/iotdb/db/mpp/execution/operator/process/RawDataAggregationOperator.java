@@ -79,6 +79,11 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         // if child still has next but can't be invoked now
         return false;
       } else {
+        // If there are no points belong to last window, the last window will not
+        // initialize window and aggregators
+        if (!windowManager.isCurWindowInit()) {
+          initWindowAndAggregators();
+        }
         break;
       }
     }
@@ -90,20 +95,20 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   private boolean calculateFromRawData() {
 
     // if window is not initialized, we should init window status and reset aggregators
-    if (!windowManager.isCurWindowInit()) {
-      initWindowManagerAndAggregators();
+    if (!windowManager.isCurWindowInit() && !skipPreviousWindowAndInitCurWindow()) {
+      return false;
     }
 
+    // If current window has been initialized, we should judge whether inputTsBlock is empty
     if (inputTsBlock == null || inputTsBlock.isEmpty()) {
       return false;
     }
 
     if (windowManager.satisfiedCurWindow(inputTsBlock)) {
-      inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
 
       int lastReadRowIndex = 0;
       for (Aggregator aggregator : aggregators) {
-        // current agg method has been calculated
+        // Current agg method has been calculated
         if (aggregator.hasFinalResult()) {
           continue;
         }
@@ -112,7 +117,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       }
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
         inputTsBlock = null;
-        // for the last index of TsBlock, if we can know the aggregation calculation is over
+        // For the last index of TsBlock, if we can know the aggregation calculation is over
         // we can directly updateResultTsBlock and return true
         return isAllAggregatorsHasFinalResult(aggregators);
       } else {
@@ -128,11 +133,27 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   @Override
   protected void updateResultTsBlock() {
     appendAggregationResult(resultTsBlockBuilder, aggregators, windowManager.currentOutputTime());
-    // step into next window
+    // Step into next window
     windowManager.next();
   }
 
-  private void initWindowManagerAndAggregators() {
+  private boolean skipPreviousWindowAndInitCurWindow() {
+    // Before we initialize windowManager and aggregators, we should ensure that we have consumed
+    // all points belong to previous window
+    inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
+    // After skipping, if tsBlock is empty, we cannot ensure that we have consumed all points belong
+    // to previous window, we should go back to calculateNextAggregationResult() to get a new
+    // tsBlock
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+      return false;
+    }
+    // If we have consumed all points belong to previous window, we can initialize current window
+    // and aggregators
+    initWindowAndAggregators();
+    return true;
+  }
+
+  private void initWindowAndAggregators() {
     windowManager.initCurWindow(inputTsBlock);
     IWindow curWindow = windowManager.getCurWindow();
     for (Aggregator aggregator : aggregators) {

@@ -41,17 +41,17 @@ public class MinTimeAccumulator implements Accumulator {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
       curWindow.mergeOnePoint();
       if (!column[2].isNull(i)) {
-        if (curWindow.isTimeWindow()) {
-          updateMinTime(column[1].getLong(i));
-          return i;
-        } else {
-          minTime = Math.min(minTime, column[1].getLong(i));
-        }
+        updateMinTime(column[1].getLong(i));
+        return i;
       }
     }
 

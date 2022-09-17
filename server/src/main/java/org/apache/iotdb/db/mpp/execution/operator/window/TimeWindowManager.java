@@ -33,11 +33,15 @@ public class TimeWindowManager implements IWindowManager {
 
   private ITimeRangeIterator timeRangeIterator;
 
+  private boolean needSkip;
+
   public TimeWindowManager(ITimeRangeIterator timeRangeIterator) {
     this.timeRangeIterator = timeRangeIterator;
     this.initialized = false;
-    this.curWindow = new TimeWindow();
+    this.curWindow = new TimeWindow(this.timeRangeIterator.nextTimeRange());
     this.ascending = timeRangeIterator.isAscending();
+    // At beginning, we do not need to skip inputTsBlock
+    this.needSkip = false;
   }
 
   @Override
@@ -47,7 +51,6 @@ public class TimeWindowManager implements IWindowManager {
 
   @Override
   public void initCurWindow(TsBlock tsBlock) {
-    this.curWindow.update(this.timeRangeIterator.nextTimeRange());
     this.initialized = true;
   }
 
@@ -58,8 +61,11 @@ public class TimeWindowManager implements IWindowManager {
 
   @Override
   public void next() {
+    // When we go into next window, we should pay attention to previous window whether all points
+    // belong to previous window have been consumed. If not, we need skip these points.
+    this.needSkip = true;
     this.initialized = false;
-    this.curWindow.update(null);
+    this.curWindow.update(this.timeRangeIterator.nextTimeRange());
   }
 
   @Override
@@ -74,12 +80,42 @@ public class TimeWindowManager implements IWindowManager {
 
   @Override
   public TsBlock skipPointsOutOfCurWindow(TsBlock inputTsBlock) {
-    if ((ascending && inputTsBlock.getStartTime() < curWindow.getCurMinTime())
-        || (!ascending && inputTsBlock.getStartTime() > curWindow.getCurMaxTime())) {
-      return TsBlockUtil.skipPointsOutOfTimeRange(
-          inputTsBlock, curWindow.getCurTimeRange(), ascending);
+    // If we do not need to skip, we return tsBlock directly
+    if (!this.needSkip) {
+      return inputTsBlock;
     }
-    return inputTsBlock;
+
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+      return inputTsBlock;
+    }
+
+    int positionCount = inputTsBlock.getPositionCount();
+    // Used to mark the index we could skip to.
+    int skipIndex = 0;
+    // If current window overlaps with inputTsBlock, we can use bisection method to find the index
+    if (satisfiedCurWindow(inputTsBlock)) {
+      // If ascending, find the index of first greater than or equal to targetTime
+      // If !ascending, find the index of first less than or equal to targetTime
+      if ((ascending && inputTsBlock.getStartTime() < curWindow.getCurMinTime())
+          || (!ascending && inputTsBlock.getStartTime() > curWindow.getCurMaxTime())) {
+        skipIndex =
+            TsBlockUtil.getFirstConditionIndex(
+                inputTsBlock, curWindow.getCurTimeRange(), ascending);
+      }
+    } else {
+      // Here, current window does not overlap with inputTsBlock. We could skip the whole
+      // inputTsBlock if the time range of inputTsBlock has been overdue compare to the time range
+      // of current window.
+      if ((ascending && inputTsBlock.getEndTime() < curWindow.getCurMinTime())
+          || (!ascending && inputTsBlock.getEndTime() > curWindow.getCurMaxTime())) {
+        skipIndex = positionCount;
+      }
+    }
+    // This means that we have skipped all points before the time range of current window.
+    if (skipIndex < positionCount) {
+      needSkip = false;
+    }
+    return inputTsBlock.subTsBlock(skipIndex);
   }
 
   @Override
