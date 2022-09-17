@@ -67,8 +67,8 @@ public class TriggerExecutor {
       throws TriggerExecutionException {
     throw new TriggerExecutionException(
         String.format(
-                "Error occurred during executing Trigger#%s: %s",
-                methodName, System.lineSeparator())
+                "Error occurred during executing Trigger(%s)#%s: %s",
+                triggerInformation.getTriggerName(), methodName, System.lineSeparator())
             + e);
   }
 }

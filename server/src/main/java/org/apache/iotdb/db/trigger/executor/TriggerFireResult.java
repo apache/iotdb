@@ -34,6 +34,19 @@ public enum TriggerFireResult {
     this.event = event;
   }
 
+  public static TriggerFireResult construct(int id) {
+    switch (id) {
+      case 0:
+        return SUCCESS;
+      case 1:
+        return FAILED_NO_TERMINATION;
+      case 2:
+        return TERMINATION;
+      default:
+        throw new UnsupportedOperationException("Unsupported TriggerFireResult Type");
+    }
+  }
+
   public int getId() {
     return id;
   }

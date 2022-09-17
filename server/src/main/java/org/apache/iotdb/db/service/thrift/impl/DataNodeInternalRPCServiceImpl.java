@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
@@ -78,6 +79,7 @@ import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
@@ -85,6 +87,7 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
+import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
@@ -93,10 +96,13 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
@@ -113,10 +119,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TactiveTriggerInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TcreateTriggerInstanceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -788,7 +793,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus createTriggerInstance(TcreateTriggerInstanceReq req) throws TException {
+  public TSStatus createTriggerInstance(TCreateTriggerInstanceReq req) throws TException {
     TriggerInformation triggerInformation = TriggerInformation.deserialize(req.triggerInformation);
     try {
       // set state to INACTIVE when creating trigger instance
@@ -811,7 +816,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus activeTriggerInstance(TactiveTriggerInstanceReq req) throws TException {
+  public TSStatus activeTriggerInstance(TActiveTriggerInstanceReq req) throws TException {
     try {
       TriggerManagementService.getInstance().activeTrigger(req.triggerName);
     } catch (Exception e) {
@@ -827,6 +832,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus dropTriggerInstance(TDropTriggerInstanceReq req) throws TException {
     // todo: implementation
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TFireTriggerResp fireTrigger(TFireTriggerReq req) {
+    String triggerName = req.getTriggerName();
+    TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
+    TriggerFireResult result = TriggerFireResult.SUCCESS;
+    try {
+      executor.fire(tablet, TriggerEvent.construct(req.getTriggerEvent()));
+    } catch (TriggerExecutionException e) {
+      if (executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)) {
+        result = TriggerFireResult.TERMINATION;
+      } else {
+        result = TriggerFireResult.FAILED_NO_TERMINATION;
+      }
+    }
+    return new TFireTriggerResp(result.getId());
   }
 
   private TEndPoint getConsensusEndPoint(

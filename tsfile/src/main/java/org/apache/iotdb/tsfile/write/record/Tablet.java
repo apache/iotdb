@@ -338,4 +338,7 @@ public class Tablet {
     }
     return valueOccupation;
   }
+
+  // todo: serialization and deserialization
+
 }

@@ -169,18 +169,28 @@ struct TDropFunctionRequest {
   1: required string udfName
 }
 
-struct TcreateTriggerInstanceReq {
+struct TCreateTriggerInstanceReq {
   1: required binary triggerInformation
   2: required binary jarFile
 }
 
-struct TactiveTriggerInstanceReq {
+struct TActiveTriggerInstanceReq {
   1: required string triggerName
 }
 
 struct TDropTriggerInstanceReq {
   1: required string triggerName
   2: required bool needToDeleteJarFile
+}
+
+struct TFireTriggerReq {
+  1: required string triggerName
+  2: required binary tablet
+  3: required byte triggerEvent
+}
+
+struct TFireTriggerResp {
+  1: required i32 fireResult
 }
 
 struct TInvalidatePermissionCacheReq {
@@ -357,14 +367,14 @@ service IDataNodeRPCService {
    *
    * @param TriggerInformation, jar file.
    **/
-  common.TSStatus createTriggerInstance(TcreateTriggerInstanceReq req)
+  common.TSStatus createTriggerInstance(TCreateTriggerInstanceReq req)
 
   /**
    * Config node will active a trigger instance on data node.
    *
    * @param trigger name.
    **/
-  common.TSStatus activeTriggerInstance(TactiveTriggerInstanceReq req)
+  common.TSStatus activeTriggerInstance(TActiveTriggerInstanceReq req)
 
   /**
     * Config node will drop a trigger on all online config nodes and data nodes.
@@ -372,6 +382,13 @@ service IDataNodeRPCService {
     * @param trigger name, whether need to delete jar
     **/
   common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
+
+  /**
+    * Fire a stateful trigger on current data node.
+    *
+    * @param trigger name, tablet and event
+    **/
+  TFireTriggerResp fireTrigger(TFireTriggerReq req)
 
   /**
    * Config node will invalidate permission Info cache.

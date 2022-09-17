@@ -148,6 +148,18 @@ public class TriggerManagementService implements IService {
     }
   }
 
+  /**
+   * @param triggerName given trigger
+   * @return InternalRPC TEndPoint of DataNode where instance of given stateful trigger is on.
+   */
+  public TEndPoint getEndPointForStatefulTrigger(String triggerName) {
+    TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
+    if (triggerInformation.isStateful()) {
+      return triggerInformation.getDataNodeLocation().getInternalEndPoint();
+    }
+    return null;
+  }
+
   private TDataNodeLocation getTDataNodeLocation() {
     if (tDataNodeLocationCache == null) {
       // Set DataNodeLocation

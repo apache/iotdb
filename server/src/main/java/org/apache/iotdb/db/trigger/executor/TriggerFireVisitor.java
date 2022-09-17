@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.trigger.executor;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -29,15 +33,18 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
+import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +54,12 @@ import java.util.stream.Collectors;
 public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEvent> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerFireVisitor.class);
+
+  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+      internalServiceClientIClientManager =
+          new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+              .createClientManager(
+                  new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
   @Override
   public TriggerFireResult visitPlan(PlanNode node, TriggerEvent context) {
@@ -173,8 +186,15 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   private TriggerFireResult fire(String triggerName, Tablet tablet, TriggerEvent event) {
     TriggerFireResult result = TriggerFireResult.SUCCESS;
     if (!TriggerManagementService.getInstance().needToFireOnAnotherDataNode(triggerName)) {
-      // todo: sendToAnotherNode
-
+      TEndPoint endPoint =
+          TriggerManagementService.getInstance().getEndPointForStatefulTrigger(triggerName);
+      try (SyncDataNodeInternalServiceClient client =
+          internalServiceClientIClientManager.borrowClient(endPoint)) {
+        TFireTriggerReq req = new TFireTriggerReq(triggerName,tablet.se,event.getId());
+        result = TriggerFireResult.construct(client.fireTrigger(req).getFireResult());
+      } catch (IOException | TException e) {
+        LOGGER.warn("Error occurred when trying to fire trigger({}) on TEndPoint: {}",triggerName,endPoint.toString());
+      }
     } else {
       TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
       try {
