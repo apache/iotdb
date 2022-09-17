@@ -150,9 +150,16 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
 
   public void serialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(name, buffer);
+    if (valueSet == null) {
+      ReadWriteIOUtils.write(0, buffer);
+    } else {
+      ReadWriteIOUtils.write(valueSet.size(), buffer);
+      for (V value : valueSet) {
+        serializer.write(value, buffer);
+      }
+    }
     ReadWriteIOUtils.write(children.size(), buffer);
     serializeChildren(buffer);
-    // TODO
   }
 
   void serializeChildren(ByteBuffer buffer) {
@@ -163,7 +170,6 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
 
   public void serialize(PublicBAOS outputStream) throws IOException {
     ReadWriteIOUtils.write(name, outputStream);
-    ReadWriteIOUtils.write(children.size(), outputStream);
     if (valueSet == null) {
       ReadWriteIOUtils.write(0, outputStream);
     } else {
@@ -172,12 +178,12 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
         serializer.write(value, outputStream);
       }
     }
+    ReadWriteIOUtils.write(children.size(), outputStream);
     serializeChildren(outputStream);
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(name, outputStream);
-    ReadWriteIOUtils.write(children.size(), outputStream);
     if (valueSet == null) {
       ReadWriteIOUtils.write(0, outputStream);
     } else {
@@ -186,6 +192,7 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
         serializer.write(value, outputStream);
       }
     }
+    ReadWriteIOUtils.write(children.size(), outputStream);
     serializeChildren(outputStream);
   }
 
@@ -205,12 +212,6 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
       ByteBuffer buffer, T serializer) {
     PathPatternNode<V, T> node =
         new PathPatternNode<>(ReadWriteIOUtils.readString(buffer), serializer);
-    int childrenSize = ReadWriteIOUtils.readInt(buffer);
-    while (childrenSize > 0) {
-      PathPatternNode<V, T> tmpNode = deserializeNode(buffer, serializer);
-      node.addChild(tmpNode);
-      childrenSize--;
-    }
     int valueSize = ReadWriteIOUtils.readInt(buffer);
     if (valueSize > 0) {
       Set<V> valueSet = new HashSet<>();
@@ -218,6 +219,12 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
         valueSet.add(serializer.read(buffer));
       }
       node.valueSet = valueSet;
+    }
+    int childrenSize = ReadWriteIOUtils.readInt(buffer);
+    while (childrenSize > 0) {
+      PathPatternNode<V, T> tmpNode = deserializeNode(buffer, serializer);
+      node.addChild(tmpNode);
+      childrenSize--;
     }
     return node;
   }
