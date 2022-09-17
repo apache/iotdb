@@ -42,7 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -107,9 +106,8 @@ public class IoTDBSessionDisableMemControlIT {
           try {
             session.insertTablet(tablet, true);
           } catch (StatementExecutionException e) {
-            LOGGER.error(String.valueOf(e.getStatusCode()));
-            LOGGER.error(e.getMessage());
-            assertTrue(Arrays.asList(303, 313, 411).contains(e.getStatusCode()));
+            assertTrue(e.getMessage().contains("insert measurements [s3] caused by data type of"));
+            assertTrue(e.getMessage().contains("root.sg.d.s3"));
           }
           tablet.reset();
         }
@@ -120,9 +118,8 @@ public class IoTDBSessionDisableMemControlIT {
         try {
           session.insertTablet(tablet);
         } catch (StatementExecutionException e) {
-          LOGGER.error(String.valueOf(e.getStatusCode()));
-          LOGGER.error(e.getMessage());
-          assertTrue(Arrays.asList(303, 313, 411).contains(e.getStatusCode()));
+          assertTrue(e.getMessage().contains("insert measurements [s3] caused by data type of"));
+          assertTrue(e.getMessage().contains("root.sg.d.s3"));
         }
         tablet.reset();
       }
@@ -186,9 +183,8 @@ public class IoTDBSessionDisableMemControlIT {
           try {
             session.insertAlignedTablet(tablet, true);
           } catch (StatementExecutionException e) {
-            LOGGER.error(String.valueOf(e.getStatusCode()));
-            LOGGER.error(e.getMessage());
-            assertTrue(Arrays.asList(303, 313, 411).contains(e.getStatusCode()));
+            assertTrue(e.getMessage().contains("insert measurements [s3] caused by data type of"));
+            assertTrue(e.getMessage().contains("root.sg.d.s3"));
           }
           tablet.reset();
         }
@@ -199,9 +195,8 @@ public class IoTDBSessionDisableMemControlIT {
         try {
           session.insertAlignedTablet(tablet);
         } catch (StatementExecutionException e) {
-          LOGGER.error(String.valueOf(e.getStatusCode()));
-          LOGGER.error(e.getMessage());
-          assertTrue(Arrays.asList(303, 313, 411).contains(e.getStatusCode()));
+          assertTrue(e.getMessage().contains("insert measurements [s3] caused by data type of"));
+          assertTrue(e.getMessage().contains("root.sg.d.s3"));
         }
         tablet.reset();
       }
