@@ -36,7 +36,7 @@ public interface QuickSort {
       gIndex++;
     }
     for (int i = gIndex; i <= hi; i++) {
-      if (compare(gIndex, pIndex) == -1) {
+      if (compare(i, pIndex) == -1) {
         // swap the element < pivot to gIndex, and gIndex++
         swap(gIndex, i);
         // maintain the pIndex
