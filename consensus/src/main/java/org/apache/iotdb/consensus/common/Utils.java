@@ -74,4 +74,33 @@ public class Utils {
     }
     return allFiles;
   }
+
+  public static long getFileSize(File file) {
+      if (!file.exists()) {
+          logger.warn("file is not exists");
+      }
+
+      return getSize(file);
+  }
+
+  private static long getDirectorySize(File file) {
+      File[] files = file.listFiles();
+      if (files == null) {
+          return 0L;
+      }
+      else {
+          long size = 0L;
+          for(File subFile : files) {
+              if (!Files.isSymbolicLink(file.toPath())) {
+                  size += getSize(subFile);
+              }
+          }
+
+          return size;
+      }
+  }
+
+  private static long getSize(File file) {
+      return file.isDirectory() ? getDirectorySize(file) : file.length();
+  }
 }

@@ -309,7 +309,9 @@ public class RatisConfig {
       private long autoTriggerThreshold =
           RaftServerConfigKeys.Snapshot.AUTO_TRIGGER_THRESHOLD_DEFAULT;
       private int retentionFileNum = RaftServerConfigKeys.Snapshot.RETENTION_FILE_NUM_DEFAULT;
+      //60s
       private long triggerSnapshotTime = 60;
+      //20GB
       private long triggerSnapshotFileSize = 20L << 30;
 
       public Snapshot build() {

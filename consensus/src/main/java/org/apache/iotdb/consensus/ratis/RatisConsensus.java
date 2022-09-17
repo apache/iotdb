@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
@@ -42,7 +43,6 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
-import org.apache.iotdb.consensus.exception.RatisGetDivisionException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 
 import org.apache.commons.pool2.KeyedObjectPool;
@@ -65,7 +65,6 @@ import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
-import org.apache.ratis.server.storage.RaftStorageDirectory;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +76,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -112,12 +110,16 @@ class RatisConsensus implements IConsensus {
   private static final int DEFAULT_PRIORITY = 0;
   private static final int LEADER_PRIORITY = 1;
 
+  private final ConsensusConfig config;
+
   // TODO make it configurable
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
     myself = Utils.fromTEndPointAndPriorityToRaftPeer(config.getThisNode(), DEFAULT_PRIORITY);
+
+    this.config = config;
 
     System.setProperty(
         "org.apache.ratis.thirdparty.io.netty.allocator.useCacheForAllThreads", "false");
@@ -140,7 +142,7 @@ class RatisConsensus implements IConsensus {
                         raftGroupId))
             .build();
 
-    createSnapshotThread(config);
+    createSnapshotThread();
   }
 
   @Override
@@ -583,7 +585,7 @@ class RatisConsensus implements IConsensus {
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
-  private void triggerSnapshotByCustomize(ConsensusConfig config) {
+  private void triggerSnapshotByCustomize() {
     Iterable<RaftGroupId> groupIds = server.getGroupIds();
 
     while (groupIds.iterator().hasNext()) {
@@ -595,10 +597,11 @@ class RatisConsensus implements IConsensus {
                 .getCurrentDir();
       }
       catch (IOException e) {
-        failed(new RatisGetDivisionException(e));
+        logger.warn(" Get division failed: ",e);
       }
 
       long currentDirLength = currentDir.length();
+      long l = FileUtils.sizeOf(currentDir);
       long triggerSnapshotFileSize = config.getRatisConfig().getSnapshot().getTriggerSnapshotFileSize();
 
       if (currentDirLength >= triggerSnapshotFileSize) {
@@ -613,9 +616,9 @@ class RatisConsensus implements IConsensus {
     }
   }
 
-  private void createSnapshotThread(ConsensusConfig config) {
+  private void createSnapshotThread() {
     ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-    Runnable command = () -> triggerSnapshotByCustomize(config);
+    Runnable command = this :: triggerSnapshotByCustomize;
     long delay = config.getRatisConfig().getSnapshot().getTriggerSnapshotTime();
 
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
