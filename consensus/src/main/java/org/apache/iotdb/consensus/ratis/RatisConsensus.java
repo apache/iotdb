@@ -600,8 +600,7 @@ class RatisConsensus implements IConsensus {
         logger.warn(" Get division failed: ",e);
       }
 
-      long currentDirLength = currentDir.length();
-      long l = FileUtils.sizeOf(currentDir);
+      long currentDirLength = org.apache.iotdb.consensus.common.Utils.getFileSize(currentDir);
       long triggerSnapshotFileSize = config.getRatisConfig().getSnapshot().getTriggerSnapshotFileSize();
 
       if (currentDirLength >= triggerSnapshotFileSize) {
