@@ -190,10 +190,13 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
           TriggerManagementService.getInstance().getEndPointForStatefulTrigger(triggerName);
       try (SyncDataNodeInternalServiceClient client =
           internalServiceClientIClientManager.borrowClient(endPoint)) {
-        TFireTriggerReq req = new TFireTriggerReq(triggerName,tablet.se,event.getId());
+        TFireTriggerReq req = new TFireTriggerReq(triggerName, tablet.serialize(), event.getId());
         result = TriggerFireResult.construct(client.fireTrigger(req).getFireResult());
       } catch (IOException | TException e) {
-        LOGGER.warn("Error occurred when trying to fire trigger({}) on TEndPoint: {}",triggerName,endPoint.toString());
+        LOGGER.warn(
+            "Error occurred when trying to fire trigger({}) on TEndPoint: {}",
+            triggerName,
+            endPoint.toString());
       }
     } else {
       TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);

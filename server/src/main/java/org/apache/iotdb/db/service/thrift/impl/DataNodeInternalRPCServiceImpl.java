@@ -124,6 +124,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import com.google.common.collect.ImmutableList;
 import io.airlift.concurrent.SetThreadName;
@@ -840,7 +841,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
     TriggerFireResult result = TriggerFireResult.SUCCESS;
     try {
-      executor.fire(tablet, TriggerEvent.construct(req.getTriggerEvent()));
+      executor.fire(Tablet.deserialize(req.tablet), TriggerEvent.construct(req.getTriggerEvent()));
     } catch (TriggerExecutionException e) {
       if (executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)) {
         result = TriggerFireResult.TERMINATION;
