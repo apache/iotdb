@@ -256,7 +256,7 @@ public abstract class BinaryTVList extends TVList {
 
   @Override
   public int serializedSize() {
-    int size = Byte.BYTES + Integer.BYTES + rowCount * Long.BYTES + Long.BYTES;
+    int size = Byte.BYTES + Integer.BYTES + rowCount * Long.BYTES;
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       size += ReadWriteIOUtils.sizeToWrite(getBinary(rowIdx));
     }
@@ -267,7 +267,6 @@ public abstract class BinaryTVList extends TVList {
   public void serializeToWAL(IWALByteBufferView buffer) {
     WALWriteUtils.write(TSDataType.TEXT, buffer);
     buffer.putInt(rowCount);
-    buffer.putLong(rawSize);
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       buffer.putLong(getTime(rowIdx));
       WALWriteUtils.write(getBinary(rowIdx), buffer);

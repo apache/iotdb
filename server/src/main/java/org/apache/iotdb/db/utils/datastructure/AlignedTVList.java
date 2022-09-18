@@ -885,8 +885,7 @@ public abstract class AlignedTVList extends TVList {
 
   @Override
   public int serializedSize() {
-    int size =
-        (1 + dataTypes.size()) * Byte.BYTES + 2 * Integer.BYTES + dataTypes.size() * Long.BYTES;
+    int size = (1 + dataTypes.size()) * Byte.BYTES + 2 * Integer.BYTES;
     // time
     size += rowCount * Long.BYTES;
     // value
@@ -927,9 +926,6 @@ public abstract class AlignedTVList extends TVList {
     buffer.putInt(dataTypes.size());
     for (TSDataType dataType : dataTypes) {
       buffer.put(dataType.serialize());
-    }
-    for (long chunkSize : valueChunkRawSize) {
-      buffer.putLong(chunkSize);
     }
     buffer.putInt(rowCount);
     // time

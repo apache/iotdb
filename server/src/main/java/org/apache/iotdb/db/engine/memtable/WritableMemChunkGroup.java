@@ -57,13 +57,13 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       }
       IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
       flushFlag |=
-              memChunk.writeWithFlushCheck(
-          times,
-          columns[i],
-          bitMaps == null ? null : bitMaps[i],
-                      schemaList.get(i).getType(),
-          start,
-          end);
+          memChunk.writeWithFlushCheck(
+              times,
+              columns[i],
+              bitMaps == null ? null : bitMaps[i],
+              schemaList.get(i).getType(),
+              start,
+              end);
     }
     return flushFlag;
   }
