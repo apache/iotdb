@@ -27,14 +27,13 @@ import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
-import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.influxdb.util.FieldUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.QueryResultUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -49,62 +48,17 @@ import org.influxdb.dto.QueryResult;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class QueryHandler extends AbstractQueryHandler {
 
-  @Override
-  public Map<String, Integer> getFieldOrders(
-      String database, String measurement, ServiceProvider serviceProvider, long sessionID) {
-    Map<String, Integer> fieldOrders = new HashMap<>();
-    long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
-    try {
-      String showTimeseriesSql = "show timeseries root." + database + '.' + measurement + ".**";
-      PhysicalPlan physicalPlan =
-          serviceProvider.getPlanner().parseSQLToPhysicalPlan(showTimeseriesSql);
-      QueryContext queryContext =
-          serviceProvider.genQueryContext(
-              queryId,
-              true,
-              System.currentTimeMillis(),
-              showTimeseriesSql,
-              InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
-      QueryDataSet queryDataSet =
-          serviceProvider.createQueryDataSet(
-              queryContext, physicalPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
-      int fieldNums = 0;
-      Map<String, Integer> tagOrders = InfluxDBMetaManager.getTagOrders(database, measurement);
-      int tagOrderNums = tagOrders.size();
-      while (queryDataSet.hasNext()) {
-        List<Field> fields = queryDataSet.next().getFields();
-        String filed = StringUtils.getFieldByPath(fields.get(0).getStringValue());
-        if (!fieldOrders.containsKey(filed)) {
-          // The corresponding order of fields is 1 + tagNum (the first is timestamp, then all tags,
-          // and finally all fields)
-          fieldOrders.put(filed, tagOrderNums + fieldNums + 1);
-          fieldNums++;
-        }
-      }
-    } catch (QueryProcessException
-        | TException
-        | StorageEngineException
-        | SQLException
-        | IOException
-        | InterruptedException
-        | QueryFilterOptimizationException
-        | MetadataException e) {
-      throw new InfluxDBException(e.getMessage());
-    } finally {
-      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-    }
-    return fieldOrders;
-  }
+  ServiceProvider serviceProvider = IoTDB.serviceProvider;
 
   @Override
   public InfluxFunctionValue updateByIoTDBFunc(
-      InfluxFunction function, ServiceProvider serviceProvider, String path, long sessionid) {
+      String database, String measurement, InfluxFunction function, long sessionid) {
+    String path = "root." + database + "." + measurement;
     switch (function.getFunctionName()) {
       case InfluxSQLConstant.COUNT:
         {
@@ -481,7 +435,7 @@ public class QueryHandler extends AbstractQueryHandler {
       String querySql,
       String database,
       String measurement,
-      ServiceProvider serviceProvider,
+      Map<String, Integer> tagOrders,
       Map<String, Integer> fieldOrders,
       long sessionId)
       throws AuthException {

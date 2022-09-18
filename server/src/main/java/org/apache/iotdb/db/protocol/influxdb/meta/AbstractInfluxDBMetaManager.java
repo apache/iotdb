@@ -22,8 +22,9 @@ import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
-public abstract class AbstractInfluxDBMetaManager {
+public abstract class AbstractInfluxDBMetaManager implements IInfluxDBMetaManager {
 
   protected static final String SELECT_TAG_INFO_SQL =
       "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
@@ -32,7 +33,8 @@ public abstract class AbstractInfluxDBMetaManager {
   protected static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
       new HashMap<>();
 
-  public static Map<String, Integer> getTagOrders(String database, String measurement) {
+  @Override
+  public Map<String, Integer> getTagOrders(String database, String measurement, long sessionID) {
     Map<String, Integer> tagOrders = new HashMap<>();
     Map<String, Map<String, Integer>> measurement2TagOrders =
         database2Measurement2TagOrders.get(database);
@@ -44,8 +46,6 @@ public abstract class AbstractInfluxDBMetaManager {
     }
     return tagOrders;
   }
-
-  abstract void recover();
 
   abstract void setStorageGroup(String database, long sessionID);
 
@@ -69,8 +69,13 @@ public abstract class AbstractInfluxDBMetaManager {
     return createDatabase(database, sessionID).computeIfAbsent(measurement, m -> new HashMap<>());
   }
 
+  @Override
   public final synchronized String generatePath(
-      String database, String measurement, Map<String, String> tags, long sessionID) {
+      String database,
+      String measurement,
+      Map<String, String> tags,
+      Set<String> fields,
+      long sessionID) {
     Map<String, Integer> tagKeyToLayerOrders =
         getTagOrdersWithAutoCreatingSchema(database, measurement, sessionID);
     // to support rollback if fails to persisting new tag info

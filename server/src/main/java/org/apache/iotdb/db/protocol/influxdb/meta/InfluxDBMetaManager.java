@@ -25,7 +25,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
+import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
 import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -140,6 +143,53 @@ public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
         throw new InfluxDBException(e.getMessage());
       }
     }
+  }
+
+  @Override
+  public Map<String, Integer> getFieldOrders(String database, String measurement, long sessionID) {
+    Map<String, Integer> fieldOrders = new HashMap<>();
+    long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+    try {
+      String showTimeseriesSql = "show timeseries root." + database + '.' + measurement + ".**";
+      PhysicalPlan physicalPlan =
+          serviceProvider.getPlanner().parseSQLToPhysicalPlan(showTimeseriesSql);
+      QueryContext queryContext =
+          serviceProvider.genQueryContext(
+              queryId,
+              true,
+              System.currentTimeMillis(),
+              showTimeseriesSql,
+              InfluxConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+      QueryDataSet queryDataSet =
+          serviceProvider.createQueryDataSet(
+              queryContext, physicalPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
+      int fieldNums = 0;
+      Map<String, Integer> tagOrders =
+          InfluxDBMetaManagerFactory.getInstance().getTagOrders(database, measurement, sessionID);
+      int tagOrderNums = tagOrders.size();
+      while (queryDataSet.hasNext()) {
+        List<Field> fields = queryDataSet.next().getFields();
+        String filed = StringUtils.getFieldByPath(fields.get(0).getStringValue());
+        if (!fieldOrders.containsKey(filed)) {
+          // The corresponding order of fields is 1 + tagNum (the first is timestamp, then all tags,
+          // and finally all fields)
+          fieldOrders.put(filed, tagOrderNums + fieldNums + 1);
+          fieldNums++;
+        }
+      }
+    } catch (QueryProcessException
+        | TException
+        | StorageEngineException
+        | SQLException
+        | IOException
+        | InterruptedException
+        | QueryFilterOptimizationException
+        | MetadataException e) {
+      throw new InfluxDBException(e.getMessage());
+    } finally {
+      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+    }
+    return fieldOrders;
   }
 
   private static class InfluxDBMetaManagerHolder {

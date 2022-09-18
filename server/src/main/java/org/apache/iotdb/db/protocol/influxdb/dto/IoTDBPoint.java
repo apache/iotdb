@@ -21,7 +21,7 @@ package org.apache.iotdb.db.protocol.influxdb.dto;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.protocol.influxdb.meta.AbstractInfluxDBMetaManager;
+import org.apache.iotdb.db.protocol.influxdb.meta.IInfluxDBMetaManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.db.utils.ParameterUtils;
@@ -59,7 +59,7 @@ public class IoTDBPoint {
   }
 
   public IoTDBPoint(
-      String database, Point point, AbstractInfluxDBMetaManager metaManager, long sessionID) {
+      String database, Point point, IInfluxDBMetaManager influxDBMetaManager, long sessionID) {
     String measurement = null;
     Map<String, String> tags = new HashMap<>();
     Map<String, Object> fields = new HashMap<>();
@@ -105,7 +105,8 @@ public class IoTDBPoint {
     }
     ParameterUtils.checkNonEmptyString(database, "database");
     ParameterUtils.checkNonEmptyString(measurement, "measurement name");
-    String path = metaManager.generatePath(database, measurement, tags, sessionID);
+    String path =
+        influxDBMetaManager.generatePath(database, measurement, tags, fields.keySet(), sessionID);
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     List<Object> values = new ArrayList<>();

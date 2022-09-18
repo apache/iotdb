@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.protocol.influxdb.meta;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.protocol.influxdb.handler.NewQueryHandler;
 import org.apache.iotdb.db.protocol.influxdb.util.QueryResultUtils;
+import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -57,10 +57,13 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     try {
       TSOpenSessionResp tsOpenSessionResp =
           clientRPCService.openSession(
-              new TSOpenSessionReq().setUsername("root").setPassword("root"));
+              new TSOpenSessionReq()
+                  .setUsername("root")
+                  .setPassword("root")
+                  .setZoneId("Asia/Shanghai"));
       sessionID = tsOpenSessionResp.getSessionId();
       TSExecuteStatementResp resp =
-          NewQueryHandler.executeStatement(SELECT_TAG_INFO_SQL, sessionID);
+          NewInfluxDBServiceImpl.executeStatement(SELECT_TAG_INFO_SQL, sessionID);
       IoTDBJDBCDataSet dataSet = QueryResultUtils.creatIoTJDBCDataset(resp);
       try {
         Map<String, Map<String, Integer>> measurement2TagOrders;
@@ -119,6 +122,29 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     } catch (IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }
+  }
+
+  @Override
+  public Map<String, Integer> getFieldOrders(String database, String measurement, long sessionID) {
+    Map<String, Integer> fieldOrders = new HashMap<>();
+    String showTimeseriesSql = "show timeseries root." + database + '.' + measurement + ".**";
+    TSExecuteStatementResp executeStatementResp =
+        NewInfluxDBServiceImpl.executeStatement(showTimeseriesSql, sessionID);
+    List<String> paths = QueryResultUtils.getFullPaths(executeStatementResp);
+    Map<String, Integer> tagOrders =
+        InfluxDBMetaManagerFactory.getInstance().getTagOrders(database, measurement, sessionID);
+    int tagOrderNums = tagOrders.size();
+    int fieldNums = 0;
+    for (String path : paths) {
+      String filed = StringUtils.getFieldByPath(path);
+      if (!fieldOrders.containsKey(filed)) {
+        // The corresponding order of fields is 1 + tagNum (the first is timestamp, then all tags,
+        // and finally all fields)
+        fieldOrders.put(filed, tagOrderNums + fieldNums + 1);
+        fieldNums++;
+      }
+    }
+    return fieldOrders;
   }
 
   private static class InfluxDBMetaManagerHolder {
