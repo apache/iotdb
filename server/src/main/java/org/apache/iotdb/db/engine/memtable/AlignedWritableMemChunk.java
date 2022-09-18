@@ -108,11 +108,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putBinary(long t, Binary v) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
-  }
-
-  @Override
   public boolean putBinaryWithFlushCheck(long t, Binary v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
@@ -120,11 +115,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public void putBoolean(long t, boolean v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
-  }
-
-  @Override
-  public void putAlignedValue(long t, Object[] v, int[] columnIndexArray) {
-    list.putAlignedValue(t, v, columnIndexArray);
   }
 
   @Override
@@ -154,11 +144,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
-  }
-
-  @Override
   public boolean putBinariesWithFlushCheck(
       long[] t, Binary[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
@@ -170,12 +155,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putAlignedValues(
-      long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end) {
-    list.putAlignedValues(t, v, bitMaps, columnIndexArray, start, end);
-  }
-
-  @Override
   public boolean putAlignedValuesWithFlushCheck(
       long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end) {
     list.putAlignedValues(t, v, bitMaps, columnIndexArray, start, end);
@@ -183,20 +162,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void write(long insertTime, Object objectValue) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
-  }
-
-  @Override
   public boolean writeWithFlushCheck(long insertTime, Object objectValue) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
-  }
-
-  @Override
-  public void writeAlignedValue(
-      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    int[] columnIndexArray = checkColumnsInInsertPlan(schemaList);
-    putAlignedValue(insertTime, objectValue, columnIndexArray);
   }
 
   @Override
@@ -207,27 +174,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void write(
-      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
-  }
-
-  @Override
   public boolean writeWithFlushCheck(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
-  }
-
-  @Override
-  public void writeAlignedValues(
-      long[] times,
-      Object[] valueList,
-      BitMap[] bitMaps,
-      List<IMeasurementSchema> schemaList,
-      int start,
-      int end) {
-    int[] columnIndexArray = checkColumnsInInsertPlan(schemaList);
-    putAlignedValues(times, valueList, bitMaps, columnIndexArray, start, end);
   }
 
   @Override

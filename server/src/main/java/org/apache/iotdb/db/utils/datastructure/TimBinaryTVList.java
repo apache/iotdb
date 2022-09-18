@@ -43,6 +43,7 @@ public class TimBinaryTVList extends BinaryTVList implements TimSort {
     for (Binary[] valueArray : values) {
       cloneList.values.add(cloneValue(valueArray));
     }
+    cloneList.rawSize = rawSize;
     return cloneList;
   }
 

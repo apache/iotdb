@@ -77,6 +77,7 @@ public class TimAlignedTVList extends AlignedTVList implements TimSort {
   public AlignedTVList clone() {
     TimAlignedTVList cloneList = new TimAlignedTVList(dataTypes);
     cloneAs(cloneList);
+    System.arraycopy(valueChunkRawSize, 0, cloneList.valueChunkRawSize, 0, dataTypes.size());
     for (int[] indicesArray : indices) {
       cloneList.indices.add(cloneIndex(indicesArray));
     }

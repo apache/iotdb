@@ -71,6 +71,34 @@ public abstract class BinaryTVList extends TVList {
   }
 
   @Override
+  public int delete(long lowerBound, long upperBound) {
+    int newSize = 0;
+    minTime = Long.MAX_VALUE;
+    for (int i = 0; i < rowCount; i++) {
+      long time = getTime(i);
+      if (time < lowerBound || time > upperBound) {
+        set(i, newSize++);
+        minTime = Math.min(time, minTime);
+      } else {
+        rawSize -= getBinarySize(getBinary(i));
+      }
+    }
+    int deletedNumber = rowCount - newSize;
+    rowCount = newSize;
+    // release primitive arrays that are empty
+    int newArrayNum = newSize / ARRAY_SIZE;
+    if (newSize % ARRAY_SIZE != 0) {
+      newArrayNum++;
+    }
+    int oldArrayNum = timestamps.size();
+    for (int releaseIdx = newArrayNum; releaseIdx < oldArrayNum; releaseIdx++) {
+      releaseLastTimeArray();
+      releaseLastValueArray();
+    }
+    return deletedNumber;
+  }
+
+  @Override
   public Binary getBinary(int index) {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
@@ -98,6 +126,7 @@ public abstract class BinaryTVList extends TVList {
       }
       values.clear();
     }
+    rawSize = 0;
   }
 
   @Override
@@ -227,7 +256,7 @@ public abstract class BinaryTVList extends TVList {
 
   @Override
   public int serializedSize() {
-    int size = Byte.BYTES + Integer.BYTES + rowCount * Long.BYTES;
+    int size = Byte.BYTES + Integer.BYTES + rowCount * Long.BYTES + Long.BYTES;
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       size += ReadWriteIOUtils.sizeToWrite(getBinary(rowIdx));
     }
@@ -238,6 +267,7 @@ public abstract class BinaryTVList extends TVList {
   public void serializeToWAL(IWALByteBufferView buffer) {
     WALWriteUtils.write(TSDataType.TEXT, buffer);
     buffer.putInt(rowCount);
+    buffer.putLong(rawSize);
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       buffer.putLong(getTime(rowIdx));
       WALWriteUtils.write(getBinary(rowIdx), buffer);

@@ -436,7 +436,6 @@ public abstract class AbstractMemTable implements IMemTable {
       Object[] objectValue) {
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
-    //    memChunkGroup.write(insertTime, objectValue, schemaList);
     if (memChunkGroup.writeWithFlushCheck(insertTime, objectValue, schemaList)) {
       shouldFlush = true;
     }
@@ -450,7 +449,6 @@ public abstract class AbstractMemTable implements IMemTable {
       Object[] objectValue) {
     IWritableMemChunkGroup memChunkGroup =
         createAlignedMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
-    // memChunkGroup.write(insertTime, objectValue, schemaList);
     if (memChunkGroup.writeWithFlushCheck(insertTime, objectValue, schemaList)) {
       shouldFlush = true;
     }

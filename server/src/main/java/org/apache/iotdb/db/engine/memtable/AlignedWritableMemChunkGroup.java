@@ -45,17 +45,6 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   private AlignedWritableMemChunkGroup() {}
 
   @Override
-  public void writeValues(
-      long[] times,
-      Object[] columns,
-      BitMap[] bitMaps,
-      List<IMeasurementSchema> schemaList,
-      int start,
-      int end) {
-    memChunk.writeAlignedValues(times, columns, bitMaps, schemaList, start, end);
-  }
-
-  @Override
   public boolean writeValuesWithFlushCheck(
       long[] times,
       Object[] columns,
@@ -88,11 +77,6 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
       return true;
     }
     return memChunk.containsMeasurement(measurement);
-  }
-
-  @Override
-  public void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    memChunk.writeAlignedValue(insertTime, objectValue, schemaList);
   }
 
   @Override

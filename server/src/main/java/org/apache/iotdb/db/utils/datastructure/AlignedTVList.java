@@ -74,8 +74,8 @@ public abstract class AlignedTVList extends TVList {
   AlignedTVList(List<TSDataType> types) {
     super();
     indices = new ArrayList<>(types.size());
-    valueChunkRawSize = new long[dataTypes.size()];
     dataTypes = types;
+    valueChunkRawSize = new long[dataTypes.size()];
     reachMaxChunkSizeFlag = false;
 
     values = new ArrayList<>(types.size());
@@ -434,6 +434,13 @@ public abstract class AlignedTVList extends TVList {
         int originRowIndex = getValueIndex(i);
         int arrayIndex = originRowIndex / ARRAY_SIZE;
         int elementIndex = originRowIndex % ARRAY_SIZE;
+        if (dataTypes.get(columnIndex) == TSDataType.TEXT) {
+          valueChunkRawSize[columnIndex] -=
+              ((Binary[]) values.get(columnIndex).get(arrayIndex))[elementIndex] == null
+                  ? 0
+                  : getBinarySize(
+                      ((Binary[]) values.get(columnIndex).get(arrayIndex))[elementIndex]);
+        }
         markNullValue(columnIndex, arrayIndex, elementIndex);
         deletedNumber++;
       } else {
@@ -525,6 +532,7 @@ public abstract class AlignedTVList extends TVList {
           columnBitMaps.clear();
         }
       }
+      valueChunkRawSize[i] = 0;
     }
   }
 
@@ -597,7 +605,7 @@ public abstract class AlignedTVList extends TVList {
 
   @Override
   public boolean reachMaxChunkSizeThreshold() {
-    return false;
+    return reachMaxChunkSizeFlag;
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -673,7 +681,8 @@ public abstract class AlignedTVList extends TVList {
 
           // update raw size of Text chunk
           for (int i1 = 0; i1 < remaining; i1++) {
-            valueChunkRawSize[i] += getBinarySize(arrayT[elementIndex + i1]);
+            valueChunkRawSize[i] +=
+                arrayT[elementIndex + i1] != null ? getBinarySize(arrayT[elementIndex + i1]) : 0;
           }
           if (valueChunkRawSize[i] > maxChunkRawSizeThreshold) {
             reachMaxChunkSizeFlag = true;
@@ -876,7 +885,8 @@ public abstract class AlignedTVList extends TVList {
 
   @Override
   public int serializedSize() {
-    int size = (1 + dataTypes.size()) * Byte.BYTES + 2 * Integer.BYTES;
+    int size =
+        (1 + dataTypes.size()) * Byte.BYTES + 2 * Integer.BYTES + dataTypes.size() * Long.BYTES;
     // time
     size += rowCount * Long.BYTES;
     // value
@@ -917,6 +927,9 @@ public abstract class AlignedTVList extends TVList {
     buffer.putInt(dataTypes.size());
     for (TSDataType dataType : dataTypes) {
       buffer.put(dataType.serialize());
+    }
+    for (long chunkSize : valueChunkRawSize) {
+      buffer.putLong(chunkSize);
     }
     buffer.putInt(rowCount);
     // time

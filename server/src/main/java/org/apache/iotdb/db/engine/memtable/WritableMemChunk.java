@@ -52,32 +52,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   private WritableMemChunk() {}
 
   @Override
-  public void write(long insertTime, Object objectValue) {
-    switch (schema.getType()) {
-      case BOOLEAN:
-        putBoolean(insertTime, (boolean) objectValue);
-        break;
-      case INT32:
-        putInt(insertTime, (int) objectValue);
-        break;
-      case INT64:
-        putLong(insertTime, (long) objectValue);
-        break;
-      case FLOAT:
-        putFloat(insertTime, (float) objectValue);
-        break;
-      case DOUBLE:
-        putDouble(insertTime, (double) objectValue);
-        break;
-      case TEXT:
-        putBinary(insertTime, (Binary) objectValue);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
-    }
-  }
-
-  @Override
   public boolean writeWithFlushCheck(long insertTime, Object objectValue) {
     switch (schema.getType()) {
       case BOOLEAN:
@@ -104,48 +78,9 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void writeAlignedValue(
-      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
-  }
-
-  @Override
   public boolean writeAlignedValueWithFlushCheck(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
-  }
-
-  @Override
-  public void write(
-      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
-    switch (dataType) {
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) valueList;
-        putBooleans(times, boolValues, bitMap, start, end);
-        break;
-      case INT32:
-        int[] intValues = (int[]) valueList;
-        putInts(times, intValues, bitMap, start, end);
-        break;
-      case INT64:
-        long[] longValues = (long[]) valueList;
-        putLongs(times, longValues, bitMap, start, end);
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) valueList;
-        putFloats(times, floatValues, bitMap, start, end);
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) valueList;
-        putDoubles(times, doubleValues, bitMap, start, end);
-        break;
-      case TEXT:
-        Binary[] binaryValues = (Binary[]) valueList;
-        putBinaries(times, binaryValues, bitMap, start, end);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
-    }
   }
 
   @Override
@@ -182,17 +117,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void writeAlignedValues(
-      long[] times,
-      Object[] valueList,
-      BitMap[] bitMaps,
-      List<IMeasurementSchema> schemaList,
-      int start,
-      int end) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
-  }
-
-  @Override
   public boolean writeAlignedValuesWithFlushCheck(
       long[] times,
       Object[] valueList,
@@ -224,11 +148,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putBinary(long t, Binary v) {
-    list.putBinary(t, v);
-  }
-
-  @Override
   public boolean putBinaryWithFlushCheck(long t, Binary v) {
     list.putBinary(t, v);
     return list.reachMaxChunkSizeThreshold();
@@ -237,11 +156,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public void putBoolean(long t, boolean v) {
     list.putBoolean(t, v);
-  }
-
-  @Override
-  public void putAlignedValue(long t, Object[] v, int[] columnOrder) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 
   @Override
@@ -270,11 +184,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end) {
-    list.putBinaries(t, v, bitMap, start, end);
-  }
-
-  @Override
   public boolean putBinariesWithFlushCheck(
       long[] t, Binary[] v, BitMap bitMap, int start, int end) {
     list.putBinaries(t, v, bitMap, start, end);
@@ -284,12 +193,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end) {
     list.putBooleans(t, v, bitMap, start, end);
-  }
-
-  @Override
-  public void putAlignedValues(
-      long[] t, Object[] v, BitMap[] bitMaps, int[] columnOrder, int start, int end) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 
   @Override

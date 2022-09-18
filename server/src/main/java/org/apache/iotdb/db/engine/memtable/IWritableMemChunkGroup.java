@@ -29,14 +29,6 @@ import java.util.Map;
 
 public interface IWritableMemChunkGroup extends WALEntryValue {
 
-  void writeValues(
-      long[] times,
-      Object[] columns,
-      BitMap[] bitMaps,
-      List<IMeasurementSchema> schemaList,
-      int start,
-      int end);
-
   boolean writeValuesWithFlushCheck(
       long[] times,
       Object[] columns,
@@ -50,8 +42,6 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
   long count();
 
   boolean contains(String measurement);
-
-  void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
 
   boolean writeWithFlushCheck(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
