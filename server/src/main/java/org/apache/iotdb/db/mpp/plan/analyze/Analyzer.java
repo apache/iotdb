@@ -22,13 +22,8 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
-  private static final Logger logger = LoggerFactory.getLogger(Analyzer.class);
-
   private final MPPQueryContext context;
 
   private final IPartitionFetcher partitionFetcher;

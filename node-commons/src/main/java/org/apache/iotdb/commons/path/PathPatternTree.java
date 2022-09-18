@@ -17,15 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.common.schematree;
+package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternNode.VoidSerializer;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -41,20 +39,20 @@ import java.util.stream.Collectors;
 
 public class PathPatternTree {
 
-  private PathPatternNode root;
+  private PathPatternNode<Void, VoidSerializer> root;
 
   private List<PartialPath> pathPatternList;
 
   public PathPatternTree() {
-    this.root = new PathPatternNode(SQLConstant.ROOT);
+    this.root = new PathPatternNode<>(IoTDBConstant.PATH_ROOT, VoidSerializer.getInstance());
     this.pathPatternList = new ArrayList<>();
   }
 
-  public PathPatternNode getRoot() {
+  public PathPatternNode<Void, VoidSerializer> getRoot() {
     return root;
   }
 
-  public void setRoot(PathPatternNode root) {
+  public void setRoot(PathPatternNode<Void, VoidSerializer> root) {
     this.root = root;
   }
 
@@ -103,12 +101,13 @@ public class PathPatternTree {
     pathPatternList.clear();
   }
 
-  private void appendBranchWithoutPrune(PathPatternNode curNode, String[] pathNodes, int pos) {
+  private void appendBranchWithoutPrune(
+      PathPatternNode<Void, VoidSerializer> curNode, String[] pathNodes, int pos) {
     if (pos == pathNodes.length - 1) {
       return;
     }
 
-    PathPatternNode nextNode = curNode.getChildren(pathNodes[pos + 1]);
+    PathPatternNode<Void, VoidSerializer> nextNode = curNode.getChildren(pathNodes[pos + 1]);
 
     if (nextNode != null) {
       appendBranchWithoutPrune(nextNode, pathNodes, pos + 1);
@@ -117,9 +116,11 @@ public class PathPatternTree {
     }
   }
 
-  private void constructBranch(PathPatternNode curNode, String[] pathNodes, int pos) {
+  private void constructBranch(
+      PathPatternNode<Void, VoidSerializer> curNode, String[] pathNodes, int pos) {
     for (int i = pos; i < pathNodes.length; i++) {
-      PathPatternNode newNode = new PathPatternNode(pathNodes[i]);
+      PathPatternNode<Void, VoidSerializer> newNode =
+          new PathPatternNode<>(pathNodes[i], VoidSerializer.getInstance());
       curNode.addChild(newNode);
       curNode = newNode;
     }
@@ -142,7 +143,7 @@ public class PathPatternTree {
   }
 
   private void searchDevicePattern(
-      PathPatternNode curNode, List<String> nodes, Set<String> results) {
+      PathPatternNode<Void, VoidSerializer> curNode, List<String> nodes, Set<String> results) {
     nodes.add(curNode.getName());
     if (curNode.isLeaf()) {
       if (!curNode.getName().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
@@ -159,7 +160,7 @@ public class PathPatternTree {
       nodes.remove(nodes.size() - 1);
       return;
     }
-    for (PathPatternNode childNode : curNode.getChildren().values()) {
+    for (PathPatternNode<Void, VoidSerializer> childNode : curNode.getChildren().values()) {
       searchDevicePattern(childNode, nodes, results);
     }
     nodes.remove(nodes.size() - 1);
@@ -173,14 +174,16 @@ public class PathPatternTree {
   }
 
   private void searchPathPattern(
-      PathPatternNode node, Deque<String> ancestors, List<PartialPath> fullPaths) {
+      PathPatternNode<Void, VoidSerializer> node,
+      Deque<String> ancestors,
+      List<PartialPath> fullPaths) {
     if (node.isLeaf()) {
       fullPaths.add(convertNodesToPartialPath(node, ancestors));
       return;
     }
 
     ancestors.push(node.getName());
-    for (PathPatternNode child : node.getChildren().values()) {
+    for (PathPatternNode<Void, VoidSerializer> child : node.getChildren().values()) {
       searchPathPattern(child, ancestors, fullPaths);
     }
     ancestors.pop();
@@ -208,7 +211,8 @@ public class PathPatternTree {
     return fullPathBuilder.toString();
   }
 
-  private PartialPath convertNodesToPartialPath(PathPatternNode node, Deque<String> ancestors) {
+  private PartialPath convertNodesToPartialPath(
+      PathPatternNode<Void, VoidSerializer> node, Deque<String> ancestors) {
     Iterator<String> iterator = ancestors.descendingIterator();
     List<String> nodeList = new ArrayList<>(ancestors.size() + 1);
     while (iterator.hasNext()) {
@@ -216,6 +220,16 @@ public class PathPatternTree {
     }
     nodeList.add(node.getName());
     return new PartialPath(nodeList.toArray(new String[0]));
+  }
+
+  public boolean isOverlapWith(PathPatternTree patternTree) {
+    // todo improve this implementation
+    for (PartialPath pathPattern : getAllPathPatterns()) {
+      if (!patternTree.getOverlappedPathPatterns(pathPattern).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -238,21 +252,11 @@ public class PathPatternTree {
   }
 
   public static PathPatternTree deserialize(ByteBuffer buffer) {
-    PathPatternNode root = deserializeNode(buffer);
+    PathPatternNode<Void, VoidSerializer> root =
+        PathPatternNode.deserializeNode(buffer, VoidSerializer.getInstance());
     PathPatternTree deserializedPatternTree = new PathPatternTree();
     deserializedPatternTree.setRoot(root);
     return deserializedPatternTree;
-  }
-
-  private static PathPatternNode deserializeNode(ByteBuffer buffer) {
-    PathPatternNode node = new PathPatternNode(ReadWriteIOUtils.readString(buffer));
-    int childrenSize = ReadWriteIOUtils.readInt(buffer);
-    while (childrenSize > 0) {
-      PathPatternNode tmpNode = deserializeNode(buffer);
-      node.addChild(tmpNode);
-      childrenSize--;
-    }
-    return node;
   }
 
   @TestOnly

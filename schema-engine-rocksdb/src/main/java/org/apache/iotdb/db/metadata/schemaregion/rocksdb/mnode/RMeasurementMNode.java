@@ -152,6 +152,14 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
+  public boolean isPreDeleted() {
+    return false;
+  }
+
+  @Override
+  public void setPreDeleted(boolean preDeleted) {}
+
+  @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     throw new UnsupportedOperationException();
   }

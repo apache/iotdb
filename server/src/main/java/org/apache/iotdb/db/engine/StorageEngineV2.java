@@ -41,14 +41,18 @@ import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
+import org.apache.iotdb.db.engine.load.LoadTsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.ThreadUtils;
@@ -58,6 +62,7 @@ import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -132,6 +137,8 @@ public class StorageEngineV2 implements IService {
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
   private int recoverDataRegionNum = 0;
+
+  private LoadTsFileManager loadTsFileManager = new LoadTsFileManager();
 
   private StorageEngineV2() {}
 
@@ -732,6 +739,71 @@ public class StorageEngineV2 implements IService {
 
   public TsFileFlushPolicy getFileFlushPolicy() {
     return fileFlushPolicy;
+  }
+
+  public TSStatus writeLoadTsFileNode(
+      DataRegionId dataRegionId, LoadTsFilePieceNode pieceNode, String uuid) {
+    TSStatus status = new TSStatus();
+
+    try {
+      loadTsFileManager.writeToDataRegion(getDataRegion(dataRegionId), pieceNode, uuid);
+    } catch (PageException e) {
+      logger.error(
+          String.format(
+              "Parse Page error when writing piece node of TsFile %s to DataRegion %s.",
+              pieceNode.getTsFile(), dataRegionId),
+          e);
+      status.setCode(TSStatusCode.TSFILE_RUNTIME_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+      return status;
+    } catch (IOException e) {
+      logger.error(
+          String.format(
+              "IO error when writing piece node of TsFile %s to DataRegion %s.",
+              pieceNode.getTsFile(), dataRegionId),
+          e);
+      status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+      return status;
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public TSStatus executeLoadCommand(LoadTsFileScheduler.LoadCommand loadCommand, String uuid) {
+    TSStatus status = new TSStatus();
+
+    try {
+      switch (loadCommand) {
+        case EXECUTE:
+          if (loadTsFileManager.loadAll(uuid)) {
+            status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+          } else {
+            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+            status.setMessage(String.format("No uuid %s recorded.", uuid));
+          }
+          break;
+        case ROLLBACK:
+          if (loadTsFileManager.deleteAll(uuid)) {
+            status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+          } else {
+            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+            status.setMessage(String.format("No uuid %s recorded.", uuid));
+          }
+          break;
+        default:
+          status.setCode(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
+          status.setMessage(String.format("Wrong load command %s.", loadCommand));
+      }
+    } catch (IOException e) {
+      status.setCode(TSStatusCode.DATA_REGION_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    } catch (LoadFileException e) {
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   static class InstanceHolder {

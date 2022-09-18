@@ -22,6 +22,8 @@ package org.apache.iotdb.db.trigger.service;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.path.PathPatternNode;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -31,6 +33,7 @@ import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.trigger.api.Trigger;
 
@@ -52,6 +55,12 @@ public class TriggerManagementService implements IService {
 
   private final Map<String, TriggerExecutor> executorMap;
 
+  /**
+   * Maintain a PatternTree: PathPattern -> List<String> triggerNames Return the triggerNames of
+   * triggers whose PathPatterns match the given one.
+   */
+  private final PatternTreeMap<String, PathPatternNode.StringSerializer> patternTreeMap;
+
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private TDataNodeLocation tDataNodeLocationCache;
@@ -60,6 +69,7 @@ public class TriggerManagementService implements IService {
     this.registrationLock = new ReentrantLock();
     this.triggerTable = new TriggerTable();
     this.executorMap = new ConcurrentHashMap<>();
+    this.patternTreeMap = PatternTreeMapFactory.getTriggerPatternTreeMap();
   }
 
   public void acquireRegistrationLock() {

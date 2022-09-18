@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -118,6 +119,32 @@ public interface ISchemaRegion {
    */
   Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
+
+  /**
+   * Construct schema black list via setting matched timeseries to pre deleted.
+   *
+   * @param patternTree
+   * @throws MetadataException
+   */
+  int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+
+  /**
+   * Rollback schema black list via setting matched timeseries to not pre deleted.
+   *
+   * @param patternTree
+   * @throws MetadataException
+   */
+  void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+
+  List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+
+  /**
+   * Delete timeseries in schema black list.
+   *
+   * @param patternTree
+   * @throws MetadataException
+   */
+  void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException;
   // endregion
 
   // region Interfaces for auto create device
