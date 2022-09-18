@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.handler;
 
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManagerFactory;
