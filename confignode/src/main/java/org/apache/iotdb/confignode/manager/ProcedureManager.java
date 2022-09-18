@@ -67,8 +67,8 @@ public class ProcedureManager {
   private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
       ConfigNodeDescriptor.getInstance().getConf();
 
-  private static final int procedureWaitTimeOut = 30;
-  private static final int procedureWaitRetryTimeout = 250;
+  private static final int PROCEDURE_WAIT_TIME_OUT = 30;
+  private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 250;
 
   private final ConfigManager configManager;
   private ProcedureExecutor<ConfigNodeProcedureEnv> executor;
@@ -236,8 +236,8 @@ public class ProcedureManager {
           && !executor.isFinished(procedureId)
           && TimeUnit.MILLISECONDS.toSeconds(
                   System.currentTimeMillis() - startTimeForCurrentProcedure)
-              < procedureWaitTimeOut) {
-        sleepWithoutInterrupt(procedureWaitRetryTimeout);
+              < PROCEDURE_WAIT_TIME_OUT) {
+        sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
       }
       Procedure<ConfigNodeProcedureEnv> finishedProcedure =
           executor.getResultOrProcedure(procedureId);
