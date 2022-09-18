@@ -81,7 +81,7 @@ public class IoTDBSessionComplexIT {
       insertViaSQL(session);
       queryByDevice(session, "root.sg1.d1");
 
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
