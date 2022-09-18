@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceGroupSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -125,7 +125,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       int totalSize = 0;
       boolean isAligned = isAlignedList.get(entry.getValue().get(0));
       for (int index : entry.getValue()) {
-        if (isAlignedList.get(entry.getValue().get(index)) != isAligned) {
+        if (isAlignedList.get(index) != isAligned) {
           throw new StatementAnalyzeException(
               String.format("Inconsistent device alignment of %s in insert plan.", entry.getKey()));
         }

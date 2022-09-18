@@ -108,7 +108,7 @@ Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO
 Openid connect (oidc) uses keycloack as the authority authentication service of oidc service
 
 #### configuration
-The configuration is located in iotdb-engines.properties , set the author_provider_class is org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer Openid service is enabled, and the default value is org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer Indicates that the openid service is not enabled.
+The configuration is located in iotdb-datanode.properties(iotdb-confignode.properties) , set the author_provider_class is org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer Openid service is enabled, and the default value is org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer Indicates that the openid service is not enabled.
 
 ```
 authorizer_provider_class=org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer

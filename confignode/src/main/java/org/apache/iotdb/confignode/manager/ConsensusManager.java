@@ -52,12 +52,13 @@ import java.util.concurrent.TimeUnit;
 public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
-  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   private final IManager configManager;
 
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
+  private final int seedConfigNodeId = 0;
 
   public ConsensusManager(IManager configManager, PartitionRegionStateMachine stateMachine)
       throws IOException {
@@ -72,15 +73,15 @@ public class ConsensusManager {
   /** ConsensusLayer local implementation */
   private void setConsensusLayer(PartitionRegionStateMachine stateMachine) throws IOException {
     // There is only one ConfigNodeGroup
-    consensusGroupId = new PartitionRegionId(conf.getPartitionRegionId());
+    consensusGroupId = new PartitionRegionId(CONF.getPartitionRegionId());
 
     // Implement local ConsensusLayer by ConfigNodeConfig
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
-                conf.getConfigNodeConsensusProtocolClass(),
+                CONF.getConfigNodeConsensusProtocolClass(),
                 ConsensusConfig.newBuilder()
-                    .setThisNode(new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort()))
-                    .setStorageDir(conf.getConsensusDir())
+                    .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
+                    .setStorageDir(CONF.getConsensusDir())
                     .build(),
                 gid -> stateMachine)
             .orElseThrow(
@@ -88,41 +89,42 @@ public class ConsensusManager {
                     new IllegalArgumentException(
                         String.format(
                             ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            conf.getConfigNodeConsensusProtocolClass())));
+                            CONF.getConfigNodeConsensusProtocolClass())));
     consensusImpl.start();
 
     if (SystemPropertiesUtils.isRestarted()) {
       try {
         // Create ConsensusGroup from confignode-system.properties file when restart
         // TODO: Check and notify if current ConfigNode's ip or port has changed
-        addConsensusGroup(SystemPropertiesUtils.loadConfigNodeList());
+        createPeerForConsensusGroup(SystemPropertiesUtils.loadConfigNodeList());
       } catch (BadNodeUrlException e) {
         throw new IOException(e);
       }
     } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
       // Create ConsensusGroup that contains only itself
       // if the current ConfigNode is Seed-ConfigNode
-      addConsensusGroup(
+      createPeerForConsensusGroup(
           Collections.singletonList(
               new TConfigNodeLocation(
-                  0,
-                  new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()),
-                  new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort()))));
+                  seedConfigNodeId,
+                  new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                  new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
     }
   }
 
   /**
-   * Add the current ConfigNode to the ConsensusGroup
+   * Create peer in new node to build consensus group
    *
    * @param configNodeLocations All registered ConfigNodes
    */
-  public void addConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
+  public void createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
     if (configNodeLocations.size() == 0) {
-      LOGGER.warn("configNodeLocations is null, addConsensusGroup failed.");
+      LOGGER.warn("configNodeLocations is empty, createPeerForConsensusGroup failed.");
       return;
     }
 
-    LOGGER.info("Set ConfigNode consensus group {}...", configNodeLocations);
+    LOGGER.info("createPeerForConsensusGroup {}...", configNodeLocations);
+
     List<Peer> peerList = new ArrayList<>();
     for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
       peerList.add(new Peer(consensusGroupId, configNodeLocation.getConsensusEndPoint()));
