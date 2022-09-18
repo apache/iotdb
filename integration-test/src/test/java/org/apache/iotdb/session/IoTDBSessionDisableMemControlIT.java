@@ -106,8 +106,9 @@ public class IoTDBSessionDisableMemControlIT {
           try {
             session.insertTablet(tablet, true);
           } catch (StatementExecutionException e) {
-            assertTrue(e.getMessage().contains("insert measurements [s3] caused by data type of"));
-            assertTrue(e.getMessage().contains("root.sg.d.s3"));
+            LOGGER.error(e.getMessage());
+            assertTrue(e.getMessage().contains("insert measurements [s3] caused by"));
+            assertTrue(e.getMessage().contains("data type of root.sg.d.s3 is not consistent"));
           }
           tablet.reset();
         }
@@ -118,8 +119,9 @@ public class IoTDBSessionDisableMemControlIT {
         try {
           session.insertTablet(tablet);
         } catch (StatementExecutionException e) {
-          assertTrue(e.getMessage().contains("insert measurements [s3] caused by data type of"));
-          assertTrue(e.getMessage().contains("root.sg.d.s3"));
+          LOGGER.error(e.getMessage());
+          assertTrue(e.getMessage().contains("insert measurements [s3] caused by"));
+          assertTrue(e.getMessage().contains("data type of root.sg.d.s3 is not consistent"));
         }
         tablet.reset();
       }
@@ -183,8 +185,9 @@ public class IoTDBSessionDisableMemControlIT {
           try {
             session.insertAlignedTablet(tablet, true);
           } catch (StatementExecutionException e) {
-            assertTrue(e.getMessage().contains("insert measurements [s3] caused by data type of"));
-            assertTrue(e.getMessage().contains("root.sg.d.s3"));
+            LOGGER.error(e.getMessage());
+            assertTrue(e.getMessage().contains("insert measurements [s3] caused by"));
+            assertTrue(e.getMessage().contains("data type of root.sg.d.s3 is not consistent"));
           }
           tablet.reset();
         }
@@ -195,8 +198,9 @@ public class IoTDBSessionDisableMemControlIT {
         try {
           session.insertAlignedTablet(tablet);
         } catch (StatementExecutionException e) {
-          assertTrue(e.getMessage().contains("insert measurements [s3] caused by data type of"));
-          assertTrue(e.getMessage().contains("root.sg.d.s3"));
+          LOGGER.error(e.getMessage());
+          assertTrue(e.getMessage().contains("insert measurements [s3] caused by"));
+          assertTrue(e.getMessage().contains("data type of root.sg.d.s3 is not consistent"));
         }
         tablet.reset();
       }
