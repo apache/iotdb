@@ -98,6 +98,9 @@ public class FragmentInstance implements IConsensusRequest {
   }
 
   public void setDataRegionAndHost(TRegionReplicaSet regionReplicaSet) {
+    if (regionReplicaSet == null) {
+      return;
+    }
     this.regionReplicaSet = regionReplicaSet;
     // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
     // instance

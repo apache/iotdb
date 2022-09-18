@@ -20,8 +20,8 @@ package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
+import org.apache.iotdb.db.utils.SetThreadName;
 
-import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +63,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
           new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
         execute(next);
       } catch (Throwable t) {
-        logger.error("execute failed", t);
+        logger.error("[ExecuteFailed]", t);
         if (next != null) {
           next.setAbortCause(FragmentInstanceAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
           scheduler.toAborted(next);

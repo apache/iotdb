@@ -1125,6 +1125,15 @@ public class IoTDBDescriptor {
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
+
+    long cacheWindowInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "multi_leader_cache_window_time_in_ms",
+                Long.toString(conf.getCacheWindowTimeInMs())));
+    if (cacheWindowInMs > 0) {
+      conf.setCacheWindowTimeInMs(cacheWindowInMs);
+    }
   }
 
   private void loadAutoCreateSchemaProps(Properties properties) {

@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.BatchInsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.List;
 
 public class SchemaValidator {
 
@@ -57,5 +61,14 @@ public class SchemaValidator {
     }
 
     return schemaTree;
+  }
+
+  public static ISchemaTree validate(
+      List<PartialPath> devicePaths,
+      List<String[]> measurements,
+      List<TSDataType[]> dataTypes,
+      List<Boolean> isAlignedList) {
+    return SCHEMA_FETCHER.fetchSchemaListWithAutoCreate(
+        devicePaths, measurements, dataTypes, isAlignedList);
   }
 }
