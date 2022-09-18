@@ -22,6 +22,7 @@ package org.apache.iotdb.db.trigger.executor;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -162,11 +163,11 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   }
 
   private Map<String, List<String>> constructTriggerNameToPathListMap(InsertNode node) {
-    String device = node.getDevicePath().getFullPath();
+    PartialPath device = node.getDevicePath();
     String[] measurements = node.getMeasurements();
     Map<String, List<String>> triggerNameToPaths = new HashMap<>();
     for (String measurement : measurements) {
-      String[] triggerList = getMatchedTriggerNameList(device.concat(".").concat(measurement));
+      List<String> triggerList = getMatchedTriggerListForPath(device.concatNode(measurement));
       for (String trigger : triggerList) {
         triggerNameToPaths.computeIfAbsent(trigger, k -> new ArrayList<>()).add(measurement);
       }
@@ -178,9 +179,8 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
    * @param fullPath PathPattern
    * @return all the triggers that matched this Pattern
    */
-  private String[] getMatchedTriggerNameList(String fullPath) {
-    // todo: use PathPattern
-    return new String[] {"test"};
+  private List<String> getMatchedTriggerListForPath(PartialPath fullPath) {
+    return TriggerManagementService.getInstance().getMatchedTriggerListForPath(fullPath);
   }
 
   private TriggerFireResult fire(String triggerName, Tablet tablet, TriggerEvent event) {

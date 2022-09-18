@@ -22,6 +22,7 @@ package org.apache.iotdb.db.trigger.service;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternNode;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.service.IService;
@@ -41,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -101,6 +103,10 @@ public class TriggerManagementService implements IService {
         && !triggerInformation.getDataNodeLocation().equals(getTDataNodeLocation());
   }
 
+  public List<String> getMatchedTriggerListForPath(PartialPath fullPath) {
+    return patternTreeMap.getOverlapped(fullPath);
+  }
+
   private void checkIfRegistered(TriggerInformation triggerInformation)
       throws TriggerManagementException {
     String triggerName = triggerInformation.getTriggerName();
@@ -126,9 +132,11 @@ public class TriggerManagementService implements IService {
         // get trigger instance
         Trigger trigger =
             constructTriggerInstance(triggerInformation.getClassName(), currentActiveClassLoader);
-        // construct and save TriggerExecutor
+        // construct and save TriggerExecutor after successfully creating trigger instance
         TriggerExecutor triggerExecutor = new TriggerExecutor(triggerInformation, trigger);
         executorMap.put(triggerName, triggerExecutor);
+        // update PatternTreeMap
+        patternTreeMap.append(triggerInformation.getPathPattern(), triggerName);
       }
     } catch (Exception e) {
       String errorMessage =
