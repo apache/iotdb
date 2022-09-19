@@ -113,10 +113,6 @@ public class ConfigNodeProcedureEnv {
     return getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupPlan);
   }
 
-  public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {
-    return getPartitionManager().getAllReplicaSets(storageGroup);
-  }
-
   /**
    * Pre delete a storage group
    *
@@ -346,6 +342,10 @@ public class ConfigNodeProcedureEnv {
     getConsensusManager().write(createRegionGroupsPlan);
     // Broadcast the latest RegionRouteMap
     getLoadManager().broadcastLatestRegionRouteMap();
+  }
+
+  public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {
+    return getPartitionManager().getAllReplicaSets(storageGroup);
   }
 
   public LockQueue getNodeLock() {

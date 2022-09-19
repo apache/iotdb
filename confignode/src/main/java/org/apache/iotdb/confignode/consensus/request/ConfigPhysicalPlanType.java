@@ -32,7 +32,6 @@ public enum ConfigPhysicalPlanType {
   GetStorageGroup,
   CountStorageGroup,
   CreateRegionGroups,
-  OfferRegionMaintainTasks,
   PollRegionMaintainTask,
   DeleteRegionGroups,
   GetSchemaPartition,
@@ -78,5 +77,6 @@ public enum ConfigPhysicalPlanType {
   CheckTemplateSettable,
   SetSchemaTemplate,
   GetPathsSetTemplate,
-  GetAllTemplateSetInfo;
+  GetAllTemplateSetInfo,
+  OfferRegionMaintainTasks
 }
