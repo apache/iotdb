@@ -82,7 +82,6 @@ import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.base.Function;
 import org.apache.commons.lang.Validate;
@@ -126,10 +125,13 @@ public class LogicalPlanBuilder {
 
   private void updateTypeProvider(Collection<Expression> expressions) {
     expressions.forEach(
-        expression ->
+        expression -> {
+          if (!expression.getExpressionString().equals(COLUMN_DEVICE)) {
             context
                 .getTypeProvider()
-                .setType(expression.toString(), getPreAnalyzedType.apply(expression)));
+                .setType(expression.toString(), getPreAnalyzedType.apply(expression));
+          }
+        });
   }
 
   public LogicalPlanBuilder planRawDataSource(
@@ -456,15 +458,11 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planDeviceView(
       Map<String, PlanNode> deviceNameToSourceNodesMap,
-      List<Pair<Expression, String>> outputExpressions,
+      Set<Expression> deviceViewOutput,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       Ordering mergeOrder) {
-    List<String> outputColumnNames = new ArrayList<>();
-    outputColumnNames.add(COLUMN_DEVICE);
-    outputColumnNames.addAll(
-        outputExpressions.stream()
-            .map(pair -> pair.getLeft().toString())
-            .collect(Collectors.toList()));
+    List<String> outputColumnNames =
+        deviceViewOutput.stream().map(Expression::getExpressionString).collect(Collectors.toList());
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             context.getQueryId().genPlanNodeId(),
@@ -474,6 +472,7 @@ public class LogicalPlanBuilder {
                     new SortItem(SortKey.TIME, mergeOrder))),
             outputColumnNames,
             deviceToMeasurementIndexesMap);
+
     for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();
       PlanNode subPlan = entry.getValue();
@@ -481,7 +480,7 @@ public class LogicalPlanBuilder {
     }
 
     context.getTypeProvider().setType(COLUMN_DEVICE, TSDataType.TEXT);
-    updateTypeProvider(outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toList()));
+    updateTypeProvider(deviceViewOutput);
 
     this.root = deviceViewNode;
     return this;
@@ -647,7 +646,7 @@ public class LogicalPlanBuilder {
       boolean isGroupByTime,
       ZoneId zoneId,
       Ordering scanOrder) {
-    if (queryFilter == null) {
+    if (queryFilter == null || selectExpressions.isEmpty()) {
       return this;
     }
 

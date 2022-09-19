@@ -38,7 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 
 /** StateMachine for PartitionRegion */
 public class PartitionRegionStateMachine
@@ -72,14 +71,21 @@ public class PartitionRegionStateMachine
     if (request instanceof ByteBufferConsensusRequest) {
       try {
         plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
-      } catch (IOException e) {
-        LOGGER.error("Deserialization error for write plan : {}", request, e);
+      } catch (Throwable e) {
+        LOGGER.error(
+            "Deserialization error for write plan, request: {}, bytebuffer: {}",
+            request,
+            request.serializeToByteBuffer(),
+            e);
         return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
     } else if (request instanceof ConfigPhysicalPlan) {
       plan = (ConfigPhysicalPlan) request;
     } else {
-      LOGGER.error("Unexpected write plan : {}", request);
+      LOGGER.error(
+          "Unexpected write plan, request: {}, bytebuffer: {}",
+          request,
+          request.serializeToByteBuffer());
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     return write(plan);
@@ -103,7 +109,7 @@ public class PartitionRegionStateMachine
     if (request instanceof ByteBufferConsensusRequest) {
       try {
         plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
-      } catch (IOException e) {
+      } catch (Throwable e) {
         LOGGER.error("Deserialization error for write plan : {}", request);
         return null;
       }

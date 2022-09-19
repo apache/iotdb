@@ -86,8 +86,6 @@ public class Analysis {
 
   private Expression queryFilter;
 
-  private Expression havingExpression;
-
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
 
@@ -99,6 +97,10 @@ public class Analysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY DEVICE)
   /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // used to planTransform after planDeviceView
+  Set<Expression> transformInput;
+  Set<Expression> transformOutput;
 
   // map from device name to series/aggregation under this device
   private Map<String, Set<Expression>> deviceToSourceExpressions;
@@ -115,9 +117,6 @@ public class Analysis {
   // map from device name to query filter under this device
   private Map<String, Expression> deviceToQueryFilter;
 
-  // map from device name to havingExpression under this device
-  private Map<String, Expression> deviceToHavingExpression;
-
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
   private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
@@ -132,6 +131,8 @@ public class Analysis {
 
   // indicate is there a value filter
   private boolean hasValueFilter = false;
+
+  private Expression havingExpression;
 
   // true if nested expressions and UDFs exist in aggregation function
   private boolean isHasRawDataInputAggregation;
@@ -310,14 +311,6 @@ public class Analysis {
     this.havingExpression = havingExpression;
   }
 
-  public Map<String, Expression> getDeviceToHavingExpression() {
-    return deviceToHavingExpression;
-  }
-
-  public void setDeviceToHavingExpression(Map<String, Expression> deviceTohavingExpression) {
-    this.deviceToHavingExpression = deviceTohavingExpression;
-  }
-
   public void setGroupByTimeParameter(GroupByTimeParameter groupByTimeParameter) {
     this.groupByTimeParameter = groupByTimeParameter;
   }
@@ -369,6 +362,22 @@ public class Analysis {
 
   public void setTransformExpressions(Set<Expression> transformExpressions) {
     this.transformExpressions = transformExpressions;
+  }
+
+  public Set<Expression> getTransformInput() {
+    return transformInput;
+  }
+
+  public void setTransformInput(Set<Expression> transformInput) {
+    this.transformInput = transformInput;
+  }
+
+  public Set<Expression> getTransformOutput() {
+    return transformOutput;
+  }
+
+  public void setTransformOutput(Set<Expression> transformOutput) {
+    this.transformOutput = transformOutput;
   }
 
   public Map<String, Set<Expression>> getDeviceToSourceExpressions() {
