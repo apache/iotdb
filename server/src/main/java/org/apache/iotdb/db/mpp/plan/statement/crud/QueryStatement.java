@@ -27,6 +27,8 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.component.AlignByDeviceIntoComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.AlignByTimeIntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
@@ -238,6 +240,10 @@ public class QueryStatement extends Statement {
     return groupByTimeComponent != null;
   }
 
+  public boolean isAlignByTime() {
+    return resultSetFormat == ResultSetFormat.ALIGN_BY_TIME;
+  }
+
   public boolean isAlignByDevice() {
     return resultSetFormat == ResultSetFormat.ALIGN_BY_DEVICE;
   }
@@ -388,6 +394,14 @@ public class QueryStatement extends Statement {
       }
       if (isLastQuery()) {
         throw new SemanticException("select into: last clauses are not supported.");
+      }
+      if (isAlignByDevice() && intoComponent instanceof AlignByTimeIntoComponent) {
+        throw new SemanticException(
+            "select into: target path is illegal, expected: full path or suffix path");
+      }
+      if (isAlignByTime() && intoComponent instanceof AlignByDeviceIntoComponent) {
+        throw new SemanticException(
+            "select into: target path is illegal, expected: target device and measurements");
       }
     }
   }

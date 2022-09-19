@@ -96,6 +96,9 @@ public class Analysis {
 
   private boolean isRawDataSource;
 
+  // map from output column to target into path
+  private Map<String, PartialPath> outputColumnToIntoPathMap;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY DEVICE)
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -123,6 +126,9 @@ public class Analysis {
   private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 
   private Map<String, Boolean> deviceToIsRawDataSource;
+
+  // map from device name to target into path of each output column
+  private Map<String, Map<String, PartialPath>> deviceToIntoPathMap;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)
@@ -464,5 +470,21 @@ public class Analysis {
 
   public void setOutputExpressions(List<Pair<Expression, String>> outputExpressions) {
     this.outputExpressions = outputExpressions;
+  }
+
+  public Map<String, PartialPath> getOutputColumnToIntoPathMap() {
+    return outputColumnToIntoPathMap;
+  }
+
+  public void setOutputColumnToIntoPathMap(Map<String, PartialPath> outputColumnToIntoPathMap) {
+    this.outputColumnToIntoPathMap = outputColumnToIntoPathMap;
+  }
+
+  public Map<String, Map<String, PartialPath>> getDeviceToIntoPathMap() {
+    return deviceToIntoPathMap;
+  }
+
+  public void setDeviceToIntoPathMap(Map<String, Map<String, PartialPath>> deviceToIntoPathMap) {
+    this.deviceToIntoPathMap = deviceToIntoPathMap;
   }
 }
