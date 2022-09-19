@@ -513,24 +513,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
 
       // Sample disk load
-      long freeDisk =
-          MetricService.getInstance()
-              .getOrCreateGauge(
-                  Metric.SYS_DISK_FREE_SPACE.toString(),
-                  MetricLevel.CORE,
-                  Tag.NAME.toString(),
-                  "system")
-              .value();
-      long totalDisk =
-          MetricService.getInstance()
-              .getOrCreateGauge(
-                  Metric.SYS_DISK_TOTAL_SPACE.toString(),
-                  MetricLevel.CORE,
-                  Tag.NAME.toString(),
-                  "system")
-              .value();
-      if (freeDisk != 0 && totalDisk != 0) {
-        resp.setDisk((short) (freeDisk * 100 / totalDisk));
+      short diskLoad = getDiskLoad();
+      if (diskLoad > 0) {
+        resp.setDisk(diskLoad);
       }
     }
     return resp;
@@ -596,6 +581,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return 0;
     }
     return result;
+  }
+
+  private short getDiskLoad() {
+    long freeDisk =
+            MetricService.getInstance()
+                    .getOrCreateGauge(
+                            Metric.SYS_DISK_FREE_SPACE.toString(),
+                            MetricLevel.CORE,
+                            Tag.NAME.toString(),
+                            "system")
+                    .value();
+    long totalDisk =
+            MetricService.getInstance()
+                    .getOrCreateGauge(
+                            Metric.SYS_DISK_TOTAL_SPACE.toString(),
+                            MetricLevel.CORE,
+                            Tag.NAME.toString(),
+                            "system")
+                    .value();
+
+    short diskLoad = 0;
+    if (freeDisk != 0 && totalDisk != 0) {
+      diskLoad = (short) (freeDisk * 100 / totalDisk);
+    }
+    return diskLoad;
   }
 
   @Override
