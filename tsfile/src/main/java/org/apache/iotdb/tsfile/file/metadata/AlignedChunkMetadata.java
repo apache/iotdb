@@ -183,10 +183,6 @@ public class AlignedChunkMetadata implements IChunkMetadata {
     throw new UnsupportedOperationException("VectorChunkMetadata doesn't support serial method");
   }
 
-  public int serializeWithFullInfo(OutputStream outputStream, String seriesFullPath) {
-    throw new UnsupportedOperationException("VectorChunkMetadata doesn't support serial method");
-  }
-
   @Override
   public byte getMask() {
     return 0;

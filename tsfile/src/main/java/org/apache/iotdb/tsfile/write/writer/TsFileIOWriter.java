@@ -320,6 +320,7 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endFile() throws IOException {
+    checkInMemoryPathCount();
     readChunkMetadataAndConstructIndexTree();
 
     long footerIndex = out.getPosition();
@@ -336,6 +337,12 @@ public class TsFileIOWriter implements AutoCloseable {
       resourceLogger.debug("{} writer is closed.", file.getName());
     }
     canWrite = false;
+  }
+
+  private void checkInMemoryPathCount() {
+    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
+      pathCount += chunkGroupMetadata.getChunkMetadataList().size();
+    }
   }
 
   private void readChunkMetadataAndConstructIndexTree() throws IOException {

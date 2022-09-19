@@ -76,7 +76,8 @@ public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
     try {
       return new Pair<>(
           nextEntry.getKey().getFullPath(),
-          constructOneTimeseriesMetadata(nextEntry.getKey(), nextEntry.getValue()));
+          constructOneTimeseriesMetadata(
+              nextEntry.getKey().getMeasurement(), nextEntry.getValue()));
     } catch (IOException e) {
       LOG.error("Meets IOException when getting next TimeseriesMetadata", e);
       return null;
@@ -96,7 +97,7 @@ public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
   }
 
   protected TimeseriesMetadata constructOneTimeseriesMetadata(
-      Path path, List<IChunkMetadata> chunkMetadataList) throws IOException {
+      String measurementId, List<IChunkMetadata> chunkMetadataList) throws IOException {
     // create TimeseriesMetaData
     PublicBAOS publicBAOS = new PublicBAOS();
     TSDataType dataType = chunkMetadataList.get(chunkMetadataList.size() - 1).getDataType();
@@ -118,7 +119,7 @@ public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
             (byte)
                 ((serializeStatistic ? (byte) 1 : (byte) 0) | chunkMetadataList.get(0).getMask()),
             chunkMetadataListLength,
-            path.getMeasurement(),
+            measurementId,
             dataType,
             seriesStatistics,
             publicBAOS);

@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -39,6 +38,11 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * This class read ChunkMetadata iteratively from disk(.cmt file) and memory(list of
+ * ChunkGroupMetadata), and construct them as TimeseriesMetadata. It will read ChunkMetadata in disk
+ * first, and after all ChunkMetadata in disk is read, it will read ChunkMetadata in memory.
+ */
 public class DiskTSMIterator extends TSMIterator {
 
   private static final Logger LOG = LoggerFactory.getLogger(DiskTSMIterator.class);
@@ -115,7 +119,7 @@ public class DiskTSMIterator extends TSMIterator {
     updateCurrentPos();
     return new Pair<>(
         currentDevice + "." + measurementUid,
-        constructOneTimeseriesMetadata(new Path(currentDevice, measurementUid), chunkMetadataList));
+        constructOneTimeseriesMetadata(measurementUid, chunkMetadataList));
   }
 
   private void updateCurrentPos() throws IOException {
