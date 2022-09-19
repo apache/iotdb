@@ -112,6 +112,11 @@ public class CommonConfig {
   /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
 
+  /** Disk Monitor */
+  private double fullThreshold = 5.0;
+
+  private double readOnlyThreshold = 1.0;
+
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
@@ -271,16 +276,32 @@ public class CommonConfig {
     this.handleSystemErrorStrategy = handleSystemErrorStrategy;
   }
 
+  public void handleUnrecoverableError() {
+    handleSystemErrorStrategy.handle();
+  }
+
+  public double getFullThreshold() {
+    return fullThreshold;
+  }
+
+  public void setFullThreshold(double fullThreshold) {
+    this.fullThreshold = fullThreshold;
+  }
+
+  public double getReadOnlyThreshold() {
+    return readOnlyThreshold;
+  }
+
+  public void setReadOnlyThreshold(double readOnlyThreshold) {
+    this.readOnlyThreshold = readOnlyThreshold;
+  }
+
   public boolean isReadOnly() {
     return status == NodeStatus.ReadOnly;
   }
 
   public NodeStatus getNodeStatus() {
     return status;
-  }
-
-  public void handleUnrecoverableError() {
-    handleSystemErrorStrategy.handle();
   }
 
   public void setNodeStatusToShutdown() {
@@ -294,18 +315,15 @@ public class CommonConfig {
 
     switch (newStatus) {
       case Full:
-        logger.warn(
-                "Change system status to Full! The disk is running out!"
-        );
+        logger.warn("Change system status to Full! The disk is running out!");
       case ReadOnly:
         logger.error(
-                "Change system status to ReadOnly! Only query statements are permitted!",
-                new RuntimeException("System mode is set to READ_ONLY"));
+            "Change system status to ReadOnly! Only query statements are permitted!",
+            new RuntimeException("System mode is set to READ_ONLY"));
         break;
       case Removing:
         logger.info(
-                "Change system status to Removing! The current Node is being removed from cluster!"
-        );
+            "Change system status to Removing! The current Node is being removed from cluster!");
     }
   }
 }

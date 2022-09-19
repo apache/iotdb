@@ -45,6 +45,8 @@ struct TGlobalConfig {
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
+  7: required double fullThreshold
+  8: required double readOnlyThreshold
 }
 
 struct TRatisConfig {

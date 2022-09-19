@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,5 +105,19 @@ public class CommonDescriptor {
         HandleSystemErrorStrategy.valueOf(
             properties.getProperty(
                 "handle_system_error", String.valueOf(config.getHandleSystemErrorStrategy()))));
+
+    config.setFullThreshold(
+        Double.parseDouble(
+            properties.getProperty("full_threshold", String.valueOf(config.getFullThreshold()))));
+
+    config.setReadOnlyThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "read_only_threshold", String.valueOf(config.getReadOnlyThreshold()))));
+  }
+
+  public void loadGlobalConfig(TGlobalConfig globalConfig) {
+    config.setFullThreshold(globalConfig.getFullThreshold());
+    config.setReadOnlyThreshold(globalConfig.getReadOnlyThreshold());
   }
 }

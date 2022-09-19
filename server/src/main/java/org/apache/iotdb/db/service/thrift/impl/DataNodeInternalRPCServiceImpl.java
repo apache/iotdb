@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -509,14 +510,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       long usedMemory = getMemory("jvm.memory.used.bytes");
       long maxMemory = getMemory("jvm.memory.max.bytes");
       if (usedMemory != 0 && maxMemory != 0) {
-        resp.setMemory((short) (usedMemory * 100 / maxMemory));
+        resp.setMemory((double) usedMemory * 100 / maxMemory);
       }
 
       // Sample disk load
-      short diskLoad = getDiskLoad();
-      if (diskLoad > 0) {
-        resp.setDisk(diskLoad);
-      }
+      sampleDiskLoad(resp);
     }
     return resp;
   }
@@ -583,29 +581,36 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return result;
   }
 
-  private short getDiskLoad() {
-    long freeDisk =
-            MetricService.getInstance()
-                    .getOrCreateGauge(
-                            Metric.SYS_DISK_FREE_SPACE.toString(),
-                            MetricLevel.CORE,
-                            Tag.NAME.toString(),
-                            "system")
-                    .value();
-    long totalDisk =
-            MetricService.getInstance()
-                    .getOrCreateGauge(
-                            Metric.SYS_DISK_TOTAL_SPACE.toString(),
-                            MetricLevel.CORE,
-                            Tag.NAME.toString(),
-                            "system")
-                    .value();
+  private void sampleDiskLoad(THeartbeatResp resp) {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-    short diskLoad = 0;
+    long freeDisk =
+        MetricService.getInstance()
+            .getOrCreateGauge(
+                Metric.SYS_DISK_FREE_SPACE.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                "system")
+            .value();
+    long totalDisk =
+        MetricService.getInstance()
+            .getOrCreateGauge(
+                Metric.SYS_DISK_TOTAL_SPACE.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                "system")
+            .value();
+
     if (freeDisk != 0 && totalDisk != 0) {
-      diskLoad = (short) (freeDisk * 100 / totalDisk);
+      resp.setDisk((double) freeDisk * 100 / totalDisk);
+
+      // Reset NodeStatus if necessary
+      if (resp.getDisk() < commonConfig.getReadOnlyThreshold()) {
+        commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+      } else if (resp.getDisk() < commonConfig.getFullThreshold()) {
+        commonConfig.setNodeStatus(NodeStatus.Full);
+      }
     }
-    return diskLoad;
   }
 
   @Override

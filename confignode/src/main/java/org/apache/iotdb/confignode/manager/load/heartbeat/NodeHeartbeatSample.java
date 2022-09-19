@@ -29,8 +29,8 @@ public class NodeHeartbeatSample {
 
   private NodeStatus status;
   private short cpu;
-  private short memory;
-  private short disk;
+  private double memory;
+  private double disk;
 
   /** Constructor for ConfigNode sample */
   public NodeHeartbeatSample(long sendTimestamp, long receiveTimestamp) {
@@ -64,11 +64,11 @@ public class NodeHeartbeatSample {
     return cpu;
   }
 
-  public short getMemory() {
+  public double getMemory() {
     return memory;
   }
 
-  public short getDisk() {
+  public double getDisk() {
     return disk;
   }
 }

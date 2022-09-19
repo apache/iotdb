@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.confignode.AsyncConfigNodeHeartbeatClientPool;
@@ -119,15 +121,20 @@ public class NodeManager {
 
   private void setGlobalConfig(DataNodeRegisterResp dataSet) {
     // Set TGlobalConfig
-    final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    final ConfigNodeConfig configNodeConfig = ConfigNodeDescriptor.getInstance().getConf();
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
     TGlobalConfig globalConfig = new TGlobalConfig();
-    globalConfig.setDataRegionConsensusProtocolClass(conf.getDataRegionConsensusProtocolClass());
+    globalConfig.setDataRegionConsensusProtocolClass(
+        configNodeConfig.getDataRegionConsensusProtocolClass());
     globalConfig.setSchemaRegionConsensusProtocolClass(
-        conf.getSchemaRegionConsensusProtocolClass());
-    globalConfig.setSeriesPartitionSlotNum(conf.getSeriesPartitionSlotNum());
-    globalConfig.setSeriesPartitionExecutorClass(conf.getSeriesPartitionExecutorClass());
-    globalConfig.setTimePartitionInterval(conf.getTimePartitionInterval());
-    globalConfig.setReadConsistencyLevel(conf.getReadConsistencyLevel());
+        configNodeConfig.getSchemaRegionConsensusProtocolClass());
+    globalConfig.setSeriesPartitionSlotNum(configNodeConfig.getSeriesPartitionSlotNum());
+    globalConfig.setSeriesPartitionExecutorClass(
+        configNodeConfig.getSeriesPartitionExecutorClass());
+    globalConfig.setTimePartitionInterval(configNodeConfig.getTimePartitionInterval());
+    globalConfig.setReadConsistencyLevel(configNodeConfig.getReadConsistencyLevel());
+    globalConfig.setFullThreshold(commonConfig.getFullThreshold());
+    globalConfig.setReadOnlyThreshold(commonConfig.getReadOnlyThreshold());
     dataSet.setGlobalConfig(globalConfig);
   }
 
@@ -678,15 +685,16 @@ public class NodeManager {
 
   public void setNodeRemovingStatus(TDataNodeLocation dataNodeLocation) {
     DataNodeHeartbeatCache cache =
-        (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
+        (DataNodeHeartbeatCache)
+            configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
     if (cache != null) {
       cache.setRemoving();
     }
-    SyncDataNodeClientPool.getInstance().sendSyncRequestToDataNodeWithRetry(
-      dataNodeLocation.getInternalEndPoint(),
+    SyncDataNodeClientPool.getInstance()
+        .sendSyncRequestToDataNodeWithRetry(
+            dataNodeLocation.getInternalEndPoint(),
             NodeStatus.Removing,
-            DataNodeRequestType.SET_SYSTEM_STATUS
-    );
+            DataNodeRequestType.SET_SYSTEM_STATUS);
   }
 
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {
