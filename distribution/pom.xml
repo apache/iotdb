@@ -55,10 +55,10 @@
                                     <os family="unix"/>
                                 </condition>
                                 <exec executable="C:\\Windows\\System32\\cmd.exe" osfamily="windows">
-                                    <arg line="/c 'git rev-parse --short HEAD &gt; ${project.build.directory}/COMMIT'"/>
+                                    <arg line="/c 'git rev-parse --short HEAD &gt; ${project.build.directory}/COMMITID'"/>
                                 </exec>
                                 <exec executable="/bin/bash" osfamily="unix">
-                                    <arg line="-c 'git rev-parse --short HEAD &gt; ${project.build.directory}/COMMIT'"/>
+                                    <arg line="-c 'git rev-parse --short HEAD &gt; ${project.build.directory}/COMMITID'"/>
                                 </exec>
                             </target>
                         </configuration>
