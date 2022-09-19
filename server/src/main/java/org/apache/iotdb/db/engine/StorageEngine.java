@@ -1174,7 +1174,7 @@ public class StorageEngine implements IService {
   public String getStorageGroupName(PartialPath path) throws StorageEngineException {
     PartialPath deviceId = path.getDevicePath();
     DataRegion storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.getLogicalStorageGroupName();
+    return storageGroupProcessor.getStorageGroupName();
   }
 
   protected void getSeriesSchemas(InsertPlan insertPlan, DataRegion processor)

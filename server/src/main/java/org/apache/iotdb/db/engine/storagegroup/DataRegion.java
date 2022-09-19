@@ -608,7 +608,7 @@ public class DataRegion {
       Pair<String, Pair<TSEncoding, CompressionType>> record = alterList.get(i);
       try {
         alteringRecordsCache.putRecord(
-            logicalStorageGroupName, record.left, record.right.left, record.right.right);
+            storageGroupName, record.left, record.right.left, record.right.right);
       } catch (Exception e) {
         throw new DataRegionException(e);
       }
@@ -2185,7 +2185,7 @@ public class DataRegion {
       throws IOException {
 
     //    final String logKey =
-    //        logicalStorageGroupName + "-" + dataRegionId + "-" + fullPath.getFullPath();
+    //        storageGroupName + "-" + dataRegionId + "-" + fullPath.getFullPath();
     // If there are still some old version tsfiles, the delete won't succeeded.
     if (upgradeFileCount.get() != 0) {
       throw new IOException("Alter failed. Please do not delete until the old files upgraded.");
