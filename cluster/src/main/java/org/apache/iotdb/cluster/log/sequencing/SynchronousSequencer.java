@@ -79,6 +79,24 @@ public class SynchronousSequencer implements LogSequencer {
           }
           log.setCurrLogTerm(member.getTerm().get());
           log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+          startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
+          // logDispatcher will serialize log, and set log size, and we will use the size after it
+          logManager.append(log);
+          Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
+
+          startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
+          sendLogRequest = buildSendLogRequest(log);
+          Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
+
+          startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
+          log.setCreateTime(System.nanoTime());
+          if (member.getAllNodes().size() > 1) {
+            member.getVotingLogList().insert(sendLogRequest.getVotingLog());
+            member.getLogDispatcher().offer(sendLogRequest);
+          }
+          Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
+
           break;
         }
         try {
@@ -94,23 +112,6 @@ public class SynchronousSequencer implements LogSequencer {
       }
     }
 
-    startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
-
-    // logDispatcher will serialize log, and set log size, and we will use the size after it
-    logManager.append(log);
-    Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
-
-    startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
-    sendLogRequest = buildSendLogRequest(log);
-    Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
-
-    startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
-    log.setCreateTime(System.nanoTime());
-    if (member.getAllNodes().size() > 1) {
-      member.getVotingLogList().insert(sendLogRequest.getVotingLog());
-      member.getLogDispatcher().offer(sendLogRequest);
-    }
-    Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
     return sendLogRequest;
   }
 

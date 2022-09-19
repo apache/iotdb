@@ -95,11 +95,12 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
           .onStronglyAccept(
               log.getLog().getCurrLogIndex(),
               log.getLog().getCurrLogTerm(),
-              trueReceiver.nodeIdentifier);
+              trueReceiver,
+              response.signature);
       member.getPeer(trueReceiver).setMatchIndex(response.lastLogIndex);
     } else if (resp > 0) {
       // a response > 0 is the follower's term
-      // the leader ship is stale, wait for the new leader's heartbeat
+      // the leadership is stale, wait for the new leader's heartbeat
       long prevReceiverTerm = receiverTerm.get();
       logger.debug(
           "{}: Received a rejection from {} because term is stale: {}/{}, log: {}",

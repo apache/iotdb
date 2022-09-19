@@ -455,4 +455,9 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       throw new TException(e);
     }
   }
+
+  @Override
+  public void ping() throws TException {
+
+  }
 }

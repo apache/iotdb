@@ -216,6 +216,9 @@ public class ClusterConfig {
 
   private boolean optimizeIndirectBroadcasting = false;
 
+  // VG-Raft related
+  private boolean useVGRaft = true;
+
   /**
    * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
    * there is something error for getting the ip of the hostname, then set the internalIp as
@@ -670,5 +673,13 @@ public class ClusterConfig {
 
   public void setRelayWeightBase(double relayWeightBase) {
     this.relayWeightBase = relayWeightBase;
+  }
+
+  public boolean isUseVGRaft() {
+    return useVGRaft;
+  }
+
+  public void setUseVGRaft(boolean useVGRaft) {
+    this.useVGRaft = useVGRaft;
   }
 }

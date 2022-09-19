@@ -127,7 +127,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       if (client == null) {
         return false;
       }
-      client.appendEntry(request, handler);
+      client.appendEntry(request, false, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
       handler.getAppendSucceed().wait(ClusterConstant.getWriteOperationTimeoutMS());
     }
@@ -155,7 +155,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
     }
 
     try {
-      AppendEntryResult result = client.appendEntry(request);
+      AppendEntryResult result = client.appendEntry(request, false);
       handler.onComplete(result);
       return handler.getAppendSucceed().get();
     } catch (TException e) {

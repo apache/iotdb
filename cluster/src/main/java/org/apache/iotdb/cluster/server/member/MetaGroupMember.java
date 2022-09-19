@@ -204,7 +204,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   }
 
   // whether the MetaEngine has been ready.
-  boolean ready = false;
+  volatile boolean ready = false;
 
   @TestOnly
   public MetaGroupMember(IStateMachine stateMachine) {
@@ -758,7 +758,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   /** When the node restarts, it sends handshakes to all other nodes so they may know it is back. */
   public void sendHandshake() {
     for (Node node : allNodes) {
-      if (ClusterUtils.nodeEqual(node, thisNode)) {
+      if (ClusterUtils.isNodeEquals(node, thisNode)) {
         // no need to shake hands with yourself
         continue;
       }

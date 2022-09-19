@@ -171,7 +171,9 @@ public class LogAckSender {
         ClientUtils.putBackSyncClient(syncClient);
       }
     }
-    Thread.currentThread().setName(baseThreadName + "-" + index + "-" + response);
+    if (logger.isDebugEnabled()) {
+      Thread.currentThread().setName(baseThreadName + "-" + index + "-" + response);
+    }
     Statistic.RAFT_SEND_RELAY_ACK.add(1);
     Statistic.RAFT_RECEIVER_APPEND_ACK.calOperationCostTimeFromStart(ackStartTime);
   }

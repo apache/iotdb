@@ -96,13 +96,14 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void appendEntry(
-      AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler)
+      AppendEntryRequest request, boolean isVerifier,
+      AsyncMethodCallback<AppendEntryResult> resultHandler)
       throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, request);
     if (service != null) {
-      service.appendEntry(request, resultHandler);
+      service.appendEntry(request, isVerifier, resultHandler);
     }
   }
 
@@ -695,10 +696,11 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public AppendEntryResult appendEntry(AppendEntryRequest request) throws TException {
+  public AppendEntryResult appendEntry(AppendEntryRequest request, boolean isVerifier)
+      throws TException {
     return DataGroupEngine.getInstance()
         .getDataSyncService(request.getHeader())
-        .appendEntry(request);
+        .appendEntry(request, isVerifier);
   }
 
   @Override
@@ -784,5 +786,15 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
     DataGroupEngine.getInstance()
         .getDataAsyncService(ack.getHeader(), resultHandler, ack)
         .acknowledgeAppendEntry(ack, resultHandler);
+  }
+
+  @Override
+  public void ping() throws TException {
+
+  }
+
+  @Override
+  public void ping(AsyncMethodCallback<Void> resultHandler) throws TException {
+    resultHandler.onComplete(null);
   }
 }

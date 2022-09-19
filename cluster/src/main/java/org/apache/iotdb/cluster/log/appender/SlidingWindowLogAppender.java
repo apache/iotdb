@@ -133,29 +133,29 @@ public class SlidingWindowLogAppender implements LogAppender {
     long startWaitingTime = System.currentTimeMillis();
     long success;
     while (true) {
-      synchronized (logManager) {
-
-        // TODO: Consider memory footprint to execute a precise rejection
-        if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
-            <= ClusterDescriptor.getInstance()
-                .getConfig()
-                .getUnAppliedRaftLogNumForRejectThreshold()) {
+      // TODO: Consider memory footprint to execute a precise rejection
+      if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
+          <= ClusterDescriptor.getInstance()
+          .getConfig()
+          .getUnAppliedRaftLogNumForRejectThreshold()) {
+        synchronized (logManager) {
           success =
               logManager.maybeAppend(windowPrevLogIndex, windowPrevLogTerm, leaderCommit, logs);
           break;
         }
-        try {
-          TimeUnit.MILLISECONDS.sleep(
-              IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
-          if (System.currentTimeMillis() - startWaitingTime
-              > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
-            result.status = Response.RESPONSE_TOO_BUSY;
-            return -1;
-          }
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        }
       }
+      try {
+        TimeUnit.MILLISECONDS.sleep(
+            IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startWaitingTime
+            > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
+          result.status = Response.RESPONSE_TOO_BUSY;
+          return -1;
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+
     }
     if (success != -1) {
       moveWindowRightward(flushPos);

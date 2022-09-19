@@ -379,10 +379,13 @@ public class ClusterUtils {
     return migrationStatus;
   }
 
-  public static boolean nodeEqual(Node node1, Node node2) {
-    ClusterNode clusterNode1 = new ClusterNode(node1);
-    ClusterNode clusterNode2 = new ClusterNode(node2);
-    return clusterNode1.equals(clusterNode2);
+  public static boolean isNodeIn(Node node, List<Node> nodes) {
+    for (Node node1 : nodes) {
+      if (isNodeEquals(node1, node)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public static String nodeToString(Node node) {

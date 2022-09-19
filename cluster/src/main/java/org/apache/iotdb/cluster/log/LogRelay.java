@@ -117,22 +117,28 @@ public class LogRelay {
         logger.debug("Relaying {}", relayEntry);
 
         if (relayEntry.singleRequest != null) {
-          Thread.currentThread()
-              .setName(
-                  baseName
-                      + "-"
-                      + (relayEntry.singleRequest.prevLogIndex + 1)
-                      + "-"
-                      + relayEntry.receivers);
+          if (logger.isDebugEnabled()) {
+            Thread.currentThread()
+                .setName(
+                    baseName
+                        + "-"
+                        + (relayEntry.singleRequest.prevLogIndex + 1)
+                        + "-"
+                        + relayEntry.receivers);
+          }
+
           sendLogToSubFollowers(relayEntry.singleRequest, relayEntry.receivers);
         } else if (relayEntry.batchRequest != null) {
-          Thread.currentThread()
-              .setName(
-                  baseName
-                      + "-"
-                      + (relayEntry.batchRequest.prevLogIndex + 1)
-                      + "-"
-                      + relayEntry.receivers);
+          if (logger.isDebugEnabled()) {
+            Thread.currentThread()
+                .setName(
+                    baseName
+                        + "-"
+                        + (relayEntry.batchRequest.prevLogIndex + 1)
+                        + "-"
+                        + relayEntry.receivers);
+          }
+
           sendLogsToSubFollowers(relayEntry.batchRequest, relayEntry.receivers);
         }
 
@@ -152,14 +158,14 @@ public class LogRelay {
               if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
                 raftMember
                     .getAsyncClient(subFollower)
-                    .appendEntry(request, new IndirectAppendHandler(subFollower, request));
+                    .appendEntry(request, false, new IndirectAppendHandler(subFollower, request));
               } else {
                 long operationStartTime = Statistic.RAFT_RECEIVER_RELAY_LOG.getOperationStartTime();
                 syncClient = raftMember.getSyncClient(subFollower);
 
                 int concurrentSender = concurrentSenderNum.incrementAndGet();
                 Statistic.RAFT_CONCURRENT_SENDER.add(concurrentSender);
-                syncClient.appendEntry(request);
+                syncClient.appendEntry(request, false);
                 concurrentSenderNum.decrementAndGet();
 
                 long sendLogTime =

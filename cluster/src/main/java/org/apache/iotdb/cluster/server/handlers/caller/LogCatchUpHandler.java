@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -50,10 +51,11 @@ public class LogCatchUpHandler implements AsyncMethodCallback<AppendEntryResult>
   private String memberName;
   private RaftMember raftMember;
 
-  private void processStrongAccept() {
+  private void processStrongAccept(ByteBuffer signature) {
     raftMember
         .getVotingLogList()
-        .onStronglyAccept(log.getCurrLogIndex(), log.getCurrLogTerm(), follower.nodeIdentifier);
+        .onStronglyAccept(log.getCurrLogIndex(), log.getCurrLogTerm(), follower,
+           signature);
   }
 
   @Override
@@ -62,7 +64,7 @@ public class LogCatchUpHandler implements AsyncMethodCallback<AppendEntryResult>
     long resp = response.status;
     if (resp == RESPONSE_AGREE || resp == RESPONSE_STRONG_ACCEPT) {
       if (log.getCurrLogTerm() == raftMember.getTerm().get()) {
-        processStrongAccept();
+        processStrongAccept(response.signature);
       }
       synchronized (appendSucceed) {
         appendSucceed.set(true);

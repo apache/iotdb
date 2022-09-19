@@ -231,7 +231,9 @@ public class AsyncDataLogApplier implements LogApplier {
       // priority background threads), to assure fast ingestion, but a lower priority than
       // heartbeat threads
       Thread.currentThread().setPriority(8);
-      Thread.currentThread().setName(name);
+      if (logger.isDebugEnabled()) {
+        Thread.currentThread().setName(name);
+      }
       while (!Thread.currentThread().isInterrupted()) {
         try {
           Log log = logQueue.take();

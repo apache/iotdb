@@ -384,6 +384,12 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "relay_weight_base", String.valueOf(config.getRelayWeightBase()))));
 
+    config.setUseVGRaft(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "use_vg_raft",
+                String.valueOf(config.isUseVGRaft()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));

@@ -54,11 +54,13 @@ public class Response {
   public static final long RESPONSE_WEAK_ACCEPT = -13;
   public static final long RESPONSE_OUT_OF_WINDOW = -14;
   // the request is not executed locally anc should be forwarded
-  public static final long RESPONSE_NULL = Long.MIN_VALUE;
   // the meta engine is not ready (except for the partitionTable is ready)
-  public static final long RESPONSE_META_NOT_READY = -12;
+  public static final long RESPONSE_META_NOT_READY = -15;
   // the cluster is too busy to reject new committed logs
-  public static final long RESPONSE_TOO_BUSY = -13;
+  public static final long RESPONSE_TOO_BUSY = -16;
+  public static final long RESPONSE_HASH_INCONSISTENT = -17;
+  public static final long RESPONSE_SIGNATURE_INCONSISTENT = -18;
+  public static final long RESPONSE_NULL = Long.MIN_VALUE;
 
   private Response() {
     // enum-like class

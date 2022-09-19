@@ -150,7 +150,7 @@ public class ExprBench {
                 if (status.isSetRedirectNode()) {
                   Node leader = new Node().setInternalIp(status.redirectNode.ip).setMetaPort(8880);
                   endPointLeaderMap.put(endPoint, leader);
-                  logger.info("Leader of {} is changed to {}", endPoint, leader);
+                  logger.debug("Leader of {} is changed to {}", endPoint, leader);
                 }
 
                 currRequsetNum = requestCounter.incrementAndGet();

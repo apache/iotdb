@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.cluster.log;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -66,30 +68,22 @@ public class VotingLogList {
    * @param index
    * @param term
    * @param acceptingNodeId
+   * @param signature
    * @return the lastly removed entry if any.
    */
-  public void onStronglyAccept(long index, long term, int acceptingNodeId) {
-    logger.debug("{}-{} is strongly accepted by {}", index, term, acceptingNodeId);
+  public void onStronglyAccept(long index, long term, Node acceptingNode, ByteBuffer signature) {
+    logger.debug("{}-{} is strongly accepted by {}", index, term, acceptingNode);
     int lastEntryIndexToCommit = -1;
 
     List<VotingLog> acceptedLogs;
     synchronized (this) {
       for (int i = 0, logListSize = logList.size(); i < logListSize; i++) {
         VotingLog votingLog = logList.get(i);
-        if (votingLog.getLog().getCurrLogIndex() <= index
-            && votingLog.getLog().getCurrLogTerm() == term) {
-          synchronized (votingLog) {
-            votingLog.getStronglyAcceptedNodeIds().add(acceptingNodeId);
-          }
-          if (votingLog.getStronglyAcceptedNodeIds().size() >= quorumSize) {
-            lastEntryIndexToCommit = i;
-          }
-          if (votingLog.getStronglyAcceptedNodeIds().size()
-                  + votingLog.getWeaklyAcceptedNodeIds().size()
-              >= quorumSize) {
-            votingLog.acceptedTime.set(System.nanoTime());
-          }
-        } else if (votingLog.getLog().getCurrLogIndex() > index) {
+        if (votingLog.onStronglyAccept(index, term, acceptingNode, quorumSize,
+            signature, member.getAllNodes().size())) {
+          lastEntryIndexToCommit = i;
+        }
+        if (votingLog.getLog().getCurrLogIndex() > index) {
           break;
         }
       }

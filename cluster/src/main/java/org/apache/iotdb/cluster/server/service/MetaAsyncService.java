@@ -61,7 +61,8 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
 
   @Override
   public void appendEntry(
-      AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
+      AppendEntryRequest request,
+      boolean isVerifier, AsyncMethodCallback<AppendEntryResult> resultHandler) {
     // if the metaGroupMember is not ready (e.g., as a follower the PartitionTable is loaded
     // locally, but the partition table is not verified), we do not handle the RPC requests.
     if (!metaGroupMember.isReady() && metaGroupMember.getPartitionTable() == null) {
@@ -76,7 +77,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
       return;
     }
 
-    super.appendEntry(request, resultHandler);
+    super.appendEntry(request, isVerifier, resultHandler);
   }
 
   @Override
@@ -261,6 +262,11 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   public void acknowledgeAppendEntry(
       AppendEntryResult ack, AsyncMethodCallback<Void> resultHandler) {
     metaGroupMember.acknowledgeAppendLog(ack);
+    resultHandler.onComplete(null);
+  }
+
+  @Override
+  public void ping(AsyncMethodCallback<Void> resultHandler) {
     resultHandler.onComplete(null);
   }
 }

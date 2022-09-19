@@ -62,7 +62,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
 
   // behavior of followers
   @Override
-  public AppendEntryResult appendEntry(AppendEntryRequest request) throws TException {
+  public AppendEntryResult appendEntry(AppendEntryRequest request, boolean isVerifier) throws TException {
     // if the metaGroupMember is not ready (e.g., as a follower the PartitionTable is loaded
     // locally, but the partition table is not verified), we do not handle the RPC requests.
     if (!metaGroupMember.isReady()) {
@@ -79,7 +79,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
       }
     }
 
-    return super.appendEntry(request);
+    return super.appendEntry(request, isVerifier);
   }
 
   private static final String ERROR_MSG_META_NOT_READY = "The metadata not is not ready.";
@@ -256,5 +256,10 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
   @Override
   public void acknowledgeAppendEntry(AppendEntryResult ack) {
     metaGroupMember.acknowledgeAppendLog(ack);
+  }
+
+  @Override
+  public void ping() throws TException {
+
   }
 }

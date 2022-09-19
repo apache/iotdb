@@ -74,29 +74,30 @@ public class BlockingLogAppender implements LogAppender {
     long success;
     AppendEntryResult result = new AppendEntryResult();
     while (true) {
-      synchronized (logManager) {
-        // TODO: Consider memory footprint to execute a precise rejection
-        if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
-            <= ClusterDescriptor.getInstance()
-                .getConfig()
-                .getUnAppliedRaftLogNumForRejectThreshold()) {
+      // TODO: Consider memory footprint to execute a precise rejection
+      if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
+          <= ClusterDescriptor.getInstance()
+          .getConfig()
+          .getUnAppliedRaftLogNumForRejectThreshold()) {
+        synchronized (logManager) {
           success =
               logManager.maybeAppend(
                   request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
-          break;
         }
-        try {
-          TimeUnit.MILLISECONDS.sleep(
-              IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
-          if (System.currentTimeMillis() - startWaitingTime
-              > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
-            result.status = Response.RESPONSE_TOO_BUSY;
-            return result;
-          }
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        }
+        break;
       }
+      try {
+        TimeUnit.MILLISECONDS.sleep(
+            IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startWaitingTime
+            > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
+          result.status = Response.RESPONSE_TOO_BUSY;
+          return result;
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+
     }
     Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
     if (success != -1) {

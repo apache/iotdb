@@ -94,6 +94,8 @@ struct AppendEntryRequest {
   // otherwise, the reiceiver should also notify the leader
   8: optional bool isFromLeader
   9: optional list<Node> subReceivers
+  10: optional long entryHash
+  11: optional binary leaderSignature
 }
 
 
@@ -293,6 +295,7 @@ struct AppendEntryResult {
   3: optional i64 lastLogIndex;
   4: optional RaftNode header;
   5: optional Node receiver;
+  6: optional binary signature;
 }
 
 
@@ -338,7 +341,7 @@ service RaftService {
   * @param request entry that needs to be appended and the information of the leader.
   * @return -1: agree, -2: log index mismatch , otherwise return the follower's term
   **/
-  AppendEntryResult appendEntry(1:AppendEntryRequest request)
+  AppendEntryResult appendEntry(1:AppendEntryRequest request, 2:bool isVerifier)
 
   void sendSnapshot(1:SendSnapshotRequest request)
 
@@ -376,6 +379,8 @@ service RaftService {
   * the leader so the leader can know whether it has successfully received the entry
   **/
   void acknowledgeAppendEntry(1: AppendEntryResult ack)
+
+  void ping()
 }
 
 

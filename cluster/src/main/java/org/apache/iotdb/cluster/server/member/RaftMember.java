@@ -31,6 +31,8 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.expr.vgraft.KeyManager;
+import org.apache.iotdb.cluster.expr.vgraft.TrustValueHolder;
 import org.apache.iotdb.cluster.log.CommitLogCallback;
 import org.apache.iotdb.cluster.log.CommitLogTask;
 import org.apache.iotdb.cluster.log.FragmentedLogDispatcher;
@@ -139,7 +141,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 
 /**
- * RaftMember process the common raft logic like leader election, log appending, catch-up and so on.
+ * RaftMember process the common raft logic like leader election, log appending, catch-up and so
+ * on.
  */
 @SuppressWarnings("java:S3077") // reference volatile is enough
 public abstract class RaftMember implements RaftMemberMBean {
@@ -174,24 +177,34 @@ public abstract class RaftMember implements RaftMemberMBean {
    * on this may be woken.
    */
   private final Object waitLeaderCondition = new Object();
-  /** the lock is to make sure that only one thread can apply snapshot at the same time */
+  /**
+   * the lock is to make sure that only one thread can apply snapshot at the same time
+   */
   private final Lock snapshotApplyLock = new ReentrantLock();
 
   private final Object heartBeatWaitObject = new Object();
 
   protected Node thisNode = ClusterIoTDB.getInstance().getThisNode();
 
-  /** the nodes that belong to the same raft group as thisNode. */
+  /**
+   * the nodes that belong to the same raft group as thisNode.
+   */
   protected PartitionGroup allNodes;
 
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-  /** the name of the member, to distinguish several members in the logs. */
+  /**
+   * the name of the member, to distinguish several members in the logs.
+   */
   ConsensusGroupId groupId;
 
   String name;
-  /** to choose nodes to send request of joining cluster randomly. */
+  /**
+   * to choose nodes to send request of joining cluster randomly.
+   */
   Random random = new Random();
-  /** when the node is a leader, this map is used to track log progress of each follower. */
+  /**
+   * when the node is a leader, this map is used to track log progress of each follower.
+   */
   Map<Node, PeerInfo> peerMap;
   /**
    * the current term of the node, this object also works as lock of some transactions of the member
@@ -213,7 +226,9 @@ public abstract class RaftMember implements RaftMemberMBean {
    */
   volatile long lastHeartbeatReceivedTime;
 
-  /** the raft logs are all stored and maintained in the log manager */
+  /**
+   * the raft logs are all stored and maintained in the log manager
+   */
   protected RaftLogManager logManager;
 
   /**
@@ -232,7 +247,9 @@ public abstract class RaftMember implements RaftMemberMBean {
    * member by comparing it with the current last log index.
    */
   long lastReportedLogIndex;
-  /** the thread pool that runs catch-up tasks */
+  /**
+   * the thread pool that runs catch-up tasks
+   */
   private ExecutorService catchUpService;
   /**
    * lastCatchUpResponseTime records when is the latest response of each node's catch-up. There
@@ -263,12 +280,15 @@ public abstract class RaftMember implements RaftMemberMBean {
    * one slow node.
    */
   private ExecutorService serialToParallelPool;
-  /** a thread pool that is used to do commit log tasks asynchronous in heartbeat thread */
+  /**
+   * a thread pool that is used to do commit log tasks asynchronous in heartbeat thread
+   */
   private ExecutorService commitLogPool;
 
   /**
    * logDispatcher buff the logs orderly according to their log indexes and send them sequentially,
-   * which avoids the followers receiving out-of-order logs, forcing them to wait for previous logs.
+   * which avoids the followers receiving out-of-order logs, forcing them to wait for previous
+   * logs.
    */
   private volatile LogDispatcher logDispatcher;
 
@@ -280,7 +300,9 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   protected IStateMachine stateMachine;
 
-  /** (logIndex, logTerm) -> append handler */
+  /**
+   * (logIndex, logTerm) -> append handler
+   */
   protected Map<Pair<Long, Long>, AppendNodeEntryHandler> sentLogHandlers =
       new ConcurrentHashMap<>();
 
@@ -296,7 +318,9 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   private ThreadLocal<String> threadBaseName = new ThreadLocal<>();
 
-  private boolean isVerifier = false;
+  //  VG-Raft related
+  private TrustValueHolder trustValueHolder = null;
+
 
   protected RaftMember(IStateMachine stateMachine) {
     this.stateMachine = stateMachine;
@@ -316,6 +340,12 @@ public abstract class RaftMember implements RaftMemberMBean {
     if (heartBeatService != null) {
       return;
     }
+    if (ClusterDescriptor.getInstance().getConfig().isUseVGRaft()) {
+      trustValueHolder = new TrustValueHolder(this);
+      trustValueHolder.init(allNodes);
+    }
+    stateMachine.start();
+    getLogDispatcher();
 
     startBackGroundThreads();
     setSkipElection(false);
@@ -605,26 +635,42 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
     return threadBaseName.get();
   }
+
   /**
    * Process an AppendEntryRequest. First check the term of the leader, then parse the log and
    * finally see if we can find a position to append the log.
    */
-  public AppendEntryResult appendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
+  public AppendEntryResult appendEntry(AppendEntryRequest request, boolean isVerifier) throws UnknownLogTypeException {
     long operationStartTime = Statistic.RAFT_RECEIVER_APPEND_ENTRY_FULL.getOperationStartTime();
-    Thread.currentThread()
-        .setName(getThreadBaseName() + "-appending-" + (request.prevLogIndex + 1));
-    AppendEntryResult result = appendEntryInternal(request);
+    logger.debug("{} received an AppendEntryRequest: {}", name, request);
+    if (logger.isDebugEnabled()) {
+      Thread.currentThread()
+          .setName(getThreadBaseName() + "-appending-" + (request.prevLogIndex + 1));
+    }
+
+    AppendEntryResult result = appendEntryInternal(request, isVerifier);
     Statistic.RAFT_RECEIVER_APPEND_ENTRY_FULL.calOperationCostTimeFromStart(operationStartTime);
+    logger.debug("AppendEntryResult {}", result);
     return result;
   }
 
-  private AppendEntryResult appendEntryInternal(AppendEntryRequest request)
+  private AppendEntryResult appendEntryInternal(AppendEntryRequest request, boolean isVerifier)
       throws UnknownLogTypeException {
-    logger.debug("{} received an AppendEntryRequest: {}", name, request);
     // the term checked here is that of the leader, not that of the log
     long checkResult = checkRequestTerm(request.term, request.leader);
     if (checkResult != Response.RESPONSE_AGREE) {
       return new AppendEntryResult(checkResult).setHeader(getHeader());
+    }
+    if (ClusterDescriptor.getInstance().getConfig().isUseVGRaft() && isVerifier) {
+      if (request.entryHash != request.entry.hashCode()) {
+        return new AppendEntryResult(Response.RESPONSE_HASH_INCONSISTENT).setHeader(getHeader());
+      }
+      if (!KeyManager.INSTANCE.verifyNodeSignature(request.leader,
+          request.leaderSignature.array(), request.leaderSignature.arrayOffset(),
+          request.leaderSignature.remaining())) {
+        return new AppendEntryResult(Response.RESPONSE_SIGNATURE_INCONSISTENT).setHeader(
+            getHeader());
+      }
     }
 
     long startTime = Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.getOperationStartTime();
@@ -635,6 +681,9 @@ public abstract class RaftMember implements RaftMemberMBean {
 
     long appendStartTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
     AppendEntryResult result = getLogAppender().appendEntry(request, log);
+    if (ClusterDescriptor.getInstance().getConfig().isUseVGRaft() && isVerifier) {
+      result.setSignature(KeyManager.INSTANCE.getNodeSignature());
+    }
     Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(appendStartTime);
 
     logger.debug("{} AppendEntryRequest of {} completed with result {}", name, log, result.status);
@@ -646,13 +695,17 @@ public abstract class RaftMember implements RaftMemberMBean {
     return result;
   }
 
-  /** Similar to appendEntry, while the incoming load is batch of logs instead of a single log. */
+  /**
+   * Similar to appendEntry, while the incoming load is batch of logs instead of a single log.
+   */
   public AppendEntryResult appendEntries(AppendEntriesRequest request)
       throws UnknownLogTypeException {
     return appendEntriesInternal(request);
   }
 
-  /** Similar to appendEntry, while the incoming load is batch of logs instead of a single log. */
+  /**
+   * Similar to appendEntry, while the incoming load is batch of logs instead of a single log.
+   */
   private AppendEntryResult appendEntriesInternal(AppendEntriesRequest request)
       throws UnknownLogTypeException {
     logger.debug("{} received an AppendEntriesRequest", name);
@@ -717,13 +770,14 @@ public abstract class RaftMember implements RaftMemberMBean {
       AtomicBoolean leaderShipStale,
       AtomicLong newLeaderTerm,
       AppendEntryRequest request,
-      int quorumSize) {
+      int quorumSize,
+      boolean isVerifier) {
     AsyncClient client = getSendLogAsyncClient(node);
     if (client != null) {
       AppendNodeEntryHandler handler =
           getAppendNodeEntryHandler(log, node, leaderShipStale, newLeaderTerm, quorumSize);
       try {
-        client.appendEntry(request, handler);
+        client.appendEntry(request, isVerifier, handler);
         logger.debug("{} sending a log to {}: {}", name, node, log);
       } catch (Exception e) {
         logger.warn("{} cannot append log to node {}", name, node, e);
@@ -791,6 +845,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     if (allNodes.isEmpty()) {
       return;
     }
+    if (trustValueHolder != null) {
+      trustValueHolder.init(allNodes);
+    }
 
     this.votingLogList = new VotingLogList(allNodes.size() / 2, this);
 
@@ -812,16 +869,22 @@ public abstract class RaftMember implements RaftMemberMBean {
     return lastCatchUpResponseTime;
   }
 
-  /** Sub-classes will add their own process of HeartBeatResponse in this method. */
-  public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {}
+  /**
+   * Sub-classes will add their own process of HeartBeatResponse in this method.
+   */
+  public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
+  }
 
-  /** The actions performed when the node wins in an election (becoming a leader). */
-  public void onElectionWins() {}
+  /**
+   * The actions performed when the node wins in an election (becoming a leader).
+   */
+  public void onElectionWins() {
+  }
 
   /**
    * Update the followers' log by sending logs whose index >= followerLastMatchedLogIndex to the
-   * follower. If some of the required logs are removed, also send the snapshot. <br>
-   * notice that if a part of data is in the snapshot, then it is not in the logs.
+   * follower. If some of the required logs are removed, also send the snapshot. <br> notice that if
+   * a part of data is in the snapshot, then it is not in the logs.
    */
   public void catchUp(Node follower, long lastLogIdx) {
     // for one follower, there is at most one ongoing catch-up, so the same data will not be sent
@@ -904,7 +967,9 @@ public abstract class RaftMember implements RaftMemberMBean {
         "%s:%s=%s", "org.apache.iotdb.cluster.service", IoTDBConstant.JMX_TYPE, "Engine");
   }
 
-  /** call back after syncLeader */
+  /**
+   * call back after syncLeader
+   */
   public interface CheckConsistency {
 
     /**
@@ -913,7 +978,7 @@ public abstract class RaftMember implements RaftMemberMBean {
      * @param leaderCommitId leader commit id
      * @param localAppliedId local applied id
      * @throws CheckConsistencyException maybe throw CheckConsistencyException, which is defined in
-     *     implements.
+     *                                   implements.
      */
     void postCheckConsistency(long leaderCommitId, long localAppliedId)
         throws CheckConsistencyException;
@@ -935,7 +1000,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       if (leaderCommitId == Long.MAX_VALUE
           || leaderCommitId == Long.MIN_VALUE
           || leaderCommitId - localAppliedId
-              > ClusterDescriptor.getInstance().getConfig().getMaxReadLogLag()) {
+          > ClusterDescriptor.getInstance().getConfig().getMaxReadLogLag()) {
         throw CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION;
       }
     }
@@ -968,7 +1033,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    * @param checkConsistency check after syncleader
    * @return true if the node has caught up, false otherwise
    * @throws CheckConsistencyException if leaderCommitId bigger than localAppliedId a threshold
-   *     value after timeout
+   *                                   value after timeout
    */
   public boolean syncLeader(CheckConsistency checkConsistency) throws CheckConsistencyException {
     if (character == NodeCharacter.LEADER) {
@@ -987,7 +1052,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     return waitUntilCatchUp(checkConsistency);
   }
 
-  /** Wait until the leader of this node becomes known or time out. */
+  /**
+   * Wait until the leader of this node becomes known or time out.
+   */
   public void waitLeader() {
     long startTime = System.currentTimeMillis();
     while (leader.get() == null || ClusterConstant.EMPTY_NODE.equals(leader.get())) {
@@ -1014,7 +1081,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    *
    * @return true if this node has caught up before timeout, false otherwise
    * @throws CheckConsistencyException if leaderCommitId bigger than localAppliedId a threshold
-   *     value after timeout
+   *                                   value after timeout
    */
   protected boolean waitUntilCatchUp(CheckConsistency checkConsistency)
       throws CheckConsistencyException {
@@ -1047,7 +1114,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    * sync local applyId to leader commitId
    *
    * @param leaderCommitId leader commit id
-   * @param fastFail if enable, when log differ too much, return false directly.
+   * @param fastFail       if enable, when log differ too much, return false directly.
    * @return true if leaderCommitId <= localAppliedId
    */
   public boolean syncLocalApply(long leaderCommitId, boolean fastFail) {
@@ -1100,7 +1167,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    * call this method. Will commit the log locally and send it to followers
    *
    * @return OK if over half of the followers accept the log or null if the leadership is lost
-   *     during the appending
+   * during the appending
    */
   public TSStatus processPlanLocally(IConsensusRequest request) {
     if (USE_LOG_DISPATCHER) {
@@ -1131,7 +1198,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     // we need to return error code to the client as in server mode
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
         && log.serialize().capacity() + Integer.BYTES
-            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+        >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
               + "or reduce the size of requests you send.");
@@ -1208,7 +1275,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     // just like processPlanLocally,we need to check the size of log
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
         && log.serialize().capacity() + Integer.BYTES
-            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+        >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
               + "or reduce the size of requests you send.");
@@ -1372,7 +1439,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     return peerMap.computeIfAbsent(node, r -> new PeerInfo(getLogManager().getLastLogIndex()));
   }
 
-  /** @return true if there is a log whose index is "index" and term is "term", false otherwise */
+  /**
+   * @return true if there is a log whose index is "index" and term is "term", false otherwise
+   */
   public boolean matchLog(long index, long term) {
     boolean matched = logManager.matchTerm(term, index);
     logger.debug("Log {}-{} matched: {}", index, term, matched);
@@ -1391,15 +1460,18 @@ public abstract class RaftMember implements RaftMemberMBean {
     return syncLock;
   }
 
-  /** Sub-classes will add their own process of HeartBeatRequest in this method. */
-  void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response) {}
+  /**
+   * Sub-classes will add their own process of HeartBeatRequest in this method.
+   */
+  void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response) {
+  }
 
   /**
    * Verify the validity of an ElectionRequest, and make itself a follower of the elector if the
    * request is valid.
    *
    * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has a
-   *     smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
+   * smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
    */
   long checkElectorLogProgress(ElectionRequest electionRequest) {
 
@@ -1443,7 +1515,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    * lastLogIndex is smaller than the voter's Otherwise accept the election.
    *
    * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has a
-   *     smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
+   * smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
    */
   long checkLogProgress(long lastLogIndex, long lastLogTerm) {
     long response;
@@ -1460,10 +1532,10 @@ public abstract class RaftMember implements RaftMemberMBean {
   /**
    * Forward a non-query plan to a node using the default client.
    *
-   * @param plan a non-query plan
-   * @param node cannot be the local node
+   * @param plan   a non-query plan
+   * @param node   cannot be the local node
    * @param header must be set for data group communication, set to null for meta group
-   *     communication
+   *               communication
    * @return a TSStatus indicating if the forwarding is successful.
    */
   public TSStatus forwardPlan(IConsensusRequest plan, Node node, RaftNode header) {
@@ -1494,7 +1566,7 @@ public abstract class RaftMember implements RaftMemberMBean {
   /**
    * Forward a non-query plan to "receiver" using "client".
    *
-   * @param plan a non-query plan
+   * @param plan   a non-query plan
    * @param header to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
@@ -1573,7 +1645,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    * Get an asynchronous thrift client of the given node.
    *
    * @return an asynchronous thrift client or null if the caller tries to connect the local node or
-   *     the node cannot be reached.
+   * the node cannot be reached.
    */
   public AsyncClient getAsyncClient(Node node) {
     try {
@@ -1709,27 +1781,33 @@ public abstract class RaftMember implements RaftMemberMBean {
     String threadBaseName = Thread.currentThread().getName();
     synchronized (log) {
       while (log.getLog().getCurrLogIndex() == Long.MIN_VALUE
-          || stronglyAcceptedNodeNum < quorumSize
-              && (!(ENABLE_WEAK_ACCEPTANCE && canBeWeaklyAccepted(log.getLog()))
-                  || (totalAccepted < quorumSize)
-                  || votingLogList.size() > config.getMaxNumOfLogsInMem())
-              && alreadyWait < ClusterConstant.getWriteOperationTimeoutMS()
-              && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
+          || (!ClusterDescriptor.getInstance().getConfig().isUseVGRaft()
+          && stronglyAcceptedNodeNum < quorumSize
+          || ClusterDescriptor.getInstance().getConfig().isUseVGRaft()
+          && log.getSignatures().size() < TrustValueHolder.verifierGroupSize(allNodes.size()) / 2)
+          && (!(ENABLE_WEAK_ACCEPTANCE && canBeWeaklyAccepted(log.getLog()))
+          || (totalAccepted < quorumSize)
+          || votingLogList.size() > config.getMaxNumOfLogsInMem())
+          && alreadyWait < ClusterConstant.getWriteOperationTimeoutMS()
+          && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
         try {
           log.wait(1);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Unexpected interruption when sending a log", e);
         }
-        Thread.currentThread()
-            .setName(
-                threadBaseName
-                    + "-waiting-"
-                    + log.getLog().getCurrLogIndex()
-                    + "-"
-                    + log.getStronglyAcceptedNodeIds()
-                    + "-"
-                    + log.getWeaklyAcceptedNodeIds());
+        if (logger.isDebugEnabled()) {
+          Thread.currentThread()
+              .setName(
+                  threadBaseName
+                      + "-waiting-"
+                      + log.getLog().getCurrLogIndex()
+                      + "-"
+                      + log.getStronglyAcceptedNodeIds()
+                      + "-"
+                      + log.getWeaklyAcceptedNodeIds());
+        }
+
         alreadyWait = (System.nanoTime() - waitStart) / 1000000;
         if (alreadyWait > nextTimeToPrint) {
           logger.info(
@@ -1752,7 +1830,9 @@ public abstract class RaftMember implements RaftMemberMBean {
         totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
       }
     }
-    Thread.currentThread().setName(threadBaseName);
+    if (logger.isDebugEnabled()) {
+      Thread.currentThread().setName(threadBaseName);
+    }
 
     if (alreadyWait > 15000) {
       logger.info(
@@ -1778,11 +1858,14 @@ public abstract class RaftMember implements RaftMemberMBean {
     int totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
 
     if (log.getLog().getCurrLogIndex() == Long.MIN_VALUE
-        || (stronglyAcceptedNodeNum < quorumSize
-            && (!ENABLE_WEAK_ACCEPTANCE
-                || (totalAccepted < quorumSize)
-                || votingLogList.size() > config.getMaxNumOfLogsInMem())
-            && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE))) {
+        || ((!ClusterDescriptor.getInstance().getConfig().isUseVGRaft()
+        && stronglyAcceptedNodeNum < quorumSize
+        || ClusterDescriptor.getInstance().getConfig().isUseVGRaft()
+        && log.getSignatures().size() < TrustValueHolder.verifierGroupSize(allNodes.size()) / 2)
+        && (!ENABLE_WEAK_ACCEPTANCE
+        || (totalAccepted < quorumSize)
+        || votingLogList.size() > config.getMaxNumOfLogsInMem())
+        && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE))) {
 
       waitAppendResultLoop(log, quorumSize);
     }
@@ -1895,6 +1978,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       log.setByteSize(byteBuffer.array().length);
       request.entry = byteBuffer;
       Statistic.RAFT_SENDER_SERIALIZE_LOG.calOperationCostTimeFromStart(start);
+      request.setEntryHash(byteBuffer.hashCode());
     }
     request.setLeader(getThisNode());
     // don't need lock because even if it's larger than the commitIndex when appending this log to
@@ -1902,6 +1986,8 @@ public abstract class RaftMember implements RaftMemberMBean {
     request.setLeaderCommit(logManager.getCommitLogIndex());
     request.setPrevLogIndex(log.getCurrLogIndex() - 1);
     request.setIsFromLeader(true);
+    request.setLeaderSignature(KeyManager.INSTANCE.getNodeSignature());
+
     try {
       request.setPrevLogTerm(logManager.getTerm(log.getCurrLogIndex() - 1));
     } catch (Exception e) {
@@ -1919,7 +2005,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    * heartbeat timer.
    *
    * @param fromLeader true if the request is from a leader, false if the request is from an
-   *     elector.
+   *                   elector.
    */
   public void stepDown(long newTerm, boolean fromLeader) {
     synchronized (logManager) {
@@ -1955,7 +2041,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     this.thisNode = thisNode;
   }
 
-  /** @return the header of the data raft group or null if this is in a meta group. */
+  /**
+   * @return the header of the data raft group or null if this is in a meta group.
+   */
   public RaftNode getHeader() {
     return null;
   }
@@ -2091,7 +2179,7 @@ public abstract class RaftMember implements RaftMemberMBean {
           appendLogThreadPool.submit(
               () ->
                   sendLogToFollower(
-                      log, node, leaderShipStale, newLeaderTerm, request, quorumSize));
+                      log, node, leaderShipStale, newLeaderTerm, request, quorumSize, false));
           if (character != NodeCharacter.LEADER) {
             return AppendLogResult.LEADERSHIP_STALE;
           }
@@ -2100,7 +2188,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         // there is only one member, send to it within this thread to reduce thread switching
         // overhead
         for (Node node : allNodes) {
-          sendLogToFollower(log, node, leaderShipStale, newLeaderTerm, request, quorumSize);
+          sendLogToFollower(log, node, leaderShipStale, newLeaderTerm, request, quorumSize, false);
           if (character != NodeCharacter.LEADER) {
             return AppendLogResult.LEADERSHIP_STALE;
           }
@@ -2115,14 +2203,17 @@ public abstract class RaftMember implements RaftMemberMBean {
     return waitAppendResult(log, leaderShipStale, newLeaderTerm, quorumSize);
   }
 
-  /** Send "log" to "node". */
+  /**
+   * Send "log" to "node".
+   */
   public void sendLogToFollower(
       VotingLog log,
       Node node,
       AtomicBoolean leaderShipStale,
       AtomicLong newLeaderTerm,
       AppendEntryRequest request,
-      int quorumSize) {
+      int quorumSize,
+      boolean isVerifier) {
     if (node.equals(thisNode)) {
       return;
     }
@@ -2144,9 +2235,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
 
     if (config.isUseAsyncServer()) {
-      sendLogAsync(log, node, leaderShipStale, newLeaderTerm, request, quorumSize);
+      sendLogAsync(log, node, leaderShipStale, newLeaderTerm, request, quorumSize, isVerifier);
     } else {
-      sendLogSync(log, node, leaderShipStale, newLeaderTerm, request, quorumSize);
+      sendLogSync(log, node, leaderShipStale, newLeaderTerm, request, quorumSize, isVerifier);
     }
   }
 
@@ -2184,7 +2275,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       AtomicBoolean leaderShipStale,
       AtomicLong newLeaderTerm,
       AppendEntryRequest request,
-      int quorumSize) {
+      int quorumSize, boolean isVerifier) {
     Client client = getSyncClient(node);
     if (client != null) {
       AppendNodeEntryHandler handler =
@@ -2192,7 +2283,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       try {
         logger.debug("{} sending a log to {}: {}", name, node, log);
         long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
-        AppendEntryResult result = client.appendEntry(request);
+        AppendEntryResult result = client.appendEntry(request, isVerifier);
         Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(operationStartTime);
 
         handler.onComplete(result);
@@ -2389,6 +2480,10 @@ public abstract class RaftMember implements RaftMemberMBean {
   }
 
   public boolean isLeader() {
-    return ClusterUtils.nodeEqual(leader.get(), thisNode);
+    return ClusterUtils.isNodeEquals(leader.get(), thisNode);
+  }
+
+  public TrustValueHolder getTrustValueHolder() {
+    return trustValueHolder;
   }
 }

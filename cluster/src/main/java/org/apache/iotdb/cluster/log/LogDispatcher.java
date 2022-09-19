@@ -114,11 +114,15 @@ public class LogDispatcher {
   private ByteBuffer serializeTask(SendLogRequest request) {
     ByteBuffer byteBuffer = request.getVotingLog().getLog().serialize();
     request.getVotingLog().getLog().setByteSize(byteBuffer.capacity());
+    if (clusterConfig.isUseVGRaft()) {
+      request.getAppendEntryRequest().setEntryHash(byteBuffer.hashCode());
+    }
     return byteBuffer;
   }
 
   protected SendLogRequest transformRequest(Node node, SendLogRequest request) {
-    return request;
+    SendLogRequest newRequest = new SendLogRequest(request);
+    return newRequest;
   }
 
   public void offer(SendLogRequest request) {
@@ -130,6 +134,10 @@ public class LogDispatcher {
 
     long startTime = Statistic.LOG_DISPATCHER_LOG_ENQUEUE.getOperationStartTime();
     request.getVotingLog().getLog().setEnqueueTime(System.nanoTime());
+    List<Node> verifiers = null;
+    if (clusterConfig.isUseVGRaft()) {
+      verifiers = member.getTrustValueHolder().chooseVerifiers();
+    }
     for (Entry<Node, BlockingQueue<SendLogRequest>> entry : nodesLogQueues.entrySet()) {
       boolean nodeEnabled = this.nodesEnabled.getOrDefault(entry.getKey(), false);
       if (!nodeEnabled) {
@@ -137,6 +145,9 @@ public class LogDispatcher {
       }
 
       request = transformRequest(entry.getKey(), request);
+      if (clusterConfig.isUseVGRaft() && ClusterUtils.isNodeIn(entry.getKey(), verifiers)) {
+        request.setVerifier(true);
+      }
 
       BlockingQueue<SendLogRequest> nodeLogQueue = entry.getValue();
       try {
@@ -200,6 +211,7 @@ public class LogDispatcher {
     private long enqueueTime;
     private Future<ByteBuffer> serializedLogFuture;
     private int quorumSize;
+    private boolean isVerifier;
 
     public SendLogRequest(
         VotingLog log,
@@ -276,6 +288,14 @@ public class LogDispatcher {
     public String toString() {
       return "SendLogRequest{" + "log=" + votingLog + '}';
     }
+
+    public boolean isVerifier() {
+      return isVerifier;
+    }
+
+    public void setVerifier(boolean verifier) {
+      isVerifier = verifier;
+    }
   }
 
   class DispatcherThread implements Runnable {
@@ -284,7 +304,7 @@ public class LogDispatcher {
     private BlockingQueue<SendLogRequest> logBlockingDeque;
     protected List<SendLogRequest> currBatch = new ArrayList<>();
     private PeerInfo peerInfo;
-    Client syncClient;
+    private Client syncClient;
     AsyncClient asyncClient;
     private String baseName;
 
@@ -292,15 +312,16 @@ public class LogDispatcher {
       this.receiver = receiver;
       this.logBlockingDeque = logBlockingDeque;
       this.peerInfo = member.getPeer(receiver);
-      if (!clusterConfig.isUseAsyncServer()) {
-        syncClient = member.getSyncClient(receiver);
-      }
       baseName = "LogDispatcher-" + member.getName() + "-" + receiver;
     }
 
+
+
     @Override
     public void run() {
-      Thread.currentThread().setName(baseName);
+      if (logger.isDebugEnabled()) {
+        Thread.currentThread().setName(baseName);
+      }
       try {
         while (!Thread.interrupted()) {
           synchronized (logBlockingDeque) {
@@ -366,19 +387,16 @@ public class LogDispatcher {
       }
       Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
 
-      if (syncClient == null) {
-        syncClient = member.getSyncClient(receiver);
-      }
       AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
       startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
       try {
-        AppendEntryResult result = syncClient.appendEntries(request);
+        AppendEntryResult result = getSyncClient().appendEntries(request);
         Timer.Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
         handler.onComplete(result);
       } catch (TException e) {
-        syncClient.getInputProtocol().getTransport().close();
-        ClientUtils.putBackSyncClient(syncClient);
-        syncClient = member.getSyncClient(receiver);
+        getSyncClient().getInputProtocol().getTransport().close();
+        ClientUtils.putBackSyncClient(getSyncClient());
+        setSyncClient(member.getSyncClient(receiver));
         logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
         handler.onError(e);
       }
@@ -468,8 +486,8 @@ public class LogDispatcher {
               logRequest.newLeaderTerm,
               logRequest.quorumSize);
       // TODO add async interface
-      if (syncClient == null) {
-        syncClient = member.getSyncClient(receiver);
+      if (getSyncClient() == null) {
+        setSyncClient(member.getSyncClient(receiver));
       }
 
       int retries = 5;
@@ -478,7 +496,8 @@ public class LogDispatcher {
         for (int i = 0; i < retries; i++) {
           int concurrentSender = concurrentSenderNum.incrementAndGet();
           Statistic.RAFT_CONCURRENT_SENDER.add(concurrentSender);
-          AppendEntryResult result = syncClient.appendEntry(logRequest.appendEntryRequest);
+          AppendEntryResult result = getSyncClient().appendEntry(logRequest.appendEntryRequest,
+              logRequest.isVerifier);
           concurrentSenderNum.decrementAndGet();
           if (result.status == Response.RESPONSE_OUT_OF_WINDOW) {
             Thread.sleep(100);
@@ -498,9 +517,9 @@ public class LogDispatcher {
           }
         }
       } catch (TException e) {
-        syncClient.getInputProtocol().getTransport().close();
-        ClientUtils.putBackSyncClient(syncClient);
-        syncClient = member.getSyncClient(receiver);
+        getSyncClient().getInputProtocol().getTransport().close();
+        ClientUtils.putBackSyncClient(getSyncClient());
+        setSyncClient(member.getSyncClient(receiver));
         handler.onError(e);
       } catch (Exception e) {
         handler.onError(e);
@@ -519,7 +538,7 @@ public class LogDispatcher {
       AsyncClient client = member.getAsyncClient(receiver);
       if (client != null) {
         try {
-          client.appendEntry(logRequest.appendEntryRequest, handler);
+          client.appendEntry(logRequest.appendEntryRequest, logRequest.isVerifier, handler);
         } catch (TException e) {
           handler.onError(e);
         }
@@ -527,8 +546,11 @@ public class LogDispatcher {
     }
 
     void sendLog(SendLogRequest logRequest) {
-      Thread.currentThread()
-          .setName(baseName + "-" + logRequest.getVotingLog().getLog().getCurrLogIndex());
+      if (logger.isDebugEnabled()) {
+        Thread.currentThread()
+            .setName(baseName + "-" + logRequest.getVotingLog().getLog().getCurrLogIndex());
+      }
+
       if (clusterConfig.isUseAsyncServer()) {
         sendLogAsync(logRequest);
       } else {
@@ -536,6 +558,17 @@ public class LogDispatcher {
       }
       Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENT.calOperationCostTimeFromStart(
           logRequest.getVotingLog().getLog().getCreateTime());
+    }
+
+    public Client getSyncClient() {
+      if (syncClient == null) {
+        syncClient = member.getSyncClient(receiver);
+      }
+      return syncClient;
+    }
+
+    public void setSyncClient(Client syncClient) {
+      this.syncClient = syncClient;
     }
 
     class AppendEntriesHandler implements AsyncMethodCallback<AppendEntryResult> {
