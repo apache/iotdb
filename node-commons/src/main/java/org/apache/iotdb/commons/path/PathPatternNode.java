@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,33 +40,36 @@ import java.util.function.Supplier;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
-public class PathPatternNode<V> {
+public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V>> {
 
   private final String name;
-  private final Map<String, PathPatternNode<V>> children;
+  private final Map<String, PathPatternNode<V, VSerializer>> children;
   private Set<V> valueSet;
+  private final VSerializer serializer;
 
-  public PathPatternNode(String name) {
+  public PathPatternNode(String name, VSerializer serializer) {
     this.name = name;
     this.children = new HashMap<>();
+    this.serializer = serializer;
   }
 
-  public PathPatternNode(String name, Supplier<? extends Set<V>> supplier) {
+  public PathPatternNode(String name, Supplier<? extends Set<V>> supplier, VSerializer serialize) {
     this.name = name;
     this.children = new HashMap<>();
     valueSet = supplier.get();
+    this.serializer = serialize;
   }
 
   public String getName() {
     return name;
   }
 
-  public PathPatternNode<V> getChildren(String nodeName) {
+  public PathPatternNode<V, VSerializer> getChildren(String nodeName) {
     return children.getOrDefault(nodeName, null);
   }
 
-  public List<PathPatternNode<V>> getMatchChildren(String nodeName) {
-    List<PathPatternNode<V>> res = new ArrayList<>();
+  public List<PathPatternNode<V, VSerializer>> getMatchChildren(String nodeName) {
+    List<PathPatternNode<V, VSerializer>> res = new ArrayList<>();
     if (children.containsKey(nodeName)) {
       res.add(children.get(nodeName));
     }
@@ -78,15 +82,15 @@ public class PathPatternNode<V> {
     return res;
   }
 
-  public Map<String, PathPatternNode<V>> getChildren() {
+  public Map<String, PathPatternNode<V, VSerializer>> getChildren() {
     return children;
   }
 
-  public void addChild(PathPatternNode<V> tmpNode) {
+  public void addChild(PathPatternNode<V, VSerializer> tmpNode) {
     children.put(tmpNode.getName(), tmpNode);
   }
 
-  public void deleteChild(PathPatternNode<V> tmpNode) {
+  public void deleteChild(PathPatternNode<V, VSerializer> tmpNode) {
     children.remove(tmpNode.getName());
   }
 
@@ -114,12 +118,8 @@ public class PathPatternNode<V> {
     return name.equals(MULTI_LEVEL_PATH_WILDCARD);
   }
 
-  public boolean isOneLevelWildcard() {
-    return name.equals(MULTI_LEVEL_PATH_WILDCARD);
-  }
-
   @TestOnly
-  public boolean equalWith(PathPatternNode<V> that) {
+  public boolean equalWith(PathPatternNode<V, VSerializer> that) {
     if (this == that) {
       return true;
     }
@@ -135,7 +135,10 @@ public class PathPatternNode<V> {
     if (that.getChildren().size() != this.getChildren().size()) {
       return false;
     }
-    for (Map.Entry<String, PathPatternNode<V>> entry : this.getChildren().entrySet()) {
+    if (that.getValues() != null && !that.getValues().equals(this.getValues())) {
+      return false;
+    }
+    for (Map.Entry<String, PathPatternNode<V, VSerializer>> entry : this.getChildren().entrySet()) {
       String nodeName = entry.getKey();
       if (that.getChildren(nodeName) == null
           || !that.getChildren(nodeName).equalWith(this.getChildren(nodeName))) {
@@ -147,37 +150,162 @@ public class PathPatternNode<V> {
 
   public void serialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(name, buffer);
+    if (valueSet == null) {
+      ReadWriteIOUtils.write(0, buffer);
+    } else {
+      ReadWriteIOUtils.write(valueSet.size(), buffer);
+      for (V value : valueSet) {
+        serializer.write(value, buffer);
+      }
+    }
     ReadWriteIOUtils.write(children.size(), buffer);
     serializeChildren(buffer);
   }
 
   void serializeChildren(ByteBuffer buffer) {
-    for (PathPatternNode<V> childNode : children.values()) {
+    for (PathPatternNode<V, VSerializer> childNode : children.values()) {
       childNode.serialize(buffer);
     }
   }
 
   public void serialize(PublicBAOS outputStream) throws IOException {
     ReadWriteIOUtils.write(name, outputStream);
+    if (valueSet == null) {
+      ReadWriteIOUtils.write(0, outputStream);
+    } else {
+      ReadWriteIOUtils.write(valueSet.size(), outputStream);
+      for (V value : valueSet) {
+        serializer.write(value, outputStream);
+      }
+    }
     ReadWriteIOUtils.write(children.size(), outputStream);
     serializeChildren(outputStream);
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(name, outputStream);
+    if (valueSet == null) {
+      ReadWriteIOUtils.write(0, outputStream);
+    } else {
+      ReadWriteIOUtils.write(valueSet.size(), outputStream);
+      for (V value : valueSet) {
+        serializer.write(value, outputStream);
+      }
+    }
     ReadWriteIOUtils.write(children.size(), outputStream);
     serializeChildren(outputStream);
   }
 
   void serializeChildren(PublicBAOS outputStream) throws IOException {
-    for (PathPatternNode<V> childNode : children.values()) {
+    for (PathPatternNode<V, VSerializer> childNode : children.values()) {
       childNode.serialize(outputStream);
     }
   }
 
   void serializeChildren(DataOutputStream outputStream) throws IOException {
-    for (PathPatternNode<V> childNode : children.values()) {
+    for (PathPatternNode<V, VSerializer> childNode : children.values()) {
       childNode.serialize(outputStream);
+    }
+  }
+
+  public static <V, T extends PathPatternNode.Serializer<V>> PathPatternNode<V, T> deserializeNode(
+      ByteBuffer buffer, T serializer) {
+    PathPatternNode<V, T> node =
+        new PathPatternNode<>(ReadWriteIOUtils.readString(buffer), serializer);
+    int valueSize = ReadWriteIOUtils.readInt(buffer);
+    if (valueSize > 0) {
+      Set<V> valueSet = new HashSet<>();
+      for (int i = 0; i < valueSize; i++) {
+        valueSet.add(serializer.read(buffer));
+      }
+      node.valueSet = valueSet;
+    }
+    int childrenSize = ReadWriteIOUtils.readInt(buffer);
+    while (childrenSize > 0) {
+      PathPatternNode<V, T> tmpNode = deserializeNode(buffer, serializer);
+      node.addChild(tmpNode);
+      childrenSize--;
+    }
+    return node;
+  }
+
+  /**
+   * Interface to support serialize and deserialize valueSet.
+   *
+   * @param <T> Type of value.
+   */
+  public interface Serializer<T> {
+
+    void write(T t, ByteBuffer buffer);
+
+    void write(T t, PublicBAOS buffer) throws IOException;
+
+    void write(T t, DataOutputStream buffer) throws IOException;
+
+    T read(ByteBuffer buffer);
+  }
+
+  public static class StringSerializer implements PathPatternNode.Serializer<String> {
+
+    private static class StringSerializerHolder {
+      private static final StringSerializer INSTANCE = new StringSerializer();
+
+      private StringSerializerHolder() {}
+    }
+
+    public static StringSerializer getInstance() {
+      return StringSerializerHolder.INSTANCE;
+    }
+
+    private StringSerializer() {}
+
+    @Override
+    public void write(String s, ByteBuffer buffer) {
+      ReadWriteIOUtils.write(s, buffer);
+    }
+
+    @Override
+    public void write(String s, PublicBAOS buffer) throws IOException {
+      ReadWriteIOUtils.write(s, buffer);
+    }
+
+    @Override
+    public void write(String s, DataOutputStream buffer) throws IOException {
+      ReadWriteIOUtils.write(s, buffer);
+    }
+
+    @Override
+    public String read(ByteBuffer buffer) {
+      return ReadWriteIOUtils.readString(buffer);
+    }
+  }
+
+  public static class VoidSerializer implements PathPatternNode.Serializer<Void> {
+
+    private static class VoidSerializerHolder {
+      private static final VoidSerializer INSTANCE = new VoidSerializer();
+
+      private VoidSerializerHolder() {}
+    }
+
+    public static VoidSerializer getInstance() {
+      return VoidSerializer.VoidSerializerHolder.INSTANCE;
+    }
+
+    private VoidSerializer() {}
+
+    @Override
+    public void write(Void unused, ByteBuffer buffer) {}
+
+    @Override
+    public void write(Void unused, PublicBAOS buffer) {}
+
+    @Override
+    public void write(Void unused, DataOutputStream buffer) {}
+
+    @Override
+    public Void read(ByteBuffer buffer) {
+      return null;
     }
   }
 }

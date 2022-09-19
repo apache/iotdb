@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.flush;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
@@ -28,11 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.db.rescon.AbstractPoolManager;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,26 +52,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     flushPool.start();
     try {
       JMXService.registerMBean(this, ServiceType.FLUSH_SERVICE.getJmxName());
-      MetricService.getInstance()
-          .getOrCreateAutoGauge(
-              Metric.QUEUE.toString(),
-              MetricLevel.IMPORTANT,
-              flushPool,
-              AbstractPoolManager::getWaitingTasksNumber,
-              Tag.NAME.toString(),
-              "flush",
-              Tag.STATUS.toString(),
-              "waiting");
-      MetricService.getInstance()
-          .getOrCreateAutoGauge(
-              Metric.QUEUE.toString(),
-              MetricLevel.IMPORTANT,
-              flushPool,
-              AbstractPoolManager::getWorkingTasksNumber,
-              Tag.NAME.toString(),
-              "flush",
-              Tag.STATUS.toString(),
-              "running");
+      MetricService.getInstance().addMetricSet(new FlushManagerMetrics(this));
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
@@ -90,6 +68,11 @@ public class FlushManager implements FlushManagerMBean, IService {
   @Override
   public ServiceType getID() {
     return ServiceType.FLUSH_SERVICE;
+  }
+
+  @Override
+  public int getNumberOfWaitingTasks() {
+    return flushPool.getWaitingTasksNumber();
   }
 
   @Override

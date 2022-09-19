@@ -46,6 +46,8 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private long offset = -1;
   /** measurement's Schema for one timeseries represented by current leaf node */
   private IMeasurementSchema schema;
+  /** whether this measurement is pre deleted and considered in black list */
+  private boolean preDeleted = false;
   /** last value cache */
   private volatile ILastCacheContainer lastCacheContainer = null;
 
@@ -147,6 +149,16 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   @Override
   public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
     this.lastCacheContainer = lastCacheContainer;
+  }
+
+  @Override
+  public boolean isPreDeleted() {
+    return preDeleted;
+  }
+
+  @Override
+  public void setPreDeleted(boolean preDeleted) {
+    this.preDeleted = preDeleted;
   }
 
   @Override

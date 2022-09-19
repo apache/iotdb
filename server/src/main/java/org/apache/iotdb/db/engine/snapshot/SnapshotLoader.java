@@ -114,6 +114,13 @@ public class SnapshotLoader {
 
   private DataRegion loadSnapshotWithoutLog() {
     try {
+      try {
+        deleteAllFilesInDataDirs();
+        LOGGER.info("Remove all data files in original data dir");
+      } catch (IOException e) {
+        LOGGER.error("Failed to remove origin data files", e);
+        return null;
+      }
       LOGGER.info("Moving snapshot file to data dirs");
       createLinksFromSnapshotDirToDataDirWithoutLog(new File(snapshotPath));
       return loadSnapshot();
@@ -137,6 +144,7 @@ public class SnapshotLoader {
         deleteAllFilesInDataDirs();
         LOGGER.info("Remove all data files in original data dir");
       } catch (IOException e) {
+        LOGGER.error("Failed to remove origin data files", e);
         return null;
       }
 

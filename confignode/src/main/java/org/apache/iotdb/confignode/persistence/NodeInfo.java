@@ -32,10 +32,6 @@ import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -65,9 +61,6 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_STATUS_REGISTER;
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.METRIC_TAG_TOTAL;
 
 /**
  * The NodeInfo stores cluster node information. The cluster node information including: 1. DataNode
@@ -101,29 +94,6 @@ public class NodeInfo implements SnapshotProcessor {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.registeredConfigNodes = new HashSet<>();
-  }
-
-  public void addMetrics() {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.CONFIG_NODE.toString(),
-            MetricLevel.CORE,
-            registeredConfigNodes,
-            o -> getRegisteredConfigNodeCount(),
-            Tag.NAME.toString(),
-            METRIC_TAG_TOTAL,
-            Tag.STATUS.toString(),
-            METRIC_STATUS_REGISTER);
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.DATA_NODE.toString(),
-            MetricLevel.CORE,
-            registeredDataNodes,
-            Map::size,
-            Tag.NAME.toString(),
-            METRIC_TAG_TOTAL,
-            Tag.STATUS.toString(),
-            METRIC_STATUS_REGISTER);
   }
 
   /**

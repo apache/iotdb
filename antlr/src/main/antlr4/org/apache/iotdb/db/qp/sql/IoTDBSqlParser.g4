@@ -649,7 +649,7 @@ explain
 
 // Set System To readonly/running/error
 setSystemStatus
-    : SET SYSTEM TO (READONLY|RUNNING|ERROR) (ON (LOCAL | CLUSTER))?
+    : SET SYSTEM TO (READONLY|RUNNING) (ON (LOCAL | CLUSTER))?
     ;
 
 // Show Version

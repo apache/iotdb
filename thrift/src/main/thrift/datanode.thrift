@@ -20,38 +20,36 @@ include "common.thrift"
 namespace java org.apache.iotdb.mpp.rpc.thrift
 
 struct TCreateSchemaRegionReq {
-    1: required common.TRegionReplicaSet regionReplicaSet
-    2: required string storageGroup
+  1: required common.TRegionReplicaSet regionReplicaSet
+  2: required string storageGroup
 }
 
 struct TCreateDataRegionReq {
-    1: required common.TRegionReplicaSet regionReplicaSet
-    2: required string storageGroup
-    3: optional i64 ttl
+  1: required common.TRegionReplicaSet regionReplicaSet
+  2: required string storageGroup
+  3: optional i64 ttl
 }
 
 struct TInvalidateCacheReq {
-    1: required bool storageGroup
-    2: required string fullPath
-}
-
-struct TMigrateRegionReq {
-    1: required common.TConsensusGroupId regionId
-    2: required common.TDataNodeLocation fromNode
-    3: required common.TDataNodeLocation toNode
-    4: optional common.TDataNodeLocation newLeaderNode
+  1: required bool storageGroup
+  2: required string fullPath
 }
 
 struct TRegionLeaderChangeReq {
-    1: required common.TConsensusGroupId regionId
-    2: required common.TDataNodeLocation newLeaderNode
+  1: required common.TConsensusGroupId regionId
+  2: required common.TDataNodeLocation newLeaderNode
 }
 
 struct TCreatePeerReq {
-    1: required common.TConsensusGroupId regionId
-    2: required list<common.TDataNodeLocation> regionLocations
-    3: required string storageGroup
-    4: optional i64 ttl
+  1: required common.TConsensusGroupId regionId
+  2: required list<common.TDataNodeLocation> regionLocations
+  3: required string storageGroup
+  4: optional i64 ttl
+}
+
+struct TMaintainPeerReq {
+  1: required common.TConsensusGroupId regionId
+  2: required common.TDataNodeLocation destNode
 }
 
 struct TFragmentInstanceId {
@@ -176,6 +174,10 @@ struct TcreateTriggerInstanceReq {
   2: required binary jarFile
 }
 
+struct TactiveTriggerInstanceReq {
+  1: required string triggerName
+}
+
 struct TDropTriggerInstanceReq {
   1: required string triggerName
   2: required bool needToDeleteJarFile
@@ -210,8 +212,59 @@ struct TUpdateConfigNodeGroupReq {
 }
 
 struct TUpdateTemplateReq{
-    1: required byte type
-    2: required binary templateInfo
+  1: required byte type
+  2: required binary templateInfo
+}
+
+struct TTsFilePieceReq{
+    1: required binary body
+    2: required string uuid
+    3: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TLoadCommandReq{
+    1: required i32 commandType
+    2: required string uuid
+}
+
+struct TLoadResp{
+  1: required bool accepted
+  2: optional string message
+  3: optional common.TSStatus status
+}
+
+struct TConstructSchemaBlackListReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TRollbackSchemaBlackListReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TInvalidateMatchedSchemaCacheReq{
+  1: required binary pathPatternTree
+}
+
+struct TFetchSchemaBlackListReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TFetchSchemaBlackListResp{
+  1: required common.TSStatus status
+  2: required binary pathPatternTree
+}
+
+struct TDeleteDataForDeleteTimeSeriesReq{
+  1: required list<common.TConsensusGroupId> dataRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TDeleteTimeSeriesReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
 }
 
 service IDataNodeRPCService {
@@ -238,6 +291,10 @@ service IDataNodeRPCService {
 
   TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req)
 
+  TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
+
+  TLoadResp sendLoadCommand(TLoadCommandReq req);
+
 
   // -----------------------------------For Config Node-----------------------------------------------
 
@@ -263,11 +320,11 @@ service IDataNodeRPCService {
   common.TSStatus invalidatePartitionCache(TInvalidateCacheReq req)
 
   /**
-       * Config node will invalidate Schema Info cache.
-       *
-       * @param bool:isStorageGroup, string:fullPath
-       */
-    common.TSStatus invalidateSchemaCache(TInvalidateCacheReq req)
+     * Config node will invalidate Schema Info cache.
+     *
+     * @param bool:isStorageGroup, string:fullPath
+     */
+  common.TSStatus invalidateSchemaCache(TInvalidateCacheReq req)
 
   /**
      * Config node will delete a data/schema region of a certain storageGroup.
@@ -284,29 +341,32 @@ service IDataNodeRPCService {
   common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req);
 
   /**
-   * Create new peer in the given data node for region consensus group
-   * @param region id and it's expected locations
+   * Create a new Region peer in the given DataNode for the specified RegionGroup
+   *
+   * @param TCreatePeerReq which contains RegionId and its colleagues' locations
    */
-  common.TSStatus createPeerToConsensusGroup(TCreatePeerReq req);
+  common.TSStatus createNewRegionPeer(TCreatePeerReq req);
 
   /**
-   * Config node will add a region peer to a region group
-   * @param add region req which region from one node to other node
+   * Add a Region peer to the specified RegionGroup
+   *
+   * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation that selected to perform the add peer process
    */
-  common.TSStatus addRegionPeer(TMigrateRegionReq req);
+  common.TSStatus addRegionPeer(TMaintainPeerReq req);
 
   /**
-   * Config node will remove a region peer to a region group
-   * @param remove region peer region from one node to other node
+   * Remove a Region peer from the specified RegionGroup
+   *
+   * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation that selected to perform the remove peer process
    */
-  common.TSStatus removeRegionPeer(TMigrateRegionReq req);
+  common.TSStatus removeRegionPeer(TMaintainPeerReq req);
 
   /**
-   * Delete the datanode peer for the given consensus group. Usually a region group has
-   * multiple replicas, thus relates to multiple nodes.
-   * @param TMigrateRegionReq which contains the dest datanode to be removed
-  */
-  common.TSStatus deletePeerToConsensusGroup(TMigrateRegionReq req);
+   * Delete a Region peer in the given ConsensusGroup and all of its data on the specified DataNode
+   *
+   * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation where the specified Region peer located
+   */
+  common.TSStatus deleteOldRegionPeer(TMaintainPeerReq req);
 
   /**
   * Config node will disable the Data node, the Data node will not accept read/write request when disabled
@@ -347,19 +407,26 @@ service IDataNodeRPCService {
    **/
   common.TSStatus dropFunction(TDropFunctionRequest req)
 
-   /**
-    * Config node will create a trigger instance on data node.
-    *
-    * @param TriggerInformation, jar file.
-    **/
+  /**
+   * Config node will create a trigger instance on data node.
+   *
+   * @param TriggerInformation, jar file.
+   **/
   common.TSStatus createTriggerInstance(TcreateTriggerInstanceReq req)
 
   /**
-     * Config node will drop a trigger on all online config nodes and data nodes.
-     *
-     * @param trigger name, whether need to delete jar
-     **/
-    common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
+   * Config node will active a trigger instance on data node.
+   *
+   * @param trigger name.
+   **/
+  common.TSStatus activeTriggerInstance(TactiveTriggerInstanceReq req)
+
+  /**
+    * Config node will drop a trigger on all online config nodes and data nodes.
+    *
+    * @param trigger name, whether need to delete jar
+    **/
+  common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
 
   /**
    * Config node will invalidate permission Info cache.
@@ -392,7 +459,44 @@ service IDataNodeRPCService {
    */
   common.TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req)
 
+  /**
+   * Update template cache when template info or template set info is updated
+   */
   common.TSStatus updateTemplate(TUpdateTemplateReq req)
+
+  /**
+   * Construct schema black list in target schemaRegion to block R/W on matched timeseries
+   */
+  common.TSStatus constructSchemaBlackList(TConstructSchemaBlackListReq req)
+
+  /**
+   * Remove the schema black list to recover R/W on matched timeseries
+   */
+  common.TSStatus rollbackSchemaBlackList(TRollbackSchemaBlackListReq req)
+
+  /**
+   * Config node will invalidate Schema Info cache, which matched by given pathPatternTree.
+   *
+   * @param binary: pathPatternTree
+   */
+  common.TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req)
+
+  /**
+   * Config node will fetch the schema info in black list.
+   *
+   * @param binary: pathPatternTree
+   */
+  TFetchSchemaBlackListResp fetchSchemaBlackList(TFetchSchemaBlackListReq req)
+
+  /**
+   * Config node inform this dataNode to execute a distribution data deleion mpp task
+   */
+  common.TSStatus deleteDataForDeleteTimeSeries(TDeleteDataForDeleteTimeSeriesReq req)
+
+ /**
+  * Delete matched timeseries and remove according schema black list in target schemRegion
+  */
+  common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 }
 
 service MPPDataExchangeService {

@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -45,16 +46,19 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.RegionGroupCache;
+import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -70,7 +74,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
@@ -92,7 +95,7 @@ public class PartitionManager {
   private Future<?> currentRegionCleanerFuture;
 
   // Map<RegionId, RegionGroupCache>
-  private final Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap;
+  private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
 
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
@@ -235,16 +238,9 @@ public class PartitionManager {
       // Map<StorageGroup, unassigned SeriesPartitionSlot count>
       Map<String, Integer> unassignedDataPartitionSlotsCountMap = new ConcurrentHashMap<>();
       unassignedDataPartitionSlotsMap.forEach(
-          (storageGroup, unassignedDataPartitionSlots) -> {
-            AtomicInteger unassignedDataPartitionSlotsCount = new AtomicInteger(0);
-            unassignedDataPartitionSlots
-                .values()
-                .forEach(
-                    timePartitionSlots ->
-                        unassignedDataPartitionSlotsCount.getAndAdd(timePartitionSlots.size()));
-            unassignedDataPartitionSlotsCountMap.put(
-                storageGroup, unassignedDataPartitionSlotsCount.get());
-          });
+          (storageGroup, unassignedDataPartitionSlots) ->
+              unassignedDataPartitionSlotsCountMap.put(
+                  storageGroup, unassignedDataPartitionSlots.size()));
       TSStatus status =
           extendRegionsIfNecessary(
               unassignedDataPartitionSlotsCountMap, TConsensusGroupType.DataRegion);
@@ -300,7 +296,8 @@ public class PartitionManager {
         float allocatedRegionCount =
             partitionInfo.getRegionCount(entry.getKey(), consensusGroupType);
         // The slotCount equals to the sum of assigned slot count and unassigned slot count
-        float slotCount = partitionInfo.getSlotCount(entry.getKey()) + entry.getValue();
+        float slotCount =
+            partitionInfo.getAssignedSeriesPartitionSlotsCount(entry.getKey()) + entry.getValue();
         float maxRegionCount =
             getClusterSchemaManager().getMaxRegionGroupCount(entry.getKey(), consensusGroupType);
         float maxSlotCount =
@@ -451,7 +448,7 @@ public class PartitionManager {
   }
 
   public void addMetrics() {
-    partitionInfo.addMetrics();
+    MetricService.getInstance().addMetricSet(new PartitionInfoMetrics(partitionInfo));
   }
 
   /**
@@ -465,7 +462,31 @@ public class PartitionManager {
   }
 
   public DataSet getRegionInfoList(GetRegionInfoListPlan req) {
-    return getConsensusManager().read(req).getDataset();
+    // Get static result
+    RegionInfoListResp regionInfoListResp =
+        (RegionInfoListResp) getConsensusManager().read(req).getDataset();
+    Map<TConsensusGroupId, Integer> allLeadership = getAllLeadership();
+
+    // Get cached result
+    regionInfoListResp
+        .getRegionInfoList()
+        .forEach(
+            regionInfo -> {
+              regionInfo.setStatus(
+                  regionGroupCacheMap
+                      .get(regionInfo.getConsensusGroupId())
+                      .getRegionStatus(regionInfo.getDataNodeId())
+                      .getStatus());
+
+              String regionType =
+                  regionInfo.getDataNodeId()
+                          == allLeadership.getOrDefault(regionInfo.getConsensusGroupId(), -1)
+                      ? RegionRoleType.Leader.toString()
+                      : RegionRoleType.Follower.toString();
+              regionInfo.setRoleType(regionType);
+            });
+
+    return regionInfoListResp;
   }
 
   /**
@@ -545,7 +566,7 @@ public class PartitionManager {
     }
   }
 
-  public Map<TConsensusGroupId, IRegionGroupCache> getRegionGroupCacheMap() {
+  public Map<TConsensusGroupId, RegionGroupCache> getRegionGroupCacheMap() {
     return regionGroupCacheMap;
   }
 
@@ -554,12 +575,16 @@ public class PartitionManager {
   }
 
   /**
-   * Get the leadership of each RegionGroup If a node is in unknown or removing status, this node
-   * can't be leader
+   * Get the leadership of each RegionGroup.
    *
-   * @return Map<RegionGroupId, leader location>
+   * @return Map<RegionGroupId, DataNodeId where the leader located>
+   *     <p>Some RegionGroups that supposed to be occurred in the result map might be nonexistent
+   *     and some leaderId might be -1(leader unknown yet) due to heartbeat latency
    */
   public Map<TConsensusGroupId, Integer> getAllLeadership() {
+
+    // TODO: Will be optimized by IOTDB-4341
+
     Map<TConsensusGroupId, Integer> result = new ConcurrentHashMap<>();
     if (ConfigNodeDescriptor.getInstance()
         .getConf()

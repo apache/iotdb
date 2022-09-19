@@ -29,12 +29,12 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 @NotThreadSafe
-public class PatternTreeMap<V> {
-  private final PathPatternNode<V> root;
+public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>> {
+  private final PathPatternNode<V, VSerializer> root;
   private final Supplier<? extends Set<V>> supplier;
-  private BiConsumer<V, Set<V>> appendFunction;
-  private BiConsumer<V, Set<V>> deleteFunction;
-
+  private final BiConsumer<V, Set<V>> appendFunction;
+  private final BiConsumer<V, Set<V>> deleteFunction;
+  private final VSerializer serializer;
   /**
    * Create PatternTreeMap.
    *
@@ -45,11 +45,13 @@ public class PatternTreeMap<V> {
   public PatternTreeMap(
       Supplier<? extends Set<V>> supplier,
       BiConsumer<V, Set<V>> appendFunction,
-      BiConsumer<V, Set<V>> deleteFunction) {
-    this.root = new PathPatternNode<>(IoTDBConstant.PATH_ROOT, supplier);
+      BiConsumer<V, Set<V>> deleteFunction,
+      VSerializer serializer) {
+    this.root = new PathPatternNode<>(IoTDBConstant.PATH_ROOT, supplier, serializer);
     this.supplier = supplier;
     this.appendFunction = appendFunction;
     this.deleteFunction = deleteFunction;
+    this.serializer = serializer;
   }
 
   /**
@@ -63,11 +65,11 @@ public class PatternTreeMap<V> {
       throw new UnsupportedOperationException();
     }
     String[] pathNodes = key.getNodes();
-    PathPatternNode<V> curNode = root;
+    PathPatternNode<V, VSerializer> curNode = root;
     for (int i = 1; i < pathNodes.length; i++) {
-      PathPatternNode<V> nextNode = curNode.getChildren(pathNodes[i]);
+      PathPatternNode<V, VSerializer> nextNode = curNode.getChildren(pathNodes[i]);
       if (nextNode == null) {
-        nextNode = new PathPatternNode<>(pathNodes[i], supplier);
+        nextNode = new PathPatternNode<>(pathNodes[i], supplier, serializer);
         curNode.addChild(nextNode);
       }
       curNode = nextNode;
@@ -97,14 +99,15 @@ public class PatternTreeMap<V> {
    * @param value the value to be deleted
    * @return true if current PathPatternNode can be removed
    */
-  private boolean deletePathNode(PathPatternNode<V> node, String[] pathNodes, int pos, V value) {
+  private boolean deletePathNode(
+      PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, V value) {
     if (node == null) {
       return false;
     }
     if (pos == pathNodes.length - 1) {
       node.deleteValue(value, deleteFunction);
     } else {
-      PathPatternNode<V> child = node.getChildren(pathNodes[pos + 1]);
+      PathPatternNode<V, VSerializer> child = node.getChildren(pathNodes[pos + 1]);
       if (deletePathNode(child, pathNodes, pos + 1, value)) {
         node.deleteChild(child);
       }
@@ -120,7 +123,7 @@ public class PatternTreeMap<V> {
    */
   public List<V> getOverlapped(PartialPath fullPath) {
     List<V> res = new ArrayList<>();
-    searchOverlapped(root, fullPath.getNodes(), 0, res, false);
+    searchOverlapped(root, fullPath.getNodes(), 0, res);
     return res;
   }
 
@@ -131,26 +134,18 @@ public class PatternTreeMap<V> {
    * @param pathNodes pathNodes of key
    * @param pos current index of pathNodes
    * @param resultList result list
-   * @param fromMultiWildCard true if node in caller is '**', so there is no need to traverse the
-   *     remaining pathNodes
    */
   public void searchOverlapped(
-      PathPatternNode<V> node,
-      String[] pathNodes,
-      int pos,
-      List<V> resultList,
-      boolean fromMultiWildCard) {
+      PathPatternNode<V, VSerializer> node, String[] pathNodes, int pos, List<V> resultList) {
     if (pos == pathNodes.length - 1) {
       resultList.addAll(node.getValues());
       return;
     }
-    if (node.isMultiLevelWildcard() && !fromMultiWildCard) {
-      for (int i = pos + 1; i < pathNodes.length; i++) {
-        searchOverlapped(node, pathNodes, i, resultList, true);
-      }
+    if (node.isMultiLevelWildcard()) {
+      searchOverlapped(node, pathNodes, pos + 1, resultList);
     }
-    for (PathPatternNode<V> child : node.getMatchChildren(pathNodes[pos + 1])) {
-      searchOverlapped(child, pathNodes, pos + 1, resultList, false);
+    for (PathPatternNode<V, VSerializer> child : node.getMatchChildren(pathNodes[pos + 1])) {
+      searchOverlapped(child, pathNodes, pos + 1, resultList);
     }
   }
 }

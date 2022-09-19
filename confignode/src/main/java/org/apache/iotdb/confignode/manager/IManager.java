@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -254,11 +255,11 @@ public interface IManager {
   TSStatus registerConfigNode(TConfigNodeRegisterReq req);
 
   /**
-   * Add Consensus Group in new node.
+   * Create peer in new node to build consensus group.
    *
    * @return status
    */
-  TSStatus addConsensusGroup(List<TConfigNodeLocation> configNodeLocations);
+  TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations);
 
   /**
    * Remove ConfigNode
@@ -350,4 +351,10 @@ public interface IManager {
    * @return TGetPathsSetTemplatesResp
    */
   TGetPathsSetTemplatesResp getPathsSetTemplate(String req);
+
+  /*
+   * delete timeseries
+   *
+   */
+  TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
 }

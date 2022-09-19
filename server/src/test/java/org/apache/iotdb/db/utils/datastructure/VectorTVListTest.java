@@ -37,7 +37,7 @@ public class VectorTVListTest {
     for (int i = 0; i < 5; i++) {
       dataTypes.add(TSDataType.INT64);
     }
-    AlignedTVList tvList = new AlignedTVList(dataTypes);
+    TimAlignedTVList tvList = new TimAlignedTVList(dataTypes);
     for (long i = 0; i < 1000; i++) {
       Object[] value = new Object[5];
       int[] columnOrder = new int[5];
@@ -68,7 +68,7 @@ public class VectorTVListTest {
     dataTypes.add(TSDataType.FLOAT);
     dataTypes.add(TSDataType.DOUBLE);
     dataTypes.add(TSDataType.TEXT);
-    AlignedTVList tvList = new AlignedTVList(dataTypes);
+    TimAlignedTVList tvList = new TimAlignedTVList(dataTypes);
     for (int i = 1000; i >= 0; i--) {
       Object[] value = new Object[6];
       value[0] = false;
@@ -99,7 +99,7 @@ public class VectorTVListTest {
     for (int i = 0; i < 5; i++) {
       dataTypes.add(TSDataType.INT64);
     }
-    AlignedTVList tvList = new AlignedTVList(dataTypes);
+    TimAlignedTVList tvList = new TimAlignedTVList(dataTypes);
     long[][] vectorArray = new long[5][1001];
     List<Long> timeList = new ArrayList<>();
     int[] columnOrder = new int[5];
@@ -131,7 +131,7 @@ public class VectorTVListTest {
       dataTypes.add(TSDataType.INT64);
       bitMaps[i] = new BitMap(1001);
     }
-    AlignedTVList tvList = new AlignedTVList(dataTypes);
+    TimAlignedTVList tvList = new TimAlignedTVList(dataTypes);
     long[][] vectorArray = new long[5][1001];
     int[] columnOrder = new int[5];
     List<Long> timeList = new ArrayList<>();
@@ -170,7 +170,7 @@ public class VectorTVListTest {
       dataTypes.add(TSDataType.INT64);
       bitMaps[i] = new BitMap(1001);
     }
-    AlignedTVList tvList = new AlignedTVList(dataTypes);
+    TimAlignedTVList tvList = new TimAlignedTVList(dataTypes);
     long[][] vectorArray = new long[5][1001];
     int[] columnOrder = new int[5];
     List<Long> timeList = new ArrayList<>();
