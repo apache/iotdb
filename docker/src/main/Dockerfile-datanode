@@ -42,7 +42,6 @@ EXPOSE 8777
 EXPOSE 9003
 EXPOSE 40010
 EXPOSE 50010
-EXPOSE 22277
 VOLUME /datanode/data
 VOLUME /datanode/logs
 ENV PATH="/datanode/sbin/:/datanode/tools/:${PATH}"
