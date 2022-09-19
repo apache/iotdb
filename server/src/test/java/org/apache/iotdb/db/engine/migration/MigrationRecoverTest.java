@@ -117,6 +117,7 @@ public class MigrationRecoverTest {
     MigrationTask task = new MigrationTask(testTaskId, null, testTargetDir, 0, 0);
     task.startTask();
     task.startFile(getTsFile());
+    task.close();
 
     FileInputStream fileInputStream = new FileInputStream(testLogFile);
 
@@ -158,6 +159,8 @@ public class MigrationRecoverTest {
 
     ReadWriteIOUtils.write(testTargetDir.getAbsolutePath(), logOutput);
     ReadWriteIOUtils.write(missingTsFile.getAbsolutePath(), logOutput);
+
+    logOutput.close();
 
     // test read
     MigrationRecover recover = new MigrationRecover();

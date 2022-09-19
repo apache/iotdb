@@ -89,7 +89,7 @@ public class MigrationTest {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
     createSchemas();
-    targetDir = new File("data", "separated_test");
+    targetDir = new File("separated_test");
     targetDir.mkdirs();
 
     startTime = DatetimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
@@ -107,7 +107,6 @@ public class MigrationTest {
       }
     }
     targetDir.delete();
-    targetDir.getParentFile().delete();
   }
 
   private void createSchemas() throws MetadataException, StorageGroupProcessorException {
