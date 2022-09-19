@@ -284,9 +284,6 @@ public class DataRegion {
 
   private IDTable idTable;
 
-  /** used to collect TsFiles in this virtual storage group */
-  private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
-
   /** used to cache Altering Timeseries */
   private AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
 

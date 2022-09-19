@@ -61,7 +61,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -464,24 +463,6 @@ public class PlanExecutor implements IPlanExecutor {
       throw new QueryProcessException(e);
     }
     AUDIT_LOGGER.info("[rewriteTimeseries] {} end", logKey);
-    return true;
-  }
-
-  private boolean operateStopPipeServer() throws QueryProcessException {
-    try {
-      ReceiverService.getInstance().stopPipeServer();
-    } catch (PipeServerException e) {
-      throw new QueryProcessException(e);
-    }
-    return true;
-  }
-
-  private boolean operateStartPipeServer() throws QueryProcessException {
-    try {
-      ReceiverService.getInstance().startPipeServer(false);
-    } catch (PipeServerException e) {
-      throw new QueryProcessException(e);
-    }
     return true;
   }
 
