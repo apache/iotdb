@@ -349,6 +349,10 @@ public class IoTDBParsePageV3 extends IoTDBParsePage {
     encodeAnalyseMenuItem.setSelected(false);
     encodeAnalyseMenuItem.setOnAction(
         event -> {
+          if(encodeAnalysePage != null) {
+            encodeAnalysePage.close();
+            encodeAnalysePage = null;
+          }
           Stage encodeAnalyseStage = new Stage();
           encodeAnalyseStage.initStyle(StageStyle.UTILITY);
           encodeAnalysePage = new EncodeAnalysePage(encodeAnalyseStage, this);

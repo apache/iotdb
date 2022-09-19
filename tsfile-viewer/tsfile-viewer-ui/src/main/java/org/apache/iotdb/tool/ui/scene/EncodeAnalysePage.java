@@ -53,6 +53,7 @@ public class EncodeAnalysePage {
   private IoTDBParsePageV3 ioTDBParsePage;
   private ObservableList<EncodeCompressAnalyseTable> analyseDataList =
       FXCollections.observableArrayList();
+  private Stage father = null;
 
   /** table datas */
   //  private TableView pageHeaderTableView;
@@ -75,6 +76,7 @@ public class EncodeAnalysePage {
     analyseTableView = new TableView();
 
     AnchorPane anchorPane = new AnchorPane();
+    this.father = stage;
     scene = new Scene(anchorPane, ENCODE_ANALYSE_PAGE_WIDTH, ENCODE_ANALYSE_PAGE_HEIGHT);
     stage.setScene(scene);
     stage.setTitle("Encoding and Compressing Analysis");
@@ -105,6 +107,9 @@ public class EncodeAnalysePage {
         event -> {
           java.lang.String deviceIdTextText = deviceIdText.getText().trim();
           java.lang.String measurementIdTextText = measurementIdText.getText().trim();
+          if(deviceIdTextText == null || deviceIdTextText.trim().equals("") || measurementIdTextText == null || measurementIdTextText.trim().equals("")) {
+            return;
+          }
           try {
             AnalysedResultModel analysedResultModel =
                 ioTDBParsePage
@@ -237,5 +242,10 @@ public class EncodeAnalysePage {
     }
 
     analyseTableView.setVisible(true);
+  }
+
+  public void close() {
+    analyseDataList.clear();
+    this.father.close();
   }
 }
