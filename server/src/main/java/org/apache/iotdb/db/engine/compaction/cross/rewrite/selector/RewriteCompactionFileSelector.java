@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -259,6 +260,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
    * @param unseqFile the tsFileResource of unseqFile to be compacted
    */
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
+    final int SELECT_WARN_THRESHOLD = 10;
     for (String deviceId : unseqFile.getDevices()) {
       long unseqStartTime = unseqFile.getStartTime(deviceId);
       long unseqEndTime = unseqFile.getEndTime(deviceId);
@@ -269,6 +271,14 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         if (!seqFile.mayContainsDevice(deviceId)) {
           continue;
         }
+        int crossSpaceCompactionTimes = 0;
+        try {
+          TsFileNameGenerator.TsFileName tsFileName =
+              TsFileNameGenerator.getTsFileName(seqFile.getTsFile().getName());
+          crossSpaceCompactionTimes = tsFileName.getCrossCompactionCnt();
+        } catch (IOException e) {
+          logger.warn("Meets IOException when selecting files for cross space compaction", e);
+        }
 
         long seqEndTime = seqFile.getEndTime(deviceId);
         long seqStartTime = seqFile.getStartTime(deviceId);
@@ -276,6 +286,16 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
           // for unclosed file, only select those that overlap with the unseq file
           if (unseqEndTime >= seqStartTime) {
             tmpSelectedSeqFiles.add(i);
+            if (crossSpaceCompactionTimes >= SELECT_WARN_THRESHOLD) {
+              logger.warn(
+                  "{} is selected for cross space compaction, it is overlapped with {}. It's selected because its "
+                      + "start time {} is less than or equals to unseq file's endTime {} in device {}",
+                  seqFile.getTsFile().getAbsolutePath(),
+                  unseqFile.getTsFile().getAbsolutePath(),
+                  seqStartTime,
+                  unseqEndTime,
+                  deviceId);
+            }
           }
         } else if (unseqEndTime <= seqEndTime) {
           // if time range in unseq file is 10-20, seq file is 30-40, or
@@ -283,10 +303,30 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
           // there is no more overlap later.
           tmpSelectedSeqFiles.add(i);
           noMoreOverlap = true;
+          if (crossSpaceCompactionTimes >= SELECT_WARN_THRESHOLD) {
+            logger.warn(
+                "{} is selected for cross space compaction, it is overlapped with {}. It's selected because its "
+                    + "end time {} is greater than or equals to unseq file's endTime {} in device {}",
+                seqFile.getTsFile().getAbsolutePath(),
+                unseqFile.getTsFile().getAbsolutePath(),
+                seqEndTime,
+                unseqEndTime,
+                deviceId);
+          }
         } else if (unseqStartTime <= seqEndTime) {
           // if time range in unseq file is 10-20, seq file is 0-15, then select this seq file and
           // there may be overlap later.
           tmpSelectedSeqFiles.add(i);
+          if (crossSpaceCompactionTimes >= SELECT_WARN_THRESHOLD) {
+            logger.warn(
+                "{} is selected for cross space compaction, it is overlapped with {}. It's selected because its "
+                    + "end time {} is greater than or equals to unseq file's startTime {} in device {}",
+                seqFile.getTsFile().getAbsolutePath(),
+                unseqFile.getTsFile().getAbsolutePath(),
+                seqEndTime,
+                unseqStartTime,
+                deviceId);
+          }
         }
       }
     }
