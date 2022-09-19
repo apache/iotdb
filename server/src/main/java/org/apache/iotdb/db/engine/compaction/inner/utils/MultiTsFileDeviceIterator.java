@@ -142,6 +142,30 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     return currentDevice;
   }
 
+  public Map<String, MeasurementSchema> getAllMeasurementSchemas() throws IOException {
+    Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
+    for (Map.Entry<TsFileResource, TsFileDeviceIterator> entry : deviceIteratorMap.entrySet()) {
+      TsFileResource resource = entry.getKey();
+      TsFileSequenceReader reader = readerMap.get(resource);
+      List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+      reader.getDeviceTimeseriesMetadata(
+          timeseriesMetadataList,
+          deviceIteratorMap.get(resource).getMeasurementNode(),
+          schemaMap.keySet(),
+          true);
+      for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
+        if (!schemaMap.containsKey(timeseriesMetadata.getMeasurementId())
+            && !timeseriesMetadata.getChunkMetadataList().isEmpty()) {
+          schemaMap.put(
+              timeseriesMetadata.getMeasurementId(),
+              reader.getMeasurementSchema(timeseriesMetadata.getChunkMetadataList()));
+        }
+      }
+    }
+    schemaMap.remove("");
+    return schemaMap;
+  }
+
   /**
    * Get all measurements and schemas of the current device from source files. Traverse all the
    * files from the newest to the oldest in turn and start traversing the index tree from the
