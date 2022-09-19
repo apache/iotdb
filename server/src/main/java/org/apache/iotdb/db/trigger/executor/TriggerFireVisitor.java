@@ -64,7 +64,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   @Override
   public TriggerFireResult visitPlan(PlanNode node, TriggerEvent context) {
-    throw new UnsupportedOperationException("should call the concrete visitXX() method");
+    return TriggerFireResult.SUCCESS;
   }
 
   @Override
@@ -74,7 +74,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     Map<String, List<String>> triggerNameToPaths = constructTriggerNameToPathListMap(node);
     MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
 
-    return super.visitInsertRow(node, context);
+    return TriggerFireResult.SUCCESS;
   }
 
   @Override
@@ -126,19 +126,19 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   @Override
   public TriggerFireResult visitInsertRows(InsertRowsNode node, TriggerEvent context) {
-    return super.visitInsertRows(node, context);
+    return TriggerFireResult.SUCCESS;
   }
 
   @Override
   public TriggerFireResult visitInsertMultiTablets(
       InsertMultiTabletsNode node, TriggerEvent context) {
-    return super.visitInsertMultiTablets(node, context);
+    return TriggerFireResult.SUCCESS;
   }
 
   @Override
   public TriggerFireResult visitInsertRowsOfOneDevice(
       InsertRowsOfOneDeviceNode node, TriggerEvent context) {
-    return super.visitInsertRowsOfOneDevice(node, context);
+    return TriggerFireResult.SUCCESS;
   }
 
   private Map<String, Integer> constructMeasurementToSchemaIndexMap(
@@ -185,7 +185,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   private TriggerFireResult fire(String triggerName, Tablet tablet, TriggerEvent event) {
     TriggerFireResult result = TriggerFireResult.SUCCESS;
-    if (!TriggerManagementService.getInstance().needToFireOnAnotherDataNode(triggerName)) {
+    if (TriggerManagementService.getInstance().needToFireOnAnotherDataNode(triggerName)) {
       TEndPoint endPoint =
           TriggerManagementService.getInstance().getEndPointForStatefulTrigger(triggerName);
       try (SyncDataNodeInternalServiceClient client =
