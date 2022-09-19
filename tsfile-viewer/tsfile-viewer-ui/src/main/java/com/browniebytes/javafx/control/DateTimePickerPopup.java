@@ -24,7 +24,7 @@ import javafx.scene.layout.VBox;
  *
  * <p>License: http://www.apache.org/licenses/LICENSE-2.0
  */
-class DateTimePickerPopup extends VBox implements Initializable {
+public class DateTimePickerPopup extends VBox implements Initializable {
 
   private final DateTimePicker parentControl;
   private final HoursPicker hoursPicker;
