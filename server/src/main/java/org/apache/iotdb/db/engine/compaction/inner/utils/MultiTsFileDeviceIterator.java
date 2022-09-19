@@ -28,6 +28,7 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -55,6 +56,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<String, Boolean> currentDevice = null;
+
+  // tsfileResource -> deviceID -> firstMeasurementNode
+  private final Map<TsFileResource, Map<String, MetadataIndexNode>> currentDeviceNode =
+      new HashMap<>();
 
   /** Used for inner space compaction. */
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
@@ -114,6 +119,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (deviceIterator.current() == null || deviceIterator.current().equals(currentDevice)) {
         if (deviceIterator.hasNext()) {
           deviceIterator.next();
+          currentDeviceNode
+              .computeIfAbsent(resource, r -> new HashMap<>())
+              .put(deviceIterator.current().left, deviceIterator.getMeasurementNode());
         } else {
           // this iterator does not have next device
           // remove them after the loop
@@ -136,12 +144,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public Map<String, MeasurementSchema> getAllMeasurementSchemas() throws IOException {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file
-    for (TsFileResource resource : deviceIteratorMap.keySet()) {
+    for (TsFileResource resource : tsFileResources) {
+      if (!resource.mayContainsDevice(currentDevice.left)) {
+        continue;
+      }
       TsFileSequenceReader reader = readerMap.get(resource);
       List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
       reader.getDeviceTimeseriesMetadata(
           timeseriesMetadataList,
-          deviceIteratorMap.get(resource).getMeasurementNode(),
+          currentDeviceNode.get(resource).remove(currentDevice.left),
           schemaMap.keySet(),
           true);
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
