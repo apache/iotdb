@@ -46,7 +46,6 @@
         </file>
         <file>
             <source>${project.build.directory}/COMMIT</source>
-            <destName>.COMMIT</destName>
         </file>
     </files>
 </component>
