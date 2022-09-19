@@ -34,7 +34,9 @@ public class WALEntry extends WALRecord {
 
   private int deviceID;
 
-  public WALEntry() {super();}
+  public WALEntry() {
+    super();
+  }
 
   public WALEntry(int type, List<String> keys, int deviceID) {
     super();
