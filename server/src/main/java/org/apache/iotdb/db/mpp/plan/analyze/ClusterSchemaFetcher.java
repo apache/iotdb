@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesS
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -53,8 +54,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import io.airlift.concurrent.SetThreadName;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -177,42 +176,47 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
       boolean isAligned) {
-    ClusterSchemaTree schemaTree = schemaCache.get(devicePath, measurements);
-    List<Integer> indexOfMissingMeasurements =
-        checkMissingMeasurements(schemaTree, devicePath, measurements);
+    schemaCache.takeReadLock();
+    try {
+      ClusterSchemaTree schemaTree = schemaCache.get(devicePath, measurements);
+      List<Integer> indexOfMissingMeasurements =
+          checkMissingMeasurements(schemaTree, devicePath, measurements);
 
-    if (indexOfMissingMeasurements.isEmpty()) {
+      if (indexOfMissingMeasurements.isEmpty()) {
+        return schemaTree;
+      }
+
+      PathPatternTree patternTree = new PathPatternTree();
+      for (int index : indexOfMissingMeasurements) {
+        patternTree.appendFullPath(devicePath, measurements[index]);
+      }
+
+      ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
+      if (!remoteSchemaTree.isEmpty()) {
+        schemaTree.mergeSchemaTree(remoteSchemaTree);
+        schemaCache.put(remoteSchemaTree);
+      }
+
+      if (!config.isAutoCreateSchemaEnabled()) {
+        return schemaTree;
+      }
+
+      ClusterSchemaTree missingSchemaTree =
+          checkAndAutoCreateMissingMeasurements(
+              remoteSchemaTree,
+              devicePath,
+              indexOfMissingMeasurements,
+              measurements,
+              getDataType,
+              isAligned);
+
+      schemaTree.mergeSchemaTree(missingSchemaTree);
+      schemaCache.put(missingSchemaTree);
+
       return schemaTree;
+    } finally {
+      schemaCache.releaseReadLock();
     }
-
-    PathPatternTree patternTree = new PathPatternTree();
-    for (int index : indexOfMissingMeasurements) {
-      patternTree.appendFullPath(devicePath, measurements[index]);
-    }
-
-    ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
-    if (!remoteSchemaTree.isEmpty()) {
-      schemaTree.mergeSchemaTree(remoteSchemaTree);
-      schemaCache.put(remoteSchemaTree);
-    }
-
-    if (!config.isAutoCreateSchemaEnabled()) {
-      return schemaTree;
-    }
-
-    ClusterSchemaTree missingSchemaTree =
-        checkAndAutoCreateMissingMeasurements(
-            remoteSchemaTree,
-            devicePath,
-            indexOfMissingMeasurements,
-            measurements,
-            getDataType,
-            isAligned);
-
-    schemaTree.mergeSchemaTree(missingSchemaTree);
-    schemaCache.put(missingSchemaTree);
-
-    return schemaTree;
   }
 
   @Override
@@ -221,49 +225,53 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<String[]> measurementsList,
       List<TSDataType[]> tsDataTypesList,
       List<Boolean> isAlignedList) {
-
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    PathPatternTree patternTree = new PathPatternTree();
-    List<List<Integer>> indexOfMissingMeasurementsList = new ArrayList<>(devicePathList.size());
-    for (int i = 0; i < devicePathList.size(); i++) {
-      schemaTree.mergeSchemaTree(schemaCache.get(devicePathList.get(i), measurementsList.get(i)));
-      List<Integer> indexOfMissingMeasurements =
-          checkMissingMeasurements(schemaTree, devicePathList.get(i), measurementsList.get(i));
-      indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
-      for (int index : indexOfMissingMeasurements) {
-        patternTree.appendFullPath(devicePathList.get(i), measurementsList.get(i)[index]);
+    schemaCache.takeReadLock();
+    try {
+      ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+      PathPatternTree patternTree = new PathPatternTree();
+      List<List<Integer>> indexOfMissingMeasurementsList = new ArrayList<>(devicePathList.size());
+      for (int i = 0; i < devicePathList.size(); i++) {
+        schemaTree.mergeSchemaTree(schemaCache.get(devicePathList.get(i), measurementsList.get(i)));
+        List<Integer> indexOfMissingMeasurements =
+            checkMissingMeasurements(schemaTree, devicePathList.get(i), measurementsList.get(i));
+        indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
+        for (int index : indexOfMissingMeasurements) {
+          patternTree.appendFullPath(devicePathList.get(i), measurementsList.get(i)[index]);
+        }
       }
-    }
 
-    if (patternTree.isEmpty()) {
+      if (patternTree.isEmpty()) {
+        return schemaTree;
+      }
+
+      ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
+      if (!remoteSchemaTree.isEmpty()) {
+        schemaTree.mergeSchemaTree(remoteSchemaTree);
+        schemaCache.put(remoteSchemaTree);
+      }
+
+      if (!config.isAutoCreateSchemaEnabled()) {
+        return schemaTree;
+      }
+
+      ClusterSchemaTree missingSchemaTree;
+      for (int i = 0; i < devicePathList.size(); i++) {
+        int finalI = i;
+        missingSchemaTree =
+            checkAndAutoCreateMissingMeasurements(
+                schemaTree,
+                devicePathList.get(i),
+                indexOfMissingMeasurementsList.get(i),
+                measurementsList.get(i),
+                index -> tsDataTypesList.get(finalI)[index],
+                isAlignedList.get(i));
+        schemaTree.mergeSchemaTree(missingSchemaTree);
+        schemaCache.put(missingSchemaTree);
+      }
       return schemaTree;
+    } finally {
+      schemaCache.releaseReadLock();
     }
-
-    ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
-    if (!remoteSchemaTree.isEmpty()) {
-      schemaTree.mergeSchemaTree(remoteSchemaTree);
-      schemaCache.put(remoteSchemaTree);
-    }
-
-    if (!config.isAutoCreateSchemaEnabled()) {
-      return schemaTree;
-    }
-
-    ClusterSchemaTree missingSchemaTree;
-    for (int i = 0; i < devicePathList.size(); i++) {
-      int finalI = i;
-      missingSchemaTree =
-          checkAndAutoCreateMissingMeasurements(
-              schemaTree,
-              devicePathList.get(i),
-              indexOfMissingMeasurementsList.get(i),
-              measurementsList.get(i),
-              index -> tsDataTypesList.get(finalI)[index],
-              isAlignedList.get(i));
-      schemaTree.mergeSchemaTree(missingSchemaTree);
-      schemaCache.put(missingSchemaTree);
-    }
-    return schemaTree;
   }
 
   @Override

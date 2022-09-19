@@ -92,7 +92,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
 
     // we start IoTDB kernel first. then we start the cluster module.
     if (MODE_START.equals(mode)) {
-      dataNode.doAddNode(args);
+      dataNode.doAddNode();
     } else if (MODE_REMOVE.equals(mode)) {
       doRemoveNode(args);
     } else {
@@ -158,6 +158,11 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
         throw new IoTDBException(
             removeResp.getStatus().toString(), removeResp.getStatus().getCode());
       }
+      logger.info(
+          "Submit remove datanode request successfully, "
+              + "more details are shown in the logs of confignode-leader and removed-datanode, "
+              + "and after the process of remove-datanode is over, "
+              + "you are supposed to delete directory and data of the removed-datanode manually");
     }
   }
 

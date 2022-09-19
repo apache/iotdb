@@ -475,7 +475,7 @@ public class IoTDBAlignByDeviceIT {
           "103,root.vehicle.d0,99,",
           "104,root.vehicle.d0,90,",
           "105,root.vehicle.d0,99,",
-          "946684800000,root.vehicle.d0,null",
+          "946684800000,root.vehicle.d0,null"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();

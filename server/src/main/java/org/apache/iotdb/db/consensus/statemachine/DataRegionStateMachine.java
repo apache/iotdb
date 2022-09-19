@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -70,7 +71,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
   private DataRegion region;
 
   private static final int MAX_REQUEST_CACHE_SIZE = 5;
-  private static final long CACHE_WINDOW_TIME_IN_MS = 10_000;
+  private static final long CACHE_WINDOW_TIME_IN_MS =
+      IoTDBDescriptor.getInstance().getConfig().getCacheWindowTimeInMs();
 
   private final Lock queueLock = new ReentrantLock();
   private final Condition queueSortCondition = queueLock.newCondition();
@@ -90,7 +92,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean isReadOnly() {
-    return IoTDBDescriptor.getInstance().getConfig().isReadOnly();
+    return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
 
   @Override
@@ -378,5 +380,23 @@ public class DataRegionStateMachine extends BaseStateMachine {
       }
       return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
     }
+  }
+
+  @Override
+  public boolean shouldRetry(TSStatus writeResult) {
+    // TODO implement this
+    return super.shouldRetry(writeResult);
+  }
+
+  @Override
+  public TSStatus updateResult(TSStatus previousResult, TSStatus retryResult) {
+    // TODO implement this
+    return super.updateResult(previousResult, retryResult);
+  }
+
+  @Override
+  public long getSleepTime() {
+    // TODO implement this
+    return super.getSleepTime();
   }
 }

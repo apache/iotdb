@@ -215,6 +215,10 @@ FILL
     : F I L L
     ;
 
+FILE
+    : F I L E
+    ;
+
 FLUSH
     : F L U S H
     ;
@@ -431,10 +435,6 @@ READONLY
     : R E A D O N L Y
     ;
 
-ERROR
-    : E R R O R
-    ;
-
 REGEXP
     : R E G E X P
     ;
@@ -509,6 +509,14 @@ STORAGE
 
 START
     : S T A R T
+    ;
+
+STATELESS
+    : S T A T E L E S S
+    ;
+
+STATEFUL
+    : S T A T E F U L
     ;
 
 STOP
@@ -593,6 +601,10 @@ UPDATE
 
 UPSERT
     : U P S E R T
+    ;
+
+URI
+    : U R I
     ;
 
 USER
@@ -949,11 +961,11 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\"' | '""' | ~('"') )* '"'
+    : '"' ( '""' | ~('"') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\\'' | '\'\'' | ~('\'') )* '\''
+    : '\'' ( '\'\'' | ~('\'') )* '\''
     ;
 
 fragment BQUOTA_STRING

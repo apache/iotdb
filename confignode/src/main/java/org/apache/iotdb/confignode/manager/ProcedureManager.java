@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -33,6 +35,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;
@@ -40,8 +43,10 @@ import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -50,6 +55,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -61,8 +67,8 @@ public class ProcedureManager {
   private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
       ConfigNodeDescriptor.getInstance().getConf();
 
-  private static final int procedureWaitTimeOut = 30;
-  private static final int procedureWaitRetryTimeout = 250;
+  private static final int PROCEDURE_WAIT_TIME_OUT = 30;
+  private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 250;
 
   private final ConfigManager configManager;
   private ProcedureExecutor<ConfigNodeProcedureEnv> executor;
@@ -118,6 +124,52 @@ public class ProcedureManager {
       return StatusUtils.OK;
     } else {
       return RpcUtils.getStatus(procedureStatus);
+    }
+  }
+
+  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
+    String queryId = req.getQueryId();
+    PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    long procedureId = -1;
+    synchronized (this) {
+      boolean hasOverlappedTask = false;
+      ProcedureFactory.ProcedureType type;
+      DeleteTimeSeriesProcedure deleteTimeSeriesProcedure;
+      for (Procedure<?> procedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(procedure);
+        if (type == null
+            || !type.equals(ProcedureFactory.ProcedureType.DELETE_TIMESERIES_PROCEDURE)) {
+          continue;
+        }
+        deleteTimeSeriesProcedure = ((DeleteTimeSeriesProcedure) procedure);
+        if (queryId.equals(deleteTimeSeriesProcedure.getQueryId())) {
+          procedureId = deleteTimeSeriesProcedure.getProcId();
+          break;
+        }
+        if (patternTree.isOverlapWith(deleteTimeSeriesProcedure.getPatternTree())) {
+          hasOverlappedTask = true;
+          break;
+        }
+      }
+
+      if (procedureId == -1) {
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_DELETE_TIMESERIES_TASK,
+              "Some other task is deleting some target timeseries.");
+        }
+        procedureId =
+            this.executor.submitProcedure(new DeleteTimeSeriesProcedure(queryId, patternTree));
+      }
+    }
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return procedureStatus.get(0);
     }
   }
 
@@ -184,17 +236,28 @@ public class ProcedureManager {
           && !executor.isFinished(procedureId)
           && TimeUnit.MILLISECONDS.toSeconds(
                   System.currentTimeMillis() - startTimeForCurrentProcedure)
-              < procedureWaitTimeOut) {
-        sleepWithoutInterrupt(procedureWaitRetryTimeout);
+              < PROCEDURE_WAIT_TIME_OUT) {
+        sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
       }
       Procedure<ConfigNodeProcedureEnv> finishedProcedure =
           executor.getResultOrProcedure(procedureId);
+      if (!finishedProcedure.isFinished()) {
+        // the procedure is still executing
+        statusList.add(RpcUtils.getStatus(TSStatusCode.STILL_EXECUTING_STATUS));
+        isSucceed = false;
+        continue;
+      }
       if (finishedProcedure.isSuccess()) {
         statusList.add(StatusUtils.OK);
       } else {
-        statusList.add(
-            StatusUtils.EXECUTE_STATEMENT_ERROR.setMessage(
-                finishedProcedure.getException().getMessage()));
+        if (finishedProcedure.getException().getCause() instanceof IoTDBException) {
+          IoTDBException e = (IoTDBException) finishedProcedure.getException().getCause();
+          statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        } else {
+          statusList.add(
+              StatusUtils.EXECUTE_STATEMENT_ERROR.setMessage(
+                  finishedProcedure.getException().getMessage()));
+        }
         isSucceed = false;
       }
     }
@@ -260,7 +323,7 @@ public class ProcedureManager {
   }
 
   public void reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
-    LOGGER.info("receive DataNode region:{} migrate result:{}", req.getRegionId(), req);
+
     this.executor
         .getProcedures()
         .values()
@@ -270,11 +333,6 @@ public class ProcedureManager {
                 RegionMigrateProcedure regionMigrateProcedure = (RegionMigrateProcedure) procedure;
                 if (regionMigrateProcedure.getConsensusGroupId().equals(req.getRegionId())) {
                   regionMigrateProcedure.notifyTheRegionMigrateFinished(req);
-                } else {
-                  LOGGER.warn(
-                      "DataNode report region:{} is not equals ConfigNode send region:{}",
-                      req.getRegionId(),
-                      regionMigrateProcedure.getConsensusGroupId());
                 }
               }
             });

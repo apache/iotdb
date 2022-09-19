@@ -645,11 +645,14 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     CreateTriggerOperator createTriggerOperator =
         new CreateTriggerOperator(SQLConstant.TOK_TRIGGER_CREATE);
     createTriggerOperator.setTriggerName(parseIdentifier(ctx.triggerName.getText()));
+    if (ctx.triggerEventClause().DELETE() != null) {
+      throw new SQLParserException("Trigger does not support DELETE as TRIGGER_EVENT for now.");
+    }
     createTriggerOperator.setEvent(
         ctx.triggerEventClause().BEFORE() != null
             ? TriggerEvent.BEFORE_INSERT
             : TriggerEvent.AFTER_INSERT);
-    createTriggerOperator.setFullPath(parseFullPath(ctx.fullPath()));
+    createTriggerOperator.setFullPath(parsePrefixPath(ctx.prefixPath()));
     createTriggerOperator.setClassName(parseStringLiteral(ctx.className.getText()));
     if (ctx.triggerAttributeClause() != null) {
       for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :
@@ -2243,8 +2246,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.Running);
     } else if (ctx.READONLY() != null) {
       return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.ReadOnly);
-    } else if (ctx.ERROR() != null) {
-      return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, NodeStatus.Error);
     } else {
       throw new RuntimeException("Unknown system status in set system command.");
     }
@@ -2794,10 +2795,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private long parseTimeValue(IoTDBSqlParser.TimeValueContext ctx, long currentTime) {
     if (ctx.INTEGER_LITERAL() != null) {
-      if (ctx.MINUS() != null) {
-        return -Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      try {
+        if (ctx.MINUS() != null) {
+          return -Long.parseLong(ctx.INTEGER_LITERAL().getText());
+        }
+        return Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      } catch (NumberFormatException e) {
+        throw new SQLParserException(
+            String.format("Can not parse %s to long value", ctx.INTEGER_LITERAL().getText()));
       }
-      return Long.parseLong(ctx.INTEGER_LITERAL().getText());
     } else if (ctx.dateExpression() != null) {
       return parseDateExpression(ctx.dateExpression(), currentTime);
     } else {
@@ -3289,8 +3295,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private String parseStringLiteral(String src) {
     if (2 <= src.length()) {
       // do not unescape string
-      String unWrappedString =
-          src.substring(1, src.length() - 1).replace("\\\"", "\"").replace("\\'", "'");
+      String unWrappedString = src.substring(1, src.length() - 1);
       if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
         // replace "" with "
         String replaced = unWrappedString.replace("\"\"", "\"");

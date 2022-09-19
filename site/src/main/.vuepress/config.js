@@ -766,7 +766,7 @@ var config = {
 						title: 'Maintenance Tools',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','Maintenance Command'],
-							['Maintenance-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
+							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
@@ -789,7 +789,8 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS'],
+							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
 						]
 					},
 					{
@@ -944,7 +945,7 @@ var config = {
 						title: 'Maintenance Tools',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','Maintenance Command'],
-							['Maintenance-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
+							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
@@ -957,17 +958,18 @@ var config = {
 					{
 						title: 'Ecosystem Integration',
 						children: [
-							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
-							['Ecosystem Integration/Grafana Connector','Grafana Connector (Not Recommended)'],
-							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
-							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
-							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
-							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
-							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
-							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
-							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
+							['Ecosystem-Integration/Grafana-Plugin','Grafana-Plugin'],
+							['Ecosystem-Integration/Grafana-Connector','Grafana-Connector (Not Recommended)'],
+							['Ecosystem-Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem-Integration/DBeaver','DBeaver-IoTDB'],
+							['Ecosystem-Integration/MapReduce-TsFile','MapReduce-TsFile'],
+							['Ecosystem-Integration/Spark-TsFile','Spark-TsFile'],
+							['Ecosystem-Integration/Spark-IoTDB','Spark-IoTDB'],
+							['Ecosystem-Integration/Hive-TsFile','Hive-TsFile'],
+							['Ecosystem-Integration/Flink-IoTDB','Flink-IoTDB'],
+							['Ecosystem-Integration/Flink-TsFile','Flink-TsFile'],
+							['Ecosystem-Integration/Writing-Data-on-HDFS','Writing-Data-on-HDFS'],
+							['Ecosystem-Integration/NiFi-IoTDB','NiFi-IoTDB'],
 						]
 					},
 					{
@@ -1691,7 +1693,7 @@ var config = {
 						title: '运维工具',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','运维命令'],
-							['Maintenance-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
+							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
@@ -1715,6 +1717,7 @@ var config = {
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
 							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
 						]
 					},
 					{
@@ -1869,7 +1872,7 @@ var config = {
 						title: '运维工具',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','运维命令'],
-							['Maintenance-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
+							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
@@ -1882,17 +1885,18 @@ var config = {
 					{
 						title: '系统集成',
 						children: [
-							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
-							['Ecosystem Integration/Grafana Connector','Grafana Connector（不推荐）'],
-							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
-							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
-							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
-							['Ecosystem Integration/MapReduce TsFile','Hadoop-TsFile'],
-							['Ecosystem Integration/Spark IoTDB','Spark-IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive-TsFile'],
-							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
-							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
-							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
+							['Ecosystem-Integration/Grafana-Plugin','Grafana-Plugin'],
+							['Ecosystem-Integration/Grafana-Connector','Grafana-Connector（不推荐）'],
+							['Ecosystem-Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem-Integration/DBeaver','DBeaver-IoTDB'],
+							['Ecosystem-Integration/Spark-TsFile','Spark-TsFile'],
+							['Ecosystem-Integration/MapReduce-TsFile','Hadoop-TsFile'],
+							['Ecosystem-Integration/Spark-IoTDB','Spark-IoTDB'],
+							['Ecosystem-Integration/Hive-TsFile','Hive-TsFile'],
+							['Ecosystem-Integration/Flink-TsFile','Flink-TsFile'],
+							['Ecosystem-Integration/Flink-IoTDB','Flink-IoTDB'],
+							['Ecosystem-Integration/Writing-Data-on-HDFS','HDFS集成'],
+							['Ecosystem-Integration/NiFi-IoTDB','NiFi-IoTDB'],
 						]
 					},
 					{

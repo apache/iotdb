@@ -158,7 +158,7 @@ public class EnvironmentUtils {
       fail();
     }
 
-    IoTDBDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
+    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
     // unit tests.
     IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);
@@ -274,7 +274,7 @@ public class EnvironmentUtils {
     // delete mqtt dir
     cleanDir(config.getMqttDir());
     // delete wal
-    for (String walDir : config.getWalDirs()) {
+    for (String walDir : commonConfig.getWalDirs()) {
       cleanDir(walDir);
     }
     // delete sync dir
@@ -375,7 +375,7 @@ public class EnvironmentUtils {
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
     // create wal
-    for (String walDir : config.getWalDirs()) {
+    for (String walDir : commonConfig.getWalDirs()) {
       createDir(walDir);
     }
     // create data
