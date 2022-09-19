@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
+import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
@@ -670,17 +671,22 @@ public class NodeManager {
     DataNodeHeartbeatCache cache =
         (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeId);
     if (cache != null) {
-      return cache.isRemoving();
+      return NodeStatus.Removing.equals(cache.getNodeStatus());
     }
     return false;
   }
 
-  public void setNodeRemovingStatus(int dataNodeId, boolean isRemoving) {
+  public void setNodeRemovingStatus(TDataNodeLocation dataNodeLocation) {
     DataNodeHeartbeatCache cache =
-        (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeId);
+        (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
     if (cache != null) {
-      cache.setRemoving(isRemoving);
+      cache.setRemoving();
     }
+    SyncDataNodeClientPool.getInstance().sendSyncRequestToDataNodeWithRetry(
+      dataNodeLocation.getInternalEndPoint(),
+            NodeStatus.Removing,
+            DataNodeRequestType.SET_SYSTEM_STATUS
+    );
   }
 
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {

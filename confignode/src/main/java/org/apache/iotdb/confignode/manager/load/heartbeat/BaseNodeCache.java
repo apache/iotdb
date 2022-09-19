@@ -37,9 +37,6 @@ public abstract class BaseNodeCache {
   /** Node status, using for `show cluster` command */
   volatile NodeStatus status = NodeStatus.Unknown;
 
-  /** Represent that if this node is in removing status */
-  volatile boolean removing;
-
   /**
    * Cache the newest HeartbeatSample
    *
@@ -64,11 +61,7 @@ public abstract class BaseNodeCache {
   /** @return The latest status of a node for showing cluster */
   public abstract NodeStatus getNodeStatus();
 
-  public void setRemoving(boolean removing) {
-    this.removing = removing;
-  }
-
-  public boolean isRemoving() {
-    return this.removing;
+  public void setRemoving() {
+    this.status = NodeStatus.Removing;
   }
 }

@@ -308,8 +308,7 @@ public class ConfigNodeProcedureEnv {
    * @param dataNodeLocation the datanode to be marked as removing status
    */
   public void markDataNodeAsRemovingAndBroadCast(TDataNodeLocation dataNodeLocation) {
-    int dataNodeId = dataNodeLocation.getDataNodeId();
-    configManager.getNodeManager().setNodeRemovingStatus(dataNodeId, true);
+    configManager.getNodeManager().setNodeRemovingStatus(dataNodeLocation);
     configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
 

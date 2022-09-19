@@ -30,6 +30,7 @@ public class NodeHeartbeatSample {
   private NodeStatus status;
   private short cpu;
   private short memory;
+  private short disk;
 
   /** Constructor for ConfigNode sample */
   public NodeHeartbeatSample(long sendTimestamp, long receiveTimestamp) {
@@ -44,6 +45,7 @@ public class NodeHeartbeatSample {
     this.status = NodeStatus.parse(heartbeatResp.getStatus());
     this.cpu = heartbeatResp.getCpu();
     this.memory = heartbeatResp.getMemory();
+    this.disk = heartbeatResp.getDisk();
   }
 
   public long getSendTimestamp() {
@@ -64,5 +66,9 @@ public class NodeHeartbeatSample {
 
   public short getMemory() {
     return memory;
+  }
+
+  public short getDisk() {
+    return disk;
   }
 }

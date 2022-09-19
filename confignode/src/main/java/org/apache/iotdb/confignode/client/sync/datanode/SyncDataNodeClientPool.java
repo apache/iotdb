@@ -83,6 +83,8 @@ public class SyncDataNodeClientPool {
             return client.disableDataNode((TDisableDataNodeReq) req);
           case STOP_DATA_NODE:
             return client.stopDataNode();
+          case SET_SYSTEM_STATUS:
+            return client.setSystemStatus((String) req);
           case UPDATE_TEMPLATE:
             return client.updateTemplate((TUpdateTemplateReq) req);
           case CREATE_NEW_REGION_PEER:

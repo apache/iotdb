@@ -289,13 +289,23 @@ public class CommonConfig {
   }
 
   public void setNodeStatus(NodeStatus newStatus) {
-    if (newStatus == NodeStatus.ReadOnly) {
-      logger.error(
-          "Change system status to read-only! Only query statements are permitted!",
-          new RuntimeException("System mode is set to READ_ONLY"));
-    } else {
-      logger.info("Set system mode from {} to {}.", status, newStatus);
-    }
+    logger.info("Set system mode from {} to {}.", status, newStatus);
     this.status = newStatus;
+
+    switch (newStatus) {
+      case Full:
+        logger.warn(
+                "Change system status to Full! The disk is running out!"
+        );
+      case ReadOnly:
+        logger.error(
+                "Change system status to ReadOnly! Only query statements are permitted!",
+                new RuntimeException("System mode is set to READ_ONLY"));
+        break;
+      case Removing:
+        logger.info(
+                "Change system status to Removing! The current Node is being removed from cluster!"
+        );
+    }
   }
 }

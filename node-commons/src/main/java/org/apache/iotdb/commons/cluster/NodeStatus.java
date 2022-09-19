@@ -29,6 +29,9 @@ public enum NodeStatus {
   /** Node is in removing */
   Removing("Removing"),
 
+  /** Node disk is running out */
+  Full("Full"),
+
   /** Only query statements are permitted */
   ReadOnly("ReadOnly");
 

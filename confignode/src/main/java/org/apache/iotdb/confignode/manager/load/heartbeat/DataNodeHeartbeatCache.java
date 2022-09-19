@@ -32,10 +32,6 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
 
   @Override
   public void cacheHeartbeatSample(NodeHeartbeatSample newHeartbeatSample) {
-    if (isRemoving()) {
-      return;
-    }
-
     synchronized (slidingWindow) {
       // Only sequential HeartbeatSamples are accepted.
       // And un-sequential HeartbeatSamples will be discarded.
@@ -52,10 +48,6 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
 
   @Override
   public boolean updateNodeStatus() {
-    if (isRemoving()) {
-      return false;
-    }
-
     NodeHeartbeatSample lastSample = null;
     synchronized (slidingWindow) {
       if (slidingWindow.size() > 0) {
@@ -82,20 +74,12 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
 
   @Override
   public long getLoadScore() {
-    if (isRemoving()) {
-      return Long.MAX_VALUE;
-    }
-
-    // The DataNode whose status isn't Running will get the highest loadScore
-    return status == NodeStatus.Running ? loadScore : Long.MAX_VALUE;
+    // The DataNode whose status is abnormal will get the highest loadScore
+    return NodeStatus.isNormalStatus(status) ? loadScore : Long.MAX_VALUE;
   }
 
   @Override
   public NodeStatus getNodeStatus() {
-    if (isRemoving()) {
-      return NodeStatus.Removing;
-    }
-
     // Return a copy of status
     return NodeStatus.parse(status.getStatus());
   }
