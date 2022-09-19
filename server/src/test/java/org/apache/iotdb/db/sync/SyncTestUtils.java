@@ -16,43 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender.pipe;
+package org.apache.iotdb.db.sync;
 
-public class PipeMessage {
-  private final String message;
-  private final PipeMessageType type;
+import org.apache.iotdb.db.sync.sender.pipe.Pipe;
+import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
+import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
 
-  public PipeMessage(PipeMessageType type, String message) {
-    this.type = type;
-    this.message = message;
-  }
+import org.junit.Assert;
 
-  public String getMessage() {
-    return message;
-  }
-
-  public PipeMessageType getType() {
-    return type;
-  }
-
-  @Override
-  public String toString() {
-    return "PipeMessage{" + "message='" + message + '\'' + ", type=" + type + '}';
-  }
-
-  public enum PipeMessageType {
-    NORMAL(1),
-    WARN(2),
-    ERROR(3);
-
-    private int value;
-
-    PipeMessageType(int value) {
-      this.value = value;
-    }
-
-    public int getValue() {
-      return value;
-    }
+public class SyncTestUtils {
+  public static void checkPipeInfo(
+      PipeInfo pipeInfo,
+      String pipeName,
+      String pipeSinkName,
+      Pipe.PipeStatus status,
+      long createTime,
+      PipeMessage.PipeMessageType messageType) {
+    Assert.assertEquals(pipeName, pipeInfo.getPipeName());
+    Assert.assertEquals(pipeSinkName, pipeInfo.getPipeSinkName());
+    Assert.assertEquals(status, pipeInfo.getStatus());
+    Assert.assertEquals(createTime, pipeInfo.getCreateTime());
+    Assert.assertEquals(messageType, pipeInfo.getMessageType());
   }
 }

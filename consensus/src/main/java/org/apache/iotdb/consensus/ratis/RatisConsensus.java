@@ -54,6 +54,7 @@ import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.grpc.GrpcConfigKeys;
 import org.apache.ratis.grpc.GrpcFactory;
 import org.apache.ratis.protocol.ClientId;
+import org.apache.ratis.protocol.GroupManagementRequest;
 import org.apache.ratis.protocol.Message;
 import org.apache.ratis.protocol.RaftClientReply;
 import org.apache.ratis.protocol.RaftClientRequest;
@@ -348,32 +349,24 @@ class RatisConsensus implements IConsensus {
   @Override
   public ConsensusGenericResponse deletePeer(ConsensusGroupId groupId) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
-    RaftGroup raftGroup = getGroupInfo(raftGroupId);
-
-    // pre-conditions: group exists and myself in this group
-    if (raftGroup == null || !raftGroup.getPeers().contains(myself)) {
-      return failed(new PeerNotInConsensusGroupException(groupId, myself));
-    }
 
     // send remove group to myself
     RaftClientReply reply;
-    RatisClient client = null;
     try {
-      client = getRaftClient(raftGroup);
       reply =
-          client
-              .getRaftClient()
-              .getGroupManagementApi(myself.getId())
-              .remove(raftGroupId, true, false);
+          server.groupManagement(
+              GroupManagementRequest.newRemove(
+                  localFakeId,
+                  myself.getId(),
+                  localFakeCallId.incrementAndGet(),
+                  raftGroupId,
+                  true,
+                  false));
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
       }
     } catch (IOException e) {
       return failed(new RatisRequestFailedException(e));
-    } finally {
-      if (client != null) {
-        client.returnSelf();
-      }
     }
 
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
