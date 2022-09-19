@@ -495,6 +495,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     // Sampling load if necessary
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
         && req.isNeedSamplingLoad()) {
+      // Sample cpu load
       long cpuLoad =
           MetricService.getInstance()
               .getOrCreateGauge(
@@ -503,11 +504,36 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (cpuLoad != 0) {
         resp.setCpu((short) cpuLoad);
       }
+
+      // Sample memory load
       long usedMemory = getMemory("jvm.memory.used.bytes");
       long maxMemory = getMemory("jvm.memory.max.bytes");
       if (usedMemory != 0 && maxMemory != 0) {
         resp.setMemory((short) (usedMemory * 100 / maxMemory));
       }
+
+      // Sample disk load
+      long freeDisk =
+          MetricService.getInstance()
+              .getOrCreateGauge(
+                  Metric.SYS_DISK_FREE_SPACE.toString(),
+                  MetricLevel.CORE,
+                  Tag.NAME.toString(),
+                  "system")
+              .value();
+      long totalDisk =
+          MetricService.getInstance()
+              .getOrCreateGauge(
+                  Metric.SYS_DISK_TOTAL_SPACE.toString(),
+                  MetricLevel.CORE,
+                  Tag.NAME.toString(),
+                  "system")
+              .value();
+      if (freeDisk != 0 && totalDisk != 0) {
+        resp.setDisk((short) (freeDisk / totalDisk));
+      }
+      System.out.println(freeDisk + ", " + totalDisk + ", " + (totalDisk - freeDisk));
+      System.out.println(resp);
     }
     return resp;
   }

@@ -200,6 +200,7 @@ struct THeartbeatResp {
   3: optional map<common.TConsensusGroupId, bool> judgedLeaders
   4: optional i16 cpu
   5: optional i16 memory
+  6: optional i16 disk
 }
 
 struct TRegionRouteReq {
