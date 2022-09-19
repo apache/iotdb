@@ -20,14 +20,15 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * This interface is used to fetch the metadata information required in execution plan generating.
@@ -37,7 +38,10 @@ public interface ISchemaFetcher {
   ISchemaTree fetchSchema(PathPatternTree patternTree);
 
   ISchemaTree fetchSchemaWithAutoCreate(
-      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned);
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned);
 
   ISchemaTree fetchSchemaListWithAutoCreate(
       List<PartialPath> devicePath,

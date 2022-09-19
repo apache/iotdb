@@ -22,6 +22,9 @@ package org.apache.iotdb.db.mpp.plan.statement.metadata;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  * SHOW TIMESERIES statement.
  *
@@ -78,6 +81,11 @@ public class ShowTimeSeriesStatement extends ShowStatement {
 
   public boolean isOrderByHeat() {
     return orderByHeat;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.singletonList(pathPattern);
   }
 
   @Override

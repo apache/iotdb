@@ -200,7 +200,7 @@ public class StatusUtils {
         status.setMessage("Has not logged in. ");
         break;
       case NO_PERMISSION_ERROR:
-        status.setMessage("No permissions for this operation. ");
+        status.setMessage("No permissions for this operation, please add privilege. ");
         break;
       case UNINITIALIZED_AUTH_ERROR:
         status.setMessage("Uninitialized authorizer. ");

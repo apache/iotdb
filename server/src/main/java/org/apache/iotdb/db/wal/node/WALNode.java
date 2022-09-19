@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -87,6 +88,9 @@ public class WALNode implements IWALNode {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   /** no multi-leader consensus, all insert nodes can be safely deleted */
   public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
+
+  /** timeout threshold when waiting for next wal entry */
+  private static final long WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC = 30;
 
   /** unique identifier of this WALNode */
   private final String identifier;
@@ -156,6 +160,12 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(long memTableId, DeletePlan deletePlan) {
     WALEntry walEntry = new WALInfoEntry(memTableId, deletePlan);
+    return log(walEntry);
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode) {
+    WALEntry walEntry = new WALInfoEntry(memTableId, deleteDataNode);
     return log(walEntry);
   }
 
@@ -267,8 +277,8 @@ public class WALNode implements IWALNode {
           if (safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
             return;
           }
-          run();
           recursionTime++;
+          run();
         }
       }
     }
@@ -537,7 +547,7 @@ public class WALNode implements IWALNode {
         while (walByteBufReader.hasNext()) {
           ByteBuffer buffer = walByteBufReader.next();
           WALEntryType type = WALEntryType.valueOf(buffer.get());
-          if (type == WALEntryType.INSERT_TABLET_NODE || type == WALEntryType.INSERT_ROW_NODE) {
+          if (type.needSearch()) {
             // see WALInfoEntry#serialize, entry type + memtable id + insert node type
             buffer.position(WALInfoEntry.FIXED_SERIALIZED_SIZE + PlanNodeType.BYTES);
             long searchIndex = buffer.getLong();
@@ -593,8 +603,7 @@ public class WALNode implements IWALNode {
               while (walByteBufReader.hasNext()) {
                 ByteBuffer buffer = walByteBufReader.next();
                 WALEntryType type = WALEntryType.valueOf(buffer.get());
-                if (type == WALEntryType.INSERT_TABLET_NODE
-                    || type == WALEntryType.INSERT_ROW_NODE) {
+                if (type.needSearch()) {
                   // see WALInfoEntry#serialize, entry type + memtable id + insert node type
                   buffer.position(WALInfoEntry.FIXED_SERIALIZED_SIZE + PlanNodeType.BYTES);
                   long searchIndex = buffer.getLong();
@@ -680,7 +689,15 @@ public class WALNode implements IWALNode {
     @Override
     public void waitForNextReady() throws InterruptedException {
       while (!hasNext()) {
-        buffer.waitForFlush();
+        boolean timeout =
+            !buffer.waitForFlush(WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
+        if (timeout) {
+          logger.info(
+              "timeout when waiting for next WAL entry ready, execute rollWALFile. Current search index in wal buffer is {}, and next target index is {}",
+              buffer.getCurrentSearchIndex(),
+              nextSearchIndex);
+          rollWALFile();
+        }
       }
     }
 
@@ -739,6 +756,11 @@ public class WALNode implements IWALNode {
   @Override
   public long getCurrentSearchIndex() {
     return buffer.getCurrentSearchIndex();
+  }
+
+  @Override
+  public long getTotalSize() {
+    return WALManager.getInstance().getTotalDiskUsage();
   }
 
   // endregion

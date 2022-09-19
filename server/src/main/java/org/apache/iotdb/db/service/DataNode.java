@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
+import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
@@ -59,10 +61,10 @@ import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
-import org.apache.iotdb.db.sync.receiver.ReceiverService;
-import org.apache.iotdb.db.sync.sender.service.SenderService;
+import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -111,16 +113,22 @@ public class DataNode implements DataNodeMBean {
     IoTDBStartCheck.getInstance().checkConfig();
     // TODO: check configuration for data node
 
+    for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
+      if (endPoint.getIp().equals("0.0.0.0")) {
+        throw new ConfigurationException(
+            "The ip address of any target_config_nodes couldn't be 0.0.0.0");
+      }
+    }
+
     // if client ip is the default address, set it same with internal ip
     if (config.getRpcAddress().equals("0.0.0.0")) {
       config.setRpcAddress(config.getInternalAddress());
     }
-
     thisNode.setIp(IoTDBDescriptor.getInstance().getConfig().getInternalAddress());
     thisNode.setPort(IoTDBDescriptor.getInstance().getConfig().getInternalPort());
   }
 
-  protected void doAddNode(String[] args) {
+  protected void doAddNode() {
     try {
       // prepare cluster IoTDB-DataNode
       prepareDataNode();
@@ -130,6 +138,7 @@ public class DataNode implements DataNodeMBean {
       active();
       // setup rpc service
       setUpRPCService();
+      logger.info("IoTDB configuration: " + config.getConfigMessage());
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
     } catch (StartupException e) {
       logger.error("Fail to start server", e);
@@ -139,7 +148,7 @@ public class DataNode implements DataNodeMBean {
 
   /** initialize the current node and its services */
   public boolean initLocalEngines() {
-    IoTDB.setClusterMode();
+    config.setClusterMode(true);
     return true;
   }
 
@@ -189,33 +198,21 @@ public class DataNode implements DataNodeMBean {
             config.setDataNodeId(dataNodeID);
           }
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
+          IoTDBDescriptor.getInstance().loadRatisConfig(dataNodeRegisterResp.ratisConfig);
+          IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
 
           if (!IoTDBStartCheck.getInstance()
               .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
             config.setDataRegionConsensusProtocolClass(
                 dataNodeRegisterResp.globalConfig.getDataRegionConsensusProtocolClass());
-            IoTDBStartCheck.getInstance()
-                .serializeConsensusProtocol(
-                    dataNodeRegisterResp.globalConfig.getDataRegionConsensusProtocolClass(),
-                    TConsensusGroupType.DataRegion);
           }
 
           if (!IoTDBStartCheck.getInstance()
               .checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
             config.setSchemaRegionConsensusProtocolClass(
                 dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
-            IoTDBStartCheck.getInstance()
-                .serializeConsensusProtocol(
-                    dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass(),
-                    TConsensusGroupType.SchemaRegion);
           }
-
-          config.setSeriesPartitionExecutorClass(
-              dataNodeRegisterResp.globalConfig.getSeriesPartitionExecutorClass());
-          config.setSeriesPartitionSlotNum(
-              dataNodeRegisterResp.globalConfig.getSeriesPartitionSlotNum());
-          config.setReadConsistencyLevel(
-              dataNodeRegisterResp.globalConfig.getReadConsistencyLevel());
+          IoTDBStartCheck.getInstance().serializeGlobalConfig(dataNodeRegisterResp.globalConfig);
 
           logger.info("Register to the cluster successfully");
           return;
@@ -271,9 +268,6 @@ public class DataNode implements DataNodeMBean {
     setUncaughtExceptionHandler();
     initServiceProvider();
 
-    // init metric service
-    registerManager.register(MetricsService.getInstance());
-
     logger.info("recover the schema...");
     initSchemaEngine();
     registerManager.register(new JMXService());
@@ -295,8 +289,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(DriverScheduler.getInstance());
 
     registerUdfServices();
-
-    registerManager.register(ReceiverService.getInstance());
+    registerTriggerServices();
 
     logger.info(
         "IoTDB DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
@@ -311,7 +304,7 @@ public class DataNode implements DataNodeMBean {
       }
     }
 
-    registerManager.register(SenderService.getInstance());
+    registerManager.register(SyncService.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
     // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
@@ -319,11 +312,10 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
 
-    // start reporter
-    MetricsService.getInstance().startAllReporter();
-
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
+
+    registerManager.register(MetricService.getInstance());
   }
 
   /** set up RPC and protocols after DataNode is available */
@@ -377,7 +369,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(
         UDFExecutableManager.setupAndGetInstance(
-            IoTDBDescriptor.getInstance().getConfig().getTemporaryLibDir(),
+            IoTDBDescriptor.getInstance().getConfig().getUdfTemporaryLibDir(),
             IoTDBDescriptor.getInstance().getConfig().getUdfDir()));
     registerManager.register(
         UDFClassLoaderManager.setupAndGetInstance(
@@ -388,6 +380,17 @@ public class DataNode implements DataNodeMBean {
                 + File.separator
                 + "udf"
                 + File.separator));
+  }
+
+  private void registerTriggerServices() throws StartupException {
+    registerManager.register(
+        TriggerExecutableManager.setupAndGetInstance(
+            IoTDBDescriptor.getInstance().getConfig().getTriggerTemporaryLibDir(),
+            IoTDBDescriptor.getInstance().getConfig().getTriggerDir()));
+    registerManager.register(
+        TriggerClassLoaderManager.setupAndGetInstance(
+            IoTDBDescriptor.getInstance().getConfig().getTriggerDir()));
+    registerManager.register(TriggerManagementService.setupAndGetInstance());
   }
 
   private void initSchemaEngine() {
@@ -404,9 +407,8 @@ public class DataNode implements DataNodeMBean {
   public void stop() {
     deactivate();
 
-    // QSW
     try {
-      MetricsService.getInstance().stop();
+      MetricService.getInstance().stop();
       SchemaRegionConsensusImpl.getInstance().stop();
       DataRegionConsensusImpl.getInstance().stop();
     } catch (Exception e) {

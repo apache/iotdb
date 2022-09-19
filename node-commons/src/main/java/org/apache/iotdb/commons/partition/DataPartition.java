@@ -78,6 +78,7 @@ public class DataPartition extends Partition {
     // TODO: (xingtanzjr) the timePartitionIdList is ignored
     return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).values().stream()
         .flatMap(Collection::stream)
+        .distinct()
         .collect(Collectors.toList());
   }
 
@@ -92,6 +93,14 @@ public class DataPartition extends Partition {
     // more than 1 Regions for one timeSlot
     return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
         .filter(entry -> timePartitionSlotList.contains(entry.getKey()))
+        .flatMap(entry -> entry.getValue().stream())
+        .collect(Collectors.toList());
+  }
+
+  public List<TRegionReplicaSet> getAllDataRegionReplicaSetForOneDevice(String deviceName) {
+    String storageGroup = getStorageGroupByDevice(deviceName);
+    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
         .flatMap(entry -> entry.getValue().stream())
         .collect(Collectors.toList());
   }

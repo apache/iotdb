@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -31,6 +32,11 @@ public class DeleteDataStatement extends Statement {
   private List<PartialPath> pathList;
   private long deleteStartTime;
   private long deleteEndTime;
+
+  public DeleteDataStatement() {
+    super();
+    statementType = StatementType.DELETE;
+  }
 
   @Override
   public List<? extends PartialPath> getPaths() {

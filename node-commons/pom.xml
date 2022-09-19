@@ -57,6 +57,11 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>trigger-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
         </dependency>
@@ -79,12 +84,12 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift</artifactId>
+            <artifactId>iotdb-thrift-confignode</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-confignode</artifactId>
+            <artifactId>iotdb-thrift</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

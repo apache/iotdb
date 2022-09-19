@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -55,6 +56,7 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -70,7 +72,6 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EncodingInferenceUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -681,6 +682,27 @@ public class RSchemaRegion implements ISchemaRegion {
     }
   }
 
+  @Override
+  public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
   private void traverseOutcomeBasins(
       String[] nodes,
       int maxLevel,
@@ -854,6 +876,13 @@ public class RSchemaRegion implements ISchemaRegion {
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return getCountByNodeType(new Character[] {NODE_TYPE_MEASUREMENT}, pathPattern.getNodes());
+  }
+
+  @Override
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -1897,7 +1926,7 @@ public class RSchemaRegion implements ISchemaRegion {
           measurementList[i] = nodeMap.get(i).getName();
         }
       } catch (MetadataException e) {
-        if (IoTDB.isClusterMode()) {
+        if (config.isClusterMode()) {
           logger.debug(
               "meet error when check {}.{}, message: {}",
               devicePath,
@@ -1919,6 +1948,16 @@ public class RSchemaRegion implements ISchemaRegion {
       }
     }
     return deviceMNode;
+  }
+
+  @Override
+  public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   @Override

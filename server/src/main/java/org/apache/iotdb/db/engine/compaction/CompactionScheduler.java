@@ -80,7 +80,7 @@ public class CompactionScheduler {
   }
 
   public static void tryToSubmitInnerSpaceCompactionTask(
-      String logicalStorageGroupName,
+      String storageGroupName,
       String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
@@ -96,12 +96,12 @@ public class CompactionScheduler {
       innerSpaceCompactionSelector =
           config
               .getInnerSequenceCompactionSelector()
-              .createInstance(logicalStorageGroupName, dataRegionId, timePartition);
+              .createInstance(storageGroupName, dataRegionId, timePartition, tsFileManager);
     } else {
       innerSpaceCompactionSelector =
           config
               .getInnerUnsequenceCompactionSelector()
-              .createInstance(logicalStorageGroupName, dataRegionId, timePartition);
+              .createInstance(storageGroupName, dataRegionId, timePartition, tsFileManager);
     }
     List<List<TsFileResource>> taskList =
         innerSpaceCompactionSelector.selectInnerSpaceTask(
@@ -149,19 +149,21 @@ public class CompactionScheduler {
         crossSpaceCompactionSelector.selectCrossSpaceTask(
             tsFileManager.getSequenceListByTimePartition(timePartition),
             tsFileManager.getUnsequenceListByTimePartition(timePartition));
-    for (Pair<List<TsFileResource>, List<TsFileResource>> selectedFilesPair : taskList) {
+    List<Long> memoryCost = crossSpaceCompactionSelector.getCompactionMemoryCost();
+    for (int i = 0, size = taskList.size(); i < size; ++i) {
       CompactionTaskManager.getInstance()
           .addTaskToWaitingQueue(
               new CrossSpaceCompactionTask(
                   timePartition,
                   tsFileManager,
-                  selectedFilesPair.left,
-                  selectedFilesPair.right,
+                  taskList.get(i).left,
+                  taskList.get(i).right,
                   IoTDBDescriptor.getInstance()
                       .getConfig()
                       .getCrossCompactionPerformer()
                       .createInstance(),
                   CompactionTaskManager.currentTaskNum,
+                  memoryCost.get(i),
                   tsFileManager.getNextCompactionTaskId()));
     }
   }

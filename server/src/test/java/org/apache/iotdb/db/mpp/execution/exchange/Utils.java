@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.mockito.Mockito;
@@ -66,10 +67,11 @@ public class Utils {
               long bytesToReserve = invocation.getArgument(1);
               if (reservedBytes.get() + bytesToReserve <= capacityInBytes) {
                 reservedBytes.updateAndGet(v -> v + (long) invocation.getArgument(1));
+                return new Pair<>(settableFuture.get(), true);
               } else {
                 settableFuture.set(SettableFuture.create());
+                return new Pair<>(settableFuture.get(), false);
               }
-              return settableFuture.get();
             });
     Mockito.doAnswer(
             (Answer<Void>)
@@ -100,7 +102,7 @@ public class Utils {
   public static MemoryPool createMockNonBlockedMemoryPool() {
     MemoryPool mockMemoryPool = Mockito.mock(MemoryPool.class);
     Mockito.when(mockMemoryPool.reserve(Mockito.anyString(), Mockito.anyLong()))
-        .thenReturn(immediateFuture(null));
+        .thenReturn(new Pair<>(immediateFuture(null), true));
     Mockito.when(mockMemoryPool.tryReserve(Mockito.anyString(), Mockito.anyLong()))
         .thenReturn(true);
     return mockMemoryPool;

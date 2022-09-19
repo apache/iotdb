@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
@@ -48,12 +49,15 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchema
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -153,6 +157,45 @@ public class ClusterSchemaManager {
     return getConsensusManager().read(getStorageGroupPlan).getDataset();
   }
 
+  /** Only used in cluster tool show StorageGroup */
+  public TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan) {
+    StorageGroupSchemaResp storageGroupSchemaResp =
+        (StorageGroupSchemaResp) getMatchedStorageGroupSchema(getStorageGroupPlan);
+    if (storageGroupSchemaResp.getStatus().getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Return immediately if some StorageGroups doesn't exist
+      return new TShowStorageGroupResp().setStatus(storageGroupSchemaResp.getStatus());
+    }
+
+    Map<String, TStorageGroupInfo> infoMap = new ConcurrentHashMap<>();
+    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
+      String name = storageGroupSchema.getName();
+      TStorageGroupInfo storageGroupInfo = new TStorageGroupInfo();
+      storageGroupInfo.setName(name);
+      storageGroupInfo.setTTL(storageGroupSchema.getTTL());
+      storageGroupInfo.setSchemaReplicationFactor(storageGroupSchema.getSchemaReplicationFactor());
+      storageGroupInfo.setDataReplicationFactor(storageGroupSchema.getDataReplicationFactor());
+      storageGroupInfo.setTimePartitionInterval(storageGroupSchema.getTimePartitionInterval());
+
+      try {
+        storageGroupInfo.setSchemaRegionNum(
+            getPartitionManager().getRegionCount(name, TConsensusGroupType.SchemaRegion));
+        storageGroupInfo.setDataRegionNum(
+            getPartitionManager().getRegionCount(name, TConsensusGroupType.DataRegion));
+      } catch (StorageGroupNotExistsException e) {
+        // Return immediately if some StorageGroups doesn't exist
+        return new TShowStorageGroupResp()
+            .setStatus(
+                new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+                    .setMessage(e.getMessage()));
+      }
+
+      infoMap.put(name, storageGroupInfo);
+    }
+
+    return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
+  }
+
   /**
    * Update TTL for the specific StorageGroup or all storage groups in a path
    *
@@ -185,9 +228,9 @@ public class ClusterSchemaManager {
           storageGroups.add(storageGroup);
           dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storageGroups);
         } else {
-          List<String> storagegroups = dnlToSgMap.get(dataNodeLocation.getDataNodeId());
-          storagegroups.add(storageGroup);
-          dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storagegroups);
+          List<String> storageGroups = dnlToSgMap.get(dataNodeLocation.getDataNodeId());
+          storageGroups.add(storageGroup);
+          dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storageGroups);
         }
       }
     }
@@ -354,25 +397,15 @@ public class ClusterSchemaManager {
     resp.setStatus(templateResp.getStatus());
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (templateResp.getTemplateList() != null) {
-        List<ByteBuffer> list = new ArrayList<ByteBuffer>();
-        templateResp
-            .getTemplateList()
-            .forEach(
-                template -> {
-                  list.add(template.serialize());
-                });
+        List<ByteBuffer> list = new ArrayList<>();
+        templateResp.getTemplateList().forEach(template -> list.add(template.serialize()));
         resp.setTemplateList(list);
       }
     }
     return resp;
   }
 
-  /**
-   * show nodes in schema template
-   *
-   * @param req
-   * @return
-   */
+  /** show nodes in schema template */
   public TGetTemplateResp getTemplate(String req) {
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(req);
     TemplateInfoResp templateResp =
@@ -388,13 +421,7 @@ public class ClusterSchemaManager {
     return resp;
   }
 
-  /**
-   * mount template
-   *
-   * @param templateName
-   * @param path
-   * @return
-   */
+  /** mount template */
   public synchronized TSStatus setSchemaTemplate(String templateName, String path) {
     // check whether the template can be set on given path
     CheckTemplateSettablePlan checkTemplateSettablePlan =
@@ -423,7 +450,7 @@ public class ClusterSchemaManager {
     // sync template set info to all dataNodes
     TSStatus status;
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+        configManager.getNodeManager().getRegisteredDataNodes();
     for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
       status =
           SyncDataNodeClientPool.getInstance()
@@ -463,7 +490,7 @@ public class ClusterSchemaManager {
 
     // get all dataNodes
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+        configManager.getNodeManager().getRegisteredDataNodes();
 
     // send rollbackReq
     TSStatus status;
@@ -482,12 +509,7 @@ public class ClusterSchemaManager {
     return failedRollbackStatusList;
   }
 
-  /**
-   * show path set template xx
-   *
-   * @param templateName
-   * @return
-   */
+  /** show path set template xx */
   public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName) {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
     PathInfoResp pathInfoResp =

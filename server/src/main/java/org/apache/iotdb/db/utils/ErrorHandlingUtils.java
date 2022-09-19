@@ -76,7 +76,7 @@ public class ErrorHandlingUtils {
     return e;
   }
 
-  public static TSStatus onQueryException(Exception e, String operation) {
+  public static TSStatus onQueryException(Exception e, String operation, TSStatusCode statusCode) {
     TSStatus status = tryCatchQueryException(e);
     if (status != null) {
       // ignore logging sg not ready exception
@@ -86,8 +86,12 @@ public class ErrorHandlingUtils {
       }
       return status;
     } else {
-      return onNPEOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
+      return onNPEOrUnexpectedException(e, operation, statusCode);
     }
+  }
+
+  public static TSStatus onQueryException(Exception e, String operation) {
+    return onQueryException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
   }
 
   public static TSStatus onQueryException(Exception e, OperationType operation) {

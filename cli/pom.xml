@@ -83,7 +83,12 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
             <version>${project.version}</version>
-            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -123,6 +128,36 @@
                     <skipTests>${cli.test.skip}</skipTests>
                     <skipITs>${cli.it.skip}</skipITs>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <artifactSet>
+                                <includes>
+                                    <include>org.apache.iotdb:iotdb-cli</include>
+                                    <include>org.apache.iotdb:iotdb-server</include>
+                                </includes>
+                            </artifactSet>
+                            <filters>
+                                <filter>
+                                    <artifact>org.apache.iotdb:iotdb-server</artifact>
+                                    <includes>
+                                        <include>org/apache/iotdb/db/qp/utils/*</include>
+                                    </includes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

@@ -135,17 +135,15 @@ public class AuthorOperator extends Operator {
     DROP_ROLE,
     GRANT_ROLE,
     GRANT_USER,
-    GRANT_ROLE_TO_USER,
+    GRANT_USER_ROLE,
     REVOKE_USER,
     REVOKE_ROLE,
-    REVOKE_ROLE_FROM_USER,
+    REVOKE_USER_ROLE,
     UPDATE_USER,
     LIST_USER,
     LIST_ROLE,
     LIST_USER_PRIVILEGE,
-    LIST_ROLE_PRIVILEGE,
-    LIST_USER_ROLES,
-    LIST_ROLE_USERS;
+    LIST_ROLE_PRIVILEGE;
 
     /**
      * deserialize short number.
@@ -168,13 +166,13 @@ public class AuthorOperator extends Operator {
         case 5:
           return GRANT_USER;
         case 6:
-          return GRANT_ROLE_TO_USER;
+          return GRANT_USER_ROLE;
         case 7:
           return REVOKE_USER;
         case 8:
           return REVOKE_ROLE;
         case 9:
-          return REVOKE_ROLE_FROM_USER;
+          return REVOKE_USER_ROLE;
         case 10:
           return UPDATE_USER;
         case 11:
@@ -185,10 +183,6 @@ public class AuthorOperator extends Operator {
           return LIST_USER_PRIVILEGE;
         case 14:
           return LIST_ROLE_PRIVILEGE;
-        case 15:
-          return LIST_USER_ROLES;
-        case 16:
-          return LIST_ROLE_USERS;
         default:
           return null;
       }
@@ -213,13 +207,13 @@ public class AuthorOperator extends Operator {
           return 4;
         case GRANT_USER:
           return 5;
-        case GRANT_ROLE_TO_USER:
+        case GRANT_USER_ROLE:
           return 6;
         case REVOKE_USER:
           return 7;
         case REVOKE_ROLE:
           return 8;
-        case REVOKE_ROLE_FROM_USER:
+        case REVOKE_USER_ROLE:
           return 9;
         case UPDATE_USER:
           return 10;
@@ -231,10 +225,6 @@ public class AuthorOperator extends Operator {
           return 13;
         case LIST_ROLE_PRIVILEGE:
           return 14;
-        case LIST_USER_ROLES:
-          return 15;
-        case LIST_ROLE_USERS:
-          return 16;
         default:
           return -1;
       }

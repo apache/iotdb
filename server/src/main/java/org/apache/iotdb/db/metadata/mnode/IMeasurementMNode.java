@@ -69,4 +69,8 @@ public interface IMeasurementMNode extends IMNode {
       TSEncoding encoding,
       CompressionType compressionType,
       Map<String, String> props);
+
+  boolean isPreDeleted();
+
+  void setPreDeleted(boolean preDeleted);
 }

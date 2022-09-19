@@ -20,10 +20,11 @@
 package org.apache.iotdb.metrics.type;
 
 public interface Histogram extends IMetric {
+
   /** update histogram by value */
   void update(long value);
 
-  /** get value of histogram */
+  /** get the value of histogram */
   long count();
 
   /** take snapshot of histogram */

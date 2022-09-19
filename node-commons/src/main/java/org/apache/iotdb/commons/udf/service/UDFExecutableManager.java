@@ -20,104 +20,19 @@
 package org.apache.iotdb.commons.udf.service;
 
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-
-import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
-public class UDFExecutableManager implements IService, SnapshotProcessor {
-
-  private final String temporaryLibRoot;
-  private final String udfLibRoot;
-
-  private final AtomicLong requestCounter;
+public class UDFExecutableManager extends ExecutableManager implements IService, SnapshotProcessor {
 
   private UDFExecutableManager(String temporaryLibRoot, String udfLibRoot) {
-    this.temporaryLibRoot = temporaryLibRoot;
-    this.udfLibRoot = udfLibRoot;
-
-    requestCounter = new AtomicLong(0);
-  }
-
-  public UDFExecutableResource request(List<String> uris) throws URISyntaxException, IOException {
-    final long requestId = generateNextRequestId();
-    downloadExecutables(uris, requestId);
-    return new UDFExecutableResource(requestId, getDirStringByRequestId(requestId));
-  }
-
-  public void moveToExtLibDir(UDFExecutableResource resource, String functionName)
-      throws IOException {
-    FileUtils.moveDirectory(
-        getDirByRequestId(resource.getRequestId()), getDirByFunctionName(functionName));
-  }
-
-  public void removeFromTemporaryLibRoot(UDFExecutableResource resource) {
-    removeFromTemporaryLibRoot(resource.getRequestId());
-  }
-
-  public void removeFromExtLibDir(String functionName) {
-    FileUtils.deleteQuietly(getDirByFunctionName(functionName));
-  }
-
-  private synchronized long generateNextRequestId() throws IOException {
-    long requestId = requestCounter.getAndIncrement();
-    while (FileUtils.isDirectory(getDirByRequestId(requestId))) {
-      requestId = requestCounter.getAndIncrement();
-    }
-    FileUtils.forceMkdir(getDirByRequestId(requestId));
-    return requestId;
-  }
-
-  private void downloadExecutables(List<String> uris, long requestId)
-      throws IOException, URISyntaxException {
-    // TODO: para download
-    try {
-      for (String uriString : uris) {
-        final URL url = new URI(uriString).toURL();
-        final String fileName = uriString.substring(uriString.lastIndexOf("/") + 1);
-        final String destination =
-            temporaryLibRoot + File.separator + requestId + File.separator + fileName;
-        FileUtils.copyURLToFile(url, FSFactoryProducer.getFSFactory().getFile(destination));
-      }
-    } catch (Exception e) {
-      removeFromTemporaryLibRoot(requestId);
-      throw e;
-    }
-  }
-
-  private void removeFromTemporaryLibRoot(long requestId) {
-    FileUtils.deleteQuietly(getDirByRequestId(requestId));
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // dir string and dir file generation
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public File getDirByRequestId(long requestId) {
-    return FSFactoryProducer.getFSFactory().getFile(getDirStringByRequestId(requestId));
-  }
-
-  public String getDirStringByRequestId(long requestId) {
-    return temporaryLibRoot + File.separator + requestId + File.separator;
-  }
-
-  public File getDirByFunctionName(String functionName) {
-    return FSFactoryProducer.getFSFactory().getFile(getDirStringByFunctionName(functionName));
-  }
-
-  public String getDirStringByFunctionName(String functionName) {
-    return udfLibRoot + File.separator + functionName + File.separator;
+    super(temporaryLibRoot, udfLibRoot);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -127,8 +42,8 @@ public class UDFExecutableManager implements IService, SnapshotProcessor {
   @Override
   public void start() throws StartupException {
     try {
-      makeDirIfNecessary(temporaryLibRoot);
-      makeDirIfNecessary(udfLibRoot);
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(temporaryLibRoot);
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot);
     } catch (Exception e) {
       throw new StartupException(e);
     }
@@ -158,14 +73,6 @@ public class UDFExecutableManager implements IService, SnapshotProcessor {
     return INSTANCE;
   }
 
-  private static void makeDirIfNecessary(String dir) throws IOException {
-    File file = SystemFileFactory.INSTANCE.getFile(dir);
-    if (file.exists() && file.isDirectory()) {
-      return;
-    }
-    FileUtils.forceMkdir(file);
-  }
-
   public static UDFExecutableManager getInstance() {
     return INSTANCE;
   }
@@ -180,7 +87,7 @@ public class UDFExecutableManager implements IService, SnapshotProcessor {
             temporaryLibRoot,
             snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "temporary")
         && SnapshotUtils.takeSnapshotForDir(
-            udfLibRoot,
+            libRoot,
             snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "udf");
   }
 
@@ -190,7 +97,6 @@ public class UDFExecutableManager implements IService, SnapshotProcessor {
         snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "temporary",
         temporaryLibRoot);
     SnapshotUtils.loadSnapshotForDir(
-        snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "udf",
-        udfLibRoot);
+        snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "udf", libRoot);
   }
 }

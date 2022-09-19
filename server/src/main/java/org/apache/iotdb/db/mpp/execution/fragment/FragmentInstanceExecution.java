@@ -22,9 +22,9 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
+import org.apache.iotdb.db.utils.SetThreadName;
 
 import com.google.common.collect.ImmutableList;
-import io.airlift.concurrent.SetThreadName;
 import io.airlift.stats.CounterStat;
 
 import static java.util.Objects.requireNonNull;
@@ -87,14 +87,6 @@ public class FragmentInstanceExecution {
   public FragmentInstanceInfo getInstanceInfo() {
     return new FragmentInstanceInfo(
         stateMachine.getState(), context.getEndTime(), context.getFailedCause());
-  }
-
-  public void cancel() {
-    stateMachine.cancel();
-  }
-
-  public void abort() {
-    stateMachine.abort();
   }
 
   // this is a separate method to ensure that the `this` reference is not leaked during construction

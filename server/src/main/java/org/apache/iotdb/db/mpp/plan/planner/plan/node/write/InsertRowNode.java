@@ -139,6 +139,15 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     return dataTypes;
   }
 
+  @Override
+  public TSDataType getDataType(int index) {
+    if (isNeedInferType) {
+      return TypeInferenceUtils.getPredictedDataType(values[index], true);
+    } else {
+      return dataTypes[index];
+    }
+  }
+
   public Object[] getValues() {
     return values;
   }
@@ -653,9 +662,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
     measurements = new String[measurementSize];
     measurementSchemas = new MeasurementSchema[measurementSize];
+    dataTypes = new TSDataType[measurementSize];
     deserializeMeasurementSchemas(stream);
 
-    dataTypes = new TSDataType[measurementSize];
     values = new Object[measurementSize];
     fillDataTypesAndValuesFromWAL(stream);
 

@@ -64,6 +64,26 @@ public class ExternalPipeSink implements PipeSink {
   }
 
   @Override
+  public void setAttribute(Map<String, String> params) throws PipeSinkException {
+    String regex = "^'|'$|^\"|\"$";
+    sinkParams =
+        params.entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    Map.Entry::getKey,
+                    e -> e.getValue().trim().replaceAll(regex, ""),
+                    (key1, key2) -> key2));
+
+    try {
+      ExtPipePluginRegister.getInstance()
+          .getWriteFactory(extPipeSinkTypeName)
+          .validateSinkParams(sinkParams);
+    } catch (Exception e) {
+      throw new PipeSinkException(e.getMessage());
+    }
+  }
+
+  @Override
   public String getPipeSinkName() {
     return pipeSinkName;
   }

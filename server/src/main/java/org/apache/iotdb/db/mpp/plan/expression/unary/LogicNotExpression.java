@@ -19,17 +19,12 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.unary;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.LogicNotTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 
 import java.nio.ByteBuffer;
 
@@ -44,24 +39,8 @@ public class LogicNotExpression extends UnaryExpression {
   }
 
   @Override
-  protected Transformer constructTransformer(LayerPointReader pointReader) {
-    return new LogicNotTransformer(pointReader);
-  }
-
-  @Override
   protected Expression constructExpression(Expression childExpression) {
     return new LogicNotExpression(childExpression);
-  }
-
-  @Override
-  public TSDataType inferTypes(TypeProvider typeProvider) throws SemanticException {
-    final String expressionString = toString();
-    if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      Expression.checkInputExpressionDataType(
-          expression.toString(), expression.inferTypes(typeProvider), TSDataType.BOOLEAN);
-      typeProvider.setType(expressionString, TSDataType.BOOLEAN);
-    }
-    return TSDataType.BOOLEAN;
   }
 
   @Override
@@ -76,5 +55,10 @@ public class LogicNotExpression extends UnaryExpression {
   @Override
   public ExpressionType getExpressionType() {
     return ExpressionType.LOGIC_NOT;
+  }
+
+  @Override
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitLogicNotExpression(this, context);
   }
 }

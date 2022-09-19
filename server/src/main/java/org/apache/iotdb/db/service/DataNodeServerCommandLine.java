@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.ServerCommandLine;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStopCheck;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -65,7 +67,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
   }
 
   @Override
-  protected int run(String[] args) {
+  protected int run(String[] args) throws Exception {
     if (args.length < 1) {
       usage(null);
       return -1;
@@ -90,7 +92,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
 
     // we start IoTDB kernel first. then we start the cluster module.
     if (MODE_START.equals(mode)) {
-      dataNode.doAddNode(args);
+      dataNode.doAddNode();
     } else if (MODE_REMOVE.equals(mode)) {
       doRemoveNode(args);
     } else {
@@ -104,17 +106,14 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
    *
    * @param args IPs for removed datanodes, split with ','
    */
-  private void doRemoveNode(String[] args) {
-    try {
-      removePrepare(args);
-      removeNodesFromCluster(args);
-      removeTail();
-    } catch (Exception e) {
-      logger.error("remove Data Nodes error", e);
-    }
+  private void doRemoveNode(String[] args) throws Exception {
+    // throw all exception to ServerCommandLine, it used System.exit
+    removePrepare(args);
+    removeNodesFromCluster(args);
+    removeTail();
   }
 
-  private void removePrepare(String[] args) throws BadNodeUrlException {
+  private void removePrepare(String[] args) throws BadNodeUrlException, TException {
     ConfigNodeInfo.getInstance()
         .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getTargetConfigNodeList());
     try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
@@ -137,18 +136,15 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
               .map(TEndPoint::getIp)
               .collect(Collectors.toList());
       IoTDBStopCheck.getInstance().checkIpInCluster(removedDataNodeIps, onlineDataNodeIps);
-    } catch (TException e) {
-      logger.error("remove Data Nodes check failed", e);
     }
   }
 
-  private void removeNodesFromCluster(String[] args) throws BadNodeUrlException {
+  private void removeNodesFromCluster(String[] args)
+      throws BadNodeUrlException, TException, IoTDBException {
     logger.info("start to remove DataNode from cluster");
     List<TDataNodeLocation> dataNodeLocations = buildDataNodeLocations(args[1]);
     if (dataNodeLocations.isEmpty()) {
-      logger.error("data nodes location is empty");
-      // throw Exception OR return?
-      return;
+      throw new BadNodeUrlException("build DataNode location is empty");
     }
     logger.info(
         "there has data nodes location will be removed. size is: {}, detail: {}",
@@ -158,8 +154,15 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
       TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
       logger.info("Remove result {} ", removeResp.toString());
-    } catch (TException e) {
-      logger.error("send remove Data Node request failed!", e);
+      if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBException(
+            removeResp.getStatus().toString(), removeResp.getStatus().getCode());
+      }
+      logger.info(
+          "Submit remove datanode request successfully, "
+              + "more details are shown in the logs of confignode-leader and removed-datanode, "
+              + "and after the process of remove-datanode is over, "
+              + "you are supposed to delete directory and data of the removed-datanode manually");
     }
   }
 
@@ -191,7 +194,10 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     if (endPoints.size() != dataNodeLocations.size()) {
       logger.error(
           "build DataNode locations error, "
-              + "because number of input ip NOT EQUALS the number of fetched DataNodeLocations, will return empty locations");
+              + "because number of input DataNode({}) NOT EQUALS the number of fetched DataNodeLocations({}), will return empty locations",
+          endPoints.size(),
+          dataNodeLocations.size());
+      dataNodeLocations.clear();
       return dataNodeLocations;
     }
 

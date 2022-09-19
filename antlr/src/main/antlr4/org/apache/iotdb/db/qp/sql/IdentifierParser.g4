@@ -75,6 +75,7 @@ keyWords
     | EVERY
     | EXPLAIN
     | FILL
+    | FILE
     | FLUSH
     | FOR
     | FROM
@@ -84,6 +85,7 @@ keyWords
     | GLOBAL
     | GRANT
     | GROUP
+    | HAVING
     | INDEX
     | INFO
     | INSERT
@@ -115,7 +117,6 @@ keyWords
     | PATHS
     | PIPE
     | PIPES
-    | PIPESERVER
     | PIPESINK
     | PIPESINKS
     | PIPESINKTYPE
@@ -127,6 +128,7 @@ keyWords
     | PRUNE
     | QUERIES
     | QUERY
+    | RUNNING
     | READONLY
     | REGEXP
     | REGIONS
@@ -146,6 +148,8 @@ keyWords
     | SOFFSET
     | STORAGE
     | START
+    | STATEFUL
+    | STATELESS
     | STOP
     | SYSTEM
     | TAGS
@@ -165,6 +169,7 @@ keyWords
     | UNSET
     | UPDATE
     | UPSERT
+    | URI
     | USER
     | USING
     | VALUES
@@ -173,6 +178,5 @@ keyWords
     | WHERE
     | WITH
     | WITHOUT
-    | WRITABLE
     | PRIVILEGE_VALUE
     ;

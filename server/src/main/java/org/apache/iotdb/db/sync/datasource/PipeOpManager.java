@@ -20,6 +20,9 @@
 
 package org.apache.iotdb.db.sync.datasource;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.sync.externalpipe.operation.Operation;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 
@@ -46,9 +49,17 @@ public class PipeOpManager {
   /** ConcurrentHashMap: SG => PipeSGManager (DataIndex => OperatorBlock) */
   private Map<String, PipeOpSgManager> pipeSgManagerMap = new ConcurrentHashMap<>();
 
+  // save current in-use and not-committed filePipeSerialNumber
   private TreeSet<Long> filePipeSerialNumberSet = new TreeSet<>();
   // == record the maximum filePipeSerialNumber ever existing in filePipeSerialNumberSet.
   private Long maxFilePipeSerialNumber = Long.MIN_VALUE;
+
+  @FunctionalInterface
+  public interface NewDataEventHandler {
+    void handle(String sgName, long newDataBeginIndex, long newDataCount);
+  }
+  // Used to notify consumers that new data arrived.
+  private NewDataEventHandler newDataEventHandler = null;
 
   public PipeOpManager(TsFilePipe filePipe) {
     this.filePipe = filePipe;
@@ -59,41 +70,92 @@ public class PipeOpManager {
   }
 
   /**
-   * Append 1 dataSrcEntry to PipeSrcManager
+   * Append 1 data BlockEntry to pipeOpManager
    *
    * @param sgName
-   * @param dataSrcEntry
+   * @param opBlockEntry
    */
-  public void appendDataSrc(String sgName, AbstractOpBlock dataSrcEntry) {
+  public void appendOpBlock(String sgName, AbstractOpBlock opBlockEntry) {
+    // == record pipeDataSerialNumber for future commit
+    appendPipeDataSerialNumber(opBlockEntry.getPipeDataSerialNumber());
+
     PipeOpSgManager pipeOpSgManager = pipeSgManagerMap.get(sgName);
 
     if (pipeOpSgManager == null) {
       pipeOpSgManager = new PipeOpSgManager(sgName);
       pipeSgManagerMap.put(sgName, pipeOpSgManager);
     }
-    pipeOpSgManager.addPipeOpBlock(dataSrcEntry);
+
+    long newDataBeginIndex = pipeOpSgManager.getNextIndex();
+    long newDataCount = opBlockEntry.getDataCount();
+    pipeOpSgManager.addPipeOpBlock(opBlockEntry);
+
+    notifyNewDataArrive(sgName, newDataBeginIndex, newDataCount);
   }
 
-  public void appendTsFile(String sgName, String tsFilename, long pipeDataSerialNumber)
-      throws IOException {
-    File file = new File(tsFilename);
-    if (!file.exists()) {
-      logger.error("appendTsFile(), can not find TsFile: {}", tsFilename);
-      throw new IOException("No TsFile: " + tsFilename);
-    }
-
+  private void appendPipeDataSerialNumber(long pipeDataSerialNumber) {
     filePipeSerialNumberSet.add(pipeDataSerialNumber);
+
     if (pipeDataSerialNumber > maxFilePipeSerialNumber) {
       maxFilePipeSerialNumber = pipeDataSerialNumber;
     }
-
-    TsFileOpBlock tsfileDataSrcEntry = new TsFileOpBlock(sgName, tsFilename, pipeDataSerialNumber);
-    appendDataSrc(sgName, tsfileDataSrcEntry);
   }
 
   /**
-   * Use SG and index to get Operation from all data files (Tsfile/.modes etc.) 1 Operation contains
-   * multiple data.
+   * Add 1 TsFileOpBlock to PipeOpManager. *
+   *
+   * @param sgName
+   * @param tsFilename
+   * @param modsFileFullName
+   * @param pipeDataSerialNumber
+   * @throws IOException
+   */
+  public void appendTsFileOpBlock(
+      String sgName, String tsFilename, String modsFileFullName, long pipeDataSerialNumber)
+      throws IOException {
+    File file = new File(tsFilename);
+    if (!file.exists()) {
+      logger.error("appendTsFileOpBlock(), can not find TsFile: {}", tsFilename);
+      throw new IOException("No TsFile: " + tsFilename);
+    }
+
+    TsFileOpBlock tsFileOpBlock =
+        new TsFileOpBlock(sgName, tsFilename, modsFileFullName, pipeDataSerialNumber);
+    appendOpBlock(sgName, tsFileOpBlock);
+  }
+
+  /**
+   * Add 1 DeletionBlock to pipeOpSgManager.
+   *
+   * @param sgName - StorageGroup Name
+   * @param deletion
+   * @param pipeDataSerialNumber
+   */
+  public void appendDeletionOpBlock(String sgName, Deletion deletion, long pipeDataSerialNumber) {
+    // == check whether deletion path is valid
+    try {
+      if (!deletion.getPath().matchPrefixPath(new PartialPath(sgName))) {
+        return;
+      }
+    } catch (IllegalPathException e) {
+      logger.error("appendDeletionOpBlock(), error sgName {}", sgName, e);
+      return;
+    }
+
+    DeletionOpBlock deletionOpBlock =
+        new DeletionOpBlock(
+            sgName,
+            deletion.getPath(),
+            deletion.getStartTime(),
+            deletion.getEndTime(),
+            pipeDataSerialNumber);
+
+    appendOpBlock(sgName, deletionOpBlock);
+  }
+
+  /**
+   * Use SG and index to get Operation from all data files (Tsfile/.modes etc.). 1 Operation may
+   * contain multiple data points.
    *
    * @param sgName
    * @param index
@@ -104,11 +166,31 @@ public class PipeOpManager {
 
     PipeOpSgManager pipeOpSgManager = pipeSgManagerMap.get(sgName);
     if (pipeOpSgManager == null) {
-      logger.error("getOperation(), invalid sgName = {}. continue.", sgName);
+      logger.error("getOperation(), invalid sgName={}. continue.", sgName);
       return null;
     }
 
     return pipeOpSgManager.getOperation(index, length);
+  }
+
+  /**
+   * check whether this data commitIndex will cause committing 1 or more complete opBlock
+   *
+   * @param sgName
+   * @param commitIndex
+   * @return
+   * @throws IOException
+   */
+  public boolean opBlockNeedCommit(String sgName, long commitIndex) throws IOException {
+    logger.debug("opBlockNeedCommit(), sgName={}, commitIndex={}.", sgName, commitIndex);
+
+    PipeOpSgManager pipeOpSgManager = pipeSgManagerMap.get(sgName);
+    if (pipeOpSgManager == null) {
+      logger.error("opBlockNeedCommit(), invalid sgName={}. continue.", sgName);
+      return false;
+    }
+
+    return pipeOpSgManager.opBlockNeedCommit(commitIndex);
   }
 
   /**
@@ -146,12 +228,6 @@ public class PipeOpManager {
    *     in list can be discrete
    */
   private void commitFilePipe(List<Long> filePipeSerialNumberList) {
-    // In real product, filePipe will not be null.
-    // Only in test cases, filePipe can be null.
-    if (filePipe == null) { // only for test
-      return;
-    }
-
     if (filePipeSerialNumberList.size() <= 0) {
       return;
     }
@@ -162,11 +238,16 @@ public class PipeOpManager {
     }
 
     long minNum = filePipeSerialNumberSet.first();
-    long maxNum = filePipeSerialNumberSet.last();
     for (long filePipeSerialNumber : filePipeSerialNumberList) {
       if (!filePipeSerialNumberSet.remove(filePipeSerialNumber)) {
         logger.error("commitFilePipe(), invalid filePipeSerialNumber={}.", filePipeSerialNumber);
       }
+    }
+
+    // In real product, filePipe will not be null.
+    // Only in test cases, filePipe can be null.
+    if (filePipe == null) { // only for test
+      return;
     }
 
     if (filePipeSerialNumberSet.size() > 0) {
@@ -177,6 +258,25 @@ public class PipeOpManager {
     }
 
     filePipe.commit(maxFilePipeSerialNumber);
+  }
+
+  /**
+   * Get the number of in-using opBlocks in PipeOpManager. If return 0, means all FilePipes in
+   * PipeOpManager have been consumed.
+   *
+   * @return
+   */
+  public int getInUseOpBlockNum() {
+    return filePipeSerialNumberSet.size();
+  }
+
+  /**
+   * Check whether PipeOpManager has no data(OpBlocks)
+   *
+   * @return True - PipeOpManager has no Pipe data
+   */
+  public boolean isEmpty() {
+    return (filePipeSerialNumberSet.size() <= 0);
   }
 
   /**
@@ -201,6 +301,12 @@ public class PipeOpManager {
     commitFilePipe(filePipeSerialNumberList);
   }
 
+  /**
+   * Get the data index next to the last available data of StorageGroup
+   *
+   * @param sgName
+   * @return
+   */
   public long getNextIndex(String sgName) {
     PipeOpSgManager pipeOpSgManager = pipeSgManagerMap.get(sgName);
     if (pipeOpSgManager == null) {
@@ -209,6 +315,24 @@ public class PipeOpManager {
     }
 
     return pipeOpSgManager.getNextIndex();
+  }
+
+  /**
+   * Set NewDataEventHandler to get notification when new data arrive. This function is optionally
+   * used.
+   *
+   * @param newDataEventHandler
+   */
+  public void setNewDataEventHandler(NewDataEventHandler newDataEventHandler) {
+    this.newDataEventHandler = newDataEventHandler;
+  }
+
+  private void notifyNewDataArrive(String sgName, long newDataBeginIndex, long newDataCount) {
+    if (newDataEventHandler == null) {
+      return;
+    }
+
+    newDataEventHandler.handle(sgName, newDataBeginIndex, newDataCount);
   }
 
   /** release the resource of PipeSrcManager */

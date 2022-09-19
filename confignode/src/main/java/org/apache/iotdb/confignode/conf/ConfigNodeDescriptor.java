@@ -177,12 +177,6 @@ public class ConfigNodeDescriptor {
                   "rpc_advanced_compression_enable",
                   String.valueOf(conf.isRpcAdvancedCompressionEnable()))));
 
-      conf.setRpcThriftCompressionEnabled(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "rpc_thrift_compression_enable",
-                  String.valueOf(conf.isRpcThriftCompressionEnabled()))));
-
       conf.setRpcMaxConcurrentClientNum(
           Integer.parseInt(
               properties.getProperty(
@@ -198,17 +192,6 @@ public class ConfigNodeDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
-
-      conf.setConnectionTimeoutInMS(
-          Integer.parseInt(
-              properties.getProperty(
-                  "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
-
-      conf.setSelectorNumOfClientManager(
-          Integer.parseInt(
-              properties.getProperty(
-                  "selector_thread_nums_of_client_manager",
-                  String.valueOf(conf.getSelectorNumOfClientManager()))));
 
       conf.setSystemDir(properties.getProperty("system_dir", conf.getSystemDir()));
 
@@ -240,8 +223,8 @@ public class ConfigNodeDescriptor {
                   "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
 
       String routingPolicy = properties.getProperty("routing_policy", conf.getRoutingPolicy());
-      if (routingPolicy.equals(RouteBalancer.greedyPolicy)
-          || routingPolicy.equals(RouteBalancer.leaderPolicy)) {
+      if (routingPolicy.equals(RouteBalancer.GREEDY_POLICY)
+          || routingPolicy.equals(RouteBalancer.LEADER_POLICY)) {
         conf.setRoutingPolicy(routingPolicy);
       } else {
         throw new IOException(
@@ -283,6 +266,7 @@ public class ConfigNodeDescriptor {
                   "procedure_core_worker_thread_size",
                   String.valueOf(conf.getProcedureCoreWorkerThreadsSize()))));
 
+      loadRatisConsensusConfig(properties);
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
@@ -296,13 +280,23 @@ public class ConfigNodeDescriptor {
     }
   }
 
+  private void loadRatisConsensusConfig(Properties properties) {
+    conf.setRatisConsensusLogAppenderBufferSize(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_log_appender_buffer_size_max",
+                String.valueOf(conf.getRatisConsensusLogAppenderBufferSize()))));
+  }
+
   /**
    * Check if the current ConfigNode is SeedConfigNode.
    *
    * @return True if the target_config_nodes points to itself
    */
   public boolean isSeedConfigNode() {
-    return conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+    return (conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+            || (NodeUrlUtils.isLocalAddress(conf.getInternalAddress())
+                && NodeUrlUtils.isLocalAddress(conf.getTargetConfigNode().getIp())))
         && conf.getInternalPort() == conf.getTargetConfigNode().getPort();
   }
 

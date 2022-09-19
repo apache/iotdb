@@ -70,6 +70,10 @@ public interface BaseConfig {
     return this;
   }
 
+  default boolean isEnablePartition() {
+    return true;
+  }
+
   default BaseConfig setPartitionInterval(long partitionInterval) {
     return this;
   }
@@ -217,5 +221,13 @@ public interface BaseConfig {
 
   default String getDataRegionConsensusProtocolClass() {
     return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+  }
+
+  default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
+    return this;
+  }
+
+  default long getTimePartitionInterval() {
+    return 86400;
   }
 }

@@ -61,7 +61,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -133,7 +132,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowNodesInTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPathsSetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPathsUsingTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
@@ -142,7 +140,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -157,13 +154,8 @@ import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
-import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
-import org.apache.iotdb.db.sync.externalpipe.ExternalPipeStatus;
-import org.apache.iotdb.db.sync.receiver.ReceiverService;
-import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
-import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -236,10 +228,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_ATTRIB
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_NAME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_TYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_CREATE_TIME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_ERRORS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_MSG;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_NAME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_PERF_INFO;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_REMOTE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_ROLE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_STATUS;
@@ -441,10 +431,6 @@ public class PlanExecutor implements IPlanExecutor {
       case DROP_PIPESINK:
         dropPipeSink((DropPipeSinkPlan) plan);
         return true;
-      case START_PIPE_SERVER:
-        return operateStartPipeServer();
-      case STOP_PIPE_SERVER:
-        return operateStopPipeServer();
       case CREATE_PIPE:
         createPipe((CreatePipePlan) plan);
         return true;
@@ -630,7 +616,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateSetSystemMode(SetSystemModePlan plan) {
-    IoTDBDescriptor.getInstance().getConfig().setReadOnly(plan.isReadOnly());
+    CommonDescriptor.getInstance().getConfig().setNodeStatus(plan.getStatus());
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
@@ -791,17 +777,11 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowPipeSink((ShowPipeSinkPlan) showPlan);
       case PIPESINKTYPE:
         return processShowPipeSinkType();
-      case PIPESERVER:
-        return processShowPipeServer((ShowPipeServerPlan) showPlan);
       case PIPE:
         return processShowPipes((ShowPipePlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
-  }
-
-  private QueryDataSet processShowPipeServer(ShowPipeServerPlan plan) {
-    return ReceiverService.getInstance().showPipeServer(plan);
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
@@ -1324,7 +1304,7 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_PIPESINK_ATTRIBUTES, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
     boolean showAll = "".equals(plan.getPipeSinkName());
-    for (PipeSink pipeSink : SenderService.getInstance().getAllPipeSink()) {
+    for (PipeSink pipeSink : SyncService.getInstance().getAllPipeSink()) {
       if (showAll || plan.getPipeSinkName().equals(pipeSink.getPipeSinkName())) {
         RowRecord record = new RowRecord(0);
         record.addField(Binary.valueOf(pipeSink.getPipeSinkName()), TSDataType.TEXT);
@@ -1358,68 +1338,15 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_PIPE_ROLE, false),
                 new PartialPath(COLUMN_PIPE_REMOTE, false),
                 new PartialPath(COLUMN_PIPE_STATUS, false),
-                new PartialPath(COLUMN_PIPE_MSG, false),
-                new PartialPath(COLUMN_PIPE_ERRORS, false),
-                new PartialPath(COLUMN_PIPE_PERF_INFO, false)),
+                new PartialPath(COLUMN_PIPE_MSG, false)),
             Arrays.asList(
                 TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
-                TSDataType.TEXT,
-                TSDataType.TEXT,
                 TSDataType.TEXT));
-    boolean showAll = "".equals(plan.getPipeName());
-    for (Pipe pipe : SenderService.getInstance().getAllPipes()) {
-      if (showAll || plan.getPipeName().equals(pipe.getName())) {
-        RowRecord record = new RowRecord(0);
-        record.addField(
-            Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipe.getName()), TSDataType.TEXT);
-        record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipe.getPipeSink().getPipeSinkName()), TSDataType.TEXT);
-        if (pipe.getStatus().equals(Pipe.PipeStatus.RUNNING) && pipe.isDisconnected()) {
-          record.addField(
-              Binary.valueOf(pipe.getStatus().name() + "(DISCONNECTED)"), TSDataType.TEXT);
-        } else {
-          record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
-        }
-        record.addField(
-            Binary.valueOf(SenderService.getInstance().getPipeMsg(pipe)), TSDataType.TEXT);
-
-        boolean needSetFields = true;
-        if (pipe.getPipeSink().getType()
-            == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
-          ExtPipePluginManager extPipePluginManager =
-              SenderService.getInstance().getExternalPipeManager();
-
-          if (extPipePluginManager != null) {
-            String extPipeType = ((ExternalPipeSink) pipe.getPipeSink()).getExtPipeSinkTypeName();
-            ExternalPipeStatus externalPipeStatus =
-                extPipePluginManager.getExternalPipeStatus(extPipeType);
-
-            if (externalPipeStatus != null) {
-              record.addField(
-                  Binary.valueOf(externalPipeStatus.getWriterInvocationFailures().toString()),
-                  TSDataType.TEXT);
-              record.addField(
-                  Binary.valueOf(externalPipeStatus.getWriterStatuses().toString()),
-                  TSDataType.TEXT);
-              needSetFields = false;
-            }
-          }
-        }
-
-        if (needSetFields) {
-          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
-          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
-        }
-
-        listDataSet.putRecord(record);
-      }
-    }
-    ReceiverService.getInstance().showPipe(plan, listDataSet);
+    SyncService.getInstance().showPipe(plan, listDataSet);
     // sort by create time
     listDataSet.sort(Comparator.comparing(o -> o.getFields().get(0).getStringValue()));
     return listDataSet;
@@ -2042,7 +1969,7 @@ public class PlanExecutor implements IPlanExecutor {
             }
           }
           break;
-        case GRANT_ROLE_TO_USER:
+        case GRANT_USER_ROLE:
           authorizerManager.grantRoleToUser(roleName, userName);
           break;
         case REVOKE_USER:
@@ -2059,7 +1986,7 @@ public class PlanExecutor implements IPlanExecutor {
             }
           }
           break;
-        case REVOKE_ROLE_FROM_USER:
+        case REVOKE_USER_ROLE:
           authorizerManager.revokeRoleFromUser(roleName, userName);
           break;
         default:
@@ -2293,16 +2220,18 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       switch (authorType) {
         case LIST_ROLE:
-          dataSet = executeListRole(plan);
+          if (userName != null) {
+            dataSet = executeListUserRoles(userName);
+          } else {
+            dataSet = executeListRole(plan);
+          }
           break;
         case LIST_USER:
-          dataSet = executeListUser(plan);
-          break;
-        case LIST_ROLE_USERS:
-          dataSet = executeListRoleUsers(roleName);
-          break;
-        case LIST_USER_ROLES:
-          dataSet = executeListUserRoles(userName);
+          if (roleName != null) {
+            dataSet = executeListRoleUsers(roleName);
+          } else {
+            dataSet = executeListUser(plan);
+          }
           break;
         case LIST_ROLE_PRIVILEGE:
           dataSet = executeListRolePrivileges(roleName, nodeNameList);
@@ -2586,7 +2515,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void settle(SettlePlan plan) throws StorageEngineException {
-    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException(
           "Current system mode is read only, does not support file settle");
     }
@@ -2625,7 +2554,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void createPipeSink(CreatePipeSinkPlan plan) throws QueryProcessException {
     try {
-      SenderService.getInstance().addPipeSink(plan);
+      SyncService.getInstance().addPipeSink(plan);
     } catch (PipeSinkException e) {
       throw new QueryProcessException("Create pipeSink error.", e); // e will override the message
     } catch (IllegalArgumentException e) {
@@ -2636,7 +2565,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void dropPipeSink(DropPipeSinkPlan plan) throws QueryProcessException {
     try {
-      SenderService.getInstance().dropPipeSink(plan.getPipeSinkName());
+      SyncService.getInstance().dropPipeSink(plan.getPipeSinkName());
     } catch (PipeSinkException e) {
       throw new QueryProcessException("Can not drop pipeSink.", e);
     }
@@ -2644,7 +2573,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void createPipe(CreatePipePlan plan) throws QueryProcessException {
     try {
-      SenderService.getInstance().addPipe(plan);
+      SyncService.getInstance().addPipe(plan);
     } catch (PipeException e) {
       throw new QueryProcessException("Create pipe error.", e);
     }
@@ -2653,11 +2582,11 @@ public class PlanExecutor implements IPlanExecutor {
   private void operatePipe(OperatePipePlan plan) throws QueryProcessException {
     try {
       if (Operator.OperatorType.STOP_PIPE.equals(plan.getOperatorType())) {
-        SenderService.getInstance().stopPipe(plan.getPipeName());
+        SyncService.getInstance().stopPipe(plan.getPipeName());
       } else if (Operator.OperatorType.START_PIPE.equals(plan.getOperatorType())) {
-        SenderService.getInstance().startPipe(plan.getPipeName());
+        SyncService.getInstance().startPipe(plan.getPipeName());
       } else if (Operator.OperatorType.DROP_PIPE.equals(plan.getOperatorType())) {
-        SenderService.getInstance().dropPipe(plan.getPipeName());
+        SyncService.getInstance().dropPipe(plan.getPipeName());
       } else {
         throw new QueryProcessException(
             String.format("Error operator type %s.", plan.getOperatorType()),

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -44,9 +45,11 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
       Set<String> allSensors,
       OperatorContext context,
       List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
       Filter timeFilter,
       boolean ascending,
-      GroupByTimeParameter groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
     super(
         sourceId,
         context,
@@ -60,7 +63,9 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
             ascending),
         1,
         aggregators,
+        timeRangeIterator,
         ascending,
-        groupByTimeParameter);
+        groupByTimeParameter,
+        maxReturnSize);
   }
 }

@@ -316,7 +316,7 @@ public class ReadPointCompactionPerformer
       TsFileResource resource, TsFileSequenceReader reader, String device, String measurement)
       throws IllegalPathException, IOException {
     List<ChunkMetadata> chunkMetadata =
-        reader.getChunkMetadataList(new PartialPath(device, measurement));
+        reader.getChunkMetadataList(new PartialPath(device, measurement), true);
     if (chunkMetadata.size() > 0) {
       chunkMetadata.get(0).setFilePath(resource.getTsFilePath());
       Chunk chunk = ChunkCache.getInstance().get(chunkMetadata.get(0));

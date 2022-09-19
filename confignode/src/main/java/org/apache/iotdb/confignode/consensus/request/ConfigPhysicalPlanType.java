@@ -32,7 +32,7 @@ public enum ConfigPhysicalPlanType {
   GetStorageGroup,
   CountStorageGroup,
   CreateRegionGroups,
-  DeleteRegions,
+  DeleteRegionGroups,
   GetSchemaPartition,
   CreateSchemaPartition,
   GetOrCreateSchemaPartition,
@@ -57,7 +57,9 @@ public enum ConfigPhysicalPlanType {
   ListRole,
   ListUserPrivilege,
   ListRolePrivilege,
+  @Deprecated
   ListUserRoles,
+  @Deprecated
   ListRoleUsers,
   ApplyConfigNode,
   RemoveDataNode,

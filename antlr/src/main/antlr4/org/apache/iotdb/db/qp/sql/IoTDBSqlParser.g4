@@ -59,7 +59,6 @@ dclStatement
     : createUser | createRole | alterUser | grantUser | grantRole | grantRoleToUser
     | revokeUser |  revokeRole | revokeRoleFromUser | dropUser | dropRole
     | listUser | listRole | listPrivilegesUser | listPrivilegesRole
-    | listUserPrivileges | listRolePrivileges | listAllRoleOfUser | listAllUserOfRole
     ;
 
 utilityStatement
@@ -69,8 +68,7 @@ utilityStatement
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 syncStatement
-    : startPipeServer | stopPipeServer | showPipeServer
-    | createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
+    : createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
     | createPipe | showPipe | stopPipe | startPipe | dropPipe;
 
 /**
@@ -131,11 +129,19 @@ uri
 
 // Create Trigger
 createTrigger
-    : CREATE TRIGGER triggerName=identifier triggerEventClause ON fullPath AS className=STRING_LITERAL triggerAttributeClause?
+    : CREATE triggerType? TRIGGER triggerName=identifier triggerEventClause ON prefixPath AS className=STRING_LITERAL jarLocation? triggerAttributeClause?
+    ;
+
+triggerType
+    : STATELESS | STATEFUL
     ;
 
 triggerEventClause
-    : (BEFORE | AFTER) INSERT
+    : (BEFORE | AFTER) (INSERT | DELETE)
+    ;
+
+jarLocation
+    : USING ((FILE fileName=STRING_LITERAL) | URI uri)
     ;
 
 triggerAttributeClause
@@ -389,9 +395,9 @@ intoPath
 specialClause
     : specialLimit #specialLimitStatement
     | orderByClause specialLimit? #orderByTimeStatement
-    | groupByTimeClause orderByClause? specialLimit? #groupByTimeStatement
-    | groupByFillClause orderByClause? specialLimit? #groupByFillStatement
-    | groupByLevelClause orderByClause? specialLimit? #groupByLevelStatement
+    | groupByTimeClause havingClause? orderByClause? specialLimit? #groupByTimeStatement
+    | groupByFillClause havingClause? orderByClause? specialLimit? #groupByFillStatement
+    | groupByLevelClause havingClause? orderByClause? specialLimit? #groupByLevelStatement
     | fillClause orderByClause? specialLimit? #fillStatement
     ;
 
@@ -400,6 +406,10 @@ specialLimit
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
     | withoutNullClause limitClause? slimitClause? alignByDeviceClauseOrDisableAlign? #withoutNullStatement
     | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignStatement
+    ;
+
+havingClause
+    : HAVING expression
     ;
 
 alignByDeviceClauseOrDisableAlign
@@ -539,7 +549,7 @@ grantUser
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=identifier PRIVILEGES privileges ON prefixPath (COMMA prefixPath)*
+    : GRANT ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Grant User Role
@@ -554,7 +564,7 @@ revokeUser
 
 // Revoke Role Privileges
 revokeRole
-    : REVOKE ROLE roleName=identifier PRIVILEGES privileges ON prefixPath (COMMA prefixPath)*
+    : REVOKE ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Revoke Role From User
@@ -574,42 +584,22 @@ dropRole
 
 // List Users
 listUser
-    : LIST USER
+    : LIST USER (OF ROLE roleName=identifier)?
     ;
 
 // List Roles
 listRole
-    : LIST ROLE
+    : LIST ROLE (OF USER userName=usernameWithRoot)?
     ;
 
-// List Privileges
+// List Privileges of Users On Specific Path
 listPrivilegesUser
-    : LIST PRIVILEGES USER userName=usernameWithRoot ON prefixPath (COMMA prefixPath)*
+    : LIST PRIVILEGES USER userName=usernameWithRoot (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // List Privileges of Roles On Specific Path
 listPrivilegesRole
-    : LIST PRIVILEGES ROLE roleName=identifier ON prefixPath (COMMA prefixPath)*
-    ;
-
-// List Privileges of Users
-listUserPrivileges
-    : LIST USER PRIVILEGES userName=usernameWithRoot
-    ;
-
-// List Privileges of Roles
-listRolePrivileges
-    : LIST ROLE PRIVILEGES roleName=identifier
-    ;
-
-// List Roles of Users
-listAllRoleOfUser
-    : LIST ALL ROLE OF USER userName=usernameWithRoot
-    ;
-
-// List Users of Role
-listAllUserOfRole
-    : LIST ALL USER OF ROLE roleName=identifier
+    : LIST PRIVILEGES ROLE roleName=identifier (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 privileges
@@ -661,9 +651,9 @@ explain
     : EXPLAIN selectStatement
     ;
 
-// Set System To ReadOnly/Writable
+// Set System To readonly/running/error
 setSystemStatus
-    : SET SYSTEM TO (READONLY|WRITABLE)
+    : SET SYSTEM TO (READONLY|RUNNING) (ON (LOCAL | CLUSTER))?
     ;
 
 // Show Version
@@ -709,7 +699,7 @@ revokeWatermarkEmbedding
 
 // Load Configuration
 loadConfiguration
-    : LOAD CONFIGURATION (MINUS GLOBAL)?
+    : LOAD CONFIGURATION (MINUS GLOBAL)? (ON (LOCAL | CLUSTER))?
     ;
 
 // Load Timeseries
@@ -785,18 +775,6 @@ syncAttributeClauses
     : attributePair (COMMA attributePair)*
     ;
 
-// sync receiver
-startPipeServer
-    : START PIPESERVER
-    ;
-
-stopPipeServer
-    : STOP PIPESERVER
-    ;
-
-showPipeServer
-    : SHOW PIPESERVER
-    ;
 
 /**
  * 7. Common Clauses
@@ -863,7 +841,7 @@ realLiteral
 timeValue
     : datetimeLiteral
     | dateExpression
-    | INTEGER_LITERAL
+    | (PLUS | MINUS)? INTEGER_LITERAL
     ;
 
 // Expression & Predicate

@@ -28,34 +28,34 @@
 	    <th>release notes</th>  
 	  </tr>
       <tr>
-            <td rowspan="1">0.14.0-preview1</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.14.0-preview1/apache-iotdb-0.14.0-preview1-all-bin.zip">分布式</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.14.0-preview1/apache-iotdb-0.14.0-preview1-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.14.0-preview1/apache-iotdb-0.14.0-preview1-all-bin.zip.asc">ASC</a></td>
-            <td rowspan="1"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.14.0-preview1/apache-iotdb-0.14.0-preview1-source-release.zip">源代码</a></td>
-            <td rowspan="1"><a href="https://downloads.apache.org/iotdb/0.14.0-preview1/apache-iotdb-0.14.0-preview1-source-release.zip.sha512">SHA512</a></td>
-            <td rowspan="1"><a href="https://downloads.apache.org/iotdb/0.14.0-preview1/apache-iotdb-0.14.0-preview1-source-release.zip.asc">ASC</a></td>
+            <td rowspan="1">0.14.0-preview2</td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.14.0-preview2/apache-iotdb-0.14.0-preview2-all-bin.zip">分布式</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.14.0-preview2/apache-iotdb-0.14.0-preview2-all-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.14.0-preview2/apache-iotdb-0.14.0-preview2-all-bin.zip.asc">ASC</a></td>
+            <td rowspan="1"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.14.0-preview2/apache-iotdb-0.14.0-preview2-source-release.zip">源代码</a></td>
+            <td rowspan="1"><a href="https://downloads.apache.org/iotdb/0.14.0-preview2/apache-iotdb-0.14.0-preview2-source-release.zip.sha512">SHA512</a></td>
+            <td rowspan="1"><a href="https://downloads.apache.org/iotdb/0.14.0-preview2/apache-iotdb-0.14.0-preview2-source-release.zip.asc">ASC</a></td>
             <td rowspan="1"><a href="https://raw.githubusercontent.com/apache/iotdb/master/RELEASE_NOTES.md">release notes</a></td>
       </tr>
       <tr>
-            <td rowspan="3">0.13.1</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.1/apache-iotdb-0.13.1-all-bin.zip">All-in-one</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.1/apache-iotdb-0.13.1-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.1/apache-iotdb-0.13.1-all-bin.zip.asc">ASC</a></td>
-            <td rowspan="3"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.1/apache-iotdb-0.13.1-source-release.zip">源代码</a></td>
-            <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.1/apache-iotdb-0.13.1-source-release.zip.sha512">SHA512</a></td>
-            <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.1/apache-iotdb-0.13.1-source-release.zip.asc">ASC</a></td>
-            <td rowspan="3"><a href="https://raw.githubusercontent.com/apache/iotdb/v0.13.1/RELEASE_NOTES.md">release notes</a></td>
+            <td rowspan="3">0.13.2</td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.2/apache-iotdb-0.13.2-all-bin.zip">All-in-one</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.2/apache-iotdb-0.13.2-all-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.2/apache-iotdb-0.13.2-all-bin.zip.asc">ASC</a></td>
+            <td rowspan="3"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.2/apache-iotdb-0.13.2-source-release.zip">源代码</a></td>
+            <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.2/apache-iotdb-0.13.2-source-release.zip.sha512">SHA512</a></td>
+            <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.2/apache-iotdb-0.13.2-source-release.zip.asc">ASC</a></td>
+            <td rowspan="3"><a href="https://raw.githubusercontent.com/apache/iotdb/v0.13.2/RELEASE_NOTES.md">release notes</a></td>
       </tr>
       <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.1/apache-iotdb-0.13.1-grafana-plugin-bin.zip">Grafana 插件</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.1/apache-iotdb-0.13.1-grafana-plugin-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.1/apache-iotdb-0.13.1-grafana-plugin-bin.zip.asc">ASC</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.2/apache-iotdb-0.13.2-grafana-plugin-bin.zip">Grafana 插件</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.2/apache-iotdb-0.13.2-grafana-plugin-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.2/apache-iotdb-0.13.2-grafana-plugin-bin.zip.asc">ASC</a></td>
       </tr>
       <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.1/apache-iotdb-0.13.1-grafana-connector-bin.zip">Grafana 连接器</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.1/apache-iotdb-0.13.1-grafana-connector-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.1/apache-iotdb-0.13.1-grafana-connector-bin.zip.asc">ASC</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.2/apache-iotdb-0.13.2-grafana-connector-bin.zip">Grafana 连接器</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.2/apache-iotdb-0.13.2-grafana-connector-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.13.2/apache-iotdb-0.13.2-grafana-connector-bin.zip.asc">ASC</a></td>
       </tr>
       <tr>
             <td rowspan="4">0.12.6</td>
@@ -110,9 +110,9 @@
 - 如何从 v0.13.x 升级到 v0.14.x?
   
   - **0.14 版本进行了 SQL 语法约定的改动（请参考用户手册语法约定章节），不兼容之处如下：**
-    - **不使用反引号引用的标识符不允许为纯数字，不使用反引号引用的标识符，只允许包含字母、中文字符、下划线。如果标识符中出现上述情况，请使用反引号将标识符括起。**
+    - **不使用反引号引用的标识符不允许为实数，不使用反引号引用的标识符，只允许包含字母、中文字符、下划线。如果标识符中出现上述情况，请使用反引号将标识符括起。**
     - **标识符不再支持使用单引号和双引号进行引用，请统一改为使用反引号引用。**
-    - **Session 接口中使用路径结点名时，写法需要与 SQL 语句中的一致。如路径结点为纯数字111，在 SQL 语句中需要使用反引号括起，写作\`111\`, 那么使用 Session 接口时，相应参数也需要写作\`111\`。**
+    - **Session 接口中使用路径结点名时，写法需要与 SQL 语句中的一致。如路径结点为实数111，在 SQL 语句中需要使用反引号括起，写作\`111\`, 那么使用 Session 接口时，相应参数也需要写作\`111\`。**
   - 为了保证 UDF 相关 API 的稳定性，0.14 版本中 UDF 相关 API 被独立为一个单独的 module，不再依赖 tsfile 包，已经实现的 UDF 需要改写代码，将 `TsDataType` 替换为 `Type`，将 `org.apache.iotdb.tsfile.utils.Binary` 替换成 `org.apache.iotdb.udf.api.type.Binary`，并重新进行打包装载流程。
 
 # 如何升级
@@ -135,7 +135,7 @@
   * **0.13 进行了 SQL 语法的改动，不使用反引号括起的标识符中仅能包含如下字符，否则需要使用反引号括起。**
     * **[0-9 a-z A-Z _ : @ # $ { }] （字母，数字，部分特殊字符）**
     * **['\u2E80'..'\u9FFF'] （UNICODE 中文字符）**
-  * **0.13 中 `SELECT` 子句中路径结点名如果是纯数字，需要使用反引号引起，用于与表达式中的常数区分。如语句 "select 123 + \`123\` from root.sg"，前一个123表示常数，后一个 \`123\`会和 root.sg 拼接，表示路径 root.sg.\`123\`。**
+  * **0.13 中 `SELECT` 子句中路径结点名如果是实数，需要使用反引号引起，用于与表达式中的常数区分。如语句 "select 123 + \`123\` from root.sg"，前一个123表示常数，后一个 \`123\`会和 root.sg 拼接，表示路径 root.sg.\`123\`。**
   
 - 如何从 v0.11.x 或 v0.10.x 升级到 v0.12.x? 
   * 从 0.11 或 0.10 升级到 0.12 的过程与 v0.9 升级到 v0.10 类似，升级工具会自动进行数据文件的升级。

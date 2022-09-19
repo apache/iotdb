@@ -79,4 +79,7 @@ public interface ConsensusReqReader {
 
   /** Get current search index */
   long getCurrentSearchIndex();
+
+  /** Get total size of wal files */
+  long getTotalSize();
 }

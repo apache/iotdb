@@ -38,7 +38,7 @@ public class ConfigNodeStartupCheck {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
-  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   public void startUpCheck() throws StartupException, IOException, ConfigurationException {
     checkGlobalConfig();
@@ -52,60 +52,67 @@ public class ConfigNodeStartupCheck {
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to StandAlone,
     // the target_config_nodes needs to point to itself
-    if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
-        && (!conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
-            || conf.getInternalPort() != conf.getTargetConfigNode().getPort())) {
+    if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
+        && (!CONF.getInternalAddress().equals(CONF.getTargetConfigNode().getIp())
+            || CONF.getInternalPort() != CONF.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
           IoTDBConstant.TARGET_CONFIG_NODES,
-          conf.getTargetConfigNode().getIp() + ":" + conf.getTargetConfigNode().getPort(),
-          conf.getInternalAddress() + ":" + conf.getInternalPort());
+          CONF.getTargetConfigNode().getIp() + ":" + CONF.getTargetConfigNode().getPort(),
+          CONF.getInternalAddress() + ":" + CONF.getInternalPort());
     }
 
     // When the data region consensus protocol is set to StandAlone,
     // the data replication factor must be 1
-    if (conf.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
-        && conf.getDataReplicationFactor() != 1) {
+    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
+        && CONF.getDataReplicationFactor() != 1) {
       throw new ConfigurationException(
           "data_replication_factor",
-          String.valueOf(conf.getDataReplicationFactor()),
+          String.valueOf(CONF.getDataReplicationFactor()),
           String.valueOf(1));
     }
 
     // When the schema region consensus protocol is set to StandAlone,
     // the schema replication factor must be 1
-    if (conf.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
-        && conf.getSchemaReplicationFactor() != 1) {
+    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
+        && CONF.getSchemaReplicationFactor() != 1) {
       throw new ConfigurationException(
           "schema_replication_factor",
-          String.valueOf(conf.getSchemaReplicationFactor()),
+          String.valueOf(CONF.getSchemaReplicationFactor()),
           String.valueOf(1));
     }
 
     // When the schema region consensus protocol is set to MultiLeaderConsensus,
     // we should report an error
-    if (conf.getSchemaRegionConsensusProtocolClass()
+    if (CONF.getSchemaRegionConsensusProtocolClass()
         .equals(ConsensusFactory.MultiLeaderConsensus)) {
       throw new ConfigurationException(
           "schema_region_consensus_protocol_class",
-          String.valueOf(conf.getSchemaRegionConsensusProtocolClass()),
+          String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
           String.format(
               "%s or %s", ConsensusFactory.StandAloneConsensus, ConsensusFactory.RatisConsensus));
     }
 
-    if (!conf.getRoutingPolicy().equals(RouteBalancer.leaderPolicy)
-        && !conf.getRoutingPolicy().equals(RouteBalancer.greedyPolicy)) {
+    // The routing policy is limited
+    if (!CONF.getRoutingPolicy().equals(RouteBalancer.LEADER_POLICY)
+        && !CONF.getRoutingPolicy().equals(RouteBalancer.GREEDY_POLICY)) {
       throw new ConfigurationException(
-          "routing_policy", conf.getRoutingPolicy(), "leader or greedy");
+          "routing_policy", CONF.getRoutingPolicy(), "leader or greedy");
+    }
+
+    // The ip of target ConfigNode couldn't be 0.0.0.0
+    if (CONF.getTargetConfigNode().getIp().equals("0.0.0.0")) {
+      throw new ConfigurationException(
+          "The ip address of any target_config_nodes couldn't be 0.0.0.0");
     }
   }
 
   private void createDirsIfNecessary() throws IOException {
     // If systemDir does not exist, create systemDir
-    File systemDir = new File(conf.getSystemDir());
+    File systemDir = new File(CONF.getSystemDir());
     createDirIfEmpty(systemDir);
 
     // If consensusDir does not exist, create consensusDir
-    File consensusDir = new File(conf.getConsensusDir());
+    File consensusDir = new File(CONF.getConsensusDir());
     createDirIfEmpty(consensusDir);
   }
 

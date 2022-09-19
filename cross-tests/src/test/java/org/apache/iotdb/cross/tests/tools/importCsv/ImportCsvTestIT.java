@@ -309,7 +309,7 @@ public class ImportCsvTestIT extends AbstractScript {
       file.delete();
     }
     // check the failed file
-    List<CSVRecord> records = readCsvFile(CSV_FILE + ".failed").getRecords();
+    List<CSVRecord> records = readCsvFile(CSV_FILE + ".failed_0").getRecords();
     String[] realRecords = {
       "Time,root.fit.d1.s1(INT32),root.fit.d1.s2(TEXT),root.fit.d2.s1(INT32),root.fit.d2.s3(INT32),root.fit.p.s1(INT32)",
       "1,100,\"hello\",200,\"300\",400"

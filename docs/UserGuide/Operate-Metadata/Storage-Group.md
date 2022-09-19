@@ -39,7 +39,7 @@ Msg: 300: root.ln has already been set to storage group.
 IoTDB> create storage group root.ln.wf01
 Msg: 300: root.ln has already been set to storage group.
 ```
-The LayerName of storage group can only be characters, numbers, underscores and hyphens. 
+The LayerName of storage group can only be characters, numbers, underscores. If you want to set it to pure numbers or contain other characters, you need to enclose the storage group name with backticks (``). 
  
 Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
 
@@ -55,12 +55,12 @@ IoTDB> show storage group root.**
 The result is as follows:
 
 ```
-+-------------+
-|storage group|
-+-------------+
-|    root.sgcc|
-|      root.ln|
-+-------------+
++-------------+----+-------------------------+-----------------------+-----------------------+
+|storage group| ttl|schema_replication_factor|data_replication_factor|time_partition_interval|
++-------------+----+-------------------------+-----------------------+-----------------------+
+|    root.sgcc|null|                        2|                      2|                 604800|
+|      root.ln|null|                        2|                      2|                 604800|
++-------------+----+-------------------------+-----------------------+-----------------------+
 Total line number = 2
 It costs 0.060s
 ```

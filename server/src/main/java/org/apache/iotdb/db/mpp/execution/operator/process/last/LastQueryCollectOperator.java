@@ -85,4 +85,32 @@ public class LastQueryCollectOperator implements ProcessOperator {
   public boolean isFinished() {
     return !hasNext();
   }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    long maxPeekMemory = 0;
+    for (Operator child : children) {
+      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemory());
+      maxPeekMemory = Math.max(maxPeekMemory, child.calculateRetainedSizeAfterCallingNext());
+    }
+    return maxPeekMemory;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    long maxReturnMemory = 0;
+    for (Operator child : children) {
+      maxReturnMemory = Math.max(maxReturnMemory, child.calculateMaxReturnSize());
+    }
+    return maxReturnMemory;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long sum = 0;
+    for (Operator operator : children) {
+      sum += operator.calculateRetainedSizeAfterCallingNext();
+    }
+    return sum;
+  }
 }

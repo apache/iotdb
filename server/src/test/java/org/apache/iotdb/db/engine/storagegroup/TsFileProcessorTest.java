@@ -71,7 +71,8 @@ public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
   private String storageGroup = "root.vehicle";
-  private StorageGroupInfo sgInfo = new StorageGroupInfo(null);
+  private final String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
+  private StorageGroupInfo sgInfo;
   private String filePath = TestConstant.getTestTsFilePath("root.vehicle", 0, 0, 0);
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
@@ -82,12 +83,13 @@ public class TsFileProcessorTest {
   private static Logger logger = LoggerFactory.getLogger(TsFileProcessorTest.class);
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     File file = new File(filePath);
     if (!file.getParentFile().exists()) {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
     EnvironmentUtils.envSetUp();
+    sgInfo = new StorageGroupInfo(new DataRegionTest.DummyDataRegion(systemDir, storageGroup));
     MetadataManagerHelper.initMetadata();
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
   }

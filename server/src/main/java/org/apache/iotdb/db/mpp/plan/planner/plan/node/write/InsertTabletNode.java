@@ -236,25 +236,20 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       // generate a new times and values
       locs = entry.getValue();
       // Avoid using system arraycopy when there is no need to split
-      if (splitMap.size() == 1) {
+      if (splitMap.size() == 1 && locs.size() == 2) {
         setRange(locs);
         setDataRegionReplicaSet(entry.getKey());
         result.add(this);
         return result;
       }
-      int count = 0;
       for (int i = 0; i < locs.size(); i += 2) {
         int start = locs.get(i);
         int end = locs.get(i + 1);
-        count += end - start;
-      }
-      long[] subTimes = new long[count];
-      int destLoc = 0;
-      Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
-      BitMap[] bitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
-      for (int i = 0; i < locs.size(); i += 2) {
-        int start = locs.get(i);
-        int end = locs.get(i + 1);
+        int count = end - start;
+        long[] subTimes = new long[count];
+        int destLoc = 0;
+        Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
+        BitMap[] bitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
         System.arraycopy(times, start, subTimes, destLoc, end - start);
         for (int k = 0; k < values.length; k++) {
           System.arraycopy(columns[k], start, values[k], destLoc, end - start);
@@ -262,22 +257,21 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             BitMap.copyOfRange(this.bitMaps[k], start, bitMaps[k], destLoc, end - start);
           }
         }
-        destLoc += end - start;
+        InsertTabletNode subNode =
+            new InsertTabletNode(
+                getPlanNodeId(),
+                devicePath,
+                isAligned,
+                measurements,
+                dataTypes,
+                subTimes,
+                bitMaps,
+                values,
+                subTimes.length);
+        subNode.setRange(locs);
+        subNode.setDataRegionReplicaSet(entry.getKey());
+        result.add(subNode);
       }
-      InsertTabletNode subNode =
-          new InsertTabletNode(
-              getPlanNodeId(),
-              devicePath,
-              isAligned,
-              measurements,
-              dataTypes,
-              subTimes,
-              bitMaps,
-              values,
-              subTimes.length);
-      subNode.setRange(locs);
-      subNode.setDataRegionReplicaSet(entry.getKey());
-      result.add(subNode);
     }
     return result;
   }
@@ -916,13 +910,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     int measurementSize = stream.readInt();
     measurements = new String[measurementSize];
     measurementSchemas = new MeasurementSchema[measurementSize];
-    deserializeMeasurementSchemas(stream);
-
-    // data types are serialized in measurement schemas
     dataTypes = new TSDataType[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      dataTypes[i] = measurementSchemas[i].getType();
-    }
+    deserializeMeasurementSchemas(stream);
 
     rowCount = stream.readInt();
     times = new long[rowCount];

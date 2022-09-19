@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.client.async.handlers;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.heartbeat.RegionGroupCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.RegionHeartbeatSample;
@@ -36,12 +35,12 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   // Update DataNodeHeartbeatCache when success
   private final TDataNodeLocation dataNodeLocation;
   private final DataNodeHeartbeatCache dataNodeHeartbeatCache;
-  private final Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap;
+  private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
 
   public DataNodeHeartbeatHandler(
       TDataNodeLocation dataNodeLocation,
       DataNodeHeartbeatCache dataNodeHeartbeatCache,
-      Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap) {
+      Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap) {
     this.dataNodeLocation = dataNodeLocation;
     this.dataNodeHeartbeatCache = dataNodeHeartbeatCache;
     this.regionGroupCacheMap = regionGroupCacheMap;
@@ -53,7 +52,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
 
     // Update NodeCache
     dataNodeHeartbeatCache.cacheHeartbeatSample(
-        new NodeHeartbeatSample(heartbeatResp.getHeartbeatTimestamp(), receiveTime));
+        new NodeHeartbeatSample(heartbeatResp, receiveTime));
 
     // Update RegionCache
     if (heartbeatResp.isSetJudgedLeaders()) {

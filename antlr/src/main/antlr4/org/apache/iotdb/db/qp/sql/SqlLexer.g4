@@ -219,6 +219,10 @@ FILL
     : F I L L
     ;
 
+FILE
+    : F I L E
+    ;
+
 FLUSH
     : F L U S H
     ;
@@ -253,6 +257,10 @@ GRANT
 
 GROUP
     : G R O U P
+    ;
+
+HAVING
+    : H A V I N G
     ;
 
 INDEX
@@ -379,10 +387,6 @@ PIPES
     : P I P E S
     ;
 
-PIPESERVER
-    : P I P E S E R V E R
-    ;
-
 PIPESINK
     : P I P E S I N K
     ;
@@ -425,6 +429,10 @@ QUERIES
 
 QUERY
     : Q U E R Y
+    ;
+
+RUNNING
+    : R U N N I N G
     ;
 
 READONLY
@@ -505,6 +513,14 @@ STORAGE
 
 START
     : S T A R T
+    ;
+
+STATELESS
+    : S T A T E L E S S
+    ;
+
+STATEFUL
+    : S T A T E F U L
     ;
 
 STOP
@@ -593,6 +609,10 @@ UPSERT
 
 SETTYPE
     : S E T T Y P E
+    ;
+
+URI
+    : U R I
     ;
 
 USER
@@ -949,15 +969,15 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | '""' | ~('"') )* '"'
+    : '"' ( '""' | ~('"') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\'. | '\'\'' |~('\'') )* '\''
+    : '\'' ( '\'\'' | ~('\'') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\' ~('`') | '``' | ~('`') )* '`'
+    : '`' ( '``' | ~('`') )* '`'
     ;
 
 

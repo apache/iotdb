@@ -77,6 +77,10 @@ public class DataRegionConsensusImpl {
                                           conf.getThriftServerAwaitTimeForStopService())
                                       .setThriftMaxFrameSize(conf.getThriftMaxFrameSize())
                                       .build())
+                              .setReplication(
+                                  MultiLeaderConfig.Replication.newBuilder()
+                                      .setWalThrottleThreshold(conf.getThrottleThreshold())
+                                      .build())
                               .build())
                       .setRatisConfig(
                           RatisConfig.newBuilder()
@@ -84,6 +88,11 @@ public class DataRegionConsensusImpl {
                               // written. This setting ensures that compaction work is not discarded
                               // even if there are frequent restarts
                               .setSnapshot(Snapshot.newBuilder().setCreationGap(1).build())
+                              .setLeaderLogAppender(
+                                  RatisConfig.LeaderLogAppender.newBuilder()
+                                      .setBufferByteLimit(
+                                          conf.getRatisConsensusLogAppenderBufferSizeMax())
+                                      .build())
                               .build())
                       .build(),
                   gid ->
