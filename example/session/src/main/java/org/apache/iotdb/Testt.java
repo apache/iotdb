@@ -21,10 +21,13 @@ package org.apache.iotdb;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.util.Version;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Testt {
   public static void main(String[] args) throws Exception {
-//    insert();
-    query();
+    insert();
+    //    query();
   }
 
   private static void query() throws Exception {
@@ -58,31 +61,38 @@ public class Testt {
     session.open(false);
     // set session fetchSize
     session.setFetchSize(10000);
-    for (int i = 0; i < 500; i++) {
-      for (int j = 0; j < 400; j++) {
-        session.executeNonQueryStatement(
-            String.format("insert into root.sg1.d%d(timestamp,s%d) values(1,1.0);", i, j));
-        session.executeNonQueryStatement(
-            String.format("insert into root.sg1.d%d(timestamp,s%d) values(2,2.0);", i, j));
-        session.executeNonQueryStatement(
-            String.format("insert into root.sg1.d%d(timestamp,s%d) values(3,3.0);", i, j));
+    List<String> measurements = new ArrayList<>();
+    for (int j = 0; j < 400; j++) {
+      measurements.add("s" + j);
+    }
+    for (int i = 0; i < 50; i++) {
+      System.out.println(i);
+      for (int k = 0; k < 100; k++) {
+        List<String> values = new ArrayList<>();
+        for (int j = 0; j < 400; j++) {
+          values.add("" + k);
+        }
+        session.insertRecord("root.sg1.d" + i, k, measurements, values);
       }
     }
     session.executeNonQueryStatement("flush;");
-    for (int i = 0; i < 500; i++) {
-      for (int j = 0; j < 400; j++) {
-        session.executeNonQueryStatement(
-            String.format("insert into root.sg1.d%d(timestamp,s%d) values(4,4.0);", i, j));
-        session.executeNonQueryStatement(
-            String.format("insert into root.sg1.d%d(timestamp,s%d) values(5,5.0);", i, j));
-        session.executeNonQueryStatement(
-            String.format("insert into root.sg1.d%d(timestamp,s%d) values(6,6.0);", i, j));
+    for (int i = 0; i < 50; i++) {
+      System.out.println(i);
+      for (int k = 100; k < 200; k++) {
+        List<String> values = new ArrayList<>();
+        for (int j = 0; j < 400; j++) {
+          values.add("" + k);
+        }
+        session.insertRecord("root.sg1.d" + i, k, measurements, values);
       }
     }
     session.executeNonQueryStatement("flush;");
     for (int j = 0; j < 400; j++) {
-      session.executeNonQueryStatement(
-          String.format("delete from root.*.*.s%d where time>2 and time<5;", j));
+      for (int k = 50; k < 150; k += 3) {
+        String sql =
+            String.format("delete from root.*.*.s%d where time>=%d and time<=%d;", j, k, (k + 2));
+        session.executeNonQueryStatement(sql);
+      }
     }
     session.close();
   }

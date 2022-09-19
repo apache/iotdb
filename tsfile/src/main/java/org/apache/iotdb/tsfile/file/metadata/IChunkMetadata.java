@@ -69,8 +69,6 @@ public interface IChunkMetadata {
 
   void insertIntoSortedDeletions(long startTime, long endTime);
 
-  void insertIntoSortedDeletions(TimeRange timeRange);
-
   List<TimeRange> getDeleteIntervalList();
 
   int serializeTo(OutputStream outputStream, boolean serializeStatistic) throws IOException;

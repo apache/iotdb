@@ -34,6 +34,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
 
 /** Metadata of one chunk. */
 public class ChunkMetadata implements IChunkMetadata {
@@ -53,8 +55,8 @@ public class ChunkMetadata implements IChunkMetadata {
    */
   private long version;
 
-  /** A list of deleted intervals. */
-  private List<TimeRange> deleteIntervalList;
+  /** A set of deleted intervals. */
+  private TreeSet<TimeRange> deleteIntervalSet;
 
   private boolean modified;
 
@@ -107,7 +109,7 @@ public class ChunkMetadata implements IChunkMetadata {
   public String toString() {
     return String.format(
         "measurementId: %s, datatype: %s, version: %d, Statistics: %s, deleteIntervalList: %s, filePath: %s",
-        measurementUid, tsDataType, version, statistics, deleteIntervalList, filePath);
+        measurementUid, tsDataType, version, statistics, deleteIntervalSet, filePath);
   }
 
   public long getNumOfPoints() {
@@ -197,43 +199,30 @@ public class ChunkMetadata implements IChunkMetadata {
   }
 
   public List<TimeRange> getDeleteIntervalList() {
-    return deleteIntervalList;
-  }
-
-  public void setDeleteIntervalList(List<TimeRange> list) {
-    this.deleteIntervalList = list;
+    return deleteIntervalSet==null?null:new ArrayList<>(deleteIntervalSet);
   }
 
   public void insertIntoSortedDeletions(long startTime, long endTime) {
-//    List<TimeRange> resultInterval = new ArrayList<>();
-//    if (deleteIntervalList != null) {
-//      for (TimeRange interval : deleteIntervalList) {
-//        if (interval.getMax() < startTime) {
-//          resultInterval.add(interval);
-//        } else if (interval.getMin() > endTime) {
-//          resultInterval.add(new TimeRange(startTime, endTime));
-//          startTime = interval.getMin();
-//          endTime = interval.getMax();
-//        } else if (interval.getMax() >= startTime || interval.getMin() <= endTime) {
-//          startTime = Math.min(interval.getMin(), startTime);
-//          endTime = Math.max(interval.getMax(), endTime);
-//        }
-//      }
-//    }
-//
-//    resultInterval.add(new TimeRange(startTime, endTime));
-//    deleteIntervalList = resultInterval;
-    if (deleteIntervalList == null) {
-      deleteIntervalList = new ArrayList<>();
-    }
-    deleteIntervalList.add(new TimeRange(startTime,endTime));
-  }
+    TimeRange timeRange = new TimeRange(startTime,endTime);
 
-  public void insertIntoSortedDeletions(TimeRange timeRange) {
-    if (deleteIntervalList == null) {
-      deleteIntervalList = new ArrayList<>();
+    if (deleteIntervalSet != null) {
+      TimeRange interval = deleteIntervalSet.floor(timeRange);
+      while (interval!=null&&timeRange.intersects(interval)){
+        timeRange.merge(interval);
+        deleteIntervalSet.remove(interval);
+        interval = deleteIntervalSet.floor(timeRange);
+      }
+      interval = deleteIntervalSet.ceiling(timeRange);
+      while (interval!=null&&timeRange.intersects(interval)){
+        timeRange.merge(interval);
+        deleteIntervalSet.remove(interval);
+        interval = deleteIntervalSet.ceiling(timeRange);
+      }
+    }else{
+      deleteIntervalSet = new TreeSet<>();
     }
-    deleteIntervalList.add(timeRange);
+
+    deleteIntervalSet.add(timeRange);
   }
 
   public IChunkLoader getChunkLoader() {

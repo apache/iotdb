@@ -19,18 +19,15 @@
 
 package org.apache.iotdb.db.query.context;
 
-import com.sun.org.apache.xpath.internal.operations.Mod;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
-import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
-import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory.TimeRangeSerializer;
+import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory.ModsSerializer;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,7 +35,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
@@ -54,10 +50,9 @@ public class QueryContext {
    * use this field because each call of Modification.getModifications() return a copy of the
    * Modifications, and we do not want it to create multiple copies within a query.
    */
-      private final Map<String, PatternTreeMap<TimeRange, TimeRangeSerializer>> fileModCache = new HashMap<>();
 //  private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
 //      new HashMap<>();
-  //  private final Map<String, List<Modification>> fileModCache = new HashMap<>();
+    private final Map<String, List<Modification>> fileModCache = new HashMap<>();
 
   protected long queryId;
 
@@ -96,39 +91,10 @@ public class QueryContext {
     QueryTimeManager.getInstance().registerQuery(this);
   }
 
-  public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
-    // if the mods file does not exist, do not add it to the cache
-    if (!modFile.exists()) {
-      return Collections.emptyList();
-    }
-    Map<String, List<Modification>> fileModifications =
-            filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
-    return fileModifications.computeIfAbsent(
-            path.getFullPath(),
-            k -> {
-              PatternTreeMap<TimeRange, TimeRangeSerializer> allModifications = fileModCache.get(modFile.getFilePath());
-              if (allModifications == null) {
-                allModifications = PatternTreeMapFactory.getModsPatternTreeMap2();
-                for (Modification modification : modFile.getModifications()) {
-                  if (modification instanceof Deletion) {
-                    Deletion deletion = (Deletion) modification;
-                    allModifications.append(
-                            modification.getPath(),
-                            new TimeRange(deletion.getStartTime(), deletion.getEndTime()));
-                  }
-                }
-                fileModCache.put(modFile.getFilePath(), allModifications);
-              }
-              return allModifications.getOverlapped(path).stream()
-                      .map(i -> new Deletion(path, i.getMin(), i.getMax()))
-                      .collect(Collectors.toList());
-            });
-  }
-//
-//  /**
-//   * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
-//   * them from 'modFile' and put then into the cache.
-//   */
+  /**
+   * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
+   * them from 'modFile' and put then into the cache.
+   */
 //  public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
 //    // if the mods file does not exist, do not add it to the cache
 //    if (!modFile.exists()) {
@@ -151,10 +117,33 @@ public class QueryContext {
 //          return allModifications.getOverlapped(path);
 //        });
 //  }
-//  /**
-//   * Find the modifications of all aligned 'paths' in 'modFile'. If they are not in the cache, read
-//   * them from 'modFile' and put then into the cache.
-//   */
+  public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
+    // if the mods file does not exist, do not add it to the cache
+    if (!modFile.exists()) {
+      return Collections.emptyList();
+    }
+    Map<String, List<Modification>> fileModifications =
+            filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
+    return fileModifications.computeIfAbsent(
+            path.getFullPath(),
+            k -> {
+              List<Modification> allModifications = fileModCache.get(modFile.getFilePath());
+              if (allModifications == null) {
+                allModifications = (List<Modification>) modFile.getModifications();
+                fileModCache.put(modFile.getFilePath(), allModifications);
+              }
+              List<Modification> finalPathModifications = new ArrayList<>();
+              if (!allModifications.isEmpty()) {
+                allModifications.forEach(
+                        modification -> {
+                          if (modification.getPath().matchFullPath(path)) {
+                            finalPathModifications.add(modification);
+                          }
+                        });
+              }
+              return finalPathModifications;
+            });
+  }
 
   public List<List<Modification>> getPathModifications(ModificationFile modFile, AlignedPath path) {
     int n = path.getMeasurementList().size();
@@ -246,7 +235,7 @@ public class QueryContext {
     for (int i = 0; i < 500; i++) {
       queryContext.getPathModifications(
           new ModificationFile(
-              "/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/data/data/sequence/root.sg1/0/0/1663075238609-1-0-0.tsfile.mods"),
+              "/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/data/data/sequence/root.sg1/0/0/1663587784487-1-0-0.tsfile.mods"),
           new PartialPath(String.format("root.sg1.d%d.s1", i)));
     }
     long time2 = System.currentTimeMillis();
