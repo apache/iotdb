@@ -141,6 +141,11 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     return currentDevice;
   }
 
+  /**
+   * Get all measurements and schemas of the current device from source files. Traverse all the
+   * files from the newest to the oldest in turn and start traversing the index tree from the
+   * firstMeasurementNode node to get all the measurements under the current device.
+   */
   public Map<String, MeasurementSchema> getAllMeasurementSchemas() throws IOException {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file

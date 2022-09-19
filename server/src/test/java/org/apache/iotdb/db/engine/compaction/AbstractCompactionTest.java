@@ -341,15 +341,6 @@ public class AbstractCompactionTest {
     }
   }
 
-  protected void deleteTimeseriesInMManager(
-      int deviceIndex, int measurementIndex, boolean isAligned) throws MetadataException {
-    int offset = isAligned ? TsFileGeneratorUtils.getAlignDeviceOffset() : 0;
-    IoTDB.schemaProcessor.deleteTimeseries(
-        new PartialPath(
-            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + (deviceIndex + offset),
-            "s" + measurementIndex));
-  }
-
   protected void deleteTimeseriesInMManager(List<String> timeseries) throws MetadataException {
     for (String path : timeseries) {
       IoTDB.schemaProcessor.deleteTimeseries(new PartialPath(path));
