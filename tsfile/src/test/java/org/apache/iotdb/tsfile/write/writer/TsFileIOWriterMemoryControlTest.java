@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -156,7 +155,6 @@ public class TsFileIOWriterMemoryControlTest {
         originChunkMetadataList.addAll(writer.chunkMetadataList);
         writer.endChunkGroup();
       }
-      Map<Path, List<IChunkMetadata>> originChunkMetadata = writer.groupChunkMetadataListBySeries();
       writer.sortAndFlushChunkMetadata();
       writer.tempOutput.flush();
 

@@ -34,7 +34,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -47,12 +46,12 @@ import java.util.TreeMap;
  */
 public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
   private static Logger LOG = LoggerFactory.getLogger(TSMIterator.class);
-  protected Map<Path, List<IChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
-  protected List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList = new ArrayList<>();
+  protected List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList;
   protected Iterator<Pair<Path, List<IChunkMetadata>>> iterator;
 
   protected TSMIterator(List<ChunkGroupMetadata> chunkGroupMetadataList) {
-    this.groupChunkMetadataListBySeries(chunkGroupMetadataList);
+    this.sortedChunkMetadataList = sortChunkMetadata(chunkGroupMetadataList);
+    this.iterator = sortedChunkMetadataList.iterator();
   }
 
   public static TSMIterator getTSMIteratorInMemory(
@@ -84,36 +83,6 @@ public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
     }
   }
 
-  protected void groupChunkMetadataListBySeries(List<ChunkGroupMetadata> chunkGroupMetadataList) {
-    Map<Path, List<IChunkMetadata>> chunkMetadataListBySeries = new TreeMap<>();
-    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-      for (IChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
-        chunkMetadataListBySeries
-            .computeIfAbsent(
-                new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid()),
-                x -> new ArrayList<>())
-            .add(chunkMetadata);
-      }
-    }
-    // group ChunkMetadata by device
-    Map<String, Map<Path, List<IChunkMetadata>>> deviceChunkMetadataListMap = new LinkedHashMap<>();
-    for (Map.Entry<Path, List<IChunkMetadata>> entry : chunkMetadataListBySeries.entrySet()) {
-      deviceChunkMetadataListMap
-          .computeIfAbsent(entry.getKey().getDevice(), x -> new TreeMap<>())
-          .put(entry.getKey(), entry.getValue());
-    }
-    for (Map.Entry<String, Map<Path, List<IChunkMetadata>>> entry :
-        deviceChunkMetadataListMap.entrySet()) {
-      Map<Path, List<IChunkMetadata>> pathChunkMetadataMapInOneDevice = entry.getValue();
-      for (Map.Entry<Path, List<IChunkMetadata>> pathAndChunkMetadataList :
-          pathChunkMetadataMapInOneDevice.entrySet()) {
-        sortedChunkMetadataList.add(
-            new Pair<>(pathAndChunkMetadataList.getKey(), pathAndChunkMetadataList.getValue()));
-      }
-    }
-    this.iterator = sortedChunkMetadataList.iterator();
-  }
-
   protected TimeseriesMetadata constructOneTimeseriesMetadata(
       String measurementId, List<IChunkMetadata> chunkMetadataList) throws IOException {
     // create TimeseriesMetaData
@@ -142,5 +111,31 @@ public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
             seriesStatistics,
             publicBAOS);
     return timeseriesMetadata;
+  }
+
+  public static List<Pair<Path, List<IChunkMetadata>>> sortChunkMetadata(
+      List<ChunkGroupMetadata> chunkGroupMetadataList) {
+    Map<String, Map<Path, List<IChunkMetadata>>> chunkMetadataMap = new TreeMap<>();
+    List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList = new LinkedList<>();
+    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
+      chunkMetadataMap.computeIfAbsent(chunkGroupMetadata.getDevice(), x -> new TreeMap<>());
+      for (IChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+        chunkMetadataMap
+            .get(chunkGroupMetadata.getDevice())
+            .computeIfAbsent(
+                new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid()),
+                x -> new ArrayList<>())
+            .add(chunkMetadata);
+      }
+    }
+    for (Map.Entry<String, Map<Path, List<IChunkMetadata>>> entry : chunkMetadataMap.entrySet()) {
+      Map<Path, List<IChunkMetadata>> seriesChunkMetadataMap = entry.getValue();
+      for (Map.Entry<Path, List<IChunkMetadata>> seriesChunkMetadataEntry :
+          seriesChunkMetadataMap.entrySet()) {
+        sortedChunkMetadataList.add(
+            new Pair<>(seriesChunkMetadataEntry.getKey(), seriesChunkMetadataEntry.getValue()));
+      }
+    }
+    return sortedChunkMetadataList;
   }
 }

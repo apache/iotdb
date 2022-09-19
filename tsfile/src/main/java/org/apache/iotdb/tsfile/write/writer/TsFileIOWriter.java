@@ -290,27 +290,6 @@ public class TsFileIOWriter implements AutoCloseable {
     currentChunkMetadata = null;
   }
 
-  protected Map<Path, List<IChunkMetadata>> groupChunkMetadataListBySeries() {
-    // group ChunkMetadata by series
-    Map<Path, List<IChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
-
-    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-      List<ChunkMetadata> chunkMetadatas = chunkGroupMetadata.getChunkMetadataList();
-      for (IChunkMetadata chunkMetadata : chunkMetadatas) {
-        Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
-        chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
-      }
-    }
-
-    if (chunkMetadataList != null && chunkMetadataList.size() > 0) {
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        Path series = new Path(currentChunkGroupDeviceId, chunkMetadata.getMeasurementUid());
-        chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
-      }
-    }
-    return chunkMetadataListMap;
-  }
-
   /**
    * write {@linkplain TsFileMetadata TSFileMetaData} to output stream and close it.
    *
@@ -615,20 +594,21 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   protected void sortAndFlushChunkMetadata() throws IOException {
     // group by series
-    Map<Path, List<IChunkMetadata>> chunkMetadataListMap = groupChunkMetadataListBySeries();
+    List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadatList =
+        TSMIterator.sortChunkMetadata(chunkGroupMetadataList);
     if (tempOutput == null) {
       tempOutput = new LocalTsFileOutput(new FileOutputStream(chunkMetadataTempFile));
     }
     hasChunkMetadataInDisk = true;
     // the file structure in temp file will be
     // chunkSize | chunkBuffer
-    for (Map.Entry<Path, List<IChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
-      Path seriesPath = entry.getKey();
+    for (Pair<Path, List<IChunkMetadata>> pair : sortedChunkMetadatList) {
+      Path seriesPath = pair.left;
       if (!seriesPath.equals(lastSerializePath)) {
         // record the count of path to construct bloom filter later
         pathCount++;
       }
-      List<IChunkMetadata> iChunkMetadataList = entry.getValue();
+      List<IChunkMetadata> iChunkMetadataList = pair.right;
       writeChunkMetadataToTempFile(iChunkMetadataList, seriesPath, tempOutput);
       lastSerializePath = seriesPath;
       logger.debug("Flushing {}", seriesPath);
