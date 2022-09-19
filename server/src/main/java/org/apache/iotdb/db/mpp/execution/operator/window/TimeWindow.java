@@ -59,11 +59,6 @@ public class TimeWindow implements IWindow {
   }
 
   @Override
-  public boolean isTimeWindow() {
-    return true;
-  }
-
-  @Override
   public void mergeOnePoint() {
     // do nothing
   }

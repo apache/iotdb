@@ -89,6 +89,9 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     }
 
     updateResultTsBlock();
+    // Step into next window
+    windowManager.next();
+
     return true;
   }
 
@@ -133,8 +136,6 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   @Override
   protected void updateResultTsBlock() {
     appendAggregationResult(resultTsBlockBuilder, aggregators, windowManager.currentOutputTime());
-    // Step into next window
-    windowManager.next();
   }
 
   private boolean skipPreviousWindowAndInitCurWindow() {

@@ -42,9 +42,6 @@ public interface IWindow {
    */
   boolean satisfy(Column column, int index);
 
-  /** @return whether it is time window */
-  boolean isTimeWindow();
-
   /**
    * When we merge a point into window, at this time, we can use this method to change the status in
    * this window
