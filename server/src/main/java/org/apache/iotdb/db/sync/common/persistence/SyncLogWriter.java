@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -40,20 +39,16 @@ import java.io.IOException;
 public class SyncLogWriter {
   // record pipe meta info
   private BufferedWriter pipeInfoWriter;
-  // record pipe message
-  private BufferedWriter pipeMsgWriter;
 
   private SyncLogWriter() {}
 
   public void getBufferedWriter() throws IOException {
-    if (pipeInfoWriter == null || pipeMsgWriter == null) {
+    if (pipeInfoWriter == null) {
       File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_LOG_NAME);
-      File msgFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_MSG_LOG_NAME);
       if (!logFile.getParentFile().exists()) {
         logFile.getParentFile().mkdirs();
       }
       pipeInfoWriter = new BufferedWriter(new FileWriter(logFile, true));
-      pipeMsgWriter = new BufferedWriter(new FileWriter(msgFile, true));
     }
   }
 
@@ -119,29 +114,10 @@ public class SyncLogWriter {
     pipeInfoWriter.flush();
   }
 
-  public void writePipeMsg(String pipeIdentifier, PipeMessage pipeMessage) throws IOException {
-    getBufferedWriter();
-    pipeMsgWriter.write(
-        String.format("%s,%s,%s", pipeIdentifier, pipeMessage.getType(), pipeMessage.getMsg()));
-    pipeMsgWriter.newLine();
-    pipeMsgWriter.flush();
-  }
-
-  public void comsumePipeMsg(String pipeIdentifier) throws IOException {
-    getBufferedWriter();
-    pipeMsgWriter.write(String.format("%s,read", pipeIdentifier));
-    pipeMsgWriter.newLine();
-    pipeMsgWriter.flush();
-  }
-
   public void close() throws IOException {
     if (pipeInfoWriter != null) {
       pipeInfoWriter.close();
       pipeInfoWriter = null;
-    }
-    if (pipeMsgWriter != null) {
-      pipeMsgWriter.close();
-      pipeMsgWriter = null;
     }
   }
 

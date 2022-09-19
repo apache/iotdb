@@ -16,43 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender.pipe;
+package org.apache.iotdb.db.metadata.path;
 
-public class PipeMessage {
-  private final String message;
-  private final PipeMessageType type;
+import org.apache.iotdb.commons.path.PathPatternNode.StringSerializer;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 
-  public PipeMessage(PipeMessageType type, String message) {
-    this.type = type;
-    this.message = message;
-  }
+import java.util.HashSet;
 
-  public String getMessage() {
-    return message;
-  }
-
-  public PipeMessageType getType() {
-    return type;
-  }
-
-  @Override
-  public String toString() {
-    return "PipeMessage{" + "message='" + message + '\'' + ", type=" + type + '}';
-  }
-
-  public enum PipeMessageType {
-    NORMAL(1),
-    WARN(2),
-    ERROR(3);
-
-    private int value;
-
-    PipeMessageType(int value) {
-      this.value = value;
-    }
-
-    public int getValue() {
-      return value;
-    }
+public class PatternTreeMapFactory {
+  public static PatternTreeMap<String, StringSerializer> getTriggerPatternTreeMap() {
+    return new PatternTreeMap<>(
+        HashSet::new,
+        (triggerName, set) -> set.add(triggerName),
+        (triggerName, set) -> set.remove(triggerName),
+        StringSerializer.getInstance());
   }
 }
