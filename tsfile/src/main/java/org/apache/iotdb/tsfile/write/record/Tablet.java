@@ -368,7 +368,12 @@ public class Tablet {
   private void writeMeasurementSchemas(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(schemas.size(), stream);
     for (MeasurementSchema schema : schemas) {
-      schema.serializeTo(stream);
+      if (schema == null) {
+        ReadWriteIOUtils.write(BytesUtils.boolToByte(false), stream);
+      } else {
+        ReadWriteIOUtils.write(BytesUtils.boolToByte(true), stream);
+        schema.serializeTo(stream);
+      }
     }
   }
 
@@ -393,7 +398,7 @@ public class Tablet {
     }
   }
 
-  /** Serialize values, ignoring failed time series */
+  /** Serialize values */
   private void writeValues(DataOutputStream stream) throws IOException {
     for (int i = 0; i < values.length; i++) {
       serializeColumn(schemas.get(i).getType(), values[i], stream);
@@ -454,7 +459,10 @@ public class Tablet {
     int schemaSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<MeasurementSchema> schemas = new ArrayList<>();
     for (int i = 0; i < schemaSize; i++) {
-      schemas.add(MeasurementSchema.deserializeFrom(byteBuffer));
+      boolean hasSchema = BytesUtils.byteToBool(byteBuffer.get());
+      if (hasSchema) {
+        schemas.add(MeasurementSchema.deserializeFrom(byteBuffer));
+      }
     }
 
     // deserialize times

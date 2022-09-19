@@ -71,10 +71,39 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   public TriggerFireResult visitInsertRow(InsertRowNode node, TriggerEvent context) {
     String device = node.getDevicePath().getFullPath();
     String[] measurements = node.getMeasurements();
-    Map<String, List<String>> triggerNameToPaths = constructTriggerNameToPathListMap(node);
+    Map<String, List<String>> triggerNameToMeasurementList =
+        constructTriggerNameToMeasurementListMap(node);
     MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
+    // return success if no trigger is found
+    if (triggerNameToMeasurementList.isEmpty()) {
+      return TriggerFireResult.SUCCESS;
+    }
+    Map<String, Integer> measurementToSchemaIndexMap =
+        constructMeasurementToSchemaIndexMap(measurements, measurementSchemas);
 
-    return TriggerFireResult.SUCCESS;
+    Object[] values = node.getValues();
+    long time = node.getTime();
+    boolean hasFailedTrigger = false;
+    for (Map.Entry<String, List<String>> entry : triggerNameToMeasurementList.entrySet()) {
+      List<MeasurementSchema> schemas =
+          entry.getValue().stream()
+              .map(measurement -> measurementSchemas[measurementToSchemaIndexMap.get(measurement)])
+              .collect(Collectors.toList());
+      Tablet tablet = new Tablet(device, schemas);
+      tablet.addTimestamp(0, time);
+      for (String measurement : entry.getValue()) {
+        tablet.addValue(measurement, 0, values[measurementToSchemaIndexMap.get(measurement)]);
+      }
+      TriggerFireResult result = fire(entry.getKey(), tablet, context);
+      // Terminate if a trigger with pessimistic strategy messes up
+      if (result.equals(TriggerFireResult.TERMINATION)) {
+        return result;
+      }
+      if (result.equals(TriggerFireResult.FAILED_NO_TERMINATION)) {
+        hasFailedTrigger = true;
+      }
+    }
+    return hasFailedTrigger ? TriggerFireResult.FAILED_NO_TERMINATION : TriggerFireResult.SUCCESS;
   }
 
   @Override
@@ -82,8 +111,13 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     String device = node.getDevicePath().getFullPath();
     String[] measurements = node.getMeasurements();
     MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
-    // group Triggers and FullPaths
-    Map<String, List<String>> triggerNameToPaths = constructTriggerNameToPathListMap(node);
+    // group Triggers and measurements
+    Map<String, List<String>> triggerNameToMeasurementList =
+        constructTriggerNameToMeasurementListMap(node);
+    // return success if no trigger is found
+    if (triggerNameToMeasurementList.isEmpty()) {
+      return TriggerFireResult.SUCCESS;
+    }
     Map<String, Integer> measurementToSchemaIndexMap =
         constructMeasurementToSchemaIndexMap(measurements, measurementSchemas);
 
@@ -91,18 +125,18 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     BitMap[] bitMaps = node.getBitMaps();
     long[] timestamps = node.getTimes();
     boolean hasFailedTrigger = false;
-    for (Map.Entry<String, List<String>> entry : triggerNameToPaths.entrySet()) {
+    for (Map.Entry<String, List<String>> entry : triggerNameToMeasurementList.entrySet()) {
       List<MeasurementSchema> schemas =
           entry.getValue().stream()
-              .map(fullPath -> measurementSchemas[measurementToSchemaIndexMap.get(fullPath)])
+              .map(measurement -> measurementSchemas[measurementToSchemaIndexMap.get(measurement)])
               .collect(Collectors.toList());
       Object[] columnsOfNewTablet =
           entry.getValue().stream()
-              .map(fullPath -> columns[measurementToSchemaIndexMap.get(fullPath)])
+              .map(measurement -> columns[measurementToSchemaIndexMap.get(measurement)])
               .toArray();
       BitMap[] bitMapsOfNewTablet =
           entry.getValue().stream()
-              .map(fullPath -> bitMaps[measurementToSchemaIndexMap.get(fullPath)])
+              .map(measurement -> bitMaps[measurementToSchemaIndexMap.get(measurement)])
               .toArray(BitMap[]::new);
       Tablet tablet =
           new Tablet(
@@ -126,7 +160,17 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   @Override
   public TriggerFireResult visitInsertRows(InsertRowsNode node, TriggerEvent context) {
-    return TriggerFireResult.SUCCESS;
+    boolean hasFailedTrigger = false;
+    for (InsertRowNode insertRowNode : node.getInsertRowNodeList()) {
+      TriggerFireResult result = visitInsertRow(insertRowNode, context);
+      if (result.equals(TriggerFireResult.TERMINATION)) {
+        return result;
+      }
+      if (result.equals(TriggerFireResult.FAILED_NO_TERMINATION)) {
+        hasFailedTrigger = true;
+      }
+    }
+    return hasFailedTrigger ? TriggerFireResult.FAILED_NO_TERMINATION : TriggerFireResult.SUCCESS;
   }
 
   @Override
@@ -148,7 +192,17 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   @Override
   public TriggerFireResult visitInsertRowsOfOneDevice(
       InsertRowsOfOneDeviceNode node, TriggerEvent context) {
-    return TriggerFireResult.SUCCESS;
+    boolean hasFailedTrigger = false;
+    for (InsertRowNode insertRowNode : node.getInsertRowNodeList()) {
+      TriggerFireResult result = visitInsertRow(insertRowNode, context);
+      if (result.equals(TriggerFireResult.TERMINATION)) {
+        return result;
+      }
+      if (result.equals(TriggerFireResult.FAILED_NO_TERMINATION)) {
+        hasFailedTrigger = true;
+      }
+    }
+    return hasFailedTrigger ? TriggerFireResult.FAILED_NO_TERMINATION : TriggerFireResult.SUCCESS;
   }
 
   private Map<String, Integer> constructMeasurementToSchemaIndexMap(
@@ -157,13 +211,16 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     // However, in case one day the order changes, we need to construct an index map.
     Map<String, Integer> indexMap = new HashMap<>();
     for (int i = 0, n = measurements.length; i < n; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
       // It is the same now
-      if (schemas[i].getMeasurementId().equals(measurements[i])) {
+      if (schemas[i] != null && schemas[i].getMeasurementId().equals(measurements[i])) {
         indexMap.put(measurements[i], i);
         continue;
       }
       for (int j = 0, m = schemas.length; j < m; j++) {
-        if (schemas[j].getMeasurementId().equals(measurements[i])) {
+        if (schemas[j] != null && schemas[j].getMeasurementId().equals(measurements[i])) {
           indexMap.put(measurements[i], j);
           break;
         }
@@ -172,14 +229,16 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     return indexMap;
   }
 
-  private Map<String, List<String>> constructTriggerNameToPathListMap(InsertNode node) {
+  private Map<String, List<String>> constructTriggerNameToMeasurementListMap(InsertNode node) {
     PartialPath device = node.getDevicePath();
     String[] measurements = node.getMeasurements();
     Map<String, List<String>> triggerNameToPaths = new HashMap<>();
     for (String measurement : measurements) {
-      List<String> triggerList = getMatchedTriggerListForPath(device.concatNode(measurement));
-      for (String trigger : triggerList) {
-        triggerNameToPaths.computeIfAbsent(trigger, k -> new ArrayList<>()).add(measurement);
+      if (measurement != null) {
+        List<String> triggerList = getMatchedTriggerListForPath(device.concatNode(measurement));
+        for (String trigger : triggerList) {
+          triggerNameToPaths.computeIfAbsent(trigger, k -> new ArrayList<>()).add(measurement);
+        }
       }
     }
     return triggerNameToPaths;
