@@ -130,7 +130,7 @@ public class EncodeAnalysePage {
     anchorPane.getChildren().add(pageDataPane);
     TableColumn<String, String> typeNameCol =
         baseTableView.genColumn(
-            TableAlign.CENTER, "typeName", "typeName", "EncodeCompressAnalyseTable");
+            TableAlign.CENTER_LEFT, "typeName", "typeName", "EncodeCompressAnalyseTable");
     TableColumn<String, String> encodeNameCol =
         baseTableView.genColumn(
             TableAlign.CENTER_LEFT, "encodeName", "encodeName", "EncodeCompressAnalyseTable");
