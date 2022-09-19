@@ -186,7 +186,10 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
         LOGGER.info(
             "[rewriteTimeseries] {} rewriteDataInTsFile {} end, fileNum:{}/{}, fileSize:{}",
             logKey,
-            tsFileResource.getTsFilePath(), i+1, size, tsFileResource.getTsFileSize());
+            tsFileResource.getTsFilePath(),
+            i + 1,
+            size,
+            tsFileResource.getTsFileSize());
       }
     } catch (Exception e) {
       LOGGER.error("[rewriteTimeseries] " + logKey + " error", e);
@@ -202,14 +205,15 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     }
   }
 
-  private void rewriteDataInTsFile(TsFileResource tsFileResource) throws IOException, StorageEngineException, InterruptedException, MetadataException {
+  private void rewriteDataInTsFile(TsFileResource tsFileResource)
+      throws IOException, StorageEngineException, InterruptedException, MetadataException {
 
-    if(LOGGER.isDebugEnabled()) {
+    if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-              "[rewriteTimeseries] {} rewriteDataInTsFile:{}, fileSize:{} start",
-              logKey,
-              tsFileResource.getTsFilePath(),
-              tsFileResource.getTsFileSize());
+          "[rewriteTimeseries] {} rewriteDataInTsFile:{}, fileSize:{} start",
+          logKey,
+          tsFileResource.getTsFilePath(),
+          tsFileResource.getTsFileSize());
     }
     // Generate the target tsFileResource
     TsFileResource targetTsFileResource =
@@ -219,14 +223,14 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     this.performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
     this.performer.setSummary(this.summary);
     this.performer.perform();
-    boolean hasRewrite = ((TsFileRewriteExcutor)this.performer).hasRewrite();
-    if(!hasRewrite) {
+    boolean hasRewrite = ((TsFileRewriteExcutor) this.performer).hasRewrite();
+    if (!hasRewrite) {
       CompactionUtils.deleteTsFileWithoutMods(targetTsFileResource);
-      if(LOGGER.isDebugEnabled()) {
+      if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-                "[rewriteTimeseries] {} tsFile:{} does not need to be rewrite",
-                logKey,
-                tsFileResource.getTsFileSize());
+            "[rewriteTimeseries] {} tsFile:{} does not need to be rewrite",
+            logKey,
+            tsFileResource.getTsFileSize());
       }
 
       return;
@@ -289,9 +293,7 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
         && task.getDataRegionId().equals(this.getDataRegionId());
   }
 
-  /**
-   * copy from InnerSpaceCompactionTask
-   */
+  /** copy from InnerSpaceCompactionTask */
   @Override
   public boolean checkValidAndSetMerging() {
     if (!tsFileManager.isAllowCompaction()) {
@@ -300,9 +302,9 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     try {
       for (TsFileResource resource : readyResourceList) {
         if (resource.isCompacting()
-                || !resource.isClosed()
-                || !resource.getTsFile().exists()
-                || resource.isDeleted()) {
+            || !resource.isClosed()
+            || !resource.getTsFile().exists()
+            || resource.isDeleted()) {
           // this source file cannot be compacted
           // release the lock of locked files, and return
           resetMergingStatus();
@@ -320,10 +322,7 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     return true;
   }
 
-  /**
-   * set the merging status of
-   * selected files to false copy from InnerSpaceCompactionTask
-   */
+  /** set the merging status of selected files to false copy from InnerSpaceCompactionTask */
   protected void resetMergingStatus() {
     for (TsFileResource resource : readyResourceList) {
       try {

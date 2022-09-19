@@ -354,9 +354,13 @@ public class ChunkWriterImpl implements IChunkWriter {
     return measurementSchema.getType();
   }
 
-  public TSEncoding getEncoding() { return measurementSchema.getEncodingType(); }
+  public TSEncoding getEncoding() {
+    return measurementSchema.getEncodingType();
+  }
 
-  public CompressionType getCompressionType() { return measurementSchema.getCompressor(); }
+  public CompressionType getCompressionType() {
+    return measurementSchema.getCompressor();
+  }
 
   /**
    * write the page header and data into the PageWriter's output stream. @NOTE: for upgrading

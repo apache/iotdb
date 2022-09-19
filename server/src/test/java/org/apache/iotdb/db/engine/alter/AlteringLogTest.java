@@ -125,7 +125,6 @@ public class AlteringLogTest {
       Assert.assertEquals(TsFileIdentifier.getFileIdentifierFromFilePath(f1), if1);
       Assert.assertEquals(TsFileIdentifier.getFileIdentifierFromFilePath(f2), if2);
 
-
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }

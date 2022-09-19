@@ -607,7 +607,8 @@ public class DataRegion {
     for (int i = 0; i < alterList.size(); i++) {
       Pair<String, Pair<TSEncoding, CompressionType>> record = alterList.get(i);
       try {
-        alteringRecordsCache.putRecord(logicalStorageGroupName, record.left, record.right.left, record.right.right);
+        alteringRecordsCache.putRecord(
+            logicalStorageGroupName, record.left, record.right.left, record.right.right);
       } catch (Exception e) {
         throw new DataRegionException(e);
       }

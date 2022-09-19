@@ -74,17 +74,17 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
 
   private final AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
 
-  public TsFileRewriteExcutor() {
-  }
+  public TsFileRewriteExcutor() {}
 
   @Override
-  public void perform() throws IOException, MetadataException, StorageEngineException, InterruptedException {
+  public void perform()
+      throws IOException, MetadataException, StorageEngineException, InterruptedException {
     this.hasRewrite = execute();
   }
 
   @Override
   public void setTargetFiles(List<TsFileResource> targetFiles) {
-    if(targetFiles != null && targetFiles.size() > 0) {
+    if (targetFiles != null && targetFiles.size() > 0) {
       this.targetTsFileResource = targetFiles.get(0);
     }
   }
@@ -96,15 +96,16 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
 
   @Override
   public void setSourceFiles(List<TsFileResource> files) {
-    if(files != null && files.size() > 0) {
+    if (files != null && files.size() > 0) {
       this.tsFileResource = files.get(0);
     }
   }
 
   /**
    * This function execute the rewrite task
+   *
    * @return false if not rewrite
-   * */
+   */
   private boolean execute() throws IOException, MetadataException, InterruptedException {
 
     tsFileResource.readLock();
@@ -112,7 +113,7 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
         TsFileIOWriter writer = new TsFileIOWriter(targetTsFileResource.getTsFile())) {
       // fast done, Many files may have been rewrite at merge time
       boolean needRewrite = readFirstChunkMetaCheckNeedRewrite(reader);
-      if(!needRewrite) {
+      if (!needRewrite) {
         return false;
       }
       // read devices
@@ -150,20 +151,20 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
     return true;
   }
 
-  /**
-   * Read the first ChunkMeta and determine whether it needs to be rewrite
-   */
-  private boolean readFirstChunkMetaCheckNeedRewrite(TsFileSequenceReader reader) throws IOException {
+  /** Read the first ChunkMeta and determine whether it needs to be rewrite */
+  private boolean readFirstChunkMetaCheckNeedRewrite(TsFileSequenceReader reader)
+      throws IOException {
     TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
     while (deviceIterator.hasNext()) {
       Pair<String, Boolean> deviceInfo = deviceIterator.next();
       String device = deviceInfo.left;
       boolean aligned = deviceInfo.right;
-      Map<String, Pair<TSEncoding, CompressionType>> deviceRecords = alteringRecordsCache.getDeviceRecords(device);
-      if(deviceRecords == null || deviceRecords.isEmpty()) {
+      Map<String, Pair<TSEncoding, CompressionType>> deviceRecords =
+          alteringRecordsCache.getDeviceRecords(device);
+      if (deviceRecords == null || deviceRecords.isEmpty()) {
         continue;
       }
-      if(aligned) {
+      if (aligned) {
         Set<String> measurements = new HashSet<>();
         List<AlignedChunkMetadata> alignedChunkMetadatas = reader.getAlignedChunkMetadata(device);
         if (alignedChunkMetadatas == null || alignedChunkMetadatas.isEmpty()) {
@@ -172,19 +173,21 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
         }
         for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadatas) {
           List<IChunkMetadata> valueChunkMetadataList =
-                  alignedChunkMetadata.getValueChunkMetadataList();
-          if(valueChunkMetadataList == null || valueChunkMetadataList.isEmpty()) {
+              alignedChunkMetadata.getValueChunkMetadataList();
+          if (valueChunkMetadataList == null || valueChunkMetadataList.isEmpty()) {
             continue;
           }
           for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
             if (chunkMetadata == null) {
               continue;
             }
-            // Measurement may be distributed across many ChunkMetadata, using set to get the first one
+            // Measurement may be distributed across many ChunkMetadata, using set to get the first
+            // one
             boolean isFirst = measurements.add(chunkMetadata.getMeasurementUid());
-            if(isFirst) {
-              Pair<TSEncoding, CompressionType> cacheType = deviceRecords.get(chunkMetadata.getMeasurementUid());
-              if(cacheType == null) {
+            if (isFirst) {
+              Pair<TSEncoding, CompressionType> cacheType =
+                  deviceRecords.get(chunkMetadata.getMeasurementUid());
+              if (cacheType == null) {
                 continue;
               }
               Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
@@ -218,7 +221,8 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
     return false;
   }
 
-  private boolean isTypeDiff(Pair<TSEncoding, CompressionType> cacheType, Chunk chunk) throws IOException {
+  private boolean isTypeDiff(Pair<TSEncoding, CompressionType> cacheType, Chunk chunk)
+      throws IOException {
     if (chunk == null) {
       throw new IOException("read chunk is null");
     }
@@ -227,25 +231,24 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
       throw new IOException("read chunk header is null");
     }
     // find it
-    return header.getEncodingType() != cacheType.left || header.getCompressionType() != cacheType.right;
+    return header.getEncodingType() != cacheType.left
+        || header.getCompressionType() != cacheType.right;
   }
 
-  private void rewriteAlgined(
-      TsFileSequenceReader reader,
-      TsFileIOWriter writer,
-      String device)
-          throws IOException, InterruptedException {
+  private void rewriteAlgined(TsFileSequenceReader reader, TsFileIOWriter writer, String device)
+      throws IOException, InterruptedException {
     List<AlignedChunkMetadata> alignedChunkMetadatas = reader.getAlignedChunkMetadata(device);
     if (alignedChunkMetadatas == null || alignedChunkMetadatas.isEmpty()) {
       logger.warn("[alter timeseries] device({}) alignedChunkMetadatas is null", device);
       return;
     }
-    Map<String, Pair<TSEncoding, CompressionType>> deviceRecords = alteringRecordsCache.getDeviceRecords(device);
+    Map<String, Pair<TSEncoding, CompressionType>> deviceRecords =
+        alteringRecordsCache.getDeviceRecords(device);
     boolean isAlteringDevice = (deviceRecords != null && !deviceRecords.isEmpty());
     Pair<Boolean, Pair<List<IMeasurementSchema>, List<IMeasurementSchema>>> schemaPair =
-            collectSchemaList(alignedChunkMetadatas, reader, deviceRecords, isAlteringDevice);
+        collectSchemaList(alignedChunkMetadatas, reader, deviceRecords, isAlteringDevice);
     Boolean allSame = schemaPair.left;
-    if(!isAlteringDevice || allSame) {
+    if (!isAlteringDevice || allSame) {
       // fast: rewrite chunk data to tsfile
       alignedFastWrite(reader, writer, alignedChunkMetadatas);
     } else {
@@ -254,13 +257,19 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
     }
   }
 
-  private void alignedRewritePoints(TsFileSequenceReader reader, TsFileIOWriter writer, String device, List<AlignedChunkMetadata> alignedChunkMetadatas, Pair<Boolean, Pair<List<IMeasurementSchema>, List<IMeasurementSchema>>> schemaPair) throws IOException, InterruptedException {
+  private void alignedRewritePoints(
+      TsFileSequenceReader reader,
+      TsFileIOWriter writer,
+      String device,
+      List<AlignedChunkMetadata> alignedChunkMetadatas,
+      Pair<Boolean, Pair<List<IMeasurementSchema>, List<IMeasurementSchema>>> schemaPair)
+      throws IOException, InterruptedException {
     Pair<List<IMeasurementSchema>, List<IMeasurementSchema>> listPair = schemaPair.right;
     List<IMeasurementSchema> schemaList = listPair.left;
     List<IMeasurementSchema> schemaOldList = listPair.right;
     AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(schemaList);
     TsFileAlignedSeriesReaderIterator readerIterator =
-            new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaOldList);
+        new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaOldList);
 
     while (readerIterator.hasNext()) {
       checkThreadInterrupted();
@@ -281,16 +290,19 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
     chunkWriter.writeToFileWriter(writer);
   }
 
-  private void alignedFastWrite(TsFileSequenceReader reader, TsFileIOWriter writer, List<AlignedChunkMetadata> alignedChunkMetadatas) throws IOException, InterruptedException {
-    for (AlignedChunkMetadata alignedChunkMetadata :
-            alignedChunkMetadatas) {
+  private void alignedFastWrite(
+      TsFileSequenceReader reader,
+      TsFileIOWriter writer,
+      List<AlignedChunkMetadata> alignedChunkMetadatas)
+      throws IOException, InterruptedException {
+    for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadatas) {
       // write time chunk
       IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
       Chunk timeChunk = reader.readMemChunk((ChunkMetadata) timeChunkMetadata);
       writer.writeChunk(timeChunk, (ChunkMetadata) timeChunkMetadata);
       // write value chunks
       List<IChunkMetadata> valueChunkMetadataList =
-              alignedChunkMetadata.getValueChunkMetadataList();
+          alignedChunkMetadata.getValueChunkMetadataList();
       for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
         checkThreadInterrupted();
         if (chunkMetadata == null) {
@@ -302,12 +314,13 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
     }
   }
 
-  protected Pair<Boolean, Pair<List<IMeasurementSchema>, List<IMeasurementSchema>>> collectSchemaList(
-      List<AlignedChunkMetadata> alignedChunkMetadatas,
-      TsFileSequenceReader reader,
-      Map<String, Pair<TSEncoding, CompressionType>> deviceRecords,
-      boolean isAlteringDevice)
-      throws IOException {
+  protected Pair<Boolean, Pair<List<IMeasurementSchema>, List<IMeasurementSchema>>>
+      collectSchemaList(
+          List<AlignedChunkMetadata> alignedChunkMetadatas,
+          TsFileSequenceReader reader,
+          Map<String, Pair<TSEncoding, CompressionType>> deviceRecords,
+          boolean isAlteringDevice)
+          throws IOException {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<IMeasurementSchema> schemaOldList = new ArrayList<>();
     Set<String> measurementSet = new HashSet<>();
@@ -324,15 +337,13 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
           continue;
         }
         Pair<TSEncoding, CompressionType> alterType = null;
-        if(deviceRecords != null) {
+        if (deviceRecords != null) {
           alterType = deviceRecords.get(measurementId);
         }
         measurementSet.add(measurementId);
         Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
         ChunkHeader header = chunk.getHeader();
-        boolean findTarget =
-                isAlteringDevice
-                && alterType != null;
+        boolean findTarget = isAlteringDevice && alterType != null;
         MeasurementSchema measurementSchema =
             new MeasurementSchema(
                 header.getMeasurementID(),
@@ -359,17 +370,15 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
     return new Pair<>(allSame, new Pair<>(schemaList, schemaOldList));
   }
 
-  private void rewriteNotAligned(
-      String device,
-      TsFileSequenceReader reader,
-      TsFileIOWriter writer)
-          throws IOException, MetadataException {
+  private void rewriteNotAligned(String device, TsFileSequenceReader reader, TsFileIOWriter writer)
+      throws IOException, MetadataException {
     Map<String, List<ChunkMetadata>> measurementMap = reader.readChunkMetadataInDevice(device);
     if (measurementMap == null) {
       logger.warn("[alter timeseries] device({}) measurementMap is null", device);
       return;
     }
-    Map<String, Pair<TSEncoding, CompressionType>> deviceRecords = alteringRecordsCache.getDeviceRecords(device);
+    Map<String, Pair<TSEncoding, CompressionType>> deviceRecords =
+        alteringRecordsCache.getDeviceRecords(device);
     for (Map.Entry<String, List<ChunkMetadata>> next : measurementMap.entrySet()) {
       String measurementId = next.getKey();
       List<ChunkMetadata> chunkMetadatas = next.getValue();
@@ -381,7 +390,7 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
       ChunkMetadata firstChunkMetadata = chunkMetadatas.get(0);
       ChunkWriterImpl chunkWriter = null;
       Pair<TSEncoding, CompressionType> alterType = null;
-      if(deviceRecords != null) {
+      if (deviceRecords != null) {
         alterType = deviceRecords.get(measurementId);
       }
       for (ChunkMetadata chunkMetadata : chunkMetadatas) {
@@ -390,21 +399,24 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
         ChunkHeader header = currentChunk.getHeader();
         TSEncoding curEncoding = header.getEncodingType();
         CompressionType curCompressionType = header.getCompressionType();
-        if(chunkWriter == null) {
+        if (chunkWriter == null) {
           // chunkWriter init
-          if(alterType != null && (alterType.left != curEncoding || alterType.right != curCompressionType)) {
+          if (alterType != null
+              && (alterType.left != curEncoding || alterType.right != curCompressionType)) {
             curEncoding = alterType.left;
             curCompressionType = alterType.right;
           }
           chunkWriter =
-                  new ChunkWriterImpl(
-                          new MeasurementSchema(
-                                  measurementId,
-                                  firstChunkMetadata.getDataType(),
-                                  curEncoding,
-                                  curCompressionType));
+              new ChunkWriterImpl(
+                  new MeasurementSchema(
+                      measurementId,
+                      firstChunkMetadata.getDataType(),
+                      curEncoding,
+                      curCompressionType));
         }
-        if (alterType == null || (chunkWriter.getEncoding() == header.getEncodingType() && chunkWriter.getCompressionType() == header.getCompressionType())) {
+        if (alterType == null
+            || (chunkWriter.getEncoding() == header.getEncodingType()
+                && chunkWriter.getCompressionType() == header.getCompressionType())) {
           // fast write chunk
           writer.writeChunk(currentChunk, chunkMetadata);
           continue;
@@ -465,8 +477,9 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
   private void checkThreadInterrupted() throws InterruptedException {
     if (Thread.interrupted() || summary.isCancel()) {
       throw new InterruptedException(
-              String.format(
-                      "[alter timeseries] rewrite for target file %s abort", targetTsFileResource.toString()));
+          String.format(
+              "[alter timeseries] rewrite for target file %s abort",
+              targetTsFileResource.toString()));
     }
   }
 }

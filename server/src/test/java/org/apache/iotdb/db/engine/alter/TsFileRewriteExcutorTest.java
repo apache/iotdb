@@ -106,18 +106,21 @@ public class TsFileRewriteExcutorTest {
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema measurementSchema =
-            new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, defaultEncoding, defaultCompressionType);
+            new MeasurementSchema(
+                sensorPrefix + (i + 1), TSDataType.INT64, defaultEncoding, defaultCompressionType);
         measurementSchemas.add(measurementSchema);
         schema.registerTimeseries(
             new Path(device),
-            new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, defaultEncoding, defaultCompressionType));
+            new MeasurementSchema(
+                sensorPrefix + (i + 1), TSDataType.INT64, defaultEncoding, defaultCompressionType));
       }
       // add aligned measurements into file schema
       List<MeasurementSchema> schemas = new ArrayList<>();
       List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema schema1 =
-            new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, defaultEncoding, defaultCompressionType);
+            new MeasurementSchema(
+                sensorPrefix + (i + 1), TSDataType.INT64, defaultEncoding, defaultCompressionType);
         schemas.add(schema1);
         alignedMeasurementSchemas.add(schema1);
       }
@@ -187,11 +190,12 @@ public class TsFileRewriteExcutorTest {
   public void sstest() throws IOException {
 
     TsFileSequenceReader reader = new TsFileSequenceReader(path);
-    List<AlignedChunkMetadata> alignedChunkMetadatas = reader.getAlignedChunkMetadata(alignedDevice);
+    List<AlignedChunkMetadata> alignedChunkMetadatas =
+        reader.getAlignedChunkMetadata(alignedDevice);
     List<IMeasurementSchema> schemaOldList = collectSchemaList(alignedChunkMetadatas, reader);
 
     TsFileAlignedSeriesReaderIterator readerIterator =
-            new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaOldList);
+        new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaOldList);
 
     while (readerIterator.hasNext()) {
       Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
@@ -208,7 +212,7 @@ public class TsFileRewriteExcutorTest {
     }
   }
 
-//  @Test
+  //  @Test
   public void tsFileRewriteExcutorTest() {
 
     String curMeasurementId = sensorPrefix + "1";
@@ -218,7 +222,8 @@ public class TsFileRewriteExcutorTest {
     try {
       AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
       PartialPath fullPath = new PartialPath(device, curMeasurementId);
-      alteringRecordsCache.putRecord(storageGroupName, fullPath.getFullPath(), curEncoding, curCompressionType);
+      alteringRecordsCache.putRecord(
+          storageGroupName, fullPath.getFullPath(), curEncoding, curCompressionType);
       alteringRecordsCache.startAlter();
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (!f.exists()) {
@@ -228,8 +233,7 @@ public class TsFileRewriteExcutorTest {
       tsFileResource.close();
       TsFileResource targetTsFileResource =
           TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
-      TsFileRewriteExcutor excutor =
-          new TsFileRewriteExcutor();
+      TsFileRewriteExcutor excutor = new TsFileRewriteExcutor();
       excutor.setSourceFiles(Collections.singletonList(tsFileResource));
       excutor.setTargetFiles(Collections.singletonList(targetTsFileResource));
       excutor.setSummary(new CompactionTaskSummary());
@@ -246,7 +250,7 @@ public class TsFileRewriteExcutorTest {
     readCheck(device, curMeasurementId, curEncoding, curCompressionType, targetTsFile);
   }
 
-//  @Test
+  //  @Test
   public void tsFileRewriteExcutorAlignedTest() {
 
     String curMeasurementId = sensorPrefix + "1";
@@ -257,7 +261,8 @@ public class TsFileRewriteExcutorTest {
     try {
       AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
       PartialPath fullPath = new PartialPath(alignedDevice, curMeasurementId);
-      alteringRecordsCache.putRecord(storageGroupName, fullPath.getFullPath(), curEncoding, curCompressionType);
+      alteringRecordsCache.putRecord(
+          storageGroupName, fullPath.getFullPath(), curEncoding, curCompressionType);
       alteringRecordsCache.startAlter();
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (!f.exists()) {
@@ -267,8 +272,7 @@ public class TsFileRewriteExcutorTest {
       tsFileResource.close();
       TsFileResource targetTsFileResource =
           TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
-      excutor =
-              new TsFileRewriteExcutor();
+      excutor = new TsFileRewriteExcutor();
       excutor.setSourceFiles(Collections.singletonList(tsFileResource));
       excutor.setTargetFiles(Collections.singletonList(targetTsFileResource));
       excutor.setSummary(new CompactionTaskSummary());
@@ -284,7 +288,12 @@ public class TsFileRewriteExcutorTest {
     readCheck(alignedDevice, curMeasurementId, curEncoding, curCompressionType, targetTsFile);
   }
 
-  private void readCheck(String targetDevice, String curMeasurementId, TSEncoding curEncoding, CompressionType curCompressionType, File targetTsFile) {
+  private void readCheck(
+      String targetDevice,
+      String curMeasurementId,
+      TSEncoding curEncoding,
+      CompressionType curCompressionType,
+      File targetTsFile) {
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetTsFile.getAbsolutePath(), true)) {
       TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
@@ -295,14 +304,14 @@ public class TsFileRewriteExcutorTest {
         boolean aligned = deviceInfo.right;
         if (aligned) {
           List<AlignedChunkMetadata> alignedChunkMetadatas = reader.getAlignedChunkMetadata(device);
-          for (AlignedChunkMetadata alignedChunkMetadata :
-                  alignedChunkMetadatas) {
-            List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
-            for (IChunkMetadata chunkMetadata :
-                    valueChunkMetadataList) {
+          for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadatas) {
+            List<IChunkMetadata> valueChunkMetadataList =
+                alignedChunkMetadata.getValueChunkMetadataList();
+            for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
               Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
               ChunkHeader header = chunk.getHeader();
-              if(targetDevice.equals(device) && header.getMeasurementID().equals(curMeasurementId)) {
+              if (targetDevice.equals(device)
+                  && header.getMeasurementID().equals(curMeasurementId)) {
                 Assert.assertEquals(header.getEncodingType(), curEncoding);
                 Assert.assertEquals(header.getCompressionType(), curCompressionType);
               } else {
@@ -313,7 +322,7 @@ public class TsFileRewriteExcutorTest {
           }
         } else {
           Map<String, List<ChunkMetadata>> measurementMap =
-                  reader.readChunkMetadataInDevice(device);
+              reader.readChunkMetadataInDevice(device);
           for (Map.Entry<String, List<ChunkMetadata>> next : measurementMap.entrySet()) {
             String measurementId = next.getKey();
             List<ChunkMetadata> chunkMetadatas = next.getValue();
@@ -349,33 +358,31 @@ public class TsFileRewriteExcutorTest {
 
   @After
   public void tearDown() {
-//    try {
-//      FileUtils.forceDelete(new File(path));
-//      if (targetPath != null) {
-//        try {
-//          File file = new File(targetPath);
-//          if (file.exists()) {
-//            FileUtils.forceDelete(file);
-//          }
-//        } catch (IOException e) {
-//          Assert.fail(e.getMessage());
-//        }
-//      }
-//    } catch (IOException e) {
-//      Assert.fail(e.getMessage());
-//    }
+    //    try {
+    //      FileUtils.forceDelete(new File(path));
+    //      if (targetPath != null) {
+    //        try {
+    //          File file = new File(targetPath);
+    //          if (file.exists()) {
+    //            FileUtils.forceDelete(file);
+    //          }
+    //        } catch (IOException e) {
+    //          Assert.fail(e.getMessage());
+    //        }
+    //      }
+    //    } catch (IOException e) {
+    //      Assert.fail(e.getMessage());
+    //    }
   }
 
-
   protected List<IMeasurementSchema> collectSchemaList(
-          List<AlignedChunkMetadata> alignedChunkMetadatas,
-          TsFileSequenceReader reader)
-          throws IOException {
+      List<AlignedChunkMetadata> alignedChunkMetadatas, TsFileSequenceReader reader)
+      throws IOException {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     Set<String> measurementSet = new HashSet<>();
     for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadatas) {
       List<IChunkMetadata> valueChunkMetadataList =
-              alignedChunkMetadata.getValueChunkMetadataList();
+          alignedChunkMetadata.getValueChunkMetadataList();
       for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
         if (chunkMetadata == null) {
           continue;
@@ -388,11 +395,11 @@ public class TsFileRewriteExcutorTest {
         Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
         ChunkHeader header = chunk.getHeader();
         MeasurementSchema measurementSchema =
-                new MeasurementSchema(
-                        header.getMeasurementID(),
-                        header.getDataType(),
-                        header.getEncodingType(),
-                        header.getCompressionType());
+            new MeasurementSchema(
+                header.getMeasurementID(),
+                header.getDataType(),
+                header.getEncodingType(),
+                header.getCompressionType());
         schemaList.add(measurementSchema);
       }
     }

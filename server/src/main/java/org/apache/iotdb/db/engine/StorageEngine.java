@@ -1195,9 +1195,8 @@ public class StorageEngine implements IService {
   public void rewriteTimeseries(PartialPath fullPath)
       throws StorageEngineException, MetadataException {
 
-    if(fullPath == null) {
-      throw new StorageEngineException(
-              "Rewrite Timeseries Failed. The storageGroupName is null");
+    if (fullPath == null) {
+      throw new StorageEngineException("Rewrite Timeseries Failed. The storageGroupName is null");
     }
     // Check altering cache
     AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();

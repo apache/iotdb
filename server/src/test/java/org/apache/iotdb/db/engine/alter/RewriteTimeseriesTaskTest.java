@@ -23,15 +23,9 @@ import org.junit.Before;
 
 public class RewriteTimeseriesTaskTest {
 
-
   @Before
-  public void setUp() throws Exception {
-
-  }
-
+  public void setUp() throws Exception {}
 
   @After
-  public void tearDown() {
-
-  }
+  public void tearDown() {}
 }

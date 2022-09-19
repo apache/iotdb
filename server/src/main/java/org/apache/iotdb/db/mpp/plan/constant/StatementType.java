@@ -148,6 +148,5 @@ public enum StatementType {
   START_PIPE,
   STOP_PIPE,
   DROP_PIPE,
-  COUNT,
   REWRITE_TIMESERIES
 }
