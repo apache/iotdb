@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
+import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory.ModsSerializer;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 
@@ -50,7 +51,8 @@ public class QueryContext {
    * Modifications, and we do not want it to create multiple copies within a query.
    */
   //    private final Map<String, PatternTreeMap<TimeRange>> fileModCache = new HashMap<>();
-  private final Map<String, PatternTreeMap<Modification>> fileModCache = new HashMap<>();
+  private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
+      new HashMap<>();
   //  private final Map<String, List<Modification>> fileModCache = new HashMap<>();
 
   protected long queryId;
@@ -104,7 +106,8 @@ public class QueryContext {
     return fileModifications.computeIfAbsent(
         path.getFullPath(),
         k -> {
-          PatternTreeMap<Modification> allModifications = fileModCache.get(modFile.getFilePath());
+          PatternTreeMap<Modification, ModsSerializer> allModifications =
+              fileModCache.get(modFile.getFilePath());
           if (allModifications == null) {
             allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
             for (Modification modification : modFile.getModifications()) {
