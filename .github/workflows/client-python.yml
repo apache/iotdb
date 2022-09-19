@@ -54,6 +54,7 @@ jobs:
       - name: Build IoTDB server docker image
         run: |
           docker build . -f docker/src/main/Dockerfile-confignode -t "iotdb:confignode"
+          docker run -d -p 22278:22278 -p 22277:22277 iotdb:confignode
           docker build . -f docker/src/main/Dockerfile-datanode -t "iotdb:dev"
           docker images
       - name: Install IoTDB python client requirements
