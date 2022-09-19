@@ -21,7 +21,10 @@ package org.apache.iotdb.db.utils.datastructure;
 public class QuickIntTVList extends IntTVList implements QuickSort {
   @Override
   public void sort() {
-    qsort(0, rowCount - 1);
+    if (!sorted) {
+      qsort(0, rowCount - 1);
+    }
+    sorted = true;
   }
 
   @Override

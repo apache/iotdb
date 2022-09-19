@@ -387,6 +387,11 @@ public class IoTDBDescriptor {
       conf.setMemtableSizeThreshold(memTableSizeThreshold);
     }
 
+    conf.setTvListSortAlgorithm(
+        TVListSortAlgorithm.valueOf(
+            properties.getProperty(
+                "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
+
     conf.setAvgSeriesPointNumberThreshold(
         Integer.parseInt(
             properties.getProperty(
@@ -1382,11 +1387,6 @@ public class IoTDBDescriptor {
     if (unseqMemTableFlushCheckInterval > 0) {
       conf.setUnseqMemtableFlushCheckInterval(unseqMemTableFlushCheckInterval);
     }
-
-    conf.setTvListSortAlgorithm(
-        TVListSortAlgorithm.valueOf(
-            properties.getProperty(
-                "tvList_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
   }
 
   public void loadHotModifiedProps(Properties properties) throws QueryProcessException {
