@@ -35,7 +35,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
-import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
@@ -888,7 +887,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TriggerFireResult result = TriggerFireResult.SUCCESS;
     try {
       executor.fire(Tablet.deserialize(req.tablet), TriggerEvent.construct(req.getTriggerEvent()));
-    } catch (TriggerExecutionException e) {
+    } catch (Exception e) {
       if (executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)) {
         result = TriggerFireResult.TERMINATION;
       } else {

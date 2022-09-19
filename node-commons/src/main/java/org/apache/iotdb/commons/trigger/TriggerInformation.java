@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -51,6 +52,8 @@ public class TriggerInformation {
   /** only used for Stateful Trigger */
   private TDataNodeLocation dataNodeLocation;
 
+  private FailureStrategy failureStrategy;
+
   public TriggerInformation() {};
 
   public TriggerInformation(
@@ -72,6 +75,8 @@ public class TriggerInformation {
     this.triggerState = triggerState;
     this.isStateful = isStateful;
     this.dataNodeLocation = dataNodeLocation;
+    // default value is OPTIMISTIC
+    this.failureStrategy = FailureStrategy.OPTIMISTIC;
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -93,6 +98,7 @@ public class TriggerInformation {
     if (isStateful) {
       ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation, outputStream);
     }
+    ReadWriteIOUtils.write(failureStrategy.getId(), outputStream);
   }
 
   public static TriggerInformation deserialize(ByteBuffer byteBuffer) {
@@ -111,6 +117,8 @@ public class TriggerInformation {
       triggerInformation.dataNodeLocation =
           ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     }
+    triggerInformation.failureStrategy =
+        FailureStrategy.construct(ReadWriteIOUtils.readInt(byteBuffer));
     return triggerInformation;
   }
 
@@ -180,5 +188,13 @@ public class TriggerInformation {
 
   public void setDataNodeLocation(TDataNodeLocation dataNodeLocation) {
     this.dataNodeLocation = dataNodeLocation;
+  }
+
+  public FailureStrategy getFailureStrategy() {
+    return failureStrategy;
+  }
+
+  public void setFailureStrategy(FailureStrategy failureStrategy) {
+    this.failureStrategy = failureStrategy;
   }
 }

@@ -289,15 +289,17 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 "Failed to complete the insertion because trigger error before the insertion.");
             writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
           } else {
+            boolean hasFailedTriggerBeforeInsertion =
+                result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
             writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
             // fire Trigger after the insertion
             if (writeResponse.isSuccessful()) {
               result = planNode.accept(visitor, TriggerEvent.AFTER_INSERT);
-              if (!result.equals(TriggerFireResult.SUCCESS)) {
+              if (hasFailedTriggerBeforeInsertion || !result.equals(TriggerFireResult.SUCCESS)) {
                 TSStatus triggerError =
                     new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
                 triggerError.setMessage(
-                    "Failed to complete the insertion because trigger error after the insertion.");
+                    "Meet trigger error before/after the insertion, the insertion itself is completed.");
                 writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
               }
             }

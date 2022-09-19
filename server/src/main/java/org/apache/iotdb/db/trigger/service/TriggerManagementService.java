@@ -103,6 +103,10 @@ public class TriggerManagementService implements IService {
         && !triggerInformation.getDataNodeLocation().equals(getTDataNodeLocation());
   }
 
+  public TriggerInformation getTriggerInformation(String triggerName) {
+    return triggerTable.getTriggerInformation(triggerName);
+  }
+
   public List<String> getMatchedTriggerListForPath(PartialPath fullPath) {
     return patternTreeMap.getOverlapped(fullPath);
   }
@@ -125,18 +129,21 @@ public class TriggerManagementService implements IService {
     try (TriggerClassLoader currentActiveClassLoader =
         TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
       String triggerName = triggerInformation.getTriggerName();
+      // get trigger instance
+      Trigger trigger =
+          constructTriggerInstance(triggerInformation.getClassName(), currentActiveClassLoader);
+      // get FailureStrategy
+      triggerInformation.setFailureStrategy(trigger.getFailureStrategy());
+      // register in trigger-table
       triggerTable.addTriggerInformation(triggerName, triggerInformation);
-      // if it is a stateful trigger, we only create its instance on specified DataNode
+      // update PatternTreeMap
+      patternTreeMap.append(triggerInformation.getPathPattern(), triggerName);
+      // if it is a stateful trigger, we only maintain its instance on specified DataNode
       if (!triggerInformation.isStateful()
           || triggerInformation.getDataNodeLocation().equals(getTDataNodeLocation())) {
-        // get trigger instance
-        Trigger trigger =
-            constructTriggerInstance(triggerInformation.getClassName(), currentActiveClassLoader);
         // construct and save TriggerExecutor after successfully creating trigger instance
         TriggerExecutor triggerExecutor = new TriggerExecutor(triggerInformation, trigger);
         executorMap.put(triggerName, triggerExecutor);
-        // update PatternTreeMap
-        patternTreeMap.append(triggerInformation.getPathPattern(), triggerName);
       }
     } catch (Exception e) {
       String errorMessage =

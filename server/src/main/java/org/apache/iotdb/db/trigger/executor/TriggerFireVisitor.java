@@ -132,7 +132,17 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   @Override
   public TriggerFireResult visitInsertMultiTablets(
       InsertMultiTabletsNode node, TriggerEvent context) {
-    return TriggerFireResult.SUCCESS;
+    boolean hasFailedTrigger = false;
+    for (InsertTabletNode insertTabletNode : node.getInsertTabletNodeList()) {
+      TriggerFireResult result = visitInsertTablet(insertTabletNode, context);
+      if (result.equals(TriggerFireResult.TERMINATION)) {
+        return result;
+      }
+      if (result.equals(TriggerFireResult.FAILED_NO_TERMINATION)) {
+        hasFailedTrigger = true;
+      }
+    }
+    return hasFailedTrigger ? TriggerFireResult.FAILED_NO_TERMINATION : TriggerFireResult.SUCCESS;
   }
 
   @Override
@@ -194,9 +204,17 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
         result = TriggerFireResult.construct(client.fireTrigger(req).getFireResult());
       } catch (IOException | TException e) {
         LOGGER.warn(
-            "Error occurred when trying to fire trigger({}) on TEndPoint: {}",
+            "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
             triggerName,
-            endPoint.toString());
+            endPoint.toString(),
+            e.getMessage());
+        result =
+            TriggerManagementService.getInstance()
+                    .getTriggerInformation(triggerName)
+                    .getFailureStrategy()
+                    .equals(FailureStrategy.OPTIMISTIC)
+                ? TriggerFireResult.FAILED_NO_TERMINATION
+                : TriggerFireResult.TERMINATION;
       }
     } else {
       TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
