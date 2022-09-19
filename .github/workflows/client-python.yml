@@ -57,6 +57,7 @@ jobs:
           docker run -d -p 22278:22278 -p 22277:22277 iotdb:confignode
           docker ps
           docker build . -f docker/src/main/Dockerfile-datanode -t "iotdb:dev"
+          docker run -d -p 6667:6667 -p 8777:8777 -p 22277:22277 -p 9003:9003 -p 40010:40010 -p 50010:50010 iotdb:dev
           docker images
           docker ps
       - name: Install IoTDB python client requirements
