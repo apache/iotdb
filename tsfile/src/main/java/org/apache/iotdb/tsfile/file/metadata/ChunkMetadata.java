@@ -34,7 +34,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.TreeSet;
 
 /** Metadata of one chunk. */
@@ -199,26 +198,26 @@ public class ChunkMetadata implements IChunkMetadata {
   }
 
   public List<TimeRange> getDeleteIntervalList() {
-    return deleteIntervalSet==null?null:new ArrayList<>(deleteIntervalSet);
+    return deleteIntervalSet == null ? null : new ArrayList<>(deleteIntervalSet);
   }
 
   public void insertIntoSortedDeletions(long startTime, long endTime) {
-    TimeRange timeRange = new TimeRange(startTime,endTime);
+    TimeRange timeRange = new TimeRange(startTime, endTime);
 
     if (deleteIntervalSet != null) {
       TimeRange interval = deleteIntervalSet.floor(timeRange);
-      while (interval!=null&&timeRange.intersects(interval)){
+      while (interval != null && timeRange.intersects(interval)) {
         timeRange.merge(interval);
         deleteIntervalSet.remove(interval);
         interval = deleteIntervalSet.floor(timeRange);
       }
       interval = deleteIntervalSet.ceiling(timeRange);
-      while (interval!=null&&timeRange.intersects(interval)){
+      while (interval != null && timeRange.intersects(interval)) {
         timeRange.merge(interval);
         deleteIntervalSet.remove(interval);
         interval = deleteIntervalSet.ceiling(timeRange);
       }
-    }else{
+    } else {
       deleteIntervalSet = new TreeSet<>();
     }
 

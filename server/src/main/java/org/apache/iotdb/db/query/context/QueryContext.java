@@ -50,9 +50,8 @@ public class QueryContext {
    * use this field because each call of Modification.getModifications() return a copy of the
    * Modifications, and we do not want it to create multiple copies within a query.
    */
-//  private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
-//      new HashMap<>();
-    private final Map<String, List<Modification>> fileModCache = new HashMap<>();
+  private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
+      new HashMap<>();
 
   protected long queryId;
 
@@ -95,54 +94,27 @@ public class QueryContext {
    * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
-//  public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
-//    // if the mods file does not exist, do not add it to the cache
-//    if (!modFile.exists()) {
-//      return Collections.emptyList();
-//    }
-//    Map<String, List<Modification>> fileModifications =
-//        filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
-//    return fileModifications.computeIfAbsent(
-//        path.getFullPath(),
-//        k -> {
-//          PatternTreeMap<Modification, ModsSerializer> allModifications =
-//              fileModCache.get(modFile.getFilePath());
-//          if (allModifications == null) {
-//            allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
-//            for (Modification modification : modFile.getModifications()) {
-//              allModifications.append(modification.getPath(), modification);
-//            }
-//            fileModCache.put(modFile.getFilePath(), allModifications);
-//          }
-//          return allModifications.getOverlapped(path);
-//        });
-//  }
   public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
     // if the mods file does not exist, do not add it to the cache
     if (!modFile.exists()) {
       return Collections.emptyList();
     }
     Map<String, List<Modification>> fileModifications =
-            filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
+        filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
     return fileModifications.computeIfAbsent(
-            path.getFullPath(),
-            k -> {
-              List<Modification> allModifications = fileModCache.get(modFile.getFilePath());
-              if (allModifications == null) {
-                allModifications = (List<Modification>) modFile.getModifications();
-                fileModCache.put(modFile.getFilePath(), allModifications);
-              }
-              List<Modification> finalPathModifications = new ArrayList<>();
-              if (!allModifications.isEmpty()) {
-                allModifications.forEach(
-                        modification -> {
-                          if (modification.getPath().matchFullPath(path)) {
-                            finalPathModifications.add(modification);
-                          }
-                        });
-              }
-              return finalPathModifications;
-            });
+        path.getFullPath(),
+        k -> {
+          PatternTreeMap<Modification, ModsSerializer> allModifications =
+              fileModCache.get(modFile.getFilePath());
+          if (allModifications == null) {
+            allModifications = PatternTreeMapFactory.getModsPatternTreeMap1();
+            for (Modification modification : modFile.getModifications()) {
+              allModifications.append(modification.getPath(), modification);
+            }
+            fileModCache.put(modFile.getFilePath(), allModifications);
+          }
+          return allModifications.getOverlapped(path);
+        });
   }
 
   public List<List<Modification>> getPathModifications(ModificationFile modFile, AlignedPath path) {
