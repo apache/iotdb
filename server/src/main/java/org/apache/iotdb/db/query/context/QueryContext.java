@@ -107,7 +107,7 @@ public class QueryContext {
           PatternTreeMap<Modification, ModsSerializer> allModifications =
               fileModCache.get(modFile.getFilePath());
           if (allModifications == null) {
-            allModifications = PatternTreeMapFactory.getModsPatternTreeMap1();
+            allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
             for (Modification modification : modFile.getModifications()) {
               allModifications.append(modification.getPath(), modification);
             }
@@ -198,19 +198,5 @@ public class QueryContext {
 
   public boolean isInterrupted() {
     return isInterrupted;
-  }
-
-  public static void main(String[] args) throws Exception {
-    QueryContext queryContext = new QueryContext();
-
-    long time1 = System.currentTimeMillis();
-    for (int i = 0; i < 500; i++) {
-      queryContext.getPathModifications(
-          new ModificationFile(
-              "/Users/chenyanze/projects/JavaProjects/iotdb/iotdb/data/data/sequence/root.sg1/0/0/1663587784487-1-0-0.tsfile.mods"),
-          new PartialPath(String.format("root.sg1.d%d.s1", i)));
-    }
-    long time2 = System.currentTimeMillis();
-    System.out.println(time2 - time1);
   }
 }

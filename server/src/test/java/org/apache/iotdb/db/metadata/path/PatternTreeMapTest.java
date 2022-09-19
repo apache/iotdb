@@ -20,11 +20,11 @@ package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternNode.StringSerializer;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory.ModsSerializer;
+import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory.StringSerializer;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -88,7 +88,7 @@ public class PatternTreeMapTest {
   @Test
   public void modificationPatternTreeMapTest() throws IllegalPathException {
     PatternTreeMap<Modification, ModsSerializer> patternTreeMap =
-        PatternTreeMapFactory.getModsPatternTreeMap1();
+        PatternTreeMapFactory.getModsPatternTreeMap();
 
     // [1,3] [6,10] [15,20] [22,30]
     patternTreeMap.append(

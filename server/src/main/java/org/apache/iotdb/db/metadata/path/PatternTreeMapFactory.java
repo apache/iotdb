@@ -18,18 +18,17 @@
  */
 package org.apache.iotdb.db.metadata.path;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternNode;
-import org.apache.iotdb.commons.path.PathPatternNode.StringSerializer;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.TreeSet;
 
@@ -42,36 +41,29 @@ public class PatternTreeMapFactory {
         StringSerializer.getInstance());
   }
 
+  /**
+   * This PatternTreeMap is used to manage Modification. The append will merge of Modification that
+   * intersect.
+   */
   public static PatternTreeMap<Modification, ModsSerializer> getModsPatternTreeMap() {
-    return new PatternTreeMap<>(
-        HashSet::new,
-        (mod, set) -> set.add(mod),
-        (mod, set) -> set.remove(mod),
-        ModsSerializer.getInstance());
-  }
-
-  public static PatternTreeMap<Modification, ModsSerializer> getModsPatternTreeMap1() {
     return new PatternTreeMap<>(
         () ->
             new TreeSet<>(
-                new Comparator<Modification>() {
-                  @Override
-                  public int compare(Modification o1, Modification o2) {
-                    if (!o1.getType().equals(o2.getType())) {
-                      return o1.getType().compareTo(o2.getType());
-                    } else if (!o1.getPath().equals(o2.getPath())) {
-                      return o1.getPath().compareTo(o2.getPath());
-                    } else if (o1.getFileOffset() != o2.getFileOffset()) {
-                      return (int) (o1.getFileOffset() - o2.getFileOffset());
-                    } else {
-                      switch (o1.getType()) {
-                        case DELETION:
-                          Deletion del1 = (Deletion) o1;
-                          Deletion del2 = (Deletion) o2;
-                          return del1.getTimeRange().compareTo(del2.getTimeRange());
-                        default:
-                          throw new IllegalArgumentException();
-                      }
+                (o1, o2) -> {
+                  if (!o1.getType().equals(o2.getType())) {
+                    return o1.getType().compareTo(o2.getType());
+                  } else if (!o1.getPath().equals(o2.getPath())) {
+                    return o1.getPath().compareTo(o2.getPath());
+                  } else if (o1.getFileOffset() != o2.getFileOffset()) {
+                    return (int) (o1.getFileOffset() - o2.getFileOffset());
+                  } else {
+                    switch (o1.getType()) {
+                      case DELETION:
+                        Deletion del1 = (Deletion) o1;
+                        Deletion del2 = (Deletion) o2;
+                        return del1.getTimeRange().compareTo(del2.getTimeRange());
+                      default:
+                        throw new IllegalArgumentException();
                     }
                   }
                 }),
@@ -96,65 +88,66 @@ public class PatternTreeMapFactory {
         ModsSerializer.getInstance());
   }
 
-  public static PatternTreeMap<TimeRange, TimeRangeSerializer> getModsPatternTreeMap2() {
-    return new PatternTreeMap<>(
-        TreeSet::new,
-        (range, set) -> {
-          TreeSet<TimeRange> treeSet = (TreeSet) set;
-          TimeRange tr = treeSet.floor(range);
-          while (tr != null && tr.intersects(range)) {
-            range.merge(tr);
-            treeSet.remove(tr);
-            tr = treeSet.floor(range);
-          }
-          tr = treeSet.ceiling(range);
-          while (tr != null && tr.intersects(range)) {
-            range.merge(tr);
-            treeSet.remove(tr);
-            tr = treeSet.ceiling(range);
-          }
-          set.add(range);
-        },
-        null,
-        TimeRangeSerializer.getInstance());
-  }
-
-  //    public static PatternTreeMap<TimeRange> getModsPatternTreeMap3() {
-  //        return new PatternTreeMap<>(
-  //                TreeSet::new,
-  //                (range, set) -> {
-  //          TreeSet<TimeRange> treeSet = (TreeSet) set;
-  //          TimeRange tr = treeSet.floor(range);
-  //          while (tr != null && tr.intersects(range)) {
-  //            range.merge(tr);
-  //            treeSet.remove(tr);
-  //            tr = treeSet.floor(range);
-  //          }
-  //          tr = treeSet.ceiling(range);
-  //          while (tr != null && tr.intersects(range)) {
-  //            range.merge(tr);
-  //            treeSet.remove(tr);
-  //            tr = treeSet.ceiling(range);
-  //          }
-  //                    set.add(range);
-  //                },
-  //                null);
-  //    }
-
   public static class ModsSerializer implements PathPatternNode.Serializer<Modification> {
 
     @Override
-    public void write(Modification modification, ByteBuffer buffer) {}
+    public void write(Modification modification, ByteBuffer buffer) {
+      ReadWriteIOUtils.write(modification.getType().ordinal(), buffer);
+      modification.getPath().serialize(buffer);
+      ReadWriteIOUtils.write(modification.getFileOffset(), buffer);
+      switch (modification.getType()) {
+        case DELETION:
+          ReadWriteIOUtils.write(((Deletion) modification).getStartTime(), buffer);
+          ReadWriteIOUtils.write(((Deletion) modification).getEndTime(), buffer);
+          break;
+        default:
+          throw new IllegalArgumentException();
+      }
+    }
 
     @Override
-    public void write(Modification modification, PublicBAOS buffer) throws IOException {}
+    public void write(Modification modification, PublicBAOS stream) throws IOException {
+      ReadWriteIOUtils.write(modification.getType().ordinal(), stream);
+      modification.getPath().serialize(stream);
+      ReadWriteIOUtils.write(modification.getFileOffset(), stream);
+      switch (modification.getType()) {
+        case DELETION:
+          ReadWriteIOUtils.write(((Deletion) modification).getStartTime(), stream);
+          ReadWriteIOUtils.write(((Deletion) modification).getEndTime(), stream);
+          break;
+        default:
+          throw new IllegalArgumentException();
+      }
+    }
 
     @Override
-    public void write(Modification modification, DataOutputStream buffer) throws IOException {}
+    public void write(Modification modification, DataOutputStream stream) throws IOException {
+      ReadWriteIOUtils.write(modification.getType().ordinal(), stream);
+      modification.getPath().serialize(stream);
+      ReadWriteIOUtils.write(modification.getFileOffset(), stream);
+      switch (modification.getType()) {
+        case DELETION:
+          ReadWriteIOUtils.write(((Deletion) modification).getStartTime(), stream);
+          ReadWriteIOUtils.write(((Deletion) modification).getEndTime(), stream);
+          break;
+        default:
+          throw new IllegalArgumentException();
+      }
+    }
 
     @Override
     public Modification read(ByteBuffer buffer) {
-      return null;
+      int type = ReadWriteIOUtils.read(buffer);
+      PartialPath partialPath = PartialPath.deserialize(buffer);
+      long fileOffset = ReadWriteIOUtils.readLong(buffer);
+      switch (Modification.Type.values()[type]) {
+        case DELETION:
+          long startTime = ReadWriteIOUtils.readLong(buffer);
+          long endTime = ReadWriteIOUtils.readLong(buffer);
+          return new Deletion(partialPath, fileOffset, startTime, endTime);
+        default:
+          throw new IllegalArgumentException();
+      }
     }
 
     private static class ModsSerializerHolder {
@@ -168,30 +161,38 @@ public class PatternTreeMapFactory {
     }
   }
 
-  public static class TimeRangeSerializer implements PathPatternNode.Serializer<TimeRange> {
+  public static class StringSerializer implements PathPatternNode.Serializer<String> {
 
-    @Override
-    public void write(TimeRange timeRange, ByteBuffer buffer) {}
+    private static class StringSerializerHolder {
+      private static final StringSerializer INSTANCE = new StringSerializer();
 
-    @Override
-    public void write(TimeRange timeRange, PublicBAOS buffer) throws IOException {}
-
-    @Override
-    public void write(TimeRange timeRange, DataOutputStream buffer) throws IOException {}
-
-    @Override
-    public TimeRange read(ByteBuffer buffer) {
-      return null;
+      private StringSerializerHolder() {}
     }
 
-    private static class TimeRangeSerializerHolder {
-      private static final TimeRangeSerializer INSTANCE = new TimeRangeSerializer();
-
-      private TimeRangeSerializerHolder() {}
+    public static StringSerializer getInstance() {
+      return StringSerializerHolder.INSTANCE;
     }
 
-    public static TimeRangeSerializer getInstance() {
-      return TimeRangeSerializerHolder.INSTANCE;
+    private StringSerializer() {}
+
+    @Override
+    public void write(String s, ByteBuffer buffer) {
+      ReadWriteIOUtils.write(s, buffer);
+    }
+
+    @Override
+    public void write(String s, PublicBAOS stream) throws IOException {
+      ReadWriteIOUtils.write(s, stream);
+    }
+
+    @Override
+    public void write(String s, DataOutputStream stream) throws IOException {
+      ReadWriteIOUtils.write(s, stream);
+    }
+
+    @Override
+    public String read(ByteBuffer buffer) {
+      return ReadWriteIOUtils.readString(buffer);
     }
   }
 }
