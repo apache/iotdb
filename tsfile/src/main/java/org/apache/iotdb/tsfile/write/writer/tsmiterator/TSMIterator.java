@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.write.writer.tsmiterator;
 
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -50,7 +51,7 @@ public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
   protected Iterator<Pair<Path, List<IChunkMetadata>>> iterator;
 
   protected TSMIterator(List<ChunkGroupMetadata> chunkGroupMetadataList) {
-    this.sortedChunkMetadataList = sortChunkMetadata(chunkGroupMetadataList);
+    this.sortedChunkMetadataList = sortChunkMetadata(chunkGroupMetadataList, null, null);
     this.iterator = sortedChunkMetadataList.iterator();
   }
 
@@ -83,7 +84,7 @@ public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
     }
   }
 
-  protected TimeseriesMetadata constructOneTimeseriesMetadata(
+  public static TimeseriesMetadata constructOneTimeseriesMetadata(
       String measurementId, List<IChunkMetadata> chunkMetadataList) throws IOException {
     // create TimeseriesMetaData
     PublicBAOS publicBAOS = new PublicBAOS();
@@ -114,7 +115,9 @@ public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
   }
 
   public static List<Pair<Path, List<IChunkMetadata>>> sortChunkMetadata(
-      List<ChunkGroupMetadata> chunkGroupMetadataList) {
+      List<ChunkGroupMetadata> chunkGroupMetadataList,
+      String currentDevice,
+      List<ChunkMetadata> chunkMetadataList) {
     Map<String, Map<Path, List<IChunkMetadata>>> chunkMetadataMap = new TreeMap<>();
     List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList = new LinkedList<>();
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
@@ -128,6 +131,16 @@ public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
             .add(chunkMetadata);
       }
     }
+    if (currentDevice != null) {
+      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+        chunkMetadataMap
+            .computeIfAbsent(currentDevice, x -> new TreeMap<>())
+            .computeIfAbsent(
+                new Path(currentDevice, chunkMetadata.getMeasurementUid()), x -> new ArrayList<>())
+            .add(chunkMetadata);
+      }
+    }
+
     for (Map.Entry<String, Map<Path, List<IChunkMetadata>>> entry : chunkMetadataMap.entrySet()) {
       Map<Path, List<IChunkMetadata>> seriesChunkMetadataMap = entry.getValue();
       for (Map.Entry<Path, List<IChunkMetadata>> seriesChunkMetadataEntry :

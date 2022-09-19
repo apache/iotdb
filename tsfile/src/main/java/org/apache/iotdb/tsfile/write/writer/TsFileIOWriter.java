@@ -546,6 +546,30 @@ public class TsFileIOWriter implements AutoCloseable {
    * @return DeviceTimeseriesMetadataMap
    */
   public Map<String, List<TimeseriesMetadata>> getDeviceTimeseriesMetadataMap() {
+    Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap = new TreeMap<>();
+    Map<String, Map<String, List<IChunkMetadata>>> chunkMetadataMap = new TreeMap<>();
+    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
+      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+        chunkMetadataMap
+            .computeIfAbsent(chunkGroupMetadata.getDevice(), x -> new TreeMap<>())
+            .computeIfAbsent(chunkMetadata.getMeasurementUid(), x -> new ArrayList<>())
+            .add(chunkMetadata);
+      }
+    }
+    for (String device : chunkMetadataMap.keySet()) {
+      Map<String, List<IChunkMetadata>> seriesToChunkMetadataMap = chunkMetadataMap.get(device);
+      for (Map.Entry<String, List<IChunkMetadata>> entry : seriesToChunkMetadataMap.entrySet()) {
+        try {
+          deviceTimeseriesMetadataMap
+              .computeIfAbsent(device, x -> new ArrayList<>())
+              .add(TSMIterator.constructOneTimeseriesMetadata(entry.getKey(), entry.getValue()));
+        } catch (IOException e) {
+          logger.error("Failed to get device timeseries metadata map", e);
+          return null;
+        }
+      }
+    }
+
     return deviceTimeseriesMetadataMap;
   }
 
@@ -594,22 +618,23 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   protected void sortAndFlushChunkMetadata() throws IOException {
     // group by series
-    List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadatList =
-        TSMIterator.sortChunkMetadata(chunkGroupMetadataList);
+    List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList =
+        TSMIterator.sortChunkMetadata(
+            chunkGroupMetadataList, currentChunkGroupDeviceId, chunkMetadataList);
     if (tempOutput == null) {
       tempOutput = new LocalTsFileOutput(new FileOutputStream(chunkMetadataTempFile));
     }
     hasChunkMetadataInDisk = true;
     // the file structure in temp file will be
     // chunkSize | chunkBuffer
-    for (Pair<Path, List<IChunkMetadata>> pair : sortedChunkMetadatList) {
+    for (Pair<Path, List<IChunkMetadata>> pair : sortedChunkMetadataList) {
       Path seriesPath = pair.left;
       if (!seriesPath.equals(lastSerializePath)) {
         // record the count of path to construct bloom filter later
         pathCount++;
       }
       List<IChunkMetadata> iChunkMetadataList = pair.right;
-      writeChunkMetadataToTempFile(iChunkMetadataList, seriesPath, tempOutput);
+      writeChunkMetadataToTempFile(iChunkMetadataList, seriesPath);
       lastSerializePath = seriesPath;
       logger.debug("Flushing {}", seriesPath);
     }
@@ -621,8 +646,7 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   private void writeChunkMetadataToTempFile(
-      List<IChunkMetadata> iChunkMetadataList, Path seriesPath, LocalTsFileOutput output)
-      throws IOException {
+      List<IChunkMetadata> iChunkMetadataList, Path seriesPath) throws IOException {
     // [DeviceId] measurementId datatype size chunkMetadataBuffer
     if (lastSerializePath == null
         || !seriesPath.getDevice().equals(lastSerializePath.getDevice())) {
