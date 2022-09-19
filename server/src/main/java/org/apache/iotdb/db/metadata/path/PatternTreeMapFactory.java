@@ -22,12 +22,14 @@ import org.apache.iotdb.commons.path.PathPatternNode;
 import org.apache.iotdb.commons.path.PathPatternNode.StringSerializer;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
+import java.util.TreeSet;
 
 public class PatternTreeMapFactory {
   public static PatternTreeMap<String, StringSerializer> getTriggerPatternTreeMap() {
@@ -46,27 +48,28 @@ public class PatternTreeMapFactory {
         ModsSerializer.getInstance());
   }
 
-  //    public static PatternTreeMap<TimeRange> getModsPatternTreeMap2() {
-  //        return new PatternTreeMap<>(
-  //                TreeSet::new,
-  //                (range, set) -> {
-  //                    TreeSet<TimeRange> treeSet = (TreeSet) set;
-  //                    TimeRange tr = treeSet.floor(range);
-  //                    while (tr != null && tr.intersects(range)) {
-  //                        range.merge(tr);
-  //                        treeSet.remove(tr);
-  //                        tr = treeSet.floor(range);
-  //                    }
-  //                    tr = treeSet.ceiling(range);
-  //                    while (tr != null && tr.intersects(range)) {
-  //                        range.merge(tr);
-  //                        treeSet.remove(tr);
-  //                        tr = treeSet.ceiling(range);
-  //                    }
-  //                    set.add(range);
-  //                },
-  //                null);
-  //    }
+      public static PatternTreeMap<TimeRange,TimeRangeSerializer> getModsPatternTreeMap2() {
+          return new PatternTreeMap<>(
+                  TreeSet::new,
+                  (range, set) -> {
+                      TreeSet<TimeRange> treeSet = (TreeSet) set;
+                      TimeRange tr = treeSet.floor(range);
+                      while (tr != null && tr.intersects(range)) {
+                          range.merge(tr);
+                          treeSet.remove(tr);
+                          tr = treeSet.floor(range);
+                      }
+                      tr = treeSet.ceiling(range);
+                      while (tr != null && tr.intersects(range)) {
+                          range.merge(tr);
+                          treeSet.remove(tr);
+                          tr = treeSet.ceiling(range);
+                      }
+                      set.add(range);
+                  },
+                  null,
+                  TimeRangeSerializer.getInstance());
+      }
 
   //    public static PatternTreeMap<TimeRange> getModsPatternTreeMap3() {
   //        return new PatternTreeMap<>(
@@ -114,6 +117,40 @@ public class PatternTreeMapFactory {
 
     public static ModsSerializer getInstance() {
       return ModsSerializer.ModsSerializerHolder.INSTANCE;
+    }
+  }
+
+  public static class TimeRangeSerializer implements PathPatternNode.Serializer<TimeRange> {
+
+
+    @Override
+    public void write(TimeRange timeRange, ByteBuffer buffer) {
+
+    }
+
+    @Override
+    public void write(TimeRange timeRange, PublicBAOS buffer) throws IOException {
+
+    }
+
+    @Override
+    public void write(TimeRange timeRange, DataOutputStream buffer) throws IOException {
+
+    }
+
+    @Override
+    public TimeRange read(ByteBuffer buffer) {
+      return null;
+    }
+
+    private static class TimeRangeSerializerHolder {
+      private static final TimeRangeSerializer INSTANCE = new TimeRangeSerializer();
+
+      private TimeRangeSerializerHolder() {}
+    }
+
+    public static TimeRangeSerializer getInstance() {
+      return TimeRangeSerializerHolder.INSTANCE;
     }
   }
 }

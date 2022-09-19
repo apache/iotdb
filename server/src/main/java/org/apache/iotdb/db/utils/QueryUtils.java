@@ -91,6 +91,47 @@ public class QueryUtils {
         });
   }
 
+  public static void modifyChunkMetaData2(
+      List<? extends IChunkMetadata> chunkMetaData, List<TimeRange> modifications) {
+    for (IChunkMetadata metaData : chunkMetaData) {
+      for (TimeRange modification : modifications) {
+        // When the chunkMetadata come from an old TsFile, the method modification.getFileOffset()
+        // is gerVersionNum actually. In this case, we compare the versions of modification and
+        // mataData to determine whether need to do modify.
+//        if (metaData.isFromOldTsFile()) {
+//          if (modification.getFileOffset() > metaData.getVersion()) {
+//            doModifyChunkMetaData(modification, metaData);
+//          }
+//          continue;
+//        }
+        // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
+        // is not supposed to exist as getFileOffset() is offset containing full chunk,
+        // while getOffsetOfChunkHeader() returns the chunk header offset
+//        if (modification.getFileOffset() > metaData.getOffsetOfChunkHeader()) {
+          doModifyChunkMetaData(modification, metaData);
+//        }
+      }
+    }
+    // remove chunks that are completely deleted
+    chunkMetaData.removeIf(
+        metaData -> {
+          if (metaData.getDeleteIntervalList() != null) {
+            for (TimeRange range : metaData.getDeleteIntervalList()) {
+              if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
+                return true;
+              } else {
+                if (!metaData.isModified()
+                    && range.overlaps(
+                        new TimeRange(metaData.getStartTime(), metaData.getEndTime()))) {
+                  metaData.setModified(true);
+                }
+              }
+            }
+          }
+          return false;
+        });
+  }
+
   public static void modifyAlignedChunkMetaData(
       List<AlignedChunkMetadata> chunkMetaData, List<List<Modification>> modifications) {
     for (AlignedChunkMetadata metaData : chunkMetaData) {
@@ -157,6 +198,10 @@ public class QueryUtils {
           alignedChunkMetadata.setModified(modified);
           return removed;
         });
+  }
+
+  private static void doModifyChunkMetaData(TimeRange deleteTimeRange, IChunkMetadata metaData) {
+    metaData.insertIntoSortedDeletions(deleteTimeRange);
   }
 
   private static void doModifyChunkMetaData(Modification modification, IChunkMetadata metaData) {

@@ -205,24 +205,35 @@ public class ChunkMetadata implements IChunkMetadata {
   }
 
   public void insertIntoSortedDeletions(long startTime, long endTime) {
-    List<TimeRange> resultInterval = new ArrayList<>();
-    if (deleteIntervalList != null) {
-      for (TimeRange interval : deleteIntervalList) {
-        if (interval.getMax() < startTime) {
-          resultInterval.add(interval);
-        } else if (interval.getMin() > endTime) {
-          resultInterval.add(new TimeRange(startTime, endTime));
-          startTime = interval.getMin();
-          endTime = interval.getMax();
-        } else if (interval.getMax() >= startTime || interval.getMin() <= endTime) {
-          startTime = Math.min(interval.getMin(), startTime);
-          endTime = Math.max(interval.getMax(), endTime);
-        }
-      }
+//    List<TimeRange> resultInterval = new ArrayList<>();
+//    if (deleteIntervalList != null) {
+//      for (TimeRange interval : deleteIntervalList) {
+//        if (interval.getMax() < startTime) {
+//          resultInterval.add(interval);
+//        } else if (interval.getMin() > endTime) {
+//          resultInterval.add(new TimeRange(startTime, endTime));
+//          startTime = interval.getMin();
+//          endTime = interval.getMax();
+//        } else if (interval.getMax() >= startTime || interval.getMin() <= endTime) {
+//          startTime = Math.min(interval.getMin(), startTime);
+//          endTime = Math.max(interval.getMax(), endTime);
+//        }
+//      }
+//    }
+//
+//    resultInterval.add(new TimeRange(startTime, endTime));
+//    deleteIntervalList = resultInterval;
+    if (deleteIntervalList == null) {
+      deleteIntervalList = new ArrayList<>();
     }
+    deleteIntervalList.add(new TimeRange(startTime,endTime));
+  }
 
-    resultInterval.add(new TimeRange(startTime, endTime));
-    deleteIntervalList = resultInterval;
+  public void insertIntoSortedDeletions(TimeRange timeRange) {
+    if (deleteIntervalList == null) {
+      deleteIntervalList = new ArrayList<>();
+    }
+    deleteIntervalList.add(timeRange);
   }
 
   public IChunkLoader getChunkLoader() {

@@ -23,7 +23,7 @@ import org.apache.iotdb.session.util.Version;
 
 public class Testt {
   public static void main(String[] args) throws Exception {
-    insert();
+//    insert();
     query();
   }
 
