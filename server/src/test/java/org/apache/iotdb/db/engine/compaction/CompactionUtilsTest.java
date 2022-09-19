@@ -1987,6 +1987,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3" + PATH_SEPARATOR + "s4");
     generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    deleteTimeseriesInMManager(seriesPaths);
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
@@ -2182,6 +2183,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     }
     generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    deleteTimeseriesInMManager(seriesPaths);
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
@@ -2369,6 +2371,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     }
     generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    deleteTimeseriesInMManager(seriesPaths);
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
@@ -3016,6 +3019,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             + "s4");
     generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    deleteTimeseriesInMManager(seriesPaths);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -3251,6 +3255,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     }
     generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    deleteTimeseriesInMManager(seriesPaths);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -3397,6 +3402,203 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   }
 
   /**
+   * Different source files have timeseries with the same path, but different data types. Because
+   * timeseries in the former file is been deleted.
+   */
+  @Test
+  public void testCrossSpaceCompactionWithSameTimeseriesInDifferentSourceFiles()
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
+          InterruptedException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(4, 5, false);
+    createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
+    createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
+    createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
+    createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
+
+    // generate mods file
+    List<String> seriesPaths = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0" + PATH_SEPARATOR + "s" + i);
+      seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1" + PATH_SEPARATOR + "s" + i);
+      seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2" + PATH_SEPARATOR + "s" + i);
+    }
+    generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    deleteTimeseriesInMManager(seriesPaths);
+    setDataType(TSDataType.TEXT);
+    registerTimeseriesInMManger(2, 7, false);
+    List<Integer> deviceIndex = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      deviceIndex.add(i);
+    }
+    List<Integer> measurementIndex = new ArrayList<>();
+    for (int i = 0; i < 7; i++) {
+      measurementIndex.add(i);
+    }
+
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 1350, 0, false, true);
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+  }
+
+  /** Each source file has different device. */
+  @Test
+  public void testCrossSpaceCompactionWithDifferentDevicesInDifferentSourceFiles()
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
+          InterruptedException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(5, 7, false);
+    List<Integer> deviceIndex = new ArrayList<>();
+    List<Integer> measurementIndex = new ArrayList<>();
+    for (int i = 0; i < 7; i++) {
+      measurementIndex.add(i);
+    }
+
+    deviceIndex.add(0);
+    deviceIndex.add(2);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 0, 0, false, true);
+
+    deviceIndex.clear();
+    deviceIndex.add(1);
+    deviceIndex.add(3);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 400, 0, false, true);
+
+    deviceIndex.clear();
+    deviceIndex.add(2);
+    deviceIndex.add(4);
+    deviceIndex.add(0);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 800, 0, false, true);
+
+    deviceIndex.clear();
+    deviceIndex.add(1);
+    deviceIndex.add(4);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 200, 100, 0, false, false);
+
+    deviceIndex.clear();
+    deviceIndex.add(0);
+    deviceIndex.add(2);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 200, 400, 0, false, false);
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+  }
+
+  /**
+   * Different source files have timeseries with the same path, but different data types. Because
+   * timeseries in the former file is been deleted.
+   */
+  @Test
+  public void testAlignedCrossSpaceCompactionWithSameTimeseriesInDifferentSourceFiles()
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
+          InterruptedException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(4, 5, true);
+    createFiles(2, 2, 3, 300, 0, 0, 50, 50, true, true);
+    createFiles(2, 4, 5, 300, 700, 700, 50, 50, true, true);
+    createFiles(3, 3, 4, 200, 20, 10020, 30, 30, true, false);
+    createFiles(2, 1, 5, 100, 450, 20450, 0, 0, true, false);
+
+    // generate mods file
+    List<String> seriesPaths = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      seriesPaths.add(
+          COMPACTION_TEST_SG
+              + PATH_SEPARATOR
+              + "d"
+              + TsFileGeneratorUtils.getAlignDeviceOffset()
+              + PATH_SEPARATOR
+              + "s"
+              + i);
+      seriesPaths.add(
+          COMPACTION_TEST_SG
+              + PATH_SEPARATOR
+              + "d"
+              + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1)
+              + PATH_SEPARATOR
+              + "s"
+              + i);
+      seriesPaths.add(
+          COMPACTION_TEST_SG
+              + PATH_SEPARATOR
+              + "d"
+              + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2)
+              + PATH_SEPARATOR
+              + "s"
+              + i);
+    }
+    generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    deleteTimeseriesInMManager(seriesPaths);
+    setDataType(TSDataType.TEXT);
+    registerTimeseriesInMManger(2, 7, true);
+    List<Integer> deviceIndex = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      deviceIndex.add(i);
+    }
+    List<Integer> measurementIndex = new ArrayList<>();
+    for (int i = 0; i < 7; i++) {
+      measurementIndex.add(i);
+    }
+
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 1350, 0, true, true);
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+  }
+
+  /** Each source file has different device. */
+  @Test
+  public void testAlignedCrossSpaceCompactionWithDifferentDevicesInDifferentSourceFiles()
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
+          InterruptedException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(5, 7, true);
+    List<Integer> deviceIndex = new ArrayList<>();
+    List<Integer> measurementIndex = new ArrayList<>();
+    for (int i = 0; i < 7; i++) {
+      measurementIndex.add(i);
+    }
+
+    deviceIndex.add(0);
+    deviceIndex.add(2);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 0, 0, true, true);
+
+    deviceIndex.clear();
+    deviceIndex.add(1);
+    deviceIndex.add(3);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 400, 0, true, true);
+
+    deviceIndex.clear();
+    deviceIndex.add(2);
+    deviceIndex.add(4);
+    deviceIndex.add(0);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 800, 0, true, true);
+
+    deviceIndex.clear();
+    deviceIndex.add(1);
+    deviceIndex.add(4);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 200, 100, 0, true, false);
+
+    deviceIndex.clear();
+    deviceIndex.add(0);
+    deviceIndex.add(2);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 200, 400, 0, true, false);
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+  }
+
+  /**
    * Total 4 seq files and 5 unseq files, each file has different aligned timeseries.
    *
    * <p>Seq files<br>
@@ -3454,6 +3656,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     }
     generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    deleteTimeseriesInMManager(seriesPaths);
 
     for (TsFileResource resource : seqResources) {
       resource.setTimeIndexType((byte) 2);
