@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -153,9 +152,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private static final Logger logger = LoggerFactory.getLogger(Analyzer.class);
 
-  private final Coordinator coordinator = Coordinator.getInstance();
-  private final SessionManager sessionManager = SessionManager.getInstance();
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
   private final MPPQueryContext context;
@@ -1634,16 +1630,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void executeSetStorageGroupStatement(Statement statement) throws LoadFileException {
-    long queryId = sessionManager.requestQueryId(false);
+    long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult result =
-        coordinator.execute(
-            statement,
-            queryId,
-            null,
-            "",
-            partitionFetcher,
-            schemaFetcher,
-            config.getQueryTimeoutThreshold());
+        Coordinator.getInstance()
+            .execute(
+                statement,
+                queryId,
+                null,
+                "",
+                partitionFetcher,
+                schemaFetcher,
+                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
     if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && result.status.code != TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
       logger.error(String.format("Set Storage group error, statement: %s.", statement));
