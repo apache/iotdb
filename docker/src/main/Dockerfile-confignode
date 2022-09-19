@@ -38,5 +38,5 @@ EXPOSE 22278
 EXPOSE 22277
 VOLUME /confignode/data
 VOLUME /confignode/logs
-ENV PATH="/datanode/sbin/:${PATH}"
+ENV PATH="/confignode/sbin/:${PATH}"
 ENTRYPOINT ["/confignode/sbin/start-confignode.sh"]
