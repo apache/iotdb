@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -57,7 +56,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -427,10 +425,12 @@ public class TsFileIOWriter implements AutoCloseable {
     }
 
     addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
-    deviceMetadataIndexMap.put(
-        prevDevice,
-        generateRootNode(
-            measurementMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
+    if (prevDevice != null) {
+      deviceMetadataIndexMap.put(
+          prevDevice,
+          generateRootNode(
+              measurementMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
+    }
 
     MetadataIndexNode metadataIndex = checkAndBuildLevelIndex(deviceMetadataIndexMap, out);
 
@@ -443,68 +443,6 @@ public class TsFileIOWriter implements AutoCloseable {
 
     // write TsFileMetaData size
     ReadWriteIOUtils.write(size, out.wrapAsStream());
-  }
-
-  /**
-   * Flush TsFileMetadata, including ChunkMetadataList and TimeseriesMetaData
-   *
-   * @param chunkMetadataListMap chunkMetadata that Path.mask == 0
-   * @return MetadataIndexEntry list in TsFileMetadata
-   */
-  private MetadataIndexNode flushMetadataIndex(Map<Path, List<IChunkMetadata>> chunkMetadataListMap)
-      throws IOException {
-
-    // convert ChunkMetadataList to this field
-    deviceTimeseriesMetadataMap = new LinkedHashMap<>();
-    // create device -> TimeseriesMetaDataList Map
-    for (Map.Entry<Path, List<IChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
-      // for ordinary path
-      TimeseriesMetadata timeseriesMetadata =
-          constructOneTimeseriesMetadata(entry.getKey(), entry.getValue());
-      deviceTimeseriesMetadataMap
-          .computeIfAbsent(entry.getKey().getDevice(), k -> new ArrayList<>())
-          .add(timeseriesMetadata);
-    }
-
-    // construct TsFileMetadata and return
-    return MetadataIndexConstructor.constructMetadataIndex(deviceTimeseriesMetadataMap, out);
-  }
-
-  /**
-   * Flush one chunkMetadata
-   *
-   * @param path Path of chunk
-   * @param chunkMetadataList List of chunkMetadata about path(previous param)
-   * @return the constructed TimeseriesMetadata
-   */
-  protected TimeseriesMetadata constructOneTimeseriesMetadata(
-      Path path, List<IChunkMetadata> chunkMetadataList) throws IOException {
-    // create TimeseriesMetaData
-    PublicBAOS publicBAOS = new PublicBAOS();
-    TSDataType dataType = chunkMetadataList.get(chunkMetadataList.size() - 1).getDataType();
-    Statistics seriesStatistics = Statistics.getStatsByType(dataType);
-
-    int chunkMetadataListLength = 0;
-    boolean serializeStatistic = (chunkMetadataList.size() > 1);
-    // flush chunkMetadataList one by one
-    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-      if (!chunkMetadata.getDataType().equals(dataType)) {
-        continue;
-      }
-      chunkMetadataListLength += chunkMetadata.serializeTo(publicBAOS, serializeStatistic);
-      seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
-    }
-
-    TimeseriesMetadata timeseriesMetadata =
-        new TimeseriesMetadata(
-            (byte)
-                ((serializeStatistic ? (byte) 1 : (byte) 0) | chunkMetadataList.get(0).getMask()),
-            chunkMetadataListLength,
-            path.getMeasurement(),
-            dataType,
-            seriesStatistics,
-            publicBAOS);
-    return timeseriesMetadata;
   }
 
   /**

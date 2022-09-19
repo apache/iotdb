@@ -463,7 +463,7 @@ public class TsFileIOWriterMemoryControlTest {
         writer.endChunkGroup();
       }
       Assert.assertTrue(writer.hasChunkMetadataInDisk);
-      Assert.assertFalse(writer.chunkMetadataList.isEmpty());
+      Assert.assertFalse(writer.chunkGroupMetadataList.isEmpty());
       writer.endFile();
     }
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
