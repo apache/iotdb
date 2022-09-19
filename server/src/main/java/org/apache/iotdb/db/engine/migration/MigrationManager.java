@@ -162,6 +162,7 @@ public class MigrationManager {
 
   /** close all resources used */
   public void close() {
+    initialized = false;
     migrationCheckThread.shutdown();
     migrationTaskThreadPool.shutdown();
 
@@ -174,6 +175,8 @@ public class MigrationManager {
     for (MigrationTask task : migrationTasks) {
       task.close();
     }
+    migrationTasks.clear();
+    currentTaskId = 0;
   }
 
   /** creates a copy of migrationTasks and returns */

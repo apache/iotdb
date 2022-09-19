@@ -114,9 +114,8 @@ public class MigrationOperateWriterReaderTest {
   public void testWriteAndRead() throws Exception {
     MigrationOperateWriter writer = new MigrationOperateWriter(filePath);
     writeLog(writer);
-    try {
+    try (MigrationOperateReader reader = new MigrationOperateReader(new File(filePath))) {
       writer.close();
-      MigrationOperateReader reader = new MigrationOperateReader(new File(filePath));
       List<MigrationOperate> res = new ArrayList<>();
       while (reader.hasNext()) {
         res.add(reader.next());
@@ -124,7 +123,6 @@ public class MigrationOperateWriterReaderTest {
       for (int i = 0; i < migrateOperate.size(); i++) {
         assertTrue(logEquals(migrateOperate.get(i), res.get(i)));
       }
-      reader.close();
     } finally {
       new File(filePath).delete();
     }
@@ -134,11 +132,8 @@ public class MigrationOperateWriterReaderTest {
   public void testTruncateBrokenLogs() throws Exception {
     try {
       // write normal data
-      MigrationOperateWriter writer = new MigrationOperateWriter(filePath);
-      try {
+      try (MigrationOperateWriter writer = new MigrationOperateWriter(filePath)) {
         writeLog(writer);
-      } finally {
-        writer.close();
       }
       long expectedLength = new File(filePath).length();
 
@@ -160,8 +155,7 @@ public class MigrationOperateWriterReaderTest {
       }
 
       // read & check
-      MigrationOperateReader reader = new MigrationOperateReader(new File(filePath));
-      try {
+      try (MigrationOperateReader reader = new MigrationOperateReader(new File(filePath))) {
         List<MigrationOperate> res = new ArrayList<>();
         while (reader.hasNext()) {
           res.add(reader.next());
@@ -169,8 +163,6 @@ public class MigrationOperateWriterReaderTest {
         for (int i = 0; i < migrateOperate.size(); i++) {
           assertTrue(logEquals(migrateOperate.get(i), res.get(i)));
         }
-      } finally {
-        reader.close();
       }
       assertEquals(expectedLength, new File(filePath).length());
     } finally {

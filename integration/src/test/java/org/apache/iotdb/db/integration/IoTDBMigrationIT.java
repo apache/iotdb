@@ -320,7 +320,7 @@ public class IoTDBMigrationIT {
       assertEquals(1000, checkTaskId.size());
       assertEquals(1000, checkTTL.size());
 
-      for (int i = 0; i < 1000; i++) {
+      for (int i : checkTaskId) {
         // test concurrent cancel
         statement.execute(String.format("CANCEL MIGRATION %d", i));
       }

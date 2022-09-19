@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
+import org.apache.iotdb.db.engine.migration.MigrationManager;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
@@ -142,6 +143,9 @@ public class EnvironmentUtils {
       logger.error("Can't close the storage group manager in EnvironmentUtils");
       fail();
     }
+
+    // clear migration manager
+    MigrationManager.getInstance().close();
 
     IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.NORMAL);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our

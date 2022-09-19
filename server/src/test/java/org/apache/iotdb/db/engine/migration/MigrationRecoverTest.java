@@ -63,8 +63,6 @@ public class MigrationRecoverTest {
       throws MetadataException, StorageGroupProcessorException, LogicalOperatorException {
     EnvironmentUtils.envSetUp();
 
-    MIGRATING_LOG_DIR.mkdirs();
-
     testLogFile = SystemFileFactory.INSTANCE.getFile(MIGRATING_LOG_DIR, testTaskId + ".log");
 
     testTargetDir = new File("testTargetDir");

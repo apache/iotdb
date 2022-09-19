@@ -20,11 +20,9 @@
 
 package org.apache.iotdb.db.engine.migration;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -54,7 +52,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -63,7 +60,6 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -76,12 +72,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class MigrationTest {
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static File MIGRATING_LOG_DIR =
-      SystemFileFactory.INSTANCE.getFile(
-          Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "migrating")
-              .toString());
-
   private final String sg1 = "root.MIGRATE_SG1";
   private final String sg2 = "root.MIGRATE_SG2";
   private final long ttl = 12345;
@@ -98,7 +88,6 @@ public class MigrationTest {
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
-    MIGRATING_LOG_DIR.mkdirs();
     createSchemas();
     targetDir = new File("data", "separated_test");
     targetDir.mkdirs();

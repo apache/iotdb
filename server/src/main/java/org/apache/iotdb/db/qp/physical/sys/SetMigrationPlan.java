@@ -62,12 +62,12 @@ public class SetMigrationPlan extends PhysicalPlan {
   }
 
   public SetMigrationPlan(PartialPath storageGroup) {
-    // unset migrate using storage group
+    // cancel migrate using storage group
     this(storageGroup, null, Long.MAX_VALUE, Long.MAX_VALUE);
   }
 
   public SetMigrationPlan(long taskId) {
-    // unset migrate using taskId
+    // cancel migrate using taskId
     this(taskId, null, null, Long.MAX_VALUE, Long.MAX_VALUE);
   }
 
