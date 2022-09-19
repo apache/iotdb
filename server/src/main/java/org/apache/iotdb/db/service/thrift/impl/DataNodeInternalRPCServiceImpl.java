@@ -530,10 +530,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   "system")
               .value();
       if (freeDisk != 0 && totalDisk != 0) {
-        resp.setDisk((short) (freeDisk / totalDisk));
+        resp.setDisk((short) (freeDisk * 100 / totalDisk));
       }
-      System.out.println(freeDisk + ", " + totalDisk + ", " + (totalDisk - freeDisk));
-      System.out.println(resp);
     }
     return resp;
   }
