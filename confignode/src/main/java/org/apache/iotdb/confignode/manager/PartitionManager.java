@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -47,12 +48,13 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.RegionGroupCache;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.RegionCreateTask;
@@ -99,7 +101,7 @@ public class PartitionManager {
   private Future<?> currentRegionMaintainerFuture;
 
   // Map<RegionId, RegionGroupCache>
-  private final Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap;
+  private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
 
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
@@ -478,7 +480,31 @@ public class PartitionManager {
   }
 
   public DataSet getRegionInfoList(GetRegionInfoListPlan req) {
-    return getConsensusManager().read(req).getDataset();
+    // Get static result
+    RegionInfoListResp regionInfoListResp =
+        (RegionInfoListResp) getConsensusManager().read(req).getDataset();
+    Map<TConsensusGroupId, Integer> allLeadership = getAllLeadership();
+
+    // Get cached result
+    regionInfoListResp
+        .getRegionInfoList()
+        .forEach(
+            regionInfo -> {
+              regionInfo.setStatus(
+                  regionGroupCacheMap
+                      .get(regionInfo.getConsensusGroupId())
+                      .getRegionStatus(regionInfo.getDataNodeId())
+                      .getStatus());
+
+              String regionType =
+                  regionInfo.getDataNodeId()
+                          == allLeadership.getOrDefault(regionInfo.getConsensusGroupId(), -1)
+                      ? RegionRoleType.Leader.toString()
+                      : RegionRoleType.Follower.toString();
+              regionInfo.setRoleType(regionType);
+            });
+
+    return regionInfoListResp;
   }
 
   /**
@@ -619,7 +645,7 @@ public class PartitionManager {
     }
   }
 
-  public Map<TConsensusGroupId, IRegionGroupCache> getRegionGroupCacheMap() {
+  public Map<TConsensusGroupId, RegionGroupCache> getRegionGroupCacheMap() {
     return regionGroupCacheMap;
   }
 
@@ -628,12 +654,16 @@ public class PartitionManager {
   }
 
   /**
-   * Get the leadership of each RegionGroup If a node is in unknown or removing status, this node
-   * can't be leader
+   * Get the leadership of each RegionGroup.
    *
-   * @return Map<RegionGroupId, leader location>
+   * @return Map<RegionGroupId, DataNodeId where the leader located>
+   *     <p>Some RegionGroups that supposed to be occurred in the result map might be nonexistent
+   *     and some leaderId might be -1(leader unknown yet) due to heartbeat latency
    */
   public Map<TConsensusGroupId, Integer> getAllLeadership() {
+
+    // TODO: Will be optimized by IOTDB-4341
+
     Map<TConsensusGroupId, Integer> result = new ConcurrentHashMap<>();
     if (ConfigNodeDescriptor.getInstance()
         .getConf()

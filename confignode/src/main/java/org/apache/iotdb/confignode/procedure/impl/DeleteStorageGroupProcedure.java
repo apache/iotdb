@@ -48,7 +48,7 @@ import java.util.List;
 public class DeleteStorageGroupProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteStorageGroupState> {
   private static final Logger LOG = LoggerFactory.getLogger(DeleteStorageGroupProcedure.class);
-  private static final int retryThreshold = 5;
+  private static final int RETRY_THRESHOLD = 5;
 
   private TStorageGroupSchema deleteSgSchema;
 
@@ -123,7 +123,7 @@ public class DeleteStorageGroupProcedure
 
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return Flow.NO_MORE_STATE;
-          } else if (getCycles() > retryThreshold) {
+          } else if (getCycles() > RETRY_THRESHOLD) {
             setFailure(new ProcedureException("Delete config info id failed"));
           }
       }
@@ -136,7 +136,7 @@ public class DeleteStorageGroupProcedure
             deleteSgSchema.getName(),
             state,
             e);
-        if (getCycles() > retryThreshold) {
+        if (getCycles() > RETRY_THRESHOLD) {
           setFailure(new ProcedureException("State stuck at " + state));
         }
       }

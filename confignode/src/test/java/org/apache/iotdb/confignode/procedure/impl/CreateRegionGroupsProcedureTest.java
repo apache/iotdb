@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Test;
@@ -103,6 +104,13 @@ public class CreateRegionGroupsProcedureTest {
       procedure1.deserialize(buffer);
       assertEquals(procedure0, procedure1);
       assertEquals(procedure0.hashCode(), procedure1.hashCode());
+
+      CreateRegionGroupsProcedure procedure2 =
+          (CreateRegionGroupsProcedure)
+              ProcedureFactory.getInstance()
+                  .create(ByteBuffer.wrap(byteArrayOutputStream.getBuf()));
+      assertEquals(procedure0, procedure2);
+      assertEquals(procedure0.hashCode(), procedure2.hashCode());
     } catch (IOException e) {
       fail();
     }
