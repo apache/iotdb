@@ -316,6 +316,7 @@ public class CommonConfig {
     switch (newStatus) {
       case Full:
         logger.warn("Change system status to Full! The disk is running out!");
+        break;
       case ReadOnly:
         logger.error(
             "Change system status to ReadOnly! Only query statements are permitted!",
