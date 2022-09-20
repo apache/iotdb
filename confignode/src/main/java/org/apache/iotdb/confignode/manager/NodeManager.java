@@ -693,7 +693,7 @@ public class NodeManager {
     SyncDataNodeClientPool.getInstance()
         .sendSyncRequestToDataNodeWithRetry(
             dataNodeLocation.getInternalEndPoint(),
-            NodeStatus.Removing,
+            NodeStatus.Removing.getStatus(),
             DataNodeRequestType.SET_SYSTEM_STATUS);
   }
 
