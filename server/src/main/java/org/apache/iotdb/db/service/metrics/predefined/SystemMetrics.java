@@ -215,6 +215,7 @@ public class SystemMetrics implements IMetricSet {
   }
 
   private void removeSystemDiskInfo(AbstractMetricService metricService) {
+    fileStores.clear();
     metricService.remove(
         MetricType.GAUGE, Metric.SYS_DISK_TOTAL_SPACE.toString(), Tag.NAME.toString(), "system");
     metricService.remove(
