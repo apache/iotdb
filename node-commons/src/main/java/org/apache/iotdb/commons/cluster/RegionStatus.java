@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.commons.cluster;
 
-/** Node status for showing regions */
+/** Region status for showing regions */
 public enum RegionStatus {
-  // Node running properly
-  Up("Up");
+  /** Region running properly */
+  Running("Running"),
+
+  /** Region connection failure */
+  Unknown("Unknown");
 
   private final String status;
 

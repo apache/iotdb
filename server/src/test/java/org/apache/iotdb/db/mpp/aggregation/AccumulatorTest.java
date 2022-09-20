@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
+import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindow;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -44,6 +46,8 @@ public class AccumulatorTest {
   private Statistics statistics;
   private TimeRange defaultTimeRange = new TimeRange(0, Long.MAX_VALUE);
 
+  private TimeWindow timeWindow = new TimeWindow(defaultTimeRange);
+
   @Before
   public void setUp() {
     initInputTsBlock();
@@ -66,6 +70,14 @@ public class AccumulatorTest {
     statistics.update(100L, 100d);
   }
 
+  public Column[] getControlTimeAndValueColumn(IWindow curWindow, int columnIndex) {
+    Column[] columns = new Column[3];
+    columns[0] = curWindow.getControlColumn(rawData);
+    columns[1] = rawData.getTimeColumn();
+    columns[2] = rawData.getColumn(columnIndex);
+    return columns;
+  }
+
   @Test
   public void avgAccumulatorTest() {
     Accumulator avgAccumulator =
@@ -84,7 +96,8 @@ public class AccumulatorTest {
     avgAccumulator.outputFinal(finalResult);
     Assert.assertTrue(finalResult.build().isNull(0));
 
-    avgAccumulator.addInput(rawData.getTimeAndValueColumn(0), defaultTimeRange);
+    Column[] controlTimeAndValueColumn = getControlTimeAndValueColumn(timeWindow, 0);
+    avgAccumulator.addInput(controlTimeAndValueColumn, timeWindow);
     Assert.assertFalse(avgAccumulator.hasFinalResult());
     intermediateResult[0] = new LongColumnBuilder(null, 1);
     intermediateResult[1] = new DoubleColumnBuilder(null, 1);
@@ -121,7 +134,8 @@ public class AccumulatorTest {
     countAccumulator.outputFinal(finalResult);
     Assert.assertEquals(0, finalResult.build().getLong(0));
 
-    countAccumulator.addInput(rawData.getTimeAndValueColumn(0), defaultTimeRange);
+    Column[] controlTimeAndValueColumn = getControlTimeAndValueColumn(timeWindow, 0);
+    countAccumulator.addInput(controlTimeAndValueColumn, timeWindow);
     Assert.assertFalse(countAccumulator.hasFinalResult());
     intermediateResult[0] = new LongColumnBuilder(null, 1);
     countAccumulator.outputIntermediate(intermediateResult);
@@ -155,7 +169,8 @@ public class AccumulatorTest {
     extremeAccumulator.outputFinal(finalResult);
     Assert.assertTrue(finalResult.build().isNull(0));
 
-    extremeAccumulator.addInput(rawData.getTimeAndValueColumn(0), defaultTimeRange);
+    Column[] controlTimeAndValueColumn = getControlTimeAndValueColumn(timeWindow, 0);
+    extremeAccumulator.addInput(controlTimeAndValueColumn, timeWindow);
     Assert.assertFalse(extremeAccumulator.hasFinalResult());
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     extremeAccumulator.outputIntermediate(intermediateResult);
@@ -192,7 +207,8 @@ public class AccumulatorTest {
     firstValueAccumulator.outputFinal(finalResult);
     Assert.assertTrue(finalResult.build().isNull(0));
 
-    firstValueAccumulator.addInput(rawData.getTimeAndValueColumn(0), defaultTimeRange);
+    Column[] controlTimeAndValueColumn = getControlTimeAndValueColumn(timeWindow, 0);
+    firstValueAccumulator.addInput(controlTimeAndValueColumn, timeWindow);
     Assert.assertTrue(firstValueAccumulator.hasFinalResult());
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     intermediateResult[1] = new LongColumnBuilder(null, 1);
@@ -232,7 +248,8 @@ public class AccumulatorTest {
     lastValueAccumulator.outputFinal(finalResult);
     Assert.assertTrue(finalResult.build().isNull(0));
 
-    lastValueAccumulator.addInput(rawData.getTimeAndValueColumn(0), defaultTimeRange);
+    Column[] controlTimeAndValueColumn = getControlTimeAndValueColumn(timeWindow, 0);
+    lastValueAccumulator.addInput(controlTimeAndValueColumn, timeWindow);
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     intermediateResult[1] = new LongColumnBuilder(null, 1);
     lastValueAccumulator.outputIntermediate(intermediateResult);
@@ -268,7 +285,8 @@ public class AccumulatorTest {
     maxTimeAccumulator.outputFinal(finalResult);
     Assert.assertTrue(finalResult.build().isNull(0));
 
-    maxTimeAccumulator.addInput(rawData.getTimeAndValueColumn(0), defaultTimeRange);
+    Column[] controlTimeAndValueColumn = getControlTimeAndValueColumn(timeWindow, 0);
+    maxTimeAccumulator.addInput(controlTimeAndValueColumn, timeWindow);
     Assert.assertFalse(maxTimeAccumulator.hasFinalResult());
     intermediateResult[0] = new LongColumnBuilder(null, 1);
     maxTimeAccumulator.outputIntermediate(intermediateResult);
@@ -302,7 +320,8 @@ public class AccumulatorTest {
     minTimeAccumulator.outputFinal(finalResult);
     Assert.assertTrue(finalResult.build().isNull(0));
 
-    minTimeAccumulator.addInput(rawData.getTimeAndValueColumn(0), defaultTimeRange);
+    Column[] controlTimeAndValueColumn = getControlTimeAndValueColumn(timeWindow, 0);
+    minTimeAccumulator.addInput(controlTimeAndValueColumn, timeWindow);
     Assert.assertTrue(minTimeAccumulator.hasFinalResult());
     intermediateResult[0] = new LongColumnBuilder(null, 1);
     minTimeAccumulator.outputIntermediate(intermediateResult);
@@ -336,7 +355,8 @@ public class AccumulatorTest {
     extremeAccumulator.outputFinal(finalResult);
     Assert.assertTrue(finalResult.build().isNull(0));
 
-    extremeAccumulator.addInput(rawData.getTimeAndValueColumn(0), defaultTimeRange);
+    Column[] controlTimeAndValueColumn = getControlTimeAndValueColumn(timeWindow, 0);
+    extremeAccumulator.addInput(controlTimeAndValueColumn, timeWindow);
     Assert.assertFalse(extremeAccumulator.hasFinalResult());
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     extremeAccumulator.outputIntermediate(intermediateResult);
@@ -370,7 +390,8 @@ public class AccumulatorTest {
     extremeAccumulator.outputFinal(finalResult);
     Assert.assertTrue(finalResult.build().isNull(0));
 
-    extremeAccumulator.addInput(rawData.getTimeAndValueColumn(0), defaultTimeRange);
+    Column[] controlTimeAndValueColumn = getControlTimeAndValueColumn(timeWindow, 0);
+    extremeAccumulator.addInput(controlTimeAndValueColumn, timeWindow);
     Assert.assertFalse(extremeAccumulator.hasFinalResult());
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     extremeAccumulator.outputIntermediate(intermediateResult);
@@ -404,7 +425,8 @@ public class AccumulatorTest {
     sumAccumulator.outputFinal(finalResult);
     Assert.assertTrue(finalResult.build().isNull(0));
 
-    sumAccumulator.addInput(rawData.getTimeAndValueColumn(0), defaultTimeRange);
+    Column[] controlTimeAndValueColumn = getControlTimeAndValueColumn(timeWindow, 0);
+    sumAccumulator.addInput(controlTimeAndValueColumn, timeWindow);
     Assert.assertFalse(sumAccumulator.hasFinalResult());
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     sumAccumulator.outputIntermediate(intermediateResult);

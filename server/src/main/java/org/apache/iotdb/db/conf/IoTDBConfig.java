@@ -32,6 +32,8 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -291,6 +293,9 @@ public class IoTDBConfig {
   private String[] dataDirs = {
     IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME
   };
+
+  private String loadTsFileDir =
+      dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
@@ -750,6 +755,9 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 86400;
 
+  /** Max size of a {@link PlanNode}, mainly used to control memory of {@link LoadTsFileNode}. */
+  private long maxPlanNodeSize = 500 * 1048576L;
+
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
    * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
@@ -993,6 +1001,9 @@ public class IoTDBConfig {
   /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
+  /** Maximum wait time of write cache in MultiLeader consensus. Unit: ms */
+  private long cacheWindowTimeInMs = Long.MAX_VALUE;
+
   private long RatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
 
   IoTDBConfig() {}
@@ -1078,6 +1089,10 @@ public class IoTDBConfig {
     this.partitionInterval = partitionInterval;
   }
 
+  public long getMaxPlanNodeSize() {
+    return maxPlanNodeSize;
+  }
+
   public TimeIndexLevel getTimeIndexLevel() {
     return timeIndexLevel;
   }
@@ -1095,6 +1110,7 @@ public class IoTDBConfig {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
+    loadTsFileDir = addHomeDir(loadTsFileDir);
     tracingDir = addHomeDir(tracingDir);
     consensusDir = addHomeDir(consensusDir);
     dataRegionConsensusDir = addHomeDir(dataRegionConsensusDir);
@@ -1254,6 +1270,14 @@ public class IoTDBConfig {
 
   void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
+  }
+
+  public String getLoadTsFileDir() {
+    return loadTsFileDir;
+  }
+
+  public void setLoadTsFileDir(String loadTsFileDir) {
+    this.loadTsFileDir = loadTsFileDir;
   }
 
   public String getSchemaDir() {
@@ -3137,6 +3161,14 @@ public class IoTDBConfig {
 
   public void setThrottleThreshold(long throttleThreshold) {
     this.throttleThreshold = throttleThreshold;
+  }
+
+  public long getCacheWindowTimeInMs() {
+    return cacheWindowTimeInMs;
+  }
+
+  public void setCacheWindowTimeInMs(long cacheWindowTimeInMs) {
+    this.cacheWindowTimeInMs = cacheWindowTimeInMs;
   }
 
   public long getRatisConsensusLogAppenderBufferSizeMax() {

@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -176,42 +176,49 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
       boolean isAligned) {
-    ClusterSchemaTree schemaTree = schemaCache.get(devicePath, measurements);
-    List<Integer> indexOfMissingMeasurements =
-        checkMissingMeasurements(schemaTree, devicePath, measurements);
+    schemaCache.takeReadLock();
+    try {
+      ClusterSchemaTree schemaTree = schemaCache.get(devicePath, measurements);
+      List<Integer> indexOfMissingMeasurements =
+          checkMissingMeasurements(schemaTree, devicePath, measurements);
 
-    if (indexOfMissingMeasurements.isEmpty()) {
+      if (indexOfMissingMeasurements.isEmpty()) {
+        return schemaTree;
+      }
+
+      PathPatternTree patternTree = new PathPatternTree();
+      for (int index : indexOfMissingMeasurements) {
+        patternTree.appendFullPath(devicePath, measurements[index]);
+      }
+
+      ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
+      if (!remoteSchemaTree.isEmpty()) {
+        schemaTree.mergeSchemaTree(remoteSchemaTree);
+        schemaCache.put(remoteSchemaTree);
+      }
+
+      if (!config.isAutoCreateSchemaEnabled()) {
+        return schemaTree;
+      }
+
+      ClusterSchemaTree missingSchemaTree =
+          checkAndAutoCreateMissingMeasurements(
+              remoteSchemaTree,
+              devicePath,
+              indexOfMissingMeasurements,
+              measurements,
+              getDataType,
+              null,
+              null,
+              isAligned);
+
+      schemaTree.mergeSchemaTree(missingSchemaTree);
+      schemaCache.put(missingSchemaTree);
+
       return schemaTree;
+    } finally {
+      schemaCache.releaseReadLock();
     }
-
-    PathPatternTree patternTree = new PathPatternTree();
-    for (int index : indexOfMissingMeasurements) {
-      patternTree.appendFullPath(devicePath, measurements[index]);
-    }
-
-    ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
-    if (!remoteSchemaTree.isEmpty()) {
-      schemaTree.mergeSchemaTree(remoteSchemaTree);
-      schemaCache.put(remoteSchemaTree);
-    }
-
-    if (!config.isAutoCreateSchemaEnabled()) {
-      return schemaTree;
-    }
-
-    ClusterSchemaTree missingSchemaTree =
-        checkAndAutoCreateMissingMeasurements(
-            remoteSchemaTree,
-            devicePath,
-            indexOfMissingMeasurements,
-            measurements,
-            getDataType,
-            isAligned);
-
-    schemaTree.mergeSchemaTree(missingSchemaTree);
-    schemaCache.put(missingSchemaTree);
-
-    return schemaTree;
   }
 
   @Override
@@ -220,49 +227,68 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<String[]> measurementsList,
       List<TSDataType[]> tsDataTypesList,
       List<Boolean> isAlignedList) {
+    return fetchSchemaListWithAutoCreate(
+        devicePathList, measurementsList, tsDataTypesList, null, null, isAlignedList);
+  }
 
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    PathPatternTree patternTree = new PathPatternTree();
-    List<List<Integer>> indexOfMissingMeasurementsList = new ArrayList<>(devicePathList.size());
-    for (int i = 0; i < devicePathList.size(); i++) {
-      schemaTree.mergeSchemaTree(schemaCache.get(devicePathList.get(i), measurementsList.get(i)));
-      List<Integer> indexOfMissingMeasurements =
-          checkMissingMeasurements(schemaTree, devicePathList.get(i), measurementsList.get(i));
-      indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
-      for (int index : indexOfMissingMeasurements) {
-        patternTree.appendFullPath(devicePathList.get(i), measurementsList.get(i)[index]);
+  @Override
+  public ISchemaTree fetchSchemaListWithAutoCreate(
+      List<PartialPath> devicePathList,
+      List<String[]> measurementsList,
+      List<TSDataType[]> tsDataTypesList,
+      List<TSEncoding[]> encodingsList,
+      List<CompressionType[]> compressionTypesList,
+      List<Boolean> isAlignedList) {
+    schemaCache.takeReadLock();
+
+    try {
+      ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+      PathPatternTree patternTree = new PathPatternTree();
+      List<List<Integer>> indexOfMissingMeasurementsList = new ArrayList<>(devicePathList.size());
+      for (int i = 0; i < devicePathList.size(); i++) {
+        schemaTree.mergeSchemaTree(schemaCache.get(devicePathList.get(i), measurementsList.get(i)));
+        List<Integer> indexOfMissingMeasurements =
+            checkMissingMeasurements(schemaTree, devicePathList.get(i), measurementsList.get(i));
+        indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
+        for (int index : indexOfMissingMeasurements) {
+          patternTree.appendFullPath(devicePathList.get(i), measurementsList.get(i)[index]);
+        }
       }
-    }
 
-    if (patternTree.isEmpty()) {
+      if (patternTree.isEmpty()) {
+        return schemaTree;
+      }
+
+      ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
+      if (!remoteSchemaTree.isEmpty()) {
+        schemaTree.mergeSchemaTree(remoteSchemaTree);
+        schemaCache.put(remoteSchemaTree);
+      }
+
+      if (!config.isAutoCreateSchemaEnabled()) {
+        return schemaTree;
+      }
+
+      ClusterSchemaTree missingSchemaTree;
+      for (int i = 0; i < devicePathList.size(); i++) {
+        int finalI = i;
+        missingSchemaTree =
+            checkAndAutoCreateMissingMeasurements(
+                schemaTree,
+                devicePathList.get(i),
+                indexOfMissingMeasurementsList.get(i),
+                measurementsList.get(i),
+                index -> tsDataTypesList.get(finalI)[index],
+                encodingsList == null ? null : encodingsList.get(i),
+                compressionTypesList == null ? null : compressionTypesList.get(i),
+                isAlignedList.get(i));
+        schemaTree.mergeSchemaTree(missingSchemaTree);
+        schemaCache.put(missingSchemaTree);
+      }
       return schemaTree;
+    } finally {
+      schemaCache.releaseReadLock();
     }
-
-    ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
-    if (!remoteSchemaTree.isEmpty()) {
-      schemaTree.mergeSchemaTree(remoteSchemaTree);
-      schemaCache.put(remoteSchemaTree);
-    }
-
-    if (!config.isAutoCreateSchemaEnabled()) {
-      return schemaTree;
-    }
-
-    ClusterSchemaTree missingSchemaTree;
-    for (int i = 0; i < devicePathList.size(); i++) {
-      int finalI = i;
-      missingSchemaTree =
-          checkAndAutoCreateMissingMeasurements(
-              schemaTree,
-              devicePathList.get(i),
-              indexOfMissingMeasurementsList.get(i),
-              measurementsList.get(i),
-              index -> tsDataTypesList.get(finalI)[index],
-              isAlignedList.get(i));
-      schemaTree.mergeSchemaTree(missingSchemaTree);
-      schemaCache.put(missingSchemaTree);
-    }
-    return schemaTree;
   }
 
   @Override
@@ -286,6 +312,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<Integer> indexOfMissingMeasurements,
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
+      TSEncoding[] encodings,
+      CompressionType[] compressionTypes,
       boolean isAligned) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(
@@ -347,15 +375,31 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     List<String> missingMeasurements = new ArrayList<>(indexOfMissingMeasurements.size());
     List<TSDataType> dataTypesOfMissingMeasurement =
         new ArrayList<>(indexOfMissingMeasurements.size());
+    List<TSEncoding> encodingsOfMissingMeasurement =
+        new ArrayList<>(indexOfMissingMeasurements.size());
+    List<CompressionType> compressionTypesOfMissingMeasurement =
+        new ArrayList<>(indexOfMissingMeasurements.size());
     indexOfMissingMeasurements.forEach(
         index -> {
+          TSDataType tsDataType = getDataType.apply(index);
           missingMeasurements.add(measurements[index]);
-          dataTypesOfMissingMeasurement.add(getDataType.apply(index));
+          dataTypesOfMissingMeasurement.add(tsDataType);
+          encodingsOfMissingMeasurement.add(
+              encodings == null ? getDefaultEncoding(tsDataType) : encodings[index]);
+          compressionTypesOfMissingMeasurement.add(
+              compressionTypes == null
+                  ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                  : compressionTypes[index]);
         });
 
     schemaTree.mergeSchemaTree(
         internalCreateTimeseries(
-            devicePath, missingMeasurements, dataTypesOfMissingMeasurement, isAligned));
+            devicePath,
+            missingMeasurements,
+            dataTypesOfMissingMeasurement,
+            encodingsOfMissingMeasurement,
+            compressionTypesOfMissingMeasurement,
+            isAligned));
 
     return schemaTree;
   }
@@ -383,15 +427,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       PartialPath devicePath,
       List<String> measurements,
       List<TSDataType> tsDataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
       boolean isAligned) {
-
-    List<TSEncoding> encodings = new ArrayList<>();
-    List<CompressionType> compressors = new ArrayList<>();
-    for (TSDataType dataType : tsDataTypes) {
-      encodings.add(getDefaultEncoding(dataType));
-      compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
-    }
-
     List<MeasurementPath> measurementPathList =
         executeInternalCreateTimeseriesStatement(
             new InternalCreateTimeSeriesStatement(

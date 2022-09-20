@@ -30,11 +30,10 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
@@ -316,7 +315,7 @@ public class ConfigNodeProcedureEnv {
   /**
    * Do region creations and broadcast the CreateRegionGroupsPlan
    *
-   * @return Those RegionGroups that failed to create
+   * @return Those RegionReplicas that failed to create
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> doRegionCreation(
       CreateRegionGroupsPlan createRegionGroupsPlan) {
@@ -334,6 +333,10 @@ public class ConfigNodeProcedureEnv {
     return AsyncDataNodeClientPool.getInstance().createRegionGroups(createRegionGroupsPlan, ttlMap);
   }
 
+  public long getTTL(String storageGroup) throws StorageGroupNotExistsException {
+    return getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL();
+  }
+
   public void persistAndBroadcastRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
     // Persist the allocation result
     getConsensusManager().write(createRegionGroupsPlan);
@@ -341,9 +344,8 @@ public class ConfigNodeProcedureEnv {
     getLoadManager().broadcastLatestRegionRouteMap();
   }
 
-  /** Submit the RegionReplicas to the RegionCleaner when there are creation failures */
-  public void submitFailedRegionReplicas(DeleteRegionGroupsPlan deleteRegionGroupsPlan) {
-    getConsensusManager().write(deleteRegionGroupsPlan);
+  public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {
+    return getPartitionManager().getAllReplicaSets(storageGroup);
   }
 
   public LockQueue getNodeLock() {

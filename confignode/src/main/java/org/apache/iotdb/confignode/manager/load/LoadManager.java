@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
@@ -196,7 +196,7 @@ public class LoadManager {
         .values()
         .forEach(
             regionGroupCache -> {
-              boolean updateResult = regionGroupCache.updateLoadStatistic();
+              boolean updateResult = regionGroupCache.updateRegionStatistics();
               switch (regionGroupCache.getConsensusGroupId().getType()) {
                   // Check if some RegionGroups change their leader
                 case SchemaRegion:
