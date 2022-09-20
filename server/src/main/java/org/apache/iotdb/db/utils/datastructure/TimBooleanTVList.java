@@ -20,10 +20,6 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataInputStream;
-import java.io.IOException;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
@@ -33,22 +29,6 @@ public class TimBooleanTVList extends BooleanTVList implements TimSort {
 
   private boolean[][] sortedValues;
   private boolean pivotValue;
-
-  @Override
-  public TimBooleanTVList clone() {
-    TimBooleanTVList cloneList = new TimBooleanTVList();
-    cloneAs(cloneList);
-    for (boolean[] valueArray : values) {
-      cloneList.values.add(cloneValue(valueArray));
-    }
-    return cloneList;
-  }
-
-  private boolean[] cloneValue(boolean[] array) {
-    boolean[] cloneArray = new boolean[array.length];
-    System.arraycopy(array, 0, cloneArray, 0, array.length);
-    return cloneArray;
-  }
 
   @Override
   public void sort() {
@@ -146,18 +126,5 @@ public class TimBooleanTVList extends BooleanTVList implements TimSort {
     super.clear();
     clearSortedTime();
     clearSortedValue();
-  }
-
-  public static TimBooleanTVList deserialize(DataInputStream stream) throws IOException {
-    TimBooleanTVList tvList = new TimBooleanTVList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    boolean[] values = new boolean[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = ReadWriteIOUtils.readBool(stream);
-    }
-    tvList.putBooleans(times, values, null, 0, rowCount);
-    return tvList;
   }
 }
