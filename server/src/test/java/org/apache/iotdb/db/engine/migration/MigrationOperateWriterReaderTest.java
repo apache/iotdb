@@ -66,6 +66,8 @@ public class MigrationOperateWriterReaderTest {
     migrateOperate.add(new MigrationOperate(MigrationOperate.MigrationOperateType.RESUME, task2));
 
     startTime = DatetimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
+    task1.close();
+    task2.close();
   }
 
   public void writeLog(MigrationOperateWriter writer) throws IOException {

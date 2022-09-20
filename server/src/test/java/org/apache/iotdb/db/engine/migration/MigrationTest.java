@@ -214,6 +214,7 @@ public class MigrationTest {
     task.setStatus(MigrationTask.MigrationTaskStatus.RUNNING);
     task.startTask();
     virtualStorageGroupProcessor.checkMigration(task);
+    task.close();
 
     // files after migrate
     seqFiles = new ArrayList<>();
@@ -369,5 +370,6 @@ public class MigrationTest {
 
     assertEquals(0, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(0, virtualStorageGroupProcessor.getUnSequenceFileList().size());
+    task.close();
   }
 }
