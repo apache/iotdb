@@ -21,9 +21,6 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class TimLongTVList extends LongTVList implements TimSort {
@@ -32,22 +29,6 @@ public class TimLongTVList extends LongTVList implements TimSort {
 
   private long[][] sortedValues;
   private long pivotValue;
-
-  @Override
-  public TimLongTVList clone() {
-    TimLongTVList cloneList = new TimLongTVList();
-    cloneAs(cloneList);
-    for (long[] valueArray : values) {
-      cloneList.values.add(cloneValue(valueArray));
-    }
-    return cloneList;
-  }
-
-  private long[] cloneValue(long[] array) {
-    long[] cloneArray = new long[array.length];
-    System.arraycopy(array, 0, cloneArray, 0, array.length);
-    return cloneArray;
-  }
 
   @Override
   public void sort() {
@@ -145,18 +126,5 @@ public class TimLongTVList extends LongTVList implements TimSort {
     super.clear();
     clearSortedTime();
     clearSortedValue();
-  }
-
-  public static TimLongTVList deserialize(DataInputStream stream) throws IOException {
-    TimLongTVList tvList = new TimLongTVList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    long[] values = new long[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = stream.readLong();
-    }
-    tvList.putLongs(times, values, null, 0, rowCount);
-    return tvList;
   }
 }

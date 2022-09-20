@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.write.confignode;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
@@ -29,15 +29,15 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
+public class RemoveConfigNodePlan extends ConfigPhysicalPlan {
 
   private TConfigNodeLocation configNodeLocation;
 
-  public ApplyConfigNodePlan() {
-    super(ConfigPhysicalPlanType.ApplyConfigNode);
+  public RemoveConfigNodePlan() {
+    super(ConfigPhysicalPlanType.RemoveConfigNode);
   }
 
-  public ApplyConfigNodePlan(TConfigNodeLocation configNodeLocation) {
+  public RemoveConfigNodePlan(TConfigNodeLocation configNodeLocation) {
     this();
     this.configNodeLocation = configNodeLocation;
   }
@@ -48,7 +48,7 @@ public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(ConfigPhysicalPlanType.ApplyConfigNode.ordinal(), stream);
+    ReadWriteIOUtils.write(ConfigPhysicalPlanType.RemoveConfigNode.ordinal(), stream);
 
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, stream);
   }
@@ -59,15 +59,19 @@ public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    ApplyConfigNodePlan that = (ApplyConfigNodePlan) o;
-    return configNodeLocation.equals(that.configNodeLocation);
+  public int hashCode() {
+    return Objects.hash(configNodeLocation);
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(configNodeLocation);
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    RemoveConfigNodePlan that = (RemoveConfigNodePlan) o;
+    return configNodeLocation.equals(that.configNodeLocation);
   }
 }

@@ -67,7 +67,8 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   }
 
   public boolean exceedSize() {
-    return dataSize >= config.getMaxPlanNodeSize();
+    return dataSize >= config.getThriftMaxFrameSize() / 2
+        || dataSize >= config.getAllocateMemoryForFree() / 2;
   }
 
   public void addTsFileData(TsFileData tsFileData) {
@@ -165,13 +166,6 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   @Override
   public String toString() {
-    return "LoadTsFilePieceNode{"
-        + "tsFile="
-        + tsFile
-        + ", dataSize="
-        + dataSize
-        + ", tsFileDataList="
-        + tsFileDataList
-        + '}';
+    return "LoadTsFilePieceNode{" + "tsFile=" + tsFile + ", dataSize=" + dataSize + '}';
   }
 }
