@@ -136,11 +136,11 @@ public class PatternTreeMapTest {
             Collections.singletonList(new Deletion(new PartialPath("root.**"), 5, 10, 100))));
   }
 
-  private void checkOverlapped(
-      PatternTreeMap patternTreeMap, PartialPath partialPath, Set resultSet) {
-    List list = patternTreeMap.getOverlapped(partialPath);
+  private <T> void checkOverlapped(
+      PatternTreeMap<T, ?> patternTreeMap, PartialPath partialPath, Set<T> resultSet) {
+    List<T> list = patternTreeMap.getOverlapped(partialPath);
     Assert.assertEquals(resultSet.size(), list.size());
-    for (Object o : list) {
+    for (T o : list) {
       Assert.assertTrue(resultSet.contains(o));
     }
   }
