@@ -116,6 +116,7 @@ public class TsFileIOWriter implements AutoCloseable {
   protected boolean enableMemoryControl = false;
   private Path lastSerializePath = null;
   protected LinkedList<Long> endPosInCMTForDevice = new LinkedList<>();
+  private boolean chunkMetadataSorted = false;
   public static final String CHUNK_METADATA_TEMP_FILE_SUFFIX = ".cmt";
 
   /** empty construct function. */
@@ -335,7 +336,7 @@ public class TsFileIOWriter implements AutoCloseable {
         hasChunkMetadataInDisk
             ? TSMIterator.getTSMIteratorInDisk(
                 chunkMetadataTempFile, chunkGroupMetadataList, endPosInCMTForDevice)
-            : TSMIterator.getTSMIteratorInMemory(chunkGroupMetadataList);
+            : TSMIterator.getTSMIteratorInMemory(chunkGroupMetadataList, chunkMetadataSorted);
     Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
     Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
     String currentDevice = null;
@@ -619,8 +620,11 @@ public class TsFileIOWriter implements AutoCloseable {
   protected void sortAndFlushChunkMetadata() throws IOException {
     // group by series
     List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList =
-        TSMIterator.sortChunkMetadata(
-            chunkGroupMetadataList, currentChunkGroupDeviceId, chunkMetadataList);
+        chunkMetadataSorted
+            ? TSMIterator.splitChunkMetadataWithoutSorting(
+                chunkGroupMetadataList, currentChunkGroupDeviceId, chunkMetadataList)
+            : TSMIterator.splitChunkMetadataWithSorting(
+                chunkGroupMetadataList, currentChunkGroupDeviceId, chunkMetadataList);
     if (tempOutput == null) {
       tempOutput = new LocalTsFileOutput(new FileOutputStream(chunkMetadataTempFile));
     }
@@ -668,5 +672,9 @@ public class TsFileIOWriter implements AutoCloseable {
     }
     ReadWriteIOUtils.write(totalSize, tempOutput.wrapAsStream());
     buffer.writeTo(tempOutput);
+  }
+
+  public void setChunkMetadataSorted(boolean chunkMetadataSorted) {
+    this.chunkMetadataSorted = chunkMetadataSorted;
   }
 }

@@ -186,6 +186,7 @@ public class TsFileProcessor {
                     * IoTDBDescriptor.getInstance()
                         .getConfig()
                         .getChunkMetadataSizeProportionInWrite()));
+    this.writer.setChunkMetadataSorted(true);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
     this.walNode = WALManager.getInstance().applyForWALNode(storageGroupName);

@@ -61,7 +61,7 @@ public class DiskTSMIterator extends TSMIterator {
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       LinkedList<Long> endPosForEachDevice)
       throws IOException {
-    super(chunkGroupMetadataList);
+    super(chunkGroupMetadataList, true);
     this.cmtFile = cmtFile;
     this.endPosForEachDevice = endPosForEachDevice;
     this.input = new LocalTsFileInput(cmtFile.toPath());

@@ -50,14 +50,17 @@ public class TSMIterator {
   protected List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList;
   protected Iterator<Pair<Path, List<IChunkMetadata>>> iterator;
 
-  protected TSMIterator(List<ChunkGroupMetadata> chunkGroupMetadataList) {
-    this.sortedChunkMetadataList = sortChunkMetadata(chunkGroupMetadataList, null, null);
+  protected TSMIterator(List<ChunkGroupMetadata> chunkGroupMetadataList, boolean sorted) {
+    this.sortedChunkMetadataList =
+        sorted
+            ? splitChunkMetadataWithoutSorting(chunkGroupMetadataList, null, null)
+            : splitChunkMetadataWithSorting(chunkGroupMetadataList, null, null);
     this.iterator = sortedChunkMetadataList.iterator();
   }
 
   public static TSMIterator getTSMIteratorInMemory(
-      List<ChunkGroupMetadata> chunkGroupMetadataList) {
-    return new TSMIterator(chunkGroupMetadataList);
+      List<ChunkGroupMetadata> chunkGroupMetadataList, boolean sorted) {
+    return new TSMIterator(chunkGroupMetadataList, sorted);
   }
 
   public static TSMIterator getTSMIteratorInDisk(
@@ -107,7 +110,7 @@ public class TSMIterator {
     return timeseriesMetadata;
   }
 
-  public static List<Pair<Path, List<IChunkMetadata>>> sortChunkMetadata(
+  public static List<Pair<Path, List<IChunkMetadata>>> splitChunkMetadataWithSorting(
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       String currentDevice,
       List<ChunkMetadata> chunkMetadataList) {
@@ -143,5 +146,71 @@ public class TSMIterator {
       }
     }
     return sortedChunkMetadataList;
+  }
+
+  public static List<Pair<Path, List<IChunkMetadata>>> splitChunkMetadataWithoutSorting(
+      List<ChunkGroupMetadata> chunkGroupMetadataList,
+      String currentDevice,
+      List<ChunkMetadata> chunkMetadataList) {
+    List<Pair<Path, List<IChunkMetadata>>> chunkMetadataPairList = new LinkedList<>();
+    String prevDevice = null;
+    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
+      if (prevDevice != null && chunkGroupMetadata.getDevice().compareTo(prevDevice) < 0) {
+        throw new RuntimeException(
+            String.format(
+                "Current device %s is smaller than prev device %s",
+                chunkGroupMetadata.getDevice(), prevDevice));
+      }
+      prevDevice = chunkGroupMetadata.getDevice();
+
+      String prevSeries = null;
+      List<IChunkMetadata> chunkMetadataForCurrSeries = new ArrayList<>();
+      for (IChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+        if (prevSeries != null && chunkMetadata.getMeasurementUid().compareTo(prevSeries) < 0) {
+          throw new RuntimeException(
+              String.format(
+                  "Current series %s is smaller than prev series %s in device %s",
+                  chunkMetadata.getMeasurementUid(), prevSeries, prevDevice));
+        }
+        if (!chunkMetadata.getMeasurementUid().equals(prevSeries)
+            && chunkMetadataForCurrSeries.size() > 0) {
+          chunkMetadataPairList.add(
+              new Pair<>(new Path(prevDevice, prevSeries), chunkMetadataForCurrSeries));
+          chunkMetadataForCurrSeries = new ArrayList<>();
+        }
+        prevSeries = chunkMetadata.getMeasurementUid();
+        chunkMetadataForCurrSeries.add(chunkMetadata);
+      }
+      if (chunkMetadataForCurrSeries.size() > 0) {
+        chunkMetadataPairList.add(
+            new Pair<>(new Path(prevDevice, prevSeries), chunkMetadataForCurrSeries));
+      }
+    }
+
+    if (currentDevice != null) {
+      String prevSeries = null;
+      List<IChunkMetadata> chunkMetadataForCurrSeries = new ArrayList<>();
+      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+        if (prevSeries != null && chunkMetadata.getMeasurementUid().compareTo(prevSeries) < 0) {
+          throw new RuntimeException(
+              String.format(
+                  "Current series %s is smaller than prev series %s in device %s",
+                  chunkMetadata.getMeasurementUid(), prevSeries, prevDevice));
+        }
+        if (!chunkMetadata.getMeasurementUid().equals(prevSeries)
+            && chunkMetadataForCurrSeries.size() > 0) {
+          chunkMetadataPairList.add(
+              new Pair<>(new Path(currentDevice, prevSeries), chunkMetadataForCurrSeries));
+          chunkMetadataForCurrSeries = new ArrayList<>();
+        }
+        prevSeries = chunkMetadata.getMeasurementUid();
+        chunkMetadataForCurrSeries.add(chunkMetadata);
+      }
+      if (chunkMetadataForCurrSeries.size() > 0) {
+        chunkMetadataPairList.add(
+            new Pair<>(new Path(prevDevice, prevSeries), chunkMetadataForCurrSeries));
+      }
+    }
+    return chunkMetadataPairList;
   }
 }
