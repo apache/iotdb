@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 
 import org.slf4j.Logger;
@@ -39,6 +42,14 @@ public class SyncManager {
   // region Implement of PipeSink
   // ======================================================
 
+  public TSStatus createPipeSink(CreatePipeSinkPlan plan) {
+    return null;
+  }
+
+  public TSStatus dropPipeSink(DropPipeSinkPlan plan) {
+    return null;
+  }
+
   // endregion
 
   // ======================================================
@@ -48,4 +59,8 @@ public class SyncManager {
   // TODO....
 
   // endregion
+
+  private ConsensusManager getConsensusManager() {
+    return configManager.getConsensusManager();
+  }
 }

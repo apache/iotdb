@@ -48,6 +48,8 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchem
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
@@ -597,12 +599,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus createPipeSink(TPipeSinkInfo req) throws TException {
-    return configManager.createPipeSink(req);
+    return configManager.createPipeSink(new CreatePipeSinkPlan(req));
   }
 
   @Override
   public TSStatus dropPipeSink(TDropPipeSinkReq req) throws TException {
-    return configManager.dropPipeSink(req);
+    return configManager.dropPipeSink(new DropPipeSinkPlan(req.getPipeSinkName()));
   }
 
   @Override
