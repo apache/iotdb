@@ -30,7 +30,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
-import java.util.TreeSet;
 
 public class PatternTreeMapFactory {
   public static PatternTreeMap<String, StringSerializer> getTriggerPatternTreeMap() {
@@ -47,45 +46,7 @@ public class PatternTreeMapFactory {
    */
   public static PatternTreeMap<Modification, ModsSerializer> getModsPatternTreeMap() {
     return new PatternTreeMap<>(
-        () ->
-            new TreeSet<>(
-                (o1, o2) -> {
-                  if (!o1.getType().equals(o2.getType())) {
-                    return o1.getType().compareTo(o2.getType());
-                  } else if (!o1.getPath().equals(o2.getPath())) {
-                    return o1.getPath().compareTo(o2.getPath());
-                  } else if (o1.getFileOffset() != o2.getFileOffset()) {
-                    return (int) (o1.getFileOffset() - o2.getFileOffset());
-                  } else {
-                    switch (o1.getType()) {
-                      case DELETION:
-                        Deletion del1 = (Deletion) o1;
-                        Deletion del2 = (Deletion) o2;
-                        return del1.getTimeRange().compareTo(del2.getTimeRange());
-                      default:
-                        throw new IllegalArgumentException();
-                    }
-                  }
-                }),
-        (mod, set) -> {
-          TreeSet<Modification> treeSet = (TreeSet) set;
-          Deletion modToAdd = (Deletion) mod;
-          Deletion modInSet = (Deletion) treeSet.floor(mod);
-          while (modInSet != null && modInSet.intersects(modToAdd)) {
-            treeSet.remove(modInSet);
-            modToAdd.merge(modInSet);
-            modInSet = (Deletion) treeSet.floor(mod);
-          }
-          modInSet = (Deletion) treeSet.ceiling(mod);
-          while (modInSet != null && modInSet.intersects(modToAdd)) {
-            treeSet.remove(modInSet);
-            modToAdd.merge(modInSet);
-            modInSet = (Deletion) treeSet.ceiling(mod);
-          }
-          set.add(modToAdd);
-        },
-        null,
-        ModsSerializer.getInstance());
+        HashSet::new, (mod, set) -> set.add(mod), null, ModsSerializer.getInstance());
   }
 
   public static class ModsSerializer implements PathPatternNode.Serializer<Modification> {

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.modification;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -33,7 +32,9 @@ import java.util.Objects;
 public class Deletion extends Modification {
 
   /** data within the interval [startTime, endTime] are to be deleted. */
-  private TimeRange timeRange;
+  private long startTime;
+
+  private long endTime;
 
   /**
    * constructor of Deletion, the start time is set to Long.MIN_VALUE
@@ -43,7 +44,8 @@ public class Deletion extends Modification {
    */
   public Deletion(PartialPath path, long fileOffset, long endTime) {
     super(Type.DELETION, path, fileOffset);
-    this.timeRange = new TimeRange(Long.MIN_VALUE, endTime);
+    this.startTime = Long.MIN_VALUE;
+    this.endTime = endTime;
   }
 
   /**
@@ -55,50 +57,31 @@ public class Deletion extends Modification {
    */
   public Deletion(PartialPath path, long fileOffset, long startTime, long endTime) {
     super(Type.DELETION, path, fileOffset);
-    this.timeRange = new TimeRange(startTime, endTime);
+    this.startTime = startTime;
+    this.endTime = endTime;
   }
 
   public long getStartTime() {
-    return timeRange.getMin();
+    return startTime;
   }
 
   public void setStartTime(long timestamp) {
-    timeRange.setMin(timestamp);
+    this.startTime = timestamp;
   }
 
   public long getEndTime() {
-    return timeRange.getMax();
+    return endTime;
   }
 
   public void setEndTime(long timestamp) {
-    timeRange.setMax(timestamp);
-  }
-
-  public TimeRange getTimeRange() {
-    return timeRange;
-  }
-
-  public void setTimeRange(TimeRange timeRange) {
-    this.timeRange = timeRange;
-  }
-
-  public boolean intersects(Deletion deletion) {
-    if (super.equals(deletion)) {
-      return this.timeRange.intersects(deletion.getTimeRange());
-    } else {
-      return false;
-    }
-  }
-
-  public void merge(Deletion deletion) {
-    this.timeRange.merge(deletion.getTimeRange());
+    this.endTime = timestamp;
   }
 
   public long serializeWithoutFileOffset(DataOutputStream stream) throws IOException {
     long serializeSize = 0;
-    stream.writeLong(timeRange.getMin());
+    stream.writeLong(startTime);
     serializeSize += Long.BYTES;
-    stream.writeLong(timeRange.getMax());
+    stream.writeLong(endTime);
     serializeSize += Long.BYTES;
     serializeSize += ReadWriteIOUtils.write(getPathString(), stream);
     return serializeSize;
@@ -121,21 +104,21 @@ public class Deletion extends Modification {
       return false;
     }
     Deletion del = (Deletion) obj;
-    return super.equals(obj) && this.timeRange.equals(del.timeRange);
+    return super.equals(obj) && del.startTime == this.startTime && del.endTime == this.endTime;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), timeRange);
+    return Objects.hash(super.hashCode(), startTime, endTime);
   }
 
   @Override
   public String toString() {
     return "Deletion{"
         + "startTime="
-        + timeRange.getMin()
+        + startTime
         + ", endTime="
-        + timeRange.getMax()
+        + endTime
         + ", type="
         + type
         + ", path="

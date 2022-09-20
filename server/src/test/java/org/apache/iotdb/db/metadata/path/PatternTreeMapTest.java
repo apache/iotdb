@@ -30,6 +30,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -90,52 +91,49 @@ public class PatternTreeMapTest {
     PatternTreeMap<Modification, ModsSerializer> patternTreeMap =
         PatternTreeMapFactory.getModsPatternTreeMap();
 
-    // [1,3] [6,10] [15,20] [22,30]
+    // [1,3] [6,10]
     patternTreeMap.append(
         new PartialPath("root.sg1.d1.s1"),
         new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 1, 3));
     patternTreeMap.append(
         new PartialPath("root.sg1.d1.s1"),
         new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 6, 10));
-    patternTreeMap.append(
-        new PartialPath("root.sg1.d1.s1"),
-        new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 15, 20));
-    patternTreeMap.append(
-        new PartialPath("root.sg1.d1.s1"),
-        new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 22, 30));
 
     patternTreeMap.append(
-        new PartialPath("root.**.s1"), new Deletion(new PartialPath("root.sg1.d1.s1"), 5, 10, 100));
+        new PartialPath("root.**.s1"), new Deletion(new PartialPath("root.**.s1"), 5, 10, 100));
     patternTreeMap.append(
-        new PartialPath("root.**.s1"),
-        new Deletion(new PartialPath("root.sg1.d1.s1"), 10, 100, 200));
+        new PartialPath("root.**.s1"), new Deletion(new PartialPath("root.**.s1"), 10, 100, 200));
 
-    // [1,20] [22,30]
     patternTreeMap.append(
-        new PartialPath("root.sg1.d1.s1"),
-        new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 1, 3));
+        new PartialPath("root.**"), new Deletion(new PartialPath("root.**"), 5, 10, 100));
     patternTreeMap.append(
-        new PartialPath("root.sg1.d1.s1"),
-        new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 3, 5));
-    patternTreeMap.append(
-        new PartialPath("root.sg1.d1.s1"),
-        new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 8, 12));
-    patternTreeMap.append(
-        new PartialPath("root.sg1.d1.s1"),
-        new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 12, 16));
-    patternTreeMap.append(
-        new PartialPath("root.sg1.d1.s1"),
-        new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 25, 26));
+        new PartialPath("root.**"), new Deletion(new PartialPath("root.**"), 5, 10, 100));
 
     checkOverlapped(
         patternTreeMap,
         new PartialPath("root.sg1.d1.s1"),
         new HashSet(
             Arrays.asList(
-                new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 1, 20),
-                new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 22, 30),
-                new Deletion(new PartialPath("root.sg1.d1.s1"), 5, 10, 100),
-                new Deletion(new PartialPath("root.sg1.d1.s1"), 10, 100, 200))));
+                new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 1, 3),
+                new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 6, 10),
+                new Deletion(new PartialPath("root.**.s1"), 5, 10, 100),
+                new Deletion(new PartialPath("root.**.s1"), 10, 100, 200),
+                new Deletion(new PartialPath("root.**"), 5, 10, 100))));
+
+    checkOverlapped(
+        patternTreeMap,
+        new PartialPath("root.sg1.d2.s1"),
+        new HashSet(
+            Arrays.asList(
+                new Deletion(new PartialPath("root.**.s1"), 5, 10, 100),
+                new Deletion(new PartialPath("root.**.s1"), 10, 100, 200),
+                new Deletion(new PartialPath("root.**"), 5, 10, 100))));
+
+    checkOverlapped(
+        patternTreeMap,
+        new PartialPath("root.sg1.d1.s2"),
+        new HashSet(
+            Collections.singletonList(new Deletion(new PartialPath("root.**"), 5, 10, 100))));
   }
 
   private void checkOverlapped(
