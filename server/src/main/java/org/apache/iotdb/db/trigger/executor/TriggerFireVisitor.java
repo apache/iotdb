@@ -63,6 +63,14 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
                   new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
   @Override
+  public TriggerFireResult process(PlanNode node, TriggerEvent context) {
+    if (TriggerManagementService.getInstance().isTriggerTableEmpty()) {
+      return TriggerFireResult.SUCCESS;
+    }
+    return node.accept(this, context);
+  }
+
+  @Override
   public TriggerFireResult visitPlan(PlanNode node, TriggerEvent context) {
     return TriggerFireResult.SUCCESS;
   }

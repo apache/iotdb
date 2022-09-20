@@ -93,6 +93,10 @@ public class TriggerManagementService implements IService {
     triggerTable.activeTrigger(triggerName);
   }
 
+  public boolean isTriggerTableEmpty() {
+    return triggerTable.isEmpty();
+  }
+
   public TriggerExecutor getExecutor(String triggerName) {
     return executorMap.get(triggerName);
   }

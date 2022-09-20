@@ -73,4 +73,8 @@ public class TriggerTable {
   public Map<String, TriggerInformation> getTable() {
     return triggerTable;
   }
+
+  public boolean isEmpty() {
+    return triggerTable.isEmpty();
+  }
 }
