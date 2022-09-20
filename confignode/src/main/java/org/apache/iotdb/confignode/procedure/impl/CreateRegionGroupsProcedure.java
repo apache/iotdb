@@ -19,13 +19,16 @@
 package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.persistence.partition.RegionCreateTask;
+import org.apache.iotdb.confignode.persistence.partition.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
@@ -47,7 +50,7 @@ public class CreateRegionGroupsProcedure
   private CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
 
   /** key: TConsensusGroupId value: Failed RegionReplicas */
-  private Map<TConsensusGroupId, TRegionReplicaSet> failedRegions = new HashMap<>();
+  private Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets = new HashMap<>();
 
   public CreateRegionGroupsProcedure() {
     super();
@@ -59,75 +62,85 @@ public class CreateRegionGroupsProcedure
 
   public CreateRegionGroupsProcedure(
       CreateRegionGroupsPlan createRegionGroupsPlan,
-      Map<TConsensusGroupId, TRegionReplicaSet> failedRegions) {
+      Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets) {
     this.createRegionGroupsPlan = createRegionGroupsPlan;
-    this.failedRegions = failedRegions;
+    this.failedRegionReplicaSets = failedRegionReplicaSets;
   }
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, CreateRegionGroupsState state) {
     switch (state) {
-      case CREATE_REGION_GROUPS_PREPARE:
-        setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS);
-        break;
       case CREATE_REGION_GROUPS:
-        failedRegions = env.doRegionCreation(createRegionGroupsPlan);
-        setNextState(CreateRegionGroupsState.PERSIST_AND_BROADCAST);
+        failedRegionReplicaSets = env.doRegionCreation(createRegionGroupsPlan);
+        setNextState(CreateRegionGroupsState.SHUNT_REGION_REPLICAS);
         break;
-      case PERSIST_AND_BROADCAST:
-        // Filter those RegionGroups that created successfully
+      case SHUNT_REGION_REPLICAS:
         CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
+        OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
+        // Filter those RegionGroups that created successfully
         createRegionGroupsPlan
             .getRegionGroupMap()
             .forEach(
                 (storageGroup, regionReplicaSets) ->
                     regionReplicaSets.forEach(
                         regionReplicaSet -> {
-                          if (!failedRegions.containsKey(regionReplicaSet.getRegionId())) {
+                          if (!failedRegionReplicaSets.containsKey(
+                              regionReplicaSet.getRegionId())) {
+                            // A RegionGroup was created successfully when
+                            // all RegionReplicas were created successfully
                             persistPlan.addRegionGroup(storageGroup, regionReplicaSet);
+                          } else {
+                            TRegionReplicaSet failedRegionReplicas =
+                                failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
+
+                            if (failedRegionReplicas.getDataNodeLocationsSize()
+                                <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
+                              // A RegionGroup can provide service as long as there are more than
+                              // half of the RegionReplicas were created successfully
+                              persistPlan.addRegionGroup(storageGroup, regionReplicaSet);
+
+                              // Build recreate tasks
+                              failedRegionReplicas
+                                  .getDataNodeLocations()
+                                  .forEach(
+                                      targetDataNode -> {
+                                        RegionCreateTask createTask =
+                                            new RegionCreateTask(
+                                                targetDataNode, storageGroup, regionReplicaSet);
+                                        if (TConsensusGroupType.DataRegion.equals(
+                                            regionReplicaSet.getRegionId().getType())) {
+                                          try {
+                                            createTask.setTTL(env.getTTL(storageGroup));
+                                          } catch (StorageGroupNotExistsException e) {
+                                            LOGGER.error("Can't get TTL", e);
+                                          }
+                                        }
+                                        offerPlan.appendRegionMaintainTask(createTask);
+                                      });
+
+                            } else {
+                              // The redundant RegionReplicas should be deleted otherwise
+                              regionReplicaSet
+                                  .getDataNodeLocations()
+                                  .forEach(
+                                      targetDataNode -> {
+                                        if (!failedRegionReplicas
+                                            .getDataNodeLocations()
+                                            .contains(targetDataNode)) {
+                                          RegionDeleteTask deleteTask =
+                                              new RegionDeleteTask(
+                                                  targetDataNode, regionReplicaSet.getRegionId());
+                                          offerPlan.appendRegionMaintainTask(deleteTask);
+                                        }
+                                      });
+                            }
                           }
                         }));
+
         env.persistAndBroadcastRegionGroup(persistPlan);
-        setNextState(
-            failedRegions.size() > 0
-                ? CreateRegionGroupsState.DELETE_FAILED_REGION_GROUPS
-                : CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
+        env.getConfigManager().getConsensusManager().write(offerPlan);
+        setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
-      case DELETE_FAILED_REGION_GROUPS:
-        DeleteRegionGroupsPlan deletePlan = new DeleteRegionGroupsPlan();
-        // We don't need to wipe the PartitionTable here
-        // since the failed RegionGroups are not recorded
-        deletePlan.setNeedsDeleteInPartitionTable(false);
-        createRegionGroupsPlan
-            .getRegionGroupMap()
-            .forEach(
-                (storageGroup, regionReplicaSets) ->
-                    regionReplicaSets.forEach(
-                        regionReplicaSet -> {
-                          if (failedRegions.containsKey(regionReplicaSet.getRegionId())) {
-                            TRegionReplicaSet failedReplicaSet =
-                                failedRegions.get(regionReplicaSet.getRegionId());
-                            TRegionReplicaSet redundantReplicaSet =
-                                new TRegionReplicaSet().setRegionId(regionReplicaSet.getRegionId());
-                            regionReplicaSet
-                                .getDataNodeLocations()
-                                .forEach(
-                                    dataNodeLocation -> {
-                                      if (!failedReplicaSet
-                                          .getDataNodeLocations()
-                                          .contains(dataNodeLocation)) {
-                                        redundantReplicaSet.addToDataNodeLocations(
-                                            dataNodeLocation);
-                                      }
-                                    });
-                            deletePlan.addRegionGroup(storageGroup, redundantReplicaSet);
-                          }
-                        }));
-        env.submitFailedRegionReplicas(deletePlan);
-        setFailure(
-            new ProcedureException(
-                "There are some RegionGroups failed to create, please check former logs in ConfigNode-leader."));
-        return Flow.NO_MORE_STATE;
       case CREATE_REGION_GROUPS_FINISH:
         return Flow.NO_MORE_STATE;
     }
@@ -154,7 +167,7 @@ public class CreateRegionGroupsProcedure
 
   @Override
   protected CreateRegionGroupsState getInitialState() {
-    return CreateRegionGroupsState.CREATE_REGION_GROUPS_PREPARE;
+    return CreateRegionGroupsState.CREATE_REGION_GROUPS;
   }
 
   @Override
@@ -163,8 +176,8 @@ public class CreateRegionGroupsProcedure
     stream.writeInt(ProcedureFactory.ProcedureType.CREATE_REGION_GROUPS.ordinal());
     super.serialize(stream);
     createRegionGroupsPlan.serializeForProcedure(stream);
-    stream.writeInt(failedRegions.size());
-    failedRegions.forEach(
+    stream.writeInt(failedRegionReplicaSets.size());
+    failedRegionReplicaSets.forEach(
         (groupId, replica) -> {
           ThriftCommonsSerDeUtils.serializeTConsensusGroupId(groupId, stream);
           ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(replica, stream);
@@ -176,14 +189,14 @@ public class CreateRegionGroupsProcedure
     super.deserialize(byteBuffer);
     try {
       createRegionGroupsPlan.deserializeForProcedure(byteBuffer);
-      failedRegions.clear();
+      failedRegionReplicaSets.clear();
       int failedRegionsSize = byteBuffer.getInt();
       while (failedRegionsSize-- > 0) {
         TConsensusGroupId groupId =
             ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer);
         TRegionReplicaSet replica =
             ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
-        failedRegions.put(groupId, replica);
+        failedRegionReplicaSets.put(groupId, replica);
       }
     } catch (Exception e) {
       LOGGER.error("Deserialize meets error in CreateRegionGroupsProcedure", e);
@@ -198,7 +211,7 @@ public class CreateRegionGroupsProcedure
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
           && thatProc.createRegionGroupsPlan.equals(this.createRegionGroupsPlan)
-          && thatProc.failedRegions.equals(this.failedRegions);
+          && thatProc.failedRegionReplicaSets.equals(this.failedRegionReplicaSets);
     }
     return false;
   }
@@ -206,7 +219,7 @@ public class CreateRegionGroupsProcedure
   @Override
   public int hashCode() {
     int result = createRegionGroupsPlan.hashCode();
-    result = 31 * result + Objects.hash(failedRegions);
+    result = 31 * result + Objects.hash(failedRegionReplicaSets);
     return result;
   }
 }
