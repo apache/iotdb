@@ -502,7 +502,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     List<PipeSink> pipeSinkList =
         LocalConfigNode.getInstance().showPipeSink(showPipeSinkStatement.getPipeSinkName());
-    ShowPipeSinkTask.buildTSBlock(pipeSinkList, future);
+    ShowPipeSinkTask.buildTSBlockByPipeSink(pipeSinkList, future);
     return future;
   }
 

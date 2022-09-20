@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.utils.sync;
 
+import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
@@ -144,7 +146,7 @@ public class SyncPipeUtil {
         syncDelOp);
   }
 
-  /** parse PipeInfo ass Pipe, ignore status */
+  /** parse PipeInfo to Pipe, ignore status */
   public static Pipe parsePipeInfoAsPipe(PipeInfo pipeInfo, PipeSink pipeSink)
       throws PipeException {
     if (pipeInfo instanceof TsFilePipeInfo) {
@@ -156,6 +158,18 @@ public class SyncPipeUtil {
           ((TsFilePipeInfo) pipeInfo).isSyncDelOp());
     } else {
       throw new PipeException(String.format("Can not recognition pipeInfo type"));
+    }
+  }
+
+  /** parse TPipeSinkInfo to PipeSink */
+  public static PipeSink parsePipeInfoAsPipe(TPipeSinkInfo pipeSinkInfo) throws PipeSinkException {
+    if (pipeSinkInfo.getPipeSinkType().equals(PipeSink.PipeSinkType.IoTDB.name())) {
+      PipeSink pipeSink = new IoTDBPipeSink(pipeSinkInfo.getPipeSinkName());
+      pipeSink.setAttribute(pipeSinkInfo.getAttributes());
+      return pipeSink;
+    } else {
+      // TODO(ext-pipe): parse TPipeSinkInfo to external pipe sink
+      throw new UnsupportedOperationException();
     }
   }
 }
