@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
@@ -37,7 +36,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -251,17 +249,14 @@ public class IoTDBMigrationIT {
   public void testShowMigration() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      StorageEngine.getInstance().getMigrationManager().setCheckThreadTime(Long.MAX_VALUE);
+
       statement.execute("SET STORAGE GROUP TO root.MIGRATION_SG2");
       statement.execute(
           "CREATE TIMESERIES root.MIGRATION_SG2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN");
 
-      ZonedDateTime startDate =
-          DatetimeUtils.convertMillsecondToZonedDateTime(DatetimeUtils.currentTime() + 10000);
-      String startTimeStr = DatetimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(startDate);
       statement.execute(
-          String.format(
-              "SET MIGRATION TO root.MIGRATION_SG2 %s 100 '%s'",
-              startTimeStr, testTargetDir.getPath()));
+          "SET MIGRATION TO root.MIGRATION_SG2 2000-12-13 100 '" + testTargetDir.getPath() + "'");
 
       ResultSet resultSet = statement.executeQuery("SHOW ALL MIGRATION");
 
@@ -271,7 +266,7 @@ public class IoTDBMigrationIT {
         if (resultSet.getString(3).equals("root.MIGRATION_SG2")) {
           flag = true;
           assertEquals("READY", resultSet.getString(4));
-          assertEquals(startTimeStr, resultSet.getString(5));
+          assertTrue(resultSet.getString(5).startsWith("2000-12-13"));
           assertEquals(100, resultSet.getLong(6));
           assertEquals(testTargetDir.getPath(), resultSet.getString(7));
         }
@@ -286,20 +281,18 @@ public class IoTDBMigrationIT {
   public void testSetMigration() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      StorageEngine.getInstance().getMigrationManager().setCheckThreadTime(Long.MAX_VALUE);
+
       statement.execute("SET STORAGE GROUP TO root.MIGRATION_SG3");
       statement.execute(
           "CREATE TIMESERIES root.MIGRATION_SG3.s3 WITH DATATYPE=INT32, ENCODING=PLAIN");
-
-      ZonedDateTime startDate =
-          DatetimeUtils.convertMillsecondToZonedDateTime(DatetimeUtils.currentTime() + 10000);
-      String startTimeStr = DatetimeUtils.ISO_OFFSET_DATE_TIME_WITH_MS.format(startDate);
 
       for (int i = 0; i < 1000; i++) {
         // test concurrent set
         statement.execute(
             String.format(
-                "SET MIGRATION TO root.MIGRATION_SG3 %s %d '%s'",
-                startTimeStr, i, testTargetDir.getPath()));
+                "SET MIGRATION TO root.MIGRATION_SG3 2000-12-13 %d '%s'",
+                i, testTargetDir.getPath()));
       }
 
       ResultSet resultSet = statement.executeQuery("SHOW ALL MIGRATION");
