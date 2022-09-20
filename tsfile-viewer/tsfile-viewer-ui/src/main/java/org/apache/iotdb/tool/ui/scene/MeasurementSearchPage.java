@@ -64,6 +64,8 @@ public class MeasurementSearchPage {
   /** table datas */
   private TableView<String> tvTableView;
 
+  private Stage parent = null;
+
   private ObservableList<IoTDBParsePageV3.TimesValues> tvDatas =
       FXCollections.observableArrayList();
 
@@ -78,6 +80,7 @@ public class MeasurementSearchPage {
 
   private void init(Stage stage) {
 
+    this.parent = stage;
     anchorPane = new AnchorPane();
     scene = new Scene(anchorPane, MEASUREMENT_SEARCH_PAGE_WIDTH, MEASUREMENT_SEARCH_PAGE_HEIGHT);
     stage.setScene(scene);
@@ -231,5 +234,12 @@ public class MeasurementSearchPage {
               new Date(next.getTimestamp()).toString(), sb.toString()));
     }
     tvTableView.setVisible(true);
+  }
+
+  public void close() {
+    if(this.parent != null) {
+      this.parent.close();
+      this.tvDatas.clear();
+    }
   }
 }

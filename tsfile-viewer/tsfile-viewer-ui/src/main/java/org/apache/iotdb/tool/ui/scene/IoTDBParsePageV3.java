@@ -286,6 +286,9 @@ public class IoTDBParsePageV3 extends IoTDBParsePage {
     searchMenuItem.setSelected(false);
     searchMenuItem.setOnAction(
         event -> {
+          if(measurementSearchPage != null) {
+            measurementSearchPage.close();
+          }
           Stage measurementSearchStage = new Stage();
           measurementSearchStage.initStyle(StageStyle.UTILITY);
           measurementSearchPage = new MeasurementSearchPage(measurementSearchStage, this);
@@ -294,7 +297,7 @@ public class IoTDBParsePageV3 extends IoTDBParsePage {
     // TimeSeries search
     HBox searchHBox = new HBox();
     TextField searchText = new TextField();
-    searchText.setPromptText("Search...");
+    searchText.setPromptText("Please enter DeviceId or MeasurementId");
     searchText.getStyleClass().add("search-field");
     searchText.setOnKeyReleased(
         event -> {
