@@ -52,6 +52,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesSt
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
@@ -329,6 +330,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.SET_STORAGE_GROUP, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -422,7 +425,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       return result.status;
     } catch (IoTDBException e) {
-      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
+      return onIoTDBException(e, OperationType.CREATE_ALIGNED_TIMESERIES, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.CREATE_ALIGNED_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -470,7 +473,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       return result.status;
     } catch (IoTDBException e) {
-      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
+      return onIoTDBException(e, OperationType.CREATE_MULTI_TIMESERIES, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.CREATE_MULTI_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -479,7 +482,37 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus deleteTimeseries(long sessionId, List<String> path) {
-    throw new UnsupportedOperationException();
+    try {
+      if (!SESSION_MANAGER.checkLogin(sessionId)) {
+        return getNotLoggedInStatus();
+      }
+
+      // Step 1: transfer from DeleteStorageGroupsReq to Statement
+      DeleteTimeSeriesStatement statement =
+          StatementGenerator.createDeleteTimeSeriesStatement(path);
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.DELETE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
   }
 
   @Override
@@ -802,7 +835,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       return result.status;
     } catch (IoTDBException e) {
-      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
+      return onIoTDBException(e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -857,7 +890,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       return result.status;
     } catch (IoTDBException e) {
-      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
+      return onIoTDBException(
+          e, OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e,
@@ -910,7 +944,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       return result.status;
     } catch (IoTDBException e) {
-      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
+      return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -956,7 +990,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       return result.status;
     } catch (IoTDBException e) {
-      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
+      return onIoTDBException(e, OperationType.INSERT_TABLETS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1002,7 +1036,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       return result.status;
     } catch (IoTDBException e) {
-      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
+      return onIoTDBException(e, OperationType.INSERT_TABLET, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1054,7 +1088,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       return result.status;
     } catch (IoTDBException e) {
-      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
+      return onIoTDBException(e, OperationType.INSERT_STRING_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_STRING_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1538,7 +1572,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       return result.status;
     } catch (IoTDBException e) {
-      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
+      return onIoTDBException(e, OperationType.INSERT_STRING_RECORD, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_STRING_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);

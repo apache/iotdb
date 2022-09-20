@@ -264,19 +264,20 @@ public class IoTDBSessionIteratorIT {
   public void lastQueryTest() {
     String[] retArray =
         new String[] {
+          "9,root.sg1.d1.s1,false,BOOLEAN",
+          "9,root.sg1.d1.s2,9,INT32",
           "9,root.sg1.d1.s3,90,INT64",
           "9,root.sg1.d1.s4,13.5,FLOAT",
           "9,root.sg1.d1.s5,22.5,DOUBLE",
           "9,root.sg1.d1.s6,time9,TEXT",
-          "9,root.sg1.d1.s1,false,BOOLEAN",
-          "9,root.sg1.d1.s2,9,INT32",
         };
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
 
       SessionDataSet sessionDataSet =
-          session.executeQueryStatement("select last s1,s2,s3,s4,s5,s6 from root.sg1.d1");
+          session.executeQueryStatement(
+              "select last s1,s2,s3,s4,s5,s6 from root.sg1.d1 order by timeseries");
       sessionDataSet.setFetchSize(1024);
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       int count = 0;

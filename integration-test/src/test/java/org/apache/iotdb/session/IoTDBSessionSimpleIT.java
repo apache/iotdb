@@ -19,11 +19,8 @@
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -50,6 +47,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -299,9 +297,6 @@ public class IoTDBSessionSimpleIT {
 
       assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
       assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
-      IMeasurementMNode mNode =
-          LocalSchemaProcessor.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d1.s1"));
-      assertNull(mNode.getSchema().getProps());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -713,88 +708,6 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
-  public void fillAllTest() {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<String> paths = new ArrayList<>();
-      paths.add("root.sg.d.s1");
-      paths.add("root.sg.d.s2");
-      paths.add("root.sg.d.s3");
-      paths.add("root.sg.d.s4");
-      paths.add("root.sg.d.s5");
-      paths.add("root.sg.d.s6");
-      List<TSDataType> tsDataTypes = new ArrayList<>();
-      tsDataTypes.add(TSDataType.BOOLEAN);
-      tsDataTypes.add(TSDataType.INT32);
-      tsDataTypes.add(TSDataType.INT64);
-      tsDataTypes.add(TSDataType.FLOAT);
-      tsDataTypes.add(TSDataType.DOUBLE);
-      tsDataTypes.add(TSDataType.TEXT);
-      List<TSEncoding> tsEncodings = new ArrayList<>();
-      tsEncodings.add(TSEncoding.RLE);
-      tsEncodings.add(TSEncoding.RLE);
-      tsEncodings.add(TSEncoding.RLE);
-      tsEncodings.add(TSEncoding.RLE);
-      tsEncodings.add(TSEncoding.RLE);
-      tsEncodings.add(TSEncoding.PLAIN);
-      List<CompressionType> compressionTypes = new ArrayList<>();
-      compressionTypes.add(CompressionType.SNAPPY);
-      compressionTypes.add(CompressionType.SNAPPY);
-      compressionTypes.add(CompressionType.SNAPPY);
-      compressionTypes.add(CompressionType.SNAPPY);
-      compressionTypes.add(CompressionType.SNAPPY);
-      compressionTypes.add(CompressionType.SNAPPY);
-      session.createMultiTimeseries(
-          paths, tsDataTypes, tsEncodings, compressionTypes, null, null, null, null);
-
-      List<String> measurements = new ArrayList<>();
-      measurements.add("s1");
-      measurements.add("s2");
-      measurements.add("s3");
-      measurements.add("s4");
-      measurements.add("s5");
-      measurements.add("s6");
-      List<Object> values = new ArrayList<>();
-      values.add(false);
-      values.add(1);
-      values.add((long) 1);
-      values.add((float) 1.0);
-      values.add(1.0);
-      values.add("1");
-      session.insertRecord("root.sg.d", 1, measurements, tsDataTypes, values);
-
-      SessionDataSet dataSet =
-          session.executeQueryStatement(
-              "select * from root.sg.d where time=70 fill(all[previous, 1m])");
-      RowRecord record = dataSet.next();
-      assertEquals(70, record.getTimestamp());
-      for (Field field : record.getFields()) {
-        switch (field.getDataType()) {
-          case TEXT:
-            break;
-          case FLOAT:
-            assertEquals(1.0, field.getFloatV(), 0);
-            break;
-          case INT32:
-            assertEquals(1, field.getIntV());
-            break;
-          case INT64:
-            assertEquals(1, field.getLongV());
-            break;
-          case DOUBLE:
-            assertEquals(1.0, field.getDoubleV(), 0);
-            break;
-          case BOOLEAN:
-            assertFalse(field.getBoolV());
-            break;
-        }
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
   public void insertOneDeviceRecordsWithOrderTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<Long> times = new ArrayList<>();
@@ -1089,8 +1002,6 @@ public class IoTDBSessionSimpleIT {
         session.insertRecords(deviceIds, Arrays.asList(2L, 2L), allMeasurements, allstringValues);
         fail("Exception expected");
       } catch (StatementExecutionException e) {
-        LOGGER.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
-        e.printStackTrace();
         assertTrue(
             e.getMessage()
                 .contains(
@@ -1412,6 +1323,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Ignore
   public void insertDeleteWithTemplateTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       initTreeTemplate(session, "root.sg.loc1");
@@ -1422,7 +1334,6 @@ public class IoTDBSessionSimpleIT {
       SessionDataSet dataSet;
 
       // insert record set using template
-
       measurements.add("x");
       measurements.add("y");
       values.add("1.0");
@@ -1532,8 +1443,8 @@ public class IoTDBSessionSimpleIT {
     sessionTemplate.addToTemplate(mNodeX);
     sessionTemplate.addToTemplate(mNodeY);
 
-    session.createSchemaTemplate(sessionTemplate);
     session.setStorageGroup(path);
+    session.createSchemaTemplate(sessionTemplate);
     session.setSchemaTemplate("treeTemplate", path);
   }
 
@@ -1622,7 +1533,8 @@ public class IoTDBSessionSimpleIT {
           try {
             session.insertTablet(tablet, true);
           } catch (StatementExecutionException e) {
-            assertEquals(313, e.getStatusCode());
+            assertTrue(e.getMessage().contains("insert measurements [s3] caused by"));
+            assertTrue(e.getMessage().contains("data type of root.sg.d.s3 is not consistent"));
           }
           tablet.reset();
         }
@@ -1633,7 +1545,8 @@ public class IoTDBSessionSimpleIT {
         try {
           session.insertTablet(tablet);
         } catch (StatementExecutionException e) {
-          assertEquals(313, e.getStatusCode());
+          assertTrue(e.getMessage().contains("insert measurements [s3] caused by"));
+          assertTrue(e.getMessage().contains("data type of root.sg.d.s3 is not consistent"));
         }
         tablet.reset();
       }

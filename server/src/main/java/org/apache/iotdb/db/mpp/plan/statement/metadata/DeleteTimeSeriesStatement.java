@@ -37,6 +37,11 @@ public class DeleteTimeSeriesStatement extends Statement implements IConfigState
     statementType = StatementType.DELETE_TIMESERIES;
   }
 
+  public DeleteTimeSeriesStatement(List<PartialPath> pathPatternList) {
+    this();
+    this.pathPatternList = pathPatternList;
+  }
+
   @Override
   public List<PartialPath> getPaths() {
     return pathPatternList;
