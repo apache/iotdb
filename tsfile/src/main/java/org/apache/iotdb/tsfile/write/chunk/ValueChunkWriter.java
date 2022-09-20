@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -30,6 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.ValuePageWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -38,6 +40,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 
 public class ValueChunkWriter {
 
@@ -184,6 +189,57 @@ public class ValueChunkWriter {
     } finally {
       // clear start time stamp for next initializing
       pageWriter.reset(dataType);
+    }
+  }
+
+  public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
+      throws PageException {
+    // write the page header to pageBuffer
+    try {
+      logger.debug(
+          "start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
+      // serialize pageHeader  see writePageToPageBuffer method
+      if (numOfPages == 0) { // record the firstPageStatistics
+        if (header.getStatistics() != null) {
+          this.firstPageStatistics = header.getStatistics();
+        }
+        this.sizeWithoutStatistic +=
+            ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+        this.sizeWithoutStatistic +=
+            ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+      } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
+        if (firstPageStatistics != null) {
+          byte[] b = pageBuffer.toByteArray();
+          pageBuffer.reset();
+          pageBuffer.write(b, 0, this.sizeWithoutStatistic);
+          firstPageStatistics.serialize(pageBuffer);
+          pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
+        }
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+        header.getStatistics().serialize(pageBuffer);
+        firstPageStatistics = null;
+      } else {
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+        header.getStatistics().serialize(pageBuffer);
+      }
+      logger.debug(
+          "finish to flush a page header {} of time page into buffer, buffer position {} ",
+          header,
+          pageBuffer.size());
+
+      statistics.mergeStatistics(header.getStatistics());
+
+    } catch (IOException e) {
+      throw new PageException("IO Exception in writeDataPageHeader,ignore this page", e);
+    }
+    numOfPages++;
+    // write page content to temp PBAOS
+    try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
+      channel.write(data);
+    } catch (IOException e) {
+      throw new PageException(e);
     }
   }
 

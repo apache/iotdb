@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.slf4j.Logger;
@@ -77,7 +78,6 @@ public class LoadManager {
 
   private final PartitionBalancer partitionBalancer;
   private final RouteBalancer routeBalancer;
-  private final LoadManagerMetrics loadManagerMetrics;
 
   /** Load balancing executor service */
   private Future<?> currentLoadBalancingFuture;
@@ -93,7 +93,7 @@ public class LoadManager {
     this.regionBalancer = new RegionBalancer(configManager);
     this.partitionBalancer = new PartitionBalancer(configManager);
     this.routeBalancer = new RouteBalancer(configManager);
-    this.loadManagerMetrics = new LoadManagerMetrics(configManager);
+    MetricService.getInstance().addMetricSet(new LoadManagerMetrics(configManager));
   }
 
   /**
@@ -159,13 +159,11 @@ public class LoadManager {
                 TimeUnit.MILLISECONDS);
         LOGGER.info("LoadBalancing service is started successfully.");
       }
-      loadManagerMetrics.addMetrics();
     }
   }
 
   /** Stop the load balancing service */
   public void stopLoadBalancingService() {
-    loadManagerMetrics.removeMetrics();
     synchronized (scheduleMonitor) {
       if (currentLoadBalancingFuture != null) {
         currentLoadBalancingFuture.cancel(false);
@@ -198,7 +196,7 @@ public class LoadManager {
         .values()
         .forEach(
             regionGroupCache -> {
-              boolean updateResult = regionGroupCache.updateLoadStatistic();
+              boolean updateResult = regionGroupCache.updateRegionStatistics();
               switch (regionGroupCache.getConsensusGroupId().getType()) {
                   // Check if some RegionGroups change their leader
                 case SchemaRegion:

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
@@ -1021,8 +1022,6 @@ public class IoTDBDescriptor {
     conf.setWalMode(
         WALMode.valueOf((properties.getProperty("wal_mode", conf.getWalMode().toString()))));
 
-    conf.setWalDirs(properties.getProperty("wal_dirs", conf.getWalDirs()[0]).split(","));
-
     int maxWalNodesNum =
         Integer.parseInt(
             properties.getProperty(
@@ -1119,6 +1118,15 @@ public class IoTDBDescriptor {
                 Long.toString(conf.getThrottleThreshold())));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
+    }
+
+    long cacheWindowInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "multi_leader_cache_window_time_in_ms",
+                Long.toString(conf.getCacheWindowTimeInMs())));
+    if (cacheWindowInMs > 0) {
+      conf.setCacheWindowTimeInMs(cacheWindowInMs);
     }
   }
 
@@ -1874,6 +1882,10 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
+  }
+
+  public void loadRatisConfig(TRatisConfig ratisConfig) {
+    conf.setRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getAppenderBufferSize());
   }
 
   public void initClusterSchemaMemoryAllocate() {

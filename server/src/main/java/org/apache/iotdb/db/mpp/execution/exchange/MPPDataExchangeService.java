@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
-import org.apache.iotdb.commons.service.AbstractThriftServiceThread;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
@@ -35,9 +34,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService.Processor;
 
 import org.slf4j.Logger;
@@ -98,7 +94,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.MPP_DATA_EXCHANGE_RPC_CLIENT.getName(),
+              ThreadName.MPP_DATA_EXCHANGE_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -109,15 +105,9 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.MPP_DATA_EXCHANGE_RPC_SERVER.getName());
+    thriftServiceThread.setName(ThreadName.MPP_DATA_EXCHANGE_RPC_SERVICE.getName());
     MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.THRIFT_ACTIVE_THREADS.toString(),
-            MetricLevel.CORE,
-            thriftServiceThread,
-            AbstractThriftServiceThread::getActiveThreadCount,
-            Tag.NAME.toString(),
-            ThreadName.MPP_DATA_EXCHANGE_RPC_SERVER.getName());
+        .addMetricSet(new MPPDataExchangeServiceMetrics(thriftServiceThread));
   }
 
   @Override

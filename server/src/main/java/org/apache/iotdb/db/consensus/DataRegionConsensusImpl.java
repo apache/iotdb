@@ -88,6 +88,11 @@ public class DataRegionConsensusImpl {
                               // written. This setting ensures that compaction work is not discarded
                               // even if there are frequent restarts
                               .setSnapshot(Snapshot.newBuilder().setCreationGap(1).build())
+                              .setLeaderLogAppender(
+                                  RatisConfig.LeaderLogAppender.newBuilder()
+                                      .setBufferByteLimit(
+                                          conf.getRatisConsensusLogAppenderBufferSizeMax())
+                                      .build())
                               .build())
                       .build(),
                   gid ->

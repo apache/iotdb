@@ -274,7 +274,7 @@ public class EnvironmentUtils {
     // delete mqtt dir
     cleanDir(config.getMqttDir());
     // delete wal
-    for (String walDir : config.getWalDirs()) {
+    for (String walDir : commonConfig.getWalDirs()) {
       cleanDir(walDir);
     }
     // delete sync dir
@@ -375,7 +375,7 @@ public class EnvironmentUtils {
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
     // create wal
-    for (String walDir : config.getWalDirs()) {
+    for (String walDir : commonConfig.getWalDirs()) {
       createDir(walDir);
     }
     // create data

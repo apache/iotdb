@@ -435,10 +435,6 @@ READONLY
     : R E A D O N L Y
     ;
 
-ERROR
-    : E R R O R
-    ;
-
 REGEXP
     : R E G E X P
     ;
@@ -965,11 +961,11 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\"' | '""' | ~('"') )* '"'
+    : '"' ( '""' | ~('"') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\\'' | '\'\'' | ~('\'') )* '\''
+    : '\'' ( '\'\'' | ~('\'') )* '\''
     ;
 
 fragment BQUOTA_STRING

@@ -234,6 +234,19 @@ public class TsFileIOWriter implements AutoCloseable {
     }
   }
 
+  public void writeChunk(Chunk chunk) throws IOException {
+    ChunkHeader chunkHeader = chunk.getHeader();
+    currentChunkMetadata =
+        new ChunkMetadata(
+            chunkHeader.getMeasurementID(),
+            chunkHeader.getDataType(),
+            out.getPosition(),
+            chunk.getChunkStatistic());
+    chunkHeader.serializeTo(out.wrapAsStream());
+    out.write(chunk.getData());
+    endCurrentChunk();
+  }
+
   /** end chunk and write some log. */
   public void endCurrentChunk() {
     chunkMetadataList.add(currentChunkMetadata);

@@ -30,8 +30,8 @@ import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.mpp.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.utils.SetThreadName;
 
-import io.airlift.concurrent.SetThreadName;
 import io.airlift.stats.CounterStat;
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -186,7 +186,7 @@ public class FragmentInstanceManager {
 
   /** Cancels a FragmentInstance. */
   public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId) {
-    logger.debug("cancelTask");
+    logger.debug("[CancelFI]");
     requireNonNull(instanceId, "taskId is null");
 
     FragmentInstanceContext context = instanceContext.remove(instanceId);

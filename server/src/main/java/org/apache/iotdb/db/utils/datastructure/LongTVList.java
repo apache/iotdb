@@ -29,22 +29,15 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import java.io.DataInputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
-public class LongTVList extends TVList {
-
+public abstract class LongTVList extends TVList {
   // list of primitive array, add 1 when expanded -> long primitive array
   // index relation: arrayIndex -> elementIndex
-  private List<long[]> values;
-
-  private long[][] sortedValues;
-
-  private long pivotValue;
+  protected List<long[]> values;
 
   LongTVList() {
     super();
@@ -86,40 +79,6 @@ public class LongTVList extends TVList {
   }
 
   @Override
-  public LongTVList clone() {
-    LongTVList cloneList = new LongTVList();
-    cloneAs(cloneList);
-    for (long[] valueArray : values) {
-      cloneList.values.add(cloneValue(valueArray));
-    }
-    return cloneList;
-  }
-
-  private long[] cloneValue(long[] array) {
-    long[] cloneArray = new long[array.length];
-    System.arraycopy(array, 0, cloneArray, 0, array.length);
-    return cloneArray;
-  }
-
-  @Override
-  public void sort() {
-    if (sortedTimestamps == null
-        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedTimestamps =
-          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
-    }
-    if (sortedValues == null
-        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedValues =
-          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
-    }
-    sort(0, rowCount);
-    clearSortedValue();
-    clearSortedTime();
-    sorted = true;
-  }
-
-  @Override
   void clearValue() {
     if (values != null) {
       for (long[] dataArray : values) {
@@ -130,60 +89,8 @@ public class LongTVList extends TVList {
   }
 
   @Override
-  void clearSortedValue() {
-    if (sortedValues != null) {
-      sortedValues = null;
-    }
-  }
-
-  @Override
-  protected void setFromSorted(int src, int dest) {
-    set(
-        dest,
-        sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
-        sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
-  }
-
-  @Override
-  protected void set(int src, int dest) {
-    long srcT = getTime(src);
-    long srcV = getLong(src);
-    set(dest, srcT, srcV);
-  }
-
-  @Override
-  protected void setToSorted(int src, int dest) {
-    sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
-    sortedValues[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getLong(src);
-  }
-
-  @Override
-  protected void reverseRange(int lo, int hi) {
-    hi--;
-    while (lo < hi) {
-      long loT = getTime(lo);
-      long loV = getLong(lo);
-      long hiT = getTime(hi);
-      long hiV = getLong(hi);
-      set(lo++, hiT, hiV);
-      set(hi--, loT, loV);
-    }
-  }
-
-  @Override
   protected void expandValues() {
     values.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
-  }
-
-  @Override
-  protected void saveAsPivot(int pos) {
-    pivotTime = getTime(pos);
-    pivotValue = getLong(pos);
-  }
-
-  @Override
-  protected void setPivotTo(int pos) {
-    set(pos, pivotTime, pivotValue);
   }
 
   @Override
@@ -314,18 +221,5 @@ public class LongTVList extends TVList {
       buffer.putLong(getTime(rowIdx));
       buffer.putLong(getLong(rowIdx));
     }
-  }
-
-  public static LongTVList deserialize(DataInputStream stream) throws IOException {
-    LongTVList tvList = new LongTVList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    long[] values = new long[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = stream.readLong();
-    }
-    tvList.putLongs(times, values, null, 0, rowCount);
-    return tvList;
   }
 }

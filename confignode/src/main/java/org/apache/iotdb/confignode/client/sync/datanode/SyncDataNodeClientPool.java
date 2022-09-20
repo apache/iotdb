@@ -31,7 +31,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
-import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -85,14 +85,14 @@ public class SyncDataNodeClientPool {
             return client.stopDataNode();
           case UPDATE_TEMPLATE:
             return client.updateTemplate((TUpdateTemplateReq) req);
-          case CREATE_PEER:
-            return client.createPeerToConsensusGroup((TCreatePeerReq) req);
+          case CREATE_NEW_REGION_PEER:
+            return client.createNewRegionPeer((TCreatePeerReq) req);
           case ADD_REGION_PEER:
-            return client.addRegionPeer((TMigrateRegionReq) req);
+            return client.addRegionPeer((TMaintainPeerReq) req);
           case REMOVE_REGION_PEER:
-            return client.removeRegionPeer((TMigrateRegionReq) req);
-          case DELETE_PEER:
-            return client.deletePeerToConsensusGroup((TMigrateRegionReq) req);
+            return client.removeRegionPeer((TMaintainPeerReq) req);
+          case DELETE_OLD_REGION_PEER:
+            return client.deleteOldRegionPeer((TMaintainPeerReq) req);
           default:
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);

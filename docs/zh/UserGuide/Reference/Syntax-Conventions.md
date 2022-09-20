@@ -243,11 +243,7 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 #### 如何在字符串内使用引号
 
 - 在单引号引起的字符串内，双引号无需特殊处理。同理，在双引号引起的字符串内，单引号无需特殊处理。
-
-- 在引号前使用转义符 (\\)。
-
 - 在单引号引起的字符串里，可以通过双写单引号来表示一个单引号，即单引号 ' 可以表示为 ''。
-
 - 在双引号引起的字符串里，可以通过双写双引号来表示一个双引号，即双引号 " 可以表示为 ""。
 
 字符串内使用引号的示例如下：
@@ -256,15 +252,11 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 'string'  // string
 '"string"'  // "string"
 '""string""'  // ""string""
-'str\'ing'  // str'ing
-'\'string'  // 'string
 '''string'  // 'string
 
 "string" // string
 "'string'"  // 'string'
 "''string''"  // ''string''
-"str\"ing"  // str"ing
-"\"string"  // "string
 """string"  // "string
 ```
 

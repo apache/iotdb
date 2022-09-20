@@ -187,4 +187,11 @@ public class NodeUrlUtils {
       throws BadNodeUrlException {
     return parseTConfigNodeUrls(Arrays.asList(configNodeUrls.split(";")));
   }
+
+  public static boolean isLocalAddress(String ip) {
+    if (ip == null) {
+      return false;
+    }
+    return ip.equals("0.0.0.0") || ip.equals("127.0.0.1") || ip.equals("localhost");
+  }
 }

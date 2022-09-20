@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -70,7 +71,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -79,6 +79,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -108,37 +109,6 @@ public class PartitionInfo implements SnapshotProcessor {
     this.deletedRegionSet = Collections.synchronizedSet(new HashSet<>());
   }
 
-  public void addMetrics() {
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
-            storageGroupPartitionTables,
-            ConcurrentHashMap::size,
-            Tag.NAME.toString(),
-            "storageGroup");
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.REGION.toString(),
-            MetricLevel.IMPORTANT,
-            this,
-            o -> o.updateRegionGroupMetric(TConsensusGroupType.SchemaRegion),
-            Tag.NAME.toString(),
-            "total",
-            Tag.TYPE.toString(),
-            TConsensusGroupType.SchemaRegion.toString());
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.REGION.toString(),
-            MetricLevel.IMPORTANT,
-            this,
-            o -> o.updateRegionGroupMetric(TConsensusGroupType.DataRegion),
-            Tag.NAME.toString(),
-            "total",
-            Tag.TYPE.toString(),
-            TConsensusGroupType.DataRegion.toString());
-  }
-
   public int generateNextRegionGroupId() {
     return nextRegionGroupId.incrementAndGet();
   }
@@ -155,8 +125,12 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     String storageGroupName = plan.getSchema().getName();
-    storageGroupPartitionTables.put(
-        storageGroupName, new StorageGroupPartitionTable(storageGroupName));
+    StorageGroupPartitionTable storageGroupPartitionTable =
+        new StorageGroupPartitionTable(storageGroupName);
+    storageGroupPartitionTables.put(storageGroupName, storageGroupPartitionTable);
+    MetricService.getInstance()
+        .addMetricSet(
+            new PartitionInfoMetrics.StorageGroupPartitionTableMetrics(storageGroupPartitionTable));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -467,7 +441,7 @@ public class PartitionInfo implements SnapshotProcessor {
   /** Get region information */
   public DataSet getRegionInfoList(GetRegionInfoListPlan regionsInfoPlan) {
     RegionInfoListResp regionResp = new RegionInfoListResp();
-    List<TRegionInfo> regionInfoList = new ArrayList<>();
+    List<TRegionInfo> regionInfoList = new Vector<>();
     if (storageGroupPartitionTables.isEmpty()) {
       regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       regionResp.setRegionInfoList(new ArrayList<>());
@@ -481,10 +455,13 @@ public class PartitionInfo implements SnapshotProcessor {
           if (storageGroups != null && !storageGroups.contains(storageGroup)) {
             return;
           }
-          storageGroupPartitionTable.getRegionInfoList(regionsInfoPlan, regionInfoList);
+          regionInfoList.addAll(storageGroupPartitionTable.getRegionInfoList(regionsInfoPlan));
         });
     regionInfoList.sort(
-        Comparator.comparingInt(regionId -> regionId.getConsensusGroupId().getId()));
+        (o1, o2) ->
+            o1.getConsensusGroupId().getId() != o2.getConsensusGroupId().getId()
+                ? o1.getConsensusGroupId().getId() - o2.getConsensusGroupId().getId()
+                : o1.getDataNodeId() - o2.getDataNodeId());
     regionResp.setRegionInfoList(regionInfoList);
     regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return regionResp;
@@ -614,8 +591,8 @@ public class PartitionInfo implements SnapshotProcessor {
     return storageGroupPartitionTables.get(storageGroup).getRegionGroupCount(type);
   }
 
-  public int getSlotCount(String storageGroup) {
-    return storageGroupPartitionTables.get(storageGroup).getSlotsCount();
+  public int getAssignedSeriesPartitionSlotsCount(String storageGroup) {
+    return storageGroupPartitionTables.get(storageGroup).getAssignedSeriesPartitionSlotsCount();
   }
 
   /**
@@ -648,7 +625,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param type SchemaRegion or DataRegion
    * @return the number of SchemaRegion or DataRegion
    */
-  private int updateRegionGroupMetric(TConsensusGroupType type) {
+  public int updateRegionGroupMetric(TConsensusGroupType type) {
     Set<RegionGroup> regionGroups = new HashSet<>();
     for (Map.Entry<String, StorageGroupPartitionTable> entry :
         storageGroupPartitionTables.entrySet()) {
@@ -676,6 +653,7 @@ public class PartitionInfo implements SnapshotProcessor {
               + ":"
               + dataNodeLocation.getClientRpcEndPoint().port
               + ")";
+      // TODO: this metric can be optimized
       MetricService.getInstance()
           .getOrCreateGauge(
               Metric.REGION.toString(),
@@ -778,6 +756,10 @@ public class PartitionInfo implements SnapshotProcessor {
         deletedRegionSet.add(regionReplicaSet);
       }
     }
+  }
+
+  public int getStorageGroupPartitionTableSize() {
+    return storageGroupPartitionTables.size();
   }
 
   public void clear() {

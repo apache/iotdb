@@ -81,6 +81,8 @@ public class CommonDescriptor {
             properties.getProperty("default_ttl", String.valueOf(config.getDefaultTTL()))));
     config.setSyncFolder(properties.getProperty("sync_dir", config.getSyncFolder()));
 
+    config.setWalDirs(properties.getProperty("wal_dirs", config.getWalDirs()[0]).split(","));
+
     config.setRpcThriftCompressionEnabled(
         Boolean.parseBoolean(
             properties.getProperty(

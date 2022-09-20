@@ -100,10 +100,7 @@ public class RouteBalancer {
           lazyGreedyRouter.updateDisabledDataNodes(
               getNodeManager()
                   .filterDataNodeThroughStatus(
-                      NodeStatus.Unknown,
-                      NodeStatus.Removing,
-                      NodeStatus.Error,
-                      NodeStatus.ReadOnly));
+                      NodeStatus.Unknown, NodeStatus.Removing, NodeStatus.ReadOnly));
           return lazyGreedyRouter;
         } else if (LEADER_POLICY.equals(policy)) {
           return new LeaderRouter(

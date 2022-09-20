@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -426,7 +425,7 @@ public class WALBuffer extends AbstractWALBuffer {
       } catch (Throwable e) {
         logger.error(
             "Fail to sync wal node-{}'s buffer, change system mode to error.", identifier, e);
-        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
       } finally {
         switchSyncingBufferToIdle();
       }
@@ -447,7 +446,7 @@ public class WALBuffer extends AbstractWALBuffer {
           if (info.rollWALFileWriterListener != null) {
             info.rollWALFileWriterListener.fail(e);
           }
-          CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
         }
       } else if (forceFlag) { // force os cache to the storage device, avoid force twice by judging
         // after rolling file
@@ -462,7 +461,7 @@ public class WALBuffer extends AbstractWALBuffer {
           for (WALFlushListener fsyncListener : info.fsyncListeners) {
             fsyncListener.fail(e);
           }
-          CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
         }
       }
 
@@ -560,6 +559,11 @@ public class WALBuffer extends AbstractWALBuffer {
 
   @Override
   public boolean isAllWALEntriesConsumed() {
-    return walEntries.isEmpty();
+    buffersLock.lock();
+    try {
+      return walEntries.isEmpty() && workingBuffer.position() == 0 && syncingBuffer == null;
+    } finally {
+      buffersLock.unlock();
+    }
   }
 }
