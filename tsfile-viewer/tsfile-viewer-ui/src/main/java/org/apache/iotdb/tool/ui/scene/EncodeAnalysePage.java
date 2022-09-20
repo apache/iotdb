@@ -255,8 +255,9 @@ public class EncodeAnalysePage {
     analyseTableView.setVisible(true);
   }
 
-  public void close() {
-    analyseDataList.clear();
-    this.father.close();
+  public void show() {
+    if(this.father != null && !this.father.isShowing()) {
+      this.father.show();
+    }
   }
 }

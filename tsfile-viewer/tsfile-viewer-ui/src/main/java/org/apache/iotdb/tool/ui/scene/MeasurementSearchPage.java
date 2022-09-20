@@ -236,10 +236,9 @@ public class MeasurementSearchPage {
     tvTableView.setVisible(true);
   }
 
-  public void close() {
-    if(this.parent != null) {
-      this.parent.close();
-      this.tvDatas.clear();
+  public void show() {
+    if(this.parent != null && !this.parent.isShowing()) {
+      this.parent.show();
     }
   }
 }

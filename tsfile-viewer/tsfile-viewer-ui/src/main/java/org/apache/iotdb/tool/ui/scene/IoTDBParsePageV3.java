@@ -287,7 +287,8 @@ public class IoTDBParsePageV3 extends IoTDBParsePage {
     searchMenuItem.setOnAction(
         event -> {
           if(measurementSearchPage != null) {
-            measurementSearchPage.close();
+            measurementSearchPage.show();
+            return;
           }
           Stage measurementSearchStage = new Stage();
           measurementSearchStage.initStyle(StageStyle.UTILITY);
@@ -353,8 +354,8 @@ public class IoTDBParsePageV3 extends IoTDBParsePage {
     encodeAnalyseMenuItem.setOnAction(
         event -> {
           if(encodeAnalysePage != null) {
-            encodeAnalysePage.close();
-            encodeAnalysePage = null;
+            encodeAnalysePage.show();
+            return;
           }
           Stage encodeAnalyseStage = new Stage();
           encodeAnalyseStage.initStyle(StageStyle.UTILITY);
