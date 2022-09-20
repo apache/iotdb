@@ -77,15 +77,16 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   @Override
   public TriggerFireResult visitInsertRow(InsertRowNode node, TriggerEvent context) {
-    String device = node.getDevicePath().getFullPath();
-    String[] measurements = node.getMeasurements();
     Map<String, List<String>> triggerNameToMeasurementList =
         constructTriggerNameToMeasurementListMap(node);
-    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
     // return success if no trigger is found
     if (triggerNameToMeasurementList.isEmpty()) {
       return TriggerFireResult.SUCCESS;
     }
+
+    String device = node.getDevicePath().getFullPath();
+    String[] measurements = node.getMeasurements();
+    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
     Map<String, Integer> measurementToSchemaIndexMap =
         constructMeasurementToSchemaIndexMap(measurements, measurementSchemas);
 
@@ -116,9 +117,6 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   @Override
   public TriggerFireResult visitInsertTablet(InsertTabletNode node, TriggerEvent context) {
-    String device = node.getDevicePath().getFullPath();
-    String[] measurements = node.getMeasurements();
-    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
     // group Triggers and measurements
     Map<String, List<String>> triggerNameToMeasurementList =
         constructTriggerNameToMeasurementListMap(node);
@@ -126,6 +124,10 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     if (triggerNameToMeasurementList.isEmpty()) {
       return TriggerFireResult.SUCCESS;
     }
+
+    String device = node.getDevicePath().getFullPath();
+    String[] measurements = node.getMeasurements();
+    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
     Map<String, Integer> measurementToSchemaIndexMap =
         constructMeasurementToSchemaIndexMap(measurements, measurementSchemas);
 
@@ -239,6 +241,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   private Map<String, List<String>> constructTriggerNameToMeasurementListMap(InsertNode node) {
     PartialPath device = node.getDevicePath();
+    // todo: use new interface hasTriggerUnderDevice
     String[] measurements = node.getMeasurements();
     Map<String, List<String>> triggerNameToPaths = new HashMap<>();
     for (String measurement : measurements) {
@@ -269,7 +272,11 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
           internalServiceClientIClientManager.borrowClient(endPoint)) {
         TFireTriggerReq req = new TFireTriggerReq(triggerName, tablet.serialize(), event.getId());
         result = TriggerFireResult.construct(client.fireTrigger(req).getFireResult());
-      } catch (IOException | TException e) {
+      } catch (IOException e){
+        // Failed to borrow client, possibly because corresponding DataNode is down.
+        // We need to update local TriggerTable with the new TDataNodeLocation of the stateful trigger.
+      }
+      catch (IOException | TException e) {
         LOGGER.warn(
             "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
             triggerName,

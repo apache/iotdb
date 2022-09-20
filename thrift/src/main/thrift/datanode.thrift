@@ -190,7 +190,8 @@ struct TFireTriggerReq {
 }
 
 struct TFireTriggerResp {
-  1: required i32 fireResult
+  1: required bool foundExecutor
+  2: required i32 fireResult
 }
 
 struct TInvalidatePermissionCacheReq {

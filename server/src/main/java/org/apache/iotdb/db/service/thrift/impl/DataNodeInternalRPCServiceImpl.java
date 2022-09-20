@@ -884,6 +884,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TFireTriggerResp fireTrigger(TFireTriggerReq req) {
     String triggerName = req.getTriggerName();
     TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
+    // no executor for given trigger name on this data node
+    if(executor == null){
+      return new TFireTriggerResp(false, TriggerFireResult.FAILED_NO_TERMINATION.getId());
+    }
     TriggerFireResult result = TriggerFireResult.SUCCESS;
     try {
       executor.fire(Tablet.deserialize(req.tablet), TriggerEvent.construct(req.getTriggerEvent()));
@@ -894,7 +898,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         result = TriggerFireResult.FAILED_NO_TERMINATION;
       }
     }
-    return new TFireTriggerResp(result.getId());
+    return new TFireTriggerResp(true, result.getId());
   }
 
   private TEndPoint getConsensusEndPoint(
