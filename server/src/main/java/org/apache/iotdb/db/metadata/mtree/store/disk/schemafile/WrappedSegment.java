@@ -415,7 +415,7 @@ public class WrappedSegment extends Segment<IMNode> {
                     ? -1
                     : Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
       } else if (RecordUtils.getRecordType(bufferR) == 4) {
-        byte[] schemaBytes = RecordUtils.getSchemaBytes(bufferR);
+        byte[] schemaBytes = RecordUtils.getMeasStatsBytes(bufferR);
         builder.append(
             String.format(
                 "(%s, %s, %s, %s, %s),",

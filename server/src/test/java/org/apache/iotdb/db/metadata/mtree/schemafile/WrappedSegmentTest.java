@@ -238,18 +238,6 @@ public class WrappedSegmentTest {
     System.out.println(s);
   }
 
-  private void printBuffer(ByteBuffer buf) {
-    int pos = buf.position();
-    int lim = buf.limit();
-    ByteBuffer bufRep = buf.slice();
-    while (pos < lim) {
-      System.out.print(buf.get(pos));
-      System.out.print(" ");
-      pos++;
-    }
-    System.out.println("");
-  }
-
   private IMNode getMeasurementNode(IMNode par, String name, String alias) {
     IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
     IMeasurementMNode mNode =

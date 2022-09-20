@@ -68,12 +68,26 @@ public class RecordUtilTests {
     IMeasurementSchema schema =
         new MeasurementSchema("amn", TSDataType.FLOAT, TSEncoding.BITMAP, CompressionType.GZIP);
     IMNode amn = MeasurementMNode.getMeasurementMNode(null, "amn", schema, "anothername");
+
+    ByteBuffer tBuf = RecordUtils.node2Buffer(amn);
+    tBuf.clear();
+    Assert.assertFalse(
+        RecordUtils.buffer2Node("name", tBuf).getAsMeasurementMNode().isPreDeleted());
+
+    amn.getAsMeasurementMNode().setPreDeleted(true);
+
+    tBuf = RecordUtils.node2Buffer(amn);
+    tBuf.clear();
+    Assert.assertTrue(RecordUtils.buffer2Node("name", tBuf).getAsMeasurementMNode().isPreDeleted());
+
     ByteBuffer buffer = RecordUtils.node2Buffer(amn);
     buffer.clear();
     IMNode node2 = RecordUtils.buffer2Node("amn", buffer);
 
-    Assert.assertEquals(TSDataType.FLOAT, node2.getAsMeasurementMNode().getDataType("amn"));
+    Assert.assertTrue(
+        amn.getAsMeasurementMNode().getSchema().equals(node2.getAsMeasurementMNode().getSchema()));
     Assert.assertEquals(
         node2.getAsMeasurementMNode().getAlias(), amn.getAsMeasurementMNode().getAlias());
+    Assert.assertEquals(true, node2.getAsMeasurementMNode().isPreDeleted());
   }
 }
