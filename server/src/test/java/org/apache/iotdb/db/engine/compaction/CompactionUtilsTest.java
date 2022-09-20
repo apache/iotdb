@@ -3486,33 +3486,33 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
                 new MeasurementSchema("s" + j, tsDataType));
-        IDataBlockReader tsBlockReader =
-            new SeriesDataBlockReader(
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
                 path,
-                tsDataType,
-                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
-                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                TSDataType.VECTOR,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
                 targetResources,
                 new ArrayList<>(),
+                null,
+                null,
                 true);
         int count = 0;
-        while (tsBlockReader.hasNextBatch()) {
-          TsBlock block = tsBlockReader.nextBatch();
-          IBatchDataIterator iterator = block.getTsBlockSingleColumnIterator();
-          while (iterator.hasNext()) {
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
             if (measurementMaxTime.get(
                     COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
-                >= iterator.currentTime()) {
+                >= batchData.currentTime()) {
               Assert.fail();
             }
             measurementMaxTime.put(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                iterator.currentTime());
+                batchData.currentTime());
             count++;
-            iterator.next();
+            batchData.next();
           }
         }
-        tsBlockReader.close();
+        tsFilesReader.close();
         if (i < 2 && j < 7) {
           assertEquals(300, count);
         } else if (i == 3 && j < 5) {
@@ -3564,10 +3564,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    ICompactionPerformer performer =
-        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
-    performer.perform();
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -3626,33 +3623,33 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
                 new MeasurementSchema("s" + j, TSDataType.TEXT));
-        IDataBlockReader tsBlockReader =
-            new SeriesDataBlockReader(
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
                 path,
-                TSDataType.TEXT,
-                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
-                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                TSDataType.VECTOR,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
                 targetResources,
                 new ArrayList<>(),
+                null,
+                null,
                 true);
         int count = 0;
-        while (tsBlockReader.hasNextBatch()) {
-          TsBlock block = tsBlockReader.nextBatch();
-          IBatchDataIterator iterator = block.getTsBlockSingleColumnIterator();
-          while (iterator.hasNext()) {
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
             if (measurementMaxTime.get(
                     COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
-                >= iterator.currentTime()) {
+                >= batchData.currentTime()) {
               Assert.fail();
             }
             measurementMaxTime.put(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                iterator.currentTime());
+                batchData.currentTime());
             count++;
-            iterator.next();
+            batchData.next();
           }
         }
-        tsBlockReader.close();
+        tsFilesReader.close();
         if (i == 0 || i == 2 || i == 3) {
           assertEquals(600, count);
         } else if (i == 1) {
@@ -3739,39 +3736,171 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
                 new MeasurementSchema("s" + j, TSDataType.TEXT));
-        IDataBlockReader tsBlockReader =
-            new SeriesDataBlockReader(
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
                 path,
-                TSDataType.TEXT,
-                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
-                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                TSDataType.VECTOR,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
                 targetResources,
                 new ArrayList<>(),
+                null,
+                null,
                 true);
         int count = 0;
-        while (tsBlockReader.hasNextBatch()) {
-          TsBlock block = tsBlockReader.nextBatch();
-          IBatchDataIterator iterator = block.getTsBlockSingleColumnIterator();
-          while (iterator.hasNext()) {
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
             if (measurementMaxTime.get(
                     COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
-                >= iterator.currentTime()) {
+                >= batchData.currentTime()) {
               Assert.fail();
             }
             measurementMaxTime.put(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                iterator.currentTime());
+                batchData.currentTime());
             count++;
-            iterator.next();
+            batchData.next();
           }
         }
-        tsBlockReader.close();
+        tsFilesReader.close();
         if (j == 0 || j == 2) {
           assertEquals(800, count);
         } else if (j == 1 || j == 4) {
           assertEquals(500, count);
         } else {
           assertEquals(300, count);
+        }
+      }
+    }
+  }
+
+  /** Each source file has different devices and different measurements. */
+  @Test
+  public void testCrossSpaceCompactionWithDifferentDevicesAndMeasurementsInDifferentSourceFiles()
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
+          InterruptedException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(4, 5, false);
+    List<Integer> deviceIndex = new ArrayList<>();
+    List<Integer> measurementIndex = new ArrayList<>();
+    deviceIndex.add(0);
+    deviceIndex.add(1);
+
+    measurementIndex.add(0);
+    measurementIndex.add(2);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 0, 0, false, true);
+
+    measurementIndex.clear();
+    measurementIndex.add(1);
+    measurementIndex.add(3);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 400, 0, false, true);
+
+    deviceIndex.add(2);
+    deviceIndex.add(3);
+    measurementIndex.clear();
+    measurementIndex.add(2);
+    measurementIndex.add(4);
+    measurementIndex.add(0);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 800, 0, false, true);
+    deviceIndex.remove(2);
+    deviceIndex.remove(2);
+
+    measurementIndex.clear();
+    measurementIndex.add(1);
+    measurementIndex.add(4);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 200, 100, 0, false, false);
+
+    measurementIndex.clear();
+    measurementIndex.add(0);
+    measurementIndex.add(2);
+    createFilesWithTextValue(1, deviceIndex, measurementIndex, 300, 600, 0, false, false);
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+
+    List<String> deviceIdList = new ArrayList<>();
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    for (int i = 0; i < 3; i++) {
+      if (i < 2) {
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+        Assert.assertFalse(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+        Assert.assertFalse(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      } else {
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+        Assert.assertTrue(
+            targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      }
+      check(targetResources.get(i), deviceIdList);
+    }
+
+    Map<String, Long> measurementMaxTime = new HashMap<>();
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        measurementMaxTime.putIfAbsent(
+            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+            Long.MIN_VALUE);
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.TEXT));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.VECTOR,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                targetResources,
+                new ArrayList<>(),
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= batchData.currentTime()) {
+              Assert.fail();
+            }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                batchData.currentTime());
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i < 2) {
+          if (j == 0 || j == 2) {
+            assertEquals(800, count);
+          } else if (j == 1 || j == 4) {
+            assertEquals(500, count);
+          } else {
+            assertEquals(300, count);
+          }
+        } else {
+          if (j == 0 || j == 2 || j == 4) {
+            assertEquals(300, count);
+          } else {
+            assertEquals(0, count);
+          }
         }
       }
     }
@@ -3956,20 +4085,20 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                     + (TsFileGeneratorUtils.getAlignDeviceOffset() + i),
                 Collections.singletonList("s" + j),
                 schemas);
-        IDataBlockReader tsBlockReader =
-            new SeriesDataBlockReader(
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
                 path,
-                tsDataType,
-                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
-                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                TSDataType.VECTOR,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
                 targetResources,
                 new ArrayList<>(),
+                null,
+                null,
                 true);
         int count = 0;
-        while (tsBlockReader.hasNextBatch()) {
-          TsBlock block = tsBlockReader.nextBatch();
-          IBatchDataIterator iterator = block.getTsBlockSingleColumnIterator();
-          while (iterator.hasNext()) {
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
             if (measurementMaxTime.get(
                     COMPACTION_TEST_SG
                         + PATH_SEPARATOR
@@ -3978,7 +4107,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                         + PATH_SEPARATOR
                         + "s"
                         + j)
-                >= iterator.currentTime()) {
+                >= batchData.currentTime()) {
               Assert.fail();
             }
             measurementMaxTime.put(
@@ -3989,12 +4118,12 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                     + PATH_SEPARATOR
                     + "s"
                     + j,
-                iterator.currentTime());
+                batchData.currentTime());
             count++;
-            iterator.next();
+            batchData.next();
           }
         }
-        tsBlockReader.close();
+        tsFilesReader.close();
         if (i < 2 && j < 7) {
           assertEquals(300, count);
         } else if (i == 3 && j < 5) {
@@ -4046,10 +4175,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    ICompactionPerformer performer =
-        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
-    performer.perform();
+    CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -4226,20 +4352,20 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                     + (TsFileGeneratorUtils.getAlignDeviceOffset() + i),
                 Collections.singletonList("s" + j),
                 schemas);
-        IDataBlockReader tsBlockReader =
-            new SeriesDataBlockReader(
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
                 path,
-                TSDataType.TEXT,
-                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
-                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                TSDataType.VECTOR,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
                 targetResources,
                 new ArrayList<>(),
+                null,
+                null,
                 true);
         int count = 0;
-        while (tsBlockReader.hasNextBatch()) {
-          TsBlock block = tsBlockReader.nextBatch();
-          IBatchDataIterator iterator = block.getTsBlockSingleColumnIterator();
-          while (iterator.hasNext()) {
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
             if (measurementMaxTime.get(
                     COMPACTION_TEST_SG
                         + PATH_SEPARATOR
@@ -4248,7 +4374,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                         + PATH_SEPARATOR
                         + "s"
                         + j)
-                >= iterator.currentTime()) {
+                >= batchData.currentTime()) {
               Assert.fail();
             }
             measurementMaxTime.put(
@@ -4259,12 +4385,12 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                     + PATH_SEPARATOR
                     + "s"
                     + j,
-                iterator.currentTime());
+                batchData.currentTime());
             count++;
-            iterator.next();
+            batchData.next();
           }
         }
-        tsBlockReader.close();
+        tsFilesReader.close();
         if (i == 0 || i == 2 || i == 3) {
           assertEquals(600, count);
         } else if (i == 1) {
@@ -4408,20 +4534,20 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                     + (TsFileGeneratorUtils.getAlignDeviceOffset() + i),
                 Collections.singletonList("s" + j),
                 schemas);
-        IDataBlockReader tsBlockReader =
-            new SeriesDataBlockReader(
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
                 path,
-                TSDataType.TEXT,
-                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
-                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                TSDataType.VECTOR,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
                 targetResources,
                 new ArrayList<>(),
+                null,
+                null,
                 true);
         int count = 0;
-        while (tsBlockReader.hasNextBatch()) {
-          TsBlock block = tsBlockReader.nextBatch();
-          IBatchDataIterator iterator = block.getTsBlockSingleColumnIterator();
-          while (iterator.hasNext()) {
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
             if (measurementMaxTime.get(
                     COMPACTION_TEST_SG
                         + PATH_SEPARATOR
@@ -4430,7 +4556,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                         + PATH_SEPARATOR
                         + "s"
                         + j)
-                >= iterator.currentTime()) {
+                >= batchData.currentTime()) {
               Assert.fail();
             }
             measurementMaxTime.put(
@@ -4441,12 +4567,12 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                     + PATH_SEPARATOR
                     + "s"
                     + j,
-                iterator.currentTime());
+                batchData.currentTime());
             count++;
-            iterator.next();
+            batchData.next();
           }
         }
-        tsBlockReader.close();
+        tsFilesReader.close();
         if (j == 0 || j == 2) {
           assertEquals(800, count);
         } else if (j == 1 || j == 4) {
