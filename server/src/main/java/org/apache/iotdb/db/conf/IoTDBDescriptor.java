@@ -347,6 +347,7 @@ public class IoTDBDescriptor {
 
     conf.setMultiDirStrategyClassName(
         properties.getProperty("multi_dir_strategy", conf.getMultiDirStrategyClassName()));
+    conf.checkMultiDirStrategyClassName();
 
     conf.setBatchSize(
         Integer.parseInt(

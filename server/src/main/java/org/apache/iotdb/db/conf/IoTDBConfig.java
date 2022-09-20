@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.conf.directories.strategy.MaxDiskUsableSpaceFirstStrategy;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
@@ -1392,10 +1391,14 @@ public class IoTDBConfig {
   }
 
   void setMultiDirStrategyClassName(String multiDirStrategyClassName) {
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()
-        && !(multiDirStrategyClassName.equals(MaxDiskUsableSpaceFirstStrategy.class.getSimpleName())
+    this.multiDirStrategyClassName = multiDirStrategyClassName;
+  }
+
+  public void checkMultiDirStrategyClassName() {
+    if (isClusterMode
+        && !(multiDirStrategyClassName.equals(DEFAULT_MULTI_DIR_STRATEGY)
             || multiDirStrategyClassName.equals(
-                MaxDiskUsableSpaceFirstStrategy.class.getCanonicalName()))) {
+                MULTI_DIR_STRATEGY_PREFIX + DEFAULT_MULTI_DIR_STRATEGY))) {
       String msg =
           String.format(
               "Cannot set multi_dir_strategy to %s, because cluster mode only allows MaxDiskUsableSpaceFirstStrategy.",
@@ -1403,7 +1406,6 @@ public class IoTDBConfig {
       logger.error(msg);
       throw new RuntimeException(msg);
     }
-    this.multiDirStrategyClassName = multiDirStrategyClassName;
   }
 
   public int getBatchSize() {
@@ -2985,6 +2987,7 @@ public class IoTDBConfig {
 
   public void setClusterMode(boolean isClusterMode) {
     this.isClusterMode = isClusterMode;
+    checkMultiDirStrategyClassName();
   }
 
   public int getDataNodeId() {
