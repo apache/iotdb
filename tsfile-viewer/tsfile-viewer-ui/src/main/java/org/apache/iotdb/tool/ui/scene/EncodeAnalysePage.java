@@ -23,6 +23,7 @@ import org.apache.iotdb.tool.core.model.AnalysedResultModel;
 import org.apache.iotdb.tool.core.model.EncodeCompressAnalysedModel;
 import org.apache.iotdb.tool.ui.config.TableAlign;
 import org.apache.iotdb.tool.ui.table.EncodeCompressAnalyseTable;
+import org.apache.iotdb.tool.ui.util.StringUtils;
 import org.apache.iotdb.tool.ui.view.BaseTableView;
 
 import org.slf4j.Logger;
@@ -54,6 +55,9 @@ public class EncodeAnalysePage {
   private ObservableList<EncodeCompressAnalyseTable> analyseDataList =
       FXCollections.observableArrayList();
   private Stage father = null;
+
+  private String deviceIdTextText = null;
+  private String measurementIdTextText = null;
 
   /** table datas */
   //  private TableView pageHeaderTableView;
@@ -105,8 +109,13 @@ public class EncodeAnalysePage {
     // button click event
     searchButton.setOnMouseClicked(
         event -> {
-          java.lang.String deviceIdTextText = deviceIdText.getText().trim();
-          java.lang.String measurementIdTextText = measurementIdText.getText().trim();
+          synchronized (deviceIdText) {
+            if(StringUtils.equels(deviceIdText.getText().trim(), deviceIdTextText) && StringUtils.equels(measurementIdText.getText().trim(), measurementIdTextText)) {
+              return;
+            }
+          }
+          deviceIdTextText = deviceIdText.getText().trim();
+          measurementIdTextText = measurementIdText.getText().trim();
           if(deviceIdTextText == null || deviceIdTextText.trim().equals("") || measurementIdTextText == null || measurementIdTextText.trim().equals("")) {
             return;
           }
