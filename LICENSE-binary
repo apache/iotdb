@@ -278,6 +278,10 @@ org.antlr:antlr-runtime:4.8-1
 org.ow2.asm:asm:5.0.4
 org.jline:jline:3.21.0
 
+BSD 2-Clause
+------------
+com.github.luben.zstd-jni:1.3.2-6
+
 
 MIT License
 ------------

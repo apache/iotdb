@@ -41,7 +41,10 @@ public enum CompressionType {
   PLA(".pla", (byte) 6),
 
   /** LZ4 */
-  LZ4(".lz4", (byte) 7);
+  LZ4(".lz4", (byte) 7),
+
+  /** ZSTD */
+  ZSTD(".ZSTD", (byte) 8);
 
   private final String extensionName;
   private final byte index;
@@ -75,6 +78,8 @@ public enum CompressionType {
         return CompressionType.PLA;
       case 7:
         return CompressionType.LZ4;
+      case 8:
+        return CompressionType.ZSTD;
       default:
         throw new IllegalArgumentException("Invalid input: " + compressor);
     }

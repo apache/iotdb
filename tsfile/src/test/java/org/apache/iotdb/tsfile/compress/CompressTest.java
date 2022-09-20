@@ -103,4 +103,30 @@ public class CompressTest {
     String result = new String(uncompressed, StandardCharsets.UTF_8);
     assertEquals(inputString, result);
   }
+
+  @Test
+  public void ZSTDCompressorTest1() throws IOException {
+    PublicBAOS out = new PublicBAOS();
+    out.write(inputString.getBytes(StandardCharsets.UTF_8));
+    ICompressor compressor = new ICompressor.ZSTDCompressor();
+    IUnCompressor unCompressor = new IUnCompressor.ZSTDUnCompressor();
+    byte[] compressed = compressor.compress(out.getBuf());
+    byte[] uncompressed = unCompressor.uncompress(compressed);
+    String result = new String(uncompressed, StandardCharsets.UTF_8);
+    assertEquals(inputString, result);
+  }
+
+  @Test
+  public void ZSTDCompressorTest2() throws IOException {
+    PublicBAOS out = new PublicBAOS();
+    out.write(inputString.getBytes(StandardCharsets.UTF_8));
+    ICompressor compressor = new ICompressor.ZSTDCompressor();
+    IUnCompressor unCompressor = new IUnCompressor.ZSTDUnCompressor();
+    byte[] compressed = new byte[compressor.getMaxBytesForCompression(out.size())];
+    int size = compressor.compress(out.getBuf(), 0, out.size(), compressed);
+    byte[] bytes = Arrays.copyOfRange(compressed, 0, size);
+    byte[] uncompressed = unCompressor.uncompress(bytes);
+    String result = new String(uncompressed, StandardCharsets.UTF_8);
+    assertEquals(inputString, result);
+  }
 }

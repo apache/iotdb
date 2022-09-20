@@ -54,6 +54,8 @@ public interface IUnCompressor {
         return new LZ4UnCompressor();
       case GZIP:
         return new GZIPUnCompressor();
+      case ZSTD:
+        return new ZSTDUnCompressor();
       default:
         throw new CompressionTypeNotSupportedException(name.toString());
     }
@@ -310,6 +312,55 @@ public interface IUnCompressor {
     @Override
     public CompressionType getCodecName() {
       return CompressionType.GZIP;
+    }
+  }
+
+  class ZSTDUnCompressor implements IUnCompressor {
+
+    @Override
+    public int getUncompressedLength(byte[] array, int offset, int length) {
+      throw new UnsupportedOperationException("unsupported get uncompress length");
+    }
+
+    @Override
+    public int getUncompressedLength(ByteBuffer buffer) {
+      throw new UnsupportedOperationException("unsupported get uncompress length");
+    }
+
+    @Override
+    public byte[] uncompress(byte[] byteArray) throws IOException {
+      if (null == byteArray) {
+        return new byte[0];
+      }
+
+      return ICompressor.ZSTDCompress.uncompress(byteArray);
+    }
+
+    @Override
+    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
+        throws IOException {
+      byte[] dataBefore = new byte[length];
+      System.arraycopy(byteArray, offset, dataBefore, 0, length);
+      byte[] res = ICompressor.ZSTDCompress.uncompress(dataBefore);
+      System.arraycopy(res, 0, output, outOffset, res.length);
+      return res.length;
+    }
+
+    @Override
+    public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
+      int length = compressed.remaining();
+      byte[] dataBefore = new byte[length];
+      compressed.get(dataBefore, 0, length);
+
+      byte[] res = ICompressor.ZSTDCompress.uncompress(dataBefore);
+      uncompressed.put(res);
+
+      return res.length;
+    }
+
+    @Override
+    public CompressionType getCodecName() {
+      return CompressionType.ZSTD;
     }
   }
 }
