@@ -94,38 +94,46 @@ public class DeleteTimeSeriesProcedure
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, DeleteTimeSeriesState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
-    switch (state) {
-      case CONSTRUCT_BLACK_LIST:
-        LOGGER.info("Construct schema black list of timeseries {}", requestMessage);
-        if (constructBlackList(env) > 0) {
-          setNextState(DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE);
+    long startTime = System.currentTimeMillis();
+    try {
+      switch (state) {
+        case CONSTRUCT_BLACK_LIST:
+          LOGGER.info("Construct schema black list of timeseries {}", requestMessage);
+          if (constructBlackList(env) > 0) {
+            setNextState(DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE);
+            break;
+          } else {
+            setFailure(
+                new ProcedureException(
+                    new PathNotExistException(
+                        patternTree.getAllPathPatterns().stream()
+                            .map(PartialPath::getFullPath)
+                            .collect(Collectors.toList()))));
+            return Flow.NO_MORE_STATE;
+          }
+        case CLEAN_DATANODE_SCHEMA_CACHE:
+          LOGGER.info("Invalidate cache of timeseries {}", requestMessage);
+          invalidateCache(env);
           break;
-        } else {
-          setFailure(
-              new ProcedureException(
-                  new PathNotExistException(
-                      patternTree.getAllPathPatterns().stream()
-                          .map(PartialPath::getFullPath)
-                          .collect(Collectors.toList()))));
+        case DELETE_DATA:
+          LOGGER.info("Delete data of timeseries {}", requestMessage);
+          deleteData(env);
+          break;
+        case DELETE_TIMESERIES:
+          LOGGER.info("Delete timeseries schema of {}", requestMessage);
+          deleteTimeSeries(env);
           return Flow.NO_MORE_STATE;
-        }
-      case CLEAN_DATANODE_SCHEMA_CACHE:
-        LOGGER.info("Invalidate cache of timeseries {}", requestMessage);
-        invalidateCache(env);
-        break;
-      case DELETE_DATA:
-        LOGGER.info("Delete data of timeseries {}", requestMessage);
-        deleteData(env);
-        break;
-      case DELETE_TIMESERIES:
-        LOGGER.info("Delete timeseries schema of {}", requestMessage);
-        deleteTimeSeries(env);
-        return Flow.NO_MORE_STATE;
-      default:
-        setFailure(new ProcedureException("Unrecognized state " + state.toString()));
-        return Flow.NO_MORE_STATE;
+        default:
+          setFailure(new ProcedureException("Unrecognized state " + state.toString()));
+          return Flow.NO_MORE_STATE;
+      }
+      return Flow.HAS_MORE_STATE;
+    } finally {
+      LOGGER.info(
+          String.format(
+              "DeleteTimeSeries-[%s] costs %sms",
+              state.toString(), (System.currentTimeMillis() - startTime)));
     }
-    return Flow.HAS_MORE_STATE;
   }
 
   // return the total num of timeseries in schema black list
