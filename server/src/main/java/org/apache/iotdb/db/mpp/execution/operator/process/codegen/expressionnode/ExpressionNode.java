@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode;
 
+import java.util.List;
+
 /**
  * This type is a expression node help to generate expression string it is not complete java
  * statement
@@ -32,16 +34,11 @@ public interface ExpressionNode {
    */
   String toCode();
 
-  /**
-   * this function will generate complete code of expression without generated variable for example:
-   * (a + b) * c will just return : (a + b) * c seldom used
-   */
-  String toExpendCode();
-
-  /** return an ExpressionNode represent in which condition current ExpressionNode will be null */
-  ExpressionNode checkWhetherNotNull();
-
   String getNodeName();
+
+  List<String> getSubNodes();
+
+  List<String> getAllSubNodes();
 
   void setNodeName(String nodeName);
 }

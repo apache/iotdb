@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen;
 
-import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.ConstantExpressionNode;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.ExpressionNode;
-import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.NewObjectsStatement;
-import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.ReturnStatement;
-import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.Statement;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.AssignmentStatement;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.DeclareStatement;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.CodegenSimpleRow;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -35,14 +33,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class CodegenContext {
-  private List<Statement> codes;
-
+  private List<DeclareStatement> intermediateVariables;
+  private List<AssignmentStatement> assignmentStatements;
   private final Map<String, List<InputLocation>> inputLocations;
   private final List<TSDataType> inputDataTypes;
 
@@ -96,12 +95,13 @@ public class CodegenContext {
   }
 
   public void init() {
-    this.codes = new ArrayList<>();
     this.expressionToNode = new HashMap<>();
     this.expressionToDataType = new HashMap<>();
     this.udtfInputs = new HashMap<>();
     this.udtfExecutors = new HashMap<>();
     this.inputNameToVarName = new HashMap<>();
+    this.intermediateVariables = new ArrayList<>();
+    this.assignmentStatements = new ArrayList<>();
   }
 
   public void addInputVarNameMap(String inputName, String varName) {
@@ -128,6 +128,19 @@ public class CodegenContext {
     }
   }
 
+  public Map<String, TSDataType> getOutputName2TypeMap() {
+    LinkedHashMap<String, TSDataType> outputName2TypeMap = new LinkedHashMap<>();
+    for (Expression expression : outputExpression) {
+      if (!expressionToNode.containsKey(expression)) {
+        outputName2TypeMap.put("non-existVariable", TSDataType.BOOLEAN);
+        continue;
+      }
+      outputName2TypeMap.put(
+          expressionToNode.get(expression).getNodeName(), expressionToDataType.get(expression));
+    }
+    return outputName2TypeMap;
+  }
+
   public ExpressionNode getExpressionNode(Expression expression) {
     if (expressionToNode.containsKey(expression)) {
       return expressionToNode.get(expression);
@@ -146,10 +159,6 @@ public class CodegenContext {
     udtfInputs.put(rowName, input);
   }
 
-  public void addCode(Statement statement) {
-    codes.add(statement);
-  }
-
   public String uniqueVarName() {
     return "var" + (uniqueIndex++);
   }
@@ -160,38 +169,6 @@ public class CodegenContext {
 
   public void addOutputExpr(Expression expression) {
     outputExpression.add(expression);
-  }
-
-  public void generateReturnFilter() {
-    ReturnStatement returnStatement =
-        new ReturnStatement(
-            new ConstantExpressionNode(expressionToNode.get(filterExpression).getNodeName()));
-    codes.add(returnStatement);
-  }
-
-  public void generateReturnStatement() {
-    String retValueVarName = uniqueVarName();
-    NewObjectsStatement retValueStatement =
-        new NewObjectsStatement(retValueVarName, outputExpression.size());
-
-    for (int i = 0; i < outputExpression.size(); ++i) {
-      Expression expression = outputExpression.get(i);
-      if (isExpressionGeneratedSuccess.get(i)) {
-        retValueStatement.addRetValue(expressionToNode.get(expression));
-      } else {
-        retValueStatement.addRetValue(null);
-      }
-    }
-    codes.add(retValueStatement);
-    codes.add(new ReturnStatement(new ConstantExpressionNode(retValueVarName)));
-  }
-
-  public String toCode() {
-    StringBuilder code = new StringBuilder();
-    for (Statement statement : codes) {
-      if (statement != null) code.append(statement.toCode());
-    }
-    return code.toString();
   }
 
   public static Class<?> tsDatatypeToClass(TSDataType tsDataType) {
@@ -250,10 +227,30 @@ public class CodegenContext {
   }
 
   public List<TSDataType> getOutputDataTypes() {
-    return outputExpression.stream().map(expressionToDataType::get).collect(Collectors.toList());
+    return outputExpression.stream()
+        .map(expression -> expression.inferTypes(typeProvider))
+        .collect(Collectors.toList());
   }
 
   public boolean isExpressionInput(Expression expression) {
     return inputLocations.containsKey(expression.getExpressionString());
+  }
+
+  public void addIntermediateVariable(DeclareStatement declareStatement) {
+    this.intermediateVariables.add(
+        new DeclareStatement("boolean", declareStatement.getVarName() + "IsNull"));
+    this.intermediateVariables.add(declareStatement);
+  }
+
+  public void addAssignmentStatement(AssignmentStatement assignmentStatement) {
+    this.assignmentStatements.add(assignmentStatement);
+  }
+
+  public List<DeclareStatement> getIntermediateVariables() {
+    return intermediateVariables;
+  }
+
+  public List<AssignmentStatement> getAssignmentStatements() {
+    return assignmentStatements;
   }
 }

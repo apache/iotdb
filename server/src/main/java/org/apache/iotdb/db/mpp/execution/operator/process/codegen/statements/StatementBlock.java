@@ -17,16 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.declares;
+package org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements;
 
-import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.ExpressionNode;
-import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.DeclareStatement;
+import java.util.ArrayList;
+import java.util.List;
 
-public class BoolDeclareStatement extends DeclareStatement {
-  public BoolDeclareStatement(ExpressionNode es) {
-    this.type = CodegenDataType.BOOLEAN;
-    this.varName = es.getNodeName();
-    this.es = es;
-    generateNullCheck();
+public class StatementBlock implements Statement {
+  private final List<Statement> statements;
+
+  public StatementBlock() {
+    statements = new ArrayList<>();
+  }
+
+  public void addStatement(Statement statement) {
+    statements.add(statement);
+  }
+
+  @Override
+  public String toCode() {
+    StringBuilder code = new StringBuilder();
+    for (Statement statement : statements) {
+      code.append(statement.toCode()).append("/n");
+    }
+    return code.toString();
   }
 }

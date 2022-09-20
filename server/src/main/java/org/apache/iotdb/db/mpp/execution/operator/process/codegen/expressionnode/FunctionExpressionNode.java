@@ -82,28 +82,21 @@ public class FunctionExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public ExpressionNode checkWhetherNotNull() {
-    if (subNodes.size() == 0) {
-      // TODO: should throw a exception
-      return null;
+  public List<String> getSubNodes() {
+    ArrayList<String> subNodes = new ArrayList<>();
+    for (ExpressionNode node : this.subNodes) {
+      subNodes.add(node.getNodeName());
     }
-    if (subNodes.size() == 1) {
-      return new IsNullExpressionNode(subNodes.get(0), true);
-    }
-    ExpressionNode retNode = subNodes.get(0);
-    for (int i = 1; i < subNodes.size(); ++i) {
-      retNode =
-          new BinaryExpressionNode(
-              "||",
-              new IsNullExpressionNode(retNode, true),
-              new IsNullExpressionNode(subNodes.get(i), true));
-    }
-    return retNode;
+    return subNodes;
   }
 
   @Override
-  public String toExpendCode() {
-    return toCode();
+  public List<String> getAllSubNodes() {
+    ArrayList<String> allSubNodes = new ArrayList<>();
+    for (ExpressionNode node : this.subNodes) {
+      allSubNodes.addAll(node.getAllSubNodes());
+    }
+    return allSubNodes;
   }
 
   public void addSubExpressionNode(ExpressionNode subNode) {

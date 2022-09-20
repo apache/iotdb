@@ -34,32 +34,30 @@ public class IfStatement implements Statement {
 
   private List<Statement> elseBody;
 
-  public IfStatement() {
-    haveElse = false;
+  public IfStatement(boolean haveElse) {
+    this.haveElse = haveElse;
     ifBody = new ArrayList<>();
-  }
-
-  public void setHaveElse(boolean haveElse) {
-    if (haveElse && elseBody == null) {
+    if (haveElse) {
       elseBody = new ArrayList<>();
     }
-    this.haveElse = haveElse;
   }
 
   public boolean isHaveElse() {
     return haveElse;
   }
 
-  public void addIfBodyStatement(Statement statement) {
+  public IfStatement addIfBodyStatement(Statement statement) {
     ifBody.add(statement);
+    return this;
   }
 
-  public void addElseBodyStatement(Statement statement) {
+  public IfStatement addElseBodyStatement(Statement statement) {
     if (!isHaveElse()) {
       // TODO: throw exception
-      return;
+      return this;
     }
     elseBody.add(statement);
+    return this;
   }
 
   public void setCondition(ExpressionNode condition) {
@@ -71,13 +69,13 @@ public class IfStatement implements Statement {
     StringBuilder ifCode = new StringBuilder();
     ifCode.append("if(").append(condition.toCode()).append("){\n");
     for (Statement s : ifBody) {
-      ifCode.append(s.toCode());
+      ifCode.append("    ").append(s.toCode());
     }
 
     if (isHaveElse()) {
       ifCode.append("} else {\n");
       for (Statement s : elseBody) {
-        ifCode.append(s.toCode());
+        ifCode.append("    ").append(s.toCode());
       }
     }
 

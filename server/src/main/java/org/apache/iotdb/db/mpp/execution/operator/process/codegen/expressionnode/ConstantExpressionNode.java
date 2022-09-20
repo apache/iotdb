@@ -19,24 +19,29 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ConstantExpressionNode extends ExpressionNodeImpl {
 
-  public ConstantExpressionNode(String varName) {
-    this.nodeName = varName;
+  private final String literal;
+
+  public ConstantExpressionNode(String literal) {
+    this.literal = literal;
   }
 
   @Override
   public String toCode() {
-    return nodeName;
+    return literal;
   }
 
   @Override
-  public ExpressionNode checkWhetherNotNull() {
-    return new ConstantExpressionNode("true");
+  public List<String> getSubNodes() {
+    return new ArrayList<>();
   }
 
   @Override
-  public String toExpendCode() {
-    return nodeName;
+  public List<String> getAllSubNodes() {
+    return new ArrayList<>();
   }
 }

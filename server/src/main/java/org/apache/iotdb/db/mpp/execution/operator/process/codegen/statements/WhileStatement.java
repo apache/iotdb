@@ -17,16 +17,38 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.declares;
+package org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements;
 
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.ExpressionNode;
-import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.DeclareStatement;
 
-public class DoubleDeclareStatement extends DeclareStatement {
-  public DoubleDeclareStatement(ExpressionNode es) {
-    this.type = CodegenDataType.DOUBLE;
-    this.varName = es.getNodeName();
-    this.es = es;
-    generateNullCheck();
+import java.util.ArrayList;
+import java.util.List;
+
+public class WhileStatement implements Statement {
+  private final ExpressionNode condition;
+
+  private List<Statement> loopBody;
+
+  public WhileStatement(ExpressionNode condition) {
+    this.condition = condition;
+    loopBody = new ArrayList<>();
+  }
+
+  public void addLoopStatement(Statement statement) {
+    loopBody.add(statement);
+  }
+
+  @Override
+  public String toCode() {
+    StringBuilder whileStatementCode = new StringBuilder();
+
+    whileStatementCode.append("while(").append(condition.toCode()).append("){\n");
+
+    for (Statement s : loopBody) {
+      whileStatementCode.append("  ").append(s.toCode()).append("\n");
+    }
+
+    whileStatementCode.append("}");
+    return whileStatementCode.toString();
   }
 }

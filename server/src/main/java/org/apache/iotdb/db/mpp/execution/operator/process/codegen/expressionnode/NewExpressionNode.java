@@ -22,14 +22,25 @@ package org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnod
 import java.util.ArrayList;
 import java.util.List;
 
-public class IdentityExpressionNode extends ExpressionNodeImpl {
-  public IdentityExpressionNode(String nodeName) {
-    this.nodeName = nodeName;
+public class NewExpressionNode extends ExpressionNodeImpl {
+
+  private String type;
+
+  private String[] args;
+
+  public NewExpressionNode(String type, String... args) {
+    this.type = type;
+    this.args = args;
   }
 
   @Override
   public String toCode() {
-    return nodeName;
+    StringBuilder code = new StringBuilder();
+    code.append("new ").append(type).append("(");
+    for (int i = 0; i < args.length; i++) {
+      code.append(args[i]).append(", ");
+    }
+    return code.delete(code.length() - 2, code.length()).append(")").toString();
   }
 
   @Override

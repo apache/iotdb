@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class InExpressionNode extends ExpressionNodeImpl {
   private final String setName;
 
@@ -52,12 +55,14 @@ public class InExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public ExpressionNode checkWhetherNotNull() {
-    return new IsNullExpressionNode(subNode, true);
+  public List<String> getSubNodes() {
+    ArrayList<String> subNodes = new ArrayList<>();
+    subNodes.add(subNode.getNodeName());
+    return subNodes;
   }
 
   @Override
-  public String toExpendCode() {
-    return null;
+  public List<String> getAllSubNodes() {
+    return subNode.getAllSubNodes();
   }
 }

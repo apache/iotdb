@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class BetweenExpressionNode extends ExpressionNodeImpl {
   private final ExpressionNode firstNode;
   private final ExpressionNode secondNode;
@@ -53,27 +56,19 @@ public class BetweenExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public ExpressionNode checkWhetherNotNull() {
-    return new BinaryExpressionNode(
-        "&&",
-        new IsNullExpressionNode(firstNode, true),
-        new BinaryExpressionNode(
-            "&&",
-            new IsNullExpressionNode(secondNode, true),
-            new IsNullExpressionNode(thirdNode, true)));
+  public List<String> getSubNodes() {
+    ArrayList<String> subNodes = new ArrayList<>();
+    subNodes.add(firstNode.getNodeName());
+    subNodes.add(secondNode.getNodeName());
+    subNodes.add(thirdNode.getNodeName());
+    return subNodes;
   }
 
   @Override
-  public String toExpendCode() {
-    StringBuilder betweenCode = new StringBuilder();
-    betweenCode
-        .append(firstNode.toExpendCode())
-        .append(">=")
-        .append(secondNode.toExpendCode())
-        .append("&&")
-        .append(firstNode.toExpendCode())
-        .append("<=")
-        .append(thirdNode.toExpendCode());
-    return isNotBetween ? "!" + bracket(betweenCode.toString()) : betweenCode.toString();
+  public List<String> getAllSubNodes() {
+    ArrayList<String> allSubNodes = new ArrayList<>(firstNode.getAllSubNodes());
+    allSubNodes.addAll(secondNode.getAllSubNodes());
+    allSubNodes.addAll(thirdNode.getSubNodes());
+    return allSubNodes;
   }
 }

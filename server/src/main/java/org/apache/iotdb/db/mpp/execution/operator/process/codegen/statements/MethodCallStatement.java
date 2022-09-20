@@ -17,28 +17,38 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode;
+package org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements;
 
-import java.util.ArrayList;
-import java.util.List;
+// call function with side effect
+public class MethodCallStatement implements Statement {
 
-public class IdentityExpressionNode extends ExpressionNodeImpl {
-  public IdentityExpressionNode(String nodeName) {
-    this.nodeName = nodeName;
+  private final String variableName;
+
+  private final String methodName;
+
+  private final String[] args;
+
+  public MethodCallStatement(String variableName, String functionName, String... args) {
+    this.variableName = variableName;
+    this.methodName = functionName;
+    this.args = args;
   }
 
   @Override
   public String toCode() {
-    return nodeName;
-  }
+    StringBuilder code = new StringBuilder();
+    if (variableName != null) {
+      code.append(variableName).append(".");
+    }
 
-  @Override
-  public List<String> getSubNodes() {
-    return new ArrayList<>();
-  }
+    code.append(methodName).append("(");
+    for (String arg : args) {
+      code.append(arg).append(", ");
+    }
 
-  @Override
-  public List<String> getAllSubNodes() {
-    return new ArrayList<>();
+    if (args.length != 0) {
+      code.delete(code.length() - 2, code.length());
+    }
+    return code.append(");\n").toString();
   }
 }

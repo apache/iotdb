@@ -19,24 +19,50 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements;
 
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.ConstantExpressionNode;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.ExpressionNode;
-import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.declares.CodegenDataType;
 
+import java.util.List;
+
+// assign value to a variable
 public class AssignmentStatement implements Statement {
   private final String varName;
 
   private final ExpressionNode es;
 
-  private final CodegenDataType type;
-
-  public AssignmentStatement(String varName, ExpressionNode es, CodegenDataType type) {
+  public AssignmentStatement(String varName, ExpressionNode es) {
     this.varName = varName;
     this.es = es;
-    this.type = type;
+  }
+
+  public AssignmentStatement(ExpressionNode es) {
+    this.es = es;
+    this.varName = es.getNodeName();
+  }
+
+  public String getVarName() {
+    return varName;
+  }
+
+  public ExpressionNode getExpressionNode() {
+    return es;
   }
 
   @Override
   public String toCode() {
-    return varName + " = " + type + ".valueOf(" + es.toCode() + ");\n";
+    return varName + " = " + es.toCode() + ";\n";
+  }
+
+  public ExpressionNode getNullCondition() {
+    List<String> subNodes = es.getSubNodes();
+    StringBuilder conditionCode = new StringBuilder();
+    for (String subNodeName : subNodes) {
+      if (subNodeName != null) {
+        conditionCode.append(subNodeName).append("IsNull || ");
+      }
+    }
+
+    conditionCode.delete(conditionCode.length() - 4, conditionCode.length());
+    return new ConstantExpressionNode(conditionCode.toString());
   }
 }

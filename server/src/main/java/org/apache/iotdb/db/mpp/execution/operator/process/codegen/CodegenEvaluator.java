@@ -22,23 +22,8 @@ package org.apache.iotdb.db.mpp.execution.operator.process.codegen;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.List;
-
 public interface CodegenEvaluator {
-  /** Accept inputs in Objects, return calculated value through code generation */
-  Object[] accept(Object[] args, long timestamp) throws InvocationTargetException;
+  void generateEvaluatorClass() throws Exception;
 
-  List<Boolean> isGenerated();
-
-  /** construct expression to script, may fail and will return false */
-  void generateScriptEvaluator() throws Exception;
-
-  void generateFilterEvaluator() throws Exception;
-
-  Column[] evaluate(TsBlock inputTsBlock) throws InvocationTargetException;
-
-  Column evaluateFilter(TsBlock input) throws InvocationTargetException;
-
-  boolean isFilterGeneratedSuccess();
+  Column[] evaluate(TsBlock inputTsBlock);
 }

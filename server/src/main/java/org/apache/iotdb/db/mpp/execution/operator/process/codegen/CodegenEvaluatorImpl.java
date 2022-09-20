@@ -19,41 +19,106 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen;
 
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.ConstantExpressionNode;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.IdentityExpressionNode;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.ReturnValueExpressionNode;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.AssignmentStatement;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.DeclareStatement;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.IfStatement;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.MethodCallStatement;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.CodeGenEvaluatorBaseClass;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.CodegenSimpleRow;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 import org.codehaus.commons.compiler.CompilerFactoryFactory;
-import org.codehaus.commons.compiler.IScriptEvaluator;
+import org.codehaus.commons.compiler.IClassBodyEvaluator;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+/**
+ * For all output expressions which can be dealt with codegen, we will generate a class extending
+ * {@link CodeGenEvaluatorBaseClass}. The generated code will implement several abstract method in
+ * {@link CodeGenEvaluatorBaseClass}, and declare all input variables and intermediate variables as
+ * its field.
+ *
+ * <p>for example: select (a + b) * c from root.sg.d1;
+ *
+ * <pre>{@code
+ * private int a;
+ * private boolean aIsNull;
+ * private float b;
+ * private boolean bIsNull;
+ * private double c;
+ * private boolean cIsNull;
+ * private double var1;
+ * private boolean var1IsNull;
+ * private double var2;
+ * private boolean var2IsNull;
+ *
+ * protected void updateInputVariables(int i){
+ *   if(valueColumns[0].isNull(i)){
+ *     aIsNull = true;
+ *   } else {
+ *     a = valueColumns[0].getInt(i);
+ *     aIsNull = false;
+ *   }
+ *   if(valueColumns[1].isNull(i)){
+ *     bIsNull = true;
+ *   } else {
+ *     b = valueColumns[1].getFloat(i);
+ *     bIsNull = false;
+ *   }
+ *   if(valueColumns[2].isNull(i)){
+ *     cIsNull = true;
+ *   } else {
+ *     c = valueColumns[2].getFloat(i);
+ *     cIsNull = false;
+ *   }
+ * }
+ *
+ * protected void evaluateByRow(int i){
+ *   updateInputVariables(i);
+ *   if(aIsNull || bIsNull){
+ *     var1IsNull = true;
+ *   } else {
+ *     var1IsNull = false;
+ *     var1 = a+b;
+ *   }
+ *   if(var2IsNull || cIsNull){
+ *     var2IsNull = true;
+ *   }else{
+ *     var2 = var2 * c;
+ *     var2IsNull = false;
+ *   }
+ *   if(var2IsNull){
+ *     outputColumns[0].appendNull();
+ *   }else{
+ *     outputColumns[0].writeDouble(var2);
+ *   }
+ * }
+ * }</pre>
+ *
+ * <p>Obviously, need to override two methods {@code CodeGenEvaluatorBaseClass#evaluateByRow(int)}
+ * {@code CodeGenEvaluatorBaseClass#updateInputVariables(int)}
+ */
 public class CodegenEvaluatorImpl implements CodegenEvaluator {
   private final CodegenVisitor codegenVisitor;
-  private IScriptEvaluator scriptEvaluator;
-  private IScriptEvaluator filterEvaluator;
   private final List<Boolean> generatedSuccess;
-  private List<Object> additionalParas;
-  private List<Object> additionalFilterParas;
   private final CodegenContext codegenContext;
   private boolean scriptFinished;
-  private boolean filterFinished;
-  private boolean filterGeneratedSuccess;
+  private CodeGenEvaluatorBaseClass codegenEvaluator;
+
+  IClassBodyEvaluator classBodyEvaluator;
 
   public CodegenEvaluatorImpl(CodegenContext codegenContext) {
     codegenVisitor = new CodegenVisitorImpl(codegenContext);
@@ -62,16 +127,119 @@ public class CodegenEvaluatorImpl implements CodegenEvaluator {
     scriptFinished = false;
   }
 
-  private void constructCode() {
+  private String constructCode() {
+    parseOutputExpressions();
+
+    StringBuilder code = new StringBuilder();
+
+    generateFieldDeclareStatements(code);
+    generateUpdateInputVariables(code);
+    generateEvaluateRow(code);
+
+    return code.toString();
+  }
+
+  private void generateFieldDeclareStatements(StringBuilder code) {
+    for (DeclareStatement declareStatement : codegenContext.getIntermediateVariables()) {
+      // declare all variable and variableIsNull to sign whether variable is null
+      code.append("private ").append(declareStatement.toCode());
+    }
+  }
+
+  private void parseOutputExpressions() {
     // add expressions, this will generate variable declare and assignments
     for (Expression expression : codegenContext.getOutputExpression()) {
       boolean success = codegenVisitor.expressionVisitor(expression);
       generatedSuccess.add(success);
     }
 
-    // this will generate return statement
     codegenContext.setIsExpressionGeneratedSuccess(generatedSuccess);
-    codegenContext.generateReturnStatement();
+  }
+
+  private void generateUpdateInputVariables(StringBuilder code) {
+    // get all input variables and their position
+    List<String> parameterNames = getParameterNames();
+
+    // generate updateInputVariables() method
+    code.append("protected void updateInputVariables(int i){\n");
+
+    for (int i = 0; i < parameterNames.size(); ++i) {
+      String varName = parameterNames.get(i);
+      IfStatement ifStatement = new IfStatement(true);
+      String instanceName = "valueColumns[" + i + "]";
+      String methodName =
+          "get" + tsDatatypeToPrimaryType(codegenContext.getInputDataTypes().get(i));
+      ifStatement.setCondition(new IdentityExpressionNode(instanceName + ".isNull(i)"));
+      ifStatement
+          .addIfBodyStatement(
+              new AssignmentStatement(varName + "IsNull", new ConstantExpressionNode("true")))
+          .addElseBodyStatement(
+              new AssignmentStatement(
+                  varName, new ReturnValueExpressionNode(instanceName, methodName, "i")))
+          .addElseBodyStatement(
+              new AssignmentStatement(varName + "IsNull", new ConstantExpressionNode("false")));
+      code.append(ifStatement.toCode());
+    }
+    code.append("}\n");
+  }
+
+  private void generateEvaluateRow(StringBuilder code) {
+    // generate evaluateByRow()
+    code.append("protected void evaluateByRow(int i){\n");
+    code.append("updateInputVariables(i);\n");
+
+    List<AssignmentStatement> assignmentStatements = codegenContext.getAssignmentStatements();
+    for (AssignmentStatement assignmentStatement : assignmentStatements) {
+      IfStatement ifStatement = new IfStatement(true);
+      ifStatement.setCondition(assignmentStatement.getNullCondition());
+      ifStatement
+          .addIfBodyStatement(
+              new AssignmentStatement(
+                  assignmentStatement.getVarName() + "IsNull", new ConstantExpressionNode("true")))
+          .addElseBodyStatement(
+              new AssignmentStatement(
+                  assignmentStatement.getVarName() + "IsNull", new ConstantExpressionNode("false")))
+          .addElseBodyStatement(assignmentStatement);
+
+      code.append(ifStatement.toCode());
+    }
+
+    // store variable in columnBuilder
+    ArrayList<Map.Entry<String, TSDataType>> pairs =
+        new ArrayList<>(codegenContext.getOutputName2TypeMap().entrySet());
+    for (int i = 0; i < pairs.size(); i++) {
+      if (!generatedSuccess.get(i)) {
+        continue;
+      }
+      Map.Entry<String, TSDataType> output = pairs.get(i);
+      IfStatement ifStatement = new IfStatement(true);
+      ifStatement.setCondition(new IdentityExpressionNode(output.getKey() + "IsNull"));
+      String methodName = "write" + tsDatatypeToPrimaryType(output.getValue());
+      ifStatement.addIfBodyStatement(
+          new MethodCallStatement("outputColumns[" + i + "]", "appendNull"));
+      ifStatement.addElseBodyStatement(
+          new MethodCallStatement("outputColumns[" + i + "]", methodName, output.getKey()));
+
+      code.append(ifStatement.toCode());
+    }
+    code.append("}");
+  }
+
+  private String tsDatatypeToPrimaryType(TSDataType tsDataType) {
+    switch (tsDataType) {
+      case INT32:
+        return "Int";
+      case INT64:
+        return "Long";
+      case FLOAT:
+        return "Float";
+      case DOUBLE:
+        return "Double";
+      case BOOLEAN:
+        return "Boolean";
+      default:
+        throw new UnsupportedOperationException();
+    }
   }
 
   private List<String> getParameterNames() {
@@ -90,15 +258,6 @@ public class CodegenEvaluatorImpl implements CodegenEvaluator {
             .map(codegenContext::getVarName)
             .collect(Collectors.toList());
 
-    parameterNames.add("timestamp");
-
-    Map<String, UDTFExecutor> udtfExecutors = codegenContext.getUdtfExecutors();
-    Map<String, CodegenSimpleRow> udtfInputs = codegenContext.getUdtfInputs();
-
-    // deal with udtfExecutors and CodegenSimpleRows
-    // they will be treated as additional parameters
-    parameterNames.addAll(udtfExecutors.keySet());
-    parameterNames.addAll(udtfInputs.keySet());
     return parameterNames;
   }
 
@@ -120,183 +279,37 @@ public class CodegenEvaluatorImpl implements CodegenEvaluator {
   }
 
   @Override
-  public void generateFilterEvaluator() throws Exception {
-    if (filterFinished) {
-      return;
-    }
-
-    codegenContext.init();
-    // this should always be true
-    Expression filterExpression = codegenContext.getFilterExpression();
-    if (Objects.isNull(filterExpression)) {
-      filterFinished = true;
-      filterGeneratedSuccess = false;
-      return;
-    }
-    boolean success = codegenVisitor.expressionVisitor(filterExpression);
-    if (!success) {
-      filterFinished = true;
-      filterGeneratedSuccess = false;
-      return;
-    }
-    codegenContext.generateReturnFilter();
-
-    Map<String, UDTFExecutor> udtfExecutors = codegenContext.getUdtfExecutors();
-    Map<String, CodegenSimpleRow> udtfInputs = codegenContext.getUdtfInputs();
-
-    additionalFilterParas = new ArrayList<>();
-    additionalFilterParas.addAll(udtfExecutors.values());
-    additionalFilterParas.addAll(udtfInputs.values());
-
-    filterEvaluator =
-        CompilerFactoryFactory.getDefaultCompilerFactory(
-                CodegenEvaluatorImpl.class.getClassLoader())
-            .newScriptEvaluator();
-
-    // set imports
-    filterEvaluator.setDefaultImports(
-        "org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.CodegenSimpleRow",
-        "org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.UDTFCaller",
-        "org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor",
-        "java.util.HashSet");
-
-    Class<?> outputType = Boolean.class;
-    filterEvaluator.setReturnType(outputType);
-
-    List<String> parameterNames = getParameterNames();
-    List<Class<?>> parameterClasses = getParameterClasses();
-
-    filterEvaluator.setParameters(
-        parameterNames.toArray(new String[0]), parameterClasses.toArray(new Class[0]));
-
-    String code = codegenContext.toCode();
-    filterEvaluator.cook(code);
-
-    filterFinished = true;
-    filterGeneratedSuccess = true;
-  }
-
-  @Override
-  public void generateScriptEvaluator() throws Exception {
+  public void generateEvaluatorClass() throws Exception {
     if (scriptFinished) {
       return;
     }
 
     codegenContext.init();
-    constructCode();
-    codegenContext.setIsExpressionGeneratedSuccess(generatedSuccess);
+    String code = constructCode();
 
-    Map<String, UDTFExecutor> udtfExecutors = codegenContext.getUdtfExecutors();
-    Map<String, CodegenSimpleRow> udtfInputs = codegenContext.getUdtfInputs();
-
-    additionalParas = new ArrayList<>();
-    additionalParas.addAll(udtfExecutors.values());
-    additionalParas.addAll(udtfInputs.values());
-
-    scriptEvaluator =
+    classBodyEvaluator =
         CompilerFactoryFactory.getDefaultCompilerFactory(
                 CodegenEvaluatorImpl.class.getClassLoader())
-            .newScriptEvaluator();
+            .newClassBodyEvaluator();
 
     // set imports
-    scriptEvaluator.setDefaultImports(
+    classBodyEvaluator.setDefaultImports(
         "org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.CodegenSimpleRow",
         "org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.UDTFCaller",
-        "org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor",
-        "java.util.HashSet");
+        "org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor");
 
-    // set parameter names and types
-    // udtfExecutor and Row are treated as input
-    Class<?> outputType = Object[].class;
-    scriptEvaluator.setReturnType(outputType);
+    classBodyEvaluator.setExtendedClass(CodeGenEvaluatorBaseClass.class);
 
-    List<String> parameterNames = getParameterNames();
-    List<Class<?>> parameterClasses = getParameterClasses();
+    classBodyEvaluator.cook(code);
+    codegenEvaluator = (CodeGenEvaluatorBaseClass) classBodyEvaluator.getClazz().newInstance();
+    codegenEvaluator.setOutputExpressionGenerateSuccess(generatedSuccess);
+    codegenEvaluator.setOutputDataTypes(codegenContext.getOutputDataTypes());
 
-    scriptEvaluator.setParameters(
-        parameterNames.toArray(new String[0]), parameterClasses.toArray(new Class<?>[0]));
-
-    String code = codegenContext.toCode();
-
-    scriptEvaluator.cook(code);
     scriptFinished = true;
   }
 
-  public Column evaluateFilter(TsBlock input) throws InvocationTargetException {
-    ArrayList<TSDataType> tsDataTypes = new ArrayList<>();
-    tsDataTypes.add(TSDataType.BOOLEAN);
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(tsDataTypes);
-    final ColumnBuilder filterColumnBuilder = tsBlockBuilder.getValueColumnBuilders()[0];
-    TsBlock.TsBlockRowIterator inputIterator = input.getTsBlockRowIterator();
-
-    while (inputIterator.hasNext()) {
-      Object[] finalArgs = setArgs(inputIterator.next(), additionalFilterParas);
-      Boolean output = (Boolean) filterEvaluator.evaluate(finalArgs);
-      if (Objects.isNull(output)) {
-        filterColumnBuilder.appendNull();
-      } else {
-        filterColumnBuilder.writeBoolean(output);
-      }
-    }
-    return filterColumnBuilder.build();
-  }
-
   @Override
-  public Column[] evaluate(TsBlock inputTsBlock) throws InvocationTargetException {
-    List<TSDataType> outputDataTypes = codegenContext.getOutputDataTypes();
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    TsBlock.TsBlockRowIterator inputIterator = inputTsBlock.getTsBlockRowIterator();
-
-    final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    int positionCount = columnBuilders.length;
-
-    while (inputIterator.hasNext()) {
-      Object[] finalArgs = setArgs(inputIterator.next(), additionalParas);
-      Object[] outputs = (Object[]) scriptEvaluator.evaluate(finalArgs);
-      for (int i = 0; i < positionCount; i++) {
-        if (Objects.isNull(outputs[i])) {
-          columnBuilders[i].appendNull();
-        } else {
-          columnBuilders[i].writeObject(outputs[i]);
-        }
-      }
-    }
-
-    Column[] retColumns = new Column[positionCount];
-    for (int i = 0; i < positionCount; i++) {
-      retColumns[i] = columnBuilders[i].build();
-    }
-    return retColumns;
-  }
-
-  @Override
-  public List<Boolean> isGenerated() {
-    return generatedSuccess;
-  }
-
-  @Override
-  public Object[] accept(Object[] args, long timestamp) throws InvocationTargetException {
-    Object[] finalArgs = setArgs(args, timestamp);
-    return (Object[]) scriptEvaluator.evaluate(finalArgs);
-  }
-
-  private Object[] setArgs(Object[] args, long timestamp) {
-    List<Object> finalArgs = Stream.of(args).collect(Collectors.toList());
-    finalArgs.add(timestamp);
-    finalArgs.addAll(additionalParas);
-    return finalArgs.toArray(new Object[0]);
-  }
-
-  private Object[] setArgs(Object[] args, List<Object> additional) {
-    Object[] finalArgs = Arrays.copyOf(args, args.length + additional.size());
-    for (int i = 0; i < additional.size(); i++) {
-      finalArgs[i + args.length] = additional.get(i);
-    }
-    return finalArgs;
-  }
-
-  @Override
-  public boolean isFilterGeneratedSuccess() {
-    return filterFinished && filterGeneratedSuccess;
+  public Column[] evaluate(TsBlock inputTsBlock) {
+    return codegenEvaluator.evaluate(inputTsBlock);
   }
 }

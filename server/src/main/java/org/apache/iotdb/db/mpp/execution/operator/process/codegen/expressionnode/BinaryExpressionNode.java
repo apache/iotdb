@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class BinaryExpressionNode extends ExpressionNodeImpl {
 
   private final String op;
@@ -60,13 +63,18 @@ public class BinaryExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public ExpressionNode checkWhetherNotNull() {
-    return new BinaryExpressionNode(
-        "&&", new IsNullExpressionNode(leftNode, true), new IsNullExpressionNode(rightNode, true));
+  public List<String> getSubNodes() {
+    ArrayList<String> subNodes = new ArrayList<>();
+    subNodes.add(leftNode.getNodeName());
+    subNodes.add(rightNode.getNodeName());
+    return subNodes;
   }
 
   @Override
-  public String toExpendCode() {
-    return bracket(leftNode.toExpendCode()) + op + bracket(rightNode.toExpendCode());
+  public List<String> getAllSubNodes() {
+    ArrayList<String> allSubNodes = new ArrayList<>();
+    allSubNodes.addAll(leftNode.getAllSubNodes());
+    allSubNodes.addAll(rightNode.getAllSubNodes());
+    return allSubNodes;
   }
 }

@@ -891,7 +891,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     try {
       return new TransformOperator(
-          codegenContext,
           operatorContext,
           inputOperator,
           inputDataTypes,
@@ -1039,7 +1038,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   TransformOperator.class.getSimpleName());
       context.getTimeSliceAllocator().recordExecutionWeight(transformContext, 1);
       return new TransformOperator(
-          codegenContext,
           transformContext,
           filter,
           inputDataTypes,
