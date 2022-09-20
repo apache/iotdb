@@ -759,9 +759,6 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 86400;
 
-  /** Max size of a {@link PlanNode}, mainly used to control memory of {@link LoadTsFileNode}. */
-  private long maxPlanNodeSize = 500 * 1048576L;
-
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
    * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
@@ -812,6 +809,9 @@ public class IoTDBConfig {
 
   /** Unit: byte */
   private int thriftMaxFrameSize = 536870912;
+
+  /** Max size of a {@link PlanNode}, mainly used to control memory of {@link LoadTsFileNode}. */
+  private int maxPlanNodeSize = thriftMaxFrameSize;
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
@@ -2443,6 +2443,10 @@ public class IoTDBConfig {
   public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     RpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
+  }
+
+  public void setMaxPlanNodeSize(int maxPlanNodeSize) {
+    this.maxPlanNodeSize = maxPlanNodeSize;
   }
 
   public int getThriftDefaultBufferSize() {
