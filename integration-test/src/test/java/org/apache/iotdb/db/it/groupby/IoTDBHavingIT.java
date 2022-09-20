@@ -37,6 +37,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrder
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.avg;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
+import static org.apache.iotdb.itbase.constant.TestConstant.lastValue;
 import static org.apache.iotdb.itbase.constant.TestConstant.sum;
 
 @RunWith(IoTDBTestRunner.class)
@@ -257,6 +258,56 @@ public class IoTDBHavingIT {
         "select avg(tem) from root.test1.d1 "
             + "where code='123' group by([0,5), 1ms) "
             + "having min_value(tem)!=123",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void caseSensitiveHavingTest() {
+    String[] expectedHeader =
+        new String[] {
+          TIMESTAMP_STR,
+          lastValue("root.test.sg5.s1"),
+          lastValue("root.test.sg1.s1"),
+          lastValue("root.test.sg2.s1"),
+        };
+    String[] retArray =
+        new String[] {
+          "1,true,true,true,", "5,null,true,true,", "7,null,true,true,", "9,null,true,true,"
+        };
+    resultSetEqualTest(
+        "select last_value(s1) from root.** "
+            + "GROUP BY ([1,11),2ms) "
+            + "Having LAST_VALUE(s2) > 0 ",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {TIMESTAMP_STR, lastValue("root.test.*.s1")};
+    retArray = new String[] {"1,true,", "5,true,", "7,true,", "9,true,"};
+    resultSetEqualTest(
+        "select last_value(s1) from root.** "
+            + "GROUP BY ([1,11),2ms), level=1 "
+            + "Having LAST_VALUE(s2) > 0 ",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {TIMESTAMP_STR, "Device", lastValue("s1")};
+    retArray =
+        new String[] {
+          "1,root.test.sg1,true,",
+          "5,root.test.sg1,true,",
+          "7,root.test.sg1,true,",
+          "9,root.test.sg1,true,",
+          "1,root.test.sg2,true,",
+          "5,root.test.sg2,true,",
+          "7,root.test.sg2,true,",
+          "9,root.test.sg2,true,"
+        };
+    resultSetEqualTest(
+        "select last_value(s1) from root.** "
+            + "GROUP BY ([1,11),2ms) "
+            + "Having LAST_VALUE(s2) > 0 "
+            + "align by device",
         expectedHeader,
         retArray);
   }

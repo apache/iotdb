@@ -117,9 +117,10 @@ public class SenderManager {
         try {
           if (!syncClient.handshake()) {
             SyncService.getInstance()
-                .receiveMsg(
-                    PipeMessage.MsgType.ERROR,
-                    String.format("Can not handshake with %s", pipeSink));
+                .recordMessage(
+                    new PipeMessage(
+                        PipeMessage.PipeMessageType.ERROR,
+                        String.format("Can not handshake with %s", pipeSink)));
           }
           while (!Thread.currentThread().isInterrupted()) {
             PipeData pipeData = pipe.take(dataRegionId);
@@ -127,10 +128,11 @@ public class SenderManager {
               logger.error(String.format("Can not transfer pipedata %s, skip it.", pipeData));
               // can do something.
               SyncService.getInstance()
-                  .receiveMsg(
-                      PipeMessage.MsgType.WARN,
-                      String.format(
-                          "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber()));
+                  .recordMessage(
+                      new PipeMessage(
+                          PipeMessage.PipeMessageType.WARN,
+                          String.format(
+                              "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber())));
             }
             pipe.commit(dataRegionId);
           }

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
@@ -208,8 +209,12 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       if (device.hasChild(leafName)) {
         IMNode node = device.getChild(leafName);
         if (node.isMeasurement()) {
-          throw new MeasurementAlreadyExistException(
-              path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
+          if (node.getAsMeasurementMNode().isPreDeleted()) {
+            throw new MeasurementInBlackListException(path);
+          } else {
+            throw new MeasurementAlreadyExistException(
+                path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
+          }
         } else {
           throw new PathAlreadyExistException(path.getFullPath());
         }
@@ -284,9 +289,13 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         if (device.hasChild(measurements.get(i))) {
           IMNode node = device.getChild(measurements.get(i));
           if (node.isMeasurement()) {
-            throw new MeasurementAlreadyExistException(
-                devicePath.getFullPath() + "." + measurements.get(i),
-                node.getAsMeasurementMNode().getMeasurementPath());
+            if (node.getAsMeasurementMNode().isPreDeleted()) {
+              throw new MeasurementInBlackListException(devicePath.concatNode(measurements.get(i)));
+            } else {
+              throw new MeasurementAlreadyExistException(
+                  devicePath.getFullPath() + "." + measurements.get(i),
+                  node.getAsMeasurementMNode().getMeasurementPath());
+            }
           } else {
             throw new PathAlreadyExistException(
                 devicePath.getFullPath() + "." + measurements.get(i));
@@ -440,6 +449,23 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         && node.getSchemaTemplate() == null
         && !node.isUseTemplate()
         && node.getChildren().isEmpty();
+  }
+
+  public List<PartialPath> getPreDeleteTimeseries(PartialPath pathPattern)
+      throws MetadataException {
+    List<PartialPath> result = new LinkedList<>();
+    MeasurementCollector<List<PartialPath>> collector =
+        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+            if (node.isPreDeleted()) {
+              result.add(getCurrentPartialPath(node));
+            }
+          }
+        };
+    collector.setResultSet(result);
+    collector.traverse();
+    return result;
   }
 
   @Override
@@ -675,6 +701,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
+            if (node.isPreDeleted()) {
+              return;
+            }
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
               // only when user query with alias, the alias in path will be set

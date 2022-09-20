@@ -22,8 +22,11 @@ package org.apache.iotdb.commons.cluster;
 /** Region status for showing regions */
 public enum RegionStatus {
   /** Region running properly */
-  Running("Running");
+  Running("Running"),
 
+  /** Region connection failure */
+  Unknown("Unknown");
+ 
   private final String status;
 
   RegionStatus(String status) {

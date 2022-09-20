@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
@@ -300,9 +299,9 @@ public class StorageGroupPartitionTable {
 
     regionGroupMap.forEach(
         (consensusGroupId, regionGroup) -> {
-          if (showRegionReq == null || showRegionReq.getConsensusGroupType() == null) {
-            regionInfoList.addAll(buildRegionInfoList(regionGroup));
-          } else if (showRegionReq.getConsensusGroupType().equals(regionGroup.getId().getType())) {
+          if (showRegionReq == null
+              || showRegionReq.getConsensusGroupType() == null
+              || showRegionReq.getConsensusGroupType().equals(regionGroup.getId().getType())) {
             regionInfoList.addAll(buildRegionInfoList(regionGroup));
           }
         });
@@ -327,8 +326,6 @@ public class StorageGroupPartitionTable {
               regionInfo.setDataNodeId(dataNodeLocation.getDataNodeId());
               regionInfo.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
               regionInfo.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
-              // TODO: Maintain Region status
-              regionInfo.setStatus(RegionStatus.Running.getStatus());
               regionInfoList.add(regionInfo);
             });
 

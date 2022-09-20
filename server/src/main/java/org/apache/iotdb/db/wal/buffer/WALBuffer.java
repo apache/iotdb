@@ -559,6 +559,11 @@ public class WALBuffer extends AbstractWALBuffer {
 
   @Override
   public boolean isAllWALEntriesConsumed() {
-    return walEntries.isEmpty();
+    buffersLock.lock();
+    try {
+      return walEntries.isEmpty() && workingBuffer.position() == 0 && syncingBuffer == null;
+    } finally {
+      buffersLock.unlock();
+    }
   }
 }
