@@ -32,8 +32,6 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
@@ -810,9 +808,6 @@ public class IoTDBConfig {
   /** Unit: byte */
   private int thriftMaxFrameSize = 536870912;
 
-  /** Max size of a {@link PlanNode}, mainly used to control memory of {@link LoadTsFileNode}. */
-  private int maxPlanNodeSize = thriftMaxFrameSize;
-
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
   /** time interval in minute for calculating query frequency. Unit: minute */
@@ -1091,10 +1086,6 @@ public class IoTDBConfig {
 
   public void setPartitionInterval(long partitionInterval) {
     this.partitionInterval = partitionInterval;
-  }
-
-  public long getMaxPlanNodeSize() {
-    return maxPlanNodeSize;
   }
 
   public TimeIndexLevel getTimeIndexLevel() {
@@ -1772,6 +1763,13 @@ public class IoTDBConfig {
     this.allocateMemoryForRead = allocateMemoryForRead;
   }
 
+  public long getAllocateMemoryForFree() {
+    return Runtime.getRuntime().maxMemory()
+        - allocateMemoryForStorageEngine
+        - allocateMemoryForRead
+        - allocateMemoryForSchema;
+  }
+
   public boolean isEnableExternalSort() {
     return enableExternalSort;
   }
@@ -2443,10 +2441,6 @@ public class IoTDBConfig {
   public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     RpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
-  }
-
-  public void setMaxPlanNodeSize(int maxPlanNodeSize) {
-    this.maxPlanNodeSize = maxPlanNodeSize;
   }
 
   public int getThriftDefaultBufferSize() {
