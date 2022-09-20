@@ -20,12 +20,8 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataInputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -203,99 +199,5 @@ public class TimAlignedTVList extends AlignedTVList implements TimSort {
     super.clear();
     clearSortedTime();
     clearSortedValue();
-  }
-
-  public static TimAlignedTVList deserialize(DataInputStream stream) throws IOException {
-    int dataTypeNum = stream.readInt();
-    List<TSDataType> dataTypes = new ArrayList<>(dataTypeNum);
-    int[] columnIndexArray = new int[dataTypeNum];
-    for (int columnIndex = 0; columnIndex < dataTypeNum; ++columnIndex) {
-      dataTypes.add(ReadWriteIOUtils.readDataType(stream));
-      columnIndexArray[columnIndex] = columnIndex;
-    }
-
-    int rowCount = stream.readInt();
-    // time
-    long[] times = new long[rowCount];
-    for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-      times[rowIndex] = stream.readLong();
-    }
-    // read value and bitmap by column
-    Object[] values = new Object[dataTypeNum];
-    BitMap[] bitMaps = new BitMap[dataTypeNum];
-    for (int columnIndex = 0; columnIndex < dataTypeNum; ++columnIndex) {
-      BitMap bitMap = new BitMap(rowCount);
-      Object valuesOfOneColumn;
-      switch (dataTypes.get(columnIndex)) {
-        case TEXT:
-          Binary[] binaryValues = new Binary[rowCount];
-          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-            binaryValues[rowIndex] = ReadWriteIOUtils.readBinary(stream);
-            if (ReadWriteIOUtils.readBool(stream)) {
-              bitMap.mark(rowIndex);
-            }
-          }
-          valuesOfOneColumn = binaryValues;
-          break;
-        case FLOAT:
-          float[] floatValues = new float[rowCount];
-          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-            floatValues[rowIndex] = stream.readFloat();
-            if (ReadWriteIOUtils.readBool(stream)) {
-              bitMap.mark(rowIndex);
-            }
-          }
-          valuesOfOneColumn = floatValues;
-          break;
-        case INT32:
-          int[] intValues = new int[rowCount];
-          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-            intValues[rowIndex] = stream.readInt();
-            if (ReadWriteIOUtils.readBool(stream)) {
-              bitMap.mark(rowIndex);
-            }
-          }
-          valuesOfOneColumn = intValues;
-          break;
-        case INT64:
-          long[] longValues = new long[rowCount];
-          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-            longValues[rowIndex] = stream.readLong();
-            if (ReadWriteIOUtils.readBool(stream)) {
-              bitMap.mark(rowIndex);
-            }
-          }
-          valuesOfOneColumn = longValues;
-          break;
-        case DOUBLE:
-          double[] doubleValues = new double[rowCount];
-          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-            doubleValues[rowIndex] = stream.readDouble();
-            if (ReadWriteIOUtils.readBool(stream)) {
-              bitMap.mark(rowIndex);
-            }
-          }
-          valuesOfOneColumn = doubleValues;
-          break;
-        case BOOLEAN:
-          boolean[] booleanValues = new boolean[rowCount];
-          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-            booleanValues[rowIndex] = ReadWriteIOUtils.readBool(stream);
-            if (ReadWriteIOUtils.readBool(stream)) {
-              bitMap.mark(rowIndex);
-            }
-          }
-          valuesOfOneColumn = booleanValues;
-          break;
-        default:
-          throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-      }
-      values[columnIndex] = valuesOfOneColumn;
-      bitMaps[columnIndex] = bitMap;
-    }
-
-    TimAlignedTVList tvList = new TimAlignedTVList(dataTypes);
-    tvList.putAlignedValues(times, values, bitMaps, columnIndexArray, 0, rowCount);
-    return tvList;
   }
 }

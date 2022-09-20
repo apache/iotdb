@@ -23,20 +23,16 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.load.AlignedChunkData;
 import org.apache.iotdb.db.engine.load.ChunkData;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
-import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -85,15 +81,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     super(id);
   }
 
-  public LoadSingleTsFileNode(PlanNodeId id, File tsFile) throws IOException {
+  public LoadSingleTsFileNode(PlanNodeId id, TsFileResource resource) {
     super(id);
-    this.tsFile = tsFile;
-    this.resource = new TsFileResource(tsFile);
-
-    FileLoaderUtils.loadOrGenerateResource(resource);
+    this.tsFile = resource.getTsFile();
+    this.resource = resource;
   }
 
-  public void checkIfNeedDecodeTsFile(DataPartition dataPartition) {
+  public void checkIfNeedDecodeTsFile(DataPartition dataPartition) throws IOException {
     Set<TRegionReplicaSet> allRegionReplicaSet = new HashSet<>();
     needDecodeTsFile = false;
     for (String device : resource.getDevices()) {
@@ -105,6 +99,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       allRegionReplicaSet.addAll(dataPartition.getAllDataRegionReplicaSetForOneDevice(device));
     }
     needDecodeTsFile = !isDispatchedToLocal(allRegionReplicaSet);
+    if (!needDecodeTsFile) {
+      resource.serialize();
+    }
   }
 
   private boolean isDispatchedToLocal(Set<TRegionReplicaSet> replicaSets) {
@@ -125,45 +122,6 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private boolean isDispatchedToLocal(TEndPoint endPoint) {
     return IoTDBDescriptor.getInstance().getConfig().getInternalAddress().equals(endPoint.getIp())
         && IoTDBDescriptor.getInstance().getConfig().getInternalPort() == endPoint.port;
-  }
-
-  public void autoRegisterSchema()
-      throws IOException, IllegalPathException { // TODO: only support sg level=1
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      List<PartialPath> deviceList = new ArrayList<>();
-      List<String[]> measurementList = new ArrayList<>();
-      List<TSDataType[]> dataTypeList = new ArrayList<>();
-      List<Boolean> isAlignedList = new ArrayList<>();
-
-      Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
-        deviceList.add(new PartialPath(entry.getKey()));
-
-        List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
-        boolean isAligned =
-            timeseriesMetadataList.stream()
-                    .mapToInt(o -> o.getTSDataType().equals(TSDataType.VECTOR) ? 1 : 0)
-                    .sum()
-                != 0;
-        int measurementSize = timeseriesMetadataList.size() - (isAligned ? 1 : 0);
-        String[] measurements = new String[measurementSize];
-        TSDataType[] tsDataTypes = new TSDataType[measurementSize];
-
-        int index = 0;
-        for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-          TSDataType dataType = timeseriesMetadata.getTSDataType();
-          if (!dataType.equals(TSDataType.VECTOR)) {
-            measurements[index] = timeseriesMetadata.getMeasurementId();
-            tsDataTypes[index++] = dataType;
-          }
-        }
-        measurementList.add(measurements);
-        dataTypeList.add(tsDataTypes);
-        isAlignedList.add(isAligned);
-      }
-
-      SchemaValidator.validate(deviceList, measurementList, dataTypeList, isAlignedList);
-    }
   }
 
   public boolean needDecodeTsFile() {

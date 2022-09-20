@@ -31,10 +31,13 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
 import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 
 public abstract class BinaryTVList extends TVList {
@@ -48,6 +51,29 @@ public abstract class BinaryTVList extends TVList {
     super();
     values = new ArrayList<>();
     rawSize = 0;
+  }
+
+  public static BinaryTVList newList() {
+    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
+      return new QuickBinaryTVList();
+    }
+    return new TimBinaryTVList();
+  }
+
+  @Override
+  public TimBinaryTVList clone() {
+    TimBinaryTVList cloneList = new TimBinaryTVList();
+    cloneAs(cloneList);
+    for (Binary[] valueArray : values) {
+      cloneList.values.add(cloneValue(valueArray));
+    }
+    return cloneList;
+  }
+
+  private Binary[] cloneValue(Binary[] array) {
+    Binary[] cloneArray = new Binary[array.length];
+    System.arraycopy(array, 0, cloneArray, 0, array.length);
+    return cloneArray;
   }
 
   @Override
@@ -271,5 +297,18 @@ public abstract class BinaryTVList extends TVList {
       buffer.putLong(getTime(rowIdx));
       WALWriteUtils.write(getBinary(rowIdx), buffer);
     }
+  }
+
+  public static BinaryTVList deserialize(DataInputStream stream) throws IOException {
+    BinaryTVList tvList = BinaryTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    Binary[] values = new Binary[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = ReadWriteIOUtils.readBinary(stream);
+    }
+    tvList.putBinaries(times, values, null, 0, rowCount);
+    return tvList;
   }
 }

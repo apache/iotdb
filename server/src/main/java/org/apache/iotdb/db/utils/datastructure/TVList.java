@@ -73,17 +73,17 @@ public abstract class TVList implements WALEntryValue {
   public static TVList newList(TSDataType dataType) {
     switch (dataType) {
       case TEXT:
-        return new TimBinaryTVList();
+        return BinaryTVList.newList();
       case FLOAT:
-        return new TimFloatTVList();
+        return FloatTVList.newList();
       case INT32:
-        return new TimIntTVList();
+        return IntTVList.newList();
       case INT64:
-        return new TimLongTVList();
+        return LongTVList.newList();
       case DOUBLE:
-        return new TimDoubleTVList();
+        return DoubleTVList.newList();
       case BOOLEAN:
-        return new TimBooleanTVList();
+        return BooleanTVList.newList();
       default:
         break;
     }
@@ -398,19 +398,19 @@ public abstract class TVList implements WALEntryValue {
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
     switch (dataType) {
       case TEXT:
-        return TimBinaryTVList.deserialize(stream);
+        return BinaryTVList.deserialize(stream);
       case FLOAT:
-        return TimFloatTVList.deserialize(stream);
+        return FloatTVList.deserialize(stream);
       case INT32:
-        return TimIntTVList.deserialize(stream);
+        return IntTVList.deserialize(stream);
       case INT64:
-        return TimLongTVList.deserialize(stream);
+        return LongTVList.deserialize(stream);
       case DOUBLE:
-        return TimDoubleTVList.deserialize(stream);
+        return DoubleTVList.deserialize(stream);
       case BOOLEAN:
-        return TimBooleanTVList.deserialize(stream);
+        return BooleanTVList.deserialize(stream);
       case VECTOR:
-        return TimAlignedTVList.deserialize(stream);
+        return AlignedTVList.deserialize(stream);
       default:
         break;
     }

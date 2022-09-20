@@ -31,11 +31,18 @@ public class TsBlockUtil {
   /** Skip lines at the beginning of the tsBlock that are not in the time range. */
   public static TsBlock skipPointsOutOfTimeRange(
       TsBlock tsBlock, TimeRange targetTimeRange, boolean ascending) {
+    int firstIndex = getFirstConditionIndex(tsBlock, targetTimeRange, ascending);
+    return tsBlock.subTsBlock(firstIndex);
+  }
+
+  // If ascending, find the index of first greater than or equal to targetTime
+  // else, find the index of first less than or equal to targetTime
+  public static int getFirstConditionIndex(
+      TsBlock tsBlock, TimeRange targetTimeRange, boolean ascending) {
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     long targetTime = ascending ? targetTimeRange.getMin() : targetTimeRange.getMax();
     int left = 0, right = timeColumn.getPositionCount() - 1, mid;
-    // if ascending, find the first greater than or equal to targetTime
-    // else, find the first less than or equal to targetTime
+
     while (left < right) {
       mid = (left + right) >> 1;
       if (timeColumn.getLongWithoutCheck(mid) < targetTime) {
@@ -51,9 +58,9 @@ public class TsBlockUtil {
           left = mid + 1;
         }
       } else if (timeColumn.getLongWithoutCheck(mid) == targetTime) {
-        return tsBlock.subTsBlock(mid);
+        return mid;
       }
     }
-    return tsBlock.subTsBlock(left);
+    return left;
   }
 }

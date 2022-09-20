@@ -21,9 +21,6 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class TimFloatTVList extends FloatTVList implements TimSort {
@@ -33,22 +30,6 @@ public class TimFloatTVList extends FloatTVList implements TimSort {
 
   private float[][] sortedValues;
   private float pivotValue;
-
-  @Override
-  public TimFloatTVList clone() {
-    TimFloatTVList cloneList = new TimFloatTVList();
-    cloneAs(cloneList);
-    for (float[] valueArray : values) {
-      cloneList.values.add(cloneValue(valueArray));
-    }
-    return cloneList;
-  }
-
-  private float[] cloneValue(float[] array) {
-    float[] cloneArray = new float[array.length];
-    System.arraycopy(array, 0, cloneArray, 0, array.length);
-    return cloneArray;
-  }
 
   @Override
   public void sort() {
@@ -146,18 +127,5 @@ public class TimFloatTVList extends FloatTVList implements TimSort {
     super.clear();
     clearSortedTime();
     clearSortedValue();
-  }
-
-  public static TimFloatTVList deserialize(DataInputStream stream) throws IOException {
-    TimFloatTVList tvList = new TimFloatTVList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    float[] values = new float[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = stream.readFloat();
-    }
-    tvList.putFloats(times, values, null, 0, rowCount);
-    return tvList;
   }
 }

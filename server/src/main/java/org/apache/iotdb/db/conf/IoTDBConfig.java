@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
+import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -389,6 +390,9 @@ public class IoTDBConfig {
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
   private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
+
+  /** The sort algorithm used in TVList */
+  private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 100000;
@@ -1923,6 +1927,14 @@ public class IoTDBConfig {
 
   public void setUnseqMemtableFlushCheckInterval(long unseqMemtableFlushCheckInterval) {
     this.unseqMemtableFlushCheckInterval = unseqMemtableFlushCheckInterval;
+  }
+
+  public TVListSortAlgorithm getTvListSortAlgorithm() {
+    return tvListSortAlgorithm;
+  }
+
+  public void setTvListSortAlgorithm(TVListSortAlgorithm tvListSortAlgorithm) {
+    this.tvListSortAlgorithm = tvListSortAlgorithm;
   }
 
   public int getAvgSeriesPointNumberThreshold() {
