@@ -54,7 +54,7 @@ public class EncodeAnalysePage {
   private IoTDBParsePageV3 ioTDBParsePage;
   private ObservableList<EncodeCompressAnalyseTable> analyseDataList =
       FXCollections.observableArrayList();
-  private Stage father = null;
+  private Stage parent = null;
 
   private String deviceIdTextText = null;
   private String measurementIdTextText = null;
@@ -80,7 +80,7 @@ public class EncodeAnalysePage {
     analyseTableView = new TableView();
 
     AnchorPane anchorPane = new AnchorPane();
-    this.father = stage;
+    this.parent = stage;
     scene = new Scene(anchorPane, ENCODE_ANALYSE_PAGE_WIDTH, ENCODE_ANALYSE_PAGE_HEIGHT);
     stage.setScene(scene);
     stage.setTitle("Encoding and Compressing Analysis");
@@ -256,8 +256,19 @@ public class EncodeAnalysePage {
   }
 
   public void show() {
-    if(this.father != null && !this.father.isShowing()) {
-      this.father.show();
+    if(this.parent != null && !this.parent.isShowing()) {
+      this.parent.show();
     }
+  }
+
+  public void close() {
+    if(this.parent != null) {
+      this.analyseDataList.clear();
+      this.parent.close();
+    }
+  }
+
+  public boolean isShow() {
+    return this.parent == null ? false : this.parent.isShowing();
   }
 }

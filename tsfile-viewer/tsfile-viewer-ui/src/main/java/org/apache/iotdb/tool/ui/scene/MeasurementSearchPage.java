@@ -241,4 +241,15 @@ public class MeasurementSearchPage {
       this.parent.show();
     }
   }
+
+  public void close() {
+    if(this.parent != null) {
+      this.tvDatas.clear();
+      this.parent.close();
+    }
+  }
+
+  public boolean isShow() {
+    return this.parent == null ? false : this.parent.isShowing();
+  }
 }
