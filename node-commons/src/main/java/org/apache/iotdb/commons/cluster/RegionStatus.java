@@ -26,7 +26,7 @@ public enum RegionStatus {
 
   /** Region connection failure */
   Unknown("Unknown");
- 
+
   private final String status;
 
   RegionStatus(String status) {

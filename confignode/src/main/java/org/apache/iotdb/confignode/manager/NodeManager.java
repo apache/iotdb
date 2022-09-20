@@ -629,7 +629,7 @@ public class NodeManager {
             registeredConfigNode -> {
               int configNodeId = registeredConfigNode.getConfigNodeId();
               return nodeCacheMap.containsKey(configNodeId)
-                      && Arrays.stream(status)
+                  && Arrays.stream(status)
                       .anyMatch(s -> s.equals(nodeCacheMap.get(configNodeId).getNodeStatus()));
             })
         .collect(Collectors.toList());
