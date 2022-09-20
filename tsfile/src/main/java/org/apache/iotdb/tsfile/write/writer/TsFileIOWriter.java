@@ -114,7 +114,7 @@ public class TsFileIOWriter implements AutoCloseable {
   // record the total num of path in order to make bloom filter
   protected int pathCount = 0;
   protected boolean enableMemoryControl = false;
-  Path lastSerializePath = null;
+  private Path lastSerializePath = null;
   protected LinkedList<Long> endPosInCMTForDevice = new LinkedList<>();
   public static final String CHUNK_METADATA_TEMP_FILE_SUFFIX = ".cmt";
 
@@ -625,16 +625,15 @@ public class TsFileIOWriter implements AutoCloseable {
       tempOutput = new LocalTsFileOutput(new FileOutputStream(chunkMetadataTempFile));
     }
     hasChunkMetadataInDisk = true;
-    // the file structure in temp file will be
-    // chunkSize | chunkBuffer
     for (Pair<Path, List<IChunkMetadata>> pair : sortedChunkMetadataList) {
       Path seriesPath = pair.left;
-      if (!seriesPath.equals(lastSerializePath)) {
+      boolean isNewPath = !seriesPath.equals(lastSerializePath);
+      if (isNewPath) {
         // record the count of path to construct bloom filter later
         pathCount++;
       }
       List<IChunkMetadata> iChunkMetadataList = pair.right;
-      writeChunkMetadataToTempFile(iChunkMetadataList, seriesPath);
+      writeChunkMetadataToTempFile(iChunkMetadataList, seriesPath, isNewPath);
       lastSerializePath = seriesPath;
       logger.debug("Flushing {}", seriesPath);
     }
@@ -646,7 +645,8 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   private void writeChunkMetadataToTempFile(
-      List<IChunkMetadata> iChunkMetadataList, Path seriesPath) throws IOException {
+      List<IChunkMetadata> iChunkMetadataList, Path seriesPath, boolean isNewPath)
+      throws IOException {
     // [DeviceId] measurementId datatype size chunkMetadataBuffer
     if (lastSerializePath == null
         || !seriesPath.getDevice().equals(lastSerializePath.getDevice())) {
@@ -656,7 +656,7 @@ public class TsFileIOWriter implements AutoCloseable {
       // for each device, we only serialize it once, in order to save io
       ReadWriteIOUtils.write(seriesPath.getDevice(), tempOutput.wrapAsStream());
     }
-    if (!seriesPath.equals(lastSerializePath) && iChunkMetadataList.size() > 0) {
+    if (isNewPath && iChunkMetadataList.size() > 0) {
       // serialize the public info of this measurement
       ReadWriteIOUtils.writeVar(seriesPath.getMeasurement(), tempOutput.wrapAsStream());
       ReadWriteIOUtils.write(iChunkMetadataList.get(0).getDataType(), tempOutput.wrapAsStream());

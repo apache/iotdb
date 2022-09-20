@@ -47,14 +47,14 @@ public class DiskTSMIterator extends TSMIterator {
 
   private static final Logger LOG = LoggerFactory.getLogger(DiskTSMIterator.class);
 
-  LinkedList<Long> endPosForEachDevice;
-  File cmtFile;
-  LocalTsFileInput input;
-  long fileLength = 0;
-  long currentPos = 0;
-  long nextEndPosForDevice = 0;
-  String currentDevice;
-  boolean remainsInFile = true;
+  private LinkedList<Long> endPosForEachDevice;
+  private File cmtFile;
+  private LocalTsFileInput input;
+  private long fileLength = 0;
+  private long currentPos = 0;
+  private long nextEndPosForDevice = 0;
+  private String currentDevice;
+  private boolean remainsInFile = true;
 
   protected DiskTSMIterator(
       File cmtFile,

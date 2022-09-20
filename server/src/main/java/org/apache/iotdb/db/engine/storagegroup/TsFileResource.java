@@ -506,7 +506,10 @@ public class TsFileResource {
     modFile = null;
   }
 
-  /** Remove the data file, its resource file, and its modification file physically. */
+  /**
+   * Remove the data file, its resource file, its chunk metadata temp file, and its modification
+   * file physically.
+   */
   public boolean remove() {
     try {
       fsFactory.deleteIfExists(file);

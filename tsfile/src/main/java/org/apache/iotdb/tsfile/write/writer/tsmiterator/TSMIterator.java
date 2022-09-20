@@ -45,8 +45,8 @@ import java.util.TreeMap;
  * source from memory or disk. Static method getTSMIteratorInMemory returns a TSMIterator that reads
  * from memory, and static method getTSMIteratorInDisk returns a TSMIterator that reads from disk.
  */
-public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
-  private static Logger LOG = LoggerFactory.getLogger(TSMIterator.class);
+public class TSMIterator {
+  private static final Logger LOG = LoggerFactory.getLogger(TSMIterator.class);
   protected List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList;
   protected Iterator<Pair<Path, List<IChunkMetadata>>> iterator;
 
@@ -66,22 +66,15 @@ public class TSMIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
     return new DiskTSMIterator(cmtFile, chunkGroupMetadataList, serializePos);
   }
 
-  @Override
   public boolean hasNext() {
     return iterator.hasNext();
   }
 
-  @Override
-  public Pair<String, TimeseriesMetadata> next() {
+  public Pair<String, TimeseriesMetadata> next() throws IOException {
     Pair<Path, List<IChunkMetadata>> nextPair = iterator.next();
-    try {
-      return new Pair<>(
-          nextPair.left.getFullPath(),
-          constructOneTimeseriesMetadata(nextPair.left.getMeasurement(), nextPair.right));
-    } catch (IOException e) {
-      LOG.error("Meets IOException when getting next TimeseriesMetadata", e);
-      return null;
-    }
+    return new Pair<>(
+        nextPair.left.getFullPath(),
+        constructOneTimeseriesMetadata(nextPair.left.getMeasurement(), nextPair.right));
   }
 
   public static TimeseriesMetadata constructOneTimeseriesMetadata(
