@@ -156,9 +156,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   analysis.isRawDataSource(),
                   analysis.getSourceExpressions(),
                   analysis.getAggregationExpressions(),
-                  analysis.getAggregationTransformExpressions(),
-                  analysis.getTransformExpressions(),
-                  analysis.getQueryFilter(),
+                  analysis.getSourceTransformExpressions(),
+                  analysis.getSelectExpressions(),
+                  analysis.getWhereExpression(),
                   analysis.getHavingExpression(),
                   null,
                   context));

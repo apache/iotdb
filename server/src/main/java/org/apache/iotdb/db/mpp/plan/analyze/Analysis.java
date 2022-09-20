@@ -76,15 +76,15 @@ public class Analysis {
   private Set<Expression> sourceExpressions;
 
   // input expressions of aggregations to be calculated
-  private Set<Expression> aggregationTransformExpressions;
+  private Set<Expression> sourceTransformExpressions;
 
   // all aggregations that need to be calculated
   private Set<Expression> aggregationExpressions;
 
   // expression of output column to be calculated
-  private Set<Expression> transformExpressions;
+  private Set<Expression> selectExpressions;
 
-  private Expression queryFilter;
+  private Expression whereExpression;
 
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
@@ -126,8 +126,6 @@ public class Analysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)
   /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  private List<Pair<Expression, String>> outputExpressions;
 
   // indicate is there a value filter
   private boolean hasValueFilter = false;
@@ -283,12 +281,12 @@ public class Analysis {
     this.hasValueFilter = hasValueFilter;
   }
 
-  public Expression getQueryFilter() {
-    return queryFilter;
+  public Expression getWhereExpression() {
+    return whereExpression;
   }
 
-  public void setQueryFilter(Expression queryFilter) {
-    this.queryFilter = queryFilter;
+  public void setWhereExpression(Expression whereExpression) {
+    this.whereExpression = whereExpression;
   }
 
   public Map<String, Expression> getDeviceToQueryFilter() {
@@ -340,12 +338,12 @@ public class Analysis {
     this.sourceExpressions = sourceExpressions;
   }
 
-  public Set<Expression> getAggregationTransformExpressions() {
-    return aggregationTransformExpressions;
+  public Set<Expression> getSourceTransformExpressions() {
+    return sourceTransformExpressions;
   }
 
-  public void setAggregationTransformExpressions(Set<Expression> aggregationTransformExpressions) {
-    this.aggregationTransformExpressions = aggregationTransformExpressions;
+  public void setSourceTransformExpressions(Set<Expression> sourceTransformExpressions) {
+    this.sourceTransformExpressions = sourceTransformExpressions;
   }
 
   public Set<Expression> getAggregationExpressions() {
@@ -356,12 +354,12 @@ public class Analysis {
     this.aggregationExpressions = aggregationExpressions;
   }
 
-  public Set<Expression> getTransformExpressions() {
-    return transformExpressions;
+  public Set<Expression> getSelectExpressions() {
+    return selectExpressions;
   }
 
-  public void setTransformExpressions(Set<Expression> transformExpressions) {
-    this.transformExpressions = transformExpressions;
+  public void setSelectExpressions(Set<Expression> selectExpressions) {
+    this.selectExpressions = selectExpressions;
   }
 
   public Set<Expression> getTransformInput() {
@@ -465,13 +463,5 @@ public class Analysis {
 
   public void addTypes(Map<NodeRef<Expression>, TSDataType> types) {
     this.expressionTypes.putAll(types);
-  }
-
-  public List<Pair<Expression, String>> getOutputExpressions() {
-    return outputExpressions;
-  }
-
-  public void setOutputExpressions(List<Pair<Expression, String>> outputExpressions) {
-    this.outputExpressions = outputExpressions;
   }
 }
