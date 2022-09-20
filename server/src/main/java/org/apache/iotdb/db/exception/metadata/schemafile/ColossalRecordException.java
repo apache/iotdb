@@ -17,36 +17,37 @@
  * under the License.
  *
  */
-
 package org.apache.iotdb.db.exception.metadata.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class SegmentNotFoundException extends MetadataException {
+/**
+ * Record is the element stored in {@link
+ * org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment}. Huge record is expected to be
+ * supported further.
+ */
+public class ColossalRecordException extends MetadataException {
 
-  public SegmentNotFoundException(int pageIndex, short segIndex) {
+  public ColossalRecordException(String key, int size) {
     super(
-        String.format("Segment(index:%d) not found in page(index:%d).", segIndex, pageIndex),
-        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
+        String.format(
+            "Record of key [%s] is too large for SchemaFile to store, content size:%d", key, size),
+        TSStatusCode.COLOSSAL_RECORD.getStatusCode(),
         true);
   }
 
-  public SegmentNotFoundException(short segIndex) {
+  public ColossalRecordException(String key) {
     super(
-        String.format("Segment(index:%d) is not the last segment within the page", segIndex),
-        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
+        String.format("Key [%s] is too large to store in a InternalPage as index entry.", key),
+        TSStatusCode.COLOSSAL_RECORD.getStatusCode(),
         true);
   }
 
-  public SegmentNotFoundException(String reason) {
-    super(reason, TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(), true);
-  }
-
-  public SegmentNotFoundException(int pid) {
+  public ColossalRecordException(String key, String alias) {
     super(
-        String.format("No splittable segment found in page [%s]", pid),
-        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
+        String.format("Key-Alias pair (%s, %s) is too large for SchemaFile to store.", key, alias),
+        TSStatusCode.COLOSSAL_RECORD.getStatusCode(),
         true);
   }
 }
