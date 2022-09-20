@@ -21,13 +21,14 @@ package org.apache.iotdb.confignode.client.sync.datanode;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
@@ -42,11 +43,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /** Synchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
@@ -75,7 +71,11 @@ public class SyncDataNodeClientPool {
             return client.invalidatePartitionCache((TInvalidateCacheReq) req);
           case INVALIDATE_SCHEMA_CACHE:
             return client.invalidateSchemaCache((TInvalidateCacheReq) req);
-          case DELETE_REGIONS:
+          case CREATE_SCHEMA_REGION:
+            return client.createSchemaRegion((TCreateSchemaRegionReq) req);
+          case CREATE_DATA_REGION:
+            return client.createDataRegion((TCreateDataRegionReq) req);
+          case DELETE_REGION:
             return client.deleteRegion((TConsensusGroupId) req);
           case INVALIDATE_PERMISSION_CACHE:
             return client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req);
@@ -113,45 +113,6 @@ public class SyncDataNodeClientPool {
     LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
         .setMessage("All retry failed due to: " + lastException.getMessage());
-  }
-
-  public void deleteRegions(Set<TRegionReplicaSet> deletedRegionSet) {
-    Map<TDataNodeLocation, List<TConsensusGroupId>> regionInfoMap = new HashMap<>();
-    deletedRegionSet.forEach(
-        (tRegionReplicaSet) -> {
-          for (TDataNodeLocation dataNodeLocation : tRegionReplicaSet.getDataNodeLocations()) {
-            regionInfoMap
-                .computeIfAbsent(dataNodeLocation, k -> new ArrayList<>())
-                .add(tRegionReplicaSet.getRegionId());
-          }
-        });
-    LOGGER.info("Current regionInfoMap {} ", regionInfoMap);
-    regionInfoMap.forEach(
-        (dataNodeLocation, regionIds) ->
-            deleteRegions(dataNodeLocation.getInternalEndPoint(), regionIds, deletedRegionSet));
-  }
-
-  private void deleteRegions(
-      TEndPoint endPoint,
-      List<TConsensusGroupId> regionIds,
-      Set<TRegionReplicaSet> deletedRegionSet) {
-    for (TConsensusGroupId regionId : regionIds) {
-      LOGGER.info("Try to delete RegionReplica: {} on DataNode: {}", regionId, endPoint);
-      final TSStatus status =
-          sendSyncRequestToDataNodeWithRetry(
-              endPoint, regionId, DataNodeRequestType.DELETE_REGIONS);
-
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info("Delete RegionReplica: {} on DataNode: {} successfully", regionId, endPoint);
-      } else {
-        LOGGER.warn(
-            "Failed to delete RegionReplica: {} on DataNode: {}. You might need to delete it manually",
-            regionId,
-            endPoint);
-      }
-
-      deletedRegionSet.removeIf(k -> k.getRegionId().equals(regionId));
-    }
   }
 
   private void doRetryWait(int retryNum) {

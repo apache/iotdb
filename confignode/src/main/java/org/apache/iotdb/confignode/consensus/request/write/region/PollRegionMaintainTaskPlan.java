@@ -16,55 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.write.region;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
-public class DeleteStorageGroupPlan extends ConfigPhysicalPlan {
+public class PollRegionMaintainTaskPlan extends ConfigPhysicalPlan {
 
-  private String name;
-
-  public DeleteStorageGroupPlan() {
-    super(ConfigPhysicalPlanType.DeleteStorageGroup);
-  }
-
-  public DeleteStorageGroupPlan(String name) {
-    this();
-    this.name = name;
-  }
-
-  public String getName() {
-    return name;
+  public PollRegionMaintainTaskPlan() {
+    super(ConfigPhysicalPlanType.PollRegionMaintainTask);
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.DeleteStorageGroup.ordinal());
-    BasicStructureSerDeUtil.write(name, stream);
+    stream.writeInt(ConfigPhysicalPlanType.PollRegionMaintainTask.ordinal());
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    name = BasicStructureSerDeUtil.readString(buffer);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    DeleteStorageGroupPlan that = (DeleteStorageGroupPlan) o;
-    return name.equals(that.name);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(name);
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    // Do nothing
   }
 }

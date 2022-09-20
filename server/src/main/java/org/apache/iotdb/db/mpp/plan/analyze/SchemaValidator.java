@@ -25,7 +25,9 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.BatchInsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.List;
 
@@ -67,8 +69,10 @@ public class SchemaValidator {
       List<PartialPath> devicePaths,
       List<String[]> measurements,
       List<TSDataType[]> dataTypes,
+      List<TSEncoding[]> encodings,
+      List<CompressionType[]> compressionTypes,
       List<Boolean> isAlignedList) {
     return SCHEMA_FETCHER.fetchSchemaListWithAutoCreate(
-        devicePaths, measurements, dataTypes, isAlignedList);
+        devicePaths, measurements, dataTypes, encodings, compressionTypes, isAlignedList);
   }
 }
