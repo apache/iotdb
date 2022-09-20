@@ -145,7 +145,10 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
           ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
               columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
-          valueChunkRawSize[i] += columnValue != null ? getBinarySize((Binary) columnValue) : 0;
+          valueChunkRawSize[i] +=
+              columnValue != null
+                  ? getBinarySize((Binary) columnValue)
+                  : getBinarySize(Binary.EMPTY_VALUE);
           if (valueChunkRawSize[i] >= maxChunkRawSizeThreshold) {
             reachMaxChunkSizeFlag = true;
           }
@@ -325,6 +328,10 @@ public abstract class AlignedTVList extends TVList {
     this.bitMaps.add(columnBitMaps);
     this.values.add(columnValue);
     this.dataTypes.add(dataType);
+
+    long[] tmpValueChunkRawSize = valueChunkRawSize;
+    valueChunkRawSize = new long[dataTypes.size()];
+    System.arraycopy(tmpValueChunkRawSize, 0, valueChunkRawSize, 0, tmpValueChunkRawSize.length);
   }
 
   /**
@@ -472,10 +479,7 @@ public abstract class AlignedTVList extends TVList {
         int elementIndex = originRowIndex % ARRAY_SIZE;
         if (dataTypes.get(columnIndex) == TSDataType.TEXT) {
           valueChunkRawSize[columnIndex] -=
-              ((Binary[]) values.get(columnIndex).get(arrayIndex))[elementIndex] == null
-                  ? 0
-                  : getBinarySize(
-                      ((Binary[]) values.get(columnIndex).get(arrayIndex))[elementIndex]);
+              getBinarySize(((Binary[]) values.get(columnIndex).get(arrayIndex))[elementIndex]);
         }
         markNullValue(columnIndex, arrayIndex, elementIndex);
         deletedNumber++;
@@ -488,6 +492,17 @@ public abstract class AlignedTVList extends TVList {
 
   public void deleteColumn(int columnIndex) {
     dataTypes.remove(columnIndex);
+
+    long[] tmpValueChunkRawSize = valueChunkRawSize;
+    valueChunkRawSize = new long[dataTypes.size()];
+    int copyIndex = 0;
+    for (int i = 0; i < tmpValueChunkRawSize.length; i++) {
+      if (i == columnIndex) {
+        continue;
+      }
+      valueChunkRawSize[copyIndex++] = tmpValueChunkRawSize[i];
+    }
+
     for (Object array : values.get(columnIndex)) {
       PrimitiveArrayManager.release(array);
     }
