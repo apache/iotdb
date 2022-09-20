@@ -87,7 +87,7 @@ public class ChunkInfoPage {
 
     ChunkHeader chunkHeader = params.getChunkHeader();
 
-    Label dataSizeLabel = new Label("DataSize:");
+    Label dataSizeLabel = new Label("DataSize(b):");
     TextField dataSizeResult = new TextField(chunkHeader.getDataSize() + "");
     dataSizeResult.setEditable(false);
     dataSizeResult.setFocusTraversable(false);
