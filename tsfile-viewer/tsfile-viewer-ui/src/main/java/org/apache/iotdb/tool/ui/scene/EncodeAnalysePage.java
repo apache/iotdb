@@ -206,6 +206,8 @@ public class EncodeAnalysePage {
     analyseDataList.clear();
     EncodeCompressAnalysedModel currentAnalysed = analysedResultModel.getCurrentAnalysed();
     List<EncodeCompressAnalysedModel> analysedList = analysedResultModel.getAnalysedList();
+    String compressRatioString = String.format("%.2f", currentAnalysed.getCompressedSize()/((double)currentAnalysed.getUncompressSize()));
+    double compressRatio = Double.parseDouble(compressRatioString);
     // 1. currentAnalysed result
     analyseDataList.add(
         new EncodeCompressAnalyseTable(
@@ -216,8 +218,8 @@ public class EncodeAnalysePage {
             currentAnalysed.getEncodedSize(),
             currentAnalysed.getUncompressSize(),
             currentAnalysed.getCompressedSize(),
-            (double) (currentAnalysed.getUncompressSize() / currentAnalysed.getCompressedSize()),
-            (double) currentAnalysed.getCompressedCost() / (1e-6),
+                (double) currentAnalysed.getCompressedCost(),
+                compressRatio,
             currentAnalysed.getScore()));
     // 2. others analysed results
     for (EncodeCompressAnalysedModel encodeCompressAnalysedModel : analysedList) {
@@ -225,6 +227,8 @@ public class EncodeAnalysePage {
           && encodeCompressAnalysedModel.getCompressName() == currentAnalysed.getCompressName()) {
         continue;
       }
+      compressRatioString = String.format("%.2f", encodeCompressAnalysedModel.getCompressedSize()/((double)encodeCompressAnalysedModel.getUncompressSize()));
+      compressRatio = Double.parseDouble(compressRatioString);
       analyseDataList.add(
           new EncodeCompressAnalyseTable(
               encodeCompressAnalysedModel.getTypeName(),
@@ -234,10 +238,8 @@ public class EncodeAnalysePage {
               encodeCompressAnalysedModel.getEncodedSize(),
               encodeCompressAnalysedModel.getUncompressSize(),
               encodeCompressAnalysedModel.getCompressedSize(),
-              (double)
-                  (encodeCompressAnalysedModel.getUncompressSize()
-                      / encodeCompressAnalysedModel.getCompressedSize()),
-              (double) encodeCompressAnalysedModel.getCompressedCost() / (1e-6),
+                  (double) encodeCompressAnalysedModel.getCompressedCost(),
+                  compressRatio,
               encodeCompressAnalysedModel.getScore()));
     }
 
