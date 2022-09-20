@@ -216,7 +216,20 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
-        Map<String, Set<Expression>> deviceToTransformExpressions = new HashMap<>();
+        Set<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
+        outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceList);
+
+        Map<String, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
+        analyzeHaving(
+            analysis, queryStatement, schemaTree, deviceList, deviceToAggregationExpressions);
+        analyzeAggregation(analysis, queryStatement, deviceToAggregationExpressions);
+        analysis.setDeviceToAggregationExpressions(deviceToAggregationExpressions);
+
+        analyzeWhere(analysis, queryStatement, schemaTree, deviceList);
+        analyzeSourceTransform(analysis, queryStatement);
+
+        analyzeSource(analysis, queryStatement);
+
         Expression deviceExpression =
             new TimeSeriesOperand(new MeasurementPath(COLUMN_DEVICE, TSDataType.TEXT));
         Set<Expression> transformInput = new LinkedHashSet<>();
@@ -224,18 +237,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         Set<Expression> transformOutput = new LinkedHashSet<>();
         transformOutput.add(deviceExpression);
 
-        // all selected device
-        Set<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
-
         Map<String, Set<String>> deviceToMeasurementsMap = new HashMap<>();
-        outputExpressions =
-            analyzeSelect(
-                analysis,
-                schemaTree,
-                deviceList,
-                deviceToTransformExpressions,
-                deviceToMeasurementsMap,
-                transformInput);
 
         transformOutput.addAll(
             outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toList()));
@@ -246,7 +248,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                   analysis,
                   schemaTree,
                   deviceList,
-                  deviceToTransformExpressions,
+                  deviceToSelectExpressions,
                   deviceToMeasurementsMap,
                   transformInput);
           analyzeExpression(analysis, havingExpression);
@@ -278,9 +280,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         Map<String, Boolean> deviceToIsRawDataSource = new HashMap<>();
 
         Map<String, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
-        Map<String, Set<Expression>> deviceToAggregationTransformExpressions = new HashMap<>();
-        for (String deviceName : deviceToTransformExpressions.keySet()) {
-          Set<Expression> transformExpressions = deviceToTransformExpressions.get(deviceName);
+        Map<String, Set<Expression>> deviceToSourceTransformExpressions = new HashMap<>();
+        for (String deviceName : deviceToSelectExpressions.keySet()) {
+          Set<Expression> transformExpressions = deviceToSelectExpressions.get(deviceName);
           Set<Expression> aggregationExpressions = new LinkedHashSet<>();
           Set<Expression> aggregationTransformExpressions = new LinkedHashSet<>();
 
@@ -292,8 +294,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 analyzeAggregation(
                     transformExpressions, aggregationExpressions, aggregationTransformExpressions);
             deviceToAggregationExpressions.put(deviceName, aggregationExpressions);
-            deviceToAggregationTransformExpressions.put(
-                deviceName, aggregationTransformExpressions);
+            deviceToSourceTransformExpressions.put(deviceName, aggregationTransformExpressions);
           }
 
           boolean isRawDataSource =
@@ -310,8 +311,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           deviceToIsRawDataSource.put(deviceName, isRawDataSource);
         }
         analysis.setDeviceToAggregationExpressions(deviceToAggregationExpressions);
-        analysis.setDeviceToAggregationTransformExpressions(
-            deviceToAggregationTransformExpressions);
+        analysis.setDeviceToSourceTransformExpressions(deviceToSourceTransformExpressions);
         analysis.setDeviceToIsRawDataSource(deviceToIsRawDataSource);
 
         if (queryStatement.getWhereCondition() != null) {
@@ -339,12 +339,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                     devicePath.getFullPath(), key -> new LinkedHashSet<>()),
                 true);
           }
-          analysis.setDeviceToQueryFilter(deviceToQueryFilter);
+          analysis.setDeviceToWhereExpression(deviceToQueryFilter);
         }
         analysis.setTransformInput(transformInput);
         analysis.setTransformOutput(transformOutput);
         analysis.setDeviceToSourceExpressions(deviceToSourceExpressions);
-        analysis.setDeviceToTransformExpressions(deviceToTransformExpressions);
+        analysis.setDeviceToSelectExpressions(deviceToSelectExpressions);
       } else {
         // Example 1: select s1, s1 + s2 as t, udf(udf(s1)) from root.sg.d1
         //   outputExpressions: [<root.sg.d1.s1,null>, <root.sg.d1.s1 + root.sg.d1.s2,t>,
@@ -559,14 +559,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private List<Pair<Expression, String>> analyzeSelect(
       Analysis analysis,
+      QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      Set<PartialPath> deviceList,
-      Map<String, Set<Expression>> deviceToTransformExpressions,
-      Map<String, Set<String>> deviceToMeasurementsMap,
-      Set<Expression> transformInput) {
-
-    QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
+      Set<PartialPath> deviceList) {
+    Map<String, Set<Expression>> deviceToSelectExpressions = new HashMap<>();
+    Map<String, Set<String>> deviceToMeasurementsMap = new HashMap<>();
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
+
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
@@ -589,7 +588,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           for (Expression aggregationExpression : aggregationExpressions) {
             Expression measurementExpression =
                 ExpressionAnalyzer.getMeasurementExpression(aggregationExpression);
-            transformInput.add(measurementExpression);
             analyzeExpression(analysis, measurementExpression);
           }
         }
@@ -645,7 +643,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             Expression transformExpressionWithoutAlias =
                 ExpressionAnalyzer.removeAliasFromExpression(transformExpression);
             analyzeExpression(analysis, transformExpressionWithoutAlias);
-            deviceToTransformExpressions
+            deviceToSelectExpressions
                 .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
                 .add(transformExpressionWithoutAlias);
             if (queryStatement.isAggregationQuery()) {
@@ -661,7 +659,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               List<Expression> sourceExpressions =
                   ExpressionAnalyzer.searchSourceExpressions(
                       measurementExpressionWithoutAlias, true);
-              transformInput.addAll(sourceExpressions);
               deviceToMeasurementsMap
                   .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
                   .addAll(
@@ -677,6 +674,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
+    analysis.setDeviceToSelectExpressions(deviceToSelectExpressions);
     return outputExpressions;
   }
 
@@ -700,17 +698,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return havingExpression;
   }
 
-  private Expression analyzeHaving(
+  private void analyzeHaving(
       Analysis analysis,
+      QueryStatement queryStatement,
       ISchemaTree schemaTree,
       Set<PartialPath> deviceList,
-      Map<String, Set<Expression>> deviceToTransformExpressions,
-      Map<String, Set<String>> deviceToMeasurementsMap,
-      Set<Expression> transformInput) {
-    QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
-    Expression havingExpression =
-        ExpressionAnalyzer.removeAliasFromExpression(
-            queryStatement.getHavingCondition().getPredicate());
+      Map<String, Set<Expression>> deviceToAggregationExpressions) {
+    if (!queryStatement.hasHaving()) {
+      return;
+    }
+
+    Expression havingExpression = queryStatement.getHavingCondition().getPredicate();
     Set<Expression> measurementsInHaving = new HashSet<>();
 
     // measurement expression after removing wildcard
@@ -723,9 +721,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       measurementsInHaving.addAll(
           transformExpressionsInHaving.stream()
-              .map(
-                  transformExpression ->
-                      ExpressionAnalyzer.getMeasurementExpression(transformExpression))
+              .map(ExpressionAnalyzer::getMeasurementExpression)
               .collect(Collectors.toList()));
 
       Set<Expression> aggregationExpressionsInHaving =
@@ -734,7 +730,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       for (Expression aggregationExpressionInHaving : aggregationExpressionsInHaving) {
         Expression measurementExpression =
             ExpressionAnalyzer.getMeasurementExpression(aggregationExpressionInHaving);
-        transformInput.add(measurementExpression);
         analyzeExpression(analysis, measurementExpression);
         measurementToDeviceTransformExpressions
             .computeIfAbsent(measurementExpression, key -> new LinkedHashMap<>())

@@ -106,16 +106,16 @@ public class Analysis {
   private Map<String, Set<Expression>> deviceToSourceExpressions;
 
   // input expressions of aggregations to be calculated
-  private Map<String, Set<Expression>> deviceToAggregationTransformExpressions;
+  private Map<String, Set<Expression>> deviceToSourceTransformExpressions;
 
   // all aggregations that need to be calculated
   private Map<String, Set<Expression>> deviceToAggregationExpressions;
 
   // expression of output column to be calculated
-  private Map<String, Set<Expression>> deviceToTransformExpressions;
+  private Map<String, Set<Expression>> deviceToSelectExpressions;
 
   // map from device name to query filter under this device
-  private Map<String, Expression> deviceToQueryFilter;
+  private Map<String, Expression> deviceToWhereExpression;
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
@@ -289,12 +289,12 @@ public class Analysis {
     this.whereExpression = whereExpression;
   }
 
-  public Map<String, Expression> getDeviceToQueryFilter() {
-    return deviceToQueryFilter;
+  public Map<String, Expression> getDeviceToWhereExpression() {
+    return deviceToWhereExpression;
   }
 
-  public void setDeviceToQueryFilter(Map<String, Expression> deviceToQueryFilter) {
-    this.deviceToQueryFilter = deviceToQueryFilter;
+  public void setDeviceToWhereExpression(Map<String, Expression> deviceToWhereExpression) {
+    this.deviceToWhereExpression = deviceToWhereExpression;
   }
 
   public GroupByTimeParameter getGroupByTimeParameter() {
@@ -386,13 +386,13 @@ public class Analysis {
     this.deviceToSourceExpressions = deviceToSourceExpressions;
   }
 
-  public Map<String, Set<Expression>> getDeviceToAggregationTransformExpressions() {
-    return deviceToAggregationTransformExpressions;
+  public Map<String, Set<Expression>> getDeviceToSourceTransformExpressions() {
+    return deviceToSourceTransformExpressions;
   }
 
-  public void setDeviceToAggregationTransformExpressions(
-      Map<String, Set<Expression>> deviceToAggregationTransformExpressions) {
-    this.deviceToAggregationTransformExpressions = deviceToAggregationTransformExpressions;
+  public void setDeviceToSourceTransformExpressions(
+      Map<String, Set<Expression>> deviceToSourceTransformExpressions) {
+    this.deviceToSourceTransformExpressions = deviceToSourceTransformExpressions;
   }
 
   public Map<String, Set<Expression>> getDeviceToAggregationExpressions() {
@@ -404,13 +404,12 @@ public class Analysis {
     this.deviceToAggregationExpressions = deviceToAggregationExpressions;
   }
 
-  public Map<String, Set<Expression>> getDeviceToTransformExpressions() {
-    return deviceToTransformExpressions;
+  public Map<String, Set<Expression>> getDeviceToSelectExpressions() {
+    return deviceToSelectExpressions;
   }
 
-  public void setDeviceToTransformExpressions(
-      Map<String, Set<Expression>> deviceToTransformExpressions) {
-    this.deviceToTransformExpressions = deviceToTransformExpressions;
+  public void setDeviceToSelectExpressions(Map<String, Set<Expression>> deviceToSelectExpressions) {
+    this.deviceToSelectExpressions = deviceToSelectExpressions;
   }
 
   public boolean isRawDataSource() {

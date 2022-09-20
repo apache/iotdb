@@ -115,12 +115,12 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     analysis.getDeviceToIsRawDataSource().get(deviceName),
                     analysis.getDeviceToSourceExpressions().get(deviceName),
                     analysis.getDeviceToAggregationExpressions().get(deviceName),
-                    analysis.getDeviceToAggregationTransformExpressions().get(deviceName),
+                    analysis.getDeviceToSourceTransformExpressions().get(deviceName),
                     analysis.hasValueFilter()
                         ? analysis.getDeviceToSourceExpressions().get(deviceName)
                         : Collections.emptySet(),
-                    analysis.getDeviceToQueryFilter() != null
-                        ? analysis.getDeviceToQueryFilter().get(deviceName)
+                    analysis.getDeviceToWhereExpression() != null
+                        ? analysis.getDeviceToWhereExpression().get(deviceName)
                         : null,
                     null,
                     analysis.getDeviceToMeasurementIndexesMap().get(deviceName),
