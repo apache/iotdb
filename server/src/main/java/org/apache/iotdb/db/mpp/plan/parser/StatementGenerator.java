@@ -436,7 +436,7 @@ public class StatementGenerator {
     return statement;
   }
 
-  public static Statement createStatement(List<String> storageGroups) {
+  public static Statement createStatement(List<String> storageGroups) throws IllegalPathException {
     DeleteStorageGroupStatement statement = new DeleteStorageGroupStatement();
     statement.setPrefixPath(storageGroups);
     return statement;

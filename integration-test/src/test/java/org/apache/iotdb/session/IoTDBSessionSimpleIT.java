@@ -73,7 +73,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSessionSimpleIT {
 
   private static Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionSimpleIT.class);
@@ -90,6 +89,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertPartialTabletTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -133,6 +133,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertByStrAndInferTypeTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       String deviceId = "root.sg1.d1";
@@ -169,6 +170,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertWrongPathByStrAndInferTypeTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       String deviceId = "root.sg1..d1";
@@ -199,6 +201,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertIntoIllegalTimeseriesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       String deviceId = "root.sg1.d1\n";
@@ -229,6 +232,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertByObjAndNotInferTypeTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       String deviceId = "root.sg1.d1";
@@ -271,6 +275,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void createMultiTimeseriesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<String> paths = new ArrayList<>();
@@ -304,6 +309,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void chineseCharacterTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
@@ -353,6 +359,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithAlignedTimeseriesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -393,6 +400,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithNullValuesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -446,6 +454,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithStringValuesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -489,6 +498,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void createTimeSeriesWithDoubleTicksTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
@@ -516,6 +526,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void createWrongTimeSeriesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
@@ -550,6 +561,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({ClusterIT.class})
   public void deleteNonExistTimeSeriesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.insertRecord(
@@ -570,6 +582,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertOneDeviceRecordsTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<Long> times = new ArrayList<>();
@@ -708,6 +721,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertOneDeviceRecordsWithOrderTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<Long> times = new ArrayList<>();
@@ -761,6 +775,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertOneDeviceRecordsWithIncorrectOrderTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<Long> times = new ArrayList<>();
@@ -814,6 +829,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertStringRecordsOfOneDeviceWithOrderTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<Long> times = new ArrayList<>();
@@ -909,6 +925,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertStringRecordsOfOneDeviceWithIncorrectOrderTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<Long> times = new ArrayList<>();
@@ -928,6 +945,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertAlignedStringRecordsOfOneDeviceWithOrderTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<Long> times = new ArrayList<>();
@@ -948,6 +966,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertAlignedStringRecordsOfOneDeviceWithIncorrectOrderTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<Long> times = new ArrayList<>();
@@ -967,6 +986,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertIlligalPathTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       String msg = "[%s] Exception occurred: %s failed. %s is not a legal path";
@@ -1226,21 +1246,6 @@ public class IoTDBSessionSimpleIT {
                         OperationType.DELETE_TIMESERIES,
                         "root.sg.d1..s1")));
       }
-
-      try {
-        session.deleteStorageGroup("root..sg");
-        fail("Exception expected");
-      } catch (StatementExecutionException e) {
-        assertTrue(
-            e.getMessage()
-                .contains(
-                    String.format(
-                        msg,
-                        TSStatusCode.PATH_ILLEGAL,
-                        OperationType.DELETE_STORAGE_GROUPS,
-                        "root..sg")));
-      }
-
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1248,6 +1253,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void conversionFunctionTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       // prepare data
@@ -1449,6 +1455,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({ClusterIT.class})
   public void countWithTemplateTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       initTreeTemplate(session, "root.sg.loc");
@@ -1500,6 +1507,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertPartialTablet2Test() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       if (!session.checkTimeseriesExists("root.sg.d.s1")) {
@@ -1566,6 +1574,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertBinaryAsTextTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       // prepare binary data
