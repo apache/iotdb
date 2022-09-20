@@ -121,6 +121,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -2207,8 +2208,7 @@ public class DataRegion {
 
     try {
 
-      PartialPath devicePath = pattern.getDevicePath();
-      Set<PartialPath> devicePaths = Collections.singleton(devicePath);
+      Set<PartialPath> devicePaths = new HashSet<>(pattern.getDevicePathPattern());
 
       // delete Last cache record if necessary
       // todo implement more precise process
@@ -2332,6 +2332,9 @@ public class DataRegion {
     }
 
     for (PartialPath device : devicePaths) {
+      if (device.hasWildcard()) {
+        return false;
+      }
       String deviceId = device.getFullPath();
       if (!tsFileResource.mayContainsDevice(deviceId)) {
         // resource does not contain this device

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushStatus;
@@ -658,10 +659,34 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
-    IWritableMemChunkGroup memChunkGroup = memTableMap.get(getDeviceID(devicePath));
-    if (memChunkGroup == null) {
-      return;
+    if (devicePath.hasWildcard()) {
+      // In cluster mode without IDTable, the input devicePath may be a devicePathPattern
+      for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
+        try {
+          PartialPath devicePathInMemTable = new PartialPath(entry.getKey().toStringID());
+          if (devicePath.matchFullPath(devicePathInMemTable)) {
+            deleteDataInChunkGroup(
+                entry.getValue(), originalPath, devicePathInMemTable, startTimestamp, endTimestamp);
+          }
+        } catch (IllegalPathException e) {
+          // won't reach here
+        }
+      }
+    } else {
+      IWritableMemChunkGroup memChunkGroup = memTableMap.get(getDeviceID(devicePath));
+      if (memChunkGroup == null) {
+        return;
+      }
+      deleteDataInChunkGroup(memChunkGroup, originalPath, devicePath, startTimestamp, endTimestamp);
     }
+  }
+
+  private void deleteDataInChunkGroup(
+      IWritableMemChunkGroup memChunkGroup,
+      PartialPath originalPath,
+      PartialPath devicePath,
+      long startTimestamp,
+      long endTimestamp) {
     totalPointsNum -= memChunkGroup.delete(originalPath, devicePath, startTimestamp, endTimestamp);
     if (memChunkGroup.getMemChunkMap().isEmpty()) {
       memTableMap.remove(getDeviceID(devicePath));
