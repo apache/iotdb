@@ -889,7 +889,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     List<PartialPath> pathList = new ArrayList<>();
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      pathList.addAll(mtree.getPreDeleteTimeseries(pathPattern));
+      for (PartialPath devicePath : mtree.getDevicesByTimeseries(pathPattern)) {
+        pathList.addAll(pathPattern.alterPrefixPath(devicePath));
+      }
     }
     return pathList;
   }
