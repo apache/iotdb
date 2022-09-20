@@ -252,7 +252,18 @@ public class IoTDBParsePageV3 extends IoTDBParsePage {
             Node folderIcon = new IconView("/icons/folder-package.png");
             treeRoot.setGraphic(folderIcon);
 
-            File[] files = selectedFolder.listFiles();
+            File[] files =
+                selectedFolder.listFiles(
+                    ((dir, name) -> {
+                      if (name.toLowerCase().endsWith(".tsfile")) {
+                        File file = new File(dir + "\\" + name);
+                        if (file.isDirectory()) {
+                          return false;
+                        }
+                        return true;
+                      }
+                      return false;
+                    }));
             if (files == null || files.length == 0) {
               logger.error("The File[] files is null!");
               return;
@@ -286,10 +297,10 @@ public class IoTDBParsePageV3 extends IoTDBParsePage {
     searchMenuItem.setSelected(false);
     searchMenuItem.setOnAction(
         event -> {
-          if(measurementSearchPage != null && measurementSearchPage.isShow()) {
+          if (measurementSearchPage != null && measurementSearchPage.isShow()) {
             return;
           }
-          if(measurementSearchPage != null) {
+          if (measurementSearchPage != null) {
             measurementSearchPage.close();
           }
           Stage measurementSearchStage = new Stage();
@@ -355,10 +366,10 @@ public class IoTDBParsePageV3 extends IoTDBParsePage {
     encodeAnalyseMenuItem.setSelected(false);
     encodeAnalyseMenuItem.setOnAction(
         event -> {
-          if(encodeAnalysePage != null && encodeAnalysePage.isShow()) {
+          if (encodeAnalysePage != null && encodeAnalysePage.isShow()) {
             return;
           }
-          if(encodeAnalysePage != null) {
+          if (encodeAnalysePage != null) {
             encodeAnalysePage.close();
           }
           Stage encodeAnalyseStage = new Stage();

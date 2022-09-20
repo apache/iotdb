@@ -237,13 +237,13 @@ public class MeasurementSearchPage {
   }
 
   public void show() {
-    if(this.parent != null && !this.parent.isShowing()) {
+    if (this.parent != null && !this.parent.isShowing()) {
       this.parent.show();
     }
   }
 
   public void close() {
-    if(this.parent != null) {
+    if (this.parent != null) {
       this.tvDatas.clear();
       this.parent.close();
     }

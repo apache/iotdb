@@ -110,13 +110,17 @@ public class EncodeAnalysePage {
     searchButton.setOnMouseClicked(
         event -> {
           synchronized (deviceIdText) {
-            if(StringUtils.equels(deviceIdText.getText().trim(), deviceIdTextText) && StringUtils.equels(measurementIdText.getText().trim(), measurementIdTextText)) {
+            if (StringUtils.equels(deviceIdText.getText().trim(), deviceIdTextText)
+                && StringUtils.equels(measurementIdText.getText().trim(), measurementIdTextText)) {
               return;
             }
           }
           deviceIdTextText = deviceIdText.getText().trim();
           measurementIdTextText = measurementIdText.getText().trim();
-          if(deviceIdTextText == null || deviceIdTextText.trim().equals("") || measurementIdTextText == null || measurementIdTextText.trim().equals("")) {
+          if (deviceIdTextText == null
+              || deviceIdTextText.trim().equals("")
+              || measurementIdTextText == null
+              || measurementIdTextText.trim().equals("")) {
             return;
           }
           try {
@@ -215,7 +219,10 @@ public class EncodeAnalysePage {
     analyseDataList.clear();
     EncodeCompressAnalysedModel currentAnalysed = analysedResultModel.getCurrentAnalysed();
     List<EncodeCompressAnalysedModel> analysedList = analysedResultModel.getAnalysedList();
-    String compressRatioString = String.format("%.2f", currentAnalysed.getCompressedSize()/((double)currentAnalysed.getUncompressSize()));
+    String compressRatioString =
+        String.format(
+            "%.2f",
+            currentAnalysed.getCompressedSize() / ((double) currentAnalysed.getUncompressSize()));
     double compressRatio = Double.parseDouble(compressRatioString);
     // 1. currentAnalysed result
     analyseDataList.add(
@@ -227,8 +234,8 @@ public class EncodeAnalysePage {
             currentAnalysed.getEncodedSize(),
             currentAnalysed.getUncompressSize(),
             currentAnalysed.getCompressedSize(),
-                (double) currentAnalysed.getCompressedCost(),
-                compressRatio,
+            (double) currentAnalysed.getCompressedCost(),
+            compressRatio,
             currentAnalysed.getScore()));
     // 2. others analysed results
     for (EncodeCompressAnalysedModel encodeCompressAnalysedModel : analysedList) {
@@ -236,7 +243,11 @@ public class EncodeAnalysePage {
           && encodeCompressAnalysedModel.getCompressName() == currentAnalysed.getCompressName()) {
         continue;
       }
-      compressRatioString = String.format("%.2f", encodeCompressAnalysedModel.getCompressedSize()/((double)encodeCompressAnalysedModel.getUncompressSize()));
+      compressRatioString =
+          String.format(
+              "%.2f",
+              encodeCompressAnalysedModel.getCompressedSize()
+                  / ((double) encodeCompressAnalysedModel.getUncompressSize()));
       compressRatio = Double.parseDouble(compressRatioString);
       analyseDataList.add(
           new EncodeCompressAnalyseTable(
@@ -247,8 +258,8 @@ public class EncodeAnalysePage {
               encodeCompressAnalysedModel.getEncodedSize(),
               encodeCompressAnalysedModel.getUncompressSize(),
               encodeCompressAnalysedModel.getCompressedSize(),
-                  (double) encodeCompressAnalysedModel.getCompressedCost(),
-                  compressRatio,
+              (double) encodeCompressAnalysedModel.getCompressedCost(),
+              compressRatio,
               encodeCompressAnalysedModel.getScore()));
     }
 
@@ -256,13 +267,13 @@ public class EncodeAnalysePage {
   }
 
   public void show() {
-    if(this.parent != null && !this.parent.isShowing()) {
+    if (this.parent != null && !this.parent.isShowing()) {
       this.parent.show();
     }
   }
 
   public void close() {
-    if(this.parent != null) {
+    if (this.parent != null) {
       this.analyseDataList.clear();
       this.parent.close();
     }
