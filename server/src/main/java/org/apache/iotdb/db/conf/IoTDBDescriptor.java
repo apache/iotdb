@@ -773,21 +773,6 @@ public class IoTDBDescriptor {
       conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
     }
 
-    conf.setMaxPlanNodeSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_plan_node_size", String.valueOf(conf.getThriftMaxFrameSize()))));
-
-    if (conf.getMaxPlanNodeSize() > conf.getThriftMaxFrameSize()) {
-      logger.warn(
-          String.format(
-              "MAX PLAN NODE SIZE %d can not be larger than THRIFT MAX FRAME SIZE %d, MAX PLAN NODE SIZE has been reset to %d",
-              conf.getMaxPlanNodeSize(),
-              conf.getThriftMaxFrameSize(),
-              conf.getThriftMaxFrameSize()));
-      conf.setMaxPlanNodeSize(conf.getThriftMaxFrameSize());
-    }
-
     conf.setThriftDefaultBufferSize(
         Integer.parseInt(
             properties.getProperty(

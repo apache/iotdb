@@ -66,7 +66,8 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   }
 
   public boolean exceedSize() {
-    return dataSize >= config.getMaxPlanNodeSize() / 2;
+    return dataSize >= config.getThriftMaxFrameSize() / 2
+        || dataSize >= config.getAllocateMemoryForFree() / 2;
   }
 
   public void addChunkData(ChunkData chunkData) {
