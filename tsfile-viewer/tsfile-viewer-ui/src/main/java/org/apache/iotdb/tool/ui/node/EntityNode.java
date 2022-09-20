@@ -113,7 +113,9 @@ public class EntityNode {
             this.ioTDBParsePageV13.chooseTree(path);
           });
       // tips,show detail
-      Tooltip.install(this.entityShape, new Tooltip(getTip()));
+      Tooltip tooltip = new Tooltip(getTip());
+      tooltip.setMaxWidth(IoTDBParsePageV3.WIDTH * 0.5);
+      Tooltip.install(this.entityShape, tooltip);
 
       // show details in new stage
       MetadataIndexNodeType type = timeSeriesMetadataNode.getNodeType();
