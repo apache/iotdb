@@ -123,7 +123,7 @@ You can abort the specified query by specifying `queryId`. If `queryId` is not s
 To get the executing `queryId`，you can use the `show query processlist` command，which will show the list of all executing queries，with the following result set：
 
 | Time | queryId | statement |
-| ---- | ------- | --------- |
+|------|---------|-----------|
 |      |         |           |
 
 The maximum display length of statement is 64 characters. For statements with more than 64 characters, the intercepted part will be displayed.
@@ -190,20 +190,14 @@ Total line number = 2
 It costs 0.006s
 ```
 
-After a DataNode is stopped, its status will change, as shown below:
+#### DataNode status definition
+The DataNode statuses are defined as follows:
 
-```
-IoTDB> show datanodes
-+------+-------+---------+----+-------------+---------------+
-|NodeID| Status|     Host|Port|DataRegionNum|SchemaRegionNum|
-+------+-------+---------+----+-------------+---------------+
-|     3|Running|127.0.0.1|6667|            0|              0|
-|     4|Unknown|127.0.0.1|6669|            0|              0|
-|     5|Running|127.0.0.1|6671|            0|              0|
-+------+-------+---------+----+-------------+---------------+
-Total line number = 3
-It costs 0.009s
-```
+- **Running**: The DataNode is running properly and can be read and written
+- **Unknown**: The DataNode doesn't report heartbeat properly, the ConfigNode considers the DataNode as unreadable and un-writable
+- **Removing**: The DataNode is being removed from the cluster and cannot be read or written
+- **Full**: The remaining disk space of DataNode is lower than full_threshold(default is 5%), the ConfigNode will no longer allocate new partitions to this DataNode
+- **ReadOnly**: The remaining disk space of DataNode is lower than full_threshold(default is 1%), the DataNode can't write or synchronize data anymore
 
 ### Show all ConfigNode information
 
@@ -228,20 +222,11 @@ Total line number = 3
 It costs 0.030s
 ```
 
-After a ConfigNode is stopped, its status will change, as shown below:
+#### ConfigNode status definition
+The ConfigNode statuses are defined as follows:
 
-```
-IoTDB> show confignodes
-+------+-------+-------+-----+--------+
-|NodeID| Status|   Host| Port|    Role|
-+------+-------+-------+-----+--------+
-|     0|Running|0.0.0.0|22277|  Leader|
-|     1|Running|0.0.0.0|22279|Follower|
-|     2|Unknown|0.0.0.0|22281|Follower|
-+------+-------+-------+-----+--------+
-Total line number = 3
-It costs 0.009s
-```
+- **Running**: The ConfigNode is running properly
+- **Unknown**: The ConfigNode doesn't report heartbeat properly
 
 ### Show all Node information
 
@@ -406,3 +391,9 @@ Total line number = 3
 It costs 0.012s
 ```
 
+### Region status definition
+The Region statuses are defined as follows:
+
+- **Running**: The Region is running properly and can be read and written
+- **Removing**: The DataNode where the Region located is being removed from the cluster, the Region cannot be read or written
+- **Unknown**: The DataNode where the Region located doesn't report heartbeat properly, the ConfigNode considers the Region as unreadable and un-writable
