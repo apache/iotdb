@@ -143,7 +143,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResources) {
-      if (!resource.mayContainsDevice(currentDevice.left)) {
+      if (!deviceIteratorMap.containsKey(resource)) {
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
