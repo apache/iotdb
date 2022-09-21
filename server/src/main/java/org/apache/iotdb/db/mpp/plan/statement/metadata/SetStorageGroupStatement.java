@@ -97,4 +97,20 @@ public class SetStorageGroupStatement extends Statement implements IConfigStatem
   public Long getTimePartitionInterval() {
     return timePartitionInterval;
   }
+
+  @Override
+  public String toString() {
+    return "SetStorageGroupStatement{"
+        + "storageGroupPath="
+        + storageGroupPath
+        + ", ttl="
+        + ttl
+        + ", schemaReplicationFactor="
+        + schemaReplicationFactor
+        + ", dataReplicationFactor="
+        + dataReplicationFactor
+        + ", timePartitionInterval="
+        + timePartitionInterval
+        + '}';
+  }
 }

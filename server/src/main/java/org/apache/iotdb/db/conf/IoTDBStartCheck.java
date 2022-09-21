@@ -129,7 +129,7 @@ public class IoTDBStartCheck {
   }
 
   private IoTDBStartCheck() {
-    logger.info("Starting IoTDB " + IoTDBConstant.VERSION);
+    logger.info("Starting IoTDB " + IoTDBConstant.VERSION_WITH_BUILD);
 
     // check whether SCHEMA_DIR exists, create if not exists
     File dir = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR);

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
+import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -292,6 +293,9 @@ public class IoTDBConfig {
     IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME
   };
 
+  private String loadTsFileDir =
+      dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
 
@@ -384,6 +388,9 @@ public class IoTDBConfig {
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
   private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
+
+  /** The sort algorithm used in TVList */
+  private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 100000;
@@ -994,9 +1001,21 @@ public class IoTDBConfig {
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
   /** Maximum wait time of write cache in MultiLeader consensus. Unit: ms */
-  private long cacheWindowTimeInMs = Long.MAX_VALUE;
+  private long cacheWindowTimeInMs = 60 * 1000;
 
-  private long RatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
+  private long ratisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
+
+  private long ratisConsensusSnapshotTriggerThreshold = 400000L;
+
+  private boolean ratisConsensusLogUnsafeFlushEnable = false;
+
+  private long ratisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
+
+  private long ratisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
+
+  private long ratisConsensusLeaderElectionTimeoutMinMs = 2000L;
+
+  private long RatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
 
   IoTDBConfig() {}
 
@@ -1098,6 +1117,7 @@ public class IoTDBConfig {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
+    loadTsFileDir = addHomeDir(loadTsFileDir);
     tracingDir = addHomeDir(tracingDir);
     consensusDir = addHomeDir(consensusDir);
     dataRegionConsensusDir = addHomeDir(dataRegionConsensusDir);
@@ -1259,6 +1279,14 @@ public class IoTDBConfig {
     this.systemDir = systemDir;
   }
 
+  public String getLoadTsFileDir() {
+    return loadTsFileDir;
+  }
+
+  public void setLoadTsFileDir(String loadTsFileDir) {
+    this.loadTsFileDir = loadTsFileDir;
+  }
+
   public String getSchemaDir() {
     return schemaDir;
   }
@@ -1371,6 +1399,20 @@ public class IoTDBConfig {
 
   void setMultiDirStrategyClassName(String multiDirStrategyClassName) {
     this.multiDirStrategyClassName = multiDirStrategyClassName;
+  }
+
+  public void checkMultiDirStrategyClassName() {
+    if (isClusterMode
+        && !(multiDirStrategyClassName.equals(DEFAULT_MULTI_DIR_STRATEGY)
+            || multiDirStrategyClassName.equals(
+                MULTI_DIR_STRATEGY_PREFIX + DEFAULT_MULTI_DIR_STRATEGY))) {
+      String msg =
+          String.format(
+              "Cannot set multi_dir_strategy to %s, because cluster mode only allows MaxDiskUsableSpaceFirstStrategy.",
+              multiDirStrategyClassName);
+      logger.error(msg);
+      throw new RuntimeException(msg);
+    }
   }
 
   public int getBatchSize() {
@@ -1747,6 +1789,13 @@ public class IoTDBConfig {
     this.allocateMemoryForRead = allocateMemoryForRead;
   }
 
+  public long getAllocateMemoryForFree() {
+    return Runtime.getRuntime().maxMemory()
+        - allocateMemoryForStorageEngine
+        - allocateMemoryForRead
+        - allocateMemoryForSchema;
+  }
+
   public boolean isEnableExternalSort() {
     return enableExternalSort;
   }
@@ -1899,6 +1948,14 @@ public class IoTDBConfig {
 
   public void setUnseqMemtableFlushCheckInterval(long unseqMemtableFlushCheckInterval) {
     this.unseqMemtableFlushCheckInterval = unseqMemtableFlushCheckInterval;
+  }
+
+  public TVListSortAlgorithm getTvListSortAlgorithm() {
+    return tvListSortAlgorithm;
+  }
+
+  public void setTvListSortAlgorithm(TVListSortAlgorithm tvListSortAlgorithm) {
+    this.tvListSortAlgorithm = tvListSortAlgorithm;
   }
 
   public int getAvgSeriesPointNumberThreshold() {
@@ -2952,6 +3009,7 @@ public class IoTDBConfig {
 
   public void setClusterMode(boolean isClusterMode) {
     this.isClusterMode = isClusterMode;
+    checkMultiDirStrategyClassName();
   }
 
   public int getDataNodeId() {
@@ -3151,12 +3209,12 @@ public class IoTDBConfig {
   }
 
   public long getRatisConsensusLogAppenderBufferSizeMax() {
-    return RatisConsensusLogAppenderBufferSizeMax;
+    return ratisConsensusLogAppenderBufferSizeMax;
   }
 
   public void setRatisConsensusLogAppenderBufferSizeMax(
       long ratisConsensusLogAppenderBufferSizeMax) {
-    RatisConsensusLogAppenderBufferSizeMax = ratisConsensusLogAppenderBufferSizeMax;
+    this.ratisConsensusLogAppenderBufferSizeMax = ratisConsensusLogAppenderBufferSizeMax;
   }
 
   public String getConfigMessage() {
@@ -3190,5 +3248,56 @@ public class IoTDBConfig {
       }
     }
     return configMessage;
+  }
+
+  public long getRatisConsensusSnapshotTriggerThreshold() {
+    return ratisConsensusSnapshotTriggerThreshold;
+  }
+
+  public void setRatisConsensusSnapshotTriggerThreshold(
+      long ratisConsensusSnapshotTriggerThreshold) {
+    this.ratisConsensusSnapshotTriggerThreshold = ratisConsensusSnapshotTriggerThreshold;
+  }
+
+  public boolean isRatisConsensusLogUnsafeFlushEnable() {
+    return ratisConsensusLogUnsafeFlushEnable;
+  }
+
+  public void setRatisConsensusLogUnsafeFlushEnable(boolean ratisConsensusLogUnsafeFlushEnable) {
+    this.ratisConsensusLogUnsafeFlushEnable = ratisConsensusLogUnsafeFlushEnable;
+  }
+
+  public long getRatisConsensusLogSegmentSizeMax() {
+    return ratisConsensusLogSegmentSizeMax;
+  }
+
+  public void setRatisConsensusLogSegmentSizeMax(long ratisConsensusLogSegmentSizeMax) {
+    this.ratisConsensusLogSegmentSizeMax = ratisConsensusLogSegmentSizeMax;
+  }
+
+  public long getRatisConsensusGrpcFlowControlWindow() {
+    return ratisConsensusGrpcFlowControlWindow;
+  }
+
+  public void setRatisConsensusGrpcFlowControlWindow(long ratisConsensusGrpcFlowControlWindow) {
+    this.ratisConsensusGrpcFlowControlWindow = ratisConsensusGrpcFlowControlWindow;
+  }
+
+  public long getRatisConsensusLeaderElectionTimeoutMinMs() {
+    return ratisConsensusLeaderElectionTimeoutMinMs;
+  }
+
+  public void setRatisConsensusLeaderElectionTimeoutMinMs(
+      long ratisConsensusLeaderElectionTimeoutMinMs) {
+    this.ratisConsensusLeaderElectionTimeoutMinMs = ratisConsensusLeaderElectionTimeoutMinMs;
+  }
+
+  public long getRatisConsensusLeaderElectionTimeoutMaxMs() {
+    return RatisConsensusLeaderElectionTimeoutMaxMs;
+  }
+
+  public void setRatisConsensusLeaderElectionTimeoutMaxMs(
+      long ratisConsensusLeaderElectionTimeoutMaxMs) {
+    RatisConsensusLeaderElectionTimeoutMaxMs = ratisConsensusLeaderElectionTimeoutMaxMs;
   }
 }

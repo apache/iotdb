@@ -19,11 +19,30 @@
 package org.apache.iotdb.commons.conf;
 
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
 
 public class IoTDBConstant {
 
   private IoTDBConstant() {}
+
+  static {
+    Properties prop = new Properties();
+    String finalBuildInfo = "UNKNOWN";
+    try {
+      prop.load(IoTDBConstant.class.getResourceAsStream("/git.properties"));
+      finalBuildInfo = prop.getProperty("git.commit.id.abbrev", "UNKNOWN");
+      String isDirty = prop.getProperty("git.dirty", "false");
+      if (isDirty.equalsIgnoreCase("true")) {
+        finalBuildInfo += "-dev";
+      }
+    } catch (Exception e) {
+      System.err.println("get git.properties error: " + e.getMessage());
+    }
+    BUILD_INFO = finalBuildInfo;
+  }
+
+  public static final String BUILD_INFO;
 
   public static final String ENV_FILE_NAME = "datanode-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
@@ -46,6 +65,7 @@ public class IoTDBConstant {
       "UNKNOWN".equals(VERSION)
           ? "UNKNOWN"
           : VERSION.split("\\.")[0] + "." + VERSION.split("\\.")[1];
+  public static final String VERSION_WITH_BUILD = VERSION + " (Build: " + BUILD_INFO + ")";
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
@@ -85,7 +105,8 @@ public class IoTDBConstant {
   // show info
   public static final String COLUMN_ITEM = "                             item";
   public static final String COLUMN_VALUE = "value";
-  public static final String COLUMN_VERSION = "        version";
+  public static final String COLUMN_VERSION = "version";
+  public static final String COLUMN_BUILD_INFO = "build info";
   public static final String COLUMN_TIMESERIES = "timeseries";
   public static final String COLUMN_TIMESERIES_ALIAS = "alias";
   public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
@@ -160,8 +181,6 @@ public class IoTDBConstant {
   public static final String COLUMN_PIPE_REMOTE = "remote";
   public static final String COLUMN_PIPE_STATUS = "status";
   public static final String COLUMN_PIPE_MSG = "message";
-  public static final String COLUMN_PIPE_ERRORS = "errors";
-  public static final String COLUMN_PIPE_PERF_INFO = "performance_info";
 
   public static final String ONE_LEVEL_PATH_WILDCARD = "*";
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
@@ -190,6 +209,7 @@ public class IoTDBConstant {
   // system folder name
   public static final String SYSTEM_FOLDER_NAME = "system";
   public static final String SCHEMA_FOLDER_NAME = "schema";
+  public static final String LOAD_TSFILE_FOLDER_NAME = "load";
   public static final String SYNC_FOLDER_NAME = "sync";
   public static final String QUERY_FOLDER_NAME = "query";
   public static final String TRACING_FOLDER_NAME = "tracing";
