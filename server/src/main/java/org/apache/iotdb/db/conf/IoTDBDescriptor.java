@@ -1899,6 +1899,12 @@ public class IoTDBDescriptor {
 
   public void loadRatisConfig(TRatisConfig ratisConfig) {
     conf.setRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getAppenderBufferSize());
+    conf.setRatisConsensusSnapshotTriggerThreshold(ratisConfig.getSnapshotTriggerThreshold());
+    conf.setRatisConsensusLogUnsafeFlushEnable(ratisConfig.isLogUnsafeFlushEnable());
+    conf.setRatisConsensusLogSegmentSizeMax(ratisConfig.getLogSegmentSizeMax());
+    conf.setRatisConsensusGrpcFlowControlWindow(ratisConfig.getGrpcFlowControlWindow());
+    conf.setRatisConsensusLeaderElectionTimeoutMinMs(ratisConfig.getLeaderElectionTimeoutMin());
+    conf.setRatisConsensusLeaderElectionTimeoutMaxMs(ratisConfig.getLeaderElectionTimeoutMax());
   }
 
   public void initClusterSchemaMemoryAllocate() {
