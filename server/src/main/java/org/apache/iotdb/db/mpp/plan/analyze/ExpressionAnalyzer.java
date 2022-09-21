@@ -579,53 +579,49 @@ public class ExpressionAnalyzer {
   }
 
   public static Expression replaceRawPathWithGroupedPath(
-      Expression predicate, Map<Expression, Expression> rawPathToGroupedPathMapInHaving) {
-    if (predicate instanceof TernaryExpression) {
+      Expression expression, Map<PartialPath, PartialPath> rawPathToGroupedPathMap) {
+    if (expression instanceof TernaryExpression) {
       Expression firstExpression =
           replaceRawPathWithGroupedPath(
-              ((TernaryExpression) predicate).getFirstExpression(),
-              rawPathToGroupedPathMapInHaving);
+              ((TernaryExpression) expression).getFirstExpression(), rawPathToGroupedPathMap);
       Expression secondExpression =
           replaceRawPathWithGroupedPath(
-              ((TernaryExpression) predicate).getSecondExpression(),
-              rawPathToGroupedPathMapInHaving);
+              ((TernaryExpression) expression).getSecondExpression(), rawPathToGroupedPathMap);
       Expression thirdExpression =
           replaceRawPathWithGroupedPath(
-              ((TernaryExpression) predicate).getThirdExpression(),
-              rawPathToGroupedPathMapInHaving);
+              ((TernaryExpression) expression).getThirdExpression(), rawPathToGroupedPathMap);
       return reconstructTernaryExpression(
-          predicate, firstExpression, secondExpression, thirdExpression);
-    } else if (predicate instanceof BinaryExpression) {
+          expression, firstExpression, secondExpression, thirdExpression);
+    } else if (expression instanceof BinaryExpression) {
       Expression leftExpression =
           replaceRawPathWithGroupedPath(
-              ((BinaryExpression) predicate).getLeftExpression(), rawPathToGroupedPathMapInHaving);
+              ((BinaryExpression) expression).getLeftExpression(), rawPathToGroupedPathMap);
       Expression rightExpression =
           replaceRawPathWithGroupedPath(
-              ((BinaryExpression) predicate).getRightExpression(), rawPathToGroupedPathMapInHaving);
+              ((BinaryExpression) expression).getRightExpression(), rawPathToGroupedPathMap);
       return reconstructBinaryExpression(
-          predicate.getExpressionType(), leftExpression, rightExpression);
-    } else if (predicate instanceof UnaryExpression) {
-      Expression expression =
+          expression.getExpressionType(), leftExpression, rightExpression);
+    } else if (expression instanceof UnaryExpression) {
+      Expression childExpression =
           replaceRawPathWithGroupedPath(
-              ((UnaryExpression) predicate).getExpression(), rawPathToGroupedPathMapInHaving);
-      return reconstructUnaryExpression((UnaryExpression) predicate, expression);
-    } else if (predicate instanceof FunctionExpression) {
-      List<Expression> expressions = predicate.getExpressions();
+              ((UnaryExpression) expression).getExpression(), rawPathToGroupedPathMap);
+      return reconstructUnaryExpression((UnaryExpression) expression, childExpression);
+    } else if (expression instanceof FunctionExpression) {
       List<Expression> childrenExpressions = new ArrayList<>();
-      for (Expression expression : expressions) {
+      for (Expression childExpression : expression.getExpressions()) {
         childrenExpressions.add(
-            replaceRawPathWithGroupedPath(expression, rawPathToGroupedPathMapInHaving));
+            replaceRawPathWithGroupedPath(childExpression, rawPathToGroupedPathMap));
       }
-      return reconstructFunctionExpression((FunctionExpression) predicate, childrenExpressions);
-    } else if (predicate instanceof TimeSeriesOperand) {
+      return reconstructFunctionExpression((FunctionExpression) expression, childrenExpressions);
+    } else if (expression instanceof TimeSeriesOperand) {
       PartialPath groupedPath =
-          ((TimeSeriesOperand) rawPathToGroupedPathMapInHaving.get(predicate)).getPath();
+          rawPathToGroupedPathMap.get(((TimeSeriesOperand) expression).getPath());
       return reconstructTimeSeriesOperand(groupedPath);
-    } else if (predicate instanceof TimestampOperand || predicate instanceof ConstantOperand) {
-      return predicate;
+    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+      return expression;
     } else {
       throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
+          "unsupported expression type: " + expression.getExpressionType());
     }
   }
 

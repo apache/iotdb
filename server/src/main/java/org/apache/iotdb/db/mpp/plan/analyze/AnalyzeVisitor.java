@@ -51,7 +51,6 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
@@ -259,17 +258,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         //   sourceExpressions: {root.sg.d1 -> [root.sg.d1.s1, root.sg.d1.s2]}
 
         outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree);
+
+        analyzeHaving(analysis, queryStatement, schemaTree);
+        analyzeGroupByLevel(analysis, queryStatement, outputExpressions);
+
         Set<Expression> selectExpressions =
             outputExpressions.stream()
                 .map(Pair::getLeft)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-
-        Expression havingExpression = analyzeHaving(analysis, queryStatement, schemaTree);
-        analyzeGroupByLevel(
-            analysis, queryStatement, outputExpressions, selectExpressions, havingExpression);
-
         analysis.setSelectExpressions(selectExpressions);
-        analysis.setHavingExpression(havingExpression);
 
         analyzeAggregation(analysis, queryStatement);
 
@@ -280,6 +277,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
 
       analyzeWindowFunction(analysis, queryStatement);
+
       analyzeFill(analysis, queryStatement);
 
       // generate result set header according to output expressions
@@ -403,11 +401,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           if (isGroupByLevel) {
             analyzeExpression(analysis, expression);
             outputExpressions.add(new Pair<>(expression, resultColumn.getAlias()));
-            if (resultColumn.getExpression() instanceof FunctionExpression) {
-              queryStatement
-                  .getGroupByLevelComponent()
-                  .updateIsCountStar((FunctionExpression) resultColumn.getExpression());
-            }
+            queryStatement.getGroupByLevelComponent().updateIsCountStar(expression);
           } else {
             Expression expressionWithoutAlias =
                 ExpressionAnalyzer.removeAliasFromExpression(expression);
@@ -530,10 +524,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return outputExpressions;
   }
 
-  private Expression analyzeHaving(
+  private void analyzeHaving(
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     if (!queryStatement.hasHaving()) {
-      return null;
+      return;
     }
 
     // get removeWildcard Expressions in Having
@@ -547,7 +541,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         ExpressionUtils.constructQueryFilter(
             conJunctions.stream().distinct().collect(Collectors.toList()));
     analyzeExpression(analysis, havingExpression);
-    return havingExpression;
+
+    analysis.setHavingExpression(havingExpression);
   }
 
   private void analyzeHaving(
@@ -590,6 +585,109 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setHavingExpression(havingExpression);
   }
 
+  private void analyzeGroupByLevel(
+      Analysis analysis,
+      QueryStatement queryStatement,
+      List<Pair<Expression, String>> outputExpressions) {
+    if (!queryStatement.isGroupByLevel()) {
+      return;
+    }
+
+    GroupByLevelController groupByLevelController =
+        new GroupByLevelController(queryStatement.getGroupByLevelComponent().getLevels());
+
+    Set<Expression> groupedSelectExpressions = new LinkedHashSet<>();
+    for (int i = 0; i < outputExpressions.size(); i++) {
+      Pair<Expression, String> expressionAliasPair = outputExpressions.get(i);
+      boolean isCountStar = queryStatement.getGroupByLevelComponent().isCountStar(i);
+      Expression groupedExpression =
+          groupByLevelController.control(
+              isCountStar, expressionAliasPair.left, expressionAliasPair.right);
+      groupedSelectExpressions.add(groupedExpression);
+    }
+
+    Map<Expression, Set<Expression>> groupByLevelExpressions = new LinkedHashMap<>();
+    if (queryStatement.hasHaving()) {
+      // update havingExpression
+      Expression havingExpression = groupByLevelController.control(analysis.getHavingExpression());
+      analyzeExpression(analysis, havingExpression);
+      analysis.setHavingExpression(havingExpression);
+      updateGroupByLevelExpressions(
+          havingExpression,
+          groupByLevelExpressions,
+          groupByLevelController.getGroupedExpressionToRawExpressionsMap());
+    }
+
+    outputExpressions.clear();
+    ColumnPaginationController paginationController =
+        new ColumnPaginationController(
+            queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
+    for (Expression groupedExpression : groupedSelectExpressions) {
+      if (paginationController.hasCurOffset()) {
+        paginationController.consumeOffset();
+        continue;
+      }
+      if (paginationController.hasCurLimit()) {
+        Pair<Expression, String> outputExpression =
+            removeAliasFromExpression(
+                groupedExpression,
+                groupByLevelController.getAlias(groupedExpression.getExpressionString()));
+        Expression groupedExpressionWithoutAlias = outputExpression.left;
+        analyzeExpression(analysis, groupedExpressionWithoutAlias);
+        outputExpressions.add(outputExpression);
+        updateGroupByLevelExpressions(
+            groupedExpressionWithoutAlias,
+            groupByLevelExpressions,
+            groupByLevelController.getGroupedExpressionToRawExpressionsMap());
+        paginationController.consumeLimit();
+      } else {
+        break;
+      }
+    }
+
+    checkDataTypeConsistencyInGroupByLevel(analysis, groupByLevelExpressions);
+    analysis.setGroupByLevelExpressions(groupByLevelExpressions);
+  }
+
+  private void checkDataTypeConsistencyInGroupByLevel(
+      Analysis analysis, Map<Expression, Set<Expression>> groupByLevelExpressions) {
+    for (Expression groupedAggregationExpression : groupByLevelExpressions.keySet()) {
+      TSDataType checkedDataType = analysis.getType(groupedAggregationExpression);
+      for (Expression rawAggregationExpression :
+          groupByLevelExpressions.get(groupedAggregationExpression)) {
+        if (analysis.getType(rawAggregationExpression) != checkedDataType) {
+          throw new SemanticException(
+              String.format(
+                  "GROUP BY LEVEL: the data types of the same output column[%s] should be the same.",
+                  groupedAggregationExpression));
+        }
+      }
+    }
+  }
+
+  private void updateGroupByLevelExpressions(
+      Expression expression,
+      Map<Expression, Set<Expression>> groupByLevelExpressions,
+      Map<Expression, Set<Expression>> groupedExpressionToRawExpressionsMap) {
+    for (Expression groupedAggregationExpression :
+        ExpressionAnalyzer.searchAggregationExpressions(expression)) {
+      groupByLevelExpressions
+          .computeIfAbsent(groupedAggregationExpression, key -> new HashSet<>())
+          .addAll(groupedExpressionToRawExpressionsMap.get(groupedAggregationExpression));
+    }
+  }
+
+  private Pair<Expression, String> removeAliasFromExpression(
+      Expression rawExpression, String rawAlias) {
+    Expression expressionWithoutAlias = ExpressionAnalyzer.removeAliasFromExpression(rawExpression);
+    String alias =
+        !Objects.equals(expressionWithoutAlias, rawExpression)
+            ? rawExpression.getExpressionString()
+            : null;
+    alias = rawAlias == null ? alias : rawAlias;
+    return new Pair<>(expressionWithoutAlias, alias);
+  }
+
   private void analyzeDeviceToAggregation(
       Analysis analysis,
       QueryStatement queryStatement,
@@ -617,16 +715,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
 
-    Set<Expression> aggregationExpressions = new HashSet<>();
     if (queryStatement.isGroupByLevel()) {
-      // TODO
-    } else {
-      for (Expression expression : analysis.getSelectExpressions()) {
-        aggregationExpressions.addAll(ExpressionAnalyzer.searchAggregationExpressions(expression));
-      }
-      aggregationExpressions.addAll(
-          ExpressionAnalyzer.searchAggregationExpressions(analysis.getHavingExpression()));
+      Set<Expression> aggregationExpressions =
+          new HashSet<>(analysis.getGroupByLevelExpressions().keySet());
+      analysis.setAggregationExpressions(aggregationExpressions);
     }
+
+    Set<Expression> aggregationExpressions = new HashSet<>();
+    for (Expression expression : analysis.getSelectExpressions()) {
+      aggregationExpressions.addAll(ExpressionAnalyzer.searchAggregationExpressions(expression));
+    }
+    aggregationExpressions.addAll(
+        ExpressionAnalyzer.searchAggregationExpressions(analysis.getHavingExpression()));
     analysis.setAggregationExpressions(aggregationExpressions);
   }
 
@@ -755,127 +855,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         conJunctions.stream().distinct().collect(Collectors.toList()));
   }
 
-  private Expression analyzeHaving(
-      Analysis analysis,
-      Map<Expression, Set<Expression>> groupByLevelExpressions,
-      Set<Expression> transformExpressionsInHaving,
-      List<Expression> aggregationExpressionsInHaving) {
-    QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
-
-    if (queryStatement.isGroupByLevel()) {
-      Map<Expression, Expression> rawPathToGroupedPathMapInHaving =
-          analyzeGroupByLevelInHaving(
-              analysis, aggregationExpressionsInHaving, groupByLevelExpressions);
-      List<Expression> convertedPredicates = new ArrayList<>();
-      for (Expression expression : transformExpressionsInHaving) {
-        Expression convertedPredicate =
-            ExpressionAnalyzer.replaceRawPathWithGroupedPath(
-                expression, rawPathToGroupedPathMapInHaving);
-        convertedPredicates.add(convertedPredicate);
-        analyzeExpression(analysis, expression);
-      }
-      return ExpressionUtils.constructQueryFilter(
-          convertedPredicates.stream().distinct().collect(Collectors.toList()));
-    }
-
-    return ExpressionUtils.constructQueryFilter(
-        transformExpressionsInHaving.stream().distinct().collect(Collectors.toList()));
-  }
-
-  private Map<Expression, Expression> analyzeGroupByLevelInHaving(
-      Analysis analysis,
-      List<Expression> inputExpressions,
-      Map<Expression, Set<Expression>> groupByLevelExpressions) {
-    QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
-    GroupByLevelController groupByLevelController =
-        new GroupByLevelController(queryStatement.getGroupByLevelComponent().getLevels());
-    for (Expression inputExpression : inputExpressions) {
-      groupByLevelController.control(false, inputExpression, null);
-    }
-    Map<Expression, Set<Expression>> groupedPathMap = groupByLevelController.getGroupedPathMap();
-    groupedPathMap.keySet().forEach(expression -> analyzeExpression(analysis, expression));
-    groupByLevelExpressions.putAll(groupedPathMap);
-    return groupByLevelController.getRawPathToGroupedPathMap();
-  }
-
-  private void analyzeGroupByLevel(
-      Analysis analysis,
-      QueryStatement queryStatement,
-      List<Pair<Expression, String>> outputExpressions,
-      Set<Expression> selectExpressions,
-      Expression havingExpression) {
-    if (!queryStatement.isGroupByLevel()) {
-      return;
-    }
-
-    GroupByLevelController groupByLevelController =
-        new GroupByLevelController(queryStatement.getGroupByLevelComponent().getLevels());
-    for (int i = 0; i < outputExpressions.size(); i++) {
-      Pair<Expression, String> expressionAliasPair = outputExpressions.get(i);
-      boolean isCountStar = queryStatement.getGroupByLevelComponent().isCountStar(i);
-      groupByLevelController.control(
-          isCountStar, expressionAliasPair.left, expressionAliasPair.right);
-    }
-    Map<Expression, Set<Expression>> rawGroupByLevelExpressions =
-        groupByLevelController.getGroupedPathMap();
-    Map<Expression, Expression> rawPathToGroupedPathMap =
-        new HashMap<>(groupByLevelController.getRawPathToGroupedPathMap());
-
-    Map<Expression, Set<Expression>> groupByLevelExpressions = new LinkedHashMap<>();
-    outputExpressions.clear();
-    ColumnPaginationController paginationController =
-        new ColumnPaginationController(
-            queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
-    for (Expression groupedExpression : rawGroupByLevelExpressions.keySet()) {
-      if (paginationController.hasCurOffset()) {
-        paginationController.consumeOffset();
-        continue;
-      }
-      if (paginationController.hasCurLimit()) {
-        Pair<Expression, String> outputExpression =
-            removeAliasFromExpression(
-                groupedExpression,
-                groupByLevelController.getAlias(groupedExpression.getExpressionString()));
-        Expression groupedExpressionWithoutAlias = outputExpression.left;
-
-        Set<Expression> rawExpressions = rawGroupByLevelExpressions.get(groupedExpression);
-        rawExpressions.forEach(expression -> analyzeExpression(analysis, expression));
-
-        Set<Expression> rawExpressionsWithoutAlias =
-            rawExpressions.stream()
-                .map(ExpressionAnalyzer::removeAliasFromExpression)
-                .collect(Collectors.toSet());
-        rawExpressionsWithoutAlias.forEach(expression -> analyzeExpression(analysis, expression));
-
-        groupByLevelExpressions.put(groupedExpressionWithoutAlias, rawExpressionsWithoutAlias);
-        analyzeExpression(analysis, groupedExpressionWithoutAlias);
-        outputExpressions.add(outputExpression);
-        paginationController.consumeLimit();
-      } else {
-        break;
-      }
-    }
-
-    // reset selectExpressions after applying SLIMIT/SOFFSET
-    selectExpressions.clear();
-    selectExpressions.addAll(
-        groupByLevelExpressions.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
-
-    analysis.setGroupByLevelExpressions(groupByLevelExpressions);
-    analysis.setRawPathToGroupedPathMap(rawPathToGroupedPathMap);
-  }
-
-  private Pair<Expression, String> removeAliasFromExpression(
-      Expression rawExpression, String rawAlias) {
-    Expression expressionWithoutAlias = ExpressionAnalyzer.removeAliasFromExpression(rawExpression);
-    String alias =
-        !Objects.equals(expressionWithoutAlias, rawExpression)
-            ? rawExpression.getExpressionString()
-            : null;
-    alias = rawAlias == null ? alias : rawAlias;
-    return new Pair<>(expressionWithoutAlias, alias);
-  }
-
   private void analyzeDeviceView(
       Analysis analysis,
       QueryStatement queryStatement,
@@ -905,7 +884,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           new ArrayList<>(deviceToMeasurementsMap.get(deviceName));
       List<Integer> indexes = new ArrayList<>();
       for (String measurement : measurementsUnderDevice) {
-        indexes.add(allMeasurements.indexOf(measurement));
+        indexes.add(allMeasurements.indexOf(measurement) + 1); // add 1 to skip device column
       }
       deviceToMeasurementIndexesMap.put(deviceName, indexes);
     }
