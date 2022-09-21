@@ -21,6 +21,8 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.TagSchemaConfig;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.TagSchemaDescriptor;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion.DeletionManager;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion.InsertionManager;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
@@ -48,6 +50,9 @@ public class TagInvertedIndex implements ITagInvertedIndex {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  private static final TagSchemaConfig tagSchemaConfig =
+      TagSchemaDescriptor.getInstance().getTagSchemaConfig();
+
   private final InsertionManager insertionManager;
 
   private final DeletionManager deletionManager;
@@ -74,7 +79,7 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     queryManager = new QueryManager();
     workingMemTable = new MemTable(MemTable.WORKING);
     immutableMemTables = new HashMap<>();
-    numOfDeviceIdsInMemTable = config.getNumOfDeviceIdsInMemTable();
+    numOfDeviceIdsInMemTable = tagSchemaConfig.getNumOfDeviceIdsInMemTable();
     maxDeviceID = 0;
     recover();
   }

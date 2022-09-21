@@ -34,15 +34,18 @@ public class WALWriter implements IWALWriter {
   private File logFile;
   private FileOutputStream fileOutputStream;
   private FileChannel channel;
-  private final ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
-  private final ByteBuffer walBuffer = ByteBuffer.allocate(10000);
+  private final ByteBuffer lengthBuffer;
+  private final ByteBuffer walBuffer;
   private final boolean forceEachWrite;
 
-  public WALWriter(File logFile, boolean forceEachWrite) throws FileNotFoundException {
+  public WALWriter(File logFile, int walBufferSize, boolean forceEachWrite)
+      throws FileNotFoundException {
     this.logFile = logFile;
     this.forceEachWrite = forceEachWrite;
     fileOutputStream = new FileOutputStream(logFile, true);
     channel = fileOutputStream.getChannel();
+    lengthBuffer = ByteBuffer.allocate(4);
+    walBuffer = ByteBuffer.allocate(walBufferSize);
   }
 
   @Override

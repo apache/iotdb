@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex;
 
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.TagSchemaDescriptor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.After;
@@ -74,8 +75,8 @@ public class TagInvertedIndexTest {
   @Before
   public void setUp() throws Exception {
     numOfDeviceIdsInMemTable =
-        IoTDBDescriptor.getInstance().getConfig().getNumOfDeviceIdsInMemTable();
-    IoTDBDescriptor.getInstance().getConfig().setNumOfDeviceIdsInMemTable(3);
+        TagSchemaDescriptor.getInstance().getTagSchemaConfig().getNumOfDeviceIdsInMemTable();
+    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setNumOfDeviceIdsInMemTable(3);
     schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
     storageGroupDirPath = schemaDir + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + 0;
@@ -84,7 +85,9 @@ public class TagInvertedIndexTest {
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setNumOfDeviceIdsInMemTable(numOfDeviceIdsInMemTable);
+    TagSchemaDescriptor.getInstance()
+        .getTagSchemaConfig()
+        .setNumOfDeviceIdsInMemTable(numOfDeviceIdsInMemTable);
     tagInvertedIndex.clear();
     tagInvertedIndex = null;
     FileUtils.deleteDirectoryAndEmptyParent(new File(schemaDir));

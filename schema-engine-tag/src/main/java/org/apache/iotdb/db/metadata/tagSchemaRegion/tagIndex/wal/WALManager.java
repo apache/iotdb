@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.TagSchemaConfig;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.TagSchemaDescriptor;
 import org.apache.iotdb.lsm.context.Context;
 import org.apache.iotdb.lsm.context.DeleteContext;
 import org.apache.iotdb.lsm.context.InsertContext;
@@ -30,18 +32,28 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class WALManager {
-  private static final String WAL_FILE_NAME = "tagInvertedIndex.log";
+  private static final String WAL_FILE_NAME = "tag_inverted_index.log";
+
   private static final int INSERT = 1;
+
   private static final int DELETE = 2;
+
+  private final TagSchemaConfig tagSchemaConfig =
+      TagSchemaDescriptor.getInstance().getTagSchemaConfig();
+
   private final String schemaDirPath;
+
   private File walFile;
+
   private WALWriter walWriter;
+
   private WALReader walReader;
 
   public WALManager(String schemaDirPath) throws IOException {
     this.schemaDirPath = schemaDirPath;
     initFile(schemaDirPath);
-    walWriter = new WALWriter(walFile, false);
+    int walBufferSize = tagSchemaConfig.getWalBufferSize();
+    walWriter = new WALWriter(walFile, walBufferSize, false);
     walReader = new WALReader(walFile, new WALEntry());
   }
 
