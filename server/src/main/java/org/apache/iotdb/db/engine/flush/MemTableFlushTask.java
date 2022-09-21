@@ -280,9 +280,9 @@ public class MemTableFlushTask {
               this.writer.setMinPlanIndex(memTable.getMinPlanIndex());
               this.writer.setMaxPlanIndex(memTable.getMaxPlanIndex());
               this.writer.endChunkGroup();
+              writer.checkMetadataSizeAndMayFlush();
             } else {
               ((IChunkWriter) ioMessage).writeToFileWriter(this.writer);
-              writer.checkMetadataSizeAndMayFlush();
             }
           } catch (IOException e) {
             LOGGER.error(

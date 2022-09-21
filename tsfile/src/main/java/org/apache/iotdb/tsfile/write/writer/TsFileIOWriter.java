@@ -194,11 +194,27 @@ public class TsFileIOWriter implements AutoCloseable {
     if (currentChunkGroupDeviceId == null || chunkMetadataList.isEmpty()) {
       return;
     }
+    if (chunkMetadataSorted) {
+      checkChunkMetadataOrder();
+    }
     chunkGroupMetadataList.add(
         new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
     currentChunkGroupDeviceId = null;
     chunkMetadataList = null;
     out.flush();
+  }
+
+  private void checkChunkMetadataOrder() {
+    String prevSeries = null;
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      if (prevSeries != null && chunkMetadata.getMeasurementUid().compareTo(prevSeries) < 0) {
+        throw new RuntimeException(
+            String.format(
+                "Measurement %s is smaller than %s in device %s",
+                chunkMetadata.getMeasurementUid(), prevSeries, currentChunkGroupDeviceId));
+      }
+      prevSeries = chunkMetadata.getMeasurementUid();
+    }
   }
 
   /**
