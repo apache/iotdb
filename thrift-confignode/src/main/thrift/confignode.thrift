@@ -754,12 +754,20 @@ service IConfigNodeRPCService {
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 
+  // ======================================================
+  // Sync
+  // ======================================================
+
+  /** Create PipeSink */
   common.TSStatus createPipeSink(TPipeSinkInfo req)
 
+  /** Drop PipeSink */
   common.TSStatus dropPipeSink(TDropPipeSinkReq req)
 
+  /** Get all PipeSink */
   TGetAllPipeSinkResp getAllPipeSink()
 
+  /** Get PipeSink by name */
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
 }
 
