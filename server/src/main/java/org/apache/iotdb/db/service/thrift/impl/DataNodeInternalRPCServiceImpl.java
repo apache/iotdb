@@ -562,13 +562,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
 
       // Sample disk load
-      sampleDiskLoad(resp, loadSample);
+      sampleDiskLoad(loadSample);
 
       resp.setLoadSample(loadSample);
     }
 
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
+    if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {
+      resp.setStatusReason(CommonDescriptor.getInstance().getConfig().getStatusReason());
+    }
     return resp;
   }
 
@@ -634,7 +637,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return result;
   }
 
-  private void sampleDiskLoad(THeartbeatResp resp, TLoadSample loadSample) {
+  private void sampleDiskLoad(TLoadSample loadSample) {
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
     long freeDisk =
@@ -658,9 +661,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       double freeDiskRatio = (double) freeDisk * 100 / totalDisk;
       loadSample.setDiskUsageRate(100.0 - freeDiskRatio);
       // Reset NodeStatus if necessary
-      if (freeDiskRatio < commonConfig.getDiskFullThreshold()) {
+      if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
-        resp.setStatusReason(NodeStatus.DISK_FULL);
+        commonConfig.setStatusReason(NodeStatus.DISK_FULL);
       }
     }
   }

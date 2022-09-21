@@ -106,13 +106,14 @@ public class CommonDescriptor {
             properties.getProperty(
                 "handle_system_error", String.valueOf(config.getHandleSystemErrorStrategy()))));
 
-    config.setDiskFullThreshold(
+    config.setDiskSpaceWarningThreshold(
         Double.parseDouble(
             properties.getProperty(
-                "disk_full_threshold", String.valueOf(config.getDiskFullThreshold()))));
+                "disk_space_warning_threshold",
+                String.valueOf(config.getDiskSpaceWarningThreshold()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
-    config.setDiskFullThreshold(globalConfig.getDiskFullThreshold());
+    config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
   }
 }

@@ -687,8 +687,8 @@ public class ConfigManager implements IManager {
     if (!req.getReadConsistencyLevel().equals(conf.getReadConsistencyLevel())) {
       return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
     }
-    if (req.getDiskFullThreshold()
-        != CommonDescriptor.getInstance().getConfig().getDiskFullThreshold()) {
+    if (req.getDiskSpaceWarningThreshold()
+        != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_full_threshold" + errorSuffix);
     }
     return null;

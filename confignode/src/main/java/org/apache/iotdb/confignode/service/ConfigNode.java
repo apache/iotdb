@@ -199,7 +199,7 @@ public class ConfigNode implements ConfigNodeMBean {
             CONF.getDataReplicationFactor(),
             CONF.getDataRegionPerProcessor(),
             CONF.getReadConsistencyLevel(),
-            CommonDescriptor.getInstance().getConfig().getDiskFullThreshold());
+            CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {

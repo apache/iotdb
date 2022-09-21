@@ -112,8 +112,10 @@ public class CommonConfig {
   /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
 
+  private volatile String statusReason = null;
+
   /** Disk Monitor */
-  private double diskFullThreshold = 5.0;
+  private double diskSpaceWarningThreshold = 5.0;
 
   CommonConfig() {}
 
@@ -278,12 +280,12 @@ public class CommonConfig {
     handleSystemErrorStrategy.handle();
   }
 
-  public double getDiskFullThreshold() {
-    return diskFullThreshold;
+  public double getDiskSpaceWarningThreshold() {
+    return diskSpaceWarningThreshold;
   }
 
-  public void setDiskFullThreshold(double diskFullThreshold) {
-    this.diskFullThreshold = diskFullThreshold;
+  public void setDiskSpaceWarningThreshold(double diskSpaceWarningThreshold) {
+    this.diskSpaceWarningThreshold = diskSpaceWarningThreshold;
   }
 
   public boolean isReadOnly() {
@@ -314,5 +316,13 @@ public class CommonConfig {
             "Change system status to Removing! The current Node is being removed from cluster!");
         break;
     }
+  }
+
+  public String getStatusReason() {
+    return statusReason;
+  }
+
+  public void setStatusReason(String statusReason) {
+    this.statusReason = statusReason;
   }
 }

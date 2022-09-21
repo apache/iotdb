@@ -135,7 +135,7 @@ public class NodeManager {
         configNodeConfig.getSeriesPartitionExecutorClass());
     globalConfig.setTimePartitionInterval(configNodeConfig.getTimePartitionInterval());
     globalConfig.setReadConsistencyLevel(configNodeConfig.getReadConsistencyLevel());
-    globalConfig.setDiskFullThreshold(commonConfig.getDiskFullThreshold());
+    globalConfig.setDiskSpaceWarningThreshold(commonConfig.getDiskSpaceWarningThreshold());
     dataSet.setGlobalConfig(globalConfig);
   }
 
