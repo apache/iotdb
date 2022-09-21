@@ -865,17 +865,8 @@ public class StorageEngine implements IService {
         throw new BatchProcessException(results);
       }
     }
-    VirtualStorageGroupProcessor virtualStorageGroupProcessor;
-    try {
-      virtualStorageGroupProcessor = getProcessor(insertTabletPlan.getDevicePath());
-    } catch (StorageEngineException e) {
-      throw new StorageEngineException(
-          String.format(
-              "Get StorageGroupProcessor of device %s " + "failed",
-              insertTabletPlan.getDevicePath()),
-          e);
-    }
-
+    VirtualStorageGroupProcessor virtualStorageGroupProcessor =
+        getProcessor(insertTabletPlan.getDevicePath());
     getSeriesSchemas(insertTabletPlan, virtualStorageGroupProcessor);
     virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
   }
