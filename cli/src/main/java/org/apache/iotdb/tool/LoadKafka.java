@@ -32,6 +32,8 @@ import org.apache.commons.cli.ParseException;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.UserInterruptException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,6 +42,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class LoadKafka extends AbstractKafkaTool {
+  private static final Logger logger = LoggerFactory.getLogger(LoadKafka.class);
 
   private static CommandLine commandLine;
   private static LineReader lineReader;
@@ -145,7 +148,7 @@ public class LoadKafka extends AbstractKafkaTool {
       console.println("Successfully connected to Kafka.");
       kl.run();
       String s;
-      console.println(LOADER_CLI_PREFIX + "> start successfully");
+      console.println("start successfully");
       while (true) {
         try {
           console.print(LOADER_CLI_PREFIX + "> ");
@@ -165,8 +168,7 @@ public class LoadKafka extends AbstractKafkaTool {
         }
       }
     } catch (Exception e) {
-      console.printf(
-          "%s> %s Host is %s, port is %s.%n", LOADER_CLI_PREFIX, e.getMessage(), host, port);
+      console.printf("%s Host is %s, port is %s.%n", e.getMessage(), host, port);
       System.exit(CODE_ERROR);
     }
   }

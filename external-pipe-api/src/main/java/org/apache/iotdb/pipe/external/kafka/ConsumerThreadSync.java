@@ -58,6 +58,9 @@ public class ConsumerThreadSync implements Runnable {
    */
   private void handleDatas(List<String> datas) {
     int size = datas.size();
+    int num = 0;
+    int num_string = 0;
+
     List<String> deviceIds = new ArrayList<>(size);
     List<Long> times = new ArrayList<>(size);
     List<List<String>> measurementsList = new ArrayList<>(size);
@@ -75,12 +78,11 @@ public class ConsumerThreadSync implements Runnable {
       String[] suffix = StringUtils.split(data, ":");
       if (suffix[0].equals("delete")) {
         if (single_partition) {
-          int size_p = deviceIds.size();
           if (!deviceIds.isEmpty()) {
             try {
               pool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
               this.consumerSyncStatus.setNumOfSuccessfulInsertion(
-                  consumerSyncStatus.getNumOfSuccessfulInsertion() + size_p);
+                  consumerSyncStatus.getNumOfSuccessfulInsertion() + num);
               deviceIds.clear();
               times.clear();
               measurementsList.clear();
@@ -90,17 +92,17 @@ public class ConsumerThreadSync implements Runnable {
               logger.error(
                   "Kafka sync insertion failure, data batch = \n{}", String.join("\n", datas), e);
               this.consumerSyncStatus.setNumOfFailedInsertion(
-                  consumerSyncStatus.getNumOfFailedInsertion() + size_p);
+                  consumerSyncStatus.getNumOfFailedInsertion() + num);
             }
           }
+          num = 0;
 
-          int size_s = deviceStringIds.size();
           if (!deviceStringIds.isEmpty()) {
             try {
               pool.insertRecords(
                   deviceStringIds, stringTimes, measurementsStringList, valuesStringList);
               this.consumerSyncStatus.setNumOfSuccessfulStringInsertion(
-                  consumerSyncStatus.getNumOfSuccessfulStringInsertion() + size_s);
+                  consumerSyncStatus.getNumOfSuccessfulStringInsertion() + num_string);
               deviceStringIds.clear();
               stringTimes.clear();
               measurementsStringList.clear();
@@ -111,9 +113,11 @@ public class ConsumerThreadSync implements Runnable {
                   String.join("\n", datas),
                   e);
               this.consumerSyncStatus.setNumOfFailedStringInsertion(
-                  consumerSyncStatus.getNumOfFailedStringInsertion() + size_s);
+                  consumerSyncStatus.getNumOfFailedStringInsertion() + num_string);
             }
           }
+          num_string = 0;
+
           try {
             pool.deleteData(
                 Collections.singletonList(suffix[1]),
@@ -158,10 +162,12 @@ public class ConsumerThreadSync implements Runnable {
       }
 
       if (is_string_insert) {
+        List<String> values = Arrays.asList(dataArray[3].split(":"));
         deviceStringIds.add(device);
-        valuesStringList.add(Arrays.asList(dataArray[3].split(":")));
+        valuesStringList.add(values);
         stringTimes.add(time);
         measurementsStringList.add(measurements);
+        num_string += values.size();
         continue;
       }
 
@@ -194,18 +200,19 @@ public class ConsumerThreadSync implements Runnable {
       typesList.add(types);
       times.add(time);
       measurementsList.add(measurements);
+      num += values.size();
     }
 
     if (!deviceIds.isEmpty()) {
       try {
         pool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
         this.consumerSyncStatus.setNumOfSuccessfulInsertion(
-            consumerSyncStatus.getNumOfSuccessfulInsertion() + deviceIds.size());
+            consumerSyncStatus.getNumOfSuccessfulInsertion() + num);
       } catch (Exception e) {
         logger.error(
             "Kafka sync insertion failure, data batch = \n{}", String.join("\n", datas), e);
         this.consumerSyncStatus.setNumOfFailedInsertion(
-            consumerSyncStatus.getNumOfFailedInsertion() + deviceIds.size());
+            consumerSyncStatus.getNumOfFailedInsertion() + num);
       }
     }
 
@@ -213,12 +220,22 @@ public class ConsumerThreadSync implements Runnable {
       try {
         pool.insertRecords(deviceStringIds, stringTimes, measurementsStringList, valuesStringList);
         this.consumerSyncStatus.setNumOfSuccessfulStringInsertion(
-            consumerSyncStatus.getNumOfSuccessfulStringInsertion() + deviceStringIds.size());
+            consumerSyncStatus.getNumOfSuccessfulStringInsertion() + num_string);
       } catch (Exception e) {
-        logger.error(
-            "Kafka sync string insertion failure, data batch = \n{}", String.join("\n", datas), e);
-        this.consumerSyncStatus.setNumOfFailedStringInsertion(
-            consumerSyncStatus.getNumOfFailedStringInsertion() + deviceStringIds.size());
+        try {
+          pool.insertRecords(
+              deviceStringIds, stringTimes, measurementsStringList, valuesStringList);
+          this.consumerSyncStatus.setNumOfSuccessfulStringInsertion(
+              consumerSyncStatus.getNumOfSuccessfulStringInsertion() + num_string);
+        } catch (Exception err) {
+          logger.error(
+              "Kafka sync string insertion failure, data batch = \n{}",
+              String.join("\n", datas),
+              err);
+          this.consumerSyncStatus.setNumOfFailedStringInsertion(
+              consumerSyncStatus.getNumOfFailedStringInsertion() + num_string);
+          System.out.println("Error:" + err);
+        }
       }
     }
 
