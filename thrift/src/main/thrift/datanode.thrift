@@ -174,6 +174,10 @@ struct TcreateTriggerInstanceReq {
   2: required binary jarFile
 }
 
+struct TactiveTriggerInstanceReq {
+  1: required string triggerName
+}
+
 struct TDropTriggerInstanceReq {
   1: required string triggerName
   2: required bool needToDeleteJarFile
@@ -212,6 +216,57 @@ struct TUpdateTemplateReq{
   2: required binary templateInfo
 }
 
+struct TTsFilePieceReq{
+    1: required binary body
+    2: required string uuid
+    3: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TLoadCommandReq{
+    1: required i32 commandType
+    2: required string uuid
+}
+
+struct TLoadResp{
+  1: required bool accepted
+  2: optional string message
+  3: optional common.TSStatus status
+}
+
+struct TConstructSchemaBlackListReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TRollbackSchemaBlackListReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TInvalidateMatchedSchemaCacheReq{
+  1: required binary pathPatternTree
+}
+
+struct TFetchSchemaBlackListReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TFetchSchemaBlackListResp{
+  1: required common.TSStatus status
+  2: required binary pathPatternTree
+}
+
+struct TDeleteDataForDeleteTimeSeriesReq{
+  1: required list<common.TConsensusGroupId> dataRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TDeleteTimeSeriesReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -235,6 +290,10 @@ service IDataNodeRPCService {
   TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
   TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req)
+
+  TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
+
+  TLoadResp sendLoadCommand(TLoadCommandReq req);
 
 
   // -----------------------------------For Config Node-----------------------------------------------
@@ -261,11 +320,11 @@ service IDataNodeRPCService {
   common.TSStatus invalidatePartitionCache(TInvalidateCacheReq req)
 
   /**
-       * Config node will invalidate Schema Info cache.
-       *
-       * @param bool:isStorageGroup, string:fullPath
-       */
-    common.TSStatus invalidateSchemaCache(TInvalidateCacheReq req)
+     * Config node will invalidate Schema Info cache.
+     *
+     * @param bool:isStorageGroup, string:fullPath
+     */
+  common.TSStatus invalidateSchemaCache(TInvalidateCacheReq req)
 
   /**
      * Config node will delete a data/schema region of a certain storageGroup.
@@ -348,19 +407,26 @@ service IDataNodeRPCService {
    **/
   common.TSStatus dropFunction(TDropFunctionRequest req)
 
-   /**
-    * Config node will create a trigger instance on data node.
-    *
-    * @param TriggerInformation, jar file.
-    **/
+  /**
+   * Config node will create a trigger instance on data node.
+   *
+   * @param TriggerInformation, jar file.
+   **/
   common.TSStatus createTriggerInstance(TcreateTriggerInstanceReq req)
 
   /**
-     * Config node will drop a trigger on all online config nodes and data nodes.
-     *
-     * @param trigger name, whether need to delete jar
-     **/
-    common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
+   * Config node will active a trigger instance on data node.
+   *
+   * @param trigger name.
+   **/
+  common.TSStatus activeTriggerInstance(TactiveTriggerInstanceReq req)
+
+  /**
+    * Config node will drop a trigger on all online config nodes and data nodes.
+    *
+    * @param trigger name, whether need to delete jar
+    **/
+  common.TSStatus dropTriggerInstance(TDropTriggerInstanceReq req)
 
   /**
    * Config node will invalidate permission Info cache.
@@ -393,7 +459,44 @@ service IDataNodeRPCService {
    */
   common.TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req)
 
+  /**
+   * Update template cache when template info or template set info is updated
+   */
   common.TSStatus updateTemplate(TUpdateTemplateReq req)
+
+  /**
+   * Construct schema black list in target schemaRegion to block R/W on matched timeseries
+   */
+  common.TSStatus constructSchemaBlackList(TConstructSchemaBlackListReq req)
+
+  /**
+   * Remove the schema black list to recover R/W on matched timeseries
+   */
+  common.TSStatus rollbackSchemaBlackList(TRollbackSchemaBlackListReq req)
+
+  /**
+   * Config node will invalidate Schema Info cache, which matched by given pathPatternTree.
+   *
+   * @param binary: pathPatternTree
+   */
+  common.TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req)
+
+  /**
+   * Config node will fetch the schema info in black list.
+   *
+   * @param binary: pathPatternTree
+   */
+  TFetchSchemaBlackListResp fetchSchemaBlackList(TFetchSchemaBlackListReq req)
+
+  /**
+   * Config node inform this dataNode to execute a distribution data deleion mpp task
+   */
+  common.TSStatus deleteDataForDeleteTimeSeries(TDeleteDataForDeleteTimeSeriesReq req)
+
+ /**
+  * Delete matched timeseries and remove according schema black list in target schemRegion
+  */
+  common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 }
 
 service MPPDataExchangeService {

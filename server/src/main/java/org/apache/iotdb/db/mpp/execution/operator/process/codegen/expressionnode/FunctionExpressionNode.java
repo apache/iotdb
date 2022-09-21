@@ -31,7 +31,7 @@ public class FunctionExpressionNode extends ExpressionNodeImpl {
 
   private String executorName;
 
-  private TSDataType tsDataType;
+  private final TSDataType tsDataType;
 
   private List<ExpressionNode> subNodes;
 
@@ -76,27 +76,16 @@ public class FunctionExpressionNode extends ExpressionNodeImpl {
 
   @Override
   public String toCode() {
-    //    return "(" + getType() + ")" + "UDTFCaller.udtfCall(" + executorName + ", " + rowName +
-    // ")";
     return "UDTFCaller.udtfCall(" + executorName + ", " + rowName + ").toString()";
   }
 
   @Override
-  public List<String> getSubNodes() {
+  public List<String> getIsNullCheckNodes() {
     ArrayList<String> subNodes = new ArrayList<>();
     for (ExpressionNode node : this.subNodes) {
       subNodes.add(node.getNodeName());
     }
     return subNodes;
-  }
-
-  @Override
-  public List<String> getAllSubNodes() {
-    ArrayList<String> allSubNodes = new ArrayList<>();
-    for (ExpressionNode node : this.subNodes) {
-      allSubNodes.addAll(node.getAllSubNodes());
-    }
-    return allSubNodes;
   }
 
   public void addSubExpressionNode(ExpressionNode subNode) {

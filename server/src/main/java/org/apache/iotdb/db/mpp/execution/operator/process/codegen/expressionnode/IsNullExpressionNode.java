@@ -23,9 +23,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class IsNullExpressionNode extends ExpressionNodeImpl {
-  private ExpressionNode subExpression;
+  private final ExpressionNode subExpression;
 
-  private boolean isNotNull;
+  private final boolean isNotNull;
 
   public IsNullExpressionNode(String nodeName, ExpressionNode subExpression, boolean isNotNull) {
     this.isNotNull = isNotNull;
@@ -33,32 +33,14 @@ public class IsNullExpressionNode extends ExpressionNodeImpl {
     this.subExpression = subExpression;
   }
 
-  // subExpressionNode of IsNullExpressionNode should always have a name
-  public IsNullExpressionNode(ExpressionNode subExpression, boolean isNotNull) {
-    this.nodeName = null;
-    this.subExpression = subExpression;
-    this.isNotNull = isNotNull;
-  }
-
   @Override
   public String toCode() {
-    String op = isNotNull ? "!=" : "==";
-    if (subExpression.getNodeName() != null) {
-      return subExpression.getNodeName() + " " + op + " null ";
-    }
-    // this should not happen, and may be meaningless
-    return bracket(subExpression.toCode()) + " " + op + " null";
+    String bool = isNotNull ? "false" : "true";
+    return subExpression.getNodeName() + "IsNull == " + bool;
   }
 
   @Override
-  public List<String> getSubNodes() {
-    ArrayList<String> subNodes = new ArrayList<>();
-    subNodes.add(subExpression.getNodeName());
-    return subNodes;
-  }
-
-  @Override
-  public List<String> getAllSubNodes() {
-    return subExpression.getAllSubNodes();
+  public List<String> getIsNullCheckNodes() {
+    return new ArrayList<>();
   }
 }

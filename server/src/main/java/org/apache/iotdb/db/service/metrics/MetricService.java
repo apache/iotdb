@@ -29,10 +29,10 @@ import org.apache.iotdb.db.service.metrics.predefined.ProcessMetrics;
 import org.apache.iotdb.db.service.metrics.predefined.SystemMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
-import org.apache.iotdb.metrics.predefined.jvm.JvmMetrics;
-import org.apache.iotdb.metrics.predefined.logback.LogbackMetrics;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.metricsets.predefined.jvm.JvmMetrics;
+import org.apache.iotdb.metrics.metricsets.predefined.logback.LogbackMetrics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +60,12 @@ public class MetricService extends AbstractMetricService implements MetricServic
     }
   }
 
+  public void restart() {
+    logger.info("Restart metric Service.");
+    restartService();
+    logger.info("Finish restart metric Service");
+  }
+
   @Override
   public void stop() {
     if (isEnable()) {
@@ -68,12 +74,6 @@ public class MetricService extends AbstractMetricService implements MetricServic
       JMXService.deregisterMBean(mbeanName);
       logger.info("Finish stop metric Service");
     }
-  }
-
-  @Override
-  public void restartService() throws StartupException {
-    stopService();
-    startService();
   }
 
   @Override
@@ -99,9 +99,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
         logger.error("Unknown predefined metrics: {}", metric);
         return;
     }
-    metricSet.bindTo(metricManager);
-    metricSet.startAsyncCollectedMetrics();
-    metricSets.add(metricSet);
+    metricSet.bindTo(this);
   }
 
   @Override
@@ -119,14 +117,13 @@ public class MetricService extends AbstractMetricService implements MetricServic
             isEnableMetric = false;
             break;
           case RESTART_METRIC:
-            stop();
             isEnableMetric = true;
-            start();
+            restart();
             break;
           case RESTART_REPORTER:
-            compositeReporter.stopAll();
+            stopAllReporter();
             loadReporter();
-            compositeReporter.startAll();
+            startAllReporter();
             logger.info("Finish restart metric reporters.");
             break;
           case NOTHING:

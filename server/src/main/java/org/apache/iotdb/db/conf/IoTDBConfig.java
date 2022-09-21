@@ -32,8 +32,11 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
+import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -257,13 +260,17 @@ public class IoTDBConfig {
   private String udfDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
-  /** External temporary lib directory for storing downloaded JAR files */
-  private String temporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+  /** External temporary lib directory for storing downloaded udf JAR files */
+  private String udfTemporaryLibDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
 
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
+
+  /** External temporary lib directory for storing downloaded trigger JAR files */
+  private String triggerTemporaryLibDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
 
   /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
@@ -287,6 +294,9 @@ public class IoTDBConfig {
   private String[] dataDirs = {
     IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME
   };
+
+  private String loadTsFileDir =
+      dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
@@ -380,6 +390,9 @@ public class IoTDBConfig {
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
   private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
+
+  /** The sort algorithm used in TVList */
+  private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 100000;
@@ -797,6 +810,9 @@ public class IoTDBConfig {
   /** Unit: byte */
   private int thriftMaxFrameSize = 536870912;
 
+  /** Max size of a {@link PlanNode}, mainly used to control memory of {@link LoadTsFileNode}. */
+  private int maxPlanNodeSize = thriftMaxFrameSize;
+
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
   /** time interval in minute for calculating query frequency. Unit: minute */
@@ -989,6 +1005,9 @@ public class IoTDBConfig {
   /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
+  /** Maximum wait time of write cache in MultiLeader consensus. Unit: ms */
+  private long cacheWindowTimeInMs = Long.MAX_VALUE;
+
   private long RatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
 
   IoTDBConfig() {}
@@ -1074,6 +1093,10 @@ public class IoTDBConfig {
     this.partitionInterval = partitionInterval;
   }
 
+  public long getMaxPlanNodeSize() {
+    return maxPlanNodeSize;
+  }
+
   public TimeIndexLevel getTimeIndexLevel() {
     return timeIndexLevel;
   }
@@ -1091,6 +1114,7 @@ public class IoTDBConfig {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
+    loadTsFileDir = addHomeDir(loadTsFileDir);
     tracingDir = addHomeDir(tracingDir);
     consensusDir = addHomeDir(consensusDir);
     dataRegionConsensusDir = addHomeDir(dataRegionConsensusDir);
@@ -1098,14 +1122,12 @@ public class IoTDBConfig {
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
-    temporaryLibDir = addHomeDir(temporaryLibDir);
+    udfTemporaryLibDir = addHomeDir(udfTemporaryLibDir);
     triggerDir = addHomeDir(triggerDir);
+    triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
     mqttDir = addHomeDir(mqttDir);
     externalPropertiesLoaderDir = addHomeDir(externalPropertiesLoaderDir);
     externalLimiterDir = addHomeDir(externalLimiterDir);
-    for (int i = 0; i < walDirs.length; i++) {
-      walDirs[i] = addHomeDir(walDirs[i]);
-    }
     extPipeDir = addHomeDir(extPipeDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
@@ -1254,6 +1276,14 @@ public class IoTDBConfig {
     this.systemDir = systemDir;
   }
 
+  public String getLoadTsFileDir() {
+    return loadTsFileDir;
+  }
+
+  public void setLoadTsFileDir(String loadTsFileDir) {
+    this.loadTsFileDir = loadTsFileDir;
+  }
+
   public String getSchemaDir() {
     return schemaDir;
   }
@@ -1316,12 +1346,12 @@ public class IoTDBConfig {
     return udfDir;
   }
 
-  public String getTemporaryLibDir() {
-    return temporaryLibDir;
-  }
-
   public void setUdfDir(String udfDir) {
     this.udfDir = udfDir;
+  }
+
+  public String getUdfTemporaryLibDir() {
+    return udfTemporaryLibDir;
   }
 
   public String getTriggerDir() {
@@ -1330,6 +1360,10 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
+  }
+
+  public String getTriggerTemporaryLibDir() {
+    return triggerTemporaryLibDir;
   }
 
   public String getMqttDir() {
@@ -1576,14 +1610,6 @@ public class IoTDBConfig {
 
   public void setWalMode(WALMode walMode) {
     this.walMode = walMode;
-  }
-
-  public String[] getWalDirs() {
-    return walDirs;
-  }
-
-  public void setWalDirs(String[] walDirs) {
-    this.walDirs = walDirs;
   }
 
   public int getMaxWalNodesNum() {
@@ -1898,6 +1924,14 @@ public class IoTDBConfig {
 
   public void setUnseqMemtableFlushCheckInterval(long unseqMemtableFlushCheckInterval) {
     this.unseqMemtableFlushCheckInterval = unseqMemtableFlushCheckInterval;
+  }
+
+  public TVListSortAlgorithm getTvListSortAlgorithm() {
+    return tvListSortAlgorithm;
+  }
+
+  public void setTvListSortAlgorithm(TVListSortAlgorithm tvListSortAlgorithm) {
+    this.tvListSortAlgorithm = tvListSortAlgorithm;
   }
 
   public int getAvgSeriesPointNumberThreshold() {
@@ -2409,6 +2443,10 @@ public class IoTDBConfig {
   public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     RpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
+  }
+
+  public void setMaxPlanNodeSize(int maxPlanNodeSize) {
+    this.maxPlanNodeSize = maxPlanNodeSize;
   }
 
   public int getThriftDefaultBufferSize() {
@@ -3139,6 +3177,14 @@ public class IoTDBConfig {
 
   public void setThrottleThreshold(long throttleThreshold) {
     this.throttleThreshold = throttleThreshold;
+  }
+
+  public long getCacheWindowTimeInMs() {
+    return cacheWindowTimeInMs;
+  }
+
+  public void setCacheWindowTimeInMs(long cacheWindowTimeInMs) {
+    this.cacheWindowTimeInMs = cacheWindowTimeInMs;
   }
 
   public long getRatisConsensusLogAppenderBufferSizeMax() {

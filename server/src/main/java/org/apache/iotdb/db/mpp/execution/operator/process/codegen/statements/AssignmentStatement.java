@@ -54,7 +54,11 @@ public class AssignmentStatement implements Statement {
   }
 
   public ExpressionNode getNullCondition() {
-    List<String> subNodes = es.getSubNodes();
+    List<String> subNodes = es.getIsNullCheckNodes();
+    if (subNodes == null || subNodes.size() == 0) {
+      // no condition, always treat as variable will not be null
+      return new ConstantExpressionNode("false");
+    }
     StringBuilder conditionCode = new StringBuilder();
     for (String subNodeName : subNodes) {
       if (subNodeName != null) {

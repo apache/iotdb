@@ -33,12 +33,7 @@ public class IdentityExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public List<String> getSubNodes() {
-    return new ArrayList<>();
-  }
-
-  @Override
-  public List<String> getAllSubNodes() {
+  public List<String> getIsNullCheckNodes() {
     return new ArrayList<>();
   }
 }

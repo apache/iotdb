@@ -74,6 +74,11 @@ public class CommonConfig {
   private String syncFolder =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
+  /** WAL directories */
+  private String[] walDirs = {
+    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME
+  };
+
   /** Default system file storage is in local file system (unsupported) */
   private FSType systemFileStorageFs = FSType.LOCAL;
 
@@ -114,6 +119,9 @@ public class CommonConfig {
     roleFolder = addHomeDir(roleFolder, homeDir);
     procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);
     syncFolder = addHomeDir(syncFolder, homeDir);
+    for (int i = 0; i < walDirs.length; i++) {
+      walDirs[i] = addHomeDir(walDirs[i], homeDir);
+    }
   }
 
   private String addHomeDir(String dir, String homeDir) {
@@ -207,6 +215,14 @@ public class CommonConfig {
     this.syncFolder = syncFolder;
   }
 
+  public String[] getWalDirs() {
+    return walDirs;
+  }
+
+  public void setWalDirs(String[] walDirs) {
+    this.walDirs = walDirs;
+  }
+
   public FSType getSystemFileStorageFs() {
     return systemFileStorageFs;
   }
@@ -265,6 +281,11 @@ public class CommonConfig {
 
   public void handleUnrecoverableError() {
     handleSystemErrorStrategy.handle();
+  }
+
+  public void setNodeStatusToShutdown() {
+    logger.info("System will reject write operations when shutting down.");
+    this.status = NodeStatus.ReadOnly;
   }
 
   public void setNodeStatus(NodeStatus newStatus) {

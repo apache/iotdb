@@ -38,6 +38,7 @@ import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -385,6 +386,11 @@ public class IoTDBDescriptor {
     if (memTableSizeThreshold > 0) {
       conf.setMemtableSizeThreshold(memTableSizeThreshold);
     }
+
+    conf.setTvListSortAlgorithm(
+        TVListSortAlgorithm.valueOf(
+            properties.getProperty(
+                "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
 
     conf.setAvgSeriesPointNumberThreshold(
         Integer.parseInt(
@@ -767,6 +773,21 @@ public class IoTDBDescriptor {
       conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
     }
 
+    conf.setMaxPlanNodeSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_plan_node_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+
+    if (conf.getMaxPlanNodeSize() > conf.getThriftMaxFrameSize()) {
+      logger.warn(
+          String.format(
+              "MAX PLAN NODE SIZE %d can not be larger than THRIFT MAX FRAME SIZE %d, MAX PLAN NODE SIZE has been reset to %d",
+              conf.getMaxPlanNodeSize(),
+              conf.getThriftMaxFrameSize(),
+              conf.getThriftMaxFrameSize()));
+      conf.setMaxPlanNodeSize(conf.getThriftMaxFrameSize());
+    }
+
     conf.setThriftDefaultBufferSize(
         Integer.parseInt(
             properties.getProperty(
@@ -1022,8 +1043,6 @@ public class IoTDBDescriptor {
     conf.setWalMode(
         WALMode.valueOf((properties.getProperty("wal_mode", conf.getWalMode().toString()))));
 
-    conf.setWalDirs(properties.getProperty("wal_dirs", conf.getWalDirs()[0]).split(","));
-
     int maxWalNodesNum =
         Integer.parseInt(
             properties.getProperty(
@@ -1120,6 +1139,15 @@ public class IoTDBDescriptor {
                 Long.toString(conf.getThrottleThreshold())));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
+    }
+
+    long cacheWindowInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "multi_leader_cache_window_time_in_ms",
+                Long.toString(conf.getCacheWindowTimeInMs())));
+    if (cacheWindowInMs > 0) {
+      conf.setCacheWindowTimeInMs(cacheWindowInMs);
     }
   }
 

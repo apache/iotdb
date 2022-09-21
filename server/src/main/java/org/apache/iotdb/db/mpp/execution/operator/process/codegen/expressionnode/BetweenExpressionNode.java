@@ -56,19 +56,11 @@ public class BetweenExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public List<String> getSubNodes() {
+  public List<String> getIsNullCheckNodes() {
     ArrayList<String> subNodes = new ArrayList<>();
     subNodes.add(firstNode.getNodeName());
     subNodes.add(secondNode.getNodeName());
     subNodes.add(thirdNode.getNodeName());
     return subNodes;
-  }
-
-  @Override
-  public List<String> getAllSubNodes() {
-    ArrayList<String> allSubNodes = new ArrayList<>(firstNode.getAllSubNodes());
-    allSubNodes.addAll(secondNode.getAllSubNodes());
-    allSubNodes.addAll(thirdNode.getSubNodes());
-    return allSubNodes;
   }
 }

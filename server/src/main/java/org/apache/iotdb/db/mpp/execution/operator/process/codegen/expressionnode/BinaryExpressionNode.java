@@ -63,18 +63,10 @@ public class BinaryExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public List<String> getSubNodes() {
+  public List<String> getIsNullCheckNodes() {
     ArrayList<String> subNodes = new ArrayList<>();
     subNodes.add(leftNode.getNodeName());
     subNodes.add(rightNode.getNodeName());
     return subNodes;
-  }
-
-  @Override
-  public List<String> getAllSubNodes() {
-    ArrayList<String> allSubNodes = new ArrayList<>();
-    allSubNodes.addAll(leftNode.getAllSubNodes());
-    allSubNodes.addAll(rightNode.getAllSubNodes());
-    return allSubNodes;
   }
 }

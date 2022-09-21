@@ -21,12 +21,11 @@ package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
-import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
@@ -70,14 +69,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> dropFunction(String udfName);
 
-  SettableFuture<ConfigTaskResult> createTrigger(
-      String triggerName,
-      String className,
-      String jarPath,
-      boolean usingURI,
-      TriggerEvent triggerEvent,
-      TriggerType triggerType,
-      PartialPath pathPattern);
+  SettableFuture<ConfigTaskResult> createTrigger(CreateTriggerStatement createTriggerStatement);
 
   SettableFuture<ConfigTaskResult> dropTrigger(String triggerName);
 
@@ -133,4 +125,7 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement);
 
   SettableFuture<ConfigTaskResult> showPipe(ShowPipeStatement showPipeStatement);
+
+  SettableFuture<ConfigTaskResult> deleteTimeSeries(
+      String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement);
 }

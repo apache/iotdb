@@ -121,7 +121,7 @@ public class CodegenEvaluatorImpl implements CodegenEvaluator {
   IClassBodyEvaluator classBodyEvaluator;
 
   public CodegenEvaluatorImpl(CodegenContext codegenContext) {
-    codegenVisitor = new CodegenVisitorImpl(codegenContext);
+    codegenVisitor = new CodegenVisitor(codegenContext);
     generatedSuccess = new ArrayList<>();
     this.codegenContext = codegenContext;
     scriptFinished = false;
@@ -149,7 +149,7 @@ public class CodegenEvaluatorImpl implements CodegenEvaluator {
   private void parseOutputExpressions() {
     // add expressions, this will generate variable declare and assignments
     for (Expression expression : codegenContext.getOutputExpression()) {
-      boolean success = codegenVisitor.expressionVisitor(expression);
+      boolean success = codegenVisitor.visitExpression(expression, codegenContext);
       generatedSuccess.add(success);
     }
 

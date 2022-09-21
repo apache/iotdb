@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
+import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
@@ -62,6 +64,7 @@ import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -74,7 +77,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -266,9 +268,6 @@ public class DataNode implements DataNodeMBean {
     setUncaughtExceptionHandler();
     initServiceProvider();
 
-    // init metric service
-    registerManager.register(MetricService.getInstance());
-
     logger.info("recover the schema...");
     initSchemaEngine();
     registerManager.register(new JMXService());
@@ -290,6 +289,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(DriverScheduler.getInstance());
 
     registerUdfServices();
+    registerTriggerServices();
 
     logger.info(
         "IoTDB DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
@@ -312,11 +312,10 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
 
-    // start reporter
-    MetricService.getInstance().startAllReporter();
-
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
+
+    registerManager.register(MetricService.getInstance());
   }
 
   /** set up RPC and protocols after DataNode is available */
@@ -370,7 +369,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(
         UDFExecutableManager.setupAndGetInstance(
-            IoTDBDescriptor.getInstance().getConfig().getTemporaryLibDir(),
+            IoTDBDescriptor.getInstance().getConfig().getUdfTemporaryLibDir(),
             IoTDBDescriptor.getInstance().getConfig().getUdfDir()));
     registerManager.register(
         UDFClassLoaderManager.setupAndGetInstance(
@@ -381,6 +380,17 @@ public class DataNode implements DataNodeMBean {
                 + File.separator
                 + "udf"
                 + File.separator));
+  }
+
+  private void registerTriggerServices() throws StartupException {
+    registerManager.register(
+        TriggerExecutableManager.setupAndGetInstance(
+            IoTDBDescriptor.getInstance().getConfig().getTriggerTemporaryLibDir(),
+            IoTDBDescriptor.getInstance().getConfig().getTriggerDir()));
+    registerManager.register(
+        TriggerClassLoaderManager.setupAndGetInstance(
+            IoTDBDescriptor.getInstance().getConfig().getTriggerDir()));
+    registerManager.register(TriggerManagementService.setupAndGetInstance());
   }
 
   private void initSchemaEngine() {
@@ -404,20 +414,6 @@ public class DataNode implements DataNodeMBean {
     } catch (Exception e) {
       logger.error("stop data node error", e);
     }
-
-    // kill the datanode process 5 seconds later
-    // if remove this step, datanode process will still alive
-    new Thread(
-            () -> {
-              try {
-                TimeUnit.SECONDS.sleep(5);
-              } catch (InterruptedException e) {
-                logger.error("Meets InterruptedException in stop method of DataNode");
-              } finally {
-                System.exit(0);
-              }
-            })
-        .start();
   }
 
   private void initServiceProvider() throws QueryProcessException {

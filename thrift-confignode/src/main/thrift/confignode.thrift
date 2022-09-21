@@ -249,8 +249,14 @@ enum TTriggerState {
 
 struct TCreateTriggerReq {
   1: required string triggerName
-  2: required binary triggerInformation
-  3: required common.TFile jarFile
+  2: required string className,
+  3: required string jarPath,
+  4: required bool usingURI,
+  5: required byte triggerEvent,
+  6: required byte triggerType
+  7: required binary pathPattern,
+  8: required map<string, string> attributes,
+  9: optional binary jarFile
 }
 
 struct TDropTriggerReq {
@@ -382,6 +388,11 @@ struct TPipeInfo {
 struct TShowPipeResp {
   1: required common.TSStatus status
   2: optional list<TPipeInfo> pipeInfoList
+}
+
+struct TDeleteTimeSeriesReq{
+  1: required string queryId
+  2: required binary pathPatternTree
 }
 
 service IConfigNodeRPCService {
@@ -709,5 +720,14 @@ service IConfigNodeRPCService {
 
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+
+  /**
+   * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
+   *
+   * @return SUCCESS_STATUS if the DeleteTimeSeriesProcedure submitted and executed successfully
+   *         TIMESERIES_NOT_EXIST if the specific TimeSeries doesn't exist
+   *         EXECUTE_STATEMENT_ERROR if failed to submit or execute the DeleteTimeSeriesProcedure
+   */
+  common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 }
 

@@ -70,6 +70,10 @@ public interface BaseConfig {
     return this;
   }
 
+  default boolean isEnablePartition() {
+    return true;
+  }
+
   default BaseConfig setPartitionInterval(long partitionInterval) {
     return this;
   }

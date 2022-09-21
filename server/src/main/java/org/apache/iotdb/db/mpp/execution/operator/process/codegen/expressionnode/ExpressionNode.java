@@ -34,11 +34,11 @@ public interface ExpressionNode {
    */
   String toCode();
 
+  /** @return name of this intermediate variable */
   String getNodeName();
 
-  List<String> getSubNodes();
-
-  List<String> getAllSubNodes();
+  /** @return all intermediate variables which can cause this variable to be null */
+  List<String> getIsNullCheckNodes();
 
   void setNodeName(String nodeName);
 }

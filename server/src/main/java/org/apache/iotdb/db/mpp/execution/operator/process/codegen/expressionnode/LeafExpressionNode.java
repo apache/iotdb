@@ -34,14 +34,9 @@ public class LeafExpressionNode extends ExpressionNodeImpl {
   }
 
   @Override
-  public List<String> getSubNodes() {
+  public List<String> getIsNullCheckNodes() {
     ArrayList<String> subNodes = new ArrayList<>();
     subNodes.add(nodeName);
     return subNodes;
-  }
-
-  @Override
-  public List<String> getAllSubNodes() {
-    return getSubNodes();
   }
 }

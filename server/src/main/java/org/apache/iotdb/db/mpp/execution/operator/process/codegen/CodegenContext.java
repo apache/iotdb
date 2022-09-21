@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen;
 
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.ExpressionNode;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.AssignmentStatement;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.DeclareStatement;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.CodegenSimpleRow;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
@@ -59,7 +59,7 @@ public class CodegenContext {
 
   private Map<String, CodegenSimpleRow> udtfInputs;
 
-  private final TypeProvider typeProvider;
+  private final Map<NodeRef<Expression>, TSDataType> expressionTypes;
 
   private UDTFContext udtfContext;
 
@@ -84,14 +84,14 @@ public class CodegenContext {
       List<TSDataType> inputDataTypes,
       List<Expression> outputExpressions,
       Expression filterExpression,
-      TypeProvider typeProvider) {
+      Map<NodeRef<Expression>, TSDataType> expressionTypes) {
     init();
 
     this.inputLocations = inputLocations;
     this.inputDataTypes = inputDataTypes;
     this.outputExpression = outputExpressions;
     this.filterExpression = filterExpression;
-    this.typeProvider = typeProvider;
+    this.expressionTypes = expressionTypes;
   }
 
   public void init() {
@@ -222,13 +222,9 @@ public class CodegenContext {
     return filterExpression;
   }
 
-  public TypeProvider getTypeProvider() {
-    return typeProvider;
-  }
-
   public List<TSDataType> getOutputDataTypes() {
     return outputExpression.stream()
-        .map(expression -> expression.inferTypes(typeProvider))
+        .map(expression -> expressionTypes.get(NodeRef.of(expression)))
         .collect(Collectors.toList());
   }
 
@@ -252,5 +248,13 @@ public class CodegenContext {
 
   public List<AssignmentStatement> getAssignmentStatements() {
     return assignmentStatements;
+  }
+
+  public Map<NodeRef<Expression>, TSDataType> getExpressionTypes() {
+    return expressionTypes;
+  }
+
+  public TSDataType inferType(Expression expression) {
+    return expressionTypes.get(NodeRef.of(expression));
   }
 }
