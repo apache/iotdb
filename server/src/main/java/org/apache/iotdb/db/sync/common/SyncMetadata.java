@@ -83,19 +83,34 @@ public class SyncMetadata {
     return pipeSinks.containsKey(name);
   }
 
+  public void checkAddPipeSink(String pipeSinkName) throws PipeSinkException {
+    if (isPipeSinkExist(pipeSinkName)) {
+      throw new PipeSinkException(
+          "There is a PipeSink named "
+              + pipeSinkName
+              + " in IoTDB, please drop it before recreation.");
+    }
+  }
+
   public void addPipeSink(PipeSink pipeSink) {
     pipeSinks.put(pipeSink.getPipeSinkName(), pipeSink);
   }
 
-  public void dropPipeSink(String name) throws PipeSinkException {
+  public void checkDropPipeSink(String pipeSinkName) throws PipeSinkException {
+    if (!isPipeSinkExist(pipeSinkName)) {
+      throw new PipeSinkException("PipeSink " + pipeSinkName + " does not exist.");
+    }
     if (runningPipe != null
         && runningPipe.getStatus() != Pipe.PipeStatus.DROP
-        && runningPipe.getPipeSinkName().equals(name)) {
+        && runningPipe.getPipeSinkName().equals(pipeSinkName)) {
       throw new PipeSinkException(
           String.format(
-              "Can not drop pipeSink %s, because pipe %s is using it.",
-              name, runningPipe.getPipeName()));
+              "Can not drop PipeSink %s, because Pipe %s is using it.",
+              pipeSinkName, runningPipe.getPipeName()));
     }
+  }
+
+  public void dropPipeSink(String name) {
     pipeSinks.remove(name);
   }
 

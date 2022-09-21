@@ -18,4 +18,66 @@
  */
 package org.apache.iotdb.confignode.persistence.sync;
 
-public class ClusterSyncInfo {}
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
+import org.apache.iotdb.db.exception.sync.PipeSinkException;
+import org.apache.iotdb.db.sync.common.SyncMetadata;
+import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
+import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+
+public class ClusterSyncInfo {
+
+  protected static final Logger LOGGER = LoggerFactory.getLogger(ClusterSyncInfo.class);
+
+  private final SyncMetadata syncMetadata;
+
+  public ClusterSyncInfo() {
+    syncMetadata = new SyncMetadata();
+  }
+  // ======================================================
+  // region Implement of PipeSink
+  // ======================================================
+
+  public void checkAddPipeSink(String pipeSinkName) throws PipeSinkException {
+    syncMetadata.checkAddPipeSink(pipeSinkName);
+  }
+
+  public TSStatus addPipeSink(CreatePipeSinkPlan plan) {
+    TSStatus status = new TSStatus();
+    try {
+      syncMetadata.addPipeSink(SyncPipeUtil.parsePipeInfoAsPipe(plan.getPipeSinkInfo()));
+      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (PipeSinkException e) {
+      status.setCode(TSStatusCode.PIPESINK_ERROR.getStatusCode());
+      LOGGER.error(e.getMessage());
+    }
+    return status;
+  }
+
+  public void checkDropPipeSink(String pipeSinkName) throws PipeSinkException {
+    syncMetadata.checkDropPipeSink(pipeSinkName);
+  }
+
+  public TSStatus dropPipeSink(DropPipeSinkPlan plan) {
+    syncMetadata.dropPipeSink(plan.getPipeSinkName());
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public PipeSink getPipeSink(String name) {
+    return syncMetadata.getPipeSink(name);
+  }
+
+  public List<PipeSink> getAllPipeSink() {
+    return syncMetadata.getAllPipeSink();
+  }
+
+  // endregion
+}

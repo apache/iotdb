@@ -40,6 +40,10 @@ public class CreatePipeSinkPlan extends ConfigPhysicalPlan {
     this.pipeSinkInfo = pipeSinkInfo;
   }
 
+  public TPipeSinkInfo getPipeSinkInfo() {
+    return pipeSinkInfo;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigPhysicalPlanType.CreatePipeSink.ordinal());

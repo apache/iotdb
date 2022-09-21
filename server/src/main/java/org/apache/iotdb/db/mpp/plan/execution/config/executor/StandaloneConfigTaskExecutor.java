@@ -477,7 +477,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
-      future.setException(new StatementExecutionException(tsStatus));
+      future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
     }
     return future;
   }
@@ -491,7 +491,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
-      future.setException(new StatementExecutionException(tsStatus));
+      future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
     }
     return future;
   }
@@ -513,7 +513,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
-      future.setException(new StatementExecutionException(tsStatus));
+      future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
     }
     return future;
   }
@@ -525,7 +525,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
-      future.setException(new StatementExecutionException(tsStatus));
+      future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
     }
     return future;
   }
@@ -537,7 +537,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
-      future.setException(new StatementExecutionException(tsStatus));
+      future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
     }
     return future;
   }
@@ -549,7 +549,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
-      future.setException(new StatementExecutionException(tsStatus));
+      future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
     }
     return future;
   }

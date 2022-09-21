@@ -382,10 +382,9 @@ public interface IManager {
   /**
    * Get all PipeSinks
    *
-   * @param req pipeSinkName in req is empty
    * @return TGetAllPipeSinkResp contains PipeSink list
    */
-  TGetAllPipeSinkResp getAllPipeSink(TGetPipeSinkReq req);
+  TGetAllPipeSinkResp getAllPipeSink();
 
   /**
    * Get PipeSink by name

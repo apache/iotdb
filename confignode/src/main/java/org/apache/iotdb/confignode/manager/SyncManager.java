@@ -22,9 +22,16 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
+import org.apache.iotdb.db.exception.sync.PipeSinkException;
+import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class SyncManager {
 
@@ -43,11 +50,33 @@ public class SyncManager {
   // ======================================================
 
   public TSStatus createPipeSink(CreatePipeSinkPlan plan) {
-    return null;
+    try {
+      clusterSyncInfo.checkAddPipeSink(plan.getPipeSinkInfo().getPipeSinkName());
+      return clusterSyncInfo.addPipeSink(plan);
+    } catch (PipeSinkException e) {
+      LOGGER.error(e.getMessage());
+      return new TSStatus(TSStatusCode.PIPESINK_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
   }
 
   public TSStatus dropPipeSink(DropPipeSinkPlan plan) {
-    return null;
+    try {
+      clusterSyncInfo.checkDropPipeSink(plan.getPipeSinkName());
+      return clusterSyncInfo.dropPipeSink(plan);
+    } catch (PipeSinkException e) {
+      LOGGER.error(e.getMessage());
+      return new TSStatus(TSStatusCode.PIPESINK_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  public List<TPipeSinkInfo> getAllPipeSink() {
+    return clusterSyncInfo.getAllPipeSink().stream()
+        .map(PipeSink::getTPipeSinkInfo)
+        .collect(Collectors.toList());
+  }
+
+  public TPipeSinkInfo getPipeSink(String pipeSinkName) {
+    return clusterSyncInfo.getPipeSink(pipeSinkName).getTPipeSinkInfo();
   }
 
   // endregion

@@ -1037,10 +1037,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TGetAllPipeSinkResp getAllPipeSink(TGetPipeSinkReq req) throws TException {
+  public TGetAllPipeSinkResp getAllPipeSink() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TGetAllPipeSinkResp resp = client.getAllPipeSink(req);
+        TGetAllPipeSinkResp resp = client.getAllPipeSink();
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }

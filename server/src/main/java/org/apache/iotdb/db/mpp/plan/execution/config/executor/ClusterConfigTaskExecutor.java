@@ -754,15 +754,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showPipeSink(
       ShowPipeSinkStatement showPipeSinkStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TGetPipeSinkReq req = new TGetPipeSinkReq();
-    req.setPipeSinkName(showPipeSinkStatement.getPipeSinkName());
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       if (StringUtils.isEmpty(showPipeSinkStatement.getPipeSinkName())) {
-        TGetAllPipeSinkResp resp = configNodeClient.getAllPipeSink(req);
+        TGetAllPipeSinkResp resp = configNodeClient.getAllPipeSink();
         ShowPipeSinkTask.buildTSBlockByTPipeSinkInfo(resp.getPipeSinkInfoList(), future);
       } else {
-        TGetPipeSinkResp resp = configNodeClient.getPipeSink(req);
+        TGetPipeSinkResp resp =
+            configNodeClient.getPipeSink(
+                new TGetPipeSinkReq(showPipeSinkStatement.getPipeSinkName()));
         ShowPipeSinkTask.buildTSBlockByTPipeSinkInfo(
             Collections.singletonList(resp.getPipeSinkInfo()), future);
       }

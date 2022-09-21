@@ -53,30 +53,30 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   public TSStatus addPipeSink(CreatePipeSinkPlan plan) {
     try {
       localSyncInfo.addPipeSink(plan);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (PipeSinkException | IOException e) {
-      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus addPipeSink(CreatePipeSinkStatement createPipeSinkStatement) {
     try {
       localSyncInfo.addPipeSink(createPipeSinkStatement);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (PipeSinkException | IOException e) {
-      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus dropPipeSink(String name) {
     try {
       localSyncInfo.dropPipeSink(name);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (PipeSinkException | IOException e) {
-      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
@@ -97,20 +97,20 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   public TSStatus addPipe(CreatePipePlan plan, long createTime) {
     try {
       localSyncInfo.addPipe(plan, createTime);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (PipeException | IOException e) {
-      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus addPipe(CreatePipeStatement createPipeStatement, long createTime) {
     try {
       localSyncInfo.addPipe(createPipeStatement, createTime);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (PipeException | IOException e) {
-      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override

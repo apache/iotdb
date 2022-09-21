@@ -386,17 +386,17 @@ struct TPipeInfo {
 }
 
 struct TPipeSinkInfo {
-    1: required string pipeSinkName
-    2: required string pipeSinkType
-    3: optional map<string, string> attributes
+  1: required string pipeSinkName
+  2: required string pipeSinkType
+  3: optional map<string, string> attributes
 }
 
 struct TDropPipeSinkReq {
-    1: required string pipeSinkName
+  1: required string pipeSinkName
 }
 
 struct TGetPipeSinkReq {
-  1: optional string pipeSinkName
+  1: required string pipeSinkName
 }
 
 struct TGetPipeSinkResp {
@@ -758,7 +758,7 @@ service IConfigNodeRPCService {
 
   common.TSStatus dropPipeSink(TDropPipeSinkReq req)
 
-  TGetAllPipeSinkResp getAllPipeSink(TGetPipeSinkReq req)
+  TGetAllPipeSinkResp getAllPipeSink()
 
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
 }

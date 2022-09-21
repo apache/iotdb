@@ -950,13 +950,26 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TGetAllPipeSinkResp getAllPipeSink(TGetPipeSinkReq req) {
-    return null;
+  public TGetAllPipeSinkResp getAllPipeSink() {
+    TSStatus status = confirmLeader();
+    TGetAllPipeSinkResp resp = new TGetAllPipeSinkResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.setPipeSinkInfoList(syncManager.getAllPipeSink()).setStatus(StatusUtils.OK);
+    } else {
+      return resp.setStatus(status);
+    }
   }
 
   @Override
   public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) {
-    return null;
+    TSStatus status = confirmLeader();
+    TGetPipeSinkResp resp = new TGetPipeSinkResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.setPipeSinkInfo(syncManager.getPipeSink(req.getPipeSinkName()))
+          .setStatus(StatusUtils.OK);
+    } else {
+      return resp.setStatus(status);
+    }
   }
 
   /** Get all related schemaRegion which may contains the timeseries matched by given patternTree */

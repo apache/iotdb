@@ -70,11 +70,7 @@ public class LocalSyncInfo {
 
   // TODO: delete this in new-standalone version
   public void addPipeSink(CreatePipeSinkPlan plan) throws PipeSinkException, IOException {
-    if (syncMetadata.isPipeSinkExist(plan.getPipeSinkName())) {
-      throw new PipeSinkException(
-          "There is a pipeSink named " + plan.getPipeSinkName() + " in IoTDB, please drop it.");
-    }
-
+    syncMetadata.checkAddPipeSink(plan.getPipeSinkName());
     PipeSink pipeSink = SyncPipeUtil.parseCreatePipeSinkPlan(plan);
     // should guarantee the adding pipesink is not exist.
     syncMetadata.addPipeSink(pipeSink);
@@ -83,13 +79,7 @@ public class LocalSyncInfo {
 
   public void addPipeSink(CreatePipeSinkStatement createPipeSinkStatement)
       throws PipeSinkException, IOException {
-    if (syncMetadata.isPipeSinkExist(createPipeSinkStatement.getPipeSinkName())) {
-      throw new PipeSinkException(
-          "There is a pipeSink named "
-              + createPipeSinkStatement.getPipeSinkName()
-              + " in IoTDB, please drop it.");
-    }
-
+    syncMetadata.checkAddPipeSink(createPipeSinkStatement.getPipeSinkName());
     PipeSink pipeSink = SyncPipeUtil.parseCreatePipeSinkStatement(createPipeSinkStatement);
     // should guarantee the adding pipesink is not exist.
     syncMetadata.addPipeSink(pipeSink);
@@ -97,9 +87,7 @@ public class LocalSyncInfo {
   }
 
   public void dropPipeSink(String name) throws PipeSinkException, IOException {
-    if (!syncMetadata.isPipeSinkExist(name)) {
-      throw new PipeSinkException("PipeSink " + name + " is not exist.");
-    }
+    syncMetadata.checkDropPipeSink(name);
     syncMetadata.dropPipeSink(name);
     syncLogWriter.dropPipeSink(name);
   }

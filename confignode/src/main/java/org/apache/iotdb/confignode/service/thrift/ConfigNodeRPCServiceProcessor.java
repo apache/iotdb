@@ -608,8 +608,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TGetAllPipeSinkResp getAllPipeSink(TGetPipeSinkReq req) throws TException {
-    return configManager.getAllPipeSink(req);
+  public TGetAllPipeSinkResp getAllPipeSink() throws TException {
+    return configManager.getAllPipeSink();
   }
 
   @Override
