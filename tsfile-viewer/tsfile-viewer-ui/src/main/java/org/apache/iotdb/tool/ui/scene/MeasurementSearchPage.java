@@ -30,7 +30,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -107,9 +109,10 @@ public class MeasurementSearchPage {
             });
 
     Label startTime = new Label("startTime:");
-    DateTimePicker startPicker = new DateTimePicker();
+    LocalDateTime now = LocalDateTime.now();
+    DateTimePicker startPicker = new DateTimePicker(now, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     Label endTime = new Label("endTime:");
-    DateTimePicker endPicker = new DateTimePicker();
+    DateTimePicker endPicker = new DateTimePicker(now, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     ObservableList<Node> searchFilterBoxChildren = searchFilterBox.getChildren();
     searchFilterBoxChildren.addAll(startTime, startPicker, endTime, endPicker);
 
