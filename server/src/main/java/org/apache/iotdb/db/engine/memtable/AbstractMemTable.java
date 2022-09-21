@@ -661,16 +661,21 @@ public abstract class AbstractMemTable implements IMemTable {
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
     if (devicePath.hasWildcard()) {
       // In cluster mode without IDTable, the input devicePath may be a devicePathPattern
+      List<Pair<PartialPath, IWritableMemChunkGroup>> targetDeviceList = new ArrayList<>();
       for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
         try {
           PartialPath devicePathInMemTable = new PartialPath(entry.getKey().toStringID());
           if (devicePath.matchFullPath(devicePathInMemTable)) {
-            deleteDataInChunkGroup(
-                entry.getValue(), originalPath, devicePathInMemTable, startTimestamp, endTimestamp);
+            targetDeviceList.add(new Pair<>(devicePathInMemTable, entry.getValue()));
           }
         } catch (IllegalPathException e) {
           // won't reach here
         }
+      }
+
+      for (Pair<PartialPath, IWritableMemChunkGroup> targetDevice : targetDeviceList) {
+        deleteDataInChunkGroup(
+            targetDevice.right, originalPath, targetDevice.left, startTimestamp, endTimestamp);
       }
     } else {
       IWritableMemChunkGroup memChunkGroup = memTableMap.get(getDeviceID(devicePath));
