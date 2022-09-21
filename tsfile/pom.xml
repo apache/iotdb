@@ -58,6 +58,11 @@
             <artifactId>lz4-java</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>aircompressor</artifactId>
+            <version>0.20</version>
+        </dependency>
+        <dependency>
             <groupId>com.github.wendykierp</groupId>
             <artifactId>JTransforms</artifactId>
         </dependency>
