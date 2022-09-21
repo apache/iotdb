@@ -44,7 +44,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.ToLongFunction;
 
 /** MetricService is the entry to get all metric features. */
@@ -53,8 +52,6 @@ public abstract class AbstractMetricService {
   private static final Logger logger = LoggerFactory.getLogger(AbstractMetricService.class);
   /** The config of metric service */
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
-  /** Is the first initialization of metric service */
-  protected AtomicBoolean isFirstInitialization = new AtomicBoolean(true);
   /** The metric manager of metric service */
   protected AbstractMetricManager metricManager = new DoNothingMetricManager();
   /** The metric reporter of metric service */
