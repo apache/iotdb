@@ -68,6 +68,8 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_STATUS = "Status";
   public static final String COLUMN_HOST = "Host";
   public static final String COLUMN_PORT = "Port";
+  public static final String COLUMN_INTERNAL_PORT = "InternalPort";
+  public static final String COLUMN_RPC_PORT = "RpcPort";
 
   // column names for show functions statement
   public static final String COLUMN_FUNCTION_NAME = "function name";
@@ -209,7 +211,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PORT, TSDataType.INT32),
+          new ColumnHeader(COLUMN_RPC_PORT, TSDataType.INT32),
           new ColumnHeader(COLUMN_DATA_REGION_NUM, TSDataType.INT32),
           new ColumnHeader(COLUMN_SCHEMA_REGION_NUM, TSDataType.INT32));
 
@@ -218,7 +220,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PORT, TSDataType.INT32),
+          new ColumnHeader(COLUMN_INTERNAL_PORT, TSDataType.INT32),
           new ColumnHeader(COLUMN_ROLE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showClusterColumnHeaders =
@@ -227,7 +229,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
           new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PORT, TSDataType.INT32));
+          new ColumnHeader(COLUMN_INTERNAL_PORT, TSDataType.INT32));
 
   public static final List<ColumnHeader> showFunctionsColumnHeaders =
       ImmutableList.of(
