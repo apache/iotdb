@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 
 public class NodeHeartbeatSample {
 
@@ -48,9 +49,12 @@ public class NodeHeartbeatSample {
     this.status = NodeStatus.parse(heartbeatResp.getStatus());
     this.statusReason = heartbeatResp.isSetStatusReason() ? heartbeatResp.getStatusReason() : null;
 
-    this.cpuOccupancyRatio = heartbeatResp.getLoadSample().getCpuOccupancyRatio();
-    this.memoryOccupancyRatio = heartbeatResp.getLoadSample().getMemoryOccupancyRatio();
-    this.diskOccupancyRatio = heartbeatResp.getLoadSample().getDiskOccupancyRatio();
+    if (heartbeatResp.isSetLoadSample()) {
+      TLoadSample loadSample = heartbeatResp.getLoadSample();
+      this.cpuOccupancyRatio = loadSample.getCpuOccupancyRatio();
+      this.memoryOccupancyRatio = loadSample.getMemoryOccupancyRatio();
+      this.diskOccupancyRatio = loadSample.getDiskOccupancyRatio();
+    }
   }
 
   public long getSendTimestamp() {
