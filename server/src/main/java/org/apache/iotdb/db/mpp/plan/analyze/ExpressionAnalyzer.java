@@ -917,39 +917,29 @@ public class ExpressionAnalyzer {
    * @param isRawDataSource if true, built-in aggregate functions are not be returned
    * @return searched subexpression list
    */
-  public static List<Expression> searchSourceExpressions(
-      Expression expression, boolean isRawDataSource) {
+  public static List<Expression> searchSourceExpressions(Expression expression) {
     if (expression instanceof TernaryExpression) {
       List<Expression> resultExpressions = new ArrayList<>();
       resultExpressions.addAll(
-          searchSourceExpressions(
-              ((TernaryExpression) expression).getFirstExpression(), isRawDataSource));
+          searchSourceExpressions(((TernaryExpression) expression).getFirstExpression()));
       resultExpressions.addAll(
-          searchSourceExpressions(
-              ((TernaryExpression) expression).getSecondExpression(), isRawDataSource));
+          searchSourceExpressions(((TernaryExpression) expression).getSecondExpression()));
       resultExpressions.addAll(
-          searchSourceExpressions(
-              ((TernaryExpression) expression).getThirdExpression(), isRawDataSource));
+          searchSourceExpressions(((TernaryExpression) expression).getThirdExpression()));
       return resultExpressions;
     } else if (expression instanceof BinaryExpression) {
       List<Expression> resultExpressions = new ArrayList<>();
       resultExpressions.addAll(
-          searchSourceExpressions(
-              ((BinaryExpression) expression).getLeftExpression(), isRawDataSource));
+          searchSourceExpressions(((BinaryExpression) expression).getLeftExpression()));
       resultExpressions.addAll(
-          searchSourceExpressions(
-              ((BinaryExpression) expression).getRightExpression(), isRawDataSource));
+          searchSourceExpressions(((BinaryExpression) expression).getRightExpression()));
       return resultExpressions;
     } else if (expression instanceof UnaryExpression) {
-      return searchSourceExpressions(
-          ((UnaryExpression) expression).getExpression(), isRawDataSource);
+      return searchSourceExpressions(((UnaryExpression) expression).getExpression());
     } else if (expression instanceof FunctionExpression) {
-      if (!isRawDataSource && expression.isBuiltInAggregationFunctionExpression()) {
-        return Collections.singletonList(expression);
-      }
       List<Expression> resultExpressions = new ArrayList<>();
       for (Expression childExpression : expression.getExpressions()) {
-        resultExpressions.addAll(searchSourceExpressions(childExpression, isRawDataSource));
+        resultExpressions.addAll(searchSourceExpressions(childExpression));
       }
       return resultExpressions;
     } else if (expression instanceof TimeSeriesOperand) {

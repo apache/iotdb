@@ -123,6 +123,8 @@ public class Analysis {
 
   private Map<String, Boolean> deviceToIsRawDataSource;
 
+  private Set<Expression> deviceViewOutputExpressions;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -462,5 +464,13 @@ public class Analysis {
 
   public void addTypes(Map<NodeRef<Expression>, TSDataType> types) {
     this.expressionTypes.putAll(types);
+  }
+
+  public Set<Expression> getDeviceViewOutputExpressions() {
+    return deviceViewOutputExpressions;
+  }
+
+  public void setDeviceViewOutputExpressions(Set<Expression> deviceViewOutputExpressions) {
+    this.deviceViewOutputExpressions = deviceViewOutputExpressions;
   }
 }
