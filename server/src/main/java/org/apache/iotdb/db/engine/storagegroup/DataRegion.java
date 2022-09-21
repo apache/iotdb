@@ -3132,15 +3132,13 @@ public class DataRegion {
       } catch (IOException e) {
         logger.error(
             "File renaming failed when loading .mod file. Origin: {}, Target: {}",
-            resourceFileToLoad.getAbsolutePath(),
+            modFileToLoad.getAbsolutePath(),
             targetModFile.getAbsolutePath(),
             e);
         throw new LoadFileException(
             String.format(
                 "File renaming failed when loading .mod file. Origin: %s, Target: %s, because %s",
-                resourceFileToLoad.getAbsolutePath(),
-                targetModFile.getAbsolutePath(),
-                e.getMessage()));
+                modFileToLoad.getAbsolutePath(), targetModFile.getAbsolutePath(), e.getMessage()));
       } finally {
         // ModFile will be updated during the next call to `getModFile`
         tsFileResource.setModFile(null);

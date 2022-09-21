@@ -1573,23 +1573,28 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // construct TsFileResource
       TsFileResource resource = new TsFileResource(tsFile);
-      FileLoaderUtils.updateTsFileResource(device2Metadata, resource);
-      resource.updatePlanIndexes(reader.getMinPlanIndex());
-      resource.updatePlanIndexes(reader.getMaxPlanIndex());
+      if (!resource.resourceFileExists()) {
+        FileLoaderUtils.updateTsFileResource(
+            device2Metadata, resource); // serialize it in LoadSingleTsFileNode
+        resource.updatePlanIndexes(reader.getMinPlanIndex());
+        resource.updatePlanIndexes(reader.getMaxPlanIndex());
 
-      // construct device time range
-      for (String device : resource.getDevices()) {
-        device2MinTime.put(
-            device,
-            Math.min(
-                device2MinTime.getOrDefault(device, Long.MAX_VALUE),
-                resource.getStartTime(device)));
-        device2MaxTime.put(
-            device,
-            Math.max(
-                device2MaxTime.getOrDefault(device, Long.MIN_VALUE), resource.getEndTime(device)));
+        // construct device time range
+        for (String device : resource.getDevices()) {
+          device2MinTime.put(
+              device,
+              Math.min(
+                  device2MinTime.getOrDefault(device, Long.MAX_VALUE),
+                  resource.getStartTime(device)));
+          device2MaxTime.put(
+              device,
+              Math.max(
+                  device2MaxTime.getOrDefault(device, Long.MIN_VALUE),
+                  resource.getEndTime(device)));
+        }
+      } else {
+        resource.deserialize();
       }
-
       resource.setStatus(TsFileResourceStatus.CLOSED);
       return resource;
     }

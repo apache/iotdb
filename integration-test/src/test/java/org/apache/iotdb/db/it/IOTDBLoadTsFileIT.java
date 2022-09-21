@@ -308,10 +308,10 @@ public class IOTDBLoadTsFileIT {
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
               SchemaConfig.MEASUREMENT_13));
-      generator.generateData(SchemaConfig.DEVICE_0, 10000, false);
-      generator.generateData(SchemaConfig.DEVICE_1, 10000, true);
-      generator.generateDeletion(SchemaConfig.DEVICE_0, 10);
-      generator.generateDeletion(SchemaConfig.DEVICE_1, 10);
+      generator.generateData(SchemaConfig.DEVICE_0, 100, false);
+      generator.generateData(SchemaConfig.DEVICE_1, 100, true);
+      generator.generateDeletion(SchemaConfig.DEVICE_0, 2);
+      generator.generateDeletion(SchemaConfig.DEVICE_1, 2);
       writtenPoint1 = generator.getTotalNumber();
     }
 
@@ -324,15 +324,15 @@ public class IOTDBLoadTsFileIT {
           SchemaConfig.DEVICE_3, Arrays.asList(SchemaConfig.MEASUREMENT_30));
       generator.registerAlignedTimeseries(
           SchemaConfig.DEVICE_4, Arrays.asList(SchemaConfig.MEASUREMENT_40));
-      generator.generateData(SchemaConfig.DEVICE_2, 10000, false);
-      generator.generateData(SchemaConfig.DEVICE_3, 10000, false);
-      generator.generateData(SchemaConfig.DEVICE_4, 10000, true);
-      generator.generateDeletion(SchemaConfig.DEVICE_2, 10);
-      generator.generateDeletion(SchemaConfig.DEVICE_4, 10);
-      generator.generateData(SchemaConfig.DEVICE_2, 10000, false);
-      generator.generateData(SchemaConfig.DEVICE_4, 10000, true);
-      generator.generateDeletion(SchemaConfig.DEVICE_2, 10);
-      generator.generateDeletion(SchemaConfig.DEVICE_4, 10);
+      generator.generateData(SchemaConfig.DEVICE_2, 100, false);
+      generator.generateData(SchemaConfig.DEVICE_3, 100, false);
+      generator.generateData(SchemaConfig.DEVICE_4, 100, true);
+      generator.generateDeletion(SchemaConfig.DEVICE_2, 2);
+      generator.generateDeletion(SchemaConfig.DEVICE_4, 2);
+      generator.generateData(SchemaConfig.DEVICE_2, 100, false);
+      generator.generateData(SchemaConfig.DEVICE_4, 100, true);
+      generator.generateDeletion(SchemaConfig.DEVICE_2, 2);
+      generator.generateDeletion(SchemaConfig.DEVICE_4, 2);
       writtenPoint2 = generator.getTotalNumber();
     }
 

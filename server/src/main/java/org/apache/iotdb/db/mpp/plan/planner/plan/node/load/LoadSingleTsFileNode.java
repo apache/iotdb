@@ -105,7 +105,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       allRegionReplicaSet.addAll(dataPartition.getAllDataRegionReplicaSetForOneDevice(device));
     }
     needDecodeTsFile = !isDispatchedToLocal(allRegionReplicaSet);
-    if (!needDecodeTsFile) {
+    if (!needDecodeTsFile && !resource.resourceFileExists()) {
       resource.serialize();
     }
   }

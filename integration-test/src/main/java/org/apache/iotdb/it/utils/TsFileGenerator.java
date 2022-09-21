@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -183,19 +184,30 @@ public class TsFileGenerator implements AutoCloseable {
   public void generateDeletion(String device, int number) throws IOException, IllegalPathException {
     try (ModificationFile modificationFile =
         new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+      writer.flushAllChunkGroups();
       TreeSet<Long> timeSet = device2TimeSet.get(device);
       if (timeSet.isEmpty()) {
         return;
       }
 
       long fileOffset = tsFile.length();
-      long maxTime = timeSet.last();
+      long maxTime = timeSet.last() - 1;
       for (int i = 0; i < number; i++) {
         int endTime = random.nextInt((int) (maxTime)) + 1;
         int startTime = random.nextInt(endTime);
-        Deletion deletion = new Deletion(new PartialPath(device), fileOffset, startTime, endTime);
-        modificationFile.write(deletion);
-        for (long j = startTime; j < endTime; j++) {
+        for (MeasurementSchema measurementSchema : device2MeasurementSchema.get(device)) {
+          Deletion deletion =
+              new Deletion(
+                  new PartialPath(
+                      device
+                          + TsFileConstant.PATH_SEPARATOR
+                          + measurementSchema.getMeasurementId()),
+                  fileOffset,
+                  startTime,
+                  endTime);
+          modificationFile.write(deletion);
+        }
+        for (long j = startTime; j <= endTime; j++) {
           timeSet.remove(j);
         }
       }
