@@ -1003,7 +1003,19 @@ public class IoTDBConfig {
   /** Maximum wait time of write cache in MultiLeader consensus. Unit: ms */
   private long cacheWindowTimeInMs = 60 * 1000;
 
-  private long RatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
+  private long ratisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
+
+  private long ratisConsensusSnapshotTriggerThreshold = 400000L;
+
+  private boolean ratisConsensusLogUnsafeFlushEnable = false;
+
+  private long ratisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
+
+  private long ratisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
+
+  private long ratisConsensusLeaderElectionTimeoutMinMs = 2000L;
+
+  private long RatisConsensusLeaderElectionTimeoutMaxMs = 4000L;
 
   IoTDBConfig() {}
 
@@ -3182,12 +3194,12 @@ public class IoTDBConfig {
   }
 
   public long getRatisConsensusLogAppenderBufferSizeMax() {
-    return RatisConsensusLogAppenderBufferSizeMax;
+    return ratisConsensusLogAppenderBufferSizeMax;
   }
 
   public void setRatisConsensusLogAppenderBufferSizeMax(
       long ratisConsensusLogAppenderBufferSizeMax) {
-    RatisConsensusLogAppenderBufferSizeMax = ratisConsensusLogAppenderBufferSizeMax;
+    this.ratisConsensusLogAppenderBufferSizeMax = ratisConsensusLogAppenderBufferSizeMax;
   }
 
   public String getConfigMessage() {
@@ -3221,5 +3233,56 @@ public class IoTDBConfig {
       }
     }
     return configMessage;
+  }
+
+  public long getRatisConsensusSnapshotTriggerThreshold() {
+    return ratisConsensusSnapshotTriggerThreshold;
+  }
+
+  public void setRatisConsensusSnapshotTriggerThreshold(
+      long ratisConsensusSnapshotTriggerThreshold) {
+    this.ratisConsensusSnapshotTriggerThreshold = ratisConsensusSnapshotTriggerThreshold;
+  }
+
+  public boolean isRatisConsensusLogUnsafeFlushEnable() {
+    return ratisConsensusLogUnsafeFlushEnable;
+  }
+
+  public void setRatisConsensusLogUnsafeFlushEnable(boolean ratisConsensusLogUnsafeFlushEnable) {
+    this.ratisConsensusLogUnsafeFlushEnable = ratisConsensusLogUnsafeFlushEnable;
+  }
+
+  public long getRatisConsensusLogSegmentSizeMax() {
+    return ratisConsensusLogSegmentSizeMax;
+  }
+
+  public void setRatisConsensusLogSegmentSizeMax(long ratisConsensusLogSegmentSizeMax) {
+    this.ratisConsensusLogSegmentSizeMax = ratisConsensusLogSegmentSizeMax;
+  }
+
+  public long getRatisConsensusGrpcFlowControlWindow() {
+    return ratisConsensusGrpcFlowControlWindow;
+  }
+
+  public void setRatisConsensusGrpcFlowControlWindow(long ratisConsensusGrpcFlowControlWindow) {
+    this.ratisConsensusGrpcFlowControlWindow = ratisConsensusGrpcFlowControlWindow;
+  }
+
+  public long getRatisConsensusLeaderElectionTimeoutMinMs() {
+    return ratisConsensusLeaderElectionTimeoutMinMs;
+  }
+
+  public void setRatisConsensusLeaderElectionTimeoutMinMs(
+      long ratisConsensusLeaderElectionTimeoutMinMs) {
+    this.ratisConsensusLeaderElectionTimeoutMinMs = ratisConsensusLeaderElectionTimeoutMinMs;
+  }
+
+  public long getRatisConsensusLeaderElectionTimeoutMaxMs() {
+    return RatisConsensusLeaderElectionTimeoutMaxMs;
+  }
+
+  public void setRatisConsensusLeaderElectionTimeoutMaxMs(
+      long ratisConsensusLeaderElectionTimeoutMaxMs) {
+    RatisConsensusLeaderElectionTimeoutMaxMs = ratisConsensusLeaderElectionTimeoutMaxMs;
   }
 }
