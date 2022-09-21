@@ -131,7 +131,7 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
    * @param prefix Prefix is the device which does not contain wildcards.
    * @return true if value related to device exists
    */
-  public boolean isOverlapped(PartialPath prefix){
+  public boolean isOverlapped(PartialPath prefix) {
     return true;
   }
 

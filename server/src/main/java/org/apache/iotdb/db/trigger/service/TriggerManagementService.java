@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.trigger.service;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -49,7 +50,7 @@ public class TriggerManagementService implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManagementService.class);
 
-  private final ReentrantLock registrationLock;
+  private final ReentrantLock lock;
 
   private final TriggerTable triggerTable;
 
@@ -64,29 +65,64 @@ public class TriggerManagementService implements IService {
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
   private TriggerManagementService() {
-    this.registrationLock = new ReentrantLock();
+    this.lock = new ReentrantLock();
     this.triggerTable = new TriggerTable();
     this.executorMap = new ConcurrentHashMap<>();
     this.patternTreeMap = PatternTreeMapFactory.getTriggerPatternTreeMap();
   }
 
-  public void acquireRegistrationLock() {
-    registrationLock.lock();
+  public void acquireLock() {
+    lock.lock();
   }
 
-  public void releaseRegistrationLock() {
-    registrationLock.unlock();
+  public void releaseLock() {
+    lock.unlock();
   }
 
   public void register(TriggerInformation triggerInformation) {
-    acquireRegistrationLock();
-    checkIfRegistered(triggerInformation);
-    doRegister(triggerInformation);
-    releaseRegistrationLock();
+    try {
+      acquireLock();
+      checkIfRegistered(triggerInformation);
+      doRegister(triggerInformation);
+    } catch (Throwable e) {
+      LOGGER.warn(
+          "Failed to register trigger({}) on data node, the cause is: {}",
+          triggerInformation.getTriggerName(),
+          e.getMessage());
+    } finally {
+      releaseLock();
+    }
   };
 
   public void activeTrigger(String triggerName) {
-    triggerTable.activeTrigger(triggerName);
+    try {
+      acquireLock();
+      triggerTable.activeTrigger(triggerName);
+    } catch (Throwable e) {
+      LOGGER.warn(
+          "Failed to active trigger({}) on data node, the cause is: {}",
+          triggerName,
+          e.getMessage());
+    } finally {
+      releaseLock();
+    }
+  }
+
+  public void updateLocationOfStatefulTrigger(
+      String triggerName, TDataNodeLocation tDataNodeLocation) {
+    try {
+      acquireLock();
+      TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
+      triggerInformation.setDataNodeLocation(tDataNodeLocation);
+      triggerTable.setTriggerInformation(triggerName, triggerInformation);
+    } catch (Throwable e) {
+      LOGGER.warn(
+          "Failed to update location of trigger({}), the cause is: {}",
+          triggerName,
+          e.getMessage());
+    } finally {
+      releaseLock();
+    }
   }
 
   public boolean isTriggerTableEmpty() {
@@ -116,11 +152,10 @@ public class TriggerManagementService implements IService {
   }
 
   /**
-   *
    * @param device device does not contain wildcard.
    * @return false if no trigger is found under this device
    */
-  public boolean hasTriggerUnderDevice(PartialPath device){
+  public boolean hasTriggerUnderDevice(PartialPath device) {
     return patternTreeMap.isOverlapped(device);
   }
 

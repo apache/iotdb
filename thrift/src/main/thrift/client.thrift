@@ -353,6 +353,7 @@ struct ServerProperties {
   8: optional i32 watermarkParamMaxRightBit;
   9: optional i32 thriftMaxFrameSize;
   10:optional bool isReadOnly;
+  11:optional string buildInfo;
 }
 
 struct TSSetSchemaTemplateReq {

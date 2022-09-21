@@ -53,7 +53,7 @@ public class NodePathsConvertOperator implements ProcessOperator {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.child = requireNonNull(child, "child operator is null");
     this.outputDataTypes =
-        ColumnHeaderConstant.showChildPathsColumnHeaders.stream()
+        ColumnHeaderConstant.showChildNodesColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
   }

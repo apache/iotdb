@@ -25,9 +25,9 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
@@ -67,8 +67,8 @@ public class ProcedureManager {
   private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
       ConfigNodeDescriptor.getInstance().getConf();
 
-  private static final int procedureWaitTimeOut = 30;
-  private static final int procedureWaitRetryTimeout = 250;
+  private static final int PROCEDURE_WAIT_TIME_OUT = 30;
+  private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 250;
 
   private final ConfigManager configManager;
   private ProcedureExecutor<ConfigNodeProcedureEnv> executor;
@@ -119,7 +119,7 @@ public class ProcedureManager {
     boolean isSucceed = waitingProcedureFinished(procedureIds, procedureStatus);
     // clear the previously deleted regions
     final PartitionManager partitionManager = getConfigManager().getPartitionManager();
-    partitionManager.getRegionCleaner().submit(partitionManager::clearDeletedRegions);
+    partitionManager.getRegionMaintainer().submit(partitionManager::maintainRegionReplicas);
     if (isSucceed) {
       return StatusUtils.OK;
     } else {
@@ -236,8 +236,8 @@ public class ProcedureManager {
           && !executor.isFinished(procedureId)
           && TimeUnit.MILLISECONDS.toSeconds(
                   System.currentTimeMillis() - startTimeForCurrentProcedure)
-              < procedureWaitTimeOut) {
-        sleepWithoutInterrupt(procedureWaitRetryTimeout);
+              < PROCEDURE_WAIT_TIME_OUT) {
+        sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
       }
       Procedure<ConfigNodeProcedureEnv> finishedProcedure =
           executor.getResultOrProcedure(procedureId);

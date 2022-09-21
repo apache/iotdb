@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.trigger.executor;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
+import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
@@ -59,10 +63,15 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerFireVisitor.class);
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
-      internalServiceClientIClientManager =
+      INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
               .createClientManager(
                   new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+
+  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
+      CONFIG_NODE_CLIENT_MANAGER =
+          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   /**
    * How many times should we retry when error occurred during firing a trigger on another datanode
@@ -261,7 +270,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   private Map<String, List<String>> constructTriggerNameToMeasurementListMap(InsertNode node) {
     Map<String, List<String>> triggerNameToPaths = new HashMap<>();
     PartialPath device = node.getDevicePath();
-    if(!TriggerManagementService.getInstance().hasTriggerUnderDevice(device)){
+    if (!TriggerManagementService.getInstance().hasTriggerUnderDevice(device)) {
       return triggerNameToPaths;
     }
     String[] measurements = node.getMeasurements();
@@ -276,7 +285,6 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     return triggerNameToPaths;
   }
 
-
   private List<String> getMatchedTriggerListForPath(PartialPath fullPath) {
     return TriggerManagementService.getInstance().getMatchedTriggerListForPath(fullPath);
   }
@@ -289,14 +297,15 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       TEndPoint endPoint =
           TriggerManagementService.getInstance().getEndPointForStatefulTrigger(triggerName);
       try (SyncDataNodeInternalServiceClient client =
-          internalServiceClientIClientManager.borrowClient(endPoint)) {
+          INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(endPoint)) {
         TFireTriggerReq req = new TFireTriggerReq(triggerName, tablet.serialize(), event.getId());
         TFireTriggerResp resp = client.fireTrigger(req);
         if (resp.foundExecutor) {
           // we successfully found an executor on another data node
           return TriggerFireResult.construct(resp.getFireResult());
         } else {
-          // todo: update trigger table through config node
+          // update TDataNodeLocation of stateful trigger through config node
+          updateLocationOfStatefulTrigger(triggerName);
           retryNum--;
         }
       } catch (IOException | TException e) {
@@ -310,7 +319,8 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
             triggerName,
             endPoint.toString(),
             e.getMessage());
-        // todo: update trigger table through config node
+        // update TDataNodeLocation of stateful trigger through config node
+        updateLocationOfStatefulTrigger(triggerName);
         retryNum--;
       } catch (Throwable e) {
         LOGGER.warn(
@@ -339,5 +349,22 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       }
     }
     return result;
+  }
+
+  private void updateLocationOfStatefulTrigger(String triggerName) {
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TDataNodeLocation tDataNodeLocation =
+          configNodeClient.getLocationOfStatefulTrigger(triggerName).getDataNodeLocation();
+      if (tDataNodeLocation != null) {
+        TriggerManagementService.getInstance()
+            .updateLocationOfStatefulTrigger(triggerName, tDataNodeLocation);
+      }
+    } catch (TException | IOException e) {
+      LOGGER.error(
+          "Failed to update location of stateful trigger({}) through config node and the cause is {}.",
+          triggerName,
+          e.getMessage());
+    }
   }
 }

@@ -222,7 +222,8 @@ public class AggregationOperator implements ProcessOperator {
 
   private void updateResultTsBlock() {
     curTimeRange = null;
-    appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
+    appendAggregationResult(
+        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
   }
 
   private boolean isEmpty(int index) {
