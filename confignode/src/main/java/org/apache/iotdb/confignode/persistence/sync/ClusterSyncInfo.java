@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.persistence.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
@@ -28,12 +29,15 @@ import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
-public class ClusterSyncInfo {
+public class ClusterSyncInfo implements SnapshotProcessor {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(ClusterSyncInfo.class);
 
@@ -77,6 +81,17 @@ public class ClusterSyncInfo {
 
   public List<PipeSink> getAllPipeSink() {
     return syncMetadata.getAllPipeSink();
+  }
+
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    // TODO: merge snapshot logic into SyncLogWritter and SyncLogReader
+    return true;
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    // TODO: merge snapshot logic into SyncLogWritter and SyncLogReader
   }
 
   // endregion
