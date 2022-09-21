@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.alter;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.cache.AlteringRecordsCache;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
@@ -32,16 +31,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileAlignedSeriesReaderIterator;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -188,70 +183,71 @@ public class TsFileRewriteExcutorTest {
     }
   }
 
-//  @Test
-//  public void sstest() throws IOException {
-//
-//    TsFileSequenceReader reader = new TsFileSequenceReader(path);
-//    List<AlignedChunkMetadata> alignedChunkMetadatas =
-//        reader.getAlignedChunkMetadata(alignedDevice);
-//    List<IMeasurementSchema> schemaOldList = collectSchemaList(alignedChunkMetadatas, reader);
-//
-//    TsFileAlignedSeriesReaderIterator readerIterator =
-//        new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaOldList);
-//
-//    while (readerIterator.hasNext()) {
-//      Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
-//      AlignedChunkReader chunkReader = chunkReaderAndChunkSize.left;
-//      while (chunkReader.hasNextSatisfiedPage()) {
-//        IBatchDataIterator batchDataIterator = chunkReader.nextPageData().getBatchDataIterator();
-//        while (batchDataIterator.hasNext()) {
-//          TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();
-//          long time = batchDataIterator.currentTime();
-//          batchDataIterator.next();
-//        }
-//      }
-//    }
-//  }
+  //  @Test
+  //  public void sstest() throws IOException {
+  //
+  //    TsFileSequenceReader reader = new TsFileSequenceReader(path);
+  //    List<AlignedChunkMetadata> alignedChunkMetadatas =
+  //        reader.getAlignedChunkMetadata(alignedDevice);
+  //    List<IMeasurementSchema> schemaOldList = collectSchemaList(alignedChunkMetadatas, reader);
+  //
+  //    TsFileAlignedSeriesReaderIterator readerIterator =
+  //        new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaOldList);
+  //
+  //    while (readerIterator.hasNext()) {
+  //      Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
+  //      AlignedChunkReader chunkReader = chunkReaderAndChunkSize.left;
+  //      while (chunkReader.hasNextSatisfiedPage()) {
+  //        IBatchDataIterator batchDataIterator =
+  // chunkReader.nextPageData().getBatchDataIterator();
+  //        while (batchDataIterator.hasNext()) {
+  //          TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();
+  //          long time = batchDataIterator.currentTime();
+  //          batchDataIterator.next();
+  //        }
+  //      }
+  //    }
+  //  }
 
-//  @Test
-//  public void tsFileRewriteExcutorTest() {
-//
-//    String curMeasurementId = sensorPrefix + "1";
-//    TSEncoding curEncoding = TSEncoding.GORILLA;
-//    CompressionType curCompressionType = CompressionType.GZIP;
-//    File targetTsFile = null;
-//    try {
-//      AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
-//      PartialPath fullPath = new PartialPath(device, curMeasurementId);
-//      alteringRecordsCache.putRecord(
-//          storageGroupName, fullPath.getFullPath(), curEncoding, curCompressionType);
-//      alteringRecordsCache.startAlter();
-//      File f = FSFactoryProducer.getFSFactory().getFile(path);
-//      if (!f.exists()) {
-//        throw new RuntimeException("tsfile not exists " + f.getAbsolutePath());
-//      }
-//      TsFileResource tsFileResource = new TsFileResource(f);
-//      tsFileResource.close();
-//      TsFileResource targetTsFileResource =
-//          TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
-//      TsFileRewriteExcutor excutor = new TsFileRewriteExcutor();
-//      excutor.setSourceFiles(Collections.singletonList(tsFileResource));
-//      excutor.setTargetFiles(Collections.singletonList(targetTsFileResource));
-//      excutor.setSummary(new CompactionTaskSummary());
-//      excutor.perform();
-//      targetTsFile = targetTsFileResource.getTsFile();
-//    } catch (Exception e) {
-//      e.printStackTrace();
-//      Assert.fail(e.getMessage());
-//    }
-//    if (targetTsFile == null || !targetTsFile.exists()) {
-//      throw new RuntimeException("target not exists " + targetTsFile.getAbsolutePath());
-//    }
-//    targetPath = targetTsFile.getAbsolutePath();
-//    readCheck(device, curMeasurementId, curEncoding, curCompressionType, targetTsFile);
-//  }
+  //  @Test
+  //  public void tsFileRewriteExcutorTest() {
+  //
+  //    String curMeasurementId = sensorPrefix + "1";
+  //    TSEncoding curEncoding = TSEncoding.GORILLA;
+  //    CompressionType curCompressionType = CompressionType.GZIP;
+  //    File targetTsFile = null;
+  //    try {
+  //      AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
+  //      PartialPath fullPath = new PartialPath(device, curMeasurementId);
+  //      alteringRecordsCache.putRecord(
+  //          storageGroupName, fullPath.getFullPath(), curEncoding, curCompressionType);
+  //      alteringRecordsCache.startAlter();
+  //      File f = FSFactoryProducer.getFSFactory().getFile(path);
+  //      if (!f.exists()) {
+  //        throw new RuntimeException("tsfile not exists " + f.getAbsolutePath());
+  //      }
+  //      TsFileResource tsFileResource = new TsFileResource(f);
+  //      tsFileResource.close();
+  //      TsFileResource targetTsFileResource =
+  //          TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
+  //      TsFileRewriteExcutor excutor = new TsFileRewriteExcutor();
+  //      excutor.setSourceFiles(Collections.singletonList(tsFileResource));
+  //      excutor.setTargetFiles(Collections.singletonList(targetTsFileResource));
+  //      excutor.setSummary(new CompactionTaskSummary());
+  //      excutor.perform();
+  //      targetTsFile = targetTsFileResource.getTsFile();
+  //    } catch (Exception e) {
+  //      e.printStackTrace();
+  //      Assert.fail(e.getMessage());
+  //    }
+  //    if (targetTsFile == null || !targetTsFile.exists()) {
+  //      throw new RuntimeException("target not exists " + targetTsFile.getAbsolutePath());
+  //    }
+  //    targetPath = targetTsFile.getAbsolutePath();
+  //    readCheck(device, curMeasurementId, curEncoding, curCompressionType, targetTsFile);
+  //  }
 
-    @Test
+  @Test
   public void tsFileRewriteExcutorAlignedTest() {
 
     Map<String, Map<String, Pair<TSEncoding, CompressionType>>> alters = new HashMap<>();
@@ -268,18 +264,20 @@ public class TsFileRewriteExcutorTest {
     TsFileRewriteExcutor excutor = null;
     try {
       AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
-      alters.forEach((d, m) -> {
-        m.forEach((mid, ap) -> {
-          PartialPath fullPath = null;
-          try {
-            fullPath = new PartialPath(d, mid);
-            alteringRecordsCache.putRecord(
-                    storageGroupName, fullPath.getFullPath(), ap.left, ap.right);
-          } catch (Exception e) {
-            Assert.fail(e.getMessage());
-          }
-        });
-      });
+      alters.forEach(
+          (d, m) -> {
+            m.forEach(
+                (mid, ap) -> {
+                  PartialPath fullPath = null;
+                  try {
+                    fullPath = new PartialPath(d, mid);
+                    alteringRecordsCache.putRecord(
+                        storageGroupName, fullPath.getFullPath(), ap.left, ap.right);
+                  } catch (Exception e) {
+                    Assert.fail(e.getMessage());
+                  }
+                });
+          });
       alteringRecordsCache.startAlter();
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (!f.exists()) {
@@ -306,8 +304,7 @@ public class TsFileRewriteExcutorTest {
   }
 
   private void readCheck(
-          Map<String, Map<String, Pair<TSEncoding, CompressionType>>> alters,
-      File targetTsFile) {
+      Map<String, Map<String, Pair<TSEncoding, CompressionType>>> alters, File targetTsFile) {
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetTsFile.getAbsolutePath(), true)) {
       TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
@@ -325,11 +322,12 @@ public class TsFileRewriteExcutorTest {
               Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
               ChunkHeader header = chunk.getHeader();
               Map<String, Pair<TSEncoding, CompressionType>> deviceMap = alters.get(device);
-              if (deviceMap != null
-                  && deviceMap.containsKey(header.getMeasurementID())) {
-                Pair<TSEncoding, CompressionType> tsEncodingCompressionTypePair = deviceMap.get(header.getMeasurementID());
+              if (deviceMap != null && deviceMap.containsKey(header.getMeasurementID())) {
+                Pair<TSEncoding, CompressionType> tsEncodingCompressionTypePair =
+                    deviceMap.get(header.getMeasurementID());
                 Assert.assertEquals(header.getEncodingType(), tsEncodingCompressionTypePair.left);
-                Assert.assertEquals(header.getCompressionType(), tsEncodingCompressionTypePair.right);
+                Assert.assertEquals(
+                    header.getCompressionType(), tsEncodingCompressionTypePair.right);
               } else {
                 Assert.assertEquals(header.getEncodingType(), defaultEncoding);
                 Assert.assertEquals(header.getCompressionType(), defaultCompressionType);
@@ -347,9 +345,11 @@ public class TsFileRewriteExcutorTest {
               ChunkHeader header = currentChunk.getHeader();
               Map<String, Pair<TSEncoding, CompressionType>> deviceMap = alters.get(device);
               if (deviceMap != null && deviceMap.containsKey(measurementId)) {
-                Pair<TSEncoding, CompressionType> tsEncodingCompressionTypePair = deviceMap.get(header.getMeasurementID());
+                Pair<TSEncoding, CompressionType> tsEncodingCompressionTypePair =
+                    deviceMap.get(header.getMeasurementID());
                 Assert.assertEquals(header.getEncodingType(), tsEncodingCompressionTypePair.left);
-                Assert.assertEquals(header.getCompressionType(), tsEncodingCompressionTypePair.right);
+                Assert.assertEquals(
+                    header.getCompressionType(), tsEncodingCompressionTypePair.right);
               } else {
                 Assert.assertEquals(header.getEncodingType(), defaultEncoding);
                 Assert.assertEquals(header.getCompressionType(), defaultCompressionType);
@@ -376,21 +376,21 @@ public class TsFileRewriteExcutorTest {
 
   @After
   public void tearDown() {
+    try {
+      FileUtils.forceDelete(new File(path));
+      if (targetPath != null) {
         try {
-          FileUtils.forceDelete(new File(path));
-          if (targetPath != null) {
-            try {
-              File file = new File(targetPath);
-              if (file.exists()) {
-                FileUtils.forceDelete(file);
-              }
-            } catch (IOException e) {
-              Assert.fail(e.getMessage());
-            }
+          File file = new File(targetPath);
+          if (file.exists()) {
+            FileUtils.forceDelete(file);
           }
         } catch (IOException e) {
           Assert.fail(e.getMessage());
         }
+      }
+    } catch (IOException e) {
+      Assert.fail(e.getMessage());
+    }
   }
 
   protected List<IMeasurementSchema> collectSchemaList(

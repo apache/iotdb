@@ -19,16 +19,11 @@
 package org.apache.iotdb.db.engine.storagegroup.dataregion;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.alter.RewriteTimeseriesTask;
-import org.apache.iotdb.db.engine.alter.log.AlteringLogAnalyzer;
-import org.apache.iotdb.db.engine.alter.log.AlteringLogger;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.alter.RewriteTimeseriesTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
-import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -45,7 +40,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -87,6 +81,9 @@ public class StorageGroupManager {
 
   /** TsFile alter lock: Control the concurrency of alter timeseries and clear operations */
   private final ReentrantLock alterLock = new ReentrantLock(true);
+
+  private RewriteTimeseriesTaskManager rewriteTimeseriesTaskManager =
+      RewriteTimeseriesTaskManager.getInstance();
 
   public StorageGroupManager() {
     this(false);
@@ -367,6 +364,10 @@ public class StorageGroupManager {
     alterLock.unlock();
   }
 
+  public boolean isAlterLocked() {
+    return alterLock.isLocked();
+  }
+
   /** push countUpgradeFiles operation down to all virtual storage group processors */
   public int countUpgradeFiles() {
     int totalUpgradeFileNum = 0;
@@ -536,41 +537,6 @@ public class StorageGroupManager {
   }
 
   public void rewriteTimeseries() throws Exception {
-    for (DataRegion dataRegion : this.dataRegion) {
-      if (dataRegion != null) {
-        List<Long> timePartitions = dataRegion.getTimePartitions();
-        if (timePartitions != null && timePartitions.size() > 0) {
-          // alter.log analyzer
-          File logFile =
-              SystemFileFactory.INSTANCE.getFile(
-                  dataRegion.getStorageGroupSysDir(), AlteringLogger.ALTERING_LOG_NAME);
-          if (!logFile.exists()) {
-            // there is no altering timeseries in the DataRegion
-            continue;
-          }
-          AlteringLogAnalyzer analyzer = new AlteringLogAnalyzer(logFile);
-          analyzer.analyzer();
-          // clear begin
-          if (!analyzer.isClearBegin()) {
-            AlteringLogger.clearBegin(logFile);
-          }
-          TsFileManager tsFileManager = dataRegion.getTsFileManager();
-          // Create tasks grouped by DataRegion TimePartition
-          // Share CompactionTaskManager
-          CompactionTaskManager.getInstance()
-              .addTaskToWaitingQueue(
-                  new RewriteTimeseriesTask(
-                      dataRegion.getStorageGroupName(),
-                      dataRegion.getDataRegionId(),
-                      timePartitions,
-                      tsFileManager,
-                      CompactionTaskManager.currentTaskNum,
-                      tsFileManager.getNextCompactionTaskId(),
-                      analyzer.isClearBegin(),
-                      analyzer.getDoneFiles(),
-                      logFile));
-        }
-      }
-    }
+    rewriteTimeseriesTaskManager.rewriteTimeseries(dataRegion, this);
   }
 }

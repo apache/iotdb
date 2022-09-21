@@ -1212,13 +1212,10 @@ public class StorageEngine implements IService {
       throw new StorageEngineException(
           "Rewrite Timeseries Failed. The StorageGroupManager is null");
     }
-    storageGroupManager.alterLock();
     try {
       storageGroupManager.rewriteTimeseries();
     } catch (Exception e) {
       throw new StorageEngineException(e);
-    } finally {
-      storageGroupManager.alterUnlock();
     }
   }
 
