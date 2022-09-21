@@ -279,6 +279,7 @@ public class IoTDBParsePageV3 extends IoTDBParsePage {
             }
             treeView.setRoot(treeRoot);
             treeRoot.setExpanded(true);
+            this.clearParsePageCache();
           }
         });
 
