@@ -609,7 +609,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     if (freeDisk != 0 && totalDisk != 0) {
       double freeDiskRatio = (double) freeDisk * 100 / totalDisk;
-      loadSample.setDiskUsageRate(1.0 - freeDiskRatio);
+      loadSample.setDiskUsageRate(100.0 - freeDiskRatio);
       // Reset NodeStatus if necessary
       if (freeDiskRatio < commonConfig.getDiskFullThreshold()) {
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
