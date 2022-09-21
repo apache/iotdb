@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.migration;
+package org.apache.iotdb.db.engine.archive;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -34,29 +35,32 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Paths;
 
-/** Class for each Migration Task */
-public class MigrationTask {
+/** Class for each Archive Task */
+public class ArchiveTask {
   private long taskId;
   private PartialPath storageGroup;
   private File targetDir;
   private long startTime;
   private long ttl;
-  private volatile MigrationTaskStatus status = MigrationTaskStatus.READY;
+  private volatile ArchiveTaskStatus status = ArchiveTaskStatus.READY;
   private long submitTime;
 
-  private static final Logger logger = LoggerFactory.getLogger(MigrationTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(ArchiveTask.class);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   FileOutputStream logFileOutput = null;
-  private static File MIGRATING_LOG_DIR =
+  private static final File ARCHIVING_LOG_DIR =
       SystemFileFactory.INSTANCE.getFile(
-          Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "migrating")
+          Paths.get(
+                  FilePathUtils.regularizePath(config.getSystemDir()),
+                  IoTDBConstant.ARCHIVE_FOLDER_NAME,
+                  IoTDBConstant.ARCHIVE_LOG_FOLDER_NAME)
               .toString());
 
-  public MigrationTask(long taskId) {
+  public ArchiveTask(long taskId) {
     this.taskId = taskId;
   }
 
-  public MigrationTask(MigrationTask task) {
+  public ArchiveTask(ArchiveTask task) {
     this.taskId = task.getTaskId();
     this.storageGroup = task.getStorageGroup();
     this.targetDir = task.getTargetDir();
@@ -65,7 +69,7 @@ public class MigrationTask {
     this.submitTime = task.getSubmitTime();
   }
 
-  public MigrationTask(
+  public ArchiveTask(
       long taskId, PartialPath storageGroup, File targetDir, long ttl, long startTime) {
     this.taskId = taskId;
     this.storageGroup = storageGroup;
@@ -75,7 +79,7 @@ public class MigrationTask {
     this.submitTime = DatetimeUtils.currentTime();
   }
 
-  public MigrationTask(
+  public ArchiveTask(
       long taskId,
       PartialPath storageGroup,
       File targetDir,
@@ -91,12 +95,12 @@ public class MigrationTask {
   }
 
   /**
-   * started the migration task, write to
+   * started the archive task, write to log
    *
    * @return true if write log successful, false otherwise
    */
   public boolean startTask() throws IOException {
-    File logFile = SystemFileFactory.INSTANCE.getFile(MIGRATING_LOG_DIR, taskId + ".log");
+    File logFile = SystemFileFactory.INSTANCE.getFile(ARCHIVING_LOG_DIR, taskId + ".log");
     if (logFile.exists()) {
       // want an empty log file
       logFile.delete();
@@ -115,13 +119,13 @@ public class MigrationTask {
   }
 
   /**
-   * started migrating tsfile and its resource/mod files
+   * started archiving tsfile and its resource/mod files
    *
    * @return true if write log successful, false otherwise
    */
   public boolean startFile(File tsfile) throws IOException {
     if (logFileOutput == null) {
-      logger.error("need to run MigrationTask.startTask before MigrationTask.start");
+      logger.error("need to run ArchiveTask.startTask before ArchiveTask.start");
       return false;
     }
 
@@ -131,9 +135,9 @@ public class MigrationTask {
     return true;
   }
 
-  /** finished migrating task, deletes logs and closes FileOutputStream */
+  /** finished archiving task, deletes logs and closes FileOutputStream */
   public void finish() {
-    File logFile = SystemFileFactory.INSTANCE.getFile(MIGRATING_LOG_DIR, taskId + ".log");
+    File logFile = SystemFileFactory.INSTANCE.getFile(ARCHIVING_LOG_DIR, taskId + ".log");
     if (logFile.exists()) {
       logFile.delete();
     }
@@ -174,7 +178,7 @@ public class MigrationTask {
     return startTime;
   }
 
-  public MigrationTaskStatus getStatus() {
+  public ArchiveTaskStatus getStatus() {
     return status;
   }
 
@@ -182,11 +186,11 @@ public class MigrationTask {
     return submitTime;
   }
 
-  public void setStatus(MigrationTaskStatus status) {
+  public void setStatus(ArchiveTaskStatus status) {
     this.status = status;
   }
 
-  public enum MigrationTaskStatus {
+  public enum ArchiveTaskStatus {
     READY,
     RUNNING,
     PAUSED,

@@ -787,10 +787,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return operator;
   }
 
-  // Set Migration
+  // Set Archive
+
   @Override
-  public Operator visitSetMigration(IoTDBSqlParser.SetMigrationContext ctx) {
-    SetMigrationOperator operator = new SetMigrationOperator(SQLConstant.TOK_SET);
+  public Operator visitSetArchive(IoTDBSqlParser.SetArchiveContext ctx) {
+    SetArchiveOperator operator = new SetArchiveOperator(SQLConstant.TOK_SET);
 
     if (ctx.storageGroup != null) {
       operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
@@ -812,17 +813,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       operator.setTargetDir(targetDir);
     }
 
-    // parse the setMigrationClause
-    for (IoTDBSqlParser.SetMigrationClauseContext setMigrationClauseContext :
-        ctx.setMigrationClause()) {
-      parseSetMigrationClause(operator, setMigrationClauseContext);
+    // parse the setArchiveClause
+    for (IoTDBSqlParser.SetArchiveClauseContext setArchiveClauseContext : ctx.setArchiveClause()) {
+      parseSetArchiveClause(operator, setArchiveClauseContext);
     }
 
     return operator;
   }
 
-  private void parseSetMigrationClause(
-      SetMigrationOperator operator, IoTDBSqlParser.SetMigrationClauseContext ctx) {
+  private void parseSetArchiveClause(
+      SetArchiveOperator operator, IoTDBSqlParser.SetArchiveClauseContext ctx) {
     if (ctx.storageGroup != null) {
       operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
     }
@@ -844,67 +844,62 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
-  // Cancel Migration
-  @Override
-  public Operator visitCancelMigration(IoTDBSqlParser.CancelMigrationContext ctx) {
-    CancelMigrationOperator operator = new CancelMigrationOperator(SQLConstant.TOK_UNSET);
+  // Cancel Archive
+  public Operator visitCancelArchive(IoTDBSqlParser.CancelArchiveContext ctx) {
+    CancelArchiveOperator operator = new CancelArchiveOperator(SQLConstant.TOK_UNSET);
     if (ctx.storageGroup != null) {
       operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
     } else if (ctx.taskId != null) {
       operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
     } else {
       // unknown case
-      throw new SQLParserException("cancel migration unknown case");
+      throw new SQLParserException("cancel archive unknown case");
     }
     return operator;
   }
 
-  // Pause Migration
-  @Override
-  public Operator visitPauseMigration(IoTDBSqlParser.PauseMigrationContext ctx) {
-    PauseMigrationOperator operator = new PauseMigrationOperator(SQLConstant.TOK_SET);
+  // Pause Archive
+  public Operator visitPauseArchive(IoTDBSqlParser.PauseArchiveContext ctx) {
+    PauseArchiveOperator operator = new PauseArchiveOperator(SQLConstant.TOK_SET);
     if (ctx.storageGroup != null) {
       operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
     } else if (ctx.taskId != null) {
       operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
     } else {
       // unknown case
-      throw new SQLParserException("pause migration unknown case");
+      throw new SQLParserException("pause archive unknown case");
     }
     return operator;
   }
 
-  // Resume Migration
-  @Override
-  public Operator visitResumeMigration(IoTDBSqlParser.ResumeMigrationContext ctx) {
-    ResumeMigrationOperator operator = new ResumeMigrationOperator(SQLConstant.TOK_UNSET);
+  // Resume Archive
+  public Operator visitResumeArchive(IoTDBSqlParser.ResumeArchiveContext ctx) {
+    ResumeArchiveOperator operator = new ResumeArchiveOperator(SQLConstant.TOK_UNSET);
     if (ctx.storageGroup != null) {
       operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
     } else if (ctx.taskId != null) {
       operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
     } else {
       // unknown case
-      throw new SQLParserException("resume migration unknown case");
+      throw new SQLParserException("resume archive unknown case");
     }
     return operator;
   }
 
-  // Show Migration
-  @Override
-  public Operator visitShowMigration(IoTDBSqlParser.ShowMigrationContext ctx) {
+  // Show Archive
+  public Operator visitShowArchive(IoTDBSqlParser.ShowArchiveContext ctx) {
     List<PartialPath> storageGroups = new ArrayList<>();
     List<IoTDBSqlParser.PrefixPathContext> prefixPathList = ctx.prefixPath();
     for (IoTDBSqlParser.PrefixPathContext prefixPath : prefixPathList) {
       storageGroups.add(parsePrefixPath(prefixPath));
     }
-    return new ShowMigrationOperator(storageGroups);
+    return new ShowArchiveOperator(storageGroups);
   }
 
-  // Show All Migration
-  @Override
-  public Operator visitShowAllMigration(IoTDBSqlParser.ShowAllMigrationContext ctx) {
+  // Show All Archive
+  public Operator visitShowAllArchive(IoTDBSqlParser.ShowAllArchiveContext ctx) {
     List<PartialPath> storageGroups = new ArrayList<>();
-    return new ShowMigrationOperator(storageGroups);
+    return new ShowArchiveOperator(storageGroups);
   }
 
   // Start Trigger

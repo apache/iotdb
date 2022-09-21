@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.migration;
+package org.apache.iotdb.db.engine.archive;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -40,44 +41,52 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * MigrationRecover class encapsulates the recover logic, it retrieves the MigrationTasks and
- * finishes migrating the tsfiles.
+ * ArchiveRecover class encapsulates the recover logic, it retrieves the ArchiveTasks and finishes
+ * archiving the tsfiles.
  */
-public class MigrationRecover {
-  private static final Logger logger = LoggerFactory.getLogger(MigrationRecover.class);
+public class ArchiveRecover {
+  private static final Logger logger = LoggerFactory.getLogger(ArchiveRecover.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final String LOG_FILE_NAME =
-      Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "log.bin")
-          .toString();
-  private static final File MIGRATING_LOG_DIR =
+
+  private static final File LOG_FILE =
       SystemFileFactory.INSTANCE.getFile(
-          Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "migrating")
+          Paths.get(
+                  FilePathUtils.regularizePath(config.getSystemDir()),
+                  IoTDBConstant.ARCHIVE_FOLDER_NAME,
+                  "log.bin")
               .toString());
-  private Map<Long, MigrationTask> migrationTasks;
+  private static final File ARCHIVING_LOG_DIR =
+      SystemFileFactory.INSTANCE.getFile(
+          Paths.get(
+                  FilePathUtils.regularizePath(config.getSystemDir()),
+                  IoTDBConstant.ARCHIVE_FOLDER_NAME,
+                  IoTDBConstant.ARCHIVE_LOG_FOLDER_NAME)
+              .toString());
+  private Map<Long, ArchiveTask> archiveTasks;
   private long currentTaskId = 0;
 
-  public List<MigrationTask> recover() {
-    // first recover migrating tsfiles
-    recoverMigratingFiles();
+  public List<ArchiveTask> recover() {
+    // first recover archiving tsfiles
+    recoverArchivingFiles();
 
-    migrationTasks = new HashMap<>();
+    archiveTasks = new HashMap<>();
     currentTaskId = 0;
 
     // read from logReader
-    try (MigrationOperateReader logReader = new MigrationOperateReader(LOG_FILE_NAME);
-        MigrationOperateWriter logWriter = new MigrationOperateWriter(LOG_FILE_NAME)) {
+    try (ArchiveOperateReader logReader = new ArchiveOperateReader(LOG_FILE);
+        ArchiveOperateWriter logWriter = new ArchiveOperateWriter(LOG_FILE)) {
       Set<Long> errorSet = new HashSet<>();
 
       while (logReader.hasNext()) {
-        MigrationOperate operate = logReader.next();
+        ArchiveOperate operate = logReader.next();
         long taskId = operate.getTask().getTaskId();
 
         switch (operate.getType()) {
           case SET:
-            setMigrationFromLog(operate.getTask());
+            setArchiveFromLog(operate.getTask());
             break;
           case CANCEL:
-            operateFromLog(MigrationOperate.MigrationOperateType.CANCEL, taskId);
+            operateFromLog(ArchiveOperate.ArchiveOperateType.CANCEL, taskId);
             break;
           case START:
             // if task started but didn't finish, then error occurred
@@ -85,89 +94,89 @@ public class MigrationRecover {
             break;
           case PAUSE:
             errorSet.remove(taskId);
-            operateFromLog(MigrationOperate.MigrationOperateType.PAUSE, taskId);
+            operateFromLog(ArchiveOperate.ArchiveOperateType.PAUSE, taskId);
             break;
           case RESUME:
-            operateFromLog(MigrationOperate.MigrationOperateType.RESUME, taskId);
+            operateFromLog(ArchiveOperate.ArchiveOperateType.RESUME, taskId);
             break;
           case FINISHED:
             // finished task => remove from list and remove from potential error task
             errorSet.remove(taskId);
-            migrationTasks.remove(taskId);
-            operateFromLog(MigrationOperate.MigrationOperateType.FINISHED, taskId);
+            archiveTasks.remove(taskId);
+            operateFromLog(ArchiveOperate.ArchiveOperateType.FINISHED, taskId);
             break;
           case ERROR:
             // already put error in log
             errorSet.remove(taskId);
-            operateFromLog(MigrationOperate.MigrationOperateType.ERROR, taskId);
+            operateFromLog(ArchiveOperate.ArchiveOperateType.ERROR, taskId);
             break;
           default:
-            logger.error("read migration log: unknown type");
+            logger.error("read archive log: unknown type");
         }
       }
 
       // for each task in errorSet, the task started but didn't finish (an error)
       for (long errTaskId : errorSet) {
-        if (migrationTasks.containsKey(errTaskId)) {
+        if (archiveTasks.containsKey(errTaskId)) {
           // write to log and set task in ERROR in memory
-          logWriter.log(MigrationOperate.MigrationOperateType.ERROR, migrationTasks.get(errTaskId));
-          operateFromLog(MigrationOperate.MigrationOperateType.ERROR, errTaskId);
+          logWriter.log(ArchiveOperate.ArchiveOperateType.ERROR, archiveTasks.get(errTaskId));
+          operateFromLog(ArchiveOperate.ArchiveOperateType.ERROR, errTaskId);
         } else {
           logger.error("unknown error taskId");
         }
       }
     } catch (Exception e) {
-      logger.error("Cannot read log for migration.");
+      logger.error("Cannot read log for archive.");
     }
 
-    recoverMigratingFiles();
+    recoverArchivingFiles();
 
-    return new ArrayList<>(migrationTasks.values());
+    return new ArrayList<>(archiveTasks.values());
   }
 
-  /** add migration task to migrationTasks from log, does not write to log */
-  public void setMigrationFromLog(MigrationTask newTask) {
+  /** add archive task to archiveTasks from log, does not write to log */
+  public void setArchiveFromLog(ArchiveTask newTask) {
     if (currentTaskId > newTask.getTaskId()) {
-      logger.error("set migration error, current index larger than log index");
+      logger.error("set archive error, current index larger than log index");
     }
 
-    migrationTasks.put(newTask.getTaskId(), newTask);
+    archiveTasks.put(newTask.getTaskId(), newTask);
     currentTaskId = newTask.getTaskId() + 1;
   }
 
-  private MigrationTask.MigrationTaskStatus statusFromOperateType(
-      MigrationOperate.MigrationOperateType migrationOperateType) {
-    switch (migrationOperateType) {
+  private ArchiveTask.ArchiveTaskStatus statusFromOperateType(
+      ArchiveOperate.ArchiveOperateType archiveOperateType) {
+    switch (archiveOperateType) {
       case RESUME:
-        return MigrationTask.MigrationTaskStatus.READY;
+        return ArchiveTask.ArchiveTaskStatus.READY;
       case CANCEL:
-        return MigrationTask.MigrationTaskStatus.CANCELED;
+        return ArchiveTask.ArchiveTaskStatus.CANCELED;
       case START:
-        return MigrationTask.MigrationTaskStatus.RUNNING;
+        return ArchiveTask.ArchiveTaskStatus.RUNNING;
       case PAUSE:
-        return MigrationTask.MigrationTaskStatus.PAUSED;
+        return ArchiveTask.ArchiveTaskStatus.PAUSED;
       case FINISHED:
-        return MigrationTask.MigrationTaskStatus.FINISHED;
+        return ArchiveTask.ArchiveTaskStatus.FINISHED;
       case ERROR:
-        return MigrationTask.MigrationTaskStatus.ERROR;
+        return ArchiveTask.ArchiveTaskStatus.ERROR;
     }
     return null;
   }
 
-  /** operate Migration to migrationTasks from log, does not write to log */
-  public boolean operateFromLog(MigrationOperate.MigrationOperateType operateType, long taskId) {
-    if (migrationTasks.containsKey(taskId)) {
-      migrationTasks.get(taskId).setStatus(statusFromOperateType(operateType));
+  /** operate Archive to archiveTasks from log, does not write to log */
+  public boolean operateFromLog(ArchiveOperate.ArchiveOperateType operateType, long taskId) {
+    if (archiveTasks.containsKey(taskId)) {
+      archiveTasks.get(taskId).setStatus(statusFromOperateType(operateType));
       return true;
     } else {
       return false;
     }
   }
 
-  /** finish the unfinished MigrationTasks using log files under MIGRATING_LOG_DIR */
-  public void recoverMigratingFiles() {
-    File[] migratingLogFiles = MIGRATING_LOG_DIR.listFiles();
-    for (File logFile : migratingLogFiles) {
+  /** finish the unfinished ArchiveTask using log files under ARCHIVING_LOG_DIR */
+  public void recoverArchivingFiles() {
+    File[] archivingLogFiles = ARCHIVING_LOG_DIR.listFiles();
+    for (File logFile : archivingLogFiles) {
       FileInputStream logFileInput;
       File targetDir;
       String tsfilePath;
@@ -191,7 +200,7 @@ public class MigrationRecover {
         }
       } catch (IOException e) {
         // could not read log file, continue to next log
-        logger.error("MigratingFileLogManager: log file not found");
+        logger.error("ArchiveRecover: log file not found");
         continue;
       }
 
@@ -199,7 +208,7 @@ public class MigrationRecover {
         tsfile = SystemFileFactory.INSTANCE.getFile(tsfilePath);
 
         TsFileResource resource = new TsFileResource(tsfile);
-        resource.migrate(targetDir);
+        resource.archive(targetDir);
 
         try {
           tsfilePath = ReadWriteIOUtils.readString(logFileInput);
@@ -212,7 +221,7 @@ public class MigrationRecover {
       try {
         logFileInput.close();
       } catch (IOException e) {
-        logger.error("Migration Log File Error", e);
+        logger.error("Archiving Log File Error", e);
         break;
       }
 
@@ -220,8 +229,8 @@ public class MigrationRecover {
     }
   }
 
-  public List<MigrationTask> getMigrationTasks() {
-    return new ArrayList<>(migrationTasks.values());
+  public List<ArchiveTask> getArchiveTasks() {
+    return new ArrayList<>(archiveTasks.values());
   }
 
   public long getCurrentTaskId() {

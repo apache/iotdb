@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.migration;
+package org.apache.iotdb.db.engine.archive;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -47,11 +48,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class MigrationRecoverTest {
+public class ArchiveRecoverTest {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static File MIGRATING_LOG_DIR =
+  private static final File ARCHIVING_LOG_DIR =
       SystemFileFactory.INSTANCE.getFile(
-          Paths.get(FilePathUtils.regularizePath(config.getSystemDir()), "migration", "migrating")
+          Paths.get(
+                  FilePathUtils.regularizePath(config.getSystemDir()),
+                  IoTDBConstant.ARCHIVE_FOLDER_NAME,
+                  IoTDBConstant.ARCHIVE_LOG_FOLDER_NAME)
               .toString());
   private long testTaskId = 99;
   private File testLogFile;
@@ -63,7 +67,7 @@ public class MigrationRecoverTest {
       throws MetadataException, StorageGroupProcessorException, LogicalOperatorException {
     EnvironmentUtils.envSetUp();
 
-    testLogFile = SystemFileFactory.INSTANCE.getFile(MIGRATING_LOG_DIR, testTaskId + ".log");
+    testLogFile = SystemFileFactory.INSTANCE.getFile(ARCHIVING_LOG_DIR, testTaskId + ".log");
 
     testTargetDir = new File("testTargetDir");
     testTargetDir.mkdirs();
@@ -114,7 +118,7 @@ public class MigrationRecoverTest {
     setupTestFiles();
 
     // test write
-    MigrationTask task = new MigrationTask(testTaskId, null, testTargetDir, 0, 0);
+    ArchiveTask task = new ArchiveTask(testTaskId, null, testTargetDir, 0, 0);
     task.startTask();
     task.startFile(getTsFile());
     task.close();
@@ -129,7 +133,7 @@ public class MigrationRecoverTest {
     fileInputStream.close();
 
     // test read
-    MigrationRecover recover = new MigrationRecover();
+    ArchiveRecover recover = new ArchiveRecover();
     recover.recover();
 
     for (File file : testFiles) {
@@ -163,7 +167,7 @@ public class MigrationRecoverTest {
     logOutput.close();
 
     // test read
-    MigrationRecover recover = new MigrationRecover();
+    ArchiveRecover recover = new ArchiveRecover();
     recover.recover();
 
     assertEquals(0, testTargetDir.listFiles().length);

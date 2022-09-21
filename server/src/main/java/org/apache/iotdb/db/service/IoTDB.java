@@ -26,11 +26,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.archive.ArchiveManager;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.engine.migration.MigrationManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
@@ -142,7 +142,7 @@ public class IoTDB implements IoTDBMBean {
     logger.info("recover the schema...");
     initMManager();
     initServiceProvider();
-    initMigrationManager();
+    initArchiveManager();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
@@ -231,9 +231,9 @@ public class IoTDB implements IoTDBMBean {
         IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
   }
 
-  private void initMigrationManager() {
-    // recover MigrationTasks, finish migrating unfinished tsfiles, start check threads
-    MigrationManager.getInstance().init();
+  private void initArchiveManager() {
+    // recover ArchiveTasks, finish archiving unfinished tsfiles, start check threads
+    ArchiveManager.getInstance().init();
   }
 
   @Override

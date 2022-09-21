@@ -15,6 +15,7 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
@@ -22,17 +23,16 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.PauseMigrationPlan;
+import org.apache.iotdb.db.qp.physical.sys.PauseArchivePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class PauseMigrationOperator extends Operator {
-
+public class ResumeArchiveOperator extends Operator {
   private long taskId = -1;
   private PartialPath storageGroup;
 
-  public PauseMigrationOperator(int tokenIntType) {
+  public ResumeArchiveOperator(int tokenIntType) {
     super(tokenIntType);
-    this.operatorType = OperatorType.PAUSE_MIGRATION;
+    this.operatorType = OperatorType.PAUSE_ARCHIVE;
   }
 
   public long getTaskId() {
@@ -55,11 +55,11 @@ public class PauseMigrationOperator extends Operator {
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     if (storageGroup != null) {
-      return new PauseMigrationPlan(storageGroup, true);
+      return new PauseArchivePlan(storageGroup, false);
     } else if (taskId != -1) {
-      return new PauseMigrationPlan(taskId, true);
+      return new PauseArchivePlan(taskId, false);
     } else {
-      return new PauseMigrationPlan(true);
+      return new PauseArchivePlan(false);
     }
   }
 }

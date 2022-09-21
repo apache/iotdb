@@ -46,8 +46,8 @@ ddlStatement
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
-    | setMigration | cancelMigration | pauseMigration | resumeMigration | showMigration
-    | showAllMigration
+    | setArchive | cancelArchive | pauseArchive | resumeArchive | showArchive
+    | showAllArchive
     ;
 
 dmlStatement
@@ -332,42 +332,42 @@ countNodes
     : COUNT NODES prefixPath LEVEL OPERATOR_EQ INTEGER_LITERAL
     ;
 
-// Set Migration
-setMigration
-    : SET MIGRATION TO storageGroup=prefixPath startTime=DATETIME_LITERAL ttl=INTEGER_LITERAL targetDir=STRING_LITERAL
-    | SET MIGRATION TO setMigrationClause*
+// Set Archive
+setArchive
+    : SET ARCHIVE TO storageGroup=prefixPath startTime=DATETIME_LITERAL ttl=INTEGER_LITERAL targetDir=STRING_LITERAL
+    | SET ARCHIVE TO setArchiveClause*
     ;
 
-setMigrationClause
+setArchiveClause
     : STORAGE_GROUP     OPERATOR_EQ storageGroup=prefixPath
     | START_TIME        OPERATOR_EQ startTime=DATETIME_LITERAL
     | TTL               OPERATOR_EQ ttl=INTEGER_LITERAL
     | TARGET_DIR        OPERATOR_EQ targetDir=STRING_LITERAL
     ;
 
-// Cancel Migration
-cancelMigration
-    : CANCEL MIGRATION (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
+// Cancel Archive
+cancelArchive
+    : CANCEL ARCHIVE (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
     ;
 
-// Pause Migration
-pauseMigration
-    : PAUSE MIGRATION (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
+// Pause Archive
+pauseArchive
+    : PAUSE ARCHIVE (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
     ;
 
-// Unpause/Resume migration
-resumeMigration
-    : RESUME MIGRATION (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
+// Unpause/Resume Archive
+resumeArchive
+    : RESUME ARCHIVE (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
     ;
 
-// Show Migration
-showMigration
-    : SHOW MIGRATION ON prefixPath (COMMA prefixPath)*
+// Show Archive
+showArchive
+    : SHOW ARCHIVE ON prefixPath (COMMA prefixPath)*
     ;
 
-// Show All Migration
-showAllMigration
-    : SHOW ALL MIGRATION
+// Show All Archive
+showAllArchive
+    : SHOW ALL ARCHIVE
     ;
 
 

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.migration;
+package org.apache.iotdb.db.engine.archive;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -28,26 +28,26 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-/** MigrationOperate is MigrationOperateType (SET, CANCEL, PAUSE, etc) and a MigrationTask */
-public class MigrationOperate {
-  private MigrationOperateType type;
-  private MigrationTask task;
+/** ArchiveOperate is ArchiveOperateType (SET, CANCEL, PAUSE, etc) and an ArchiveTask */
+public class ArchiveOperate {
+  private ArchiveOperateType type;
+  private ArchiveTask task;
 
-  public MigrationOperate(MigrationOperateType type, MigrationTask task) {
+  public ArchiveOperate(ArchiveOperateType type, ArchiveTask task) {
     this.type = type;
-    this.task = new MigrationTask(task);
+    this.task = new ArchiveTask(task);
   }
 
-  public MigrationOperate(MigrationOperateType type, long taskId) {
+  public ArchiveOperate(ArchiveOperateType type, long taskId) {
     this.type = type;
-    this.task = new MigrationTask(taskId);
+    this.task = new ArchiveTask(taskId);
   }
 
-  public MigrationOperateType getType() {
+  public ArchiveOperateType getType() {
     return type;
   }
 
-  public MigrationTask getTask() {
+  public ArchiveTask getTask() {
     return task;
   }
 
@@ -56,7 +56,7 @@ public class MigrationOperate {
     ReadWriteIOUtils.write((byte) typeNum, logFileOutStream);
     ReadWriteIOUtils.write(task.getTaskId(), logFileOutStream);
 
-    if (type == MigrationOperateType.SET) {
+    if (type == ArchiveOperateType.SET) {
       ReadWriteIOUtils.write(task.getStorageGroup().getFullPath(), logFileOutStream);
       ReadWriteIOUtils.write(task.getTargetDir().getPath(), logFileOutStream);
       ReadWriteIOUtils.write(task.getStartTime(), logFileOutStream);
@@ -67,19 +67,19 @@ public class MigrationOperate {
     logFileOutStream.flush();
   }
 
-  public static MigrationOperate deserialize(FileInputStream logFileInStream)
+  public static ArchiveOperate deserialize(FileInputStream logFileInStream)
       throws IOException, IllegalPathException {
-    MigrationOperateType operateType;
+    ArchiveOperateType operateType;
 
     int typeNum = ReadWriteIOUtils.readByte(logFileInStream);
-    if (typeNum >= 0 && typeNum < MigrationOperateType.values().length)
-      operateType = MigrationOperateType.values()[typeNum];
+    if (typeNum >= 0 && typeNum < ArchiveOperateType.values().length)
+      operateType = ArchiveOperateType.values()[typeNum];
     else throw new IOException();
 
     long taskId = ReadWriteIOUtils.readLong(logFileInStream);
 
-    MigrationTask deserializedTask;
-    if (operateType == MigrationOperateType.SET) {
+    ArchiveTask deserializedTask;
+    if (operateType == ArchiveOperateType.SET) {
       PartialPath storageGroup = new PartialPath(ReadWriteIOUtils.readString(logFileInStream));
       String targetDirPath = ReadWriteIOUtils.readString(logFileInStream);
       File targetDir = FSFactoryProducer.getFSFactory().getFile(targetDirPath);
@@ -88,14 +88,14 @@ public class MigrationOperate {
       long submitTime = ReadWriteIOUtils.readLong(logFileInStream);
 
       deserializedTask =
-          new MigrationTask(taskId, storageGroup, targetDir, ttl, startTime, submitTime);
+          new ArchiveTask(taskId, storageGroup, targetDir, ttl, startTime, submitTime);
     } else {
-      deserializedTask = new MigrationTask(taskId);
+      deserializedTask = new ArchiveTask(taskId);
     }
-    return new MigrationOperate(operateType, deserializedTask);
+    return new ArchiveOperate(operateType, deserializedTask);
   }
 
-  public enum MigrationOperateType {
+  public enum ArchiveOperateType {
     SET,
     CANCEL,
     START,

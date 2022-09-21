@@ -31,29 +31,29 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-public class SetMigrationPlan extends PhysicalPlan {
+public class SetArchivePlan extends PhysicalPlan {
   private long taskId = -1;
   private PartialPath storageGroup;
   private File targetDir;
   private long ttl;
   private long startTime;
 
-  public SetMigrationPlan() {
-    super(OperatorType.SET_MIGRATION);
+  public SetArchivePlan() {
+    super(OperatorType.SET_ARCHIVE);
   }
 
-  public SetMigrationPlan(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
-    super(OperatorType.SET_MIGRATION);
+  public SetArchivePlan(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
+    super(OperatorType.SET_ARCHIVE);
     this.storageGroup = storageGroup;
     this.targetDir = targetDir;
     this.ttl = ttl;
     this.startTime = startTime;
   }
 
-  public SetMigrationPlan(
+  public SetArchivePlan(
       long taskId, PartialPath storageGroup, File targetDir, long ttl, long startTime) {
-    // set migrate w/ taskId
-    super(OperatorType.SET_MIGRATION);
+    // set archive w/ taskId
+    super(OperatorType.SET_ARCHIVE);
     this.taskId = taskId;
     this.storageGroup = storageGroup;
     this.targetDir = targetDir;
@@ -61,13 +61,13 @@ public class SetMigrationPlan extends PhysicalPlan {
     this.startTime = startTime;
   }
 
-  public SetMigrationPlan(PartialPath storageGroup) {
-    // cancel migrate using storage group
+  public SetArchivePlan(PartialPath storageGroup) {
+    // cancel archive using storage group
     this(storageGroup, null, Long.MAX_VALUE, Long.MAX_VALUE);
   }
 
-  public SetMigrationPlan(long taskId) {
-    // cancel migrate using taskId
+  public SetArchivePlan(long taskId) {
+    // cancel archive using taskId
     this(taskId, null, null, Long.MAX_VALUE, Long.MAX_VALUE);
   }
 
@@ -78,7 +78,7 @@ public class SetMigrationPlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    int type = PhysicalPlanType.MIGRATION.ordinal();
+    int type = PhysicalPlanType.ARCHIVE.ordinal();
     stream.writeByte((byte) type);
     stream.writeLong(ttl);
     stream.writeLong(startTime);

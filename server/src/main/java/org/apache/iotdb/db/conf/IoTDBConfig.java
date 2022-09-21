@@ -861,8 +861,8 @@ public class IoTDBConfig {
   // The max record num returned in one schema query.
   private int schemaQueryFetchSize = 10000000;
 
-  /** number of threads given to migration tasks */
-  private int migrationThreadNum = 2;
+  /** number of threads given to archive tasks */
+  private int archiveThreadNum = 2;
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
@@ -2742,12 +2742,12 @@ public class IoTDBConfig {
     this.schemaQueryFetchSize = schemaQueryFetchSize;
   }
 
-  public int getMigrationThreadNum() {
-    return migrationThreadNum;
+  public int getArchiveThreadNum() {
+    return archiveThreadNum;
   }
 
-  public void setMigrationThreadNum(int migrationThreadNum) {
-    this.migrationThreadNum = migrationThreadNum;
+  public void setArchiveThreadNum(int archiveThreadNum) {
+    this.archiveThreadNum = archiveThreadNum;
   }
 
   public double getWriteProportion() {

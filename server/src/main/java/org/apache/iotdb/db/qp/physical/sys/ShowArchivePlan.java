@@ -22,12 +22,11 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.List;
 
-public class ShowMigrationPlan extends ShowPlan {
-
+public class ShowArchivePlan extends ShowPlan {
   private List<PartialPath> storageGroups;
 
-  public ShowMigrationPlan(List<PartialPath> storageGroups) {
-    super(ShowContentType.SHOW_MIGRATION);
+  public ShowArchivePlan(List<PartialPath> storageGroups) {
+    super(ShowContentType.SHOW_ARCHIVE);
     this.storageGroups = storageGroups;
   }
 

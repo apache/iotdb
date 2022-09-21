@@ -18,7 +18,7 @@
  *
  */
 
-package org.apache.iotdb.db.engine.migration;
+package org.apache.iotdb.db.engine.archive;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -39,9 +39,9 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.sys.PauseMigrationPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetMigrationPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowMigrationPlan;
+import org.apache.iotdb.db.qp.physical.sys.PauseArchivePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetArchivePlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowArchivePlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -71,9 +71,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class MigrationTest {
-  private final String sg1 = "root.MIGRATE_SG1";
-  private final String sg2 = "root.MIGRATE_SG2";
+public class ArchiveTest {
+  private final String sg1 = "root.ARCHIVE_SG1";
+  private final String sg2 = "root.ARCHIVE_SG2";
   private final long ttl = 12345;
   private long startTime; // 2023-01-01
   private VirtualStorageGroupProcessor virtualStorageGroupProcessor;
@@ -160,7 +160,7 @@ public class MigrationTest {
   }
 
   @Test
-  public void testMigrate()
+  public void testArchive()
       throws StorageEngineException, WriteProcessException, QueryProcessException,
           IllegalPathException, IOException {
     prepareData();
@@ -209,14 +209,14 @@ public class MigrationTest {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    // create a new MigrateTask with specified params
-    MigrationTask task = new MigrationTask(0, new PartialPath(sg1), targetDir, 500, 0);
-    task.setStatus(MigrationTask.MigrationTaskStatus.RUNNING);
+    // create a new ArchiveTask with specified params
+    ArchiveTask task = new ArchiveTask(0, new PartialPath(sg1), targetDir, 500, 0);
+    task.setStatus(ArchiveTask.ArchiveTaskStatus.RUNNING);
     task.startTask();
-    virtualStorageGroupProcessor.checkMigration(task);
+    virtualStorageGroupProcessor.checkArchiveTask(task);
     task.close();
 
-    // files after migrate
+    // files after archiving
     seqFiles = new ArrayList<>();
     for (File directory : seqDir.listFiles()) {
       if (directory.isDirectory()) {
@@ -261,80 +261,78 @@ public class MigrationTest {
   }
 
   @Test
-  public void testParseSetMigrate() throws QueryProcessException {
+  public void testParseSetArchive() throws QueryProcessException {
     Planner planner = new Planner();
-    SetMigrationPlan plan =
-        (SetMigrationPlan)
+    SetArchivePlan plan =
+        (SetArchivePlan)
             planner.parseSQLToPhysicalPlan(
-                String.format(
-                    "SET MIGRATION TO %s 2023-01-01 10000 '%s'", sg1, targetDir.getPath()));
+                String.format("SET ARCHIVE TO %s 2023-01-01 10000 '%s'", sg1, targetDir.getPath()));
     assertEquals(sg1, plan.getStorageGroup().getFullPath());
     assertEquals(10000, plan.getTTL());
     assertEquals(startTime, plan.getStartTime());
     assertEquals(targetDir.getPath(), plan.getTargetDir().getPath());
 
     plan =
-        (SetMigrationPlan)
+        (SetArchivePlan)
             planner.parseSQLToPhysicalPlan(
                 String.format(
-                    "SET MIGRATION TO start_time=2023-01-01 storage_group=%s ttl=10000 target_dir='%s'",
+                    "SET ARCHIVE TO start_time=2023-01-01 storage_group=%s ttl=10000 target_dir='%s'",
                     sg1, targetDir.getPath()));
     assertEquals(sg1, plan.getStorageGroup().getFullPath());
     assertEquals(10000, plan.getTTL());
     assertEquals(startTime, plan.getStartTime());
     assertEquals(targetDir.getPath(), plan.getTargetDir().getPath());
 
-    plan = (SetMigrationPlan) planner.parseSQLToPhysicalPlan("CANCEL MIGRATION ON " + sg2);
+    plan = (SetArchivePlan) planner.parseSQLToPhysicalPlan("CANCEL ARCHIVE ON " + sg2);
     assertEquals(sg2, plan.getStorageGroup().getFullPath());
     assertEquals(Long.MAX_VALUE, plan.getTTL());
     assertEquals(Long.MAX_VALUE, plan.getStartTime());
 
-    plan = (SetMigrationPlan) planner.parseSQLToPhysicalPlan("CANCEL MIGRATION 99");
+    plan = (SetArchivePlan) planner.parseSQLToPhysicalPlan("CANCEL ARCHIVE 99");
     assertEquals(99, plan.getTaskId());
     assertEquals(Long.MAX_VALUE, plan.getTTL());
     assertEquals(Long.MAX_VALUE, plan.getStartTime());
   }
 
   @Test
-  public void testParsePauseMigrate() throws QueryProcessException {
+  public void testParsePauseArchive() throws QueryProcessException {
     Planner planner = new Planner();
-    PauseMigrationPlan plan =
-        (PauseMigrationPlan) planner.parseSQLToPhysicalPlan("PAUSE MIGRATION ON " + sg2);
+    PauseArchivePlan plan =
+        (PauseArchivePlan) planner.parseSQLToPhysicalPlan("PAUSE ARCHIVE ON " + sg2);
     assertEquals(sg2, plan.getStorageGroup().getFullPath());
     assertTrue(plan.isPause());
 
-    plan = (PauseMigrationPlan) planner.parseSQLToPhysicalPlan("PAUSE MIGRATION 10");
+    plan = (PauseArchivePlan) planner.parseSQLToPhysicalPlan("PAUSE ARCHIVE 10");
     assertEquals(10, plan.getTaskId());
     assertTrue(plan.isPause());
 
-    plan = (PauseMigrationPlan) planner.parseSQLToPhysicalPlan("RESUME MIGRATION ON " + sg1);
+    plan = (PauseArchivePlan) planner.parseSQLToPhysicalPlan("RESUME ARCHIVE ON " + sg1);
     assertEquals(sg1, plan.getStorageGroup().getFullPath());
     assertFalse(plan.isPause());
 
-    plan = (PauseMigrationPlan) planner.parseSQLToPhysicalPlan("RESUME MIGRATION 16");
+    plan = (PauseArchivePlan) planner.parseSQLToPhysicalPlan("RESUME ARCHIVE 16");
     assertEquals(16, plan.getTaskId());
     assertFalse(plan.isPause());
   }
 
   @Test
-  public void testParseShowMigrate() throws QueryProcessException {
+  public void testParseShowArchive() throws QueryProcessException {
     Planner planner = new Planner();
-    ShowMigrationPlan plan =
-        (ShowMigrationPlan) planner.parseSQLToPhysicalPlan("SHOW ALL MIGRATION");
+    ShowArchivePlan plan = (ShowArchivePlan) planner.parseSQLToPhysicalPlan("SHOW ALL ARCHIVE");
     assertTrue(plan.getStorageGroups().isEmpty());
 
-    plan = (ShowMigrationPlan) planner.parseSQLToPhysicalPlan("SHOW MIGRATION ON " + sg1);
+    plan = (ShowArchivePlan) planner.parseSQLToPhysicalPlan("SHOW ARCHIVE ON " + sg1);
     assertEquals(sg1, plan.getStorageGroups().get(0).getFullPath());
   }
 
   @Test
-  public void testShowMigrate()
+  public void testShowArchive()
       throws IOException, QueryProcessException, QueryFilterOptimizationException,
           StorageEngineException, MetadataException, InterruptedException {
-    MigrationManager migrateManager = MigrationManager.getInstance();
-    migrateManager.setMigrate(new PartialPath(sg1), targetDir, ttl, startTime);
+    ArchiveManager archiveManager = ArchiveManager.getInstance();
+    archiveManager.setArchive(new PartialPath(sg1), targetDir, ttl, startTime);
 
-    ShowMigrationPlan plan = new ShowMigrationPlan(Collections.emptyList());
+    ShowArchivePlan plan = new ShowArchivePlan(Collections.emptyList());
     PlanExecutor executor = new PlanExecutor();
     QueryDataSet queryDataSet = executor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
@@ -355,7 +353,7 @@ public class MigrationTest {
   }
 
   @Test
-  public void testMigrateCleanFile()
+  public void testArchiveCleanFile()
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
     prepareData();
@@ -364,9 +362,9 @@ public class MigrationTest {
     assertEquals(4, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(4, virtualStorageGroupProcessor.getUnSequenceFileList().size());
 
-    MigrationTask task = new MigrationTask(0, new PartialPath(sg1), targetDir, 0, 0);
-    task.setStatus(MigrationTask.MigrationTaskStatus.RUNNING);
-    virtualStorageGroupProcessor.checkMigration(task);
+    ArchiveTask task = new ArchiveTask(0, new PartialPath(sg1), targetDir, 0, 0);
+    task.setStatus(ArchiveTask.ArchiveTaskStatus.RUNNING);
+    virtualStorageGroupProcessor.checkArchiveTask(task);
 
     assertEquals(0, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(0, virtualStorageGroupProcessor.getUnSequenceFileList().size());

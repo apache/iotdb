@@ -21,25 +21,20 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetMigrationPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetArchivePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-import java.io.File;
-
-public class SetMigrationOperator extends Operator {
-
+public class CancelArchiveOperator extends Operator {
   private PartialPath storageGroup = null;
-  private File targetDir = null;
-  private Long ttl = null;
-  private Long startTime = null;
 
-  public SetMigrationOperator(int tokenIntType) {
+  private long taskId = -1;
+
+  public CancelArchiveOperator(int tokenIntType) {
     super(tokenIntType);
-    this.operatorType = OperatorType.SET_MIGRATION;
+    this.operatorType = OperatorType.SET_ARCHIVE;
   }
 
   public PartialPath getStorageGroup() {
@@ -50,46 +45,23 @@ public class SetMigrationOperator extends Operator {
     this.storageGroup = storageGroup;
   }
 
-  public File getTargetDir() {
-    return targetDir;
+  public long getTaskId() {
+    return taskId;
   }
 
-  public void setTargetDir(File targetDir) {
-    this.targetDir = targetDir;
-  }
-
-  public long getTTL() {
-    return ttl;
-  }
-
-  public void setTTL(long ttl) {
-    this.ttl = ttl;
-  }
-
-  public long getStartTime() {
-    return startTime;
-  }
-
-  public void setStartTime(long startTime) {
-    this.startTime = startTime;
+  public void setTaskId(long taskId) {
+    this.taskId = taskId;
   }
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    if (storageGroup == null) {
-      throw new SQLParserException("storage_group not specified");
+    if (storageGroup != null) {
+      return new SetArchivePlan(storageGroup);
+    } else if (taskId != -1) {
+      return new SetArchivePlan(taskId);
+    } else {
+      return new SetArchivePlan();
     }
-    if (startTime == null) {
-      throw new SQLParserException("start_time not specified");
-    }
-    if (ttl == null) {
-      throw new SQLParserException("ttl not specified");
-    }
-    if (targetDir == null) {
-      throw new SQLParserException("target_dir not specified");
-    }
-
-    return new SetMigrationPlan(storageGroup, targetDir, ttl, startTime);
   }
 }

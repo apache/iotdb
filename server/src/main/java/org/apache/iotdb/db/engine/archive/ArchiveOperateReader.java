@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.migration;
+package org.apache.iotdb.db.engine.archive;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -31,30 +31,30 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 
 /**
- * MigrationTaskReader reads binarized MigrationLog from file using FileInputStream from head to
+ * ArchiveOperateReader reads binarized ArchiveOperate from file using FileInputStream from head to
  * tail.
  */
-public class MigrationOperateReader implements AutoCloseable {
-  private static final Logger logger = LoggerFactory.getLogger(MigrationOperateReader.class);
+public class ArchiveOperateReader implements AutoCloseable {
+  private static final Logger logger = LoggerFactory.getLogger(ArchiveOperateReader.class);
   private final File logFile;
   private FileInputStream logFileInStream;
-  private MigrationOperate operate;
+  private ArchiveOperate operate;
   private long unbrokenLogsSize = 0;
 
-  public MigrationOperateReader(String logFilePath) throws IOException {
+  public ArchiveOperateReader(String logFilePath) throws IOException {
     this.logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     logFileInStream = new FileInputStream(logFile);
   }
 
-  public MigrationOperateReader(File logFile) throws IOException {
+  public ArchiveOperateReader(File logFile) throws IOException {
     this.logFile = logFile;
     logFileInStream = new FileInputStream(logFile);
   }
 
-  /** @return MigrateLog parsed from log file, null if nothing left in file */
-  private MigrationOperate readOperate() {
+  /** @return ArchiveOperate parsed from log file, null if nothing left in file */
+  private ArchiveOperate readOperate() {
     try {
-      MigrationOperate log = MigrationOperate.deserialize(logFileInStream);
+      ArchiveOperate log = ArchiveOperate.deserialize(logFileInStream);
 
       unbrokenLogsSize = logFileInStream.getChannel().position();
       return log;
@@ -63,8 +63,8 @@ public class MigrationOperateReader implements AutoCloseable {
     }
   }
 
-  public MigrationOperate next() {
-    MigrationOperate ret = operate;
+  public ArchiveOperate next() {
+    ArchiveOperate ret = operate;
     operate = null;
     return ret;
   }
@@ -100,7 +100,7 @@ public class MigrationOperateReader implements AutoCloseable {
     try {
       logFileInStream.close();
     } catch (IOException e) {
-      logger.error("Failed to close migrate log");
+      logger.error("Failed to close archive log");
     }
   }
 }

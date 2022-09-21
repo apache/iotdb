@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.migration;
+package org.apache.iotdb.db.engine.archive;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -40,46 +40,46 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class MigrationOperateWriterReaderTest {
+public class ArchiveOperateWriterReaderTest {
   private static final String filePath = "logtest.test";
-  private final String sg1 = "root.MIGRATE_SG1";
-  private final String sg2 = "root.MIGRATE_SG1";
+  private final String sg1 = "root.ARCHIVE_SG1";
+  private final String sg2 = "root.ARCHIVE_SG1";
   private long startTime; // 2023-01-01
   private final long ttl = 2000;
   private final String targetDirPath = Paths.get("data", "separated").toString();
-  List<MigrationOperate> migrateOperate;
-  MigrationTask task1, task2;
+  List<ArchiveOperate> archiveOperate;
+  ArchiveTask task1, task2;
 
   @Before
   public void prepare() throws IllegalPathException, LogicalOperatorException {
     if (new File(filePath).exists()) {
       new File(filePath).delete();
     }
-    task1 = new MigrationTask(120, new PartialPath(sg1), new File(targetDirPath), startTime, ttl);
-    task2 = new MigrationTask(999, new PartialPath(sg2), new File(targetDirPath), startTime, ttl);
+    task1 = new ArchiveTask(120, new PartialPath(sg1), new File(targetDirPath), startTime, ttl);
+    task2 = new ArchiveTask(999, new PartialPath(sg2), new File(targetDirPath), startTime, ttl);
 
-    migrateOperate = new ArrayList<>();
-    migrateOperate.add(new MigrationOperate(MigrationOperate.MigrationOperateType.START, task1));
-    migrateOperate.add(new MigrationOperate(MigrationOperate.MigrationOperateType.SET, task1));
-    migrateOperate.add(new MigrationOperate(MigrationOperate.MigrationOperateType.CANCEL, task2));
-    migrateOperate.add(new MigrationOperate(MigrationOperate.MigrationOperateType.PAUSE, task2));
-    migrateOperate.add(new MigrationOperate(MigrationOperate.MigrationOperateType.RESUME, task2));
+    archiveOperate = new ArrayList<>();
+    archiveOperate.add(new ArchiveOperate(ArchiveOperate.ArchiveOperateType.START, task1));
+    archiveOperate.add(new ArchiveOperate(ArchiveOperate.ArchiveOperateType.SET, task1));
+    archiveOperate.add(new ArchiveOperate(ArchiveOperate.ArchiveOperateType.CANCEL, task2));
+    archiveOperate.add(new ArchiveOperate(ArchiveOperate.ArchiveOperateType.PAUSE, task2));
+    archiveOperate.add(new ArchiveOperate(ArchiveOperate.ArchiveOperateType.RESUME, task2));
 
     startTime = DatetimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
     task1.close();
     task2.close();
   }
 
-  public void writeLog(MigrationOperateWriter writer) throws IOException {
-    writer.log(MigrationOperate.MigrationOperateType.START, task1);
-    writer.log(MigrationOperate.MigrationOperateType.SET, task1);
-    writer.log(MigrationOperate.MigrationOperateType.CANCEL, task2);
-    writer.log(MigrationOperate.MigrationOperateType.PAUSE, task2);
-    writer.log(MigrationOperate.MigrationOperateType.RESUME, task2);
+  public void writeLog(ArchiveOperateWriter writer) throws IOException {
+    writer.log(ArchiveOperate.ArchiveOperateType.START, task1);
+    writer.log(ArchiveOperate.ArchiveOperateType.SET, task1);
+    writer.log(ArchiveOperate.ArchiveOperateType.CANCEL, task2);
+    writer.log(ArchiveOperate.ArchiveOperateType.PAUSE, task2);
+    writer.log(ArchiveOperate.ArchiveOperateType.RESUME, task2);
   }
 
   /** check if two logs have equal fields */
-  public boolean logEquals(MigrationOperate log1, MigrationOperate log2) {
+  public boolean logEquals(ArchiveOperate log1, ArchiveOperate log2) {
     if (log1.getType() != log2.getType()) {
       return false;
     }
@@ -87,7 +87,7 @@ public class MigrationOperateWriterReaderTest {
       return false;
     }
 
-    if (log1.getType() == MigrationOperate.MigrationOperateType.SET) {
+    if (log1.getType() == ArchiveOperate.ArchiveOperateType.SET) {
       // check other fields only if SET
       if (log1.getTask().getStartTime() != log2.getTask().getStartTime()) {
         return false;
@@ -114,16 +114,16 @@ public class MigrationOperateWriterReaderTest {
 
   @Test
   public void testWriteAndRead() throws Exception {
-    MigrationOperateWriter writer = new MigrationOperateWriter(filePath);
+    ArchiveOperateWriter writer = new ArchiveOperateWriter(filePath);
     writeLog(writer);
-    try (MigrationOperateReader reader = new MigrationOperateReader(new File(filePath))) {
+    try (ArchiveOperateReader reader = new ArchiveOperateReader(new File(filePath))) {
       writer.close();
-      List<MigrationOperate> res = new ArrayList<>();
+      List<ArchiveOperate> res = new ArrayList<>();
       while (reader.hasNext()) {
         res.add(reader.next());
       }
-      for (int i = 0; i < migrateOperate.size(); i++) {
-        assertTrue(logEquals(migrateOperate.get(i), res.get(i)));
+      for (int i = 0; i < archiveOperate.size(); i++) {
+        assertTrue(logEquals(archiveOperate.get(i), res.get(i)));
       }
     } finally {
       new File(filePath).delete();
@@ -134,7 +134,7 @@ public class MigrationOperateWriterReaderTest {
   public void testTruncateBrokenLogs() throws Exception {
     try {
       // write normal data
-      try (MigrationOperateWriter writer = new MigrationOperateWriter(filePath)) {
+      try (ArchiveOperateWriter writer = new ArchiveOperateWriter(filePath)) {
         writeLog(writer);
       }
       long expectedLength = new File(filePath).length();
@@ -157,13 +157,13 @@ public class MigrationOperateWriterReaderTest {
       }
 
       // read & check
-      try (MigrationOperateReader reader = new MigrationOperateReader(new File(filePath))) {
-        List<MigrationOperate> res = new ArrayList<>();
+      try (ArchiveOperateReader reader = new ArchiveOperateReader(new File(filePath))) {
+        List<ArchiveOperate> res = new ArrayList<>();
         while (reader.hasNext()) {
           res.add(reader.next());
         }
-        for (int i = 0; i < migrateOperate.size(); i++) {
-          assertTrue(logEquals(migrateOperate.get(i), res.get(i)));
+        for (int i = 0; i < archiveOperate.size(); i++) {
+          assertTrue(logEquals(archiveOperate.get(i), res.get(i)));
         }
       }
       assertEquals(expectedLength, new File(filePath).length());

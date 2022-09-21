@@ -24,5 +24,5 @@ public enum TsFileResourceStatus {
   COMPACTION_CANDIDATE,
   COMPACTING,
   DELETED,
-  MIGRATED
+  ARCHIVED
 }

@@ -15,52 +15,51 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.PauseMigrationPlan;
-import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class ResumeMigrationOperator extends Operator {
+import java.util.List;
 
+public class PauseArchivePlan extends PhysicalPlan {
   private long taskId = -1;
   private PartialPath storageGroup;
+  private boolean pause = true;
 
-  public ResumeMigrationOperator(int tokenIntType) {
-    super(tokenIntType);
-    this.operatorType = OperatorType.PAUSE_MIGRATION;
+  public PauseArchivePlan(boolean pause) {
+    super(Operator.OperatorType.PAUSE_ARCHIVE);
+    this.pause = pause;
+  }
+
+  public PauseArchivePlan(PartialPath storageGroup, boolean pause) {
+    super(Operator.OperatorType.PAUSE_ARCHIVE);
+    this.storageGroup = storageGroup;
+    this.pause = pause;
+  }
+
+  public PauseArchivePlan(long taskId, boolean pause) {
+    super(Operator.OperatorType.PAUSE_ARCHIVE);
+    this.taskId = taskId;
+    this.pause = pause;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return null;
   }
 
   public long getTaskId() {
     return taskId;
   }
 
+  public boolean isPause() {
+    return pause;
+  }
+
   public PartialPath getStorageGroup() {
     return storageGroup;
-  }
-
-  public void setTaskId(long taskId) {
-    this.taskId = taskId;
-  }
-
-  public void setStorageGroup(PartialPath storageGroup) {
-    this.storageGroup = storageGroup;
-  }
-
-  @Override
-  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    if (storageGroup != null) {
-      return new PauseMigrationPlan(storageGroup, false);
-    } else if (taskId != -1) {
-      return new PauseMigrationPlan(taskId, false);
-    } else {
-      return new PauseMigrationPlan(false);
-    }
   }
 }

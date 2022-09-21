@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.migration.MigrationTask;
+import org.apache.iotdb.db.engine.archive.ArchiveTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
@@ -120,17 +120,17 @@ public class StorageGroupManager {
     }
   }
 
-  /** push check migration to all virtual storage group processors */
-  public void checkMigration(MigrationTask task) {
+  /** push check archive to all virtual storage group processors */
+  public void checkArchiveTask(ArchiveTask task) {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
         this.virtualStorageGroupProcessor) {
-      if (task.getStatus() != MigrationTask.MigrationTaskStatus.RUNNING) {
+      if (task.getStatus() != ArchiveTask.ArchiveTaskStatus.RUNNING) {
         // task stopped running (eg. the task is paused), return
         return;
       }
 
       if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.checkMigration(task);
+        virtualStorageGroupProcessor.checkArchiveTask(task);
       }
     }
   }

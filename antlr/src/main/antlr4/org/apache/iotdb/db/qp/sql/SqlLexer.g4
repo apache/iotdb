@@ -73,6 +73,10 @@ APPEND
     : A P P E N D
     ;
 
+ARCHIVE
+    : A R C H I V E
+    ;
+
 AS
     : A S
     ;
@@ -324,10 +328,6 @@ MERGE
 
 METADATA
     : M E T A D A T A
-    ;
-
-MIGRATION
-    : M I G R A T I O N
     ;
 
 NODES

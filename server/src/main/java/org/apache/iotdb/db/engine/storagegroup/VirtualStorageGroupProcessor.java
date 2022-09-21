@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.archive.ArchiveTask;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverManager;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
-import org.apache.iotdb.db.engine.migration.MigrationTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -1555,17 +1555,17 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  /** iterate over TsFiles and migrate to targetDir if out of ttl */
-  public void checkMigration(MigrationTask task) {
+  /** iterate over TsFiles and move to targetDir if out of ttl */
+  public void checkArchiveTask(ArchiveTask task) {
     if (task.getTTL() == Long.MAX_VALUE) {
       logger.debug(
-          "{}: Migration ttl not set, ignore the check",
+          "{}: Archive ttl not set, ignore the check",
           logicalStorageGroupName + "-" + virtualStorageGroupId);
       return;
     }
     long ttlLowerBound = System.currentTimeMillis() - task.getTTL();
     logger.debug(
-        "{}: Migrating files before {}",
+        "{}: Archiving files before {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId,
         new Date(ttlLowerBound));
 
@@ -1574,52 +1574,52 @@ public class VirtualStorageGroupProcessor {
     List<TsFileResource> unseqFiles = new ArrayList<>(tsFileManager.getTsFileList(false));
 
     for (TsFileResource tsFileResource : seqFiles) {
-      if (task.getStatus() != MigrationTask.MigrationTaskStatus.RUNNING) {
+      if (task.getStatus() != ArchiveTask.ArchiveTaskStatus.RUNNING) {
         // task stopped running (eg. the task is paused), return
         return;
       }
-      checkMigrateFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, true);
+      checkArchiveTaskFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, true);
     }
 
     for (TsFileResource tsFileResource : unseqFiles) {
-      if (task.getStatus() != MigrationTask.MigrationTaskStatus.RUNNING) {
+      if (task.getStatus() != ArchiveTask.ArchiveTaskStatus.RUNNING) {
         // task stopped running, return
         return;
       }
-      checkMigrateFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, false);
+      checkArchiveTaskFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, false);
     }
   }
 
-  /** migrate the file to targetDir */
-  public void checkMigrateFile(
-      MigrationTask task,
+  /** archive the file to targetDir */
+  public void checkArchiveTaskFile(
+      ArchiveTask task,
       TsFileResource resource,
       File targetDir,
       long ttlLowerBound,
       boolean isSeq) {
-    writeLock("checkMigrationLock");
+    writeLock("checkArchiveLock");
     try {
       if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
         return;
       }
 
-      resource.setStatus(TsFileResourceStatus.MIGRATED);
+      resource.setStatus(TsFileResourceStatus.ARCHIVED);
 
       // ensure that the file is not used by any queries
       if (resource.tryWriteLock()) {
         try {
-          // try to migrate physical data file
+          // try to archive physical data file
           tsFileManager.remove(resource, isSeq);
 
-          // start the migration
+          // start archiving file
           if (task.startFile(resource.getTsFile())) {
-            File migratedFile = resource.migrate(targetDir);
+            File archivedFile = resource.archive(targetDir);
           } else {
-            // migrating log couldn't start
-            logger.error("{} logger error", resource.getTsFilePath());
+            // archive file couldn't start
+            logger.error("{} archive logger error", resource.getTsFilePath());
           }
         } catch (IOException e) {
-          logger.error("{} logger error", resource.getTsFilePath());
+          logger.error("{} archive error", resource.getTsFilePath());
         } finally {
           resource.writeUnlock();
         }

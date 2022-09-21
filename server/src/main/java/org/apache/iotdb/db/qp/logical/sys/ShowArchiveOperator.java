@@ -17,51 +17,30 @@
  * under the License.
  *
  */
-
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetMigrationPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowArchivePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class CancelMigrationOperator extends Operator {
-  private PartialPath storageGroup = null;
+import java.util.List;
 
-  private long taskId = -1;
+public class ShowArchiveOperator extends ShowOperator {
+  private List<PartialPath> storageGroups;
 
-  public CancelMigrationOperator(int tokenIntType) {
-    super(tokenIntType);
-    this.operatorType = OperatorType.SET_MIGRATION;
+  public ShowArchiveOperator(List<PartialPath> storageGroups) {
+    super(SQLConstant.TOK_SHOW, OperatorType.SHOW_ARCHIVE);
+    this.storageGroups = storageGroups;
   }
 
-  public PartialPath getStorageGroup() {
-    return storageGroup;
-  }
-
-  public void setStorageGroup(PartialPath storageGroup) {
-    this.storageGroup = storageGroup;
-  }
-
-  public long getTaskId() {
-    return taskId;
-  }
-
-  public void setTaskId(long taskId) {
-    this.taskId = taskId;
+  public List<PartialPath> getStorageGroups() {
+    return storageGroups;
   }
 
   @Override
-  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    if (storageGroup != null) {
-      return new SetMigrationPlan(storageGroup);
-    } else if (taskId != -1) {
-      return new SetMigrationPlan(taskId);
-    } else {
-      return new SetMigrationPlan();
-    }
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
+    return new ShowArchivePlan(storageGroups);
   }
 }

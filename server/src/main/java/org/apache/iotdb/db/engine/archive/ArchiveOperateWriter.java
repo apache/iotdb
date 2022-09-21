@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.migration;
+package org.apache.iotdb.db.engine.archive;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.logfile.MLogTxtWriter;
@@ -30,37 +30,36 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
- * MigrationTasKWriter writes the binary logs of MigrationOperate into file using FileOutputStream
+ * ArchiveOperateWriter writes the binary logs of ArchiveOperate into file using FileOutputStream
  */
-public class MigrationOperateWriter implements AutoCloseable {
+public class ArchiveOperateWriter implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(MLogTxtWriter.class);
   private final File logFile;
   private FileOutputStream logFileOutStream;
 
-  public MigrationOperateWriter(String logFileName) throws FileNotFoundException {
+  public ArchiveOperateWriter(String logFileName) throws FileNotFoundException {
     this(SystemFileFactory.INSTANCE.getFile(logFileName));
   }
 
-  public MigrationOperateWriter(File logFile) throws FileNotFoundException {
+  public ArchiveOperateWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
     if (!logFile.exists()) {
       if (logFile.getParentFile() != null) {
         if (logFile.getParentFile().mkdirs()) {
-          logger.info("created migrate log folder");
+          logger.info("created archive log folder");
         } else {
-          logger.info("create migrate log folder failed");
+          logger.info("create archive log folder failed");
         }
       }
     }
     logFileOutStream = new FileOutputStream(logFile, true);
   }
 
-  public void log(MigrationOperate.MigrationOperateType type, MigrationTask task)
-      throws IOException {
-    MigrationOperate operate;
+  public void log(ArchiveOperate.ArchiveOperateType type, ArchiveTask task) throws IOException {
+    ArchiveOperate operate;
     switch (type) {
       case SET:
-        operate = new MigrationOperate(MigrationOperate.MigrationOperateType.SET, task);
+        operate = new ArchiveOperate(ArchiveOperate.ArchiveOperateType.SET, task);
         operate.serialize(logFileOutStream);
         break;
       case CANCEL:
@@ -69,7 +68,7 @@ public class MigrationOperateWriter implements AutoCloseable {
       case RESUME:
       case FINISHED:
       case ERROR:
-        operate = new MigrationOperate(type, task.getTaskId());
+        operate = new ArchiveOperate(type, task.getTaskId());
         operate.serialize(logFileOutStream);
         break;
     }

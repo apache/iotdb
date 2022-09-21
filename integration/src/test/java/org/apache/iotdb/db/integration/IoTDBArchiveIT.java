@@ -44,9 +44,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @Category({LocalStandaloneTest.class})
-public class IoTDBMigrationIT {
+public class IoTDBArchiveIT {
   File testTargetDir;
-  final long MIGRATION_CHECK_TIME = 60L;
+  final long ARCHIVE_CHECK_TIME = 60L;
 
   @Before
   public void setUp() throws Exception {
@@ -65,39 +65,39 @@ public class IoTDBMigrationIT {
 
   @Test
   @Category({ClusterTest.class})
-  public void testMigration() throws SQLException, InterruptedException {
-    StorageEngine.getInstance().getMigrationManager().setCheckThreadTime(MIGRATION_CHECK_TIME);
+  public void testArchive() throws SQLException, InterruptedException {
+    StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(ARCHIVE_CHECK_TIME);
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
         statement.execute(
-            "SET MIGRATION TO root.MIGRATION_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
+            "SET ARCHIVE TO root.ARCHIVE_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
-        statement.execute("CANCEL MIGRATION ON root.MIGRATION_SG1");
+        statement.execute("CANCEL ARCHIVE ON root.ARCHIVE_SG1");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
-        statement.execute("PAUSE MIGRATION ON root.MIGRATION_SG1");
+        statement.execute("PAUSE ARCHIVE ON root.ARCHIVE_SG1");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
-        statement.execute("RESUME MIGRATION ON root.MIGRATION_SG1");
+        statement.execute("RESUME ARCHIVE ON root.ARCHIVE_SG1");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
-      statement.execute("SET STORAGE GROUP TO root.MIGRATION_SG1");
+      statement.execute("SET STORAGE GROUP TO root.ARCHIVE_SG1");
       statement.execute(
-          "CREATE TIMESERIES root.MIGRATION_SG1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
+          "CREATE TIMESERIES root.ARCHIVE_SG1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
 
       try {
-        statement.execute("SET MIGRATION TO storage_group=root.MIGRATION_SG1");
+        statement.execute("SET ARCHIVE TO storage_group=root.ARCHIVE_SG1");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getErrorCode());
       }
@@ -108,11 +108,11 @@ public class IoTDBMigrationIT {
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.MIGRATION_SG1(timestamp, s1) VALUES (%d, %d)",
+                "INSERT INTO root.ARCHIVE_SG1(timestamp, s1) VALUES (%d, %d)",
                 now - 100000 + i, i));
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.MIGRATION_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -124,11 +124,11 @@ public class IoTDBMigrationIT {
       StorageEngine.getInstance().syncCloseAllProcessor();
 
       statement.execute(
-          "SET MIGRATION TO root.MIGRATION_SG1 1999-01-01 1000 '" + testTargetDir.getPath() + "'");
+          "SET ARCHIVE TO root.ARCHIVE_SG1 1999-01-01 1000 '" + testTargetDir.getPath() + "'");
 
-      Thread.sleep(MIGRATION_CHECK_TIME * 2);
+      Thread.sleep(ARCHIVE_CHECK_TIME * 2);
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.MIGRATION_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -136,16 +136,15 @@ public class IoTDBMigrationIT {
         assertEquals(0, cnt);
       }
 
-      // test pause migration
+      // test pause archive
 
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.MIGRATION_SG1(timestamp, s1) VALUES (%d, %d)",
-                now - 5000 + i, i));
+                "INSERT INTO root.ARCHIVE_SG1(timestamp, s1) VALUES (%d, %d)", now - 5000 + i, i));
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.MIGRATION_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -156,13 +155,11 @@ public class IoTDBMigrationIT {
       StorageEngine.getInstance().syncCloseAllProcessor();
 
       statement.execute(
-          "SET MIGRATION TO root.MIGRATION_SG1 1999-01-01 100000 '"
-              + testTargetDir.getPath()
-              + "'");
+          "SET ARCHIVE TO root.ARCHIVE_SG1 1999-01-01 100000 '" + testTargetDir.getPath() + "'");
 
-      Thread.sleep(MIGRATION_CHECK_TIME * 2);
+      Thread.sleep(ARCHIVE_CHECK_TIME * 2);
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.MIGRATION_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -172,17 +169,17 @@ public class IoTDBMigrationIT {
 
       StorageEngine.getInstance().syncCloseAllProcessor();
 
-      StorageEngine.getInstance().getMigrationManager().setCheckThreadTime(Long.MAX_VALUE);
+      StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(Long.MAX_VALUE);
 
       statement.execute(
-          "SET MIGRATION TO root.MIGRATION_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
-      statement.execute("PAUSE MIGRATION ON root.MIGRATION_SG1");
+          "SET ARCHIVE TO root.ARCHIVE_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
+      statement.execute("PAUSE ARCHIVE ON root.ARCHIVE_SG1");
 
-      StorageEngine.getInstance().getMigrationManager().setCheckThreadTime(MIGRATION_CHECK_TIME);
+      StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(ARCHIVE_CHECK_TIME);
 
-      Thread.sleep(MIGRATION_CHECK_TIME * 2);
+      Thread.sleep(ARCHIVE_CHECK_TIME * 2);
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.MIGRATION_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -192,12 +189,12 @@ public class IoTDBMigrationIT {
 
       StorageEngine.getInstance().syncCloseAllProcessor();
 
-      // test resume migration
-      statement.execute("RESUME MIGRATION ON root.MIGRATION_SG1");
+      // test resume archive
+      statement.execute("RESUME ARCHIVE ON root.ARCHIVE_SG1");
 
-      Thread.sleep(MIGRATION_CHECK_TIME * 2);
+      Thread.sleep(ARCHIVE_CHECK_TIME * 2);
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.MIGRATION_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -205,16 +202,15 @@ public class IoTDBMigrationIT {
         assertEquals(0, cnt);
       }
 
-      // test cancel migration
+      // test cancel archive
 
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.MIGRATION_SG1(timestamp, s1) VALUES (%d, %d)",
-                now - 5000 + i, i));
+                "INSERT INTO root.ARCHIVE_SG1(timestamp, s1) VALUES (%d, %d)", now - 5000 + i, i));
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.MIGRATION_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -224,17 +220,17 @@ public class IoTDBMigrationIT {
 
       StorageEngine.getInstance().syncCloseAllProcessor();
 
-      StorageEngine.getInstance().getMigrationManager().setCheckThreadTime(Long.MAX_VALUE);
+      StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(Long.MAX_VALUE);
 
       statement.execute(
-          "SET MIGRATION TO root.MIGRATION_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
-      statement.execute("CANCEL MIGRATION ON root.MIGRATION_SG1");
+          "SET ARCHIVE TO root.ARCHIVE_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
+      statement.execute("CANCEL ARCHIVE ON root.ARCHIVE_SG1");
 
-      StorageEngine.getInstance().getMigrationManager().setCheckThreadTime(MIGRATION_CHECK_TIME);
+      StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(ARCHIVE_CHECK_TIME);
 
-      Thread.sleep(MIGRATION_CHECK_TIME * 2);
+      Thread.sleep(ARCHIVE_CHECK_TIME * 2);
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.MIGRATION_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -246,24 +242,24 @@ public class IoTDBMigrationIT {
 
   @Test
   @Category({ClusterTest.class})
-  public void testShowMigration() throws SQLException {
+  public void testShowArchive() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      StorageEngine.getInstance().getMigrationManager().setCheckThreadTime(Long.MAX_VALUE);
+      StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(Long.MAX_VALUE);
 
-      statement.execute("SET STORAGE GROUP TO root.MIGRATION_SG2");
+      statement.execute("SET STORAGE GROUP TO root.ARCHIVE_SG2");
       statement.execute(
-          "CREATE TIMESERIES root.MIGRATION_SG2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN");
+          "CREATE TIMESERIES root.ARCHIVE_SG2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN");
 
       statement.execute(
-          "SET MIGRATION TO root.MIGRATION_SG2 2000-12-13 100 '" + testTargetDir.getPath() + "'");
+          "SET ARCHIVE TO root.ARCHIVE_SG2 2000-12-13 100 '" + testTargetDir.getPath() + "'");
 
-      ResultSet resultSet = statement.executeQuery("SHOW ALL MIGRATION");
+      ResultSet resultSet = statement.executeQuery("SHOW ALL ARCHIVE");
 
       boolean flag = false;
 
       while (resultSet.next()) {
-        if (resultSet.getString(3).equals("root.MIGRATION_SG2")) {
+        if (resultSet.getString(3).equals("root.ARCHIVE_SG2")) {
           flag = true;
           assertEquals("READY", resultSet.getString(4));
           assertTrue(resultSet.getString(5).startsWith("2000-12-13"));
@@ -278,29 +274,28 @@ public class IoTDBMigrationIT {
 
   @Test
   @Category({ClusterTest.class})
-  public void testSetMigration() throws SQLException {
+  public void testSetArchive() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      StorageEngine.getInstance().getMigrationManager().setCheckThreadTime(Long.MAX_VALUE);
+      StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(Long.MAX_VALUE);
 
-      statement.execute("SET STORAGE GROUP TO root.MIGRATION_SG3");
+      statement.execute("SET STORAGE GROUP TO root.ARCHIVE_SG3");
       statement.execute(
-          "CREATE TIMESERIES root.MIGRATION_SG3.s3 WITH DATATYPE=INT32, ENCODING=PLAIN");
+          "CREATE TIMESERIES root.ARCHIVE_SG3.s3 WITH DATATYPE=INT32, ENCODING=PLAIN");
 
       for (int i = 0; i < 1000; i++) {
         // test concurrent set
         statement.execute(
             String.format(
-                "SET MIGRATION TO root.MIGRATION_SG3 2000-12-13 %d '%s'",
-                i, testTargetDir.getPath()));
+                "SET ARCHIVE TO root.ARCHIVE_SG3 2000-12-13 %d '%s'", i, testTargetDir.getPath()));
       }
 
-      ResultSet resultSet = statement.executeQuery("SHOW ALL MIGRATION");
+      ResultSet resultSet = statement.executeQuery("SHOW ALL ARCHIVE");
       Set<Integer> checkTaskId = new HashSet<>();
       Set<Integer> checkTTL = new HashSet<>();
 
       while (resultSet.next()) {
-        if (resultSet.getString(3).equals("root.MIGRATION_SG3")) {
+        if (resultSet.getString(3).equals("root.ARCHIVE_SG3")) {
           int taskId = Integer.parseInt(resultSet.getString(1));
           int ttl = Integer.parseInt(resultSet.getString(6));
           assertFalse(checkTaskId.contains(taskId));
@@ -315,13 +310,13 @@ public class IoTDBMigrationIT {
 
       for (int i : checkTaskId) {
         // test concurrent cancel
-        statement.execute(String.format("CANCEL MIGRATION %d", i));
+        statement.execute(String.format("CANCEL ARCHIVE %d", i));
       }
 
-      resultSet = statement.executeQuery("SHOW ALL MIGRATION");
+      resultSet = statement.executeQuery("SHOW ALL ARCHIVE");
 
       while (resultSet.next()) {
-        if (resultSet.getString(3).equals("root.MIGRATION_SG3")) {
+        if (resultSet.getString(3).equals("root.ARCHIVE_SG3")) {
           assertEquals("CANCELED", resultSet.getString(4));
         }
       }

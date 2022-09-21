@@ -30,13 +30,13 @@ import org.apache.iotdb.db.doublelive.OperationSyncLogService;
 import org.apache.iotdb.db.doublelive.OperationSyncPlanTypeUtils;
 import org.apache.iotdb.db.doublelive.OperationSyncProducer;
 import org.apache.iotdb.db.doublelive.OperationSyncWriteTask;
+import org.apache.iotdb.db.engine.archive.ArchiveManager;
+import org.apache.iotdb.db.engine.archive.ArchiveOperate;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
-import org.apache.iotdb.db.engine.migration.MigrationManager;
-import org.apache.iotdb.db.engine.migration.MigrationOperate;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
@@ -171,7 +171,7 @@ public class StorageEngine implements IService {
   ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>>
       arrayListBlockQueue;
 
-  private MigrationManager migrationManager = MigrationManager.getInstance();
+  private ArchiveManager archiveManager = ArchiveManager.getInstance();
 
   private StorageEngine() {
     if (isEnableOperationSync) {
@@ -591,7 +591,7 @@ public class StorageEngine implements IService {
     shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     processorMap.clear();
-    migrationManager.close();
+    archiveManager.close();
   }
 
   private void shutdownTimedService(ScheduledExecutorService pool, String poolName) {
@@ -1336,25 +1336,29 @@ public class StorageEngine implements IService {
     }
   }
 
-  /** push the migration info to migrationManager */
-  public void setMigration(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
-    migrationManager.setMigrate(storageGroup, targetDir, ttl, startTime);
-    logger.info("start check migration task successfully.");
-  }
-
-  public void operateMigration(
-      MigrationOperate.MigrationOperateType operateType, long taskId, PartialPath storageGroup) {
-    if (taskId >= 0) {
-      migrationManager.operate(operateType, taskId);
-    } else if (storageGroup != null) {
-      migrationManager.operate(operateType, storageGroup);
+  /** push the archive info to archiveManager */
+  public void setArchive(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
+    boolean result = archiveManager.setArchive(storageGroup, targetDir, ttl, startTime);
+    if (result) {
+      logger.info("set archive task successfully.");
     } else {
-      logger.error("{} migration cannot recognize taskId or storagegroup", operateType.name());
+      logger.info("set archive task failed.");
     }
   }
 
-  public MigrationManager getMigrationManager() {
-    return migrationManager;
+  public void operateArchive(
+      ArchiveOperate.ArchiveOperateType operateType, long taskId, PartialPath storageGroup) {
+    if (taskId >= 0) {
+      archiveManager.operate(operateType, taskId);
+    } else if (storageGroup != null) {
+      archiveManager.operate(operateType, storageGroup);
+    } else {
+      logger.error("{} archive cannot recognize taskId or storagegroup", operateType.name());
+    }
+  }
+
+  public ArchiveManager getArchiveManager() {
+    return archiveManager;
   }
 
   static class InstanceHolder {
