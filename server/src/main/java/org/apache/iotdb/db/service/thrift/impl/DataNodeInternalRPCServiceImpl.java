@@ -504,14 +504,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   Metric.SYS_CPU_LOAD.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
               .value();
       if (cpuLoad != 0) {
-        loadSample.setCpuOccupancyRatio((short) cpuLoad);
+        loadSample.setCpuUsageRate((short) cpuLoad);
       }
 
       // Sample memory load
       long usedMemory = getMemory("jvm.memory.used.bytes");
       long maxMemory = getMemory("jvm.memory.max.bytes");
       if (usedMemory != 0 && maxMemory != 0) {
-        loadSample.setMemoryOccupancyRatio((double) usedMemory * 100 / maxMemory);
+        loadSample.setMemoryUsageRate((double) usedMemory * 100 / maxMemory);
       }
 
       // Sample disk load
@@ -609,7 +609,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     if (freeDisk != 0 && totalDisk != 0) {
       double freeDiskRatio = (double) freeDisk * 100 / totalDisk;
-      loadSample.setDiskOccupancyRatio(1.0 - freeDiskRatio);
+      loadSample.setDiskUsageRate(1.0 - freeDiskRatio);
       // Reset NodeStatus if necessary
       if (freeDiskRatio < commonConfig.getDiskFullThreshold()) {
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);

@@ -196,7 +196,7 @@ The DataNode statuses are defined as follows:
 - **Running**: The DataNode is running properly and can be read and written
 - **Unknown**: The DataNode doesn't report heartbeat properly, the ConfigNode considers the DataNode as unreadable and un-writable
 - **Removing**: The DataNode is being removed from the cluster and cannot be read or written
-- **ReadOnly**: The remaining disk space of DataNode is lower than disk_full_threshold(default is 1%), the DataNode can't write or synchronize data anymore
+- **ReadOnly**: The remaining disk space of DataNode is lower than disk_full_threshold(default is 5%), the DataNode can't write or synchronize data anymore
 
 ### Show all ConfigNode information
 

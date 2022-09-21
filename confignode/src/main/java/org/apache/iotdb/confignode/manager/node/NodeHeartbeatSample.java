@@ -31,9 +31,9 @@ public class NodeHeartbeatSample {
   private NodeStatus status;
   private String statusReason;
 
-  private short cpuOccupancyRatio;
-  private double memoryOccupancyRatio;
-  private double diskOccupancyRatio;
+  private short cpuUsageRate;
+  private double memoryUsageRate;
+  private double diskUsageRate;
 
   /** Constructor for ConfigNode sample */
   public NodeHeartbeatSample(long sendTimestamp, long receiveTimestamp) {
@@ -51,9 +51,9 @@ public class NodeHeartbeatSample {
 
     if (heartbeatResp.isSetLoadSample()) {
       TLoadSample loadSample = heartbeatResp.getLoadSample();
-      this.cpuOccupancyRatio = loadSample.getCpuOccupancyRatio();
-      this.memoryOccupancyRatio = loadSample.getMemoryOccupancyRatio();
-      this.diskOccupancyRatio = loadSample.getDiskOccupancyRatio();
+      this.cpuUsageRate = loadSample.getCpuUsageRate();
+      this.memoryUsageRate = loadSample.getMemoryUsageRate();
+      this.diskUsageRate = loadSample.getDiskUsageRate();
     }
   }
 
@@ -73,15 +73,15 @@ public class NodeHeartbeatSample {
     return statusReason;
   }
 
-  public short getCpuOccupancyRatio() {
-    return cpuOccupancyRatio;
+  public short getCpuUsageRate() {
+    return cpuUsageRate;
   }
 
-  public double getMemoryOccupancyRatio() {
-    return memoryOccupancyRatio;
+  public double getMemoryUsageRate() {
+    return memoryUsageRate;
   }
 
-  public double getDiskOccupancyRatio() {
-    return diskOccupancyRatio;
+  public double getDiskUsageRate() {
+    return diskUsageRate;
   }
 }

@@ -36,7 +36,7 @@ public abstract class BaseNodeCache {
 
   /** The current status of the Node */
   volatile NodeStatus status = NodeStatus.Unknown;
-  /** The reason why lead to the current NodeStatus(for showing cluster) */
+  /** The reason why lead to the current NodeStatus (for showing cluster) */
   volatile String statusReason;
 
   /**

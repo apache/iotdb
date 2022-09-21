@@ -194,7 +194,7 @@ It costs 0.006s
 - **Running**: DataNode 正常运行，可读可写
 - **Unknown**: DataNode 未正常上报心跳，ConfigNode 将认为该 DataNode 不可读写
 - **Removing**: DataNode 正在移出集群，不可读写
-- **ReadOnly**: DataNode 磁盘剩余空间低于 disk_full_threshold（默认 1%），此 DataNode 将不再能写入，不再能同步数据
+- **ReadOnly**: DataNode 磁盘剩余空间低于 disk_full_threshold（默认 5%），此 DataNode 将不再能写入，不再能同步数据
 
 ### 查看 ConfigNode 节点信息
 
