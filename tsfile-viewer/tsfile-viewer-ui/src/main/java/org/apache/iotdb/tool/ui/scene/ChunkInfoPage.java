@@ -74,6 +74,7 @@ public class ChunkInfoPage {
     pane = new GridPane();
     scene = new Scene(this.pane, WIDTH, HEIGHT);
     stage.setScene(scene);
+    stage.setTitle("Chunk Information");
 
     pane.setHgap(10);
     pane.setVgap(10);
