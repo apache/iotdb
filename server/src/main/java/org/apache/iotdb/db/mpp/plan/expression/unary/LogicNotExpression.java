@@ -57,6 +57,7 @@ public class LogicNotExpression extends UnaryExpression {
     return ExpressionType.LOGIC_NOT;
   }
 
+  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitLogicNotExpression(this, context);
   }

@@ -87,6 +87,7 @@ public class BetweenExpression extends TernaryExpression {
     return this;
   }
 
+  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitBetweenExpression(this, context);
   }

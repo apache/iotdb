@@ -58,6 +58,7 @@ public class NegationExpression extends UnaryExpression {
     return ExpressionType.NEGATION;
   }
 
+  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitNegationExpression(this, context);
   }
