@@ -340,13 +340,18 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
     TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
     try {
-      executor.fire(tablet, event);
-    } catch (TriggerExecutionException e) {
-      if (executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)) {
-        result = TriggerFireResult.TERMINATION;
-      } else {
-        result = TriggerFireResult.FAILED_NO_TERMINATION;
+      boolean fireResult = executor.fire(tablet, event);
+      if (!fireResult) {
+        result =
+            executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
+                ? TriggerFireResult.TERMINATION
+                : TriggerFireResult.FAILED_NO_TERMINATION;
       }
+    } catch (TriggerExecutionException e) {
+      result =
+          executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
+              ? TriggerFireResult.TERMINATION
+              : TriggerFireResult.FAILED_NO_TERMINATION;
     }
     return result;
   }

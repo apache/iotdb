@@ -49,14 +49,15 @@ public class TriggerExecutor {
     }
   }
 
-  public void fire(Tablet tablet, TriggerEvent event) throws TriggerExecutionException {
+  public boolean fire(Tablet tablet, TriggerEvent event) throws TriggerExecutionException {
     if (event.equals(triggerInformation.getEvent())) {
       try {
-        trigger.fire(tablet);
+        return trigger.fire(tablet);
       } catch (Exception e) {
         onTriggerExecutionError("fire(Tablet)", e);
       }
     }
+    return true;
   }
 
   public FailureStrategy getFailureStrategy() {

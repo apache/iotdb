@@ -937,13 +937,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     TriggerFireResult result = TriggerFireResult.SUCCESS;
     try {
-      executor.fire(Tablet.deserialize(req.tablet), TriggerEvent.construct(req.getTriggerEvent()));
-    } catch (Exception e) {
-      if (executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)) {
-        result = TriggerFireResult.TERMINATION;
-      } else {
-        result = TriggerFireResult.FAILED_NO_TERMINATION;
+      boolean fireResult =
+          executor.fire(
+              Tablet.deserialize(req.tablet), TriggerEvent.construct(req.getTriggerEvent()));
+      if (!fireResult) {
+        result =
+            executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
+                ? TriggerFireResult.TERMINATION
+                : TriggerFireResult.FAILED_NO_TERMINATION;
       }
+    } catch (Exception e) {
+      result =
+          executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
+              ? TriggerFireResult.TERMINATION
+              : TriggerFireResult.FAILED_NO_TERMINATION;
     }
     return new TFireTriggerResp(true, result.getId());
   }
