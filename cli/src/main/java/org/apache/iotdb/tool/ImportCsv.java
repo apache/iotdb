@@ -475,10 +475,10 @@ public class ImportCsv extends AbstractCsvTool {
             List<String> measurementNames = deviceAndMeasurementNames.get(deviceId);
             for (String measurement : measurementNames) {
               String header = deviceId + "." + measurement;
-              String value = record.get(header);
+              String value = record.get(headerNameMap.get(header));
               if (!"".equals(value)) {
                 TSDataType type;
-                if (!headerTypeMap.containsKey(headerNameMap.get(header))) {
+                if (!headerTypeMap.containsKey(header)) {
                   type = typeInfer(value);
                   if (type != null) {
                     headerTypeMap.put(header, type);
@@ -489,7 +489,7 @@ public class ImportCsv extends AbstractCsvTool {
                     isFail = true;
                   }
                 }
-                type = headerTypeMap.get(headerNameMap.get(header));
+                type = headerTypeMap.get(header);
                 if (type != null) {
                   Object valueTrans = typeTrans(value, type);
                   if (valueTrans == null) {
@@ -498,7 +498,7 @@ public class ImportCsv extends AbstractCsvTool {
                         "Line '%s', column '%s': '%s' can't convert to '%s'%n",
                         record.getRecordNumber(), header, value, type);
                   } else {
-                    measurements.add(headerNameMap.get(header).replace(deviceId + '.', ""));
+                    measurements.add(header.replace(deviceId + '.', ""));
                     types.add(type);
                     values.add(valueTrans);
                     pointSize.getAndIncrement();
@@ -781,16 +781,17 @@ public class ImportCsv extends AbstractCsvTool {
       }
       Matcher matcher = pattern.matcher(headerName);
       String type;
+      String headerNameWithoutType;
       if (matcher.find()) {
         type = matcher.group();
-        String headerNameWithoutType =
-            headerName.replace("(" + type + ")", "").replaceAll("\\s+", "");
-        headerNameMap.put(headerName, headerNameWithoutType);
+        headerNameWithoutType = headerName.replace("(" + type + ")", "").replaceAll("\\s+", "");
+        headerNameMap.put(headerNameWithoutType, headerName);
         headerTypeMap.put(headerNameWithoutType, getType(type));
       } else {
+        headerNameWithoutType = headerName;
         headerNameMap.put(headerName, headerName);
       }
-      String[] split = PathUtils.splitPathToDetachedNodes(headerNameMap.get(headerName));
+      String[] split = PathUtils.splitPathToDetachedNodes(headerNameWithoutType);
       String measurementName = split[split.length - 1];
       String deviceName = StringUtils.join(Arrays.copyOfRange(split, 0, split.length - 1), '.');
       if (deviceAndMeasurementNames != null) {
