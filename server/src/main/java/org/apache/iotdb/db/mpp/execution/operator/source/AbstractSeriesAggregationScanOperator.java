@@ -203,7 +203,8 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
   }
 
   protected void updateResultTsBlock() {
-    appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
+    appendAggregationResult(
+        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
   }
 
   protected boolean calcFromCachedData() {

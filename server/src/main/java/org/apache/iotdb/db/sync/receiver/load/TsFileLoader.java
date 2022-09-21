@@ -18,47 +18,52 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
-import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 /** This loader is used to load tsFiles. If .mods file exists, it will be loaded as well. */
 public class TsFileLoader implements ILoader {
+  private static final Logger logger = LoggerFactory.getLogger(TsFileLoader.class);
+  private static PlanExecutor planExecutor;
 
-  private File tsFile;
+  static {
+    try {
+      planExecutor = new PlanExecutor();
+    } catch (QueryProcessException e) {
+      logger.error(e.getMessage());
+    }
+  }
 
-  public TsFileLoader(File tsFile) {
+  private final File tsFile;
+  // TODO(sync): use storage group to support auto create schema
+  private final String storageGroup;
+
+  public TsFileLoader(File tsFile, String storageGroup) {
     this.tsFile = tsFile;
+    this.storageGroup = storageGroup;
   }
 
   @Override
   public void load() throws PipeDataLoadException {
     try {
-      TsFileResource tsFileResource = new TsFileResource(tsFile);
-      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-      FileLoaderUtils.loadOrGenerateResource(tsFileResource);
-      List<TsFileResource> splitResources = new ArrayList();
-      if (tsFileResource.isSpanMultiTimePartitions()) {
-        TsFileSplitByPartitionTool.rewriteTsFile(tsFileResource, splitResources);
-        tsFileResource.writeLock();
-        tsFileResource.removeModFile();
-        tsFileResource.writeUnlock();
-      }
-
-      if (splitResources.isEmpty()) {
-        splitResources.add(tsFileResource);
-      }
-
-      for (TsFileResource resource : splitResources) {
-        StorageEngine.getInstance().loadNewTsFile(resource, false);
-      }
+      PhysicalPlan plan =
+          new OperateFilePlan(
+              tsFile,
+              Operator.OperatorType.LOAD_FILES,
+              true,
+              IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
+              true);
+      planExecutor.processNonQuery(plan);
     } catch (Exception e) {
       throw new PipeDataLoadException(e.getMessage());
     }

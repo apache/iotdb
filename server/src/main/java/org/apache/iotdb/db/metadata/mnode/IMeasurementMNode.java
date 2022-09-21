@@ -51,4 +51,8 @@ public interface IMeasurementMNode extends IMNode {
   ILastCacheContainer getLastCacheContainer();
 
   void setLastCacheContainer(ILastCacheContainer lastCacheContainer);
+
+  boolean isPreDeleted();
+
+  void setPreDeleted(boolean preDeleted);
 }

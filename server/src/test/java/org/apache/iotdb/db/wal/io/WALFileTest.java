@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -47,6 +48,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -78,6 +80,7 @@ public class WALFileTest {
     List<WALEntry> expectedWALEntries = new ArrayList<>();
     expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertRowNode(devicePath)));
     expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertTabletNode(devicePath)));
+    expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getDeleteDataNode(devicePath)));
     expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertRowPlan(devicePath)));
     expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getInsertTabletPlan(devicePath)));
     expectedWALEntries.add(new WALInfoEntry(fakeMemTableId, getDeletePlan(devicePath)));
@@ -322,5 +325,16 @@ public class WALFileTest {
 
   public static DeletePlan getDeletePlan(String devicePath) throws IllegalPathException {
     return new DeletePlan(Long.MIN_VALUE, Long.MAX_VALUE, new PartialPath(devicePath));
+  }
+
+  public static DeleteDataNode getDeleteDataNode(String devicePath) throws IllegalPathException {
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(new PartialPath(devicePath)),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    deleteDataNode.setSearchIndex(100L);
+    return deleteDataNode;
   }
 }

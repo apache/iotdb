@@ -55,7 +55,7 @@ Enable time partition and set partition_interval to 86400 (one day), then the da
 
 ## Suggestions
 
-When enabling time partition, it is better to enable timed flush memtable, configuration params are detailed in [Config manual for timed flush](../Reference/Config-Manual.md).
+When enabling time partition, it is better to enable timed flush memtable, configuration params are detailed in [Config manual for timed flush](../Reference/DataNode-Config-Manual.md).
 
 * enable_timed_flush_unseq_memtable: Whether to enable timed flush unsequence memtable, enabled by default.
 

@@ -97,10 +97,6 @@ public class IoTDB implements IoTDBMBean {
     IoTDB.serviceProvider = serviceProvider;
   }
 
-  public static void setClusterMode() {
-    config.setClusterMode(true);
-  }
-
   public void active() {
     StartupChecks checks = new StartupChecks().withDefaultTest();
     try {
@@ -141,7 +137,6 @@ public class IoTDB implements IoTDBMBean {
     setUncaughtExceptionHandler();
     initServiceProvider();
 
-    registerManager.register(MetricService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
     registerManager.register(new JMXService());
@@ -195,9 +190,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
-
-    // start reporter
-    MetricService.getInstance().startAllReporter();
+    registerManager.register(MetricService.getInstance());
 
     logger.info("IoTDB configuration: " + config.getConfigMessage());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");

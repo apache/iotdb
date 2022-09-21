@@ -21,17 +21,18 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.commons.cluster.RegionRoleType;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -48,13 +49,13 @@ import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
@@ -77,13 +78,12 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -95,17 +95,16 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -113,7 +112,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -177,7 +175,7 @@ public class ConfigManager implements IManager {
 
   public void close() throws IOException {
     consensusManager.close();
-    partitionManager.getRegionCleaner().shutdown();
+    partitionManager.getRegionMaintainer().shutdown();
     procedureManager.shiftExecutor(false);
   }
 
@@ -691,8 +689,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus addConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    consensusManager.addConsensusGroup(configNodeLocations);
+  public TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
+    consensusManager.createPeerForConsensusGroup(configNodeLocations);
     return StatusUtils.OK;
   }
 
@@ -788,24 +786,7 @@ public class ConfigManager implements IManager {
   public RegionInfoListResp showRegion(GetRegionInfoListPlan getRegionInfoListPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      RegionInfoListResp regionInfoListResp =
-          (RegionInfoListResp) partitionManager.getRegionInfoList(getRegionInfoListPlan);
-      regionInfoListResp
-          .getRegionInfoList()
-          .forEach(
-              regionInfo -> {
-                Map<TConsensusGroupId, Integer> allLeadership =
-                    getPartitionManager().getAllLeadership();
-                if (!allLeadership.isEmpty()) {
-                  String regionType =
-                      regionInfo.getDataNodeId()
-                              == allLeadership.get(regionInfo.getConsensusGroupId())
-                          ? RegionRoleType.Leader.toString()
-                          : RegionRoleType.Follower.toString();
-                  regionInfo.setRoleType(regionType);
-                }
-              });
-      return regionInfoListResp;
+      return (RegionInfoListResp) partitionManager.getRegionInfoList(getRegionInfoListPlan);
     } else {
       RegionInfoListResp regionResp = new RegionInfoListResp();
       regionResp.setStatus(status);
@@ -818,48 +799,8 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     TShowDataNodesResp resp = new TShowDataNodesResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<TDataNodeInfo> registeredDataNodesInfoList = nodeManager.getRegisteredDataNodeInfoList();
-
-      // Map<DataNodeId, DataRegionNum>
-      Map<Integer, AtomicInteger> dataRegionNumMap = new HashMap<>();
-      // Map<DataNodeId, SchemaRegionNum>
-      Map<Integer, AtomicInteger> schemaRegionNumMap = new HashMap<>();
-
-      List<TRegionInfo> regionInfoList =
-          ((RegionInfoListResp) partitionManager.getRegionInfoList(new GetRegionInfoListPlan()))
-              .getRegionInfoList();
-      if (CollectionUtils.isNotEmpty(regionInfoList)) {
-
-        regionInfoList.forEach(
-            (regionInfo) -> {
-              int dataNodeId = regionInfo.getDataNodeId();
-              int regionTypeValue = regionInfo.getConsensusGroupId().getType().getValue();
-              int dataRegionNum =
-                  regionTypeValue == TConsensusGroupType.DataRegion.getValue() ? 1 : 0;
-              int schemaRegionNum =
-                  regionTypeValue == TConsensusGroupType.SchemaRegion.getValue() ? 1 : 0;
-              dataRegionNumMap
-                  .computeIfAbsent(dataNodeId, key -> new AtomicInteger())
-                  .addAndGet(dataRegionNum);
-              schemaRegionNumMap
-                  .computeIfAbsent(dataNodeId, key -> new AtomicInteger())
-                  .addAndGet(schemaRegionNum);
-            });
-
-        registeredDataNodesInfoList.forEach(
-            (dataNodesInfo -> {
-              if (dataRegionNumMap.containsKey(dataNodesInfo.getDataNodeId())) {
-                dataNodesInfo.setDataRegionNum(
-                    dataRegionNumMap.get(dataNodesInfo.getDataNodeId()).get());
-              }
-              if (schemaRegionNumMap.containsKey(dataNodesInfo.getDataNodeId())) {
-                dataNodesInfo.setSchemaRegionNum(
-                    schemaRegionNumMap.get(dataNodesInfo.getDataNodeId()).get());
-              }
-            }));
-      }
-
-      return resp.setDataNodesInfoList(registeredDataNodesInfoList).setStatus(StatusUtils.OK);
+      return resp.setDataNodesInfoList(nodeManager.getRegisteredDataNodeInfoList())
+          .setStatus(StatusUtils.OK);
     } else {
       return resp.setStatus(status);
     }
@@ -965,5 +906,81 @@ public class ConfigManager implements IManager {
     } else {
       return new TGetPathsSetTemplatesResp(status);
     }
+  }
+
+  @Override
+  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.deleteTimeSeries(req);
+    } else {
+      return status;
+    }
+  }
+
+  /** Get all related schemaRegion which may contains the timeseries matched by given patternTree */
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
+      PathPatternTree patternTree) {
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        getSchemaPartition(patternTree).getSchemaPartitionTable();
+
+    List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
+    Set<TConsensusGroupId> groupIdSet =
+        schemaPartitionTable.values().stream()
+            .flatMap(m -> m.values().stream())
+            .collect(Collectors.toSet());
+    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+      if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
+        filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+      }
+    }
+    return filteredRegionReplicaSets;
+  }
+
+  /**
+   * Get all related dataRegion which may contains the data of specific timeseries matched by given
+   * patternTree
+   */
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
+      PathPatternTree patternTree) {
+    // get all storage group and slot by getting schema partition
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        getSchemaPartition(patternTree).getSchemaPartitionTable();
+
+    // construct request for getting data partition
+    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+        new HashMap<>();
+    schemaPartitionTable.forEach(
+        (key, value) -> {
+          Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> slotListMap = new HashMap<>();
+          value.keySet().forEach(slot -> slotListMap.put(slot, Collections.emptyList()));
+          partitionSlotsMap.put(key, slotListMap);
+        });
+
+    // get all data partitions
+    GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+        dataPartitionTable = getDataPartition(getDataPartitionPlan).getDataPartitionTable();
+
+    // get all region replicaset of target data partitions
+    List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
+    Set<TConsensusGroupId> groupIdSet =
+        dataPartitionTable.values().stream()
+            .flatMap(
+                tSeriesPartitionSlotMapMap ->
+                    tSeriesPartitionSlotMapMap.values().stream()
+                        .flatMap(
+                            tTimePartitionSlotListMap ->
+                                tTimePartitionSlotListMap.values().stream()
+                                    .flatMap(Collection::stream)))
+            .collect(Collectors.toSet());
+    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+      if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
+        filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+      }
+    }
+    return filteredRegionReplicaSets;
   }
 }

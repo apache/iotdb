@@ -20,17 +20,18 @@
 package org.apache.iotdb.db.service.metrics.predefined;
 
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.wal.WALManager;
-import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,14 +39,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.UncheckedIOException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class FileMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(FileMetrics.class);
-  private final String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
-  private final String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+  private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
   private long walFileTotalSize = 0L;
   private long walFileTotalCount = 0L;
@@ -55,74 +56,87 @@ public class FileMetrics implements IMetricSet {
   private long unsequenceFileTotalCount = 0L;
 
   @Override
-  public void bindTo(AbstractMetricManager metricManager) {
-    metricManager.getOrCreateAutoGauge(
+  public void bindTo(AbstractMetricService metricService) {
+    metricService.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getWalFileTotalSize,
         Tag.NAME.toString(),
         "wal");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getSequenceFileTotalSize,
         Tag.NAME.toString(),
         "seq");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getUnsequenceFileTotalSize,
         Tag.NAME.toString(),
         "unseq");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getWalFileTotalCount,
         Tag.NAME.toString(),
         "wal");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getSequenceFileTotalCount,
         Tag.NAME.toString(),
         "seq");
-    metricManager.getOrCreateAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getUnsequenceFileTotalCount,
         Tag.NAME.toString(),
         "unseq");
+
+    // finally start to update the value of some metrics in async way
+    if (metricService.isEnable() && null == currentServiceFuture) {
+      currentServiceFuture =
+          ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+              service,
+              this::collect,
+              1,
+              MetricConfigDescriptor.getInstance()
+                  .getMetricConfig()
+                  .getAsyncCollectPeriodInSecond(),
+              TimeUnit.SECONDS);
+    }
   }
 
   @Override
-  public PredefinedMetric getType() {
-    return PredefinedMetric.FILE;
-  }
+  public void unbindFrom(AbstractMetricService metricService) {
+    // first stop to update the value of some metrics in async way
+    if (currentServiceFuture != null) {
+      currentServiceFuture.cancel(true);
+      currentServiceFuture = null;
+    }
 
-  @Override
-  public void startAsyncCollectedMetrics() {
-    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-        service,
-        this::collect,
-        1,
-        MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
-        TimeUnit.SECONDS);
-  }
-
-  @Override
-  public void stopAsyncCollectedMetrics() {
-    service.shutdown();
+    metricService.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "wal");
+    metricService.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "seq");
+    metricService.remove(
+        MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "unseq");
+    metricService.remove(
+        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "wal");
+    metricService.remove(
+        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "seq");
+    metricService.remove(
+        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "unseq");
   }
 
   private void collect() {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
+    String[] walDirs = CommonDescriptor.getInstance().getConfig().getWalDirs();
     walFileTotalSize = WALManager.getInstance().getTotalDiskUsage();
     sequenceFileTotalSize =
         Stream.of(dataDirs)

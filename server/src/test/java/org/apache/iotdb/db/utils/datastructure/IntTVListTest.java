@@ -31,7 +31,7 @@ public class IntTVListTest {
 
   @Test
   public void testIntTVList1() {
-    IntTVList tvList = new IntTVList();
+    IntTVList tvList = IntTVList.newList();
     for (int i = 0; i < 1000; i++) {
       tvList.putInt(i, i);
     }
@@ -44,7 +44,7 @@ public class IntTVListTest {
 
   @Test
   public void testIntTVList2() {
-    IntTVList tvList = new IntTVList();
+    IntTVList tvList = IntTVList.newList();
     for (int i = 1000; i >= 0; i--) {
       tvList.putInt(i, i);
     }
@@ -57,7 +57,7 @@ public class IntTVListTest {
 
   @Test
   public void testPutIntsWithoutBitMap() {
-    IntTVList tvList = new IntTVList();
+    IntTVList tvList = IntTVList.newList();
     List<Integer> intList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     for (int i = 1000; i >= 0; i--) {
@@ -78,7 +78,7 @@ public class IntTVListTest {
 
   @Test
   public void testPutIntsWithBitMap() {
-    IntTVList tvList = new IntTVList();
+    IntTVList tvList = IntTVList.newList();
     List<Integer> intList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);
@@ -109,7 +109,7 @@ public class IntTVListTest {
 
   @Test
   public void testClone() {
-    IntTVList tvList = new IntTVList();
+    IntTVList tvList = IntTVList.newList();
     List<Integer> intList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);

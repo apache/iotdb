@@ -50,6 +50,9 @@ CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoT
 * `-tf <time-format>`:
   - 指定一个你想要得到的时间格式。时间格式必须遵守[ISO 8601](https://calendars.wikia.org/wiki/ISO_8601)标准。如果说你想要以时间戳来保存时间，那就设置为`-tf timestamp`。
   - 例如: `-tf yyyy-MM-dd\ HH:mm:ss` or `-tf timestamp`
+* `-linesPerFile <int>`:
+  - 指定导出的dump文件最大行数，默认值为`10000`。
+  - 例如： `-linesPerFile 1`
 
 除此之外，如果你没有使用`-s`和`-q`参数，在导出脚本被启动之后你需要按照程序提示输入查询语句，不同的查询结果会被保存到不同的CSV文件中。
 
@@ -66,6 +69,8 @@ CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoT
 > tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s sql.txt
 # Or
 > tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt
+# Or
+> tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt -linesPerFile 10
 
 # Windows
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./
@@ -77,6 +82,8 @@ CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoT
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s sql.txt
 # Or
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt
+# Or
+> tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt -linesPerFile 10
 ```
 
 ### SQL 文件示例
@@ -175,9 +182,9 @@ Time,Device,str(TEXT),int(INT32)
 
 ```shell
 # Unix/OS X
->tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>]
+>tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>] [-typeInfer <boolean=text,float=double...>] [-linesPerFailedFile <int_value>]
 # Windows
->tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>]
+>tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>] [-tp <ms/ns/us>] [-typeInfer <boolean=text,float=double...>] [-linesPerFailedFile <int_value>]
 ```
 
 参数:
@@ -201,6 +208,19 @@ Time,Device,str(TEXT),int(INT32)
 * `-tp`:
   - 用于指定时间精度，可选值包括`ms`（毫秒），`ns`（纳秒），`us`（微秒），默认值为`ms`。
 
+* `-typeInfer <srcTsDataType1=dstTsDataType1,srcTsDataType2=dstTsDataType2,...>`:
+  - 用于指定类型推断规则.
+  - `srcTsDataType` 包括 `boolean`,`int`,`long`,`float`,`double`,`NaN`.
+  - `dstTsDataType` 包括 `boolean`,`int`,`long`,`float`,`double`,`text`.
+  - 当`srcTsDataType`为`boolean`, `dstTsDataType`只能为`boolean`或`text`.
+  - 当`srcTsDataType`为`NaN`, `dstTsDataType`只能为`float`, `double`或`text`.
+  - 当`srcTsDataType`为数值类型, `dstTsDataType`的精度需要高于`srcTsDataType`.
+  - 例如:`-typeInfer boolean=text,float=double`
+
+* `-linesPerFailedFile <int>`:
+  - 用于指定每个导入失败文件写入数据的行数，默认值为10000。
+  - 例如：`-linesPerFailedFile 1`
+
 ### 运行示例
 
 ```sh
@@ -208,12 +228,22 @@ Time,Device,str(TEXT),int(INT32)
 >tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
 # or
 >tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
+# or
+> tools\import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed -tp ns
+# or
+> tools\import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed -tp ns -typeInfer boolean=text,float=double
+# or
+> tools\import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed -tp ns -typeInfer boolean=text,float=double -linesPerFailedFile 10
 # Windows
 >tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv
 # or
 >tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
 # or
 > tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed -tp ns
+# or
+> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed -tp ns -typeInfer boolean=text,float=double
+# or
+> tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed -tp ns -typeInfer boolean=text,float=double -linesPerFailedFile 10
 ```
 
 ### 注意

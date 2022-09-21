@@ -67,14 +67,14 @@ IoTDB> CLEAR CACHE ON CLUSTER
 ```
 
 
-## SET SYSTEM TO READONLY / RUNNING / ERROR
+## SET SYSTEM TO READONLY / RUNNING
 
-手动设置系统为正常运行、只读、错误状态。在集群模式下，我们提供了设置本节点状态、设置整个集群状态的命令，默认对整个集群生效。
+手动设置系统为正常运行、只读状态。在集群模式下，我们提供了设置本节点状态、设置整个集群状态的命令，默认对整个集群生效。
 
 ```sql
 IoTDB> SET SYSTEM TO RUNNING
 IoTDB> SET SYSTEM TO READONLY ON LOCAL
-IoTDB> SET SYSTEM TO ERROR ON CLUSTER
+IoTDB> SET SYSTEM TO READONLY ON CLUSTER
 ```
 
 ## 超时
@@ -215,13 +215,13 @@ SHOW CONFIGNODES
 
 ```
 IoTDB> show confignodes
-+------+-------+-------+-----+
-|NodeID| Status|   Host| Port|
-+------+-------+-------+-----+
-|     0|Running|0.0.0.0|22277|
-|     1|Running|0.0.0.0|22279|
-|     2|Running|0.0.0.0|22281|
-+------+-------+-------+-----+
++------+-------+-------+-----+--------+
+|NodeID| Status|   Host| Port|    Role|
++------+-------+-------+-----+--------+
+|     0|Running|0.0.0.0|22277|  Leader|
+|     1|Running|0.0.0.0|22279|Follower|
+|     2|Running|0.0.0.0|22281|Follower|
++------+-------+-------+-----+--------+
 Total line number = 3
 It costs 0.030s
 ```
@@ -230,13 +230,13 @@ It costs 0.030s
 
 ```
 IoTDB> show confignodes
-+------+-------+-------+-----+
-|NodeID| Status|   Host| Port|
-+------+-------+-------+-----+
-|     0|Running|0.0.0.0|22277|
-|     1|Running|0.0.0.0|22279|
-|     2|Unknown|0.0.0.0|22281|
-+------+-------+-------+-----+
++------+-------+-------+-----+--------+
+|NodeID| Status|   Host| Port|    Role|
++------+-------+-------+-----+--------+
+|     0|Running|0.0.0.0|22277|  Leader|
+|     1|Running|0.0.0.0|22279|Follower|
+|     2|Unknown|0.0.0.0|22281|Follower|
++------+-------+-------+-----+--------+
 Total line number = 3
 It costs 0.009s
 ```

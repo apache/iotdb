@@ -44,32 +44,29 @@ import java.util.List;
 import java.util.Objects;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
-public class AlignedTVList extends TVList {
+public abstract class AlignedTVList extends TVList {
   private static final int NULL_FLAG = -1;
 
   // data types of this aligned tvList
-  private List<TSDataType> dataTypes;
+  protected List<TSDataType> dataTypes;
 
   // data type list -> list of TVList, add 1 when expanded -> primitive array of basic type
   // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
-  private List<List<Object>> values;
+  protected List<List<Object>> values;
 
   // list of index array, add 1 when expanded -> data point index array
   // index relation: arrayIndex -> elementIndex
   // used in sort method, sort only changes indices
-  private List<int[]> indices;
+  protected List<int[]> indices;
 
   // data type list -> list of BitMap, add 1 when expanded -> BitMap(maybe null), marked means the
   // value is null
   // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
-  private List<List<BitMap>> bitMaps;
-
-  private int[][] sortedIndices;
-
-  private int pivotIndex;
+  protected List<List<BitMap>> bitMaps;
 
   AlignedTVList(List<TSDataType> types) {
     super();
@@ -82,7 +79,43 @@ public class AlignedTVList extends TVList {
   }
 
   public static AlignedTVList newAlignedList(List<TSDataType> dataTypes) {
-    return new AlignedTVList(dataTypes);
+    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
+      return new QuickAlignedTVList(dataTypes);
+    }
+    return new TimAlignedTVList(dataTypes);
+  }
+
+  @Override
+  public AlignedTVList clone() {
+    AlignedTVList cloneList = AlignedTVList.newAlignedList(dataTypes);
+    cloneAs(cloneList);
+    for (int[] indicesArray : indices) {
+      cloneList.indices.add(cloneIndex(indicesArray));
+    }
+    for (int i = 0; i < values.size(); i++) {
+      List<Object> columnValues = values.get(i);
+      for (Object valueArray : columnValues) {
+        cloneList.values.get(i).add(cloneValue(dataTypes.get(i), valueArray));
+      }
+      // clone bitmap in columnIndex
+      if (bitMaps != null && bitMaps.get(i) != null) {
+        List<BitMap> columnBitMaps = bitMaps.get(i);
+        if (cloneList.bitMaps == null) {
+          cloneList.bitMaps = new ArrayList<>(dataTypes.size());
+          for (int j = 0; j < dataTypes.size(); j++) {
+            cloneList.bitMaps.add(null);
+          }
+        }
+        if (cloneList.bitMaps.get(i) == null) {
+          List<BitMap> cloneColumnBitMaps = new ArrayList<>();
+          for (BitMap bitMap : columnBitMaps) {
+            cloneColumnBitMaps.add(bitMap == null ? null : bitMap.clone());
+          }
+          cloneList.bitMaps.set(i, cloneColumnBitMaps);
+        }
+      }
+    }
+    return cloneList;
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -223,36 +256,6 @@ public class AlignedTVList extends TVList {
       }
     }
     return TsPrimitiveType.getByType(TSDataType.VECTOR, vector);
-  }
-
-  @Override
-  public TVList getTvListByColumnIndex(List<Integer> columnIndex, List<TSDataType> dataTypeList) {
-    List<List<Object>> values = new ArrayList<>();
-    List<List<BitMap>> bitMaps = null;
-    for (int i = 0; i < columnIndex.size(); i++) {
-      // columnIndex == -1 means querying a non-exist column, add null column here
-      if (columnIndex.get(i) == -1) {
-        values.add(null);
-      } else {
-        values.add(this.values.get(columnIndex.get(i)));
-        if (this.bitMaps != null && this.bitMaps.get(columnIndex.get(i)) != null) {
-          if (bitMaps == null) {
-            bitMaps = new ArrayList<>(columnIndex.size());
-            for (int j = 0; j < columnIndex.size(); j++) {
-              bitMaps.add(null);
-            }
-          }
-          bitMaps.set(i, this.bitMaps.get(columnIndex.get(i)));
-        }
-      }
-    }
-    AlignedTVList alignedTvList = new AlignedTVList(dataTypeList);
-    alignedTvList.timestamps = this.timestamps;
-    alignedTvList.indices = this.indices;
-    alignedTvList.values = values;
-    alignedTvList.bitMaps = bitMaps;
-    alignedTvList.rowCount = this.rowCount;
-    return alignedTvList;
   }
 
   public void extendColumn(TSDataType dataType) {
@@ -472,7 +475,7 @@ public class AlignedTVList extends TVList {
     bitMaps.remove(columnIndex);
   }
 
-  private void set(int index, long timestamp, int value) {
+  protected void set(int index, long timestamp, int value) {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
@@ -480,46 +483,13 @@ public class AlignedTVList extends TVList {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  @Override
-  public AlignedTVList clone() {
-    AlignedTVList cloneList = new AlignedTVList(dataTypes);
-    cloneAs(cloneList);
-    for (int[] indicesArray : indices) {
-      cloneList.indices.add(cloneIndex(indicesArray));
-    }
-    for (int i = 0; i < values.size(); i++) {
-      List<Object> columnValues = values.get(i);
-      for (Object valueArray : columnValues) {
-        cloneList.values.get(i).add(cloneValue(dataTypes.get(i), valueArray));
-      }
-      // clone bitmap in columnIndex
-      if (bitMaps != null && bitMaps.get(i) != null) {
-        List<BitMap> columnBitMaps = bitMaps.get(i);
-        if (cloneList.bitMaps == null) {
-          cloneList.bitMaps = new ArrayList<>(dataTypes.size());
-          for (int j = 0; j < dataTypes.size(); j++) {
-            cloneList.bitMaps.add(null);
-          }
-        }
-        if (cloneList.bitMaps.get(i) == null) {
-          List<BitMap> cloneColumnBitMaps = new ArrayList<>();
-          for (BitMap bitMap : columnBitMaps) {
-            cloneColumnBitMaps.add(bitMap == null ? null : bitMap.clone());
-          }
-          cloneList.bitMaps.set(i, cloneColumnBitMaps);
-        }
-      }
-    }
-    return cloneList;
-  }
-
-  private int[] cloneIndex(int[] array) {
+  protected int[] cloneIndex(int[] array) {
     int[] cloneArray = new int[array.length];
     System.arraycopy(array, 0, cloneArray, 0, array.length);
     return cloneArray;
   }
 
-  private Object cloneValue(TSDataType type, Object value) {
+  protected Object cloneValue(TSDataType type, Object value) {
     switch (type) {
       case TEXT:
         Binary[] valueT = (Binary[]) value;
@@ -557,25 +527,7 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  public void sort() {
-    if (sortedTimestamps == null
-        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedTimestamps =
-          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
-    }
-    if (sortedIndices == null
-        || sortedIndices.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedIndices =
-          (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
-    }
-    sort(0, rowCount);
-    clearSortedValue();
-    clearSortedTime();
-    sorted = true;
-  }
-
-  @Override
-  void clearValue() {
+  public void clearValue() {
     if (indices != null) {
       for (int[] dataArray : indices) {
         PrimitiveArrayManager.release(dataArray);
@@ -600,47 +552,6 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  void clearSortedValue() {
-    if (sortedIndices != null) {
-      sortedIndices = null;
-    }
-  }
-
-  @Override
-  protected void setFromSorted(int src, int dest) {
-    set(
-        dest,
-        sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
-        sortedIndices[src / ARRAY_SIZE][src % ARRAY_SIZE]);
-  }
-
-  @Override
-  protected void set(int src, int dest) {
-    long srcT = getTime(src);
-    int srcV = getValueIndex(src);
-    set(dest, srcT, srcV);
-  }
-
-  @Override
-  protected void setToSorted(int src, int dest) {
-    sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
-    sortedIndices[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getValueIndex(src);
-  }
-
-  @Override
-  protected void reverseRange(int lo, int hi) {
-    hi--;
-    while (lo < hi) {
-      long loT = getTime(lo);
-      int loV = getValueIndex(lo);
-      long hiT = getTime(hi);
-      int hiV = getValueIndex(hi);
-      set(lo++, hiT, hiV);
-      set(hi--, loT, loV);
-    }
-  }
-
-  @Override
   protected void expandValues() {
     indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
     for (int i = 0; i < dataTypes.size(); i++) {
@@ -649,12 +560,6 @@ public class AlignedTVList extends TVList {
         bitMaps.get(i).add(null);
       }
     }
-  }
-
-  @Override
-  protected void saveAsPivot(int pos) {
-    pivotTime = getTime(pos);
-    pivotIndex = getValueIndex(pos);
   }
 
   /**
@@ -691,11 +596,6 @@ public class AlignedTVList extends TVList {
       }
     }
     return validRowIndex;
-  }
-
-  @Override
-  protected void setPivotTo(int pos) {
-    set(pos, pivotTime, pivotIndex);
   }
 
   @Override
@@ -874,17 +774,6 @@ public class AlignedTVList extends TVList {
     // Object references size in ArrayList
     size += (long) NUM_BYTES_OBJECT_REF * (2 + types.length);
     return size;
-  }
-
-  public void clear() {
-    rowCount = 0;
-    sorted = true;
-    minTime = Long.MAX_VALUE;
-    clearTime();
-    clearSortedTime();
-
-    clearValue();
-    clearSortedValue();
   }
 
   /** Build TsBlock by column. */
@@ -1174,7 +1063,7 @@ public class AlignedTVList extends TVList {
       bitMaps[columnIndex] = bitMap;
     }
 
-    AlignedTVList tvList = new AlignedTVList(dataTypes);
+    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
     tvList.putAlignedValues(times, values, bitMaps, columnIndexArray, 0, rowCount);
     return tvList;
   }

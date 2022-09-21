@@ -32,7 +32,7 @@ public class FloatTVListTest {
 
   @Test
   public void testFloatTVList1() {
-    FloatTVList tvList = new FloatTVList();
+    FloatTVList tvList = FloatTVList.newList();
     for (int i = 0; i < 1000; i++) {
       tvList.putFloat(i, (float) i);
     }
@@ -45,7 +45,7 @@ public class FloatTVListTest {
 
   @Test
   public void testFloatTVList2() {
-    FloatTVList tvList = new FloatTVList();
+    FloatTVList tvList = FloatTVList.newList();
     for (int i = 1000; i >= 0; i--) {
       tvList.putFloat(i, (float) i);
     }
@@ -58,7 +58,7 @@ public class FloatTVListTest {
 
   @Test
   public void testPutFloatsWithoutBitMap() {
-    FloatTVList tvList = new FloatTVList();
+    FloatTVList tvList = FloatTVList.newList();
     List<Float> floatList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     for (long i = 1000; i >= 0; i--) {
@@ -79,7 +79,7 @@ public class FloatTVListTest {
 
   @Test
   public void testPutFloatsWithBitMap() {
-    FloatTVList tvList = new FloatTVList();
+    FloatTVList tvList = FloatTVList.newList();
     List<Float> floatList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);
@@ -110,7 +110,7 @@ public class FloatTVListTest {
 
   @Test
   public void testClone() {
-    FloatTVList tvList = new FloatTVList();
+    FloatTVList tvList = FloatTVList.newList();
     List<Float> floatList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);

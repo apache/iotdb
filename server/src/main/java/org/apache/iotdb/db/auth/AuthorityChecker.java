@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class AuthorityChecker {
 
@@ -154,14 +154,16 @@ public class AuthorityChecker {
       if (!checkAuthorization(statement, sessionManager.getUsername(sessionId))) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
-            "No permissions for this operation " + statement.getType());
+            "No permissions for this operation, please add privilege "
+                + PrivilegeType.values()[
+                    AuthorityChecker.translateToPermissionId(statement.getType())]);
       }
     } catch (AuthException e) {
       logger.warn("meet error while checking authorization.", e);
       return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return onQueryException(
+          e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -180,7 +182,7 @@ public class AuthorityChecker {
         username, statement.getPaths(), statement.getType(), targetUser);
   }
 
-  private static int translateToPermissionId(Operator.OperatorType type) {
+  public static int translateToPermissionId(Operator.OperatorType type) {
     switch (type) {
       case GRANT_ROLE_PRIVILEGE:
         return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
@@ -205,11 +207,13 @@ public class AuthorityChecker {
       case REVOKE_USER_ROLE:
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
+      case TTL:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();
       case DELETE_STORAGE_GROUP:
         return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
+      case CREATE_MULTI_TIMESERIES:
         return PrivilegeType.CREATE_TIMESERIES.ordinal();
       case DELETE_TIMESERIES:
       case DELETE:
@@ -298,6 +302,7 @@ public class AuthorityChecker {
         return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
+      case CREATE_MULTI_TIMESERIES:
         return PrivilegeType.CREATE_TIMESERIES.ordinal();
       case DELETE_TIMESERIES:
       case DELETE:

@@ -145,6 +145,9 @@ public class SnapshotTaker {
   private boolean createSnapshot(List<TsFileResource> resources, String snapshotId) {
     try {
       for (TsFileResource resource : resources) {
+        if (!resource.isClosed()) {
+          continue;
+        }
         File tsFile = resource.getTsFile();
         if (!resource.isClosed()) {
           continue;
