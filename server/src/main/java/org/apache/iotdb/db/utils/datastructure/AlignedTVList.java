@@ -98,6 +98,7 @@ public abstract class AlignedTVList extends TVList {
   public AlignedTVList clone() {
     AlignedTVList cloneList = AlignedTVList.newAlignedList(dataTypes);
     cloneAs(cloneList);
+    System.arraycopy(valueChunkRawSize, 0, cloneList.valueChunkRawSize, 0, dataTypes.size());
     for (int[] indicesArray : indices) {
       cloneList.indices.add(cloneIndex(indicesArray));
     }
