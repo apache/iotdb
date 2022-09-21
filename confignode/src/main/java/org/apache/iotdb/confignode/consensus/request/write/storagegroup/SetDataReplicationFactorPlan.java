@@ -16,8 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -26,62 +25,57 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
-public class PreDeleteStorageGroupPlan extends ConfigPhysicalPlan {
+public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
+
   private String storageGroup;
-  private PreDeleteType preDeleteType;
 
-  public PreDeleteStorageGroupPlan() {
-    super(ConfigPhysicalPlanType.PreDeleteStorageGroup);
+  private int dataReplicationFactor;
+
+  public SetDataReplicationFactorPlan() {
+    super(ConfigPhysicalPlanType.SetDataReplicationFactor);
   }
 
-  public PreDeleteStorageGroupPlan(String storageGroup, PreDeleteType preDeleteType) {
+  public SetDataReplicationFactorPlan(String storageGroup, int dataReplicationFactor) {
     this();
     this.storageGroup = storageGroup;
-    this.preDeleteType = preDeleteType;
+    this.dataReplicationFactor = dataReplicationFactor;
   }
 
   public String getStorageGroup() {
     return storageGroup;
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
-  }
-
-  public PreDeleteType getPreDeleteType() {
-    return preDeleteType;
-  }
-
-  public void setPreDeleteType(PreDeleteType preDeleteType) {
-    this.preDeleteType = preDeleteType;
+  public int getDataReplicationFactor() {
+    return dataReplicationFactor;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.PreDeleteStorageGroup.ordinal());
+    stream.writeInt(getType().ordinal());
+
     BasicStructureSerDeUtil.write(storageGroup, stream);
-    stream.write(preDeleteType.getType());
+    stream.writeInt(dataReplicationFactor);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.storageGroup = BasicStructureSerDeUtil.readString(buffer);
-    this.preDeleteType = buffer.get() == (byte) 1 ? PreDeleteType.ROLLBACK : PreDeleteType.EXECUTE;
+    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    dataReplicationFactor = buffer.getInt();
   }
 
-  public enum PreDeleteType {
-    EXECUTE((byte) 0),
-    ROLLBACK((byte) 1);
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SetDataReplicationFactorPlan that = (SetDataReplicationFactorPlan) o;
+    return dataReplicationFactor == that.dataReplicationFactor
+        && storageGroup.equals(that.storageGroup);
+  }
 
-    private final byte type;
-
-    PreDeleteType(byte type) {
-      this.type = type;
-    }
-
-    public byte getType() {
-      return type;
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(storageGroup, dataReplicationFactor);
   }
 }

@@ -16,66 +16,65 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.write.region;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.persistence.partition.RegionMaintainTask;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Objects;
+import java.util.Vector;
 
-public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
+public class OfferRegionMaintainTasksPlan extends ConfigPhysicalPlan {
 
-  private String storageGroup;
+  protected List<RegionMaintainTask> regionMaintainTaskList;
 
-  private int dataReplicationFactor;
-
-  public SetDataReplicationFactorPlan() {
-    super(ConfigPhysicalPlanType.SetDataReplicationFactor);
+  public OfferRegionMaintainTasksPlan() {
+    super(ConfigPhysicalPlanType.OfferRegionMaintainTasks);
+    this.regionMaintainTaskList = new Vector<>();
   }
 
-  public SetDataReplicationFactorPlan(String storageGroup, int dataReplicationFactor) {
-    this();
-    this.storageGroup = storageGroup;
-    this.dataReplicationFactor = dataReplicationFactor;
+  public void appendRegionMaintainTask(RegionMaintainTask task) {
+    this.regionMaintainTaskList.add(task);
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
-  }
-
-  public int getDataReplicationFactor() {
-    return dataReplicationFactor;
+  public List<RegionMaintainTask> getRegionMaintainTaskList() {
+    return regionMaintainTaskList;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
+    stream.writeInt(ConfigPhysicalPlanType.OfferRegionMaintainTasks.ordinal());
 
-    BasicStructureSerDeUtil.write(storageGroup, stream);
-    stream.writeInt(dataReplicationFactor);
+    stream.writeInt(regionMaintainTaskList.size());
+    for (RegionMaintainTask task : regionMaintainTaskList) {
+      task.serialize(stream);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    storageGroup = BasicStructureSerDeUtil.readString(buffer);
-    dataReplicationFactor = buffer.getInt();
+    int length = buffer.getInt();
+    for (int i = 0; i < length; i++) {
+      RegionMaintainTask task = RegionMaintainTask.Factory.create(buffer);
+      regionMaintainTaskList.add(task);
+    }
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    SetDataReplicationFactorPlan that = (SetDataReplicationFactorPlan) o;
-    return dataReplicationFactor == that.dataReplicationFactor
-        && storageGroup.equals(that.storageGroup);
+    OfferRegionMaintainTasksPlan that = (OfferRegionMaintainTasksPlan) o;
+    return regionMaintainTaskList.equals(that.regionMaintainTaskList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroup, dataReplicationFactor);
+    return Objects.hash(regionMaintainTaskList);
   }
 }

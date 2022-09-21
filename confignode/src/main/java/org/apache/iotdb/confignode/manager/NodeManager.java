@@ -39,10 +39,10 @@ import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandle
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
@@ -134,6 +134,12 @@ public class NodeManager {
     final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TRatisConfig ratisConfig = new TRatisConfig();
     ratisConfig.setAppenderBufferSize(conf.getRatisConsensusLogAppenderBufferSize());
+    ratisConfig.setSnapshotTriggerThreshold(conf.getRatisSnapshotTriggerThreshold());
+    ratisConfig.setLogUnsafeFlushEnable(conf.isRatisLogUnsafeFlushEnable());
+    ratisConfig.setLogSegmentSizeMax(conf.getRatisLogSegmentSizeMax());
+    ratisConfig.setGrpcFlowControlWindow(conf.getRatisGrpcFlowControlWindow());
+    ratisConfig.setLeaderElectionTimeoutMin(conf.getRatisRpcLeaderElectionTimeoutMinMs());
+    ratisConfig.setLeaderElectionTimeoutMax(conf.getRatisRpcLeaderElectionTimeoutMaxMs());
     dataSet.setRatisConfig(ratisConfig);
   }
 

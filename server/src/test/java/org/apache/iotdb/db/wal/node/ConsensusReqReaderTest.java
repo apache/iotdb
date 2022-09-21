@@ -44,6 +44,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -75,9 +77,16 @@ public class ConsensusReqReaderTest {
   }
 
   /**
-   * Generate wal files as below: _0-0-1.wal: 1,-1 _1-1-1.wal: 2,2,2 _2-2-1.wal: 3,3 _3-3-1.wal: 3,4
-   * _4-4-1.wal: 4 _5-4-1.wal: 4,4,5 _6-5-1.wal: 6 1 - InsertRowNode, 2 - InsertRowsOfOneDeviceNode,
-   * 3 - InsertRowsNode, 4 - InsertMultiTabletsNode, 5 - InsertTabletNode, 6 - InsertRowNode
+   * Generate wal files as below: <br>
+   * _0-0-1.wal: 1,-1 <br>
+   * _1-1-1.wal: 2,2,2 <br>
+   * _2-2-1.wal: 3,3 <br>
+   * _3-3-1.wal: 3,4 <br>
+   * _4-4-1.wal: 4 <br>
+   * _5-4-1.wal: 4,4,5 <br>
+   * _6-5-1.wal: 6 <br>
+   * 1 - InsertRowNode, 2 - InsertRowsOfOneDeviceNode, 3 - InsertRowsNode, 4 -
+   * InsertMultiTabletsNode, 5 - InsertTabletNode, 6 - InsertRowNode
    */
   private void simulateFileScenario01() throws IllegalPathException {
     InsertTabletNode insertTabletNode;
@@ -382,8 +391,12 @@ public class ConsensusReqReaderTest {
   }
 
   /**
-   * Generate wal files as below: _0-0-0.wal: -1,-1 _1-0-0.wal: -1 _2-0-1.wal: -1,1 _3-1-0.wal: -1 1
-   * - DeleteDataNode
+   * Generate wal files as below: <br>
+   * _0-0-0.wal: -1,-1 <br>
+   * _1-0-0.wal: -1 <br>
+   * _2-0-1.wal: -1,1 <br>
+   * _3-1-0.wal: -1 <br>
+   * 1 - DeleteDataNode
    */
   private void simulateFileScenario02() throws IllegalPathException {
     InsertRowNode insertRowNode = getInsertRowNode(devicePath);
@@ -402,12 +415,12 @@ public class ConsensusReqReaderTest {
     walNode.rollWALFile();
     // _3-1-0.wal
     walNode.log(0, insertRowNode); // -1
-    walNode.rollWALFile();
   }
 
   @Test
   public void scenario02TestGetReqIterator01() throws Exception {
     simulateFileScenario02();
+    walNode.rollWALFile();
     ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
     IndexedConsensusRequest request;
     PlanNode planNode;
@@ -419,6 +432,189 @@ public class ConsensusReqReaderTest {
       Assert.assertTrue(planNode instanceof DeleteDataNode);
       Assert.assertEquals(1, ((DeleteDataNode) planNode).getSearchIndex());
     }
+  }
+
+  /**
+   * Generate wal files as below: <br>
+   * _0-0-1.wal: broken <br>
+   * _1-0-1.wal: 1,-1 <br>
+   * _2-1-1.wal: 2,2,2 <br>
+   * _3-2-1.wal: 3,3 <br>
+   * _4-3-1.wal: broken <br>
+   * _5-3-1.wal: 3,5 <br>
+   * _6-5-1.wal: broken <br>
+   * _7-5-1.wal: broken <br>
+   * _8-5-1.wal: broken <br>
+   * _9-8-1.wal: 8 <br>
+   * 1,2,3,5,8 - DeleteDataNode
+   */
+  private void simulateFileScenario03() throws IllegalPathException, IOException {
+    // _0-0-1.wal
+    walNode.rollWALFile();
+    new File(logDirectory, "_0-0-0.wal").delete();
+    new File(logDirectory, "_0-0-1.wal").createNewFile();
+    // _1-0-1.wal
+    DeleteDataNode deleteDataNode = getDeleteDataNode(devicePath);
+    deleteDataNode.setSearchIndex(1);
+    walNode.log(0, deleteDataNode); // 1
+    deleteDataNode = getDeleteDataNode(devicePath);
+    deleteDataNode.setSearchIndex(-1);
+    walNode.log(0, deleteDataNode); // -1
+    walNode.rollWALFile();
+    // _2-1-1.wal
+    deleteDataNode = getDeleteDataNode(devicePath);
+    deleteDataNode.setSearchIndex(2);
+    walNode.log(0, deleteDataNode); // 2
+    walNode.log(0, deleteDataNode); // 2
+    walNode.log(0, deleteDataNode); // 2
+    walNode.rollWALFile();
+    // _3-2-1.wal
+    deleteDataNode = getDeleteDataNode(devicePath);
+    deleteDataNode.setSearchIndex(3);
+    walNode.log(0, deleteDataNode); // 3
+    walNode.log(0, deleteDataNode); // 3
+    walNode.rollWALFile();
+    // _4-3-1.wal
+    walNode.rollWALFile();
+    new File(logDirectory, "_4-3-0.wal").delete();
+    new File(logDirectory, "_4-3-1.wal").createNewFile();
+    // _5-3-1.wal
+    deleteDataNode = getDeleteDataNode(devicePath);
+    deleteDataNode.setSearchIndex(3);
+    walNode.log(0, deleteDataNode); // 3
+    deleteDataNode = getDeleteDataNode(devicePath);
+    deleteDataNode.setSearchIndex(5);
+    walNode.log(0, deleteDataNode); // 5
+    walNode.rollWALFile();
+    // _6-5-1.wal
+    deleteDataNode = getDeleteDataNode(devicePath);
+    deleteDataNode.setSearchIndex(6);
+    walNode.log(0, deleteDataNode); // 6
+    deleteDataNode = getDeleteDataNode(devicePath);
+    deleteDataNode.setSearchIndex(7);
+    walNode.log(0, deleteDataNode); // 7
+    deleteDataNode = getDeleteDataNode(devicePath);
+    deleteDataNode.setSearchIndex(8);
+    walNode.log(0, deleteDataNode); // 8
+    walNode.rollWALFile();
+    new File(logDirectory, "_6-5-1.wal").delete();
+    new File(logDirectory, "_6-5-1.wal").createNewFile();
+    // _7-5-1.wal
+    walNode.rollWALFile();
+    new File(logDirectory, "_7-5-0.wal").delete();
+    new File(logDirectory, "_7-5-1.wal").createNewFile();
+    // _8-5-1.wal
+    walNode.rollWALFile();
+    new File(logDirectory, "_8-5-0.wal").delete();
+    new File(logDirectory, "_8-5-1.wal").createNewFile();
+    // _9-8-1.wal
+    deleteDataNode = getDeleteDataNode(devicePath);
+    deleteDataNode.setSearchIndex(8);
+    walNode.log(0, deleteDataNode); // 8
+  }
+
+  @Test
+  public void scenario03TestGetReqIterator01() throws Exception {
+    simulateFileScenario03();
+    walNode.rollWALFile();
+
+    ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
+    IndexedConsensusRequest request;
+    PlanNode planNode;
+
+    Assert.assertTrue(iterator.hasNext());
+    request = iterator.next();
+    Assert.assertEquals(1, request.getRequests().size());
+    for (IConsensusRequest innerRequest : request.getRequests()) {
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
+      Assert.assertTrue(planNode instanceof DeleteDataNode);
+      Assert.assertEquals(1, ((DeleteDataNode) planNode).getSearchIndex());
+    }
+    Assert.assertTrue(iterator.hasNext());
+    request = iterator.next();
+    Assert.assertEquals(3, request.getRequests().size());
+    for (IConsensusRequest innerRequest : request.getRequests()) {
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
+      Assert.assertTrue(planNode instanceof DeleteDataNode);
+      Assert.assertEquals(2, ((DeleteDataNode) planNode).getSearchIndex());
+    }
+    Assert.assertTrue(iterator.hasNext());
+    request = iterator.next();
+    Assert.assertEquals(3, request.getRequests().size());
+    for (IConsensusRequest innerRequest : request.getRequests()) {
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
+      Assert.assertTrue(planNode instanceof DeleteDataNode);
+      Assert.assertEquals(3, ((DeleteDataNode) planNode).getSearchIndex());
+    }
+    Assert.assertTrue(iterator.hasNext());
+    request = iterator.next();
+    Assert.assertEquals(1, request.getRequests().size());
+    for (IConsensusRequest innerRequest : request.getRequests()) {
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
+      Assert.assertTrue(planNode instanceof DeleteDataNode);
+      Assert.assertEquals(5, ((DeleteDataNode) planNode).getSearchIndex());
+    }
+    Assert.assertFalse(iterator.hasNext());
+    walNode.rollWALFile();
+    Assert.assertTrue(iterator.hasNext());
+    request = iterator.next();
+    Assert.assertEquals(1, request.getRequests().size());
+    for (IConsensusRequest innerRequest : request.getRequests()) {
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
+      Assert.assertTrue(planNode instanceof DeleteDataNode);
+      Assert.assertEquals(8, ((DeleteDataNode) planNode).getSearchIndex());
+    }
+    Assert.assertFalse(iterator.hasNext());
+  }
+
+  @Test
+  public void scenario03TestGetReqIterator02() throws Exception {
+    simulateFileScenario03();
+    walNode.rollWALFile();
+
+    ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(6);
+    IndexedConsensusRequest request;
+    PlanNode planNode;
+
+    Assert.assertFalse(iterator.hasNext());
+    walNode.rollWALFile();
+    Assert.assertTrue(iterator.hasNext());
+    request = iterator.next();
+    Assert.assertEquals(1, request.getRequests().size());
+    for (IConsensusRequest innerRequest : request.getRequests()) {
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
+      Assert.assertTrue(planNode instanceof DeleteDataNode);
+      Assert.assertEquals(8, ((DeleteDataNode) planNode).getSearchIndex());
+    }
+    Assert.assertFalse(iterator.hasNext());
+
+    iterator.skipTo(3);
+
+    Assert.assertTrue(iterator.hasNext());
+    request = iterator.next();
+    Assert.assertEquals(3, request.getRequests().size());
+    for (IConsensusRequest innerRequest : request.getRequests()) {
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
+      Assert.assertTrue(planNode instanceof DeleteDataNode);
+      Assert.assertEquals(3, ((DeleteDataNode) planNode).getSearchIndex());
+    }
+    Assert.assertTrue(iterator.hasNext());
+    request = iterator.next();
+    Assert.assertEquals(1, request.getRequests().size());
+    for (IConsensusRequest innerRequest : request.getRequests()) {
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
+      Assert.assertTrue(planNode instanceof DeleteDataNode);
+      Assert.assertEquals(5, ((DeleteDataNode) planNode).getSearchIndex());
+    }
+    Assert.assertTrue(iterator.hasNext());
+    request = iterator.next();
+    Assert.assertEquals(1, request.getRequests().size());
+    for (IConsensusRequest innerRequest : request.getRequests()) {
+      planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
+      Assert.assertTrue(planNode instanceof DeleteDataNode);
+      Assert.assertEquals(8, ((DeleteDataNode) planNode).getSearchIndex());
+    }
+    Assert.assertFalse(iterator.hasNext());
   }
 
   public static InsertRowNode getInsertRowNode(String devicePath) throws IllegalPathException {

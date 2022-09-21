@@ -38,6 +38,7 @@ import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -345,8 +346,15 @@ public class IoTDBDescriptor {
       conf.setSyncMlogPeriodInMs(forceMlogPeriodInMs);
     }
 
+    String oldMultiDirStrategyClassName = conf.getMultiDirStrategyClassName();
     conf.setMultiDirStrategyClassName(
         properties.getProperty("multi_dir_strategy", conf.getMultiDirStrategyClassName()));
+    try {
+      conf.checkMultiDirStrategyClassName();
+    } catch (Exception e) {
+      conf.setMultiDirStrategyClassName(oldMultiDirStrategyClassName);
+      throw e;
+    }
 
     conf.setBatchSize(
         Integer.parseInt(
@@ -385,6 +393,11 @@ public class IoTDBDescriptor {
     if (memTableSizeThreshold > 0) {
       conf.setMemtableSizeThreshold(memTableSizeThreshold);
     }
+
+    conf.setTvListSortAlgorithm(
+        TVListSortAlgorithm.valueOf(
+            properties.getProperty(
+                "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
 
     conf.setAvgSeriesPointNumberThreshold(
         Integer.parseInt(
@@ -1897,6 +1910,12 @@ public class IoTDBDescriptor {
 
   public void loadRatisConfig(TRatisConfig ratisConfig) {
     conf.setRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getAppenderBufferSize());
+    conf.setRatisConsensusSnapshotTriggerThreshold(ratisConfig.getSnapshotTriggerThreshold());
+    conf.setRatisConsensusLogUnsafeFlushEnable(ratisConfig.isLogUnsafeFlushEnable());
+    conf.setRatisConsensusLogSegmentSizeMax(ratisConfig.getLogSegmentSizeMax());
+    conf.setRatisConsensusGrpcFlowControlWindow(ratisConfig.getGrpcFlowControlWindow());
+    conf.setRatisConsensusLeaderElectionTimeoutMinMs(ratisConfig.getLeaderElectionTimeoutMin());
+    conf.setRatisConsensusLeaderElectionTimeoutMaxMs(ratisConfig.getLeaderElectionTimeoutMax());
   }
 
   public void initClusterSchemaMemoryAllocate() {

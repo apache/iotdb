@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -78,7 +79,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
               device,
               Collections.singletonList(measurement),
               measurementSchemas,
-              measurementList,
+              new ArrayList<>(schemaMap.keySet()),
               fragmentInstanceContext,
               queryDataSource,
               false);

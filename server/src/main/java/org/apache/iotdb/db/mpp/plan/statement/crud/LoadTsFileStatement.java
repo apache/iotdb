@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -40,14 +41,16 @@ public class LoadTsFileStatement extends Statement {
   private boolean verifySchema;
 
   private List<File> tsFiles;
+  private List<TsFileResource> resources;
 
   public LoadTsFileStatement(String filePath) {
     this.file = new File(filePath);
     this.autoCreateSchema = true;
     this.sgLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
+    this.tsFiles = new ArrayList<>();
+    this.resources = new ArrayList<>();
 
-    tsFiles = new ArrayList<>();
     if (file.isFile()) {
       tsFiles.add(file);
     } else {
@@ -98,8 +101,28 @@ public class LoadTsFileStatement extends Statement {
     this.verifySchema = verifySchema;
   }
 
+  public boolean isVerifySchema() {
+    return verifySchema;
+  }
+
+  public boolean isAutoCreateSchema() {
+    return autoCreateSchema;
+  }
+
+  public int getSgLevel() {
+    return sgLevel;
+  }
+
   public List<File> getTsFiles() {
     return tsFiles;
+  }
+
+  public void addTsFileResource(TsFileResource resource) {
+    resources.add(resource);
+  }
+
+  public List<TsFileResource> getResources() {
+    return resources;
   }
 
   @Override
