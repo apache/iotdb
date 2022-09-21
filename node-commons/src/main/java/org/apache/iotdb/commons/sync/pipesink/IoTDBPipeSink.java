@@ -17,11 +17,11 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.sync.sender.pipe;
+package org.apache.iotdb.commons.sync.pipesink;
 
-import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 

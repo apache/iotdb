@@ -19,18 +19,19 @@
 package org.apache.iotdb.db.sync.common;
 
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.exception.sync.PipeSinkException;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.sync.metadata.SyncMetadata;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
+import org.apache.iotdb.commons.sync.pipe.PipeOperation;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.common.persistence.SyncLogReader;
 import org.apache.iotdb.db.sync.common.persistence.SyncLogWriter;
-import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
-import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 
 import org.slf4j.Logger;
@@ -127,10 +128,10 @@ public class LocalSyncInfo {
     syncLogWriter.addPipe(createPipeStatement, createTime);
   }
 
-  public void operatePipe(String pipeName, StatementType statementType)
+  public void operatePipe(String pipeName, PipeOperation pipeOperation)
       throws PipeException, IOException {
-    syncMetadata.operatePipe(pipeName, statementType);
-    syncLogWriter.operatePipe(pipeName, statementType);
+    syncMetadata.operatePipe(pipeName, pipeOperation);
+    syncLogWriter.operatePipe(pipeName, pipeOperation);
   }
 
   public PipeInfo getPipeInfo(String pipeName, long createTime) {

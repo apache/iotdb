@@ -17,11 +17,10 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.sync.sender.pipe;
+package org.apache.iotdb.commons.sync.pipesink;
 
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.db.exception.sync.PipeSinkException;
-import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
@@ -45,22 +44,5 @@ public interface PipeSink {
   enum PipeSinkType {
     IoTDB,
     ExternalPipe
-  }
-
-  class PipeSinkFactory {
-    public static PipeSink createPipeSink(String type, String name) {
-      type = type.toLowerCase();
-
-      if (PipeSinkType.IoTDB.name().toLowerCase().equals(type)) {
-        return new IoTDBPipeSink(name);
-      }
-
-      if (ExtPipePluginRegister.getInstance().pluginExist(type)) {
-        return new ExternalPipeSink(name, type);
-      }
-
-      throw new UnsupportedOperationException(
-          String.format("Do not support pipeSink type: %s.", type));
-    }
   }
 }

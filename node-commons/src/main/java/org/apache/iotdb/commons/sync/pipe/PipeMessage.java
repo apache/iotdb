@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender.pipe;
+package org.apache.iotdb.commons.sync.pipe;
 
 public class PipeMessage {
   private final String message;

@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.common;
+package org.apache.iotdb.commons.sync.metadata;
 
-import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.exception.sync.PipeSinkException;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe;
-import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
-import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
+import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
+import org.apache.iotdb.commons.sync.pipe.PipeOperation;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -101,7 +101,7 @@ public class SyncMetadata {
       throw new PipeSinkException("PipeSink " + pipeSinkName + " does not exist.");
     }
     if (runningPipe != null
-        && runningPipe.getStatus() != Pipe.PipeStatus.DROP
+        && runningPipe.getStatus() != PipeStatus.DROP
         && runningPipe.getPipeSinkName().equals(pipeSinkName)) {
       throw new PipeSinkException(
           String.format(
@@ -134,7 +134,7 @@ public class SyncMetadata {
 
   public void addPipe(PipeInfo pipeInfo, PipeSink pipeSink) throws PipeException {
     // common check
-    if (runningPipe != null && runningPipe.getStatus() != Pipe.PipeStatus.DROP) {
+    if (runningPipe != null && runningPipe.getStatus() != PipeStatus.DROP) {
       throw new PipeException(
           String.format(
               "Pipe %s is %s, please retry after drop it.",
@@ -146,20 +146,20 @@ public class SyncMetadata {
         .computeIfAbsent(runningPipe.getCreateTime(), i -> runningPipe);
   }
 
-  public void operatePipe(String pipeName, StatementType statementType) throws PipeException {
+  public void operatePipe(String pipeName, PipeOperation pipeOperation) throws PipeException {
     checkIfPipeExistAndRunning(pipeName);
-    switch (statementType) {
-      case START_PIPE:
+    switch (pipeOperation) {
+      case START:
         runningPipe.start();
         break;
-      case STOP_PIPE:
+      case STOP:
         runningPipe.stop();
         break;
-      case DROP_PIPE:
+      case DROP:
         runningPipe.drop();
         break;
       default:
-        throw new PipeException("Unknown operatorType " + statementType);
+        throw new PipeException("Unknown operatorType " + pipeOperation);
     }
   }
 
@@ -181,7 +181,7 @@ public class SyncMetadata {
   }
 
   private void checkIfPipeExistAndRunning(String pipeName) throws PipeException {
-    if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
+    if (runningPipe == null || runningPipe.getStatus() == PipeStatus.DROP) {
       throw new PipeException("There is no existing pipe.");
     }
     if (!runningPipe.getPipeName().equals(pipeName)) {

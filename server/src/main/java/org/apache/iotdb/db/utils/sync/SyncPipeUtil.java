@@ -18,19 +18,20 @@
  */
 package org.apache.iotdb.db.utils.sync;
 
+import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
+import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
-import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
+import org.apache.iotdb.db.sync.sender.pipe.PipeSinkFactory;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.sender.pipe.TsFilePipeInfo;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;
@@ -41,8 +42,7 @@ public class SyncPipeUtil {
   public static PipeSink parseCreatePipeSinkPlan(CreatePipeSinkPlan plan) throws PipeSinkException {
     PipeSink pipeSink;
     try {
-      pipeSink =
-          PipeSink.PipeSinkFactory.createPipeSink(plan.getPipeSinkType(), plan.getPipeSinkName());
+      pipeSink = PipeSinkFactory.createPipeSink(plan.getPipeSinkType(), plan.getPipeSinkName());
     } catch (UnsupportedOperationException e) {
       throw new PipeSinkException(e.getMessage());
     }
@@ -56,7 +56,7 @@ public class SyncPipeUtil {
     PipeSink pipeSink;
     try {
       pipeSink =
-          PipeSink.PipeSinkFactory.createPipeSink(
+          PipeSinkFactory.createPipeSink(
               createPipeSinkStatement.getPipeSinkType(), createPipeSinkStatement.getPipeSinkName());
     } catch (UnsupportedOperationException e) {
       throw new PipeSinkException(e.getMessage());

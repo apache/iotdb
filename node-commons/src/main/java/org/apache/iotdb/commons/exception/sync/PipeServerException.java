@@ -17,7 +17,7 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.exception.sync;
+package org.apache.iotdb.commons.exception.sync;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;

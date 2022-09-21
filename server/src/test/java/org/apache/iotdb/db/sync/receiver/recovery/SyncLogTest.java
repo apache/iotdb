@@ -18,17 +18,17 @@
  */
 package org.apache.iotdb.db.sync.receiver.recovery;
 
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
+import org.apache.iotdb.commons.sync.pipe.PipeOperation;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.SyncTestUtils;
 import org.apache.iotdb.db.sync.common.persistence.SyncLogReader;
 import org.apache.iotdb.db.sync.common.persistence.SyncLogWriter;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
-import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
-import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -68,11 +68,11 @@ public class SyncLogTest {
       createPipeSinkPlan.addPipeSinkAttribute("port", "6670");
       log.addPipeSink(createPipeSinkPlan);
       log.addPipe(new CreatePipePlan(pipe1, "demo"), createdTime1);
-      log.operatePipe(pipe1, StatementType.DROP_PIPE);
+      log.operatePipe(pipe1, PipeOperation.DROP);
 
       log.addPipe(new CreatePipePlan(pipe2, "demo"), createdTime2);
-      log.operatePipe(pipe1, StatementType.STOP_PIPE);
-      log.operatePipe(pipe1, StatementType.START_PIPE);
+      log.operatePipe(pipe1, PipeOperation.STOP);
+      log.operatePipe(pipe1, PipeOperation.START);
       log.close();
       SyncLogReader syncLogReader = new SyncLogReader();
 

@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.sync.common.persistence;
 
-import org.apache.iotdb.commons.sync.SyncConstant;
-import org.apache.iotdb.commons.sync.SyncPathUtil;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.commons.sync.pipe.PipeOperation;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -105,9 +105,10 @@ public class SyncLogWriter {
     pipeInfoWriter.flush();
   }
 
-  public synchronized void operatePipe(String pipeName, StatementType type) throws IOException {
+  public synchronized void operatePipe(String pipeName, PipeOperation pipeOperation)
+      throws IOException {
     getBufferedWriter();
-    pipeInfoWriter.write(type.name());
+    pipeInfoWriter.write(pipeOperation.name());
     pipeInfoWriter.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
     pipeInfoWriter.write(pipeName);
     pipeInfoWriter.newLine();
