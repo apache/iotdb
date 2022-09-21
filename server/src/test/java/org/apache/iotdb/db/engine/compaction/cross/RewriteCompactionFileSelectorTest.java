@@ -470,7 +470,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
                   10
-                      + "seq"
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -490,7 +489,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
                   10
-                      + "unseq"
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
