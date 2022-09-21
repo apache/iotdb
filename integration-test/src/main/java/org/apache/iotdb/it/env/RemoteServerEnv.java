@@ -24,6 +24,7 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.session.Session;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -145,9 +146,10 @@ public class RemoteServerEnv implements BaseEnv {
     return null;
   }
 
-  // TODO
   @Override
   public ISession getSessionConnection() throws IoTDBConnectionException {
-    return null;
+    Session session = new Session(ip_addr, Integer.parseInt(port));
+    session.open();
+    return session;
   }
 }
