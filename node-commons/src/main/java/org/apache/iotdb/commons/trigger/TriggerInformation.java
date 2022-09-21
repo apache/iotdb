@@ -37,6 +37,7 @@ public class TriggerInformation {
   private String triggerName;
   private String className;
   private String jarName;
+  private String jarMD5;
 
   private Map<String, String> attributes;
 
@@ -48,13 +49,14 @@ public class TriggerInformation {
   /** only used for Stateful Trigger */
   private TDataNodeLocation dataNodeLocation;
 
-  public TriggerInformation() {};
+  public TriggerInformation() {}
 
   public TriggerInformation(
       PartialPath pathPattern,
       String triggerName,
       String className,
       String jarName,
+      String jarMD5,
       Map<String, String> attributes,
       TTriggerState triggerState,
       boolean isStateful,
@@ -63,6 +65,7 @@ public class TriggerInformation {
     this.triggerName = triggerName;
     this.className = className;
     this.jarName = jarName;
+    this.jarMD5 = jarMD5;
     this.attributes = attributes;
     this.triggerState = triggerState;
     this.isStateful = isStateful;
@@ -81,6 +84,7 @@ public class TriggerInformation {
     ReadWriteIOUtils.write(triggerName, outputStream);
     ReadWriteIOUtils.write(className, outputStream);
     ReadWriteIOUtils.write(jarName, outputStream);
+    ReadWriteIOUtils.write(jarMD5, outputStream);
     ReadWriteIOUtils.write(attributes, outputStream);
     ReadWriteIOUtils.write(triggerState.getValue(), outputStream);
     ReadWriteIOUtils.write(isStateful, outputStream);
@@ -95,6 +99,7 @@ public class TriggerInformation {
     triggerInformation.triggerName = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.className = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.jarName = ReadWriteIOUtils.readString(byteBuffer);
+    triggerInformation.jarMD5 = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.attributes = ReadWriteIOUtils.readMap(byteBuffer);
     triggerInformation.triggerState =
         TTriggerState.findByValue(ReadWriteIOUtils.readInt(byteBuffer));
