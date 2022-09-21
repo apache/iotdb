@@ -59,11 +59,7 @@ public abstract class CodeGenEvaluatorBaseClass {
   }
 
   protected void resetOutputTsBlock() {
-    if (tsBlockBuilder == null) {
-      tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    } else {
-      tsBlockBuilder.reset();
-    }
+    tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     outputColumns = tsBlockBuilder.getValueColumnBuilders();
   }
 
