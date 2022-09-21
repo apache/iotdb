@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatemen
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -180,6 +182,10 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(createTriggerStatement, context);
   }
 
+  public R visitDropTrigger(DropTriggerStatement dropTriggerStatement, C context) {
+    return visitStatement(dropTriggerStatement, context);
+  }
+
   /** Data Manipulation Language (DML) */
 
   // Select Statement
@@ -194,6 +200,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitInsertTablet(InsertTabletStatement insertTabletStatement, C context) {
     return visitStatement(insertTabletStatement, context);
+  }
+
+  public R visitLoadFile(LoadTsFileStatement loadTsFileStatement, C context) {
+    return visitStatement(loadTsFileStatement, context);
   }
 
   /** Data Control Language (DCL) */

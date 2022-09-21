@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
@@ -38,10 +39,10 @@ import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandle
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
@@ -50,13 +51,16 @@ import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
+import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -67,6 +71,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -125,6 +130,13 @@ public class NodeManager {
     dataSet.setGlobalConfig(globalConfig);
   }
 
+  private void setRatisConfig(DataNodeRegisterResp dataSet) {
+    final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    TRatisConfig ratisConfig = new TRatisConfig();
+    ratisConfig.setAppenderBufferSize(conf.getRatisConsensusLogAppenderBufferSize());
+    dataSet.setRatisConfig(ratisConfig);
+  }
+
   /**
    * Register DataNode
    *
@@ -155,6 +167,7 @@ public class NodeManager {
     dataSet.setDataNodeId(registerDataNodePlan.getInfo().getLocation().getDataNodeId());
     dataSet.setConfigNodeList(getRegisteredConfigNodes());
     setGlobalConfig(dataSet);
+    setRatisConfig(dataSet);
     return dataSet;
   }
 
@@ -166,7 +179,7 @@ public class NodeManager {
    *     DATANODE_NOT_EXIST when some datanode not exist.
    */
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
-    LOGGER.info("Node manager start to remove DataNode {}", removeDataNodePlan);
+    LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
 
     DataNodeRemoveHandler dataNodeRemoveHandler =
         new DataNodeRemoveHandler((ConfigManager) configManager);
@@ -193,7 +206,7 @@ public class NodeManager {
     }
     dataSet.setStatus(status);
 
-    LOGGER.info("Node manager finished to remove DataNode {}", removeDataNodePlan);
+    LOGGER.info("NodeManager finished to remove DataNode {}", removeDataNodePlan);
     return dataSet;
   }
 
@@ -264,6 +277,43 @@ public class NodeManager {
             dataNodeInfoList.add(info);
           });
     }
+
+    // Map<DataNodeId, DataRegionNum>
+    Map<Integer, AtomicInteger> dataRegionNumMap = new HashMap<>();
+    // Map<DataNodeId, SchemaRegionNum>
+    Map<Integer, AtomicInteger> schemaRegionNumMap = new HashMap<>();
+    List<TRegionReplicaSet> regionReplicaSets = getPartitionManager().getAllReplicaSets();
+    regionReplicaSets.forEach(
+        regionReplicaSet ->
+            regionReplicaSet
+                .getDataNodeLocations()
+                .forEach(
+                    dataNodeLocation -> {
+                      switch (regionReplicaSet.getRegionId().getType()) {
+                        case SchemaRegion:
+                          schemaRegionNumMap
+                              .computeIfAbsent(
+                                  dataNodeLocation.getDataNodeId(), key -> new AtomicInteger())
+                              .getAndIncrement();
+                          break;
+                        case DataRegion:
+                        default:
+                          dataRegionNumMap
+                              .computeIfAbsent(
+                                  dataNodeLocation.getDataNodeId(), key -> new AtomicInteger())
+                              .getAndIncrement();
+                      }
+                    }));
+    AtomicInteger zero = new AtomicInteger(0);
+    dataNodeInfoList.forEach(
+        (dataNodesInfo -> {
+          dataNodesInfo.setSchemaRegionNum(
+              schemaRegionNumMap.getOrDefault(dataNodesInfo.getDataNodeId(), zero).get());
+          dataNodesInfo.setDataRegionNum(
+              dataRegionNumMap.getOrDefault(dataNodesInfo.getDataNodeId(), zero).get());
+        }));
+
+    dataNodeInfoList.sort(Comparator.comparingInt(TDataNodeInfo::getDataNodeId));
     return dataNodeInfoList;
   }
 
@@ -303,7 +353,7 @@ public class NodeManager {
   }
 
   public void addMetrics() {
-    nodeInfo.addMetrics();
+    MetricService.getInstance().addMetricSet(new NodeInfoMetrics(nodeInfo));
   }
 
   /**

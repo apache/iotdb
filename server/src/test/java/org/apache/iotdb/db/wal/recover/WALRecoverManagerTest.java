@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.wal.recover;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -86,6 +88,7 @@ import static org.junit.Assert.fail;
 
 public class WALRecoverManagerTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static final String SG_NAME = "root.recover_sg";
   private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
   private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
@@ -95,7 +98,7 @@ public class WALRecoverManagerTest {
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 1, 1);
   private static final String WAL_NODE_IDENTIFIER = String.valueOf(Integer.MAX_VALUE);
   private static final String WAL_NODE_FOLDER =
-      config.getWalDirs()[0].concat(File.separator + WAL_NODE_IDENTIFIER);
+      commonConfig.getWalDirs()[0].concat(File.separator + WAL_NODE_IDENTIFIER);
   private static final WALRecoverManager recoverManager = WALRecoverManager.getInstance();
 
   private WALMode prevMode;

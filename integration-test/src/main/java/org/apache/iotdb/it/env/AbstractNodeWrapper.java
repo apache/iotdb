@@ -174,7 +174,9 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-Xms200m",
               "-Xmx200m",
               "-XX:MaxDirectMemorySize=200m",
-              "-Djdk.nio.maxCachedBufferSize=262144"));
+              "-Djdk.nio.maxCachedBufferSize=262144",
+              "-cp",
+              templateNodeLibPath));
       addStartCmdParams(startCmd);
       FileUtils.write(
           stdoutFile, String.join(" ", startCmd) + "\n\n", StandardCharsets.UTF_8, true);

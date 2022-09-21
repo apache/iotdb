@@ -86,9 +86,8 @@ import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
+import org.apache.iotdb.db.sync.SyncService;
+import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -100,7 +99,6 @@ import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -275,9 +273,6 @@ public class DataRegion {
 
   private IDTable idTable;
 
-  /** used to collect TsFiles in this virtual storage group */
-  private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
-
   /**
    * constrcut a storage group processor
    *
@@ -348,14 +343,7 @@ public class DataRegion {
       recover();
     }
 
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.MEM.toString(),
-            MetricLevel.IMPORTANT,
-            storageGroupInfo,
-            StorageGroupInfo::getMemCost,
-            Tag.NAME.toString(),
-            "storageGroup_" + getStorageGroupName());
+    MetricService.getInstance().addMetricSet(new DataRegionMetrics(this));
   }
 
   @TestOnly
@@ -751,8 +739,9 @@ public class DataRegion {
     TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
     if (!recoverPerformer.canWrite()) {
       // cannot write, just close it
-      if (tsFileSyncManager.isEnableSync()) {
-        tsFileSyncManager.collectRealTimeTsFile(tsFileResource.getTsFile());
+      for (ISyncManager syncManager :
+          SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
+        syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
       }
       try {
         tsFileResource.close();
@@ -1491,7 +1480,7 @@ public class DataRegion {
         } else {
           logger.error(
               "meet IOException when creating TsFileProcessor, change system mode to error", e);
-          CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Error);
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
           break;
         }
       }
@@ -2414,8 +2403,9 @@ public class DataRegion {
         tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
       }
 
-      if (tsFileSyncManager.isEnableSync()) {
-        tsFileSyncManager.collectRealTimeDeletion(deletion, storageGroupName);
+      for (ISyncManager syncManager :
+          SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
+        syncManager.syncRealTimeDeletion(deletion);
       }
 
       // add a record in case of rollback
@@ -2669,11 +2659,11 @@ public class DataRegion {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
-    try {
-      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId);
-    } catch (MetadataException e) {
-      // the path doesn't cache in cluster mode now, ignore
-    }
+    //    try { TODO: support last cache
+    //      IoTDB.schemaProcessor.deleteLastCacheByDevice(deviceId);
+    //    } catch (MetadataException e) {
+    //      // the path doesn't cache in cluster mode now, ignore
+    //    }
   }
 
   /**
@@ -3677,14 +3667,15 @@ public class DataRegion {
   /**
    * Used to collect history TsFiles(i.e. the tsfile whose memtable == null).
    *
+   * @param syncManager ISyncManager which invokes to collect history TsFile
    * @param dataStartTime only collect history TsFiles which contains the data after the
    *     dataStartTime
    * @return A list, which contains TsFile path
    */
-  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
+  public List<File> collectHistoryTsFileForSync(ISyncManager syncManager, long dataStartTime) {
     writeLock("Collect data for sync");
     try {
-      return tsFileManager.collectHistoryTsFileForSync(dataStartTime);
+      return tsFileManager.collectHistoryTsFileForSync(syncManager, dataStartTime);
     } finally {
       writeUnlock();
     }
@@ -3795,6 +3786,10 @@ public class DataRegion {
     } finally {
       writeUnlock();
     }
+  }
+
+  public long getMemCost() {
+    return storageGroupInfo.getMemCost();
   }
 
   @TestOnly

@@ -32,7 +32,7 @@ public class BinaryTVListTest {
 
   @Test
   public void testBinaryTVList() {
-    BinaryTVList tvList = new BinaryTVList();
+    BinaryTVList tvList = BinaryTVList.newList();
     for (int i = 0; i < 1000; i++) {
       tvList.putBinary(i, Binary.valueOf(String.valueOf(i)));
     }
@@ -44,7 +44,7 @@ public class BinaryTVListTest {
 
   @Test
   public void testPutBinariesWithoutBitMap() {
-    BinaryTVList tvList = new BinaryTVList();
+    BinaryTVList tvList = BinaryTVList.newList();
     Binary[] binaryList = new Binary[1001];
     List<Long> timeList = new ArrayList<>();
     for (int i = 1000; i >= 0; i--) {
@@ -60,7 +60,7 @@ public class BinaryTVListTest {
 
   @Test
   public void testPutBinariesWithBitMap() {
-    BinaryTVList tvList = new BinaryTVList();
+    BinaryTVList tvList = BinaryTVList.newList();
     Binary[] binaryList = new Binary[1001];
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);
@@ -88,7 +88,7 @@ public class BinaryTVListTest {
 
   @Test
   public void testClone() {
-    BinaryTVList tvList = new BinaryTVList();
+    BinaryTVList tvList = BinaryTVList.newList();
     Binary[] binaryList = new Binary[1001];
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);

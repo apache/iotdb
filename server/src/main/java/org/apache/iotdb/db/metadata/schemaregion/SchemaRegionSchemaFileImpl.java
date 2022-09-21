@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -76,7 +77,6 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.external.api.ISeriesNumerLimiter;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -172,7 +172,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
-  private SchemaSyncManager syncManager = SchemaSyncManager.getInstance();
 
   private final ISeriesNumerLimiter seriesNumerLimiter;
 
@@ -538,9 +537,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           }
           plan.setTagOffset(offset);
           logWriter.createTimeseries(plan);
-          if (syncManager.isEnableSync()) {
-            syncManager.syncMetadataPlan(plan);
-          }
         }
         if (offset != -1) {
           leafMNode.setOffset(offset);
@@ -708,9 +704,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           }
           plan.setTagOffsets(tagOffsets);
           logWriter.createAlignedTimeseries(plan);
-          if (syncManager.isEnableSync()) {
-            syncManager.syncMetadataPlan(plan);
-          }
         }
         tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
@@ -761,6 +754,27 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
   }
 
+  @Override
+  public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Delete all timeseries matching the given path pattern
    *
@@ -783,9 +797,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         }
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);
-        if (syncManager.isEnableSync()) {
-          syncManager.syncMetadataPlan(deleteTimeSeriesPlan);
-        }
       }
     } catch (DeleteFailedException e) {
       failedNames.add(e.getName());
@@ -1652,6 +1663,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       PartialPath devicePath,
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
+      TSEncoding[] encodings,
+      CompressionType[] compressionTypes,
       boolean aligned)
       throws MetadataException {
     throw new UnsupportedOperationException();

@@ -25,9 +25,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -106,30 +103,8 @@ public class TimeSeriesMetadataCache {
                                 + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList())))
             .recordStats()
             .build();
-
     // add metrics
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.CACHE_HIT.toString(),
-            MetricLevel.IMPORTANT,
-            lruCache,
-            l -> (long) (l.stats().hitRate() * 100),
-            Tag.NAME.toString(),
-            "timeSeriesMeta");
-    MetricService.getInstance()
-        .getOrCreateAutoGauge(
-            Metric.CACHE_HIT.toString(),
-            MetricLevel.IMPORTANT,
-            bloomFilterPreventCount,
-            prevent -> {
-              if (bloomFilterRequestCount.get() == 0L) {
-                return 1L;
-              }
-              return (long)
-                  ((double) prevent.get() / (double) bloomFilterRequestCount.get() * 100L);
-            },
-            Tag.NAME.toString(),
-            "bloomFilter");
+    MetricService.getInstance().addMetricSet(new TimeSeriesMetadataCacheMetrics(this));
   }
 
   public static TimeSeriesMetadataCache getInstance() {
@@ -241,6 +216,14 @@ public class TimeSeriesMetadataCache {
 
   public long getAverageSize() {
     return entryAverageSize.get();
+  }
+
+  public long calculateBloomFilterHitRatio() {
+    if (bloomFilterRequestCount.get() == 0L) {
+      return 1L;
+    }
+    return (long)
+        ((double) bloomFilterPreventCount.get() / (double) bloomFilterRequestCount.get() * 100L);
   }
 
   /** clear LRUCache. */

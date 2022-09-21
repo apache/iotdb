@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -344,8 +346,15 @@ public class IoTDBDescriptor {
       conf.setSyncMlogPeriodInMs(forceMlogPeriodInMs);
     }
 
+    String oldMultiDirStrategyClassName = conf.getMultiDirStrategyClassName();
     conf.setMultiDirStrategyClassName(
         properties.getProperty("multi_dir_strategy", conf.getMultiDirStrategyClassName()));
+    try {
+      conf.checkMultiDirStrategyClassName();
+    } catch (Exception e) {
+      conf.setMultiDirStrategyClassName(oldMultiDirStrategyClassName);
+      throw e;
+    }
 
     conf.setBatchSize(
         Integer.parseInt(
@@ -384,6 +393,11 @@ public class IoTDBDescriptor {
     if (memTableSizeThreshold > 0) {
       conf.setMemtableSizeThreshold(memTableSizeThreshold);
     }
+
+    conf.setTvListSortAlgorithm(
+        TVListSortAlgorithm.valueOf(
+            properties.getProperty(
+                "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
 
     conf.setAvgSeriesPointNumberThreshold(
         Integer.parseInt(
@@ -1021,8 +1035,6 @@ public class IoTDBDescriptor {
     conf.setWalMode(
         WALMode.valueOf((properties.getProperty("wal_mode", conf.getWalMode().toString()))));
 
-    conf.setWalDirs(properties.getProperty("wal_dirs", conf.getWalDirs()[0]).split(","));
-
     int maxWalNodesNum =
         Integer.parseInt(
             properties.getProperty(
@@ -1119,6 +1131,15 @@ public class IoTDBDescriptor {
                 Long.toString(conf.getThrottleThreshold())));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
+    }
+
+    long cacheWindowInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "multi_leader_cache_window_time_in_ms",
+                Long.toString(conf.getCacheWindowTimeInMs())));
+    if (cacheWindowInMs > 0) {
+      conf.setCacheWindowTimeInMs(cacheWindowInMs);
     }
   }
 
@@ -1874,6 +1895,10 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
+  }
+
+  public void loadRatisConfig(TRatisConfig ratisConfig) {
+    conf.setRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getAppenderBufferSize());
   }
 
   public void initClusterSchemaMemoryAllocate() {

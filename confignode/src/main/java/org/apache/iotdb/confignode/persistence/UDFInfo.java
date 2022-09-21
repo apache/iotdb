@@ -20,10 +20,10 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.commons.udf.service.UDFExecutableResource;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -78,7 +78,7 @@ public class UDFInfo implements SnapshotProcessor {
 
   private void fetchExecutablesAndCheckInstantiation(String className, List<String> uris)
       throws Exception {
-    final UDFExecutableResource resource = udfExecutableManager.request(uris);
+    final ExecutableResource resource = udfExecutableManager.request(uris);
     try (UDFClassLoader temporaryUdfClassLoader = new UDFClassLoader(resource.getResourceDir())) {
       Class.forName(className, true, temporaryUdfClassLoader)
           .getDeclaredConstructor()

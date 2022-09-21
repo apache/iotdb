@@ -25,8 +25,6 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.trigger.enums.TriggerEvent;
-import org.apache.iotdb.commons.trigger.enums.TriggerType;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -81,6 +79,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.literal.BooleanLiteral;
 import org.apache.iotdb.db.mpp.plan.statement.literal.DoubleLiteral;
@@ -100,6 +99,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -153,6 +153,8 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ShowFunctionsContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.UriContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.trigger.api.enums.TriggerEvent;
+import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -160,8 +162,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
-
-import org.apache.commons.lang.StringEscapeUtils;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -527,7 +527,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
       partialPaths.add(parsePrefixPath(prefixPathContext));
     }
-    deleteTimeSeriesStatement.setPartialPaths(partialPaths);
+    deleteTimeSeriesStatement.setPathPatternList(partialPaths);
     return deleteTimeSeriesStatement;
   }
 
@@ -727,6 +727,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.triggerType() == null) {
       throw new SemanticException("Please specify trigger type: STATELESS or STATEFUL.");
     }
+    if (ctx.jarLocation() == null) {
+      throw new SemanticException("Please specify the location of jar.");
+    }
+    // parse jarPath
+    String jarPath;
+    boolean usingURI;
+    if (ctx.jarLocation().FILE() != null) {
+      usingURI = false;
+      jarPath = parseFilePath(ctx.jarLocation().fileName.getText());
+    } else {
+      usingURI = true;
+      jarPath = parseFilePath(ctx.jarLocation().uri().getText());
+    }
     Map<String, String> attributes = new HashMap<>();
     if (ctx.triggerAttributeClause() != null) {
       for (IoTDBSqlParser.TriggerAttributeContext triggerAttributeContext :
@@ -739,12 +752,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new CreateTriggerStatement(
         parseIdentifier(ctx.triggerName.getText()),
         parseStringLiteral(ctx.className.getText()),
+        jarPath,
+        usingURI,
         ctx.triggerEventClause().BEFORE() != null
             ? TriggerEvent.BEFORE_INSERT
             : TriggerEvent.AFTER_INSERT,
         ctx.triggerType().STATELESS() != null ? TriggerType.STATELESS : TriggerType.STATEFUL,
         parsePrefixPath(ctx.prefixPath()),
         attributes);
+  }
+
+  @Override
+  public Statement visitDropTrigger(IoTDBSqlParser.DropTriggerContext ctx) {
+    return new DropTriggerStatement(parseIdentifier(ctx.triggerName.getText()));
   }
 
   // Show Child Paths =====================================================================
@@ -1413,6 +1433,45 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     insertStatement.setValuesList(valuesList);
   }
 
+  // Load File
+
+  @Override
+  public Statement visitLoadFile(IoTDBSqlParser.LoadFileContext ctx) {
+    LoadTsFileStatement loadTsFileStatement =
+        new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
+    if (ctx.loadFilesClause() != null) {
+      parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
+    }
+    return loadTsFileStatement;
+  }
+
+  /**
+   * used for parsing load tsfile, context will be one of "SCHEMA, LEVEL, METADATA", and maybe
+   * followed by a recursion property statement
+   *
+   * @param loadTsFileStatement the result statement, setting by clause context
+   * @param ctx context of property statement
+   */
+  private void parseLoadFiles(
+      LoadTsFileStatement loadTsFileStatement, IoTDBSqlParser.LoadFilesClauseContext ctx) {
+    if (ctx.AUTOREGISTER() != null) {
+      loadTsFileStatement.setAutoCreateSchema(
+          Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+    } else if (ctx.SGLEVEL() != null) {
+      loadTsFileStatement.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
+    } else if (ctx.VERIFY() != null) {
+      loadTsFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+    } else {
+      throw new SQLParserException(
+          String.format(
+              "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
+              ctx.getText()));
+    }
+    if (ctx.loadFilesClause() != null) {
+      parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
+    }
+  }
+
   /** Common Parsers */
 
   // IoTDB Objects ========================================================================
@@ -1569,8 +1628,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private String parseStringLiteral(String src) {
     if (2 <= src.length()) {
       // do not unescape string
-      String unWrappedString =
-          src.substring(1, src.length() - 1).replace("\\\"", "\"").replace("\\'", "'");
+      String unWrappedString = src.substring(1, src.length() - 1);
       if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
         // replace "" with "
         String replaced = unWrappedString.replace("\"\"", "\"");
@@ -1590,23 +1648,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if ((src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"')
           || (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
         return "'" + parseStringLiteral(src) + "'";
-      }
-    }
-    return src;
-  }
-
-  private String parseStringLiteralInLikeOrRegular(String src) {
-    if (2 <= src.length()) {
-      String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
-        // replace "" with "
-        String replaced = unescapeString.replace("\"\"", "\"");
-        return replaced.length() == 0 ? "" : replaced;
-      }
-      if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
-        // replace '' with '
-        String replaced = unescapeString.replace("''", "'");
-        return replaced.length() == 0 ? "" : replaced;
       }
     }
     return src;
@@ -2206,13 +2247,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseRegularExpression(ExpressionContext context, boolean inWithoutNull) {
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean inWithoutNull) {
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseIsNullExpression(ExpressionContext context, boolean inWithoutNull) {
@@ -2306,10 +2347,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private long parseTimeValue(IoTDBSqlParser.TimeValueContext ctx, long currentTime) {
     if (ctx.INTEGER_LITERAL() != null) {
-      if (ctx.MINUS() != null) {
-        return -Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      try {
+        if (ctx.MINUS() != null) {
+          return -Long.parseLong(ctx.INTEGER_LITERAL().getText());
+        }
+        return Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      } catch (NumberFormatException e) {
+        throw new SQLParserException(
+            String.format("Can not parse %s to long value", ctx.INTEGER_LITERAL().getText()));
       }
-      return Long.parseLong(ctx.INTEGER_LITERAL().getText());
     } else if (ctx.dateExpression() != null) {
       return parseDateExpression(ctx.dateExpression(), currentTime);
     } else {
@@ -2465,8 +2511,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       setSystemStatusStatement.setStatus(NodeStatus.Running);
     } else if (ctx.READONLY() != null) {
       setSystemStatusStatement.setStatus(NodeStatus.ReadOnly);
-    } else if (ctx.ERROR() != null) {
-      setSystemStatusStatement.setStatus(NodeStatus.Error);
     } else {
       throw new RuntimeException("Unknown system status in set system command.");
     }
@@ -2802,6 +2846,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.syncAttributeClauses() != null) {
       createPipeStatement.setPipeAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
+    } else {
+      createPipeStatement.setPipeAttributes(new HashMap<>());
     }
     return createPipeStatement;
   }

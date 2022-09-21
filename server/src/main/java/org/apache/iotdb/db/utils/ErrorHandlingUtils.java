@@ -76,18 +76,28 @@ public class ErrorHandlingUtils {
     return e;
   }
 
-  public static TSStatus onQueryException(Exception e, String operation) {
+  public static TSStatus onQueryException(Exception e, String operation, TSStatusCode statusCode) {
     TSStatus status = tryCatchQueryException(e);
     if (status != null) {
       // ignore logging sg not ready exception
       if (status.getCode() != TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
-        LOGGER.error(
-            "Status code: " + status.getCode() + ", Query Statement: " + operation + " failed", e);
+        String message =
+            String.format(
+                "Status code: %s, Query Statement: %s failed", status.getCode(), operation);
+        if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()) {
+          LOGGER.error(message);
+        } else {
+          LOGGER.error(message, e);
+        }
       }
       return status;
     } else {
-      return onNPEOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
+      return onNPEOrUnexpectedException(e, operation, statusCode);
     }
+  }
+
+  public static TSStatus onQueryException(Exception e, String operation) {
+    return onQueryException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
   }
 
   public static TSStatus onQueryException(Exception e, OperationType operation) {

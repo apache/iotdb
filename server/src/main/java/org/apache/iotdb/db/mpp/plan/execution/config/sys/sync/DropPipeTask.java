@@ -28,7 +28,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class DropPipeTask implements IConfigTask {
 
-  private DropPipeStatement dropPipeStatement;
+  private final DropPipeStatement dropPipeStatement;
 
   public DropPipeTask(DropPipeStatement dropPipeStatement) {
     this.dropPipeStatement = dropPipeStatement;
@@ -37,6 +37,6 @@ public class DropPipeTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.dropPipe();
+    return configTaskExecutor.dropPipe(dropPipeStatement);
   }
 }

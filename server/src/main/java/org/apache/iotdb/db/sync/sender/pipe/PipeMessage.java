@@ -18,54 +18,36 @@
  */
 package org.apache.iotdb.db.sync.sender.pipe;
 
-import java.util.Objects;
-
 public class PipeMessage {
-  private MsgType type;
-  private String msg;
+  private final String message;
+  private final PipeMessageType type;
 
-  public PipeMessage(MsgType msgType, String msg) {
-    this.type = msgType;
-    this.msg = msg;
+  public PipeMessage(PipeMessageType type, String message) {
+    this.type = type;
+    this.message = message;
   }
 
-  public MsgType getType() {
+  public String getMessage() {
+    return message;
+  }
+
+  public PipeMessageType getType() {
     return type;
   }
 
-  public void setType(MsgType type) {
-    this.type = type;
-  }
-
-  public String getMsg() {
-    return msg;
-  }
-
-  public void setMsg(String msg) {
-    this.msg = msg;
-  }
-
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    PipeMessage that = (PipeMessage) o;
-    return type == that.type && Objects.equals(msg, that.msg);
+  public String toString() {
+    return "PipeMessage{" + "message='" + message + '\'' + ", type=" + type + '}';
   }
 
-  @Override
-  public int hashCode() {
-    return Objects.hash(type, msg);
-  }
-
-  public enum MsgType {
-    INFO(1),
+  public enum PipeMessageType {
+    NORMAL(1),
     WARN(2),
     ERROR(3);
 
     private int value;
 
-    MsgType(int value) {
+    PipeMessageType(int value) {
       this.value = value;
     }
 

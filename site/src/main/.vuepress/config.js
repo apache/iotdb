@@ -766,7 +766,7 @@ var config = {
 						title: 'Maintenance Tools',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','Maintenance Command'],
-							['Maintenance-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
+							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
@@ -945,7 +945,7 @@ var config = {
 						title: 'Maintenance Tools',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','Maintenance Command'],
-							['Maintenance-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
+							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
@@ -962,7 +962,7 @@ var config = {
 							['Ecosystem-Integration/Grafana-Connector','Grafana-Connector (Not Recommended)'],
 							['Ecosystem-Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem-Integration/DBeaver','DBeaver-IoTDB'],
-							['Ecosystem-Integration/MapReduce TsFile','MapReduce-TsFile'],
+							['Ecosystem-Integration/MapReduce-TsFile','MapReduce-TsFile'],
 							['Ecosystem-Integration/Spark-TsFile','Spark-TsFile'],
 							['Ecosystem-Integration/Spark-IoTDB','Spark-IoTDB'],
 							['Ecosystem-Integration/Hive-TsFile','Hive-TsFile'],
@@ -1693,7 +1693,7 @@ var config = {
 						title: '运维工具',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','运维命令'],
-							['Maintenance-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
+							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
@@ -1872,7 +1872,7 @@ var config = {
 						title: '运维工具',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','运维命令'],
-							['Maintenance-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
+							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
