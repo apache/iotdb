@@ -107,6 +107,9 @@ public class ConfigNodeConfig {
   /** Time partition interval in seconds */
   private long timePartitionInterval = 86400;
 
+  /** Whether enable time partition */
+  private boolean enableTimePartition = false;
+
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 1;
 
@@ -224,6 +227,14 @@ public class ConfigNodeConfig {
 
   public void setTimePartitionInterval(long timePartitionInterval) {
     this.timePartitionInterval = timePartitionInterval;
+  }
+
+  public boolean isEnableTimePartition() {
+    return enableTimePartition;
+  }
+
+  public void setEnableTimePartition(boolean enableTimePartition) {
+    this.enableTimePartition = enableTimePartition;
   }
 
   public int getRpcMaxConcurrentClientNum() {

@@ -207,6 +207,11 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))));
 
+      conf.setEnableTimePartition(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_time_partition", String.valueOf(conf.isEnableTimePartition()))));
+
       conf.setSchemaReplicationFactor(
           Integer.parseInt(
               properties.getProperty(

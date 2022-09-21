@@ -1888,6 +1888,7 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
+    conf.setEnablePartition(globalConfig.enableTimePartition);
   }
 
   public void loadRatisConfig(TRatisConfig ratisConfig) {

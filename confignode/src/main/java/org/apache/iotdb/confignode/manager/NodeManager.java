@@ -126,6 +126,7 @@ public class NodeManager {
     globalConfig.setSeriesPartitionSlotNum(conf.getSeriesPartitionSlotNum());
     globalConfig.setSeriesPartitionExecutorClass(conf.getSeriesPartitionExecutorClass());
     globalConfig.setTimePartitionInterval(conf.getTimePartitionInterval());
+    globalConfig.setEnableTimePartition(conf.isEnableTimePartition());
     globalConfig.setReadConsistencyLevel(conf.getReadConsistencyLevel());
     dataSet.setGlobalConfig(globalConfig);
   }
