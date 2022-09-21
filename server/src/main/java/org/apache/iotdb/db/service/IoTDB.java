@@ -137,7 +137,6 @@ public class IoTDB implements IoTDBMBean {
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
-    registerManager.register(MetricService.getInstance());
     logger.info("recover the schema...");
     initMManager();
     initServiceProvider();
@@ -181,9 +180,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
-
-    // start reporter
-    MetricService.getInstance().startAllReporter();
+    registerManager.register(MetricService.getInstance());
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }

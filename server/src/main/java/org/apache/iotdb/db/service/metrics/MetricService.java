@@ -60,6 +60,12 @@ public class MetricService extends AbstractMetricService implements MetricServic
     }
   }
 
+  public void restart() {
+    logger.info("Restart metric service.");
+    restartService();
+    logger.info("Finish restart metric service.");
+  }
+
   @Override
   public void stop() {
     if (isEnable()) {
@@ -111,14 +117,13 @@ public class MetricService extends AbstractMetricService implements MetricServic
             isEnableMetric = false;
             break;
           case RESTART_METRIC:
-            stop();
             isEnableMetric = true;
-            start();
+            restart();
             break;
           case RESTART_REPORTER:
-            compositeReporter.stopAll();
+            stopAllReporter();
             loadReporter();
-            compositeReporter.startAll();
+            startAllReporter();
             logger.info("Finish restart metric reporters.");
             break;
           case NOTHING:
