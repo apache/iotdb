@@ -16,76 +16,58 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.write.confignode;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 
-public class SetTTLPlan extends ConfigPhysicalPlan {
+public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
 
-  private String[] storageGroupPathPattern;
+  private TConfigNodeLocation configNodeLocation;
 
-  private long TTL;
-
-  public SetTTLPlan() {
-    super(ConfigPhysicalPlanType.SetTTL);
+  public ApplyConfigNodePlan() {
+    super(ConfigPhysicalPlanType.ApplyConfigNode);
   }
 
-  public SetTTLPlan(List<String> storageGroupPathPattern, long TTL) {
+  public ApplyConfigNodePlan(TConfigNodeLocation configNodeLocation) {
     this();
-    this.storageGroupPathPattern = storageGroupPathPattern.toArray(new String[0]);
-    this.TTL = TTL;
+    this.configNodeLocation = configNodeLocation;
   }
 
-  public String[] getStorageGroupPathPattern() {
-    return storageGroupPathPattern;
-  }
-
-  public long getTTL() {
-    return TTL;
+  public TConfigNodeLocation getConfigNodeLocation() {
+    return configNodeLocation;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(getType().ordinal());
+    ReadWriteIOUtils.write(ConfigPhysicalPlanType.ApplyConfigNode.ordinal(), stream);
 
-    stream.writeInt(storageGroupPathPattern.length);
-    for (String node : storageGroupPathPattern) {
-      BasicStructureSerDeUtil.write(node, stream);
-    }
-    stream.writeLong(TTL);
+    ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-
-    int length = buffer.getInt();
-    storageGroupPathPattern = new String[length];
-    for (int i = 0; i < length; i++) {
-      storageGroupPathPattern[i] = BasicStructureSerDeUtil.readString(buffer);
-    }
-    TTL = buffer.getLong();
+    configNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(buffer);
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    SetTTLPlan setTTLPlan = (SetTTLPlan) o;
-    return TTL == setTTLPlan.TTL
-        && Arrays.equals(this.storageGroupPathPattern, setTTLPlan.storageGroupPathPattern);
+    ApplyConfigNodePlan that = (ApplyConfigNodePlan) o;
+    return configNodeLocation.equals(that.configNodeLocation);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroupPathPattern, TTL);
+    return Objects.hash(configNodeLocation);
   }
 }

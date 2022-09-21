@@ -1955,6 +1955,8 @@ public class RSchemaRegion implements ISchemaRegion {
       PartialPath devicePath,
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
+      TSEncoding[] encodings,
+      CompressionType[] compressionTypes,
       boolean aligned)
       throws MetadataException {
     throw new UnsupportedOperationException();

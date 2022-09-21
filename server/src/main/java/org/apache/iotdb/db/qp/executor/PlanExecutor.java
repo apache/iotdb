@@ -1044,11 +1044,16 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowVersion() {
     SingleDataSet singleDataSet =
         new SingleDataSet(
-            Collections.singletonList(new PartialPath(IoTDBConstant.COLUMN_VERSION, false)),
-            Collections.singletonList(TSDataType.TEXT));
+            Arrays.asList(
+                new PartialPath(IoTDBConstant.COLUMN_VERSION, false),
+                new PartialPath(IoTDBConstant.COLUMN_BUILD_INFO, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
     Field field = new Field(TSDataType.TEXT);
     field.setBinaryV(new Binary(IoTDBConstant.VERSION));
     RowRecord rowRecord = new RowRecord(0);
+    rowRecord.addField(field);
+    field = new Field(TSDataType.TEXT);
+    field.setBinaryV(new Binary(IoTDBConstant.BUILD_INFO));
     rowRecord.addField(field);
     singleDataSet.setRecord(rowRecord);
     return singleDataSet;

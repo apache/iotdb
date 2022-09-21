@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
@@ -72,8 +73,6 @@ public class IOTDBLoadTsFileIT {
     originPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(PARTITION_INTERVAL);
     EnvFactory.getEnv().initBeforeTest();
-
-    registerSchema();
   }
 
   @After
@@ -159,6 +158,8 @@ public class IOTDBLoadTsFileIT {
 
   @Test
   public void testLoad() throws Exception {
+    registerSchema();
+
     long writtenPoint1 = 0;
     // device 0, device 1, sg 0
     try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
@@ -199,7 +200,7 @@ public class IOTDBLoadTsFileIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
+      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
@@ -215,6 +216,84 @@ public class IOTDBLoadTsFileIT {
     }
   }
 
+  @Test
+  public void testLoadWithAutoRegister() throws Exception {
+    long writtenPoint1 = 0;
+    // device 0, device 1, sg 0
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_0),
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_00,
+              SchemaConfig.MEASUREMENT_01,
+              SchemaConfig.MEASUREMENT_02,
+              SchemaConfig.MEASUREMENT_03));
+      generator.registerAlignedTimeseries(
+          new Path(SchemaConfig.DEVICE_1),
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_10,
+              SchemaConfig.MEASUREMENT_11,
+              SchemaConfig.MEASUREMENT_12,
+              SchemaConfig.MEASUREMENT_13));
+      generator.generateData(new Path(SchemaConfig.DEVICE_0), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_1), 10000, true);
+      writtenPoint1 = generator.getTotalNumber();
+    }
+
+    long writtenPoint2 = 0;
+    // device 2, device 3, device4, sg 1
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_2), Arrays.asList(SchemaConfig.MEASUREMENT_20));
+      generator.registerTimeseries(
+          new Path(SchemaConfig.DEVICE_3), Arrays.asList(SchemaConfig.MEASUREMENT_30));
+      generator.registerAlignedTimeseries(
+          new Path(SchemaConfig.DEVICE_4), Arrays.asList(SchemaConfig.MEASUREMENT_40));
+      generator.generateData(new Path(SchemaConfig.DEVICE_2), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_3), 10000, false);
+      generator.generateData(new Path(SchemaConfig.DEVICE_4), 10000, true);
+      writtenPoint2 = generator.getTotalNumber();
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(
+          String.format("load \"%s\" sglevel=2,autoregister=true", tmpDir.getAbsolutePath()));
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+        if (resultSet.next()) {
+          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          Assert.assertEquals(writtenPoint1, sg1Count);
+          long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          Assert.assertEquals(writtenPoint2, sg2Count);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+
+      Map<String, String> isAligned = new HashMap<>();
+      isAligned.put(SchemaConfig.DEVICE_0, "false");
+      isAligned.put(SchemaConfig.DEVICE_1, "true");
+      isAligned.put(SchemaConfig.DEVICE_2, "false");
+      isAligned.put(SchemaConfig.DEVICE_3, "false");
+      isAligned.put(SchemaConfig.DEVICE_4, "true");
+      try (ResultSet resultSet = statement.executeQuery("show devices")) {
+        int size = 0;
+        while (resultSet.next()) {
+          size += 1;
+          String device = resultSet.getString("devices");
+          Assert.assertEquals(isAligned.get(device), resultSet.getString("isAligned"));
+        }
+        Assert.assertEquals(isAligned.size(), size);
+      } catch (Exception e) {
+        e.printStackTrace();
+        Assert.fail("Parse result set error.");
+      }
+    }
+  }
+
   private static class SchemaConfig {
     private static final String STORAGE_GROUP_0 = "root.sg.test_0";
     private static final String STORAGE_GROUP_1 = "root.sg.test_1";
@@ -222,39 +301,39 @@ public class IOTDBLoadTsFileIT {
     // device 0, nonaligned, sg 0
     private static final String DEVICE_0 = "root.sg.test_0.d_0";
     private static final MeasurementSchema MEASUREMENT_00 =
-        new MeasurementSchema("sensor_00", TSDataType.INT32);
+        new MeasurementSchema("sensor_00", TSDataType.INT32, TSEncoding.RLE);
     private static final MeasurementSchema MEASUREMENT_01 =
-        new MeasurementSchema("sensor_01", TSDataType.INT64);
+        new MeasurementSchema("sensor_01", TSDataType.INT64, TSEncoding.RLE);
     private static final MeasurementSchema MEASUREMENT_02 =
-        new MeasurementSchema("sensor_02", TSDataType.DOUBLE);
+        new MeasurementSchema("sensor_02", TSDataType.DOUBLE, TSEncoding.GORILLA);
     private static final MeasurementSchema MEASUREMENT_03 =
-        new MeasurementSchema("sensor_03", TSDataType.TEXT);
+        new MeasurementSchema("sensor_03", TSDataType.TEXT, TSEncoding.PLAIN);
 
     // device 1, aligned, sg 0
     private static final String DEVICE_1 = "root.sg.test_0.a_1";
     private static final MeasurementSchema MEASUREMENT_10 =
-        new MeasurementSchema("sensor_10", TSDataType.INT32);
+        new MeasurementSchema("sensor_10", TSDataType.INT32, TSEncoding.RLE);
     private static final MeasurementSchema MEASUREMENT_11 =
-        new MeasurementSchema("sensor_11", TSDataType.INT64);
+        new MeasurementSchema("sensor_11", TSDataType.INT64, TSEncoding.RLE);
     private static final MeasurementSchema MEASUREMENT_12 =
-        new MeasurementSchema("sensor_12", TSDataType.DOUBLE);
+        new MeasurementSchema("sensor_12", TSDataType.DOUBLE, TSEncoding.GORILLA);
     private static final MeasurementSchema MEASUREMENT_13 =
-        new MeasurementSchema("sensor_13", TSDataType.TEXT);
+        new MeasurementSchema("sensor_13", TSDataType.TEXT, TSEncoding.PLAIN);
 
     // device 2, non aligned, sg 1
     private static final String DEVICE_2 = "root.sg.test_1.d_2";
     private static final MeasurementSchema MEASUREMENT_20 =
-        new MeasurementSchema("sensor_20", TSDataType.INT32);
+        new MeasurementSchema("sensor_20", TSDataType.INT32, TSEncoding.RLE);
 
     // device 3, non aligned, sg 1
     private static final String DEVICE_3 = "root.sg.test_1.d_3";
     private static final MeasurementSchema MEASUREMENT_30 =
-        new MeasurementSchema("sensor_30", TSDataType.INT32);
+        new MeasurementSchema("sensor_30", TSDataType.INT32, TSEncoding.RLE);
 
     // device 4, aligned, sg 1
     private static final String DEVICE_4 = "root.sg.test_1.a_4";
     private static final MeasurementSchema MEASUREMENT_40 =
-        new MeasurementSchema("sensor_40", TSDataType.INT32);
+        new MeasurementSchema("sensor_40", TSDataType.INT32, TSEncoding.RLE);
   }
 
   public class TsFileGenerator implements AutoCloseable {
