@@ -885,7 +885,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     String triggerName = req.getTriggerName();
     TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
     // no executor for given trigger name on this data node
-    if(executor == null){
+    if (executor == null) {
       return new TFireTriggerResp(false, TriggerFireResult.FAILED_NO_TERMINATION.getId());
     }
     TriggerFireResult result = TriggerFireResult.SUCCESS;

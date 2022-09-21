@@ -42,12 +42,10 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
-import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
+import org.apache.iotdb.db.mpp.plan.scheduler.FragmentInstanceDispatcherImpl;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -144,29 +142,8 @@ public class DataNodeRegionManager {
         LOGGER.warn(partialInsertMessage);
       }
 
-      ConsensusWriteResponse writeResponse;
-
-      TriggerFireVisitor visitor = new TriggerFireVisitor();
-      // fire Trigger before the insertion
-      TriggerFireResult result = insertNode.accept(visitor, TriggerEvent.BEFORE_INSERT);
-      if (result.equals(TriggerFireResult.TERMINATION)) {
-        TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
-        triggerError.setMessage(
-            "Failed to complete the insertion because trigger error before the insertion.");
-        writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
-      } else {
-        writeResponse = DataRegionConsensusImpl.getInstance().write(dataRegionId, insertNode);
-        // fire Trigger after the insertion
-        if (writeResponse.isSuccessful()) {
-          result = insertNode.accept(visitor, TriggerEvent.AFTER_INSERT);
-          if (!result.equals(TriggerFireResult.SUCCESS)) {
-            TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
-            triggerError.setMessage(
-                "Failed to complete the insertion because trigger error after the insertion.");
-            writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
-          }
-        }
-      }
+      ConsensusWriteResponse writeResponse =
+          FragmentInstanceDispatcherImpl.writePlanNode(dataRegionId, insertNode);
 
       // TODO need consider more status
       if (writeResponse.getStatus() != null) {

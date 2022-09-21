@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.trigger.service;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -32,7 +31,6 @@ import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
@@ -63,9 +61,7 @@ public class TriggerManagementService implements IService {
    */
   private final PatternTreeMap<String, PathPatternNode.StringSerializer> patternTreeMap;
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-
-  private TDataNodeLocation tDataNodeLocationCache;
+  private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
   private TriggerManagementService() {
     this.registrationLock = new ReentrantLock();
@@ -104,7 +100,7 @@ public class TriggerManagementService implements IService {
   public boolean needToFireOnAnotherDataNode(String triggerName) {
     TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
     return triggerInformation.isStateful()
-        && !triggerInformation.getDataNodeLocation().equals(getTDataNodeLocation());
+        && triggerInformation.getDataNodeLocation().getDataNodeId() != DATA_NODE_ID;
   }
 
   public TriggerInformation getTriggerInformation(String triggerName) {
@@ -144,7 +140,7 @@ public class TriggerManagementService implements IService {
       patternTreeMap.append(triggerInformation.getPathPattern(), triggerName);
       // if it is a stateful trigger, we only maintain its instance on specified DataNode
       if (!triggerInformation.isStateful()
-          || triggerInformation.getDataNodeLocation().equals(getTDataNodeLocation())) {
+          || triggerInformation.getDataNodeLocation().getDataNodeId() == DATA_NODE_ID) {
         // construct and save TriggerExecutor after successfully creating trigger instance
         TriggerExecutor triggerExecutor = new TriggerExecutor(triggerInformation, trigger);
         executorMap.put(triggerName, triggerExecutor);
@@ -187,25 +183,6 @@ public class TriggerManagementService implements IService {
       return triggerInformation.getDataNodeLocation().getInternalEndPoint();
     }
     return null;
-  }
-
-  private TDataNodeLocation getTDataNodeLocation() {
-    if (tDataNodeLocationCache == null) {
-      // Set DataNodeLocation
-      tDataNodeLocationCache = new TDataNodeLocation();
-      tDataNodeLocationCache.setDataNodeId(CONFIG.getDataNodeId());
-      tDataNodeLocationCache.setClientRpcEndPoint(
-          new TEndPoint(CONFIG.getRpcAddress(), CONFIG.getRpcPort()));
-      tDataNodeLocationCache.setInternalEndPoint(
-          new TEndPoint(CONFIG.getInternalAddress(), CONFIG.getInternalPort()));
-      tDataNodeLocationCache.setMPPDataExchangeEndPoint(
-          new TEndPoint(CONFIG.getInternalAddress(), CONFIG.getMppDataExchangePort()));
-      tDataNodeLocationCache.setDataRegionConsensusEndPoint(
-          new TEndPoint(CONFIG.getInternalAddress(), CONFIG.getDataRegionConsensusPort()));
-      tDataNodeLocationCache.setSchemaRegionConsensusEndPoint(
-          new TEndPoint(CONFIG.getInternalAddress(), CONFIG.getSchemaRegionConsensusPort()));
-    }
-    return tDataNodeLocationCache;
   }
 
   @Override

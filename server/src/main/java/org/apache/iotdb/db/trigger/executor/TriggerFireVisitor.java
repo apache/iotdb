@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDevic
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -47,6 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +63,11 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
               .createClientManager(
                   new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+
+  /**
+   * How many times should we retry when error occurred during firing a trigger on another datanode
+   */
+  private static final int FIRE_RETRY_NUM = 1;
 
   @Override
   public TriggerFireResult process(PlanNode node, TriggerEvent context) {
@@ -84,11 +91,9 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       return TriggerFireResult.SUCCESS;
     }
 
-    String device = node.getDevicePath().getFullPath();
-    String[] measurements = node.getMeasurements();
     MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
     Map<String, Integer> measurementToSchemaIndexMap =
-        constructMeasurementToSchemaIndexMap(measurements, measurementSchemas);
+        constructMeasurementToSchemaIndexMap(node.getMeasurements(), measurementSchemas);
 
     Object[] values = node.getValues();
     long time = node.getTime();
@@ -98,7 +103,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
           entry.getValue().stream()
               .map(measurement -> measurementSchemas[measurementToSchemaIndexMap.get(measurement)])
               .collect(Collectors.toList());
-      Tablet tablet = new Tablet(device, schemas);
+      Tablet tablet = new Tablet(node.getDevicePath().getFullPath(), schemas);
       tablet.addTimestamp(0, time);
       for (String measurement : entry.getValue()) {
         tablet.addValue(measurement, 0, values[measurementToSchemaIndexMap.get(measurement)]);
@@ -125,37 +130,51 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       return TriggerFireResult.SUCCESS;
     }
 
-    String device = node.getDevicePath().getFullPath();
-    String[] measurements = node.getMeasurements();
     MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
     Map<String, Integer> measurementToSchemaIndexMap =
-        constructMeasurementToSchemaIndexMap(measurements, measurementSchemas);
+        constructMeasurementToSchemaIndexMap(node.getMeasurements(), measurementSchemas);
 
     Object[] columns = node.getColumns();
     BitMap[] bitMaps = node.getBitMaps();
     long[] timestamps = node.getTimes();
     boolean hasFailedTrigger = false;
     for (Map.Entry<String, List<String>> entry : triggerNameToMeasurementList.entrySet()) {
-      List<MeasurementSchema> schemas =
-          entry.getValue().stream()
-              .map(measurement -> measurementSchemas[measurementToSchemaIndexMap.get(measurement)])
-              .collect(Collectors.toList());
-      Object[] columnsOfNewTablet =
-          entry.getValue().stream()
-              .map(measurement -> columns[measurementToSchemaIndexMap.get(measurement)])
-              .toArray();
-      BitMap[] bitMapsOfNewTablet =
-          entry.getValue().stream()
-              .map(measurement -> bitMaps[measurementToSchemaIndexMap.get(measurement)])
-              .toArray(BitMap[]::new);
-      Tablet tablet =
-          new Tablet(
-              device,
-              schemas,
-              timestamps,
-              columnsOfNewTablet,
-              bitMapsOfNewTablet,
-              timestamps.length);
+      Tablet tablet;
+      if (entry.getValue().size() == measurementSchemas.length) {
+        // all measurements are included
+        tablet =
+            new Tablet(
+                node.getDevicePath().getFullPath(),
+                Arrays.asList(measurementSchemas),
+                timestamps,
+                columns,
+                bitMaps,
+                timestamps.length);
+      } else {
+        // choose specified columns
+        List<MeasurementSchema> schemas =
+            entry.getValue().stream()
+                .map(
+                    measurement -> measurementSchemas[measurementToSchemaIndexMap.get(measurement)])
+                .collect(Collectors.toList());
+        Object[] columnsOfNewTablet =
+            entry.getValue().stream()
+                .map(measurement -> columns[measurementToSchemaIndexMap.get(measurement)])
+                .toArray();
+        BitMap[] bitMapsOfNewTablet =
+            entry.getValue().stream()
+                .map(measurement -> bitMaps[measurementToSchemaIndexMap.get(measurement)])
+                .toArray(BitMap[]::new);
+        tablet =
+            new Tablet(
+                node.getDevicePath().getFullPath(),
+                schemas,
+                timestamps,
+                columnsOfNewTablet,
+                bitMapsOfNewTablet,
+                timestamps.length);
+      }
+
       TriggerFireResult result = fire(entry.getKey(), tablet, context);
       // Terminate if a trigger with pessimistic strategy messes up
       if (result.equals(TriggerFireResult.TERMINATION)) {
@@ -265,41 +284,59 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   private TriggerFireResult fire(String triggerName, Tablet tablet, TriggerEvent event) {
     TriggerFireResult result = TriggerFireResult.SUCCESS;
-    if (TriggerManagementService.getInstance().needToFireOnAnotherDataNode(triggerName)) {
+    int retryNum = FIRE_RETRY_NUM;
+    while (TriggerManagementService.getInstance().needToFireOnAnotherDataNode(triggerName)
+        && retryNum >= 0) {
       TEndPoint endPoint =
           TriggerManagementService.getInstance().getEndPointForStatefulTrigger(triggerName);
       try (SyncDataNodeInternalServiceClient client =
           internalServiceClientIClientManager.borrowClient(endPoint)) {
         TFireTriggerReq req = new TFireTriggerReq(triggerName, tablet.serialize(), event.getId());
-        result = TriggerFireResult.construct(client.fireTrigger(req).getFireResult());
-      } catch (IOException e){
-        // Failed to borrow client, possibly because corresponding DataNode is down.
-        // We need to update local TriggerTable with the new TDataNodeLocation of the stateful trigger.
-      }
-      catch (IOException | TException e) {
+        TFireTriggerResp resp = client.fireTrigger(req);
+        if (resp.foundExecutor) {
+          // we successfully found an executor on another data node
+          return TriggerFireResult.construct(resp.getFireResult());
+        } else {
+          // todo: update trigger table through config node
+          retryNum--;
+        }
+      } catch (IOException | TException e) {
+        // IOException means that we failed to borrow client, possibly because corresponding
+        // DataNode is down.
+        // TException means there's a timeout or broken connection.
+        // We need to update local TriggerTable with the new TDataNodeLocation of the stateful
+        // trigger.
         LOGGER.warn(
             "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
             triggerName,
             endPoint.toString(),
             e.getMessage());
-        result =
-            TriggerManagementService.getInstance()
-                    .getTriggerInformation(triggerName)
-                    .getFailureStrategy()
-                    .equals(FailureStrategy.OPTIMISTIC)
-                ? TriggerFireResult.FAILED_NO_TERMINATION
-                : TriggerFireResult.TERMINATION;
+        // todo: update trigger table through config node
+        retryNum--;
+      } catch (Throwable e) {
+        LOGGER.warn(
+            "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
+            triggerName,
+            endPoint.toString(),
+            e.getMessage());
+        // do not retry if it is not due to bad network or no executor found
+        return TriggerManagementService.getInstance()
+                .getTriggerInformation(triggerName)
+                .getFailureStrategy()
+                .equals(FailureStrategy.OPTIMISTIC)
+            ? TriggerFireResult.FAILED_NO_TERMINATION
+            : TriggerFireResult.TERMINATION;
       }
-    } else {
-      TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
-      try {
-        executor.fire(tablet, event);
-      } catch (TriggerExecutionException e) {
-        if (executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)) {
-          result = TriggerFireResult.TERMINATION;
-        } else {
-          result = TriggerFireResult.FAILED_NO_TERMINATION;
-        }
+    }
+
+    TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
+    try {
+      executor.fire(tablet, event);
+    } catch (TriggerExecutionException e) {
+      if (executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)) {
+        result = TriggerFireResult.TERMINATION;
+      } else {
+        result = TriggerFireResult.FAILED_NO_TERMINATION;
       }
     }
     return result;

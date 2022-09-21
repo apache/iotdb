@@ -280,30 +280,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         }
         ConsensusWriteResponse writeResponse;
         if (groupId instanceof DataRegionId) {
-          TriggerFireVisitor visitor = new TriggerFireVisitor();
-          // fire Trigger before the insertion
-          TriggerFireResult result = planNode.accept(visitor, TriggerEvent.BEFORE_INSERT);
-          if (result.equals(TriggerFireResult.TERMINATION)) {
-            TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
-            triggerError.setMessage(
-                "Failed to complete the insertion because trigger error before the insertion.");
-            writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
-          } else {
-            boolean hasFailedTriggerBeforeInsertion =
-                result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
-            writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
-            // fire Trigger after the insertion
-            if (writeResponse.isSuccessful()) {
-              result = planNode.accept(visitor, TriggerEvent.AFTER_INSERT);
-              if (hasFailedTriggerBeforeInsertion || !result.equals(TriggerFireResult.SUCCESS)) {
-                TSStatus triggerError =
-                    new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
-                triggerError.setMessage(
-                    "Meet trigger error before/after the insertion, the insertion itself is completed.");
-                writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
-              }
-            }
-          }
+          writeResponse = writePlanNode(groupId, planNode);
         } else {
           writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
         }
@@ -328,6 +305,36 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,
                 String.format("unknown query type [%s]", instance.getType())));
     }
+  }
+
+  public static ConsensusWriteResponse writePlanNode(ConsensusGroupId groupId, PlanNode planNode) {
+    ConsensusWriteResponse writeResponse;
+    TriggerFireVisitor visitor = new TriggerFireVisitor();
+    // fire Trigger before the insertion
+    TriggerFireResult result = visitor.process(planNode, TriggerEvent.BEFORE_INSERT);
+    if (result.equals(TriggerFireResult.TERMINATION)) {
+      TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
+      triggerError.setMessage(
+          "Failed to complete the insertion because trigger error before the insertion.");
+      writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
+    } else {
+      boolean hasFailedTriggerBeforeInsertion =
+          result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
+
+      writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
+
+      // fire Trigger after the insertion
+      if (writeResponse.isSuccessful()) {
+        result = visitor.process(planNode, TriggerEvent.AFTER_INSERT);
+        if (hasFailedTriggerBeforeInsertion || !result.equals(TriggerFireResult.SUCCESS)) {
+          TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
+          triggerError.setMessage(
+              "Meet trigger error before/after the insertion, the insertion itself is completed.");
+          writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
+        }
+      }
+    }
+    return writeResponse;
   }
 
   @Override
