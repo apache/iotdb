@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -55,6 +56,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
@@ -144,6 +146,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
 
@@ -341,10 +345,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status;
     int preDeletedNum = 0;
     for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      String storageGroup =
+          schemaEngine
+              .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+              .getStorageGroupFullPath();
+      PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
+      if (filteredPatternTree.isEmpty()) {
+        continue;
+      }
       status =
           regionManager.executeSchemaPlanNode(
               new SchemaRegionId(consensusGroupId.getId()),
-              new ConstructSchemaBlackListNode(new PlanNodeId(""), patternTree));
+              new ConstructSchemaBlackListNode(new PlanNodeId(""), filteredPatternTree));
       if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         preDeletedNum += Integer.parseInt(status.getMessage());
       } else {
@@ -366,10 +378,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     List<TSStatus> failureList = new ArrayList<>();
     TSStatus status;
     for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      String storageGroup =
+          schemaEngine
+              .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+              .getStorageGroupFullPath();
+      PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
+      if (filteredPatternTree.isEmpty()) {
+        continue;
+      }
       status =
           regionManager.executeSchemaPlanNode(
               new SchemaRegionId(consensusGroupId.getId()),
-              new RollbackSchemaBlackListNode(new PlanNodeId(""), patternTree));
+              new RollbackSchemaBlackListNode(new PlanNodeId(""), filteredPatternTree));
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         failureList.add(status);
       }
@@ -408,10 +428,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
       // todo implement as consensus layer read request
       try {
-        for (PartialPath path :
-            schemaEngine
-                .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
-                .fetchSchemaBlackList(patternTree)) {
+        ISchemaRegion schemaRegion =
+            schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+        PathPatternTree filteredPatternTree =
+            filterPathPatternTree(patternTree, schemaRegion.getStorageGroupFullPath());
+        if (filteredPatternTree.isEmpty()) {
+          continue;
+        }
+        for (PartialPath path : schemaRegion.fetchSchemaBlackList(filteredPatternTree)) {
           result.appendFullPath(path);
         }
       } catch (MetadataException e) {
@@ -465,10 +489,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     List<TSStatus> failureList = new ArrayList<>();
     TSStatus status;
     for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
+      String storageGroup =
+          schemaEngine
+              .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+              .getStorageGroupFullPath();
+      PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
+      if (filteredPatternTree.isEmpty()) {
+        continue;
+      }
       status =
           regionManager.executeSchemaPlanNode(
               new SchemaRegionId(consensusGroupId.getId()),
-              new DeleteTimeSeriesNode(new PlanNodeId(""), patternTree));
+              new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree));
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         failureList.add(status);
       }
@@ -479,6 +511,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {
+    PathPatternTree filteredPatternTree = new PathPatternTree();
+    try {
+      PartialPath storageGroupPattern =
+          new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD);
+      for (PartialPath pathPattern : patternTree.getOverlappedPathPatterns(storageGroupPattern)) {
+        filteredPatternTree.appendPathPattern(pathPattern);
+      }
+      filteredPatternTree.constructTree();
+    } catch (IllegalPathException e) {
+      // won't reach here
+    }
+    return filteredPatternTree;
   }
 
   @Override
