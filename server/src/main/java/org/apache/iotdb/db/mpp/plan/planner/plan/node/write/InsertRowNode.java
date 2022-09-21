@@ -204,6 +204,14 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
+      logger.warn(
+          "Inserting to {}.{} : Cast from {} to {}",
+          devicePath,
+          measurements[columnIndex],
+          dataTypes[columnIndex],
+          dataType);
+      values[columnIndex] =
+          CommonUtils.castValue(dataTypes[columnIndex], dataType, values[columnIndex]);
       dataTypes[columnIndex] = dataType;
       return true;
     }

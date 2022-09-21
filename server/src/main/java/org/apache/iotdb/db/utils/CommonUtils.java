@@ -127,6 +127,31 @@ public class CommonUtils {
     return false;
   }
 
+  public static Object castValue(TSDataType srcDataType, TSDataType destDataType, Object value) {
+    switch (srcDataType) {
+      case INT32:
+        if (destDataType == TSDataType.INT64) {
+          value = (long) ((int) value);
+        } else if (destDataType == TSDataType.FLOAT) {
+          value = (float) ((int) value);
+        } else if (destDataType == TSDataType.DOUBLE) {
+          value = (double) ((int) value);
+        }
+        break;
+      case INT64:
+        if (destDataType == TSDataType.DOUBLE) {
+          value = (double) ((long) value);
+        }
+        break;
+      case FLOAT:
+        if (destDataType == TSDataType.DOUBLE) {
+          value = (double) ((float) value);
+        }
+        break;
+    }
+    return value;
+  }
+
   public static Object castArray(TSDataType srcDataType, TSDataType destDataType, Object value) {
     switch (srcDataType) {
       case INT32:
@@ -149,14 +174,8 @@ public class CommonUtils {
         }
         break;
       case FLOAT:
-        float[] tmp = (float[]) value;
-        if (destDataType == TSDataType.INT64) {
-          long[] result = new long[tmp.length];
-          for (int i = 0; i < tmp.length; i++) {
-            result[i] = (long) tmp[i];
-          }
-          value = result;
-        } else if (destDataType == TSDataType.DOUBLE) {
+        if (destDataType == TSDataType.DOUBLE) {
+          float[] tmp = (float[]) value;
           double[] result = new double[tmp.length];
           for (int i = 0; i < tmp.length; i++) {
             result[i] = tmp[i];
