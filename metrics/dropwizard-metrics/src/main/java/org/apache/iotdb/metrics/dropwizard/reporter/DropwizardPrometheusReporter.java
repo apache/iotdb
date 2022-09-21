@@ -47,13 +47,11 @@ public class DropwizardPrometheusReporter implements Reporter {
   @Override
   public boolean start() {
     if (httpServer != null) {
-      LOGGER.warn("Dropwizard Prometheus Reporter already start!");
       return false;
     }
     int port = MetricConfigDescriptor.getInstance().getMetricConfig().getPrometheusExporterPort();
     httpServer =
         HttpServer.create()
-            .idleTimeout(Duration.ofMillis(30_000L))
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
             .port(port)
             .route(
@@ -95,7 +93,7 @@ public class DropwizardPrometheusReporter implements Reporter {
   public boolean stop() {
     if (httpServer != null) {
       try {
-        httpServer.disposeNow();
+        httpServer.disposeNow(Duration.ofSeconds(10));
         httpServer = null;
       } catch (Exception e) {
         LOGGER.error("failed to stop server", e);
