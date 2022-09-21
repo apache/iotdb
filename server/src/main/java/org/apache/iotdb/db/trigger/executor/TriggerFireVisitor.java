@@ -259,10 +259,12 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   }
 
   private Map<String, List<String>> constructTriggerNameToMeasurementListMap(InsertNode node) {
-    PartialPath device = node.getDevicePath();
-    // todo: use new interface hasTriggerUnderDevice
-    String[] measurements = node.getMeasurements();
     Map<String, List<String>> triggerNameToPaths = new HashMap<>();
+    PartialPath device = node.getDevicePath();
+    if(!TriggerManagementService.getInstance().hasTriggerUnderDevice(device)){
+      return triggerNameToPaths;
+    }
+    String[] measurements = node.getMeasurements();
     for (String measurement : measurements) {
       if (measurement != null) {
         List<String> triggerList = getMatchedTriggerListForPath(device.concatNode(measurement));
@@ -274,10 +276,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     return triggerNameToPaths;
   }
 
-  /**
-   * @param fullPath PathPattern
-   * @return all the triggers that matched this Pattern
-   */
+
   private List<String> getMatchedTriggerListForPath(PartialPath fullPath) {
     return TriggerManagementService.getInstance().getMatchedTriggerListForPath(fullPath);
   }
