@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.PartitionManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Collections;

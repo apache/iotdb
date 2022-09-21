@@ -29,11 +29,9 @@ public enum NodeStatus {
   /** Node is in removing */
   Removing("Removing"),
 
-  /** Node disk is running out */
-  Full("Full"),
-
   /** Only query statements are permitted */
   ReadOnly("ReadOnly");
+  public static final String DISK_FULL = "DiskFull";
 
   private final String status;
 

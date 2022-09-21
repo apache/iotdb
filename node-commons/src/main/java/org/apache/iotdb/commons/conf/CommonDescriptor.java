@@ -106,18 +106,13 @@ public class CommonDescriptor {
             properties.getProperty(
                 "handle_system_error", String.valueOf(config.getHandleSystemErrorStrategy()))));
 
-    config.setFullThreshold(
-        Double.parseDouble(
-            properties.getProperty("full_threshold", String.valueOf(config.getFullThreshold()))));
-
-    config.setReadOnlyThreshold(
+    config.setDiskFullThreshold(
         Double.parseDouble(
             properties.getProperty(
-                "read_only_threshold", String.valueOf(config.getReadOnlyThreshold()))));
+                "disk_full_threshold", String.valueOf(config.getDiskFullThreshold()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
-    config.setFullThreshold(globalConfig.getFullThreshold());
-    config.setReadOnlyThreshold(globalConfig.getReadOnlyThreshold());
+    config.setDiskFullThreshold(globalConfig.getDiskFullThreshold());
   }
 }

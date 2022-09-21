@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat;
+package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 
@@ -76,11 +76,5 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
   public long getLoadScore() {
     // The DataNode whose status is abnormal will get the highest loadScore
     return NodeStatus.isNormalStatus(status) ? loadScore : Long.MAX_VALUE;
-  }
-
-  @Override
-  public NodeStatus getNodeStatus() {
-    // Return a copy of status
-    return NodeStatus.parse(status.getStatus());
   }
 }

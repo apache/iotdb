@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat;
+package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
@@ -28,9 +28,11 @@ public class NodeHeartbeatSample {
   private final long receiveTimestamp;
 
   private NodeStatus status;
-  private short cpu;
-  private double memory;
-  private double disk;
+  private String statusReason;
+
+  private short cpuOccupancyRatio;
+  private double memoryOccupancyRatio;
+  private double diskOccupancyRatio;
 
   /** Constructor for ConfigNode sample */
   public NodeHeartbeatSample(long sendTimestamp, long receiveTimestamp) {
@@ -42,10 +44,13 @@ public class NodeHeartbeatSample {
   public NodeHeartbeatSample(THeartbeatResp heartbeatResp, long receiveTimestamp) {
     this.sendTimestamp = heartbeatResp.getHeartbeatTimestamp();
     this.receiveTimestamp = receiveTimestamp;
+
     this.status = NodeStatus.parse(heartbeatResp.getStatus());
-    this.cpu = heartbeatResp.getCpu();
-    this.memory = heartbeatResp.getMemory();
-    this.disk = heartbeatResp.getDisk();
+    this.statusReason = heartbeatResp.isSetStatusReason() ? heartbeatResp.getStatusReason() : null;
+
+    this.cpuOccupancyRatio = heartbeatResp.getLoadSample().getCpuOccupancyRatio();
+    this.memoryOccupancyRatio = heartbeatResp.getLoadSample().getMemoryOccupancyRatio();
+    this.diskOccupancyRatio = heartbeatResp.getLoadSample().getDiskOccupancyRatio();
   }
 
   public long getSendTimestamp() {
@@ -60,15 +65,19 @@ public class NodeHeartbeatSample {
     return status;
   }
 
-  public short getCpu() {
-    return cpu;
+  public String getStatusReason() {
+    return statusReason;
   }
 
-  public double getMemory() {
-    return memory;
+  public short getCpuOccupancyRatio() {
+    return cpuOccupancyRatio;
   }
 
-  public double getDisk() {
-    return disk;
+  public double getMemoryOccupancyRatio() {
+    return memoryOccupancyRatio;
+  }
+
+  public double getDiskOccupancyRatio() {
+    return diskOccupancyRatio;
   }
 }

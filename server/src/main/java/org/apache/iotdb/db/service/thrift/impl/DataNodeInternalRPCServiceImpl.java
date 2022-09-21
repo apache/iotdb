@@ -110,6 +110,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
+import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -485,8 +486,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req) throws TException {
     THeartbeatResp resp = new THeartbeatResp();
-    resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
-    resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
 
     // Judging leader if necessary
     if (req.isNeedJudgeLeader()) {
@@ -496,6 +495,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     // Sampling load if necessary
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
         && req.isNeedSamplingLoad()) {
+      TLoadSample loadSample = new TLoadSample();
+
       // Sample cpu load
       long cpuLoad =
           MetricService.getInstance()
@@ -503,19 +504,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   Metric.SYS_CPU_LOAD.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
               .value();
       if (cpuLoad != 0) {
-        resp.setCpu((short) cpuLoad);
+        loadSample.setCpuOccupancyRatio((short) cpuLoad);
       }
 
       // Sample memory load
       long usedMemory = getMemory("jvm.memory.used.bytes");
       long maxMemory = getMemory("jvm.memory.max.bytes");
       if (usedMemory != 0 && maxMemory != 0) {
-        resp.setMemory((double) usedMemory * 100 / maxMemory);
+        loadSample.setMemoryOccupancyRatio((double) usedMemory * 100 / maxMemory);
       }
 
       // Sample disk load
-      sampleDiskLoad(resp);
+      sampleDiskLoad(resp, loadSample);
+
+      resp.setLoadSample(loadSample);
     }
+
+    resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
+    resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
     return resp;
   }
 
@@ -581,7 +587,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return result;
   }
 
-  private void sampleDiskLoad(THeartbeatResp resp) {
+  private void sampleDiskLoad(THeartbeatResp resp, TLoadSample loadSample) {
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
     long freeDisk =
@@ -602,13 +608,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             .value();
 
     if (freeDisk != 0 && totalDisk != 0) {
-      resp.setDisk((double) freeDisk * 100 / totalDisk);
-
+      double freeDiskRatio = (double) freeDisk * 100 / totalDisk;
+      loadSample.setDiskOccupancyRatio(1.0 - freeDiskRatio);
       // Reset NodeStatus if necessary
-      if (resp.getDisk() < commonConfig.getReadOnlyThreshold()) {
+      if (freeDiskRatio < commonConfig.getDiskFullThreshold()) {
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
-      } else if (resp.getDisk() < commonConfig.getFullThreshold()) {
-        commonConfig.setNodeStatus(NodeStatus.Full);
+        resp.setStatusReason(NodeStatus.DISK_FULL);
       }
     }
   }

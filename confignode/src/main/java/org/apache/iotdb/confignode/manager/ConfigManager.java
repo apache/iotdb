@@ -69,6 +69,8 @@ import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -249,7 +251,7 @@ public class ConfigManager implements IManager {
           .getNodeCacheMap()
           .forEach(
               (nodeId, heartbeatCache) ->
-                  nodeStatus.put(nodeId, heartbeatCache.getNodeStatus().getStatus()));
+                  nodeStatus.put(nodeId, heartbeatCache.getNodeStatusWithReason()));
       return new TShowClusterResp(status, configNodeLocations, dataNodeInfoLocations, nodeStatus);
     } else {
       return new TShowClusterResp(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
@@ -684,6 +686,10 @@ public class ConfigManager implements IManager {
     }
     if (!req.getReadConsistencyLevel().equals(conf.getReadConsistencyLevel())) {
       return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
+    }
+    if (req.getDiskFullThreshold()
+        != CommonDescriptor.getInstance().getConfig().getDiskFullThreshold()) {
+      return errorStatus.setMessage(errorPrefix + "disk_full_threshold" + errorSuffix);
     }
     return null;
   }

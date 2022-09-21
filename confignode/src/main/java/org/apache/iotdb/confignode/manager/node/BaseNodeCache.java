@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat;
+package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 
@@ -34,8 +34,10 @@ public abstract class BaseNodeCache {
   /** SlidingWindow stores the heartbeat sample data */
   final LinkedList<NodeHeartbeatSample> slidingWindow = new LinkedList<>();
 
-  /** Node status, using for `show cluster` command */
+  /** The current status of the Node */
   volatile NodeStatus status = NodeStatus.Unknown;
+  /** The reason why lead to the current NodeStatus(for showing cluster) */
+  volatile String statusReason;
 
   /**
    * Cache the newest HeartbeatSample
@@ -58,8 +60,19 @@ public abstract class BaseNodeCache {
    */
   public abstract long getLoadScore();
 
-  /** @return The latest status of a node for showing cluster */
-  public abstract NodeStatus getNodeStatus();
+  /** @return The current status of the Node */
+  public NodeStatus getNodeStatus() {
+    // Return a copy of status
+    return NodeStatus.parse(status.getStatus());
+  }
+
+  public String getNodeStatusWithReason() {
+    if (statusReason == null) {
+      return status.getStatus();
+    } else {
+      return status.getStatus() + "(" + statusReason + ")";
+    }
+  }
 
   public void setRemoving() {
     this.status = NodeStatus.Removing;

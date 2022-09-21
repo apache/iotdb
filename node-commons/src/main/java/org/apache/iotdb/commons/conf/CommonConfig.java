@@ -113,9 +113,7 @@ public class CommonConfig {
   private volatile NodeStatus status = NodeStatus.Running;
 
   /** Disk Monitor */
-  private double fullThreshold = 5.0;
-
-  private double readOnlyThreshold = 1.0;
+  private double diskFullThreshold = 5.0;
 
   CommonConfig() {}
 
@@ -280,20 +278,12 @@ public class CommonConfig {
     handleSystemErrorStrategy.handle();
   }
 
-  public double getFullThreshold() {
-    return fullThreshold;
+  public double getDiskFullThreshold() {
+    return diskFullThreshold;
   }
 
-  public void setFullThreshold(double fullThreshold) {
-    this.fullThreshold = fullThreshold;
-  }
-
-  public double getReadOnlyThreshold() {
-    return readOnlyThreshold;
-  }
-
-  public void setReadOnlyThreshold(double readOnlyThreshold) {
-    this.readOnlyThreshold = readOnlyThreshold;
+  public void setDiskFullThreshold(double diskFullThreshold) {
+    this.diskFullThreshold = diskFullThreshold;
   }
 
   public boolean isReadOnly() {
@@ -314,9 +304,6 @@ public class CommonConfig {
     this.status = newStatus;
 
     switch (newStatus) {
-      case Full:
-        logger.warn("Change system status to Full! The disk is running out!");
-        break;
       case ReadOnly:
         logger.error(
             "Change system status to ReadOnly! Only query statements are permitted!",
@@ -325,6 +312,7 @@ public class CommonConfig {
       case Removing:
         logger.info(
             "Change system status to Removing! The current Node is being removed from cluster!");
+        break;
     }
   }
 }

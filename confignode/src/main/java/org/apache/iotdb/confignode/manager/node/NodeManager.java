@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
@@ -49,10 +49,12 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConf
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.ConsensusManager;
+import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.ConfigNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
@@ -133,8 +135,7 @@ public class NodeManager {
         configNodeConfig.getSeriesPartitionExecutorClass());
     globalConfig.setTimePartitionInterval(configNodeConfig.getTimePartitionInterval());
     globalConfig.setReadConsistencyLevel(configNodeConfig.getReadConsistencyLevel());
-    globalConfig.setFullThreshold(commonConfig.getFullThreshold());
-    globalConfig.setReadOnlyThreshold(commonConfig.getReadOnlyThreshold());
+    globalConfig.setDiskFullThreshold(commonConfig.getDiskFullThreshold());
     dataSet.setGlobalConfig(globalConfig);
   }
 
@@ -277,7 +278,7 @@ public class NodeManager {
             TDataNodeInfo info = new TDataNodeInfo();
             int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
             info.setDataNodeId(dataNodeId);
-            info.setStatus(getNodeStatus(dataNodeId));
+            info.setStatus(getNodeStatusWithReason(dataNodeId));
             info.setRpcAddresss(dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
             info.setRpcPort(dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
             info.setDataRegionNum(0);
@@ -334,7 +335,7 @@ public class NodeManager {
             TConfigNodeInfo info = new TConfigNodeInfo();
             int configNodeId = configNodeLocation.getConfigNodeId();
             info.setConfigNodeId(configNodeId);
-            info.setStatus(getNodeStatus(configNodeId));
+            info.setStatus(getNodeStatusWithReason(configNodeId));
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
             info.setRoleType(
@@ -613,16 +614,16 @@ public class NodeManager {
   }
 
   /**
-   * Safely get the specific Node's current status
+   * Safely get the specific Node's current status for showing cluster
    *
    * @param nodeId The specific Node's index
    * @return The specific Node's current status if the nodeCache contains it, Unknown otherwise
    */
-  private String getNodeStatus(int nodeId) {
+  private String getNodeStatusWithReason(int nodeId) {
     BaseNodeCache nodeCache = nodeCacheMap.get(nodeId);
     return nodeCache == null
-        ? NodeStatus.Unknown.getStatus()
-        : nodeCache.getNodeStatus().getStatus();
+        ? NodeStatus.Unknown.getStatus() + "(NoHeartbeat)"
+        : nodeCache.getNodeStatusWithReason();
   }
 
   /**
