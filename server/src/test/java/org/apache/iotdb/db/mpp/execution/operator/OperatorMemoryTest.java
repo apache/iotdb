@@ -632,7 +632,6 @@ public class OperatorMemoryTest {
 
     FilterAndProjectOperator operator =
         new FilterAndProjectOperator(
-            null,
             Mockito.mock(OperatorContext.class),
             child,
             filterOutputTypes,
