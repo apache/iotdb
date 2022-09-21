@@ -948,6 +948,18 @@ public class TsFileResource {
     }
   }
 
+  public static int compareFileNameByDesc(TsFileResource o1, TsFileResource o2) {
+    try {
+      TsFileNameGenerator.TsFileName n1 =
+          TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
+      TsFileNameGenerator.TsFileName n2 =
+          TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
+      return (int) (n2.getVersion() - n1.getVersion());
+    } catch (IOException e) {
+      return 0;
+    }
+  }
+
   public void setSeq(boolean seq) {
     isSeq = seq;
   }

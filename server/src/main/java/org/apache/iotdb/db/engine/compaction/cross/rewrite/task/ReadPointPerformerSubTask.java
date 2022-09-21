@@ -79,7 +79,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
               device,
               Collections.singletonList(measurement),
               measurementSchemas,
-              measurementList,
+              schemaMap.keySet(),
               fragmentInstanceContext,
               queryDataSource,
               false);

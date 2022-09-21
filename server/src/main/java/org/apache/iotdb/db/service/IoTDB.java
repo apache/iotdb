@@ -97,10 +97,6 @@ public class IoTDB implements IoTDBMBean {
     IoTDB.serviceProvider = serviceProvider;
   }
 
-  public static void setClusterMode() {
-    config.setClusterMode(true);
-  }
-
   public void active() {
     StartupChecks checks = new StartupChecks().withDefaultTest();
     try {

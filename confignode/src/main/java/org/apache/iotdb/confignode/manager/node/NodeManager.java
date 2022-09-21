@@ -143,6 +143,12 @@ public class NodeManager {
     final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TRatisConfig ratisConfig = new TRatisConfig();
     ratisConfig.setAppenderBufferSize(conf.getRatisConsensusLogAppenderBufferSize());
+    ratisConfig.setSnapshotTriggerThreshold(conf.getRatisSnapshotTriggerThreshold());
+    ratisConfig.setLogUnsafeFlushEnable(conf.isRatisLogUnsafeFlushEnable());
+    ratisConfig.setLogSegmentSizeMax(conf.getRatisLogSegmentSizeMax());
+    ratisConfig.setGrpcFlowControlWindow(conf.getRatisGrpcFlowControlWindow());
+    ratisConfig.setLeaderElectionTimeoutMin(conf.getRatisRpcLeaderElectionTimeoutMinMs());
+    ratisConfig.setLeaderElectionTimeoutMax(conf.getRatisRpcLeaderElectionTimeoutMaxMs());
     dataSet.setRatisConfig(ratisConfig);
   }
 
