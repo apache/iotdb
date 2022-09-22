@@ -129,6 +129,7 @@ public class LogDispatcher {
 
   public class LogDispatcherThread implements Runnable {
     private static final long PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC = 10;
+    private static final long START_INDEX = 1;
     private final MultiLeaderConfig config;
     private final Peer peer;
     private final IndexController controller;
@@ -144,7 +145,6 @@ public class LogDispatcher {
     private volatile boolean stopped = false;
 
     private ConsensusReqReader.ReqIterator walEntryiterator;
-    private long iteratorIndex = 1;
 
     public LogDispatcherThread(Peer peer, MultiLeaderConfig config) {
       this.peer = peer;
@@ -153,9 +153,11 @@ public class LogDispatcher {
           new ArrayBlockingQueue<>(config.getReplication().getMaxPendingRequestNumPerNode());
       this.controller =
           new IndexController(
-              impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()));
+              impl.getStorageDir(),
+              Utils.fromTEndPointToString(peer.getEndpoint()),
+              config.getReplication().getCheckpointGap());
       this.syncStatus = new SyncStatus(controller, config);
-      this.walEntryiterator = reader.getReqIterator(iteratorIndex);
+      this.walEntryiterator = reader.getReqIterator(START_INDEX);
     }
 
     public IndexController getController() {
@@ -221,7 +223,10 @@ public class LogDispatcher {
       // update safely deleted search index to delete outdated info,
       // indicating that insert nodes whose search index are before this value can be deleted
       // safely
-      reader.setSafelyDeletedSearchIndex(impl.getCurrentSafelyDeletedSearchIndex());
+      long currentSafelyDeletedSearchIndex = impl.getCurrentSafelyDeletedSearchIndex();
+      reader.setSafelyDeletedSearchIndex(
+          currentSafelyDeletedSearchIndex
+              - currentSafelyDeletedSearchIndex % config.getReplication().getCheckpointGap());
       // notify
       if (impl.unblockWrite()) {
         impl.signal();
@@ -340,20 +345,15 @@ public class LogDispatcher {
         long currentIndex, long maxIndex, List<TLogBatch> logBatches) {
       logger.debug(
           String.format(
-              "DataRegion[%s]->%s: currentIndex: %d, maxIndex: %d, iteratorIndex: %d",
-              peer.getGroupId().getId(),
-              peer.getEndpoint().ip,
-              currentIndex,
-              maxIndex,
-              iteratorIndex));
+              "DataRegion[%s]->%s: currentIndex: %d, maxIndex: %d",
+              peer.getGroupId().getId(), peer.getEndpoint().getIp(), currentIndex, maxIndex));
+      // targetIndex is the index of request that we need to find
+      long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.
-      if (iteratorIndex != currentIndex) {
-        walEntryiterator.skipTo(currentIndex);
-        iteratorIndex = currentIndex;
-      }
-      while (currentIndex < maxIndex
+      walEntryiterator.skipTo(targetIndex);
+      while (targetIndex < maxIndex
           && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
-        logger.debug("construct from WAL for one Entry, index : {}", currentIndex);
+        logger.debug("construct from WAL for one Entry, index : {}", targetIndex);
         try {
           walEntryiterator.waitForNextReady();
         } catch (InterruptedException e) {
@@ -361,16 +361,33 @@ public class LogDispatcher {
           logger.warn("wait for next WAL entry is interrupted");
         }
         IndexedConsensusRequest data = walEntryiterator.next();
-        currentIndex = data.getSearchIndex();
-        iteratorIndex = currentIndex;
-        for (IConsensusRequest innerRequest : data.getRequests()) {
-          logBatches.add(new TLogBatch(innerRequest.serializeToByteBuffer(), currentIndex, true));
+        if (targetIndex > data.getSearchIndex()) {
+          // if the index of request is smaller than currentIndex, then continue
+          logger.warn(
+              "search for one Entry which index is {}, but find a smaller one, index : {}",
+              targetIndex,
+              data.getSearchIndex());
+          continue;
+        } else if (targetIndex < data.getSearchIndex()) {
+          logger.warn(
+              "search for one Entry which index is {}, but find a larger one, index : {}",
+              targetIndex,
+              data.getSearchIndex());
+          if (data.getSearchIndex() >= maxIndex) {
+            // if the index of request is larger than maxIndex, then finish
+            break;
+          }
         }
-        if (currentIndex == maxIndex - 1) {
-          break;
+        targetIndex = data.getSearchIndex() + 1;
+        // construct request from wal
+        for (IConsensusRequest innerRequest : data.getRequests()) {
+          logBatches.add(
+              new TLogBatch(innerRequest.serializeToByteBuffer(), data.getSearchIndex(), true));
         }
       }
-      return currentIndex;
+      return logBatches.size() > 0
+          ? logBatches.get(logBatches.size() - 1).searchIndex
+          : currentIndex;
     }
 
     private void constructBatchIndexedFromConsensusRequest(

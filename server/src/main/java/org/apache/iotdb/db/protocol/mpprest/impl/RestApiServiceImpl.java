@@ -42,9 +42,8 @@ import org.apache.iotdb.db.protocol.mpprest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.mpprest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.mpprest.model.SQL;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
-
-import io.airlift.concurrent.SetThreadName;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;

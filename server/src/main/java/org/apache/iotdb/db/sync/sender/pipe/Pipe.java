@@ -127,6 +127,8 @@ public interface Pipe {
   @TestOnly
   SenderManager getSenderManager();
 
+  PipeInfo getPipeInfo();
+
   // a new pipe should be stop status
   enum PipeStatus {
     RUNNING,

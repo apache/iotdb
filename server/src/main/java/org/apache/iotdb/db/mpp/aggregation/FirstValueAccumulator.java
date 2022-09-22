@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -42,22 +42,22 @@ public class FirstValueAccumulator implements Accumulator {
     firstValue = TsPrimitiveType.getByType(seriesDataType);
   }
 
-  // Column should be like: | Time | Value |
+  // Column should be like: | ControlColumn | Time | Value |
   @Override
-  public int addInput(Column[] column, TimeRange timeRange) {
+  public int addInput(Column[] column, IWindow curWindow) {
     switch (seriesDataType) {
       case INT32:
-        return addIntInput(column, timeRange);
+        return addIntInput(column, curWindow);
       case INT64:
-        return addLongInput(column, timeRange);
+        return addLongInput(column, curWindow);
       case FLOAT:
-        return addFloatInput(column, timeRange);
+        return addFloatInput(column, curWindow);
       case DOUBLE:
-        return addDoubleInput(column, timeRange);
+        return addDoubleInput(column, curWindow);
       case TEXT:
-        return addBinaryInput(column, timeRange);
+        return addBinaryInput(column, curWindow);
       case BOOLEAN:
-        return addBooleanInput(column, timeRange);
+        return addBooleanInput(column, curWindow);
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in FirstValue: %s", seriesDataType));
@@ -222,21 +222,25 @@ public class FirstValueAccumulator implements Accumulator {
     return firstValue.getDataType();
   }
 
-  protected int addIntInput(Column[] column, TimeRange timeRange) {
+  protected int addIntInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateIntFirstValue(column[1].getInt(i), curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateIntFirstValue(column[2].getInt(i), column[1].getLong(i));
         return i;
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
   protected void updateIntFirstValue(int value, long curTime) {
@@ -247,21 +251,25 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addLongInput(Column[] column, TimeRange timeRange) {
+  protected int addLongInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateLongFirstValue(column[1].getLong(i), curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateLongFirstValue(column[2].getLong(i), column[1].getLong(i));
         return i;
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
   protected void updateLongFirstValue(long value, long curTime) {
@@ -272,21 +280,25 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addFloatInput(Column[] column, TimeRange timeRange) {
+  protected int addFloatInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateFloatFirstValue(column[1].getFloat(i), curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateFloatFirstValue(column[2].getFloat(i), column[1].getLong(i));
         return i;
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
   protected void updateFloatFirstValue(float value, long curTime) {
@@ -297,21 +309,25 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addDoubleInput(Column[] column, TimeRange timeRange) {
+  protected int addDoubleInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateDoubleFirstValue(column[1].getDouble(i), curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateDoubleFirstValue(column[2].getDouble(i), column[1].getLong(i));
         return i;
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
   protected void updateDoubleFirstValue(double value, long curTime) {
@@ -322,21 +338,25 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addBooleanInput(Column[] column, TimeRange timeRange) {
+  protected int addBooleanInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateBooleanFirstValue(column[1].getBoolean(i), curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateBooleanFirstValue(column[2].getBoolean(i), column[1].getLong(i));
         return i;
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
   protected void updateBooleanFirstValue(boolean value, long curTime) {
@@ -347,21 +367,25 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addBinaryInput(Column[] column, TimeRange timeRange) {
+  protected int addBinaryInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateBinaryFirstValue(column[1].getBinary(i), curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateBinaryFirstValue(column[2].getBinary(i), column[1].getLong(i));
         return i;
       }
     }
-    return column[0].getPositionCount();
+
+    return curPositionCount;
   }
 
   protected void updateBinaryFirstValue(Binary value, long curTime) {

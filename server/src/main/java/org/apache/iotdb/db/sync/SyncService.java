@@ -185,6 +185,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void addPipe(CreatePipeStatement statement) throws PipeException {
+    logger.info("Execute CREATE PIPE {}", statement.getPipeName());
     // check statement
     long currentTime = DatetimeUtils.currentTime();
     if (statement.getStartTime() > currentTime) {
@@ -210,6 +211,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void stopPipe(String pipeName) throws PipeException {
+    logger.info("Execute STOP PIPE {}", pipeName);
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.RUNNING) {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
@@ -233,6 +235,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void startPipe(String pipeName) throws PipeException {
+    logger.info("Execute START PIPE {}", pipeName);
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.STOP) {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
@@ -246,6 +249,7 @@ public class SyncService implements IService {
   }
 
   public synchronized void dropPipe(String pipeName) throws PipeException {
+    logger.info("Execute DROP PIPE {}", pipeName);
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
       runningPipe.drop();
@@ -279,14 +283,17 @@ public class SyncService implements IService {
     }
   }
 
-  public synchronized void receiveMsg(PipeMessage.MsgType type, String message) {
+  public synchronized void recordMessage(PipeMessage message) {
     if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
-      logger.info(String.format("No running pipe for receiving msg %s.", message));
+      logger.info(String.format("No running pipe for message %s.", message));
       return;
     }
-    switch (type) {
+    TSStatus status = null;
+    switch (message.getType()) {
       case ERROR:
-        logger.error(String.format("%s from receiver: %s", type.name(), message));
+        logger.error("{}", message);
+        status =
+            syncInfoFetcher.recordMsg(runningPipe.getName(), runningPipe.getCreateTime(), message);
         try {
           stopPipe(runningPipe.getName());
         } catch (PipeException e) {
@@ -295,15 +302,17 @@ public class SyncService implements IService {
                   "Stop pipe %s when meeting error in sender service.", runningPipe.getName()),
               e);
         }
-      case WARN:
-        logger.warn(String.format("%s from receiver: %s", type.name(), message));
-        TSStatus status =
-            syncInfoFetcher.recordMsg(
-                runningPipe.getName(), runningPipe.getCreateTime(), new PipeMessage(type, message));
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          logger.warn(String.format("Failed to record message: [%s] %s", type.name(), message));
-        }
         break;
+      case WARN:
+        logger.warn("{}", message);
+        status =
+            syncInfoFetcher.recordMsg(runningPipe.getName(), runningPipe.getCreateTime(), message);
+        break;
+      default:
+        logger.error(String.format("Unknown message type: %s", message));
+    }
+    if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      logger.error(String.format("Failed to record message: %s", message));
     }
   }
 
@@ -320,7 +329,7 @@ public class SyncService implements IService {
                 SyncConstant.ROLE_SENDER,
                 pipe.getPipeSinkName(),
                 pipe.getStatus().name(),
-                "");
+                pipe.getMessageType().name());
         list.add(tPipeInfo);
       }
     }
@@ -334,13 +343,15 @@ public class SyncService implements IService {
                 SyncConstant.ROLE_RECEIVER,
                 identityInfo.getAddress(),
                 Pipe.PipeStatus.RUNNING.name(),
-                "");
+                // TODO: implement receiver message
+                PipeMessage.PipeMessageType.NORMAL.name());
         list.add(tPipeInfo);
       }
     }
     return list;
   }
 
+  // TODO(sync): delete this in new-standalone version
   public void showPipe(ShowPipePlan plan, ListDataSet listDataSet) {
     boolean showAll = "".equals(plan.getPipeName());
     // show pipe in sender
@@ -353,10 +364,6 @@ public class SyncService implements IService {
         record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getPipeSinkName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
-        record.addField(
-            Binary.valueOf(syncInfoFetcher.getPipeMsg(pipe.getPipeName(), pipe.getCreateTime())),
-            TSDataType.TEXT);
-        boolean needSetFields = true;
         PipeSink pipeSink = syncInfoFetcher.getPipeSink(pipe.getPipeSinkName());
         if (pipeSink.getType() == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
           ExtPipePluginManager extPipePluginManager =
@@ -367,21 +374,18 @@ public class SyncService implements IService {
             ExternalPipeStatus externalPipeStatus =
                 extPipePluginManager.getExternalPipeStatus(extPipeType);
 
+            // TODO(ext-pipe): Adapting to the new syntax of SHOW PIPE
             if (externalPipeStatus != null) {
               record.addField(
-                  Binary.valueOf(externalPipeStatus.getWriterInvocationFailures().toString()),
+                  Binary.valueOf(
+                      externalPipeStatus.getWriterInvocationFailures().toString()
+                          + ";"
+                          + externalPipeStatus.getWriterStatuses().toString()),
                   TSDataType.TEXT);
-              record.addField(
-                  Binary.valueOf(externalPipeStatus.getWriterStatuses().toString()),
-                  TSDataType.TEXT);
-              needSetFields = false;
             }
           }
-        }
-
-        if (needSetFields) {
-          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
-          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+        } else {
+          record.addField(Binary.valueOf(pipe.getMessageType().name()), TSDataType.TEXT);
         }
         listDataSet.putRecord(record);
       }
@@ -398,9 +402,7 @@ public class SyncService implements IService {
       record.addField(Binary.valueOf(IoTDBConstant.SYNC_RECEIVER_ROLE), TSDataType.TEXT);
       record.addField(Binary.valueOf(identityInfo.getAddress()), TSDataType.TEXT);
       record.addField(Binary.valueOf(Pipe.PipeStatus.RUNNING.name()), TSDataType.TEXT);
-      record.addField(Binary.valueOf(""), TSDataType.TEXT);
-      record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
-      record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+      record.addField(Binary.valueOf(PipeMessage.PipeMessageType.NORMAL.name()), TSDataType.TEXT);
       listDataSet.putRecord(record);
     }
   }
@@ -483,7 +485,7 @@ public class SyncService implements IService {
   public void stop() {
     if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       try {
-        runningPipe.stop();
+        runningPipe.close();
       } catch (PipeException e) {
         logger.warn(
             String.format("Stop pipe %s error when stop Sender Service.", runningPipe.getName()),

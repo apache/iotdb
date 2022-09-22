@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -77,7 +78,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -125,8 +125,8 @@ public class DataNode implements DataNodeMBean {
     if (config.getRpcAddress().equals("0.0.0.0")) {
       config.setRpcAddress(config.getInternalAddress());
     }
-    thisNode.setIp(IoTDBDescriptor.getInstance().getConfig().getInternalAddress());
-    thisNode.setPort(IoTDBDescriptor.getInstance().getConfig().getInternalPort());
+    thisNode.setIp(config.getInternalAddress());
+    thisNode.setPort(config.getInternalPort());
   }
 
   protected void doAddNode() {
@@ -162,16 +162,15 @@ public class DataNode implements DataNodeMBean {
     // Register services
     JMXService.registerMBean(getInstance(), mbeanName);
     // set the mpp mode to true
-    IoTDBDescriptor.getInstance().getConfig().setMppMode(true);
-    IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
+    config.setMppMode(true);
+    config.setClusterMode(true);
   }
 
   /** register DataNode with ConfigNode */
   private void registerInConfigNode() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
 
-    ConfigNodeInfo.getInstance()
-        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getTargetConfigNodeList());
+    ConfigNodeInfo.getInstance().updateConfigNodeList(config.getTargetConfigNodeList());
     while (retry > 0) {
       logger.info("start registering to the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
@@ -202,6 +201,8 @@ public class DataNode implements DataNodeMBean {
           IoTDBDescriptor.getInstance().loadRatisConfig(dataNodeRegisterResp.ratisConfig);
           IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
 
+          CommonDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
+
           if (!IoTDBStartCheck.getInstance()
               .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
             config.setDataRegionConsensusProtocolClass(
@@ -228,7 +229,7 @@ public class DataNode implements DataNodeMBean {
 
       try {
         // wait 5s to start the next try
-        Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getJoinClusterTimeOutMs());
+        Thread.sleep(config.getJoinClusterTimeOutMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when waiting to register to the cluster", e);
@@ -332,7 +333,7 @@ public class DataNode implements DataNodeMBean {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
+    if (config.isEnableRpcService()) {
       registerManager.register(RPCService.getInstance());
     }
     // init service protocols
@@ -370,27 +371,18 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(
         UDFExecutableManager.setupAndGetInstance(
-            IoTDBDescriptor.getInstance().getConfig().getUdfTemporaryLibDir(),
-            IoTDBDescriptor.getInstance().getConfig().getUdfDir()));
-    registerManager.register(
-        UDFClassLoaderManager.setupAndGetInstance(
-            IoTDBDescriptor.getInstance().getConfig().getUdfDir()));
+            config.getUdfTemporaryLibDir(), config.getUdfDir()));
+    registerManager.register(UDFClassLoaderManager.setupAndGetInstance(config.getUdfDir()));
     registerManager.register(
         UDFRegistrationService.setupAndGetInstance(
-            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-                + File.separator
-                + "udf"
-                + File.separator));
+            config.getSystemDir() + File.separator + "udf" + File.separator));
   }
 
   private void registerTriggerServices() throws StartupException {
     registerManager.register(
         TriggerExecutableManager.setupAndGetInstance(
-            IoTDBDescriptor.getInstance().getConfig().getTriggerTemporaryLibDir(),
-            IoTDBDescriptor.getInstance().getConfig().getTriggerDir()));
-    registerManager.register(
-        TriggerClassLoaderManager.setupAndGetInstance(
-            IoTDBDescriptor.getInstance().getConfig().getTriggerDir()));
+            config.getTriggerTemporaryLibDir(), config.getTriggerDir()));
+    registerManager.register(TriggerClassLoaderManager.setupAndGetInstance(config.getTriggerDir()));
     registerManager.register(TriggerManagementService.setupAndGetInstance());
   }
 
@@ -401,8 +393,8 @@ public class DataNode implements DataNodeMBean {
     logger.info("spend {}ms to recover schema.", end);
     logger.info(
         "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
-        IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize());
+        config.getSeqTsFileSize(),
+        config.getUnSeqTsFileSize());
   }
 
   public void stop() {
@@ -415,20 +407,6 @@ public class DataNode implements DataNodeMBean {
     } catch (Exception e) {
       logger.error("stop data node error", e);
     }
-
-    // kill the datanode process 5 seconds later
-    // if remove this step, datanode process will still alive
-    new Thread(
-            () -> {
-              try {
-                TimeUnit.SECONDS.sleep(5);
-              } catch (InterruptedException e) {
-                logger.error("Meets InterruptedException in stop method of DataNode");
-              } finally {
-                System.exit(0);
-              }
-            })
-        .start();
   }
 
   private void initServiceProvider() throws QueryProcessException {
@@ -436,11 +414,11 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void initProtocols() throws StartupException {
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
+    if (config.isEnableInfluxDBRpcService()) {
       registerManager.register(InfluxDBRPCService.getInstance());
       IoTDB.initInfluxDBMManager();
     }
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
+    if (config.isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
     }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {

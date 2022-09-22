@@ -33,6 +33,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.DataRegionStateMachine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 
+import org.apache.ratis.util.SizeInBytes;
+import org.apache.ratis.util.TimeDuration;
+
+import java.util.concurrent.TimeUnit;
+
 /**
  * We can use DataRegionConsensusImpl.getInstance() to obtain a consensus layer reference for
  * dataRegion's reading and writing
@@ -87,7 +92,37 @@ public class DataRegionConsensusImpl {
                               // An empty log is committed after each restart, even if no data is
                               // written. This setting ensures that compaction work is not discarded
                               // even if there are frequent restarts
-                              .setSnapshot(Snapshot.newBuilder().setCreationGap(1).build())
+                              .setSnapshot(
+                                  Snapshot.newBuilder()
+                                      .setCreationGap(1)
+                                      .setAutoTriggerThreshold(
+                                          conf.getRatisConsensusSnapshotTriggerThreshold())
+                                      .build())
+                              .setLog(
+                                  RatisConfig.Log.newBuilder()
+                                      .setUnsafeFlushEnabled(
+                                          conf.isRatisConsensusLogUnsafeFlushEnable())
+                                      .setSegmentCacheSizeMax(
+                                          SizeInBytes.valueOf(
+                                              conf.getRatisConsensusLogSegmentSizeMax()))
+                                      .build())
+                              .setGrpc(
+                                  RatisConfig.Grpc.newBuilder()
+                                      .setFlowControlWindow(
+                                          SizeInBytes.valueOf(
+                                              conf.getRatisConsensusGrpcFlowControlWindow()))
+                                      .build())
+                              .setRpc(
+                                  RatisConfig.Rpc.newBuilder()
+                                      .setTimeoutMin(
+                                          TimeDuration.valueOf(
+                                              conf.getRatisConsensusLeaderElectionTimeoutMinMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setTimeoutMax(
+                                          TimeDuration.valueOf(
+                                              conf.getRatisConsensusLeaderElectionTimeoutMaxMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .build())
                               .setLeaderLogAppender(
                                   RatisConfig.LeaderLogAppender.newBuilder()
                                       .setBufferByteLimit(

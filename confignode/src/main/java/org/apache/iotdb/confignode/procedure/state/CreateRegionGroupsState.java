@@ -19,9 +19,13 @@
 package org.apache.iotdb.confignode.procedure.state;
 
 public enum CreateRegionGroupsState {
-  CREATE_REGION_GROUPS_PREPARE,
+  // Create RegionGroups on remote DataNodes
   CREATE_REGION_GROUPS,
-  PERSIST_AND_BROADCAST,
-  DELETE_FAILED_REGION_GROUPS,
+  // Shunt the RegionReplicas, including:
+  // 1. Persist successfully created RegionGroups' record
+  // 2. Recreate RegionReplicas that failed to create, when there are more than half of
+  // RegionReplicas created successfully on the same RegionGroup
+  // 3. Delete redundant RegionReplicas in contrast to case 2.
+  SHUNT_REGION_REPLICAS,
   CREATE_REGION_GROUPS_FINISH
 }

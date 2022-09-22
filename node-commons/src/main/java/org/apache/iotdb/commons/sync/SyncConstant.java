@@ -39,7 +39,6 @@ public class SyncConstant {
   // persistence
 
   public static final String SYNC_LOG_NAME = "syncService.log";
-  public static final String SYNC_MSG_LOG_NAME = "syncMessage.log";
 
   /** sender */
 
