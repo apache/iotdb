@@ -357,8 +357,17 @@ public class MultiLeaderServerImpl {
                 String.format("build sync log channel failed from %s to %s", peer, targetPeer));
           }
         } catch (IOException | TException e) {
-          throw new ConsensusGroupAddPeerException(
-              String.format("error when build sync log to %s", peer), e);
+          // We use a simple way to deal with the connection issue when notifying other nodes to
+          // build sync log. If the un-responsible peer is the peer which will be removed, we cannot
+          // suspend the operation and need to skip it. In order to keep the mechanism works fine,
+          // we will skip the peer which cannot be reached.
+          // If following error message appears, the un-responsible peer should be removed manually
+          // after current operation
+          // TODO: (xingtanzjr) design more reliable way for MultiLeaderConsensus
+          logger.error(
+              "cannot notify {} to build sync log channel. Please check the status of this node manually",
+              peer,
+              e);
         }
       }
     }
