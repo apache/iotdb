@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
@@ -559,6 +560,17 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     TShowPipeResp showPipeResp =
         LocalConfigNode.getInstance().showPipe(showPipeStatement.getPipeName());
     ShowPipeTask.buildTSBlock(showPipeResp.getPipeInfoList(), future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> deleteTimeSeries(
+      String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing delete timeseries is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     return future;
   }
 }

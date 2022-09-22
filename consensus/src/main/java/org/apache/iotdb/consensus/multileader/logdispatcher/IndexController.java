@@ -38,8 +38,6 @@ public class IndexController {
 
   private final Logger logger = LoggerFactory.getLogger(IndexController.class);
 
-  public static final int FLUSH_INTERVAL = 500;
-
   private long lastFlushedIndex;
   private long currentIndex;
 
@@ -48,9 +46,12 @@ public class IndexController {
   private final String storageDir;
   private final String prefix;
 
-  public IndexController(String storageDir, String prefix) {
+  private final long checkpointGap;
+
+  public IndexController(String storageDir, String prefix, long checkpointGap) {
     this.storageDir = storageDir;
     this.prefix = prefix + '-';
+    this.checkpointGap = checkpointGap;
     restore();
   }
 
@@ -87,13 +88,13 @@ public class IndexController {
   }
 
   private void checkPersist() {
-    if (currentIndex - lastFlushedIndex >= FLUSH_INTERVAL) {
+    if (currentIndex - lastFlushedIndex >= checkpointGap) {
       persist();
     }
   }
 
   private void persist() {
-    long flushIndex = currentIndex - currentIndex % FLUSH_INTERVAL;
+    long flushIndex = currentIndex - currentIndex % checkpointGap;
     File oldFile = new File(storageDir, prefix + lastFlushedIndex);
     File newFile = new File(storageDir, prefix + flushIndex);
     try {

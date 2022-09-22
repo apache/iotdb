@@ -61,6 +61,11 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   @Override
+  public boolean isEnablePartition() {
+    return IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+  }
+
+  @Override
   public BaseConfig setPartitionInterval(long partitionInterval) {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(partitionInterval);
     return this;

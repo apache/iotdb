@@ -52,6 +52,7 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_NODETYPES = "node types";
   public static final String COLUMN_CHILDNODES = "child nodes";
   public static final String COLUMN_VERSION = "version";
+  public static final String COLUMN_BUILD_INFO = "build info";
   public static final String COLUMN_PATHS = "paths";
 
   // column names for count statement
@@ -163,7 +164,9 @@ public class ColumnHeaderConstant {
       ImmutableList.of(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showVersionColumnHeaders =
-      ImmutableList.of(new ColumnHeader(COLUMN_VERSION, TSDataType.TEXT));
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_VERSION, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_BUILD_INFO, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showPathsUsingTemplateHeaders =
       ImmutableList.of(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT));

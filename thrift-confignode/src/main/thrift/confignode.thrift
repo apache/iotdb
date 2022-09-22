@@ -49,6 +49,12 @@ struct TGlobalConfig {
 
 struct TRatisConfig {
   1: optional i64 appenderBufferSize
+  2: optional i64 snapshotTriggerThreshold
+  3: optional bool logUnsafeFlushEnable
+  4: optional i64 logSegmentSizeMax
+  5: optional i64 grpcFlowControlWindow
+  6: optional i64 leaderElectionTimeoutMin
+  7: optional i64 leaderElectionTimeoutMax
 }
 
 struct TDataNodeRemoveReq {
@@ -390,6 +396,11 @@ struct TShowPipeResp {
   2: optional list<TPipeInfo> pipeInfoList
 }
 
+struct TDeleteTimeSeriesReq{
+  1: required string queryId
+  2: required binary pathPatternTree
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -715,5 +726,14 @@ service IConfigNodeRPCService {
 
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+
+  /**
+   * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
+   *
+   * @return SUCCESS_STATUS if the DeleteTimeSeriesProcedure submitted and executed successfully
+   *         TIMESERIES_NOT_EXIST if the specific TimeSeries doesn't exist
+   *         EXECUTE_STATEMENT_ERROR if failed to submit or execute the DeleteTimeSeriesProcedure
+   */
+  common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 }
 

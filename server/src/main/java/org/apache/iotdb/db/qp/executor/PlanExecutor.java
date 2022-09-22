@@ -227,10 +227,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_ATTRIB
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_NAME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_TYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_CREATE_TIME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_ERRORS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_MSG;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_NAME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_PERF_INFO;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_REMOTE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_ROLE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_STATUS;
@@ -1022,11 +1020,16 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowVersion() {
     SingleDataSet singleDataSet =
         new SingleDataSet(
-            Collections.singletonList(new PartialPath(IoTDBConstant.COLUMN_VERSION, false)),
-            Collections.singletonList(TSDataType.TEXT));
+            Arrays.asList(
+                new PartialPath(IoTDBConstant.COLUMN_VERSION, false),
+                new PartialPath(IoTDBConstant.COLUMN_BUILD_INFO, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
     Field field = new Field(TSDataType.TEXT);
     field.setBinaryV(new Binary(IoTDBConstant.VERSION));
     RowRecord rowRecord = new RowRecord(0);
+    rowRecord.addField(field);
+    field = new Field(TSDataType.TEXT);
+    field.setBinaryV(new Binary(IoTDBConstant.BUILD_INFO));
     rowRecord.addField(field);
     singleDataSet.setRecord(rowRecord);
     return singleDataSet;
@@ -1298,12 +1301,8 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_PIPE_ROLE, false),
                 new PartialPath(COLUMN_PIPE_REMOTE, false),
                 new PartialPath(COLUMN_PIPE_STATUS, false),
-                new PartialPath(COLUMN_PIPE_MSG, false),
-                new PartialPath(COLUMN_PIPE_ERRORS, false),
-                new PartialPath(COLUMN_PIPE_PERF_INFO, false)),
+                new PartialPath(COLUMN_PIPE_MSG, false)),
             Arrays.asList(
-                TSDataType.TEXT,
-                TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
