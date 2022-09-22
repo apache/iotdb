@@ -42,7 +42,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSessionIteratorIT {
 
   @Before
@@ -106,6 +105,7 @@ public class IoTDBSessionIteratorIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void getValueByColumnIndexTest() {
     String[] retArray =
         new String[] {
@@ -156,6 +156,7 @@ public class IoTDBSessionIteratorIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void getValueByColumnNameTest() {
     String[] retArray =
         new String[] {
@@ -205,6 +206,7 @@ public class IoTDBSessionIteratorIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void getObjectByColumnNameTest() {
     String[] retArray =
         new String[] {
@@ -261,6 +263,7 @@ public class IoTDBSessionIteratorIT {
   }
 
   @Test
+  @Category({ClusterIT.class})
   public void lastQueryTest() {
     String[] retArray =
         new String[] {
@@ -301,6 +304,7 @@ public class IoTDBSessionIteratorIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void showDevicesTest() {
     String[] retArray = new String[] {"root.sg1.d1,false", "root.sg1.d2,false"};
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -325,6 +329,7 @@ public class IoTDBSessionIteratorIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void queryWithTimeoutTest() {
     String[] retArray = new String[] {"9,root.sg1.d1.s1,false,BOOLEAN"};
 
