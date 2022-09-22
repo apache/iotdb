@@ -57,6 +57,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -76,7 +77,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTriggersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -905,12 +905,12 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TShowTriggersResp showTriggers() throws TException {
+  public TGetTriggerTableResp getTriggerTable() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TShowTriggersResp showTriggersResp = client.showTriggers();
-        if (!updateConfigNodeLeader(showTriggersResp.getStatus())) {
-          return showTriggersResp;
+        TGetTriggerTableResp resp = client.getTriggerTable();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
         }
       } catch (TException e) {
         configLeader = null;

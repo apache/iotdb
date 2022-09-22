@@ -83,6 +83,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -102,7 +103,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTriggersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -485,9 +485,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public TShowTriggersResp showTriggers() throws TException {
+  public TGetTriggerTableResp getTriggerTable() throws TException {
     // todo: implementation
-    return new TShowTriggersResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), null);
+    return new TGetTriggerTableResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), null);
   }
 
   @Override
