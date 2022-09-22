@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
@@ -47,6 +48,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -60,6 +64,8 @@ import java.util.Map;
 import java.util.Objects;
 
 public class InsertTabletNode extends InsertNode implements WALEntryValue {
+
+  private static final Logger logger = LoggerFactory.getLogger(InsertTabletNode.class);
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
@@ -177,6 +183,22 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     // validate whether data types are matched
     return selfCheckDataTypes();
+  }
+
+  @Override
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
+      logger.warn(
+          "Inserting to {}.{} : Cast from {} to {}",
+          devicePath,
+          measurements[columnIndex],
+          dataTypes[columnIndex],
+          dataType);
+      columns[columnIndex] =
+          CommonUtils.castArray(dataTypes[columnIndex], dataType, columns[columnIndex]);
+      dataTypes[columnIndex] = dataType;
+    }
+    return false;
   }
 
   @Override

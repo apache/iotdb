@@ -246,6 +246,9 @@ public abstract class InsertNode extends WritePlanNode {
   protected boolean selfCheckDataTypes() {
     for (int i = 0; i < measurementSchemas.length; i++) {
       if (dataTypes[i] != measurementSchemas[i].getType()) {
+        if (checkAndCastDataType(i, measurementSchemas[i].getType())) {
+          continue;
+        }
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           return false;
         } else {
@@ -263,6 +266,8 @@ public abstract class InsertNode extends WritePlanNode {
     }
     return true;
   }
+
+  protected abstract boolean checkAndCastDataType(int columnIndex, TSDataType dataType);
 
   public abstract long getMinTime();
 
