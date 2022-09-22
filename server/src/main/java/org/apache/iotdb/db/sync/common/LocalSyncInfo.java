@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.metadata.SyncMetadata;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
-import org.apache.iotdb.commons.sync.pipe.PipeOperation;
+import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
@@ -128,10 +128,10 @@ public class LocalSyncInfo {
     syncLogWriter.addPipe(createPipeStatement, createTime);
   }
 
-  public void operatePipe(String pipeName, PipeOperation pipeOperation)
+  public void operatePipe(String pipeName, SyncOperation syncOperation)
       throws PipeException, IOException {
-    syncMetadata.operatePipe(pipeName, pipeOperation);
-    syncLogWriter.operatePipe(pipeName, pipeOperation);
+    syncMetadata.operatePipe(pipeName, syncOperation);
+    syncLogWriter.operatePipe(pipeName, syncOperation);
   }
 
   public PipeInfo getPipeInfo(String pipeName, long createTime) {

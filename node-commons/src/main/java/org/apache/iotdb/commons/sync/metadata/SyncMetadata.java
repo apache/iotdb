@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
-import org.apache.iotdb.commons.sync.pipe.PipeOperation;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 
 import java.util.ArrayList;
@@ -146,20 +146,20 @@ public class SyncMetadata {
         .computeIfAbsent(runningPipe.getCreateTime(), i -> runningPipe);
   }
 
-  public void operatePipe(String pipeName, PipeOperation pipeOperation) throws PipeException {
+  public void operatePipe(String pipeName, SyncOperation syncOperation) throws PipeException {
     checkIfPipeExistAndRunning(pipeName);
-    switch (pipeOperation) {
-      case START:
+    switch (syncOperation) {
+      case START_PIPE:
         runningPipe.start();
         break;
-      case STOP:
+      case STOP_PIPE:
         runningPipe.stop();
         break;
-      case DROP:
+      case DROP_PIPE:
         runningPipe.drop();
         break;
       default:
-        throw new PipeException("Unknown operatorType " + pipeOperation);
+        throw new PipeException("Unknown operatorType " + syncOperation);
     }
   }
 

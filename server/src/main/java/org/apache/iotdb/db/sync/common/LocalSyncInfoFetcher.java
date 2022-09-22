@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
-import org.apache.iotdb.commons.sync.pipe.PipeOperation;
+import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
@@ -118,7 +118,7 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   @Override
   public TSStatus stopPipe(String pipeName) {
     try {
-      localSyncInfo.operatePipe(pipeName, PipeOperation.STOP);
+      localSyncInfo.operatePipe(pipeName, SyncOperation.STOP_PIPE);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (PipeException e) {
       return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
@@ -130,7 +130,7 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   @Override
   public TSStatus startPipe(String pipeName) {
     try {
-      localSyncInfo.operatePipe(pipeName, PipeOperation.START);
+      localSyncInfo.operatePipe(pipeName, SyncOperation.START_PIPE);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (PipeException e) {
       return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
@@ -142,7 +142,7 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   @Override
   public TSStatus dropPipe(String pipeName) {
     try {
-      localSyncInfo.operatePipe(pipeName, PipeOperation.DROP);
+      localSyncInfo.operatePipe(pipeName, SyncOperation.DROP_PIPE);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (PipeException e) {
       return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());

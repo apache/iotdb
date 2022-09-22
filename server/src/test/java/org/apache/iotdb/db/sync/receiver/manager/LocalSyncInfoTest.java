@@ -21,7 +21,7 @@ package org.apache.iotdb.db.sync.receiver.manager;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
-import org.apache.iotdb.commons.sync.pipe.PipeOperation;
+import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
@@ -72,10 +72,10 @@ public class LocalSyncInfoTest {
       } catch (PipeException e) {
         // throw exception because only one pipe is allowed now
       }
-      localSyncInfo.operatePipe(pipe1, PipeOperation.DROP);
+      localSyncInfo.operatePipe(pipe1, SyncOperation.DROP_PIPE);
       localSyncInfo.addPipe(new CreatePipePlan(pipe2, "demo"), createdTime2);
-      localSyncInfo.operatePipe(pipe2, PipeOperation.STOP);
-      localSyncInfo.operatePipe(pipe2, PipeOperation.START);
+      localSyncInfo.operatePipe(pipe2, SyncOperation.STOP_PIPE);
+      localSyncInfo.operatePipe(pipe2, SyncOperation.START_PIPE);
       Assert.assertEquals(1, localSyncInfo.getAllPipeSink().size());
       Assert.assertEquals(2, localSyncInfo.getAllPipeInfos().size());
       localSyncInfo.changePipeMessage(pipe2, createdTime2, PipeMessage.PipeMessageType.WARN);

@@ -20,8 +20,8 @@ package org.apache.iotdb.db.sync.receiver.recovery;
 
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
-import org.apache.iotdb.commons.sync.pipe.PipeOperation;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
@@ -68,11 +68,11 @@ public class SyncLogTest {
       createPipeSinkPlan.addPipeSinkAttribute("port", "6670");
       log.addPipeSink(createPipeSinkPlan);
       log.addPipe(new CreatePipePlan(pipe1, "demo"), createdTime1);
-      log.operatePipe(pipe1, PipeOperation.DROP);
+      log.operatePipe(pipe1, SyncOperation.DROP_PIPE);
 
       log.addPipe(new CreatePipePlan(pipe2, "demo"), createdTime2);
-      log.operatePipe(pipe1, PipeOperation.STOP);
-      log.operatePipe(pipe1, PipeOperation.START);
+      log.operatePipe(pipe1, SyncOperation.STOP_PIPE);
+      log.operatePipe(pipe1, SyncOperation.START_PIPE);
       log.close();
       SyncLogReader syncLogReader = new SyncLogReader();
 

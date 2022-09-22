@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.commons.sync.pipe;
 
-public enum PipeOperation {
-  START,
-  STOP,
-  DROP
+public enum SyncOperation {
+  START_PIPE,
+  STOP_PIPE,
+  DROP_PIPE
 }
