@@ -76,7 +76,8 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
             new IoTDBException(message, TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode()));
         return;
       }
-      BatchIndexedConsensusRequest requestsInThisBatch = new BatchIndexedConsensusRequest();
+      BatchIndexedConsensusRequest requestsInThisBatch =
+          new BatchIndexedConsensusRequest(req.peerId);
       // We use synchronized to ensure atomicity of executing multiple logs
       if (!req.getBatches().isEmpty()) {
         List<IConsensusRequest> consensusRequests = new ArrayList<>();

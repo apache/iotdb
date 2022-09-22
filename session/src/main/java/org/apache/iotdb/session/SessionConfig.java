@@ -20,7 +20,7 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.session.util.Version;
 
-public class Config {
+public class SessionConfig {
 
   public static final String DEFAULT_HOST = "localhost";
   public static final int DEFAULT_PORT = 6667;

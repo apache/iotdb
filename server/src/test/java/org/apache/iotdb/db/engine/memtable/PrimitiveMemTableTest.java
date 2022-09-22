@@ -76,7 +76,7 @@ public class PrimitiveMemTableTest {
         new WritableMemChunk(new MeasurementSchema("s1", dataType, TSEncoding.PLAIN));
     int count = 1000;
     for (int i = 0; i < count; i++) {
-      series.write(i, i);
+      series.writeWithFlushCheck(i, i);
     }
     IPointReader it =
         series.getSortedTvListForQuery().buildTsBlock().getTsBlockSingleColumnIterator();
@@ -95,11 +95,11 @@ public class PrimitiveMemTableTest {
         new WritableMemChunk(new MeasurementSchema("s1", dataType, TSEncoding.PLAIN));
     int count = 100;
     for (int i = 0; i < count; i++) {
-      series.write(i, i);
+      series.writeWithFlushCheck(i, i);
     }
-    series.write(0, 21);
-    series.write(99, 20);
-    series.write(20, 21);
+    series.writeWithFlushCheck(0, 21);
+    series.writeWithFlushCheck(99, 20);
+    series.writeWithFlushCheck(20, 21);
     String str = series.toString();
     Assert.assertFalse(series.getTVList().isSorted());
     Assert.assertEquals(

@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -505,10 +506,15 @@ public class TsFileResource {
     modFile = null;
   }
 
-  /** Remove the data file, its resource file, and its modification file physically. */
+  /**
+   * Remove the data file, its resource file, its chunk metadata temp file, and its modification
+   * file physically.
+   */
   public boolean remove() {
     try {
       fsFactory.deleteIfExists(file);
+      fsFactory.deleteIfExists(
+          new File(file.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX));
     } catch (IOException e) {
       LOGGER.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
       return false;
@@ -945,6 +951,18 @@ public class TsFileResource {
       return cmpVersion;
     } else {
       return cmp;
+    }
+  }
+
+  public static int compareFileNameByDesc(TsFileResource o1, TsFileResource o2) {
+    try {
+      TsFileNameGenerator.TsFileName n1 =
+          TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
+      TsFileNameGenerator.TsFileName n2 =
+          TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
+      return (int) (n2.getVersion() - n1.getVersion());
+    } catch (IOException e) {
+      return 0;
     }
   }
 

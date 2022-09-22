@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.confignode.AsyncConfigNodeHeartbeatClientPool;
@@ -36,6 +38,7 @@ import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
+import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
@@ -46,10 +49,12 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConf
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.ConsensusManager;
+import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.ConfigNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.metric.NodeInfoMetrics;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
@@ -119,15 +124,19 @@ public class NodeManager {
 
   private void setGlobalConfig(DataNodeRegisterResp dataSet) {
     // Set TGlobalConfig
-    final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    final ConfigNodeConfig configNodeConfig = ConfigNodeDescriptor.getInstance().getConf();
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
     TGlobalConfig globalConfig = new TGlobalConfig();
-    globalConfig.setDataRegionConsensusProtocolClass(conf.getDataRegionConsensusProtocolClass());
+    globalConfig.setDataRegionConsensusProtocolClass(
+        configNodeConfig.getDataRegionConsensusProtocolClass());
     globalConfig.setSchemaRegionConsensusProtocolClass(
-        conf.getSchemaRegionConsensusProtocolClass());
-    globalConfig.setSeriesPartitionSlotNum(conf.getSeriesPartitionSlotNum());
-    globalConfig.setSeriesPartitionExecutorClass(conf.getSeriesPartitionExecutorClass());
-    globalConfig.setTimePartitionInterval(conf.getTimePartitionInterval());
-    globalConfig.setReadConsistencyLevel(conf.getReadConsistencyLevel());
+        configNodeConfig.getSchemaRegionConsensusProtocolClass());
+    globalConfig.setSeriesPartitionSlotNum(configNodeConfig.getSeriesPartitionSlotNum());
+    globalConfig.setSeriesPartitionExecutorClass(
+        configNodeConfig.getSeriesPartitionExecutorClass());
+    globalConfig.setTimePartitionInterval(configNodeConfig.getTimePartitionInterval());
+    globalConfig.setReadConsistencyLevel(configNodeConfig.getReadConsistencyLevel());
+    globalConfig.setDiskSpaceWarningThreshold(commonConfig.getDiskSpaceWarningThreshold());
     dataSet.setGlobalConfig(globalConfig);
   }
 
@@ -135,6 +144,12 @@ public class NodeManager {
     final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TRatisConfig ratisConfig = new TRatisConfig();
     ratisConfig.setAppenderBufferSize(conf.getRatisConsensusLogAppenderBufferSize());
+    ratisConfig.setSnapshotTriggerThreshold(conf.getRatisSnapshotTriggerThreshold());
+    ratisConfig.setLogUnsafeFlushEnable(conf.isRatisLogUnsafeFlushEnable());
+    ratisConfig.setLogSegmentSizeMax(conf.getRatisLogSegmentSizeMax());
+    ratisConfig.setGrpcFlowControlWindow(conf.getRatisGrpcFlowControlWindow());
+    ratisConfig.setLeaderElectionTimeoutMin(conf.getRatisRpcLeaderElectionTimeoutMinMs());
+    ratisConfig.setLeaderElectionTimeoutMax(conf.getRatisRpcLeaderElectionTimeoutMaxMs());
     dataSet.setRatisConfig(ratisConfig);
   }
 
@@ -270,7 +285,7 @@ public class NodeManager {
             TDataNodeInfo info = new TDataNodeInfo();
             int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
             info.setDataNodeId(dataNodeId);
-            info.setStatus(getNodeStatus(dataNodeId));
+            info.setStatus(getNodeStatusWithReason(dataNodeId));
             info.setRpcAddresss(dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
             info.setRpcPort(dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
             info.setDataRegionNum(0);
@@ -327,7 +342,7 @@ public class NodeManager {
             TConfigNodeInfo info = new TConfigNodeInfo();
             int configNodeId = configNodeLocation.getConfigNodeId();
             info.setConfigNodeId(configNodeId);
-            info.setStatus(getNodeStatus(configNodeId));
+            info.setStatus(getNodeStatusWithReason(configNodeId));
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
             info.setRoleType(
@@ -606,16 +621,16 @@ public class NodeManager {
   }
 
   /**
-   * Safely get the specific Node's current status
+   * Safely get the specific Node's current status for showing cluster
    *
    * @param nodeId The specific Node's index
    * @return The specific Node's current status if the nodeCache contains it, Unknown otherwise
    */
-  private String getNodeStatus(int nodeId) {
+  private String getNodeStatusWithReason(int nodeId) {
     BaseNodeCache nodeCache = nodeCacheMap.get(nodeId);
     return nodeCache == null
-        ? NodeStatus.Unknown.getStatus()
-        : nodeCache.getNodeStatus().getStatus();
+        ? NodeStatus.Unknown.getStatus() + "(NoHeartbeat)"
+        : nodeCache.getNodeStatusWithReason();
   }
 
   /**
@@ -694,17 +709,23 @@ public class NodeManager {
     DataNodeHeartbeatCache cache =
         (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeId);
     if (cache != null) {
-      return cache.isRemoving();
+      return NodeStatus.Removing.equals(cache.getNodeStatus());
     }
     return false;
   }
 
-  public void setNodeRemovingStatus(int dataNodeId, boolean isRemoving) {
+  public void setNodeRemovingStatus(TDataNodeLocation dataNodeLocation) {
     DataNodeHeartbeatCache cache =
-        (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeId);
+        (DataNodeHeartbeatCache)
+            configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
     if (cache != null) {
-      cache.setRemoving(isRemoving);
+      cache.setRemoving();
     }
+    SyncDataNodeClientPool.getInstance()
+        .sendSyncRequestToDataNodeWithRetry(
+            dataNodeLocation.getInternalEndPoint(),
+            NodeStatus.Removing.getStatus(),
+            DataNodeRequestType.SET_SYSTEM_STATUS);
   }
 
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {
