@@ -35,9 +35,11 @@ import javafx.collections.ObservableList;
 import javafx.scene.Scene;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.cell.MapValueFactory;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 import static org.apache.iotdb.tool.ui.common.constant.StageConstant.ALIGNED_PAGE_INFO_PAGE_HEIGHT;
@@ -60,6 +62,8 @@ public class AlignedPageInfoPage {
   private Stage stage;
 
   private AnchorPane pageDataPane;
+
+  TextArea textPopArea;
 
   private TreeItem<IoTDBParsePageV3.ChunkTreeItemValue> pageItem;
 
@@ -105,6 +109,7 @@ public class AlignedPageInfoPage {
     IoTDBParsePageV3.AlignedPageItemParams pageItemParams =
         (IoTDBParsePageV3.AlignedPageItemParams) pageItem.getValue().getParams();
     IPageInfo pageInfo = pageItemParams.getPageInfoList();
+    HashMap<String, String> measurementIdValueMap = new HashMap<>();
     try {
       BatchData batchData =
           ioTDBParsePage.getTsFileAnalyserV13().fetchBatchDataByPageInfo(pageInfo);
@@ -112,6 +117,7 @@ public class AlignedPageInfoPage {
       TableColumn<HashMap<String, SimpleStringProperty>, String> timestampCol =
           new TableColumn<HashMap<String, SimpleStringProperty>, String>(TIMESTAMP_COLUMN);
       alignedTableView.getColumns().add(timestampCol);
+      measurementIdValueMap.put(TIMESTAMP_COLUMN, TIMESTAMP_COLUMN);
       timestampCol.setCellValueFactory(new MapValueFactory(TIMESTAMP_COLUMN));
       // 2. Add Value Columns and it's Data
       int idx = 0;
@@ -132,6 +138,7 @@ public class AlignedPageInfoPage {
             TableColumn<HashMap<String, SimpleStringProperty>, String> valueCol =
                 new TableColumn<HashMap<String, SimpleStringProperty>, String>(measurementId);
             valueCol.setCellValueFactory(new MapValueFactory(VALUE_COLUMN + i));
+            measurementIdValueMap.put(VALUE_COLUMN + i, measurementId);
             alignedTableView.getColumns().add(valueCol);
           }
           if (values[i] == null || values[i].length() == 0) {
@@ -161,6 +168,40 @@ public class AlignedPageInfoPage {
     alignedTableView.setLayoutY(0);
     alignedTableView.setPrefWidth(ALIGNED_PAGE_INFO_PAGE_WIDTH);
     alignedTableView.setPrefHeight(ALIGNED_PAGE_INFO_PAGE_HEIGHT);
+
+    textPopArea = new TextArea();
+    textPopArea.setLayoutX(50);
+    textPopArea.setPrefWidth(700);
+    textPopArea.setPrefHeight(200);
+    textPopArea.setEditable(false);
+    textPopArea.setFont(new Font(15));
+    alignedTableView.setOnMouseClicked(
+        event -> {
+          textPopArea.setLayoutY(event.getY());
+        });
+    textPopArea.setOnMouseExited(
+        (event -> {
+          textPopArea.setVisible(false);
+        }));
+    textPopArea.setVisible(false);
+    pageDataPane.getChildren().addAll(textPopArea);
+    alignedTableView
+        .getSelectionModel()
+        .selectedItemProperty()
+        .addListener(
+            (observable, oldValue, newValue) -> {
+              StringBuilder builder = new StringBuilder();
+              for (String key : measurementIdValueMap.keySet()) {
+                String measurementId = measurementIdValueMap.get(key);
+                builder
+                    .append("\n  ")
+                    .append(measurementId.toUpperCase())
+                    .append("    :")
+                    .append(newValue.get(key).getValue());
+              }
+              textPopArea.setText(builder.toString());
+              textPopArea.setVisible(true);
+            });
 
     stage.show();
     URL uiDarkCssResource = getClass().getClassLoader().getResource("css/ui-dark.css");

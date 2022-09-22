@@ -72,16 +72,18 @@ public class BaseTableView {
         .selectedItemProperty()
         .addListener(
             (observable, oldValue, newValue) -> {
-              IoTDBParsePageV3.TimesValues cur = (IoTDBParsePageV3.TimesValues) newValue;
-              StringBuilder builder = new StringBuilder();
-              builder
-                  .append("\n  TIMESTAMP:    ")
-                  .append(cur.getTimestamp())
-                  .append(",\n")
-                  .append("  VALUE:    ")
-                  .append(cur.getValue());
-              textPopArea.setText(builder.toString());
-              textPopArea.setVisible(true);
+              if (newValue instanceof IoTDBParsePageV3.TimesValues) {
+                IoTDBParsePageV3.TimesValues cur = (IoTDBParsePageV3.TimesValues) newValue;
+                StringBuilder builder = new StringBuilder();
+                builder
+                    .append("\n  TIMESTAMP:    ")
+                    .append(cur.getTimestamp())
+                    .append(",\n")
+                    .append("  VALUE:    ")
+                    .append(cur.getValue());
+                textPopArea.setText(builder.toString());
+                textPopArea.setVisible(true);
+              }
             });
 
     //    tableView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue,
