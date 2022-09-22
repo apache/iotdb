@@ -784,7 +784,7 @@ public class SessionConnection {
   private boolean reconnect() {
     boolean connectedSuccess = false;
     Random random = new Random();
-    for (int i = 1; i <= Config.RETRY_NUM; i++) {
+    for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
         int currHostIndex = random.nextInt(endPointList.size());

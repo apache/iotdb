@@ -155,7 +155,7 @@ public class ConfigNodeProcedureEnv {
                   DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
       if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
         LOG.error(
-            "Invalidate cache failed, invalidate partition cache status is {}， invalidate schema cache status is {}",
+            "Invalidate cache failed, invalidate partition cache status is {}, invalidate schema cache status is {}",
             invalidatePartitionStatus,
             invalidateSchemaStatus);
         return false;
