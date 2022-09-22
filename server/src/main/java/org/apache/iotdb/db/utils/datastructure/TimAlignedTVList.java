@@ -20,9 +20,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BitMap;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
@@ -37,36 +35,6 @@ public class TimAlignedTVList extends AlignedTVList implements TimSort {
 
   TimAlignedTVList(List<TSDataType> types) {
     super(types);
-  }
-
-  @Override
-  public TVList getTvListByColumnIndex(List<Integer> columnIndex, List<TSDataType> dataTypeList) {
-    List<List<Object>> values = new ArrayList<>();
-    List<List<BitMap>> bitMaps = null;
-    for (int i = 0; i < columnIndex.size(); i++) {
-      // columnIndex == -1 means querying a non-exist column, add null column here
-      if (columnIndex.get(i) == -1) {
-        values.add(null);
-      } else {
-        values.add(this.values.get(columnIndex.get(i)));
-        if (this.bitMaps != null && this.bitMaps.get(columnIndex.get(i)) != null) {
-          if (bitMaps == null) {
-            bitMaps = new ArrayList<>(columnIndex.size());
-            for (int j = 0; j < columnIndex.size(); j++) {
-              bitMaps.add(null);
-            }
-          }
-          bitMaps.set(i, this.bitMaps.get(columnIndex.get(i)));
-        }
-      }
-    }
-    TimAlignedTVList alignedTvList = new TimAlignedTVList(dataTypeList);
-    alignedTvList.timestamps = this.timestamps;
-    alignedTvList.indices = this.indices;
-    alignedTvList.values = values;
-    alignedTvList.bitMaps = bitMaps;
-    alignedTvList.rowCount = this.rowCount;
-    return alignedTvList;
   }
 
   @Override

@@ -51,6 +51,8 @@ public abstract class FloatTVList extends TVList {
   public static FloatTVList newList() {
     if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
       return new QuickFloatTVList();
+    } else if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.BACKWARD) {
+      return new BackFloatTVList();
     }
     return new TimFloatTVList();
   }

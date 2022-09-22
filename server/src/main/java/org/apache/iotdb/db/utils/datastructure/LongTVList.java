@@ -50,6 +50,8 @@ public abstract class LongTVList extends TVList {
   public static LongTVList newList() {
     if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
       return new QuickLongTVList();
+    } else if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.BACKWARD) {
+      return new BackLongTVList();
     }
     return new TimLongTVList();
   }

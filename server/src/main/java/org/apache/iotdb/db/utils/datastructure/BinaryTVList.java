@@ -52,6 +52,8 @@ public abstract class BinaryTVList extends TVList {
   public static BinaryTVList newList() {
     if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
       return new QuickBinaryTVList();
+    } else if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.BACKWARD) {
+      return new BackBinaryTVList();
     }
     return new TimBinaryTVList();
   }
