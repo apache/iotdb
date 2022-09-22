@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
 import org.slf4j.Logger;
@@ -154,32 +153,5 @@ public class FileUtils {
     } else {
       org.apache.commons.io.FileUtils.delete(file);
     }
-  }
-
-  /**
-   * Generate MD5 string from input
-   */
-  public static String getMD5(byte[] input) {
-    if (input == null) {
-      return null;
-    }
-
-    try {
-      MessageDigest md = MessageDigest.getInstance("MD5");
-      md.update(input);
-      StringBuilder stringBuilder = new StringBuilder();
-      for (byte b : md.digest()) {
-        String str = Integer.toHexString(b & 0xFF);
-        if (str.length() == 1) {
-          stringBuilder.append("0");
-        }
-        stringBuilder.append(str);
-      }
-      return stringBuilder.toString();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-
-    return null;
   }
 }

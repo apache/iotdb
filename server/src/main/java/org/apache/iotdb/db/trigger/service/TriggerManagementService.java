@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
@@ -75,11 +76,15 @@ public class TriggerManagementService implements IService {
     checkIfRegistered(triggerInformation);
     doRegister(triggerInformation);
     releaseRegistrationLock();
-  };
+  }
 
   public void activeTrigger(String triggerName) {
-    triggerTable.activeTrigger(triggerName);
-  };
+    triggerTable.setTriggerState(triggerName, TTriggerState.ACTIVE);
+  }
+
+  public void inactiveTrigger(String triggerName) {
+    triggerTable.setTriggerState(triggerName, TTriggerState.INACTIVE);
+  }
 
   private void checkIfRegistered(TriggerInformation triggerInformation)
       throws TriggerManagementException {

@@ -57,6 +57,9 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPl
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -212,6 +215,15 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case DropFunction:
           req = new DropFunctionPlan();
+          break;
+        case AddTriggerInTable:
+          req = new AddTriggerInTablePlan();
+          break;
+        case DeleteTriggerInTable:
+          req = new DeleteTriggerInTablePlan();
+          break;
+        case UpdateTriggerStateInTable:
+          req = new UpdateTriggerStateInTablePlan();
           break;
         case CreateSchemaTemplate:
           req = new CreateSchemaTemplatePlan();

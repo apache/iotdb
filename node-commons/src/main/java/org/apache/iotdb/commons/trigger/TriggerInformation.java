@@ -148,6 +148,18 @@ public class TriggerInformation {
     this.jarName = jarName;
   }
 
+  public String getJarMD5() {
+    return jarMD5;
+  }
+
+  public void setJarMD5(String jarMD5) {
+    this.jarMD5 = jarMD5;
+  }
+
+  public void setAttributes(Map<String, String> attributes) {
+    this.attributes = attributes;
+  }
+
   public TTriggerState getTriggerState() {
     return triggerState;
   }

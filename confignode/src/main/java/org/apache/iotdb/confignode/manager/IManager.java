@@ -41,8 +41,10 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimeP
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -114,6 +116,13 @@ public interface IManager {
    * @return UDFManager instance
    */
   UDFManager getUDFManager();
+
+  /**
+   * Get TriggerManager
+   *
+   * @return TriggerManager instance
+   */
+  TriggerManager getTriggerManager();
 
   /**
    * Get ProcedureManager
@@ -271,6 +280,12 @@ public interface IManager {
   TSStatus createFunction(String udfName, String className, List<String> uris);
 
   TSStatus dropFunction(String udfName);
+
+  /** Create trigger */
+  TSStatus createTrigger(TCreateTriggerReq req);
+
+  /** Drop trigger */
+  TSStatus dropTrigger(TDropTriggerReq req);
 
   /** Merge on all DataNodes */
   TSStatus merge();
