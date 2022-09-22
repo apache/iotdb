@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat;
+package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.manager.NodeManager;
 
 public class ConfigNodeHeartbeatCache extends BaseNodeCache {
 
@@ -75,11 +74,5 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
   public long getLoadScore() {
     // The ConfigNode whose status isn't Running will get the highest loadScore
     return status == NodeStatus.Running ? 0 : Long.MAX_VALUE;
-  }
-
-  @Override
-  public NodeStatus getNodeStatus() {
-    // Return a copy of status
-    return NodeStatus.parse(status.getStatus());
   }
 }

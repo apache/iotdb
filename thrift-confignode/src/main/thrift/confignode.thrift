@@ -45,6 +45,7 @@ struct TGlobalConfig {
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
+  7: required double diskSpaceWarningThreshold
 }
 
 struct TRatisConfig {
@@ -224,6 +225,7 @@ struct TConfigNodeRegisterReq {
   10: required i32 dataReplicationFactor
   11: required double dataRegionPerProcessor
   12: required string readConsistencyLevel
+  13: required double diskSpaceWarningThreshold
 }
 
 struct TAddConsensusGroupReq {
