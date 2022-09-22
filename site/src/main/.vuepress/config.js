@@ -901,9 +901,9 @@ var config = {
 						title: 'Write Data',
 						sidebarDepth: 1,
 						children: [
-							['Write-And-Delete-Data/Write-Data','Write Data'],
-							['Write-And-Delete-Data/Load-External-Tsfile','Load External Tsfile'],
-							['Write-And-Delete-Data/CSV-Tool','CSV Tool'],
+							['Write-Data/Write-Data','Write Data'],
+							['Write-Data/Load-External-Tsfile','Load External Tsfile'],
+							['Write-Data/CSV-Tool','CSV Tool'],
 						]
 					},
 					{
@@ -1844,7 +1844,7 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Delete-Data/Delete-Data','删除数据'],
-							['Operate-Metadata/TTL','TTL']
+							['Delete-Data/TTL','TTL']
 						]
 					},
 					{
