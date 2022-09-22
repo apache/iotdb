@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.utils.TimeSlotUtils;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
@@ -106,7 +106,7 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
       TRegionReplicaSet regionReplicaSet =
           dataPartition.getDataRegionReplicaSetForWriting(
               insertTabletStatement.devicePath.getFullPath(),
-              TimeSlotUtils.getTimePartitionSlot(
+              TimePartitionUtils.getTimePartitionForRouting(
                   insertTabletStatement.getTimes()[insertTabletStatement.getTimes().length - 1]));
       result.add(regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
     }

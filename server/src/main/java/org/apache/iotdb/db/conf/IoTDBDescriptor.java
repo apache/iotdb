@@ -900,6 +900,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "partition_interval", String.valueOf(conf.getPartitionInterval()))));
 
+    conf.setTimePartitionIntervalForStorage(
+        Long.parseLong(
+            properties.getProperty(
+                "time_partition_interval_for_storage",
+                String.valueOf(conf.getTimePartitionIntervalForStorage()))));
+
     conf.setSelectIntoInsertTabletPlanRowLimit(
         Integer.parseInt(
             properties.getProperty(
@@ -1915,7 +1921,7 @@ public class IoTDBDescriptor {
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
-    conf.setTimeSlotInterval(globalConfig.timePartitionInterval);
+    conf.setTimePartitionIntervalForRouting(globalConfig.timePartitionIntervalForRouting);
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 

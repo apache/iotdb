@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.utils.TimeSlotUtils;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
@@ -106,7 +106,7 @@ public class InsertRowsStatement extends InsertBaseStatement {
       TRegionReplicaSet regionReplicaSet =
           dataPartition.getDataRegionReplicaSetForWriting(
               insertRowStatement.devicePath.getFullPath(),
-              TimeSlotUtils.getTimePartitionSlot(insertRowStatement.getTime()));
+              TimePartitionUtils.getTimePartitionForRouting(insertRowStatement.getTime()));
       result.add(regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
     }
     return result;

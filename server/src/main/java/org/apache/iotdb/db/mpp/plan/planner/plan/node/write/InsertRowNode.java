@@ -35,7 +35,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.db.utils.TimeSlotUtils;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
@@ -95,7 +95,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    TTimePartitionSlot timePartitionSlot = TimeSlotUtils.getTimePartitionSlot(time);
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionForRouting(time);
     this.dataRegionReplicaSet =
         analysis
             .getDataPartitionInfo()
@@ -174,7 +174,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @TestOnly
   public List<TTimePartitionSlot> getTimePartitionSlots() {
-    return Collections.singletonList(TimeSlotUtils.getTimePartitionSlot(time));
+    return Collections.singletonList(TimePartitionUtils.getTimePartitionForRouting(time));
   }
 
   @Override

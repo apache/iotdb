@@ -105,7 +105,7 @@ public class ConfigNodeConfig {
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
 
   /** Time partition interval in seconds */
-  private long timePartitionInterval = 86400;
+  private long timePartitionIntervalForRouting = 86400;
 
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 1;
@@ -239,12 +239,12 @@ public class ConfigNodeConfig {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
   }
 
-  public long getTimePartitionInterval() {
-    return timePartitionInterval;
+  public long getTimePartitionIntervalForRouting() {
+    return timePartitionIntervalForRouting;
   }
 
-  public void setTimePartitionInterval(long timePartitionInterval) {
-    this.timePartitionInterval = timePartitionInterval;
+  public void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
+    this.timePartitionIntervalForRouting = timePartitionIntervalForRouting;
   }
 
   public int getRpcMaxConcurrentClientNum() {

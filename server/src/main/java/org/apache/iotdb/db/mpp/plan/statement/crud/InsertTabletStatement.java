@@ -23,10 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.ServerConfigConsistent;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.utils.TimeSlotUtils;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.util.ArrayList;
@@ -34,6 +35,10 @@ import java.util.Collections;
 import java.util.List;
 
 public class InsertTabletStatement extends InsertBaseStatement {
+
+  @ServerConfigConsistent
+  private static long timePartitionIntervalForRouting =
+      IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
 
   private long[] times; // times should be sorted. It is done in the session API.
   private BitMap[] bitMaps;
@@ -90,18 +95,16 @@ public class InsertTabletStatement extends InsertBaseStatement {
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     List<TTimePartitionSlot> result = new ArrayList<>();
     long startTime =
-        (times[0] / StorageEngineV2.getTimePartitionInterval())
-            * StorageEngineV2.getTimePartitionInterval(); // included
-    long endTime = startTime + StorageEngineV2.getTimePartitionInterval(); // excluded
-    TTimePartitionSlot timePartitionSlot = TimeSlotUtils.getTimePartitionSlot(times[0]);
+        (times[0] / timePartitionIntervalForRouting) * timePartitionIntervalForRouting; // included
+    long endTime = startTime + timePartitionIntervalForRouting; // excluded
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionForRouting(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= endTime) {
         result.add(timePartitionSlot);
         // next init
         endTime =
-            (times[i] / StorageEngineV2.getTimePartitionInterval() + 1)
-                * StorageEngineV2.getTimePartitionInterval();
-        timePartitionSlot = TimeSlotUtils.getTimePartitionSlot(times[i]);
+            (times[i] / timePartitionIntervalForRouting + 1) * timePartitionIntervalForRouting;
+        timePartitionSlot = TimePartitionUtils.getTimePartitionForRouting(times[i]);
       }
     }
     result.add(timePartitionSlot);
@@ -112,7 +115,8 @@ public class InsertTabletStatement extends InsertBaseStatement {
   public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
     TRegionReplicaSet regionReplicaSet =
         dataPartition.getDataRegionReplicaSetForWriting(
-            devicePath.getFullPath(), TimeSlotUtils.getTimePartitionSlot(times[times.length - 1]));
+            devicePath.getFullPath(),
+            TimePartitionUtils.getTimePartitionForRouting(times[times.length - 1]));
     return Collections.singletonList(
         regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
   }

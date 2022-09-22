@@ -205,7 +205,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
     if (!storageGroupSchema.isSetTimePartitionInterval()) {
       storageGroupSchema.setTimePartitionInterval(
-          ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
+          ConfigNodeDescriptor.getInstance().getConf().getTimePartitionIntervalForRouting());
     }
 
     // Initialize the maxSchemaRegionGroupCount and maxDataRegionGroupCount as 0

@@ -22,14 +22,14 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
 
-public class TimeSlotUtils {
+public class TimePartitionUtils {
   @ServerConfigConsistent
-  private static long timeSlotInterval =
-      IoTDBDescriptor.getInstance().getConfig().getTimeSlotInterval();
+  private static long timePartitionIntervalForRouting =
+      IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
 
-  public static TTimePartitionSlot getTimePartitionSlot(long time) {
+  public static TTimePartitionSlot getTimePartitionForRouting(long time) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
-    timePartitionSlot.setStartTime(time - time % timeSlotInterval);
+    timePartitionSlot.setStartTime(time - time % timePartitionIntervalForRouting);
     return timePartitionSlot;
   }
 }

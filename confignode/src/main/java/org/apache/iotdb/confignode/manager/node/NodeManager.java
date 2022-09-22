@@ -133,7 +133,8 @@ public class NodeManager {
     globalConfig.setSeriesPartitionSlotNum(configNodeConfig.getSeriesPartitionSlotNum());
     globalConfig.setSeriesPartitionExecutorClass(
         configNodeConfig.getSeriesPartitionExecutorClass());
-    globalConfig.setTimePartitionInterval(configNodeConfig.getTimePartitionInterval());
+    globalConfig.setTimePartitionIntervalForRouting(
+        configNodeConfig.getTimePartitionIntervalForRouting());
     globalConfig.setReadConsistencyLevel(configNodeConfig.getReadConsistencyLevel());
     globalConfig.setDiskSpaceWarningThreshold(commonConfig.getDiskSpaceWarningThreshold());
     dataSet.setGlobalConfig(globalConfig);

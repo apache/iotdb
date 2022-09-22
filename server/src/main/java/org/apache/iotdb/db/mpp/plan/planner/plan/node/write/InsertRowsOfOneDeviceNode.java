@@ -30,7 +30,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.utils.TimeSlotUtils;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -175,7 +175,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   devicePath.getFullPath(),
-                  TimeSlotUtils.getTimePartitionSlot(insertRowNode.getTime()));
+                  TimePartitionUtils.getTimePartitionForRouting(insertRowNode.getTime()));
       List<InsertRowNode> tmpMap =
           splitMap.computeIfAbsent(dataRegionReplicaSet, k -> new ArrayList<>());
       List<Integer> tmpIndexMap =

@@ -43,7 +43,7 @@ struct TGlobalConfig {
   2: required string schemaRegionConsensusProtocolClass
   3: required i32 seriesPartitionSlotNum
   4: required string seriesPartitionExecutorClass
-  5: required i64 timePartitionInterval
+  5: required i64 timePartitionIntervalForRouting
   6: required string readConsistencyLevel
   7: required double diskSpaceWarningThreshold
 }

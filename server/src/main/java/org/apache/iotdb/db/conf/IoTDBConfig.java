@@ -767,8 +767,11 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 86400;
 
-  /** Time slot interval in seconds */
-  private long timeSlotInterval = 86400;
+  /** Time partition interval for storage in seconds */
+  private long timePartitionIntervalForStorage = 86400;
+
+  /** Time partition interval for routing in seconds */
+  private long timePartitionIntervalForRouting = 86400;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
@@ -1113,12 +1116,20 @@ public class IoTDBConfig {
     this.partitionInterval = partitionInterval;
   }
 
-  public long getTimeSlotInterval() {
-    return timeSlotInterval;
+  public long getTimePartitionIntervalForStorage() {
+    return timePartitionIntervalForStorage;
   }
 
-  public void setTimeSlotInterval(long timeSlotInterval) {
-    this.timeSlotInterval = timeSlotInterval;
+  public void setTimePartitionIntervalForStorage(long timePartitionIntervalForStorage) {
+    this.timePartitionIntervalForStorage = timePartitionIntervalForStorage;
+  }
+
+  public long getTimePartitionIntervalForRouting() {
+    return timePartitionIntervalForRouting;
+  }
+
+  public void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
+    this.timePartitionIntervalForRouting = timePartitionIntervalForRouting;
   }
 
   public TimeIndexLevel getTimeIndexLevel() {
