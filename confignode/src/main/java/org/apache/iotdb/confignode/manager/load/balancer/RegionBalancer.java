@@ -35,7 +35,6 @@ import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionAllo
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionAllocator;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import java.util.List;
 import java.util.Map;
