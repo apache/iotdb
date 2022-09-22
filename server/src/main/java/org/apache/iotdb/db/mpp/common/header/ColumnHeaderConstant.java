@@ -202,7 +202,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT64),
           new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64),
           new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
-          new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_RPC_PORT, TSDataType.TEXT),
           new ColumnHeader(COLUMN_PORT, TSDataType.INT32),
           new ColumnHeader(COLUMN_ROLE, TSDataType.TEXT));
 
