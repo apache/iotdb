@@ -48,6 +48,10 @@ public class AssignmentStatement implements Statement {
     return es;
   }
 
+  public String getNodeName() {
+    return es.getNodeName();
+  }
+
   @Override
   public String toCode() {
     return varName + " = " + es.toCode() + ";\n";

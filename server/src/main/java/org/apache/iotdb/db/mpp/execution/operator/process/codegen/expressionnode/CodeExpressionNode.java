@@ -17,15 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils;
+package org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode;
 
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.udf.api.access.Row;
+import java.util.List;
 
-public class UDTFCaller {
+public class CodeExpressionNode extends ExpressionNodeImpl {
+  private String code;
 
-  public static Object udtfCall(UDTFExecutor executor, Row row) {
-    executor.execute(row);
-    return executor.getCurrentValue();
+  public CodeExpressionNode(String code) {
+    nodeName = null;
+    this.code = code;
+  }
+
+  @Override
+  public String toCode() {
+    return code;
+  }
+
+  @Override
+  public List<String> getIsNullCheckNodes() {
+    return null;
   }
 }

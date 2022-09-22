@@ -27,18 +27,13 @@ import java.util.List;
 import java.util.Objects;
 
 public class FunctionExpressionNode extends ExpressionNodeImpl {
-  private String rowName;
+  private final String rowName;
 
-  private String executorName;
+  private final String executorName;
 
   private final TSDataType tsDataType;
 
   private List<ExpressionNode> subNodes;
-
-  public FunctionExpressionNode(String nodeName, TSDataType tsDataType) {
-    this.nodeName = nodeName;
-    this.tsDataType = tsDataType;
-  }
 
   public FunctionExpressionNode(
       String nodeName, String executorName, String rowName, TSDataType tsDataType) {
@@ -48,26 +43,18 @@ public class FunctionExpressionNode extends ExpressionNodeImpl {
     this.rowName = rowName;
   }
 
-  public void setRowName(String rowName) {
-    this.rowName = rowName;
-  }
-
-  public void setExecutorName(String executorName) {
-    this.executorName = executorName;
-  }
-
   public String getType() {
     switch (tsDataType) {
       case INT32:
-        return "int";
+        return "Integer";
       case TEXT:
-        return "long";
+        return "Long";
       case FLOAT:
-        return "float";
+        return "Float";
       case DOUBLE:
-        return "double";
+        return "Double";
       case BOOLEAN:
-        return "boolean";
+        return "Boolean";
       default:
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported for udtf codegen.", tsDataType));
@@ -76,7 +63,7 @@ public class FunctionExpressionNode extends ExpressionNodeImpl {
 
   @Override
   public String toCode() {
-    return "UDTFCaller.udtfCall(" + executorName + ", " + rowName + ").toString()";
+    return "udtfCall(" + executorName + ", " + rowName + ")";
   }
 
   @Override

@@ -27,10 +27,8 @@ import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.Dec
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.IfStatement;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.MethodCallStatement;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.CodeGenEvaluatorBaseClass;
-import org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.CodegenSimpleRow;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -39,7 +37,6 @@ import org.codehaus.commons.compiler.CompilerFactoryFactory;
 import org.codehaus.commons.compiler.IClassBodyEvaluator;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -121,7 +118,7 @@ public class CodegenEvaluatorImpl implements CodegenEvaluator {
   IClassBodyEvaluator classBodyEvaluator;
 
   public CodegenEvaluatorImpl(CodegenContext codegenContext) {
-    codegenVisitor = new CodegenVisitor(codegenContext);
+    codegenVisitor = new CodegenVisitor();
     generatedSuccess = new ArrayList<>();
     this.codegenContext = codegenContext;
     scriptFinished = false;
@@ -174,10 +171,10 @@ public class CodegenEvaluatorImpl implements CodegenEvaluator {
           .addIfBodyStatement(
               new AssignmentStatement(varName + "IsNull", new ConstantExpressionNode("true")))
           .addElseBodyStatement(
-              new AssignmentStatement(
-                  varName, new ReturnValueExpressionNode(instanceName, methodName, "i")))
+              new AssignmentStatement(varName + "IsNull", new ConstantExpressionNode("false")))
           .addElseBodyStatement(
-              new AssignmentStatement(varName + "IsNull", new ConstantExpressionNode("false")));
+              new AssignmentStatement(
+                  varName, new ReturnValueExpressionNode(instanceName, methodName, "i")));
       code.append(ifStatement.toCode());
     }
     code.append("}\n");
@@ -261,23 +258,6 @@ public class CodegenEvaluatorImpl implements CodegenEvaluator {
     return parameterNames;
   }
 
-  private List<Class<?>> getParameterClasses() {
-    List<Class<?>> parameterClasses =
-        codegenContext.getInputDataTypes().stream()
-            .map(CodegenContext::tsDatatypeToClass)
-            .collect(Collectors.toList());
-
-    parameterClasses.add(long.class);
-
-    Map<String, UDTFExecutor> udtfExecutors = codegenContext.getUdtfExecutors();
-    Map<String, CodegenSimpleRow> udtfInputs = codegenContext.getUdtfInputs();
-
-    parameterClasses.addAll(Collections.nCopies(udtfExecutors.size(), UDTFExecutor.class));
-    parameterClasses.addAll(Collections.nCopies(udtfInputs.size(), CodegenSimpleRow.class));
-
-    return parameterClasses;
-  }
-
   @Override
   public void generateEvaluatorClass() throws Exception {
     if (scriptFinished) {
@@ -295,7 +275,6 @@ public class CodegenEvaluatorImpl implements CodegenEvaluator {
     // set imports
     classBodyEvaluator.setDefaultImports(
         "org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.CodegenSimpleRow",
-        "org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.UDTFCaller",
         "org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor");
 
     classBodyEvaluator.setExtendedClass(CodeGenEvaluatorBaseClass.class);
@@ -304,6 +283,8 @@ public class CodegenEvaluatorImpl implements CodegenEvaluator {
     codegenEvaluator = (CodeGenEvaluatorBaseClass) classBodyEvaluator.getClazz().newInstance();
     codegenEvaluator.setOutputExpressionGenerateSuccess(generatedSuccess);
     codegenEvaluator.setOutputDataTypes(codegenContext.getOutputDataTypes());
+    codegenEvaluator.setExecutors(codegenContext.getUdtfExecutors());
+    codegenEvaluator.setRows(codegenContext.getUdtfRows());
 
     scriptFinished = true;
   }

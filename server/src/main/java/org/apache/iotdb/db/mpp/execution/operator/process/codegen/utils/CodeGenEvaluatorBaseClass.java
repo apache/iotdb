@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils;
 
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.udf.api.access.Row;
 
 import java.util.List;
 import java.util.Map;
@@ -46,6 +48,10 @@ public abstract class CodeGenEvaluatorBaseClass {
   protected ColumnBuilder[] outputColumns;
   protected List<Boolean> outputExpressionGenerateSuccess;
 
+  protected UDTFExecutor[] executors;
+
+  protected CodegenSimpleRow[] rows;
+
   public void setIsNull(Map<String, Boolean> isNull) {
     this.isNull = isNull;
   }
@@ -54,12 +60,21 @@ public abstract class CodeGenEvaluatorBaseClass {
     this.outputExpressionGenerateSuccess = outputExpressionGenerateSuccess;
   }
 
+  public static Object udtfCall(UDTFExecutor udtfExecutor, Row row) {
+    udtfExecutor.execute(row);
+    return udtfExecutor.getCurrentValue();
+  }
+
   public void setOutputDataTypes(List<TSDataType> outputDataTypes) {
     this.outputDataTypes = outputDataTypes;
   }
 
   protected void resetOutputTsBlock() {
-    tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    if (tsBlockBuilder == null) {
+      tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    } else {
+      tsBlockBuilder.reset();
+    }
     outputColumns = tsBlockBuilder.getValueColumnBuilders();
   }
 
@@ -78,6 +93,7 @@ public abstract class CodeGenEvaluatorBaseClass {
       timestamp = timeColumn.getLong(i);
       evaluateByRow(i);
     }
+    tsBlockBuilder.declarePositions(positionCount);
 
     Column[] output = new Column[outputColumns.length];
     for (int i = 0; i < output.length; ++i) {
@@ -92,4 +108,12 @@ public abstract class CodeGenEvaluatorBaseClass {
   protected abstract void evaluateByRow(int i);
 
   protected abstract void updateInputVariables(int i);
+
+  public void setExecutors(UDTFExecutor[] executors) {
+    this.executors = executors;
+  }
+
+  public void setRows(CodegenSimpleRow[] rows) {
+    this.rows = rows;
+  }
 }

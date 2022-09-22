@@ -23,12 +23,16 @@ import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.BinaryExpressionNode;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.ConstantExpressionNode;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.ExpressionNode;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.FunctionExpressionNode;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.IdentityExpressionNode;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.IsNullExpressionNode;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.LeafExpressionNode;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.expressionnode.UnaryExpressionNode;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.AssignmentStatement;
 import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.DeclareStatement;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.UDTFAssignmentStatement;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.statements.UpdateRowStatement;
+import org.apache.iotdb.db.mpp.execution.operator.process.codegen.utils.CodegenSimpleRow;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
@@ -42,21 +46,21 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+
+import static org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy.AccessStrategyType.MAPPABLE_ROW_BY_ROW;
 
 public class CodegenVisitor extends ExpressionVisitor<Boolean, CodegenContext> {
 
   private TimestampOperand globalTimestampOperand;
 
-  private final UDTFContext udtfContext;
-
-  public CodegenVisitor(CodegenContext codegenContext) {
-    this.udtfContext = codegenContext.getUdtfContext();
-  }
+  public CodegenVisitor() {}
 
   @Override
   public Boolean visitExpression(Expression expression, CodegenContext codegenContext) {
@@ -70,8 +74,7 @@ public class CodegenVisitor extends ExpressionVisitor<Boolean, CodegenContext> {
     if (codegenContext.isExpressionInput(expression)) {
       String argName = codegenContext.uniqueVarName("input");
       LeafExpressionNode leafExpressionNode = new LeafExpressionNode(argName);
-      codegenContext.addExpression(
-          expression, leafExpressionNode, codegenContext.inferType(expression));
+      codegenContext.addExpression(expression, leafExpressionNode);
       codegenContext.addInputVarNameMap(expression.getExpressionString(), argName);
       codegenContext.addIntermediateVariable(
           createDeclareStatement(
@@ -88,8 +91,7 @@ public class CodegenVisitor extends ExpressionVisitor<Boolean, CodegenContext> {
       ExpressionNode subNode = codegenContext.getExpressionNode(logicNotExpression.getExpression());
       UnaryExpressionNode notNode =
           new UnaryExpressionNode(codegenContext.uniqueVarName(), subNode, "!");
-      codegenContext.addExpression(
-          logicNotExpression, notNode, codegenContext.inferType(logicNotExpression));
+      codegenContext.addExpression(logicNotExpression, notNode);
 
       DeclareStatement boolDeclareStatement =
           new DeclareStatement("boolean", subNode.getNodeName());
@@ -140,7 +142,7 @@ public class CodegenVisitor extends ExpressionVisitor<Boolean, CodegenContext> {
           new UnaryExpressionNode(codegenContext.uniqueVarName(), subNode, "-");
 
       TSDataType tsDataType = codegenContext.inferType(negationExpression);
-      codegenContext.addExpression(negationExpression, negationNode, tsDataType);
+      codegenContext.addExpression(negationExpression, negationNode);
 
       DeclareStatement statement;
       switch (tsDataType) {
@@ -179,8 +181,7 @@ public class CodegenVisitor extends ExpressionVisitor<Boolean, CodegenContext> {
 
     BinaryExpressionNode binaryExpressionNode =
         new BinaryExpressionNode(codegenContext.uniqueVarName(), op, left, right);
-    codegenContext.addExpression(
-        binaryExpression, binaryExpressionNode, codegenContext.inferType(binaryExpression));
+    codegenContext.addExpression(binaryExpression, binaryExpressionNode);
 
     DeclareStatement declareStatement =
         createDeclareStatement(codegenContext.inferType(binaryExpression), binaryExpressionNode);
@@ -201,7 +202,7 @@ public class CodegenVisitor extends ExpressionVisitor<Boolean, CodegenContext> {
         new IsNullExpressionNode(
             codegenContext.uniqueVarName(), subExpressionNode, isNullExpression.isNot());
 
-    codegenContext.addExpression(isNullExpression, isNullExpressionNode, TSDataType.BOOLEAN);
+    codegenContext.addExpression(isNullExpression, isNullExpressionNode);
     codegenContext.addIntermediateVariable(
         new DeclareStatement("boolean", isNullExpressionNode.getNodeName()));
     codegenContext.addAssignmentStatement(new AssignmentStatement(isNullExpressionNode));
@@ -238,8 +239,7 @@ public class CodegenVisitor extends ExpressionVisitor<Boolean, CodegenContext> {
             higherNode,
             isNotBetween);
 
-    codegenContext.addExpression(
-        betweenExpression, betweenExpressionNode, codegenContext.inferType(betweenExpression));
+    codegenContext.addExpression(betweenExpression, betweenExpressionNode);
 
     DeclareStatement declareStatement =
         createDeclareStatement(codegenContext.inferType(betweenExpression), betweenExpressionNode);
@@ -253,10 +253,7 @@ public class CodegenVisitor extends ExpressionVisitor<Boolean, CodegenContext> {
       ConstantOperand constantOperand, CodegenContext codegenContext) {
     if (!codegenContext.isExpressionExisted(constantOperand)) {
       String valueString = constantOperand.getValueString();
-      codegenContext.addExpression(
-          constantOperand,
-          new ConstantExpressionNode(valueString),
-          codegenContext.inferType(constantOperand));
+      codegenContext.addExpression(constantOperand, new ConstantExpressionNode(valueString));
     }
     return true;
   }
@@ -278,7 +275,7 @@ public class CodegenVisitor extends ExpressionVisitor<Boolean, CodegenContext> {
         globalTimestampOperand = timestampOperand;
       }
       LeafExpressionNode timestamp = new LeafExpressionNode("timestamp");
-      codegenContext.addExpression(globalTimestampOperand, timestamp, TSDataType.INT64);
+      codegenContext.addExpression(globalTimestampOperand, timestamp);
     }
     return true;
   }
@@ -309,67 +306,65 @@ public class CodegenVisitor extends ExpressionVisitor<Boolean, CodegenContext> {
   @Override
   public Boolean visitFunctionExpression(
       FunctionExpression functionExpression, CodegenContext codegenContext) {
-    return false;
-    //    UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(functionExpression);
-    //    if (executor.getConfigurations().getAccessStrategy().getAccessStrategyType()
-    //        != MAPPABLE_ROW_BY_ROW) {
-    //      return false;
-    //    }
-    //
-    //    List<TSDataType> inputDatatype = new ArrayList<>();
-    //    for (Expression expression : functionExpression.getExpressions()) {
-    //      inputDatatype.add(expression.inferTypes(typeProvider));
-    //      if (!expressionVisitor(expression)) {
-    //        return false;
-    //      }
-    //    }
-    //
-    //    // get UDTFExecutor of udtf
-    //    String executorName = codegenContext.uniqueVarName("executor");
-    //    codegenContext.addUdtfExecutor(executorName, executor);
-    //
-    //    // generate a simpleRow of udtf
-    //    CodegenSimpleRow inputRow = new CodegenSimpleRow(inputDatatype.toArray(new
-    // TSDataType[0]));
-    //    String rowName = codegenContext.uniqueVarName("row");
-    //    codegenContext.addUdtfInput(rowName, inputRow);
-    //
-    //    FunctionExpressionNode functionExpressionNode =
-    //        new FunctionExpressionNode(
-    //            codegenContext.uniqueVarName(),
-    //            executorName,
-    //            rowName,
-    //            functionExpression.inferTypes(typeProvider));
-    //
-    //    UpdateRowStatement updateRowStatement = new UpdateRowStatement(rowName);
-    //    for (Expression expression : functionExpression.getExpressions()) {
-    //      ExpressionNode subNode = codegenContext.getExpressionNode(expression);
-    //      updateRowStatement.addData(subNode);
-    //      functionExpressionNode.addSubExpressionNode(subNode);
-    //    }
-    //
-    //    codegenContext.addCode(updateRowStatement);
-    //
-    //    // udtf may contain TimestampOperand
-    //    // to avoid repeat of TimestampOperand, all TimestampOperand will be replaced with
-    //    // globalTimestampOperand
-    //    if (Objects.isNull(globalTimestampOperand)) {
-    //      globalTimestampOperand = new TimestampOperand();
-    //    }
-    //
-    //    if (!codegenContext.isExpressionExisted(globalTimestampOperand)) {
-    //      LeafExpressionNode timestamp = new LeafExpressionNode("timestamp");
-    //      codegenContext.addExpression(globalTimestampOperand, timestamp, TSDataType.INT64);
-    //    }
-    //
-    //    codegenContext.addExpression(
-    //        functionExpression, functionExpressionNode,
-    // functionExpression.inferTypes(typeProvider));
-    //    Statement declareStatement =
-    //        createDeclareStatement(functionExpression.inferTypes(typeProvider),
-    // functionExpressionNode);
-    //    codegenContext.addCode(declareStatement);
-    //    return true;
+    UDTFExecutor executor = codegenContext.getExecutorByFunctionExpression(functionExpression);
+    if (executor.getConfigurations().getAccessStrategy().getAccessStrategyType()
+        != MAPPABLE_ROW_BY_ROW) {
+      return false;
+    }
+
+    List<TSDataType> inputDatatype = new ArrayList<>();
+    for (Expression expression : functionExpression.getExpressions()) {
+      inputDatatype.add(codegenContext.inferType(expression));
+      if (!visitExpression(expression, codegenContext)) {
+        return false;
+      }
+    }
+
+    // get UDTFExecutor of udtf
+    int udtfIndex = codegenContext.getUdtfIndex();
+    String executorName = "executors[" + udtfIndex + "]";
+    codegenContext.addUdtfExecutor(executor);
+
+    // generate a simpleRow of udtf
+    CodegenSimpleRow inputRow = new CodegenSimpleRow(inputDatatype.toArray(new TSDataType[0]));
+    String rowName = "rows[" + udtfIndex + "]";
+    codegenContext.addUdtfInput(inputRow);
+
+    FunctionExpressionNode functionExpressionNode =
+        new FunctionExpressionNode(
+            codegenContext.uniqueVarName(),
+            executorName,
+            rowName,
+            codegenContext.inferType(functionExpression));
+
+    UpdateRowStatement updateRowStatement = new UpdateRowStatement(rowName);
+    for (Expression expression : functionExpression.getExpressions()) {
+      ExpressionNode subNode = codegenContext.getExpressionNode(expression);
+      updateRowStatement.addData(subNode);
+      functionExpressionNode.addSubExpressionNode(subNode);
+    }
+
+    // udtf may contain TimestampOperand
+    // to avoid repeat of TimestampOperand, all TimestampOperand will be replaced with
+    // globalTimestampOperand
+    if (Objects.isNull(globalTimestampOperand)) {
+      globalTimestampOperand = new TimestampOperand();
+    }
+
+    if (!codegenContext.isExpressionExisted(globalTimestampOperand)) {
+      LeafExpressionNode timestamp = new LeafExpressionNode("timestamp");
+      codegenContext.addExpression(globalTimestampOperand, timestamp);
+    }
+
+    codegenContext.addExpression(functionExpression, functionExpressionNode);
+
+    DeclareStatement declareStatement =
+        createDeclareStatement(
+            codegenContext.inferType(functionExpression), functionExpressionNode);
+    codegenContext.addIntermediateVariable(declareStatement);
+    codegenContext.addAssignmentStatement(
+        new UDTFAssignmentStatement(functionExpressionNode, updateRowStatement));
+    return true;
   }
 
   @Override
