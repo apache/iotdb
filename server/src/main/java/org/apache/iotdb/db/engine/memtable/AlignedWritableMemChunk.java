@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,9 +49,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   private static final Logger LOGGER = LoggerFactory.getLogger(AlignedWritableMemChunk.class);
 
   public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
-    this.measurementIndexMap = new LinkedHashMap<>();
+    this.measurementIndexMap = Collections.synchronizedMap(new LinkedHashMap<>());
     List<TSDataType> dataTypeList = new ArrayList<>();
-    this.schemaList = schemaList;
+    this.schemaList = Collections.synchronizedList(schemaList);
     for (int i = 0; i < schemaList.size(); i++) {
       measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
       dataTypeList.add(schemaList.get(i).getType());

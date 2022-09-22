@@ -47,10 +47,10 @@ public class FileTimeIndex implements ITimeIndex {
   private static final FileReaderManager FILE_READER_MANAGER = FileReaderManager.getInstance();
 
   /** start time */
-  protected long startTime;
+  protected volatile long startTime;
 
   /** end times. The value is Long.MIN_VALUE if it's an unsealed sequence tsfile */
-  protected long endTime;
+  protected volatile long endTime;
 
   public FileTimeIndex() {
     this.startTime = Long.MAX_VALUE;

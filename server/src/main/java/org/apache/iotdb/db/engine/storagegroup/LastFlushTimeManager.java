@@ -22,9 +22,10 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * This class manages last time and flush time for sequence and unsequence determination This class
@@ -38,7 +39,8 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
    * changes upon timestamps of each device, and is used to update partitionLatestFlushedTimeForEachDevice
    * when a flush is issued.
    */
-  private Map<Long, Map<String, Long>> latestTimeForEachDevice = new HashMap<>();
+  private ConcurrentMap<Long, ConcurrentMap<String, Long>> latestTimeForEachDevice =
+      new ConcurrentHashMap<>();
   /**
    * time partition id -> map, which contains device -> largest timestamp of the latest memtable to
    * be submitted to asyncTryToFlush partitionLatestFlushedTimeForEachDevice determines whether a
@@ -46,42 +48,45 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
    * with timestamp less than or equals to the device's latestFlushedTime should go into an
    * unsequential file.
    */
-  private Map<Long, Map<String, Long>> partitionLatestFlushedTimeForEachDevice = new HashMap<>();
+  private ConcurrentMap<Long, ConcurrentMap<String, Long>> partitionLatestFlushedTimeForEachDevice =
+      new ConcurrentHashMap<>();
   /** used to record the latest flush time while upgrading and inserting */
-  private Map<Long, Map<String, Long>> newlyFlushedPartitionLatestFlushedTimeForEachDevice =
-      new HashMap<>();
+  private ConcurrentMap<Long, ConcurrentMap<String, Long>>
+      newlyFlushedPartitionLatestFlushedTimeForEachDevice = new ConcurrentHashMap<>();
   /**
    * global mapping of device -> largest timestamp of the latest memtable to * be submitted to
    * asyncTryToFlush, globalLatestFlushedTimeForEachDevice is utilized to maintain global
    * latestFlushedTime of devices and will be updated along with
    * partitionLatestFlushedTimeForEachDevice
    */
-  private Map<String, Long> globalLatestFlushedTimeForEachDevice = new HashMap<>();
+  private Map<String, Long> globalLatestFlushedTimeForEachDevice = new ConcurrentHashMap<>();
 
   // region set
   @Override
   public void setMultiDeviceLastTime(long timePartitionId, Map<String, Long> lastTimeMap) {
     latestTimeForEachDevice
-        .computeIfAbsent(timePartitionId, l -> new HashMap<>())
+        .computeIfAbsent(timePartitionId, l -> new ConcurrentHashMap<>())
         .putAll(lastTimeMap);
   }
 
   @Override
   public void setOneDeviceLastTime(long timePartitionId, String path, long time) {
-    latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>()).put(path, time);
+    latestTimeForEachDevice
+        .computeIfAbsent(timePartitionId, l -> new ConcurrentHashMap<>())
+        .put(path, time);
   }
 
   @Override
   public void setMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap) {
     partitionLatestFlushedTimeForEachDevice
-        .computeIfAbsent(timePartitionId, l -> new HashMap<>())
+        .computeIfAbsent(timePartitionId, l -> new ConcurrentHashMap<>())
         .putAll(flushedTimeMap);
   }
 
   @Override
   public void setOneDeviceFlushedTime(long timePartitionId, String path, long time) {
     partitionLatestFlushedTimeForEachDevice
-        .computeIfAbsent(timePartitionId, l -> new HashMap<>())
+        .computeIfAbsent(timePartitionId, l -> new ConcurrentHashMap<>())
         .put(path, time);
   }
 
@@ -102,14 +107,14 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
   @Override
   public void updateLastTime(long timePartitionId, String path, long time) {
     latestTimeForEachDevice
-        .computeIfAbsent(timePartitionId, id -> new HashMap<>())
+        .computeIfAbsent(timePartitionId, id -> new ConcurrentHashMap<>())
         .compute(path, (k, v) -> v == null ? time : Math.max(v, time));
   }
 
   @Override
   public void updateFlushedTime(long timePartitionId, String path, long time) {
     partitionLatestFlushedTimeForEachDevice
-        .computeIfAbsent(timePartitionId, id -> new HashMap<>())
+        .computeIfAbsent(timePartitionId, id -> new ConcurrentHashMap<>())
         .compute(path, (k, v) -> v == null ? time : Math.max(v, time));
   }
 
@@ -123,7 +128,7 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
   public void updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(
       long partitionId, String deviceId, long time) {
     newlyFlushedPartitionLatestFlushedTimeForEachDevice
-        .computeIfAbsent(partitionId, id -> new HashMap<>())
+        .computeIfAbsent(partitionId, id -> new ConcurrentHashMap<>())
         .compute(deviceId, (k, v) -> v == null ? time : Math.max(v, time));
   }
 
@@ -133,18 +138,19 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
 
   @Override
   public void ensureLastTimePartition(long timePartitionId) {
-    latestTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>());
+    latestTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new ConcurrentHashMap<>());
   }
 
   @Override
   public void ensureFlushedTimePartition(long timePartitionId) {
-    partitionLatestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>());
+    partitionLatestFlushedTimeForEachDevice.computeIfAbsent(
+        timePartitionId, id -> new ConcurrentHashMap<>());
   }
 
   @Override
   public long ensureFlushedTimePartitionAndInit(long timePartitionId, String path, long initTime) {
     return partitionLatestFlushedTimeForEachDevice
-        .computeIfAbsent(timePartitionId, id -> new HashMap<>())
+        .computeIfAbsent(timePartitionId, id -> new ConcurrentHashMap<>())
         .computeIfAbsent(path, id -> initTime);
   }
 
@@ -154,17 +160,18 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
 
   @Override
   public void applyNewlyFlushedTimeToFlushedTime() {
-    for (Entry<Long, Map<String, Long>> entry :
+    for (Entry<Long, ConcurrentMap<String, Long>> entry :
         newlyFlushedPartitionLatestFlushedTimeForEachDevice.entrySet()) {
       long timePartitionId = entry.getKey();
       Map<String, Long> latestFlushTimeForPartition =
-          partitionLatestFlushedTimeForEachDevice.getOrDefault(timePartitionId, new HashMap<>());
+          partitionLatestFlushedTimeForEachDevice.getOrDefault(
+              timePartitionId, new ConcurrentHashMap<>());
       for (Entry<String, Long> endTimeMap : entry.getValue().entrySet()) {
         String device = endTimeMap.getKey();
         long endTime = endTimeMap.getValue();
         if (latestFlushTimeForPartition.getOrDefault(device, Long.MIN_VALUE) < endTime) {
           partitionLatestFlushedTimeForEachDevice
-              .computeIfAbsent(timePartitionId, id -> new HashMap<>())
+              .computeIfAbsent(timePartitionId, id -> new ConcurrentHashMap<>())
               .put(device, endTime);
         }
       }
@@ -189,12 +196,12 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
     for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
       // set lastest flush time to latestTimeForEachDevice
       entry.setValue(latestFlushTime);
-
+      // todo entry key or value is null?
       partitionLatestFlushedTimeForEachDevice
-          .computeIfAbsent(partitionId, id -> new HashMap<>())
+          .computeIfAbsent(partitionId, id -> new ConcurrentHashMap<>())
           .put(entry.getKey(), entry.getValue());
       newlyFlushedPartitionLatestFlushedTimeForEachDevice
-          .computeIfAbsent(partitionId, id -> new HashMap<>())
+          .computeIfAbsent(partitionId, id -> new ConcurrentHashMap<>())
           .put(entry.getKey(), entry.getValue());
       if (globalLatestFlushedTimeForEachDevice.getOrDefault(entry.getKey(), Long.MIN_VALUE)
           < entry.getValue()) {
@@ -215,7 +222,7 @@ public class LastFlushTimeManager implements ILastFlushTimeManager {
 
     for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
       partitionLatestFlushedTimeForEachDevice
-          .computeIfAbsent(partitionId, id -> new HashMap<>())
+          .computeIfAbsent(partitionId, id -> new ConcurrentHashMap<>())
           .put(entry.getKey(), entry.getValue());
       updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(
           partitionId, entry.getKey(), entry.getValue());

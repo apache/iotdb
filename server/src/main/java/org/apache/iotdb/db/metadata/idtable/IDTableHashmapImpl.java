@@ -49,9 +49,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** id table belongs to a storage group and mapping timeseries path to it's schema */
 public class IDTableHashmapImpl implements IDTable {
@@ -75,7 +75,7 @@ public class IDTableHashmapImpl implements IDTable {
   public IDTableHashmapImpl(File storageGroupDir) {
     idTables = new Map[NUM_OF_SLOTS];
     for (int i = 0; i < NUM_OF_SLOTS; i++) {
-      idTables[i] = new HashMap<>();
+      idTables[i] = new ConcurrentHashMap<>();
     }
     if (config.isEnableIDTableLogFile()) {
       IDiskSchemaManager = new AppendOnlyDiskSchemaManager(storageGroupDir);

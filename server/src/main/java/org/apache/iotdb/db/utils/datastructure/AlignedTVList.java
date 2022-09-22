@@ -78,7 +78,7 @@ public class AlignedTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putAlignedValue(long timestamp, Object[] value, int[] columnIndexArray) {
+  public synchronized void putAlignedValue(long timestamp, Object[] value, int[] columnIndexArray) {
     checkExpansion();
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
@@ -127,12 +127,12 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  public Object getAlignedValue(int index) {
+  public synchronized Object getAlignedValue(int index) {
     return getAlignedValueForQuery(index, null, null);
   }
 
   @Override
-  protected TimeValuePair getTimeValuePair(
+  protected synchronized TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
@@ -148,7 +148,7 @@ public class AlignedTVList extends TVList {
     return getAlignedValueByValueIndex(valueIndex, null, floatPrecision, encodingList);
   }
 
-  public TsPrimitiveType getAlignedValue(
+  public synchronized TsPrimitiveType getAlignedValue(
       List<Integer> timeDuplicatedIndexList,
       Integer floatPrecision,
       List<TSEncoding> encodingList) {
@@ -233,7 +233,7 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  public TVList getTvListByColumnIndex(List<Integer> columnIndex) {
+  public synchronized TVList getTvListByColumnIndex(List<Integer> columnIndex) {
     List<TSDataType> types = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
     List<List<BitMap>> bitMaps = null;
@@ -265,7 +265,7 @@ public class AlignedTVList extends TVList {
     return alignedTvList;
   }
 
-  public void extendColumn(TSDataType dataType) {
+  public synchronized void extendColumn(TSDataType dataType) {
     if (bitMaps == null) {
       bitMaps = new ArrayList<>(values.size());
       for (int i = 0; i < values.size(); i++) {
@@ -328,7 +328,7 @@ public class AlignedTVList extends TVList {
    * @param columnIndex index of the column
    * @return the value at this position in VectorTvList
    */
-  public int getIntByValueIndex(int rowIndex, int columnIndex) {
+  public synchronized int getIntByValueIndex(int rowIndex, int columnIndex) {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
@@ -342,7 +342,7 @@ public class AlignedTVList extends TVList {
    * @param columnIndex index of the column
    * @return the value at this position in VectorTvList
    */
-  public long getLongByValueIndex(int rowIndex, int columnIndex) {
+  public synchronized long getLongByValueIndex(int rowIndex, int columnIndex) {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
@@ -356,7 +356,7 @@ public class AlignedTVList extends TVList {
    * @param columnIndex index of the column
    * @return the value at this position in VectorTvList
    */
-  public float getFloatByValueIndex(int rowIndex, int columnIndex) {
+  public synchronized float getFloatByValueIndex(int rowIndex, int columnIndex) {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
@@ -370,7 +370,7 @@ public class AlignedTVList extends TVList {
    * @param columnIndex index of the column
    * @return the value at this position in VectorTvList
    */
-  public double getDoubleByValueIndex(int rowIndex, int columnIndex) {
+  public synchronized double getDoubleByValueIndex(int rowIndex, int columnIndex) {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
@@ -384,7 +384,7 @@ public class AlignedTVList extends TVList {
    * @param columnIndex index of the column
    * @return the value at this position in VectorTvList
    */
-  public Binary getBinaryByValueIndex(int rowIndex, int columnIndex) {
+  public synchronized Binary getBinaryByValueIndex(int rowIndex, int columnIndex) {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
@@ -398,7 +398,7 @@ public class AlignedTVList extends TVList {
    * @param columnIndex index of the column
    * @return the value at this position in VectorTvList
    */
-  public boolean getBooleanByValueIndex(int rowIndex, int columnIndex) {
+  public synchronized boolean getBooleanByValueIndex(int rowIndex, int columnIndex) {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
@@ -412,7 +412,7 @@ public class AlignedTVList extends TVList {
    * @param columnIndex index of the column
    * @return boolean
    */
-  public boolean isValueMarked(int rowIndex, int columnIndex) {
+  public synchronized boolean isValueMarked(int rowIndex, int columnIndex) {
     if (rowIndex >= rowCount) {
       return false;
     }
@@ -427,16 +427,16 @@ public class AlignedTVList extends TVList {
     return columnBitMaps.get(arrayIndex).isMarked(elementIndex);
   }
 
-  public List<List<Object>> getValues() {
+  public synchronized List<List<Object>> getValues() {
     return values;
   }
 
-  public List<TSDataType> getTsDataTypes() {
+  public synchronized List<TSDataType> getTsDataTypes() {
     return dataTypes;
   }
 
   @Override
-  public int delete(long lowerBound, long upperBound) {
+  public synchronized int delete(long lowerBound, long upperBound) {
     int deletedNumber = 0;
     for (int i = 0; i < dataTypes.size(); i++) {
       deletedNumber += delete(lowerBound, upperBound, i).left;
@@ -452,7 +452,8 @@ public class AlignedTVList extends TVList {
    * @param columnIndex column index to be deleted
    * @return Delete info pair. Left: deletedNumber int; right: ifDeleteColumn boolean
    */
-  public Pair<Integer, Boolean> delete(long lowerBound, long upperBound, int columnIndex) {
+  public synchronized Pair<Integer, Boolean> delete(
+      long lowerBound, long upperBound, int columnIndex) {
     int deletedNumber = 0;
     boolean deleteColumn = true;
     for (int i = 0; i < rowCount; i++) {
@@ -470,7 +471,7 @@ public class AlignedTVList extends TVList {
     return new Pair<>(deletedNumber, deleteColumn);
   }
 
-  public void deleteColumn(int columnIndex) {
+  public synchronized void deleteColumn(int columnIndex) {
     dataTypes.remove(columnIndex);
     for (Object array : values.get(columnIndex)) {
       PrimitiveArrayManager.release(array);
@@ -488,7 +489,7 @@ public class AlignedTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public AlignedTVList clone() {
+  public synchronized AlignedTVList clone() {
     AlignedTVList cloneList = new AlignedTVList(dataTypes);
     cloneAs(cloneList);
     for (int[] indicesArray : indices) {
@@ -564,7 +565,7 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  public void sort() {
+  public synchronized void sort() {
     if (sortedTimestamps == null
         || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
       sortedTimestamps =
@@ -582,7 +583,7 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  void clearValue() {
+  synchronized void clearValue() {
     if (indices != null) {
       for (int[] dataArray : indices) {
         PrimitiveArrayManager.release(dataArray);
@@ -607,14 +608,14 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  void clearSortedValue() {
+  synchronized void clearSortedValue() {
     if (sortedIndices != null) {
       sortedIndices = null;
     }
   }
 
   @Override
-  protected void setFromSorted(int src, int dest) {
+  protected synchronized void setFromSorted(int src, int dest) {
     set(
         dest,
         sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
@@ -622,20 +623,20 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  protected void set(int src, int dest) {
+  protected synchronized void set(int src, int dest) {
     long srcT = getTime(src);
     int srcV = getValueIndex(src);
     set(dest, srcT, srcV);
   }
 
   @Override
-  protected void setToSorted(int src, int dest) {
+  protected synchronized void setToSorted(int src, int dest) {
     sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
     sortedIndices[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getValueIndex(src);
   }
 
   @Override
-  protected void reverseRange(int lo, int hi) {
+  protected synchronized void reverseRange(int lo, int hi) {
     hi--;
     while (lo < hi) {
       long loT = getTime(lo);
@@ -648,7 +649,7 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() {
+  protected synchronized void expandValues() {
     indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
     for (int i = 0; i < dataTypes.size(); i++) {
       values.get(i).add(getPrimitiveArraysByType(dataTypes.get(i)));
@@ -659,7 +660,7 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  protected void saveAsPivot(int pos) {
+  protected synchronized void saveAsPivot(int pos) {
     pivotTime = getTime(pos);
     pivotIndex = getValueIndex(pos);
   }
@@ -670,7 +671,7 @@ public class AlignedTVList extends TVList {
    * @param index row index
    */
   @Override
-  public int getValueIndex(int index) {
+  public synchronized int getValueIndex(int index) {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
@@ -689,7 +690,7 @@ public class AlignedTVList extends TVList {
    * @return The original row index of the latest non-null value, or the first row index if all
    *     values in given columns are null.
    */
-  public int getValidRowIndexForTimeDuplicatedRows(
+  public synchronized int getValidRowIndexForTimeDuplicatedRows(
       List<Integer> timeDuplicatedOriginRowIndexList, int columnIndex) {
     int validRowIndex = timeDuplicatedOriginRowIndexList.get(0);
     for (int originRowIndex : timeDuplicatedOriginRowIndexList) {
@@ -701,29 +702,29 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  protected void setPivotTo(int pos) {
+  protected synchronized void setPivotTo(int pos) {
     set(pos, pivotTime, pivotIndex);
   }
 
   @Override
-  public TimeValuePair getTimeValuePair(int index) {
+  public synchronized TimeValuePair getTimeValuePair(int index) {
     return new TimeValuePair(
         getTime(index), (TsPrimitiveType) getAlignedValueForQuery(index, null, null));
   }
 
-  protected TimeValuePair getTimeValuePair(
+  protected synchronized TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, List<TSEncoding> encodingList) {
     return new TimeValuePair(
         time, (TsPrimitiveType) getAlignedValueForQuery(index, floatPrecision, encodingList));
   }
 
-  public TimeValuePair getTimeValuePairForTimeDuplicatedRows(
+  public synchronized TimeValuePair getTimeValuePairForTimeDuplicatedRows(
       List<Integer> indexList, long time, Integer floatPrecision, List<TSEncoding> encodingList) {
     return new TimeValuePair(time, getAlignedValue(indexList, floatPrecision, encodingList));
   }
 
   @Override
-  protected void releaseLastValueArray() {
+  protected synchronized void releaseLastValueArray() {
     PrimitiveArrayManager.release(indices.remove(indices.size() - 1));
     for (List<Object> valueList : values) {
       PrimitiveArrayManager.release(valueList.remove(valueList.size() - 1));
@@ -732,7 +733,7 @@ public class AlignedTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putAlignedValues(
+  public synchronized void putAlignedValues(
       long[] time, Object[] value, BitMap[] bitMaps, int[] columnIndexArray, int start, int end) {
     checkExpansion();
     int idx = start;
@@ -865,7 +866,7 @@ public class AlignedTVList extends TVList {
    * @param types the types in the vector
    * @return AlignedTvListArrayMemSize
    */
-  public static long alignedTvListArrayMemCost(TSDataType[] types) {
+  public static synchronized long alignedTvListArrayMemCost(TSDataType[] types) {
     long size = 0;
     // value array mem size
     for (TSDataType type : types) {
@@ -888,7 +889,7 @@ public class AlignedTVList extends TVList {
     return size;
   }
 
-  public void clear() {
+  public synchronized void clear() {
     rowCount = 0;
     sorted = true;
     minTime = Long.MAX_VALUE;

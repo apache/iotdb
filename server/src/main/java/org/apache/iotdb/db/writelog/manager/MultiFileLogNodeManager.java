@@ -96,11 +96,12 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   public WriteLogNode getNode(String identifier, Supplier<ByteBuffer[]> supplier) {
     WriteLogNode node = nodeMap.get(identifier);
     if (node == null) {
-      node = new ExclusiveWriteLogNode(identifier);
-      WriteLogNode oldNode = nodeMap.putIfAbsent(identifier, node);
-      if (oldNode != null) {
-        node = oldNode;
-      } else {
+      synchronized (this) {
+        node = nodeMap.get(identifier);
+        if (node != null) {
+          return node;
+        }
+        node = new ExclusiveWriteLogNode(identifier);
         ByteBuffer[] buffers = supplier.get();
         int sleepTimeInMs = 0;
         while (buffers == null) {
@@ -127,6 +128,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
         }
         // initialize node with bytebuffers
         node.initBuffer(buffers);
+        nodeMap.put(identifier, node);
       }
     }
     return node;

@@ -43,53 +43,56 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class AbstractMemTable implements IMemTable {
 
   /** DeviceId -> chunkGroup(MeasurementId -> chunk) */
-  private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
+  private final ConcurrentMap<IDeviceID, IWritableMemChunkGroup> memTableMap;
 
   /**
    * The initial value is true because we want calculate the text data size when recover memTable!!
    */
-  protected boolean disableMemControl = true;
+  protected volatile boolean disableMemControl = true;
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractMemTable.class);
 
-  private boolean shouldFlush = false;
+  private volatile boolean shouldFlush = false;
   private final int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
   /** memory size of data points, including TEXT values */
-  private long memSize = 0;
+  private AtomicLong memSize = new AtomicLong();
   /**
    * memory usage of all TVLists memory usage regardless of whether these TVLists are full,
    * including TEXT values
    */
-  private long tvListRamCost = 0;
+  private AtomicLong tvListRamCost = new AtomicLong();
 
-  private int seriesNumber = 0;
+  private AtomicInteger seriesNumber = new AtomicInteger();
 
-  private long totalPointsNum = 0;
+  private AtomicLong totalPointsNum = new AtomicLong();
 
-  private long totalPointsNumThreshold = 0;
+  private AtomicLong totalPointsNumThreshold = new AtomicLong();
 
-  private long maxPlanIndex = Long.MIN_VALUE;
+  private volatile long maxPlanIndex = Long.MIN_VALUE;
 
-  private long minPlanIndex = Long.MAX_VALUE;
+  private volatile long minPlanIndex = Long.MAX_VALUE;
 
-  private long createdTime = System.currentTimeMillis();
+  private final long createdTime = System.currentTimeMillis();
 
   private static final String METRIC_POINT_IN = "pointsIn";
 
   public AbstractMemTable() {
-    this.memTableMap = new HashMap<>();
+    this.memTableMap = new ConcurrentHashMap<>();
   }
 
-  public AbstractMemTable(Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
+  public AbstractMemTable(ConcurrentMap<IDeviceID, IWritableMemChunkGroup> memTableMap) {
     this.memTableMap = memTableMap;
   }
 
@@ -111,8 +114,8 @@ public abstract class AbstractMemTable implements IMemTable {
         memTableMap.computeIfAbsent(deviceId, k -> new WritableMemChunkGroup());
     for (IMeasurementSchema schema : schemaList) {
       if (!memChunkGroup.contains(schema.getMeasurementId())) {
-        seriesNumber++;
-        totalPointsNumThreshold += avgSeriesPointNumThreshold;
+        seriesNumber.getAndIncrement();
+        totalPointsNumThreshold.getAndAdd(avgSeriesPointNumThreshold);
       }
     }
     return memChunkGroup;
@@ -124,14 +127,15 @@ public abstract class AbstractMemTable implements IMemTable {
         memTableMap.computeIfAbsent(
             deviceId,
             k -> {
-              seriesNumber += schemaList.size();
-              totalPointsNumThreshold += ((long) avgSeriesPointNumThreshold) * schemaList.size();
+              seriesNumber.getAndAdd(schemaList.size());
+              totalPointsNumThreshold.getAndAdd(
+                  ((long) avgSeriesPointNumThreshold) * schemaList.size());
               return new AlignedWritableMemChunkGroup(schemaList);
             });
     for (IMeasurementSchema schema : schemaList) {
       if (!memChunkGroup.contains(schema.getMeasurementId())) {
-        seriesNumber++;
-        totalPointsNumThreshold += avgSeriesPointNumThreshold;
+        seriesNumber.getAndIncrement();
+        totalPointsNumThreshold.getAndAdd(avgSeriesPointNumThreshold);
       }
     }
     return memChunkGroup;
@@ -167,7 +171,7 @@ public abstract class AbstractMemTable implements IMemTable {
       schemaList.add(schema);
       dataTypes.add(schema.getType());
     }
-    memSize += MemUtils.getRecordsSize(dataTypes, values, disableMemControl);
+    memSize.getAndAdd(MemUtils.getRecordsSize(dataTypes, values, disableMemControl));
     write(
         insertRowPlan.getDeviceID(),
         insertRowPlan.getFailedIndices(),
@@ -180,7 +184,7 @@ public abstract class AbstractMemTable implements IMemTable {
             - insertRowPlan.getFailedMeasurementNumber()
             - nullPointsNumber;
 
-    totalPointsNum += pointsInserted;
+    totalPointsNum.getAndAdd(pointsInserted);
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
@@ -221,7 +225,7 @@ public abstract class AbstractMemTable implements IMemTable {
     if (schemaList.isEmpty()) {
       return;
     }
-    memSize += MemUtils.getAlignedRecordsSize(dataTypes, values, disableMemControl);
+    memSize.getAndAdd(MemUtils.getAlignedRecordsSize(dataTypes, values, disableMemControl));
     writeAlignedRow(
         insertRowPlan.getDeviceID(),
         insertRowPlan.getFailedIndices(),
@@ -230,7 +234,7 @@ public abstract class AbstractMemTable implements IMemTable {
         values);
     int pointsInserted =
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
-    totalPointsNum += pointsInserted;
+    totalPointsNum.getAndAdd(pointsInserted);
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
@@ -251,11 +255,11 @@ public abstract class AbstractMemTable implements IMemTable {
     updatePlanIndexes(insertTabletPlan.getIndex());
     try {
       write(insertTabletPlan, start, end);
-      memSize += MemUtils.getTabletSize(insertTabletPlan, start, end, disableMemControl);
+      memSize.getAndAdd(MemUtils.getTabletSize(insertTabletPlan, start, end, disableMemControl));
       int pointsInserted =
           (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
-      totalPointsNum += pointsInserted;
+      totalPointsNum.getAndAdd(pointsInserted);
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
         MetricService.getInstance()
             .count(
@@ -278,11 +282,12 @@ public abstract class AbstractMemTable implements IMemTable {
     updatePlanIndexes(insertTabletPlan.getIndex());
     try {
       writeAlignedTablet(insertTabletPlan, start, end);
-      memSize += MemUtils.getAlignedTabletSize(insertTabletPlan, start, end, disableMemControl);
+      memSize.getAndAdd(
+          MemUtils.getAlignedTabletSize(insertTabletPlan, start, end, disableMemControl));
       int pointsInserted =
           (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
-      totalPointsNum += pointsInserted;
+      totalPointsNum.getAndAdd(pointsInserted);
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
         MetricService.getInstance()
             .count(
@@ -400,12 +405,12 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public int getSeriesNumber() {
-    return seriesNumber;
+    return seriesNumber.get();
   }
 
   @Override
   public long getTotalPointsNum() {
-    return totalPointsNum;
+    return totalPointsNum.get();
   }
 
   @Override
@@ -419,25 +424,25 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public long memSize() {
-    return memSize;
+    return memSize.get();
   }
 
   @Override
   public boolean reachTotalPointNumThreshold() {
-    if (totalPointsNum == 0) {
+    if (totalPointsNum.get() == 0) {
       return false;
     }
-    return totalPointsNum >= totalPointsNumThreshold;
+    return totalPointsNum.get() >= totalPointsNumThreshold.get();
   }
 
   @Override
   public void clear() {
     memTableMap.clear();
-    memSize = 0;
-    seriesNumber = 0;
-    totalPointsNum = 0;
-    totalPointsNumThreshold = 0;
-    tvListRamCost = 0;
+    memSize = new AtomicLong();
+    seriesNumber = new AtomicInteger();
+    totalPointsNum = new AtomicLong();
+    totalPointsNumThreshold = new AtomicLong();
+    tvListRamCost = new AtomicLong();
     maxPlanIndex = 0;
   }
 
@@ -461,7 +466,8 @@ public abstract class AbstractMemTable implements IMemTable {
     if (memChunkGroup == null) {
       return;
     }
-    totalPointsNum -= memChunkGroup.delete(originalPath, devicePath, startTimestamp, endTimestamp);
+    totalPointsNum.getAndAdd(
+        -memChunkGroup.delete(originalPath, devicePath, startTimestamp, endTimestamp));
     if (memChunkGroup.getMemChunkMap().isEmpty()) {
       memTableMap.remove(getDeviceID(devicePath));
     }
@@ -469,27 +475,27 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void addTVListRamCost(long cost) {
-    this.tvListRamCost += cost;
+    this.tvListRamCost.getAndAdd(cost);
   }
 
   @Override
   public void releaseTVListRamCost(long cost) {
-    this.tvListRamCost -= cost;
+    this.tvListRamCost.getAndAdd(-cost);
   }
 
   @Override
   public long getTVListsRamCost() {
-    return tvListRamCost;
+    return tvListRamCost.get();
   }
 
   @Override
   public void addTextDataSize(long textDataSize) {
-    this.memSize += textDataSize;
+    this.memSize.getAndAdd(textDataSize);
   }
 
   @Override
   public void releaseTextDataSize(long textDataSize) {
-    this.memSize -= textDataSize;
+    this.memSize.getAndAdd(-textDataSize);
   }
 
   @Override

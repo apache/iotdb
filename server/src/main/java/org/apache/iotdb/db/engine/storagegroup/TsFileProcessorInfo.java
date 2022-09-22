@@ -24,6 +24,8 @@ import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 /** The TsFileProcessorInfo records the memory cost of this TsFileProcessor. */
 public class TsFileProcessorInfo {
 
@@ -31,16 +33,16 @@ public class TsFileProcessorInfo {
   private StorageGroupInfo storageGroupInfo;
 
   /** memory occupation of unsealed TsFileResource, ChunkMetadata, WAL */
-  private long memCost;
+  private AtomicLong memCost;
 
   public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
     this.storageGroupInfo = storageGroupInfo;
-    this.memCost = 0L;
+    this.memCost = new AtomicLong(0);
   }
 
   /** called in each insert */
   public void addTSPMemCost(long cost) {
-    memCost += cost;
+    memCost.getAndAdd(cost);
     storageGroupInfo.addStorageGroupMemCost(cost);
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
@@ -57,7 +59,7 @@ public class TsFileProcessorInfo {
   /** called when meet exception */
   public void releaseTSPMemCost(long cost) {
     storageGroupInfo.releaseStorageGroupMemCost(cost);
-    memCost -= cost;
+    memCost.getAndAdd(-cost);
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
           .getOrCreateGauge(
@@ -72,7 +74,7 @@ public class TsFileProcessorInfo {
 
   /** called when closing TSP */
   public void clear() {
-    storageGroupInfo.releaseStorageGroupMemCost(memCost);
+    storageGroupInfo.releaseStorageGroupMemCost(memCost.get());
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
           .getOrCreateGauge(
@@ -81,8 +83,8 @@ public class TsFileProcessorInfo {
               Tag.NAME.toString(),
               "chunkMetaData_"
                   + storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName())
-          .decr(memCost);
+          .decr(memCost.get());
     }
-    memCost = 0L;
+    memCost = new AtomicLong();
   }
 }

@@ -88,41 +88,41 @@ public class AlignedPath extends PartialPath {
 
   public AlignedPath(String vectorPath, List<String> subSensorsList) throws IllegalPathException {
     super(vectorPath);
-    this.measurementList = subSensorsList;
+    this.measurementList = Collections.synchronizedList(subSensorsList);
   }
 
   public AlignedPath(
       String vectorPath, List<String> measurementList, List<IMeasurementSchema> schemaList)
       throws IllegalPathException {
     super(vectorPath);
-    this.measurementList = measurementList;
-    this.schemaList = schemaList;
+    this.measurementList = Collections.synchronizedList(measurementList);
+    this.schemaList = Collections.synchronizedList(schemaList);
   }
 
   public AlignedPath(String vectorPath, String subSensor) throws IllegalPathException {
     super(vectorPath);
-    measurementList = new ArrayList<>();
+    measurementList = Collections.synchronizedList(new ArrayList<>());
     measurementList.add(subSensor);
   }
 
   public AlignedPath(PartialPath vectorPath, String subSensor) {
     super(vectorPath.getNodes());
-    measurementList = new ArrayList<>();
+    measurementList = Collections.synchronizedList(new ArrayList<>());
     measurementList.add(subSensor);
   }
 
   public AlignedPath(MeasurementPath path) {
     super(path.getDevicePath().getNodes());
-    measurementList = new ArrayList<>();
+    measurementList = Collections.synchronizedList(new ArrayList<>());
     measurementList.add(path.getMeasurement());
-    schemaList = new ArrayList<>();
+    schemaList = Collections.synchronizedList(new ArrayList<>());
     schemaList.add(path.getMeasurementSchema());
   }
 
   public AlignedPath(String vectorPath) throws IllegalPathException {
     super(vectorPath);
-    measurementList = new ArrayList<>();
-    schemaList = new ArrayList<>();
+    measurementList = Collections.synchronizedList(new ArrayList<>());
+    schemaList = Collections.synchronizedList(new ArrayList<>());
   }
 
   public PartialPath getDevicePath() {
@@ -152,7 +152,7 @@ public class AlignedPath extends PartialPath {
   }
 
   public void setMeasurementList(List<String> measurementList) {
-    this.measurementList = measurementList;
+    this.measurementList = Collections.synchronizedList(measurementList);
   }
 
   public void addMeasurements(List<String> measurements) {
@@ -165,12 +165,12 @@ public class AlignedPath extends PartialPath {
 
   public void addMeasurement(MeasurementPath measurementPath) {
     if (measurementList == null) {
-      measurementList = new ArrayList<>();
+      measurementList = Collections.synchronizedList(new ArrayList<>());
     }
     measurementList.add(measurementPath.getMeasurement());
 
     if (schemaList == null) {
-      schemaList = new ArrayList<>();
+      schemaList = Collections.synchronizedList(new ArrayList<>());
     }
     schemaList.add(measurementPath.getMeasurementSchema());
   }
@@ -183,17 +183,19 @@ public class AlignedPath extends PartialPath {
    */
   public void mergeAlignedPath(AlignedPath alignedPath) {
     if (measurementList == null) {
-      measurementList = new ArrayList<>();
+      measurementList = Collections.synchronizedList(new ArrayList<>());
     }
     measurementList.addAll(alignedPath.measurementList);
     if (schemaList == null) {
-      schemaList = new ArrayList<>();
+      schemaList = Collections.synchronizedList(new ArrayList<>());
     }
     schemaList.addAll(alignedPath.schemaList);
   }
 
   public List<IMeasurementSchema> getSchemaList() {
-    return this.schemaList == null ? Collections.emptyList() : this.schemaList;
+    return this.schemaList == null
+        ? Collections.synchronizedList(new ArrayList<>())
+        : this.schemaList;
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
@@ -222,8 +224,8 @@ public class AlignedPath extends PartialPath {
     result.nodes = nodes;
     result.fullPath = fullPath;
     result.device = device;
-    result.measurementList = new ArrayList<>(measurementList);
-    result.schemaList = new ArrayList<>(schemaList);
+    result.measurementList = Collections.synchronizedList(measurementList);
+    result.schemaList = Collections.synchronizedList(schemaList);
     return result;
   }
 

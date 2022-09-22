@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class DeviceTimeIndex implements ITimeIndex {
 
@@ -62,7 +63,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   private long maxEndTime = Long.MIN_VALUE;
 
   /** device -> index of start times array and end times array */
-  protected Map<String, Integer> deviceToIndex;
+  protected ConcurrentMap<String, Integer> deviceToIndex;
 
   public DeviceTimeIndex() {
     this.deviceToIndex = new ConcurrentHashMap<>();
@@ -75,7 +76,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   public DeviceTimeIndex(Map<String, Integer> deviceToIndex, long[] startTimes, long[] endTimes) {
     this.startTimes = startTimes;
     this.endTimes = endTimes;
-    this.deviceToIndex = deviceToIndex;
+    this.deviceToIndex.putAll(deviceToIndex);
   }
 
   @Override
@@ -200,7 +201,7 @@ public class DeviceTimeIndex implements ITimeIndex {
     Arrays.fill(times, defaultTime);
   }
 
-  private long[] enLargeArray(long[] array, long defaultValue) {
+  private synchronized long[] enLargeArray(long[] array, long defaultValue) {
     long[] tmp = new long[(int) (array.length * 2)];
     initTimes(tmp, defaultValue);
     System.arraycopy(array, 0, tmp, 0, array.length);
@@ -257,7 +258,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public void updateStartTime(String deviceId, long time) {
+  public synchronized void updateStartTime(String deviceId, long time) {
     long startTime = getStartTime(deviceId);
     if (time < startTime) {
       int index = getDeviceIndex(deviceId);
@@ -267,7 +268,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public void updateEndTime(String deviceId, long time) {
+  public synchronized void updateEndTime(String deviceId, long time) {
     long endTime = getEndTime(deviceId);
     if (time > endTime) {
       int index = getDeviceIndex(deviceId);
@@ -277,14 +278,14 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public void putStartTime(String deviceId, long time) {
+  public synchronized void putStartTime(String deviceId, long time) {
     int index = getDeviceIndex(deviceId);
     startTimes[index] = time;
     minStartTime = Math.min(minStartTime, time);
   }
 
   @Override
-  public void putEndTime(String deviceId, long time) {
+  public synchronized void putEndTime(String deviceId, long time) {
     int index = getDeviceIndex(deviceId);
     endTimes[index] = time;
     maxEndTime = Math.max(maxEndTime, time);
