@@ -328,7 +328,8 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     memSize += MemUtils.getAlignedRecordsSize(dataTypes, values, disableMemControl);
     writeAlignedRow(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
-    int pointsInserted = insertRowNode.getMeasurements().length;
+    int pointsInserted =
+        insertRowNode.getMeasurements().length - insertRowNode.getFailedMeasurementNumber();
     totalPointsNum += pointsInserted;
 
     MetricService.getInstance()
@@ -395,7 +396,9 @@ public abstract class AbstractMemTable implements IMemTable {
     try {
       write(insertTabletNode, start, end);
       memSize += MemUtils.getTabletSize(insertTabletNode, start, end, disableMemControl);
-      int pointsInserted = insertTabletNode.getDataTypes().length * (end - start);
+      int pointsInserted =
+          (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
+              * (end - start);
       totalPointsNum += pointsInserted;
       MetricService.getInstance()
           .count(
@@ -418,7 +421,9 @@ public abstract class AbstractMemTable implements IMemTable {
     try {
       writeAlignedTablet(insertTabletNode, start, end);
       memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, disableMemControl);
-      int pointsInserted = insertTabletNode.getDataTypes().length * (end - start);
+      int pointsInserted =
+          (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
+              * (end - start);
       totalPointsNum += pointsInserted;
       MetricService.getInstance()
           .count(
