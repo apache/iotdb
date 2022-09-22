@@ -55,7 +55,8 @@ public abstract class AlignedTVList extends TVList {
   // data types of this aligned tvList
   protected List<TSDataType> dataTypes;
 
-  protected long[] valueChunkRawSize;
+  // record total memory size of binary column
+  protected long[] memoryBinaryChunkSize;
 
   // data type list -> list of TVList, add 1 when expanded -> primitive array of basic type
   // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
@@ -78,7 +79,7 @@ public abstract class AlignedTVList extends TVList {
     super();
     indices = new ArrayList<>(types.size());
     dataTypes = types;
-    valueChunkRawSize = new long[dataTypes.size()];
+    memoryBinaryChunkSize = new long[dataTypes.size()];
     reachMaxChunkSizeFlag = false;
 
     values = new ArrayList<>(types.size());
@@ -98,7 +99,8 @@ public abstract class AlignedTVList extends TVList {
   public AlignedTVList clone() {
     AlignedTVList cloneList = AlignedTVList.newAlignedList(dataTypes);
     cloneAs(cloneList);
-    System.arraycopy(valueChunkRawSize, 0, cloneList.valueChunkRawSize, 0, dataTypes.size());
+    System.arraycopy(
+        memoryBinaryChunkSize, 0, cloneList.memoryBinaryChunkSize, 0, dataTypes.size());
     for (int[] indicesArray : indices) {
       cloneList.indices.add(cloneIndex(indicesArray));
     }
@@ -146,11 +148,11 @@ public abstract class AlignedTVList extends TVList {
         case TEXT:
           ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
               columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
-          valueChunkRawSize[i] +=
+          memoryBinaryChunkSize[i] +=
               columnValue != null
                   ? getBinarySize((Binary) columnValue)
                   : getBinarySize(Binary.EMPTY_VALUE);
-          if (valueChunkRawSize[i] >= maxChunkRawSizeThreshold) {
+          if (memoryBinaryChunkSize[i] >= maxChunkRawSizeThreshold) {
             reachMaxChunkSizeFlag = true;
           }
           break;
@@ -330,9 +332,10 @@ public abstract class AlignedTVList extends TVList {
     this.values.add(columnValue);
     this.dataTypes.add(dataType);
 
-    long[] tmpValueChunkRawSize = valueChunkRawSize;
-    valueChunkRawSize = new long[dataTypes.size()];
-    System.arraycopy(tmpValueChunkRawSize, 0, valueChunkRawSize, 0, tmpValueChunkRawSize.length);
+    long[] tmpValueChunkRawSize = memoryBinaryChunkSize;
+    memoryBinaryChunkSize = new long[dataTypes.size()];
+    System.arraycopy(
+        tmpValueChunkRawSize, 0, memoryBinaryChunkSize, 0, tmpValueChunkRawSize.length);
   }
 
   /**
@@ -479,7 +482,7 @@ public abstract class AlignedTVList extends TVList {
         int arrayIndex = originRowIndex / ARRAY_SIZE;
         int elementIndex = originRowIndex % ARRAY_SIZE;
         if (dataTypes.get(columnIndex) == TSDataType.TEXT) {
-          valueChunkRawSize[columnIndex] -=
+          memoryBinaryChunkSize[columnIndex] -=
               getBinarySize(((Binary[]) values.get(columnIndex).get(arrayIndex))[elementIndex]);
         }
         markNullValue(columnIndex, arrayIndex, elementIndex);
@@ -494,14 +497,14 @@ public abstract class AlignedTVList extends TVList {
   public void deleteColumn(int columnIndex) {
     dataTypes.remove(columnIndex);
 
-    long[] tmpValueChunkRawSize = valueChunkRawSize;
-    valueChunkRawSize = new long[dataTypes.size()];
+    long[] tmpValueChunkRawSize = memoryBinaryChunkSize;
+    memoryBinaryChunkSize = new long[dataTypes.size()];
     int copyIndex = 0;
     for (int i = 0; i < tmpValueChunkRawSize.length; i++) {
       if (i == columnIndex) {
         continue;
       }
-      valueChunkRawSize[copyIndex++] = tmpValueChunkRawSize[i];
+      memoryBinaryChunkSize[copyIndex++] = tmpValueChunkRawSize[i];
     }
 
     for (Object array : values.get(columnIndex)) {
@@ -584,7 +587,7 @@ public abstract class AlignedTVList extends TVList {
           columnBitMaps.clear();
         }
       }
-      valueChunkRawSize[i] = 0;
+      memoryBinaryChunkSize[i] = 0;
     }
   }
 
@@ -733,10 +736,10 @@ public abstract class AlignedTVList extends TVList {
 
           // update raw size of Text chunk
           for (int i1 = 0; i1 < remaining; i1++) {
-            valueChunkRawSize[i] +=
+            memoryBinaryChunkSize[i] +=
                 arrayT[elementIndex + i1] != null ? getBinarySize(arrayT[elementIndex + i1]) : 0;
           }
-          if (valueChunkRawSize[i] > maxChunkRawSizeThreshold) {
+          if (memoryBinaryChunkSize[i] > maxChunkRawSizeThreshold) {
             reachMaxChunkSizeFlag = true;
           }
           break;

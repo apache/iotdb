@@ -45,12 +45,13 @@ public abstract class BinaryTVList extends TVList {
   // index relation: arrayIndex -> elementIndex
   protected List<Binary[]> values;
 
-  long rawSize;
+  // record total memory size of binary tvlist
+  long memoryBinaryChunkSize;
 
   BinaryTVList() {
     super();
     values = new ArrayList<>();
-    rawSize = 0;
+    memoryBinaryChunkSize = 0;
   }
 
   public static BinaryTVList newList() {
@@ -64,7 +65,7 @@ public abstract class BinaryTVList extends TVList {
   public TimBinaryTVList clone() {
     TimBinaryTVList cloneList = new TimBinaryTVList();
     cloneAs(cloneList);
-    cloneList.rawSize = rawSize;
+    cloneList.memoryBinaryChunkSize = memoryBinaryChunkSize;
     for (Binary[] valueArray : values) {
       cloneList.values.add(cloneValue(valueArray));
     }
@@ -89,12 +90,12 @@ public abstract class BinaryTVList extends TVList {
     if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
       sorted = false;
     }
-    rawSize += getBinarySize(value);
+    memoryBinaryChunkSize += getBinarySize(value);
   }
 
   @Override
   public boolean reachMaxChunkSizeThreshold() {
-    return rawSize >= maxChunkRawSizeThreshold;
+    return memoryBinaryChunkSize >= maxChunkRawSizeThreshold;
   }
 
   @Override
@@ -107,7 +108,7 @@ public abstract class BinaryTVList extends TVList {
         set(i, newSize++);
         minTime = Math.min(time, minTime);
       } else {
-        rawSize -= getBinarySize(getBinary(i));
+        memoryBinaryChunkSize -= getBinarySize(getBinary(i));
       }
     }
     int deletedNumber = rowCount - newSize;
@@ -153,7 +154,7 @@ public abstract class BinaryTVList extends TVList {
       }
       values.clear();
     }
-    rawSize = 0;
+    memoryBinaryChunkSize = 0;
   }
 
   @Override
@@ -218,7 +219,7 @@ public abstract class BinaryTVList extends TVList {
 
     // update raw size
     for (int i = idx; i < end; i++) {
-      rawSize += getBinarySize(value[i]);
+      memoryBinaryChunkSize += getBinarySize(value[i]);
     }
 
     while (idx < end) {

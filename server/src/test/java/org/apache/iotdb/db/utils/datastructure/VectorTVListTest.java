@@ -206,7 +206,7 @@ public class VectorTVListTest {
     }
 
     for (int i = 0; i < dataTypes.size(); i++) {
-      Assert.assertEquals(tvList.valueChunkRawSize[i], clonedTvList.valueChunkRawSize[i]);
+      Assert.assertEquals(tvList.memoryBinaryChunkSize[i], clonedTvList.memoryBinaryChunkSize[i]);
     }
   }
 
@@ -227,8 +227,8 @@ public class VectorTVListTest {
       tvList.putAlignedValue(i, value, columnOrder);
     }
 
-    Assert.assertEquals(tvList.valueChunkRawSize[0], 0);
-    Assert.assertEquals(tvList.valueChunkRawSize[1], 360);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 360);
 
     Object[] vectorArray = new Object[2];
     BitMap[] bitMaps = new BitMap[2];
@@ -256,20 +256,20 @@ public class VectorTVListTest {
         columnOrder,
         0,
         10);
-    Assert.assertEquals(tvList.valueChunkRawSize[1], 720);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 720);
 
     tvList.delete(5, 15);
-    Assert.assertEquals(tvList.valueChunkRawSize[1], 324);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 324);
 
     tvList.deleteColumn(0);
-    Assert.assertEquals(tvList.valueChunkRawSize.length, 1);
-    Assert.assertEquals(tvList.valueChunkRawSize[0], 324);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 1);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 324);
 
     tvList.extendColumn(TSDataType.INT32);
-    Assert.assertEquals(tvList.valueChunkRawSize.length, 2);
-    Assert.assertEquals(tvList.valueChunkRawSize[0], 324);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 2);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 324);
 
     tvList.clear();
-    Assert.assertEquals(tvList.valueChunkRawSize[0], 0);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
   }
 }
