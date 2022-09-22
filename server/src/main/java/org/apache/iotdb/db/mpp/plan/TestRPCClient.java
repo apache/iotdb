@@ -35,8 +35,8 @@ import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.multileader.thrift.TTriggerSnapshotLoadRes;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
-
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+
 import org.apache.thrift.TException;
 
 import java.io.IOException;
@@ -96,8 +96,7 @@ public class TestRPCClient {
     try (SyncDataNodeInternalServiceClient client =
         INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9003))) {
       client.removeRegionPeer(
-          new TMaintainPeerReq(
-              new DataRegionId(1).convertToTConsensusGroupId(), getLocation2(3)));
+          new TMaintainPeerReq(new DataRegionId(1).convertToTConsensusGroupId(), getLocation2(3)));
     } catch (IOException | TException e) {
       throw new RuntimeException(e);
     }
@@ -107,8 +106,7 @@ public class TestRPCClient {
     try (SyncDataNodeInternalServiceClient client =
         INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9003))) {
       client.addRegionPeer(
-          new TMaintainPeerReq(
-              new DataRegionId(1).convertToTConsensusGroupId(), getLocation2(3)));
+          new TMaintainPeerReq(new DataRegionId(1).convertToTConsensusGroupId(), getLocation2(3)));
     } catch (IOException | TException e) {
       throw new RuntimeException(e);
     }
