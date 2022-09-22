@@ -47,6 +47,8 @@
         <module>udf</module>
         <module>trigger</module>
         <module>rabbitmq</module>
+        <module>rest-java-example</module>
+        <module>influxdb-protocol-example</module>
     </modules>
     <build>
         <pluginManagement>

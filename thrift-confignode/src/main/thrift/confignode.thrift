@@ -45,10 +45,17 @@ struct TGlobalConfig {
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
+  7: required double diskSpaceWarningThreshold
 }
 
 struct TRatisConfig {
   1: optional i64 appenderBufferSize
+  2: optional i64 snapshotTriggerThreshold
+  3: optional bool logUnsafeFlushEnable
+  4: optional i64 logSegmentSizeMax
+  5: optional i64 grpcFlowControlWindow
+  6: optional i64 leaderElectionTimeoutMin
+  7: optional i64 leaderElectionTimeoutMax
 }
 
 struct TDataNodeRemoveReq {
@@ -218,6 +225,7 @@ struct TConfigNodeRegisterReq {
   10: required i32 dataReplicationFactor
   11: required double dataRegionPerProcessor
   12: required string readConsistencyLevel
+  13: required double diskSpaceWarningThreshold
 }
 
 struct TAddConsensusGroupReq {
@@ -263,8 +271,8 @@ struct TDropTriggerReq {
   1: required string triggerName
 }
 
-// show triggers
-struct TShowTriggersResp {
+// Get trigger table from config node
+struct TGetTriggerTableResp {
   1: required common.TSStatus status
   2: required binary triggerTable
 }
@@ -394,6 +402,11 @@ struct TPipeInfo {
 struct TShowPipeResp {
   1: required common.TSStatus status
   2: optional list<TPipeInfo> pipeInfoList
+}
+
+struct TDeleteTimeSeriesReq{
+  1: required string queryId
+  2: required binary pathPatternTree
 }
 
 service IConfigNodeRPCService {
@@ -662,7 +675,7 @@ service IConfigNodeRPCService {
   /**
      * Return the trigger table of config leader
      */
-  TShowTriggersResp showTriggers()
+  TGetTriggerTableResp getTriggerTable()
 
   // ======================================================
   // Maintenance Tools
@@ -726,5 +739,14 @@ service IConfigNodeRPCService {
 
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+
+  /**
+   * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
+   *
+   * @return SUCCESS_STATUS if the DeleteTimeSeriesProcedure submitted and executed successfully
+   *         TIMESERIES_NOT_EXIST if the specific TimeSeries doesn't exist
+   *         EXECUTE_STATEMENT_ERROR if failed to submit or execute the DeleteTimeSeriesProcedure
+   */
+  common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 }
 

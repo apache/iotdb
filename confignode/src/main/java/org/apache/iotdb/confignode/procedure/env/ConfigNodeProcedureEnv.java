@@ -30,20 +30,19 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
-import org.apache.iotdb.confignode.manager.NodeManager;
-import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -156,7 +155,7 @@ public class ConfigNodeProcedureEnv {
                   DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
       if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
         LOG.error(
-            "Invalidate cache failed, invalidate partition cache status is {}， invalidate schema cache status is {}",
+            "Invalidate cache failed, invalidate partition cache status is {}, invalidate schema cache status is {}",
             invalidatePartitionStatus,
             invalidateSchemaStatus);
         return false;
@@ -308,15 +307,14 @@ public class ConfigNodeProcedureEnv {
    * @param dataNodeLocation the datanode to be marked as removing status
    */
   public void markDataNodeAsRemovingAndBroadCast(TDataNodeLocation dataNodeLocation) {
-    int dataNodeId = dataNodeLocation.getDataNodeId();
-    configManager.getNodeManager().setNodeRemovingStatus(dataNodeId, true);
+    configManager.getNodeManager().setNodeRemovingStatus(dataNodeLocation);
     configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
 
   /**
    * Do region creations and broadcast the CreateRegionGroupsPlan
    *
-   * @return Those RegionGroups that failed to create
+   * @return Those RegionReplicas that failed to create
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> doRegionCreation(
       CreateRegionGroupsPlan createRegionGroupsPlan) {
@@ -334,6 +332,10 @@ public class ConfigNodeProcedureEnv {
     return AsyncDataNodeClientPool.getInstance().createRegionGroups(createRegionGroupsPlan, ttlMap);
   }
 
+  public long getTTL(String storageGroup) throws StorageGroupNotExistsException {
+    return getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL();
+  }
+
   public void persistAndBroadcastRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
     // Persist the allocation result
     getConsensusManager().write(createRegionGroupsPlan);
@@ -341,9 +343,8 @@ public class ConfigNodeProcedureEnv {
     getLoadManager().broadcastLatestRegionRouteMap();
   }
 
-  /** Submit the RegionReplicas to the RegionCleaner when there are creation failures */
-  public void submitFailedRegionReplicas(DeleteRegionGroupsPlan deleteRegionGroupsPlan) {
-    getConsensusManager().write(deleteRegionGroupsPlan);
+  public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {
+    return getPartitionManager().getAllReplicaSets(storageGroup);
   }
 
   public LockQueue getNodeLock() {

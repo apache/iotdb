@@ -201,6 +201,23 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     return selfCheckDataTypes();
   }
 
+  @Override
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
+      logger.warn(
+          "Inserting to {}.{} : Cast from {} to {}",
+          devicePath,
+          measurements[columnIndex],
+          dataTypes[columnIndex],
+          dataType);
+      values[columnIndex] =
+          CommonUtils.castValue(dataTypes[columnIndex], dataType, values[columnIndex]);
+      dataTypes[columnIndex] = dataType;
+      return true;
+    }
+    return false;
+  }
+
   /**
    * transfer String[] values to specific data types when isNeedInferType is true. <br>
    * Notice: measurementSchemas must be initialized before calling this method

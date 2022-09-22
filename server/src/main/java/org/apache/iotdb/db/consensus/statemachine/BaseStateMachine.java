@@ -31,7 +31,8 @@ import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class BaseStateMachine implements IStateMachine, IStateMachine.EventApi {
+public abstract class BaseStateMachine
+    implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
 
   private static final Logger logger = LoggerFactory.getLogger(BaseStateMachine.class);
 

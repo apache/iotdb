@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -37,12 +36,12 @@ import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
@@ -269,8 +268,10 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showTriggers() {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    // todo: get triggerTable?
-    ShowTriggersTask.buildTsBlock(new TriggerTable(), future);
+    future.setException(
+        new IoTDBException(
+            "Executing show triggers in standalone mode is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     return future;
   }
 
@@ -569,6 +570,17 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     TShowPipeResp showPipeResp =
         LocalConfigNode.getInstance().showPipe(showPipeStatement.getPipeName());
     ShowPipeTask.buildTSBlock(showPipeResp.getPipeInfoList(), future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> deleteTimeSeries(
+      String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing delete timeseries is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     return future;
   }
 }

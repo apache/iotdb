@@ -62,6 +62,7 @@ import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Operation;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.ConfigNodeConnectionException;
@@ -110,7 +111,6 @@ import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -274,7 +274,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public ServerProperties getProperties() {
     ServerProperties properties = new ServerProperties();
     properties.setVersion(IoTDBConstant.VERSION);
-    LOGGER.info("IoTDB server version: {}", IoTDBConstant.VERSION);
+    properties.setBuildInfo(IoTDBConstant.BUILD_INFO);
+    LOGGER.info("IoTDB server version: {}", IoTDBConstant.VERSION_WITH_BUILD);
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MAX_TIME);
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
@@ -1595,7 +1596,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
     if (queryExecution != null) {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-        LOGGER.info("stop and clean up");
+        LOGGER.info("[CleanUpQuery]]");
         queryExecution.stopAndCleanup();
         COORDINATOR.removeQueryExecution(queryId);
       }

@@ -19,13 +19,26 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
+import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.trigger.api.enums.TriggerType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ShowTriggersTask implements IConfigTask {
 
@@ -37,6 +50,44 @@ public class ShowTriggersTask implements IConfigTask {
 
   public static void buildTsBlock(
       TriggerTable triggerTable, SettableFuture<ConfigTaskResult> future) {
-    // todo: implementation
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showTriggersColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    if (triggerTable != null && !triggerTable.isEmpty()) {
+      for (TriggerInformation triggerInformation : triggerTable.getTable().values()) {
+        builder.getTimeColumnBuilder().writeLong(0L);
+        builder
+            .getColumnBuilder(0)
+            .writeBinary(Binary.valueOf(triggerInformation.getTriggerName()));
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(Binary.valueOf(triggerInformation.getEvent().toString()));
+        builder
+            .getColumnBuilder(2)
+            .writeBinary(
+                Binary.valueOf(
+                    triggerInformation.isStateful()
+                        ? TriggerType.STATEFUL.toString()
+                        : TriggerType.STATELESS.toString()));
+        builder
+            .getColumnBuilder(3)
+            .writeBinary(Binary.valueOf(triggerInformation.getTriggerState().toString()));
+        builder
+            .getColumnBuilder(4)
+            .writeBinary(Binary.valueOf(triggerInformation.getPathPattern().toString()));
+        builder
+            .getColumnBuilder(5)
+            .writeBinary(
+                Binary.valueOf(
+                    !triggerInformation.isStateful()
+                        ? "ALL"
+                        : triggerInformation.getDataNodeLocation().internalEndPoint.getIp()));
+        builder.declarePosition();
+      }
+    }
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowTriggersHeader();
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

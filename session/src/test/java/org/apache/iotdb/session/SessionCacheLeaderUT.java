@@ -964,14 +964,14 @@ public class SessionCacheLeaderUT {
       super(
           host,
           rpcPort,
-          Config.DEFAULT_USER,
-          Config.DEFAULT_PASSWORD,
-          Config.DEFAULT_FETCH_SIZE,
+          SessionConfig.DEFAULT_USER,
+          SessionConfig.DEFAULT_PASSWORD,
+          SessionConfig.DEFAULT_FETCH_SIZE,
           null,
-          Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-          Config.DEFAULT_MAX_FRAME_SIZE,
+          SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+          SessionConfig.DEFAULT_MAX_FRAME_SIZE,
           enableCacheLeader,
-          Config.DEFAULT_VERSION);
+          SessionConfig.DEFAULT_VERSION);
     }
 
     @Override

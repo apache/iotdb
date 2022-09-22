@@ -233,4 +233,10 @@ public class MppConfig implements BaseConfig {
         "time_partition_interval", String.valueOf(timePartitionInterval));
     return this;
   }
+
+  @Override
+  public BaseConfig setEnableMemControl(boolean enableMemControl) {
+    confignodeProperties.setProperty("enable_mem_control", String.valueOf(enableMemControl));
+    return this;
+  }
 }

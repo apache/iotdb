@@ -197,9 +197,18 @@ struct THeartbeatReq {
 struct THeartbeatResp {
   1: required i64 heartbeatTimestamp
   2: required string status
-  3: optional map<common.TConsensusGroupId, bool> judgedLeaders
-  4: optional i16 cpu
-  5: optional i16 memory
+  3: optional string statusReason
+  4: optional map<common.TConsensusGroupId, bool> judgedLeaders
+  5: optional TLoadSample loadSample
+}
+
+struct TLoadSample {
+  // Percentage of occupied cpu in DataNode
+  1: required i16 cpuUsageRate
+  // Percentage of occupied memory space in DataNode
+  2: required double memoryUsageRate
+  // Percentage of occupied disk space in DataNode
+  3: required double diskUsageRate
 }
 
 struct TRegionRouteReq {
@@ -214,6 +223,57 @@ struct TUpdateConfigNodeGroupReq {
 struct TUpdateTemplateReq{
   1: required byte type
   2: required binary templateInfo
+}
+
+struct TTsFilePieceReq{
+    1: required binary body
+    2: required string uuid
+    3: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TLoadCommandReq{
+    1: required i32 commandType
+    2: required string uuid
+}
+
+struct TLoadResp{
+  1: required bool accepted
+  2: optional string message
+  3: optional common.TSStatus status
+}
+
+struct TConstructSchemaBlackListReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TRollbackSchemaBlackListReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TInvalidateMatchedSchemaCacheReq{
+  1: required binary pathPatternTree
+}
+
+struct TFetchSchemaBlackListReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TFetchSchemaBlackListResp{
+  1: required common.TSStatus status
+  2: required binary pathPatternTree
+}
+
+struct TDeleteDataForDeleteTimeSeriesReq{
+  1: required list<common.TConsensusGroupId> dataRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TDeleteTimeSeriesReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
 }
 
 service IDataNodeRPCService {
@@ -239,6 +299,10 @@ service IDataNodeRPCService {
   TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
   TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req)
+
+  TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
+
+  TLoadResp sendLoadCommand(TLoadCommandReq req);
 
 
   // -----------------------------------For Config Node-----------------------------------------------
@@ -404,7 +468,44 @@ service IDataNodeRPCService {
    */
   common.TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req)
 
+  /**
+   * Update template cache when template info or template set info is updated
+   */
   common.TSStatus updateTemplate(TUpdateTemplateReq req)
+
+  /**
+   * Construct schema black list in target schemaRegion to block R/W on matched timeseries
+   */
+  common.TSStatus constructSchemaBlackList(TConstructSchemaBlackListReq req)
+
+  /**
+   * Remove the schema black list to recover R/W on matched timeseries
+   */
+  common.TSStatus rollbackSchemaBlackList(TRollbackSchemaBlackListReq req)
+
+  /**
+   * Config node will invalidate Schema Info cache, which matched by given pathPatternTree.
+   *
+   * @param binary: pathPatternTree
+   */
+  common.TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req)
+
+  /**
+   * Config node will fetch the schema info in black list.
+   *
+   * @param binary: pathPatternTree
+   */
+  TFetchSchemaBlackListResp fetchSchemaBlackList(TFetchSchemaBlackListReq req)
+
+  /**
+   * Config node inform this dataNode to execute a distribution data deleion mpp task
+   */
+  common.TSStatus deleteDataForDeleteTimeSeries(TDeleteDataForDeleteTimeSeriesReq req)
+
+ /**
+  * Delete matched timeseries and remove according schema black list in target schemRegion
+  */
+  common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 }
 
 service MPPDataExchangeService {

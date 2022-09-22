@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatemen
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
@@ -204,6 +205,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitInsertTablet(InsertTabletStatement insertTabletStatement, C context) {
     return visitStatement(insertTabletStatement, context);
+  }
+
+  public R visitLoadFile(LoadTsFileStatement loadTsFileStatement, C context) {
+    return visitStatement(loadTsFileStatement, context);
   }
 
   /** Data Control Language (DCL) */
