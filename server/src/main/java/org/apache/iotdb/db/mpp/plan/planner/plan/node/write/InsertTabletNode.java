@@ -197,6 +197,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       columns[columnIndex] =
           CommonUtils.castArray(dataTypes[columnIndex], dataType, columns[columnIndex]);
       dataTypes[columnIndex] = dataType;
+      return true;
     }
     return false;
   }
