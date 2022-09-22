@@ -762,16 +762,6 @@ public class MockTagSchemaRegion implements ISchemaRegion {
     Map<String, SchemaEntry> schemaMap = deviceEntry.getMeasurementMap();
     for (int i = 0; i < measurementList.length; i++) {
       SchemaEntry schemaEntry = schemaMap.get(measurementList[i]);
-      //      measurementMNode =
-      //          new MeasurementMNode(
-      //              deviceMNode,
-      //              measurementList[i],
-      //              new MeasurementSchema(
-      //                  measurementList[i],
-      //                  schemaEntry.getTSDataType(),
-      //                  schemaEntry.getTSEncoding(),
-      //                  schemaEntry.getCompressionType()),
-      //              null);
       measurementMNode = new InsertMeasurementMNode(measurementList[i], schemaEntry, null);
       // check type is match
       try {
@@ -792,14 +782,63 @@ public class MockTagSchemaRegion implements ISchemaRegion {
     return deviceMNode;
   }
 
+  @Override
+  public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      TSEncoding[] encodings,
+      CompressionType[] compressionTypes,
+      boolean aligned)
+      throws MetadataException {
+    List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>(measurements.length);
+    for (int i = 0; i < measurements.length; i++) {
+      SchemaEntry schemaEntry = getSchemaEntry(devicePath.getFullPath(), measurements[i]);
+      if (schemaEntry == null) {
+        if (config.isAutoCreateSchemaEnabled()) {
+          if (aligned) {
+            TSDataType dataType = getDataType.apply(i);
+            internalAlignedCreateTimeseries(
+                devicePath,
+                Collections.singletonList(measurements[i]),
+                Collections.singletonList(dataType),
+                Collections.singletonList(
+                    encodings[i] == null ? getDefaultEncoding(dataType) : encodings[i]),
+                Collections.singletonList(
+                    compressionTypes[i] == null
+                        ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                        : compressionTypes[i]));
+
+          } else {
+            internalCreateTimeseries(
+                devicePath.concatNode(measurements[i]),
+                getDataType.apply(i),
+                encodings[i],
+                compressionTypes[i]);
+          }
+        }
+        schemaEntry = getSchemaEntry(devicePath.getFullPath(), measurements[i]);
+      }
+      measurementSchemaInfoList.add(
+          new MeasurementSchemaInfo(
+              measurements[i],
+              new MeasurementSchema(
+                  measurements[i],
+                  schemaEntry.getTSDataType(),
+                  schemaEntry.getTSEncoding(),
+                  schemaEntry.getCompressionType()),
+              null));
+    }
+    return new DeviceSchemaInfo(devicePath, aligned, measurementSchemaInfoList);
+  }
+
   private SchemaEntry getSchemaEntry(String devicePath, String measurementName) {
     DeviceEntry deviceEntry = idTable.getDeviceEntry(devicePath);
     if (deviceEntry == null) return null;
     return deviceEntry.getSchemaEntry(measurementName);
   }
 
-  @Override
-  public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
+  private DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
       PartialPath devicePath,
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
@@ -864,6 +903,19 @@ public class MockTagSchemaRegion implements ISchemaRegion {
         Collections.emptyMap());
   }
 
+  /** create timeseries ignoring PathAlreadyExistException */
+  private void internalCreateTimeseries(
+      PartialPath path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
+      throws MetadataException {
+    if (encoding == null) {
+      encoding = getDefaultEncoding(dataType);
+    }
+    if (compressor == null) {
+      compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    }
+    createTimeseries(path, dataType, encoding, compressor, Collections.emptyMap());
+  }
+
   private void internalAlignedCreateTimeseries(
       PartialPath prefixPath, List<String> measurements, List<TSDataType> dataTypes)
       throws MetadataException {
@@ -873,6 +925,17 @@ public class MockTagSchemaRegion implements ISchemaRegion {
       encodings.add(getDefaultEncoding(dataType));
       compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
     }
+    createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
+  }
+
+  /** create aligned timeseries ignoring PathAlreadyExistException */
+  private void internalAlignedCreateTimeseries(
+      PartialPath prefixPath,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors)
+      throws MetadataException {
     createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
   }
 

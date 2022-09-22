@@ -769,17 +769,13 @@ public class TagSchemaRegion implements ISchemaRegion {
     return deviceMNode;
   }
 
-  private SchemaEntry getSchemaEntry(String devicePath, String measurementName) {
-    DeviceEntry deviceEntry = idTable.getDeviceEntry(devicePath);
-    if (deviceEntry == null) return null;
-    return deviceEntry.getSchemaEntry(measurementName);
-  }
-
   @Override
   public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
       PartialPath devicePath,
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
+      TSEncoding[] encodings,
+      CompressionType[] compressionTypes,
       boolean aligned)
       throws MetadataException {
     List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>(measurements.length);
@@ -788,13 +784,24 @@ public class TagSchemaRegion implements ISchemaRegion {
       if (schemaEntry == null) {
         if (config.isAutoCreateSchemaEnabled()) {
           if (aligned) {
+            TSDataType dataType = getDataType.apply(i);
             internalAlignedCreateTimeseries(
                 devicePath,
                 Collections.singletonList(measurements[i]),
-                Collections.singletonList(getDataType.apply(i)));
+                Collections.singletonList(dataType),
+                Collections.singletonList(
+                    encodings[i] == null ? getDefaultEncoding(dataType) : encodings[i]),
+                Collections.singletonList(
+                    compressionTypes[i] == null
+                        ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                        : compressionTypes[i]));
 
           } else {
-            internalCreateTimeseries(devicePath.concatNode(measurements[i]), getDataType.apply(i));
+            internalCreateTimeseries(
+                devicePath.concatNode(measurements[i]),
+                getDataType.apply(i),
+                encodings[i],
+                compressionTypes[i]);
           }
         }
         schemaEntry = getSchemaEntry(devicePath.getFullPath(), measurements[i]);
@@ -810,6 +817,12 @@ public class TagSchemaRegion implements ISchemaRegion {
               null));
     }
     return new DeviceSchemaInfo(devicePath, aligned, measurementSchemaInfoList);
+  }
+
+  private SchemaEntry getSchemaEntry(String devicePath, String measurementName) {
+    DeviceEntry deviceEntry = idTable.getDeviceEntry(devicePath);
+    if (deviceEntry == null) return null;
+    return deviceEntry.getSchemaEntry(measurementName);
   }
 
   private void checkAlignedAndAutoCreateSeries(InsertPlan plan) throws MetadataException {
@@ -831,6 +844,7 @@ public class TagSchemaRegion implements ISchemaRegion {
     }
   }
 
+  /** create timeseries ignoring PathAlreadyExistException */
   private void internalCreateTimeseries(PartialPath path, TSDataType dataType)
       throws MetadataException {
     createTimeseries(
@@ -841,6 +855,20 @@ public class TagSchemaRegion implements ISchemaRegion {
         Collections.emptyMap());
   }
 
+  /** create timeseries ignoring PathAlreadyExistException */
+  private void internalCreateTimeseries(
+      PartialPath path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
+      throws MetadataException {
+    if (encoding == null) {
+      encoding = getDefaultEncoding(dataType);
+    }
+    if (compressor == null) {
+      compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    }
+    createTimeseries(path, dataType, encoding, compressor, Collections.emptyMap());
+  }
+
+  /** create aligned timeseries ignoring PathAlreadyExistException */
   private void internalAlignedCreateTimeseries(
       PartialPath prefixPath, List<String> measurements, List<TSDataType> dataTypes)
       throws MetadataException {
@@ -850,6 +878,17 @@ public class TagSchemaRegion implements ISchemaRegion {
       encodings.add(getDefaultEncoding(dataType));
       compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
     }
+    createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
+  }
+
+  /** create aligned timeseries ignoring PathAlreadyExistException */
+  private void internalAlignedCreateTimeseries(
+      PartialPath prefixPath,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors)
+      throws MetadataException {
     createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
   }
 
