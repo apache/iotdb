@@ -169,6 +169,7 @@ public class SnapshotTaker {
   }
 
   private void createHardLink(File target, File source) throws IOException {
+    Files.deleteIfExists(target.toPath());
     Files.createLink(target.toPath(), source.toPath());
     snapshotLogger.logFile(source.getAbsolutePath(), target.getAbsolutePath());
   }
