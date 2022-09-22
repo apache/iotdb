@@ -242,6 +242,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                     .add((AlignedChunkData) chunkData);
               }
               chunkData.setNotDecode(chunkMetadata);
+              chunkData.addDataSize(header.getDataSize());
               chunkDataList.add(chunkData);
               reader.position(reader.position() + header.getDataSize());
               break;
@@ -342,7 +343,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
             Set<ChunkData> allChunkData = new HashSet<>();
             if (!isTimeChunkNeedDecode) {
-              pageIndex2ChunkData.get(1).get(0).addValueChunk(chunkOffset, header, chunkMetadata);
+              AlignedChunkData alignedChunkData = pageIndex2ChunkData.get(1).get(0);
+              alignedChunkData.addValueChunk(chunkOffset, header, chunkMetadata);
+              alignedChunkData.addValueChunkDataSize(header.getDataSize());
               reader.position(reader.position() + header.getDataSize());
               break;
             }

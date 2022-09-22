@@ -30,10 +30,10 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -45,7 +45,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final String device;
-  private final Set<String> measurementList;
+  private final List<String> measurementList;
   private final FragmentInstanceContext fragmentInstanceContext;
   private final QueryDataSource queryDataSource;
   private final AbstractCompactionWriter compactionWriter;
@@ -54,7 +54,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
 
   public ReadPointPerformerSubTask(
       String device,
-      Set<String> measurementList,
+      List<String> measurementList,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource,
       AbstractCompactionWriter compactionWriter,
@@ -79,7 +79,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
               device,
               Collections.singletonList(measurement),
               measurementSchemas,
-              measurementList,
+              new ArrayList<>(schemaMap.keySet()),
               fragmentInstanceContext,
               queryDataSource,
               false);
@@ -87,7 +87,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
       if (dataBlockReader.hasNextBatch()) {
         compactionWriter.startMeasurement(measurementSchemas, taskId);
         ReadPointCompactionPerformer.writeWithReader(
-            compactionWriter, dataBlockReader, taskId, false);
+            compactionWriter, dataBlockReader, device, taskId, false);
         compactionWriter.endMeasurement(taskId);
       }
     }

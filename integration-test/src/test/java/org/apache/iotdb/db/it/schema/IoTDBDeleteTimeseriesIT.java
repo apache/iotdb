@@ -331,6 +331,29 @@ public class IoTDBDeleteTimeseriesIT {
       }
       Assert.assertEquals(retArray1.length, cnt);
     }
+
+    statement.execute("delete timeseries root.sg1.d1.s2, root.sg2.**");
+    try (ResultSet resultSet = statement.executeQuery("select s2 from root.sg1.*")) {
+      Assert.assertFalse(resultSet.next());
+    }
+
+    try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg2.*.s2")) {
+      Assert.assertFalse(resultSet.next());
+    }
+
+    retArray1 = new String[] {"0,4,4"};
+    cnt = 0;
+    try (ResultSet resultSet = statement.executeQuery("select count(s2) from root.*.*")) {
+      while (resultSet.next()) {
+        StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
+        for (int i = 3; i <= 4; i++) {
+          ans.append(",").append(resultSet.getString(count("root.sg" + i + ".d1.s2")));
+        }
+        Assert.assertEquals(retArray1[cnt], ans.toString());
+        cnt++;
+      }
+      Assert.assertEquals(retArray1.length, cnt);
+    }
   }
 
   @Test

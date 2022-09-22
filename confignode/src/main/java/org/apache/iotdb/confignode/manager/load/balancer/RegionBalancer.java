@@ -30,11 +30,12 @@ import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.NodeManager;
-import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.confignode.manager.load.balancer.region.CopySetRegionAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionAllocator;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import java.util.List;
 import java.util.Map;

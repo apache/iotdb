@@ -34,6 +34,7 @@ public enum NodeStatus {
 
   /** Only query statements are permitted */
   ReadOnly("ReadOnly");
+  public static final String DISK_FULL = "DiskFull";
 
   private final String status;
 
