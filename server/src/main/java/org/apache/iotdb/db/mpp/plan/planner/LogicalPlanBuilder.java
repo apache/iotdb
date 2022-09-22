@@ -788,7 +788,7 @@ public class LogicalPlanBuilder {
         for (PartialPath pathPattern :
             patternTree.getOverlappedPathPatterns(
                 storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
-          overlappedPatternTree.appendPathPattern(pathPattern);
+         overlappedPatternTree.appendFullPath(pathPattern);
         }
         this.root.addChild(
             new SchemaFetchScanNode(
