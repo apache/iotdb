@@ -151,7 +151,7 @@ public class ReadPointCompactionPerformer
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource)
       throws IOException, MetadataException {
-    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllMeasurementSchemas();
+    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
     if (measurementSchemas.isEmpty()) {
       return;
@@ -191,10 +191,10 @@ public class ReadPointCompactionPerformer
     MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
         deviceIterator.iterateNotAlignedSeries(device, false);
     List<String> allMeasurements =
-        new ArrayList<>(deviceIterator.getAllMeasurementSchemas().keySet());
+        new ArrayList<>(deviceIterator.getAllSchemasOfCurrentDevice().keySet());
     allMeasurements.sort((String::compareTo));
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
-    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllMeasurementSchemas();
+    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
     // construct sub tasks and start compacting measurements in parallel
     compactionWriter.startChunkGroup(device, false);
     for (int taskCount = 0; taskCount < allMeasurements.size(); ) {
