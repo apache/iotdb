@@ -62,7 +62,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerFireVisitor.class);
 
-  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+  private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
               .createClientManager(
@@ -304,9 +304,9 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
           // we successfully found an executor on another data node
           return TriggerFireResult.construct(resp.getFireResult());
         } else {
+          retryNum--;
           // update TDataNodeLocation of stateful trigger through config node
           updateLocationOfStatefulTrigger(triggerName);
-          retryNum--;
         }
       } catch (IOException | TException e) {
         // IOException means that we failed to borrow client, possibly because corresponding
@@ -319,9 +319,9 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
             triggerName,
             endPoint.toString(),
             e.getMessage());
+        retryNum--;
         // update TDataNodeLocation of stateful trigger through config node
         updateLocationOfStatefulTrigger(triggerName);
-        retryNum--;
       } catch (Throwable e) {
         LOGGER.warn(
             "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
