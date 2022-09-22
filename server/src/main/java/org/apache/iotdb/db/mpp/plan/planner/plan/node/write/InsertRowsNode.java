@@ -133,6 +133,11 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   }
 
   @Override
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    return false;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;

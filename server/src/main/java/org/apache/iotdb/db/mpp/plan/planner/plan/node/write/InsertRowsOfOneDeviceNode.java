@@ -157,6 +157,11 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   }
 
   @Override
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    return false;
+  }
+
+  @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     List<WritePlanNode> result = new ArrayList<>();
 

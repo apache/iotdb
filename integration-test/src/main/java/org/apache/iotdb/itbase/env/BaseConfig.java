@@ -126,6 +126,14 @@ public interface BaseConfig {
     return this;
   }
 
+  default boolean isEnableMemControl() {
+    return true;
+  }
+
+  default BaseConfig setEnableMemControl(boolean enableMemControl) {
+    return this;
+  }
+
   default boolean isEnableUnseqSpaceCompaction() {
     return true;
   }

@@ -59,6 +59,7 @@ public class LogDispatcher {
   private static final long DEFAULT_INITIAL_SYNC_INDEX = 0L;
   private final MultiLeaderServerImpl impl;
   private final List<LogDispatcherThread> threads;
+  private final String selfPeerId;
   private final IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager;
   private ExecutorService executorService;
 
@@ -68,6 +69,7 @@ public class LogDispatcher {
       MultiLeaderServerImpl impl,
       IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager) {
     this.impl = impl;
+    this.selfPeerId = impl.getThisNode().getEndpoint().toString();
     this.clientManager = clientManager;
     this.threads =
         impl.getConfiguration().stream()
@@ -369,7 +371,8 @@ public class LogDispatcher {
       try {
         AsyncMultiLeaderServiceClient client = clientManager.borrowClient(peer.getEndpoint());
         TSyncLogReq req =
-            new TSyncLogReq(peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
+            new TSyncLogReq(
+                selfPeerId, peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
         logger.debug(
             "Send Batch[startIndex:{}, endIndex:{}] to ConsensusGroup:{}",
             batch.getStartIndex(),

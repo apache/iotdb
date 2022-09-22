@@ -97,7 +97,8 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
         resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
         return;
       }
-      BatchIndexedConsensusRequest requestsInThisBatch = new BatchIndexedConsensusRequest();
+      BatchIndexedConsensusRequest requestsInThisBatch =
+          new BatchIndexedConsensusRequest(req.peerId);
       // We use synchronized to ensure atomicity of executing multiple logs
       if (!req.getBatches().isEmpty()) {
         List<IConsensusRequest> consensusRequests = new ArrayList<>();

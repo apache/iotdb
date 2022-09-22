@@ -34,7 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
+import org.apache.iotdb.confignode.manager.node.BaseNodeCache;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -489,7 +489,7 @@ public class DataNodeRemoveHandler {
         // check whether removed data node is in running state
         BaseNodeCache nodeCache =
             configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
-        if (!nodeCache.getNodeStatus().getStatus().equals("Running")) {
+        if (!NodeStatus.Running.equals(nodeCache.getNodeStatus())) {
           removedDataNodes.remove(dataNodeLocation);
           LOGGER.error(
               "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication",
