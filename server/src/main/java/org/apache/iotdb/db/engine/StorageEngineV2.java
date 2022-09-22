@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -214,19 +213,6 @@ public class StorageEngineV2 implements IService {
         Thread.currentThread().interrupt();
       }
     }
-  }
-
-  public static TTimePartitionSlot getTimePartitionSlot(long time) {
-    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
-    if (enablePartition) {
-      if (timePartitionInterval == -1) {
-        initTimePartition();
-      }
-      timePartitionSlot.setStartTime(time - time % timePartitionInterval);
-    } else {
-      timePartitionSlot.setStartTime(0);
-    }
-    return timePartitionSlot;
   }
 
   public boolean isAllSgReady() {

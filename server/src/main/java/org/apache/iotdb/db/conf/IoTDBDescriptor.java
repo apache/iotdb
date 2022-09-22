@@ -1915,7 +1915,7 @@ public class IoTDBDescriptor {
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
-    conf.setPartitionInterval(globalConfig.timePartitionInterval);
+    conf.setTimeSlotInterval(globalConfig.timePartitionInterval);
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 

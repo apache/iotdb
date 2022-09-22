@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.utils.TimeSlotUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
@@ -270,7 +270,7 @@ public class AlignedChunkData implements ChunkData {
     for (int i = 0; i < decodeTime.length; i++) {
       if (decodeTime[i] < timePartitionSlot.getStartTime()) {
         continue;
-      } else if (!timePartitionSlot.equals(StorageEngineV2.getTimePartitionSlot(decodeTime[i]))) {
+      } else if (!timePartitionSlot.equals(TimeSlotUtils.getTimePartitionSlot(decodeTime[i]))) {
         break;
       }
       time[satisfiedLength++] = decodeTime[i];
@@ -303,7 +303,7 @@ public class AlignedChunkData implements ChunkData {
     for (int i = 0; i < valueBatch.length; i++) {
       if (time[i] < timePartitionSlot.getStartTime()) {
         continue;
-      } else if (!timePartitionSlot.equals(StorageEngineV2.getTimePartitionSlot(time[i]))) {
+      } else if (!timePartitionSlot.equals(TimeSlotUtils.getTimePartitionSlot(time[i]))) {
         break;
       }
       if (valueBatch[i] == null) {
@@ -469,7 +469,7 @@ public class AlignedChunkData implements ChunkData {
     for (int i = 1; i < chunkHeaderListSize; i++) {
       chunkData.addValueChunk(-1, chunkHeaderList[i], null);
     }
-    chunkData.setTimePartitionSlot(StorageEngineV2.getTimePartitionSlot(timePartition));
+    chunkData.setTimePartitionSlot(TimeSlotUtils.getTimePartitionSlot(timePartition));
     chunkData.deserializeTsFileData(stream);
     return chunkData;
   }

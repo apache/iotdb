@@ -34,6 +34,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.db.utils.TimeSlotUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
@@ -213,7 +214,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         (times[0] / StorageEngineV2.getTimePartitionInterval())
             * StorageEngineV2.getTimePartitionInterval(); // included
     long endTime = startTime + StorageEngineV2.getTimePartitionInterval(); // excluded
-    TTimePartitionSlot timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[0]);
+    TTimePartitionSlot timePartitionSlot = TimeSlotUtils.getTimePartitionSlot(times[0]);
     int startLoc = 0; // included
 
     List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
@@ -231,7 +232,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         endTime =
             (times[i] / StorageEngineV2.getTimePartitionInterval() + 1)
                 * StorageEngineV2.getTimePartitionInterval();
-        timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[i]);
+        timePartitionSlot = TimeSlotUtils.getTimePartitionSlot(times[i]);
       }
     }
 
@@ -306,7 +307,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         (times[0] / StorageEngineV2.getTimePartitionInterval())
             * StorageEngineV2.getTimePartitionInterval(); // included
     long endTime = startTime + StorageEngineV2.getTimePartitionInterval(); // excluded
-    TTimePartitionSlot timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[0]);
+    TTimePartitionSlot timePartitionSlot = TimeSlotUtils.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= endTime) {
         result.add(timePartitionSlot);
@@ -314,7 +315,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         endTime =
             (times[i] / StorageEngineV2.getTimePartitionInterval() + 1)
                 * StorageEngineV2.getTimePartitionInterval();
-        timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[i]);
+        timePartitionSlot = TimeSlotUtils.getTimePartitionSlot(times[i]);
       }
     }
     result.add(timePartitionSlot);

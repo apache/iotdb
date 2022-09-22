@@ -767,6 +767,9 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 86400;
 
+  /** Time slot interval in seconds */
+  private long timeSlotInterval = 86400;
+
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
    * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
@@ -1108,6 +1111,14 @@ public class IoTDBConfig {
 
   public void setPartitionInterval(long partitionInterval) {
     this.partitionInterval = partitionInterval;
+  }
+
+  public long getTimeSlotInterval() {
+    return timeSlotInterval;
+  }
+
+  public void setTimeSlotInterval(long timeSlotInterval) {
+    this.timeSlotInterval = timeSlotInterval;
   }
 
   public TimeIndexLevel getTimeIndexLevel() {

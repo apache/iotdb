@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -30,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.utils.TimeSlotUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -268,7 +268,7 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.devicePath.getFullPath(),
-                  StorageEngineV2.getTimePartitionSlot(insertRowNode.getTime()));
+                  TimeSlotUtils.getTimePartitionSlot(insertRowNode.getTime()));
       if (splitMap.containsKey(dataRegionReplicaSet)) {
         InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
         tmpNode.addOneInsertRowNode(insertRowNode, i);

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.utils.TimeSlotUtils;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.util.ArrayList;
@@ -92,7 +93,7 @@ public class InsertTabletStatement extends InsertBaseStatement {
         (times[0] / StorageEngineV2.getTimePartitionInterval())
             * StorageEngineV2.getTimePartitionInterval(); // included
     long endTime = startTime + StorageEngineV2.getTimePartitionInterval(); // excluded
-    TTimePartitionSlot timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[0]);
+    TTimePartitionSlot timePartitionSlot = TimeSlotUtils.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= endTime) {
         result.add(timePartitionSlot);
@@ -100,7 +101,7 @@ public class InsertTabletStatement extends InsertBaseStatement {
         endTime =
             (times[i] / StorageEngineV2.getTimePartitionInterval() + 1)
                 * StorageEngineV2.getTimePartitionInterval();
-        timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[i]);
+        timePartitionSlot = TimeSlotUtils.getTimePartitionSlot(times[i]);
       }
     }
     result.add(timePartitionSlot);
@@ -111,8 +112,7 @@ public class InsertTabletStatement extends InsertBaseStatement {
   public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
     TRegionReplicaSet regionReplicaSet =
         dataPartition.getDataRegionReplicaSetForWriting(
-            devicePath.getFullPath(),
-            StorageEngineV2.getTimePartitionSlot(times[times.length - 1]));
+            devicePath.getFullPath(), TimeSlotUtils.getTimePartitionSlot(times[times.length - 1]));
     return Collections.singletonList(
         regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
   }

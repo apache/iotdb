@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.load.AlignedChunkData;
 import org.apache.iotdb.db.engine.load.ChunkData;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -33,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.utils.TimeSlotUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -91,8 +91,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     Set<TRegionReplicaSet> allRegionReplicaSet = new HashSet<>();
     needDecodeTsFile = false;
     for (String device : resource.getDevices()) {
-      if (!StorageEngineV2.getTimePartitionSlot(resource.getStartTime(device))
-          .equals(StorageEngineV2.getTimePartitionSlot(resource.getEndTime(device)))) {
+      if (!TimeSlotUtils.getTimePartitionSlot(resource.getStartTime(device))
+          .equals(TimeSlotUtils.getTimePartitionSlot(resource.getEndTime(device)))) {
         needDecodeTsFile = true;
         return;
       }
@@ -229,7 +229,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                     == TsFileConstant.TIME_COLUMN_MASK);
             IChunkMetadata chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
             TTimePartitionSlot timePartitionSlot =
-                StorageEngineV2.getTimePartitionSlot(chunkMetadata.getStartTime());
+                TimeSlotUtils.getTimePartitionSlot(chunkMetadata.getStartTime());
             ChunkData chunkData =
                 ChunkData.createChunkData(isAligned, reader.position(), curDevice, header);
             chunkData.setTimePartitionSlot(timePartitionSlot);
@@ -273,7 +273,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                         ? chunkMetadata.getStartTime()
                         : pageHeader.getStartTime();
                 TTimePartitionSlot pageTimePartitionSlot =
-                    StorageEngineV2.getTimePartitionSlot(startTime);
+                    TimeSlotUtils.getTimePartitionSlot(startTime);
                 if (!timePartitionSlot.equals(pageTimePartitionSlot)) {
                   chunkDataList.add(chunkData);
                   timePartitionSlot = pageTimePartitionSlot;
@@ -295,7 +295,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
                 boolean isFirstData = true;
                 for (long currentTime : timeBatch) {
                   TTimePartitionSlot currentTimePartitionSlot =
-                      StorageEngineV2.getTimePartitionSlot(currentTime); // TODO: can speed up
+                      TimeSlotUtils.getTimePartitionSlot(currentTime); // TODO: can speed up
                   if (!timePartitionSlot.equals(currentTimePartitionSlot)) {
                     if (!isFirstData) {
                       chunkData.setTailPageNeedDecode(true); // close last chunk data
@@ -426,17 +426,17 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   private boolean needDecodeChunk(IChunkMetadata chunkMetadata) {
-    return !StorageEngineV2.getTimePartitionSlot(chunkMetadata.getStartTime())
-        .equals(StorageEngineV2.getTimePartitionSlot(chunkMetadata.getEndTime()));
+    return !TimeSlotUtils.getTimePartitionSlot(chunkMetadata.getStartTime())
+        .equals(TimeSlotUtils.getTimePartitionSlot(chunkMetadata.getEndTime()));
   }
 
   private boolean needDecodePage(PageHeader pageHeader, IChunkMetadata chunkMetadata) {
     if (pageHeader.getStatistics() == null) {
-      return !StorageEngineV2.getTimePartitionSlot(chunkMetadata.getStartTime())
-          .equals(StorageEngineV2.getTimePartitionSlot(chunkMetadata.getEndTime()));
+      return !TimeSlotUtils.getTimePartitionSlot(chunkMetadata.getStartTime())
+          .equals(TimeSlotUtils.getTimePartitionSlot(chunkMetadata.getEndTime()));
     }
-    return !StorageEngineV2.getTimePartitionSlot(pageHeader.getStartTime())
-        .equals(StorageEngineV2.getTimePartitionSlot(pageHeader.getEndTime()));
+    return !TimeSlotUtils.getTimePartitionSlot(pageHeader.getStartTime())
+        .equals(TimeSlotUtils.getTimePartitionSlot(pageHeader.getEndTime()));
   }
 
   private long[] decodePage(
