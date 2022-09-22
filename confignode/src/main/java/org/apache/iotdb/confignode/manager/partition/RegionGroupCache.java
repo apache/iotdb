@@ -85,11 +85,19 @@ public class RegionGroupCache {
     return leaderDataNodeId;
   }
 
+  /**
+   * Get the specified Region's status
+   *
+   * @param dataNodeId Where the Region resides
+   * @return Region's latest status if received heartbeat recently, Unknown otherwise
+   */
   public RegionStatus getRegionStatus(int dataNodeId) {
     return regionCacheMap.containsKey(dataNodeId)
         ? regionCacheMap.get(dataNodeId).getStatus()
         : RegionStatus.Unknown;
   }
+
+  public RegionGroupStatus getRegionGroupStatus() {}
 
   public TConsensusGroupId getConsensusGroupId() {
     return consensusGroupId;

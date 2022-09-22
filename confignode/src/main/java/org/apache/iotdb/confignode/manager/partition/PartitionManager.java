@@ -76,6 +76,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -84,6 +87,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
 public class PartitionManager {
@@ -302,18 +306,20 @@ public class PartitionManager {
       Map<String, Integer> allotmentMap = new ConcurrentHashMap<>();
 
       for (Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
-        float allocatedRegionCount =
-            partitionInfo.getRegionCount(entry.getKey(), consensusGroupType);
+        final String storageGroup = entry.getKey();
+        final int unassignedPartitionSlotsCount = entry.getValue();
+
+        float allocatedRegionCount = partitionInfo.getRegionCount(storageGroup, consensusGroupType);
         // The slotCount equals to the sum of assigned slot count and unassigned slot count
         float slotCount =
-            (float) partitionInfo.getAssignedSeriesPartitionSlotsCount(entry.getKey())
-                + entry.getValue();
+            (float) partitionInfo.getAssignedSeriesPartitionSlotsCount(storageGroup)
+                + unassignedPartitionSlotsCount;
         float maxRegionCount =
-            getClusterSchemaManager().getMaxRegionGroupCount(entry.getKey(), consensusGroupType);
+            getClusterSchemaManager().getMaxRegionGroupCount(storageGroup, consensusGroupType);
         float maxSlotCount =
             ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum();
 
-        /* Region extension is required in the following two cases  */
+        /* Region extension is required in the following cases */
         // 1. There are no Region has been created for the current StorageGroup
         if (allocatedRegionCount == 0) {
           // The delta is equal to the smallest integer solution that satisfies the inequality:
@@ -322,7 +328,7 @@ public class PartitionManager {
               Math.min(
                   (int) maxRegionCount,
                   Math.max(1, (int) Math.ceil(slotCount * maxRegionCount / maxSlotCount)));
-          allotmentMap.put(entry.getKey(), delta);
+          allotmentMap.put(storageGroup, delta);
           continue;
         }
 
@@ -340,7 +346,14 @@ public class PartitionManager {
                       (int)
                           Math.ceil(
                               slotCount * maxRegionCount / maxSlotCount - allocatedRegionCount)));
-          allotmentMap.put(entry.getKey(), delta);
+          allotmentMap.put(storageGroup, delta);
+          continue;
+        }
+
+        // 3. All RegionGroups in the specified StorageGroup are disabled currently
+        if (allocatedRegionCount
+            == filterRegionGroupThroughStatus(storageGroup, RegionGroupStatus.Disabled).size()) {
+          allotmentMap.put(storageGroup, 1);
         }
       }
 
@@ -433,9 +446,23 @@ public class PartitionManager {
    * @param type SchemaRegion or DataRegion
    * @return The specific StorageGroup's Regions that sorted by the number of allocated slots
    */
-  public List<Pair<Long, TConsensusGroupId>> getSortedRegionSlotsCounter(
+  public List<Pair<Long, TConsensusGroupId>> getSortedRegionGroupSlotsCounter(
       String storageGroup, TConsensusGroupType type) {
-    return partitionInfo.getSortedRegionSlotsCounter(storageGroup, type);
+    // Collect static data
+    List<Pair<Long, TConsensusGroupId>> regionGroupSlotsCounter =
+        partitionInfo.getRegionGroupSlotsCounter(storageGroup, type);
+
+    // Filter RegionGroups that have Disabled status
+    List<Pair<Long, TConsensusGroupId>> result = new ArrayList<>();
+    for (Pair<Long, TConsensusGroupId> slotsCounter : regionGroupSlotsCounter) {
+      // Use Running or Available RegionGroups
+      if (!RegionGroupStatus.Disabled.equals(getRegionGroupStatus(slotsCounter.getRight()))) {
+        result.add(slotsCounter);
+      }
+    }
+
+    result.sort(Comparator.comparingLong(Pair::getLeft));
+    return result;
   }
 
   /**
@@ -703,6 +730,41 @@ public class PartitionManager {
           });
     }
     return result;
+  }
+
+  /**
+   * Filter the RegionGroups in the specified StorageGroup through the RegionGroupStatus
+   *
+   * @param storageGroup The specified StorageGroup
+   * @param status The specified RegionGroupStatus
+   * @return Filtered RegionGroups with the specific RegionGroupStatus
+   */
+  public List<TRegionReplicaSet> filterRegionGroupThroughStatus(
+      String storageGroup, RegionGroupStatus... status) {
+    return getAllReplicaSets(storageGroup).stream()
+        .filter(
+            regionReplicaSet -> {
+              TConsensusGroupId regionGroupId = regionReplicaSet.getRegionId();
+              return regionGroupCacheMap.containsKey(regionGroupId)
+                  && Arrays.stream(status)
+                      .anyMatch(
+                          s ->
+                              s.equals(
+                                  regionGroupCacheMap.get(regionGroupId).getRegionGroupStatus()));
+            })
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Safely get RegionGroupStatus
+   *
+   * @param consensusGroupId Specified RegionGroupId
+   * @return Corresponding RegionGroupStatus if cache exists, Disabled otherwise
+   */
+  public RegionGroupStatus getRegionGroupStatus(TConsensusGroupId consensusGroupId) {
+    return regionGroupCacheMap.containsKey(consensusGroupId)
+        ? regionGroupCacheMap.get(consensusGroupId).getRegionGroupStatus()
+        : RegionGroupStatus.Disabled;
   }
 
   public ScheduledExecutorService getRegionMaintainer() {

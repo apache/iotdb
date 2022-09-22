@@ -615,11 +615,12 @@ public class PartitionInfo implements SnapshotProcessor {
    *
    * @param storageGroup StorageGroupName
    * @param type SchemaRegion or DataRegion
-   * @return The specific StorageGroup's Regions that sorted by the number of allocated slots
+   * @return The StorageGroup's Running or Available Regions that sorted by the number of allocated
+   *     slots
    */
-  public List<Pair<Long, TConsensusGroupId>> getSortedRegionSlotsCounter(
+  public List<Pair<Long, TConsensusGroupId>> getRegionGroupSlotsCounter(
       String storageGroup, TConsensusGroupType type) {
-    return storageGroupPartitionTables.get(storageGroup).getSortedRegionGroupSlotsCounter(type);
+    return storageGroupPartitionTables.get(storageGroup).getRegionGroupSlotsCounter(type);
   }
 
   /**

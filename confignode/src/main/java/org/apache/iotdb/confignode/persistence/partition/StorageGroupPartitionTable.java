@@ -41,7 +41,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -276,20 +275,22 @@ public class StorageGroupPartitionTable {
    * Only leader use this interface.
    *
    * @param type SchemaRegion or DataRegion
-   * @return RegionGroups' indexes that sorted by the number of allocated slots
+   * @return RegionGroups' slot count and index
    */
-  public List<Pair<Long, TConsensusGroupId>> getSortedRegionGroupSlotsCounter(
-      TConsensusGroupType type) {
+  public List<Pair<Long, TConsensusGroupId>> getRegionGroupSlotsCounter(TConsensusGroupType type) {
     List<Pair<Long, TConsensusGroupId>> result = new Vector<>();
 
     regionGroupMap.forEach(
         (consensusGroupId, regionGroup) -> {
-          if (consensusGroupId.getType().equals(type)) {
-            result.add(new Pair<>(regionGroup.getSeriesSlotCount(), consensusGroupId));
+          if (type.equals(consensusGroupId.getType())) {
+            long slotCount =
+                type.equals(TConsensusGroupType.SchemaRegion)
+                    ? regionGroup.getSeriesSlotCount()
+                    : regionGroup.getTimeSlotCount();
+            result.add(new Pair<>(slotCount, consensusGroupId));
           }
         });
 
-    result.sort(Comparator.comparingLong(Pair::getLeft));
     return result;
   }
 

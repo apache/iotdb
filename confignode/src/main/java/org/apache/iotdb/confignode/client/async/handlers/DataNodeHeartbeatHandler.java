@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.client.async.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupCache;
@@ -68,7 +69,9 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
                               heartbeatResp.getHeartbeatTimestamp(),
                               receiveTime,
                               dataNodeLocation.getDataNodeId(),
-                              isLeader)));
+                              isLeader,
+                              // Region will inherit DataNode's status
+                              RegionStatus.parse(heartbeatResp.getStatus()))));
     }
   }
 

@@ -58,7 +58,7 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
           // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
           List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
               getPartitionManager()
-                  .getSortedRegionSlotsCounter(storageGroup, TConsensusGroupType.SchemaRegion);
+                  .getSortedRegionGroupSlotsCounter(storageGroup, TConsensusGroupType.SchemaRegion);
 
           // Enumerate SeriesPartitionSlot
           Map<TSeriesPartitionSlot, TConsensusGroupId> schemaPartitionMap =
@@ -86,7 +86,7 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
           // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
           List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
               getPartitionManager()
-                  .getSortedRegionSlotsCounter(storageGroup, TConsensusGroupType.DataRegion);
+                  .getSortedRegionGroupSlotsCounter(storageGroup, TConsensusGroupType.DataRegion);
 
           DataPartitionTable dataPartitionTable = new DataPartitionTable();
 

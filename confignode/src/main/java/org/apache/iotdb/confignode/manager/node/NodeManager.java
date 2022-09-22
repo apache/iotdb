@@ -517,11 +517,16 @@ public class NodeManager {
 
   /** loop body of the heartbeat thread */
   private void heartbeatLoopBody() {
-    // the consensusManager of configManager may not be fully initialized at this time
+    // The consensusManager of configManager may not be fully initialized at this time
     Optional.ofNullable(getConsensusManager())
         .ifPresent(
             consensusManager -> {
               if (getConsensusManager().isLeader()) {
+                List<TConfigNodeLocation> registeredConfigNodes = getRegisteredConfigNodes();
+                List<TDataNodeConfiguration> registeredDataNodes = getRegisteredDataNodes();
+                List<TRegionReplicaSet> regionReplicaSets =
+                    getPartitionManager().getAllReplicaSets();
+
                 // Generate HeartbeatReq
                 THeartbeatReq heartbeatReq = genHeartbeatReq();
                 // Send heartbeat requests to all the registered DataNodes

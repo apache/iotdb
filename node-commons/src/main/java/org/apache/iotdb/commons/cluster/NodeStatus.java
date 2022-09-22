@@ -29,9 +29,6 @@ public enum NodeStatus {
   /** Node is in removing */
   Removing("Removing"),
 
-  /** Node's disk space is insufficient */
-  Full("Full"),
-
   /** Only query statements are permitted */
   ReadOnly("ReadOnly");
   public static final String DISK_FULL = "DiskFull";
