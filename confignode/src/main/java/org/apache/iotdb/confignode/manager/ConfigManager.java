@@ -669,7 +669,7 @@ public class ConfigManager implements IManager {
     if (req.getDefaultTTL() != CommonDescriptor.getInstance().getConfig().getDefaultTTL()) {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
-    if (req.getTimePartitionInterval() != conf.getTimePartitionIntervalForRouting()) {
+    if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
       return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
     if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {

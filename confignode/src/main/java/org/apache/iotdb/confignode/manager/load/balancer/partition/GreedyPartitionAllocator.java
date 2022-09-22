@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GreedyPartitionAllocator implements IPartitionAllocator {
 
   private static final long TIME_PARTITION_INTERVAL =
-      ConfigNodeDescriptor.getInstance().getConf().getTimePartitionIntervalForRouting();
+      ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval();
 
   private final IManager configManager;
 

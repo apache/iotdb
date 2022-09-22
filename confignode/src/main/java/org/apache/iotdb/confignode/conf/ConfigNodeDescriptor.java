@@ -202,11 +202,11 @@ public class ConfigNodeDescriptor {
       conf.setTemporaryLibDir(
           properties.getProperty("temporary_lib_dir", conf.getTemporaryLibDir()));
 
-      conf.setTimePartitionIntervalForRouting(
+      conf.setTimePartitionInterval(
           Long.parseLong(
               properties.getProperty(
                   "time_partition_interval_for_routing",
-                  String.valueOf(conf.getTimePartitionIntervalForRouting()))));
+                  String.valueOf(conf.getTimePartitionInterval()))));
 
       conf.setSchemaReplicationFactor(
           Integer.parseInt(

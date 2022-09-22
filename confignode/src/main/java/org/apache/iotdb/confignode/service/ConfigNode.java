@@ -193,7 +193,7 @@ public class ConfigNode implements ConfigNodeMBean {
             CONF.getSeriesPartitionSlotNum(),
             CONF.getSeriesPartitionExecutorClass(),
             CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
-            CONF.getTimePartitionIntervalForRouting(),
+            CONF.getTimePartitionInterval(),
             CONF.getSchemaReplicationFactor(),
             CONF.getSchemaRegionPerDataNode(),
             CONF.getDataReplicationFactor(),
