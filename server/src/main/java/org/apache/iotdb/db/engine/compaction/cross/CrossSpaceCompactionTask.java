@@ -57,7 +57,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResource> targetTsfileResourceList;
   protected List<TsFileResource> holdReadLockList = new ArrayList<>();
   protected List<TsFileResource> holdWriteLockList = new ArrayList<>();
-  protected long selectedFileSize = 0;
+  protected double selectedSeqFileSize = 0;
+  protected double selectedUnseqFileSize = 0;
   protected long memoryCost = 0L;
 
   public CrossSpaceCompactionTask(
@@ -112,19 +113,23 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
 
       for (TsFileResource resource : selectedSequenceFiles) {
-        selectedFileSize += resource.getTsFileSize();
+        selectedSeqFileSize += resource.getTsFileSize();
       }
+
       for (TsFileResource resource : selectedUnsequenceFiles) {
-        selectedFileSize += resource.getTsFileSize();
+        selectedUnseqFileSize += resource.getTsFileSize();
       }
 
       LOGGER.info(
-          "{}-{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}, total size is {} MB",
+          "{}-{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}, "
+              + "sequence files size is {} MB, unsequence file size is {} MB, total size is {}",
           storageGroupName,
           dataRegionId,
           selectedSequenceFiles,
           selectedUnsequenceFiles,
-          ((double) selectedFileSize) / 1024.0 / 1024.0);
+          selectedSeqFileSize / 1024 / 1024,
+          selectedUnseqFileSize / 1024 / 1024,
+          (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024);
       logFile =
           new File(
               selectedSequenceFiles.get(0).getTsFile().getParent()
@@ -175,7 +180,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             storageGroupName,
             dataRegionId,
             costTime,
-            ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
+            (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024 / costTime);
       }
     } catch (Throwable throwable) {
       // catch throwable to handle OOM errors
