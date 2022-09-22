@@ -305,7 +305,9 @@ public class IoTDBInterpreterTest {
   @Test
   public void testShowVersion() {
     InterpreterResult actual = interpreter.internalInterpret("SHOW VERSION", null);
-    String gt = "version\n" + IoTDBConstant.VERSION;
+    String gt =
+        String.format(
+            "version\tbuild info\n%s\t%s", IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO);
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
