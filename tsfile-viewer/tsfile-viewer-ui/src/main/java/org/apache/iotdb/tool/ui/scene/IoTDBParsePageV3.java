@@ -135,7 +135,7 @@ public class IoTDBParsePageV3 extends IoTDBParsePage {
               String type = null;
               if (treeItem != null) {
                 type = treeItem.getValue().getType();
-              }else{
+              } else {
                 return;
               }
               // switch

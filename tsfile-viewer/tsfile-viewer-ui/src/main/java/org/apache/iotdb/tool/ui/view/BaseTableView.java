@@ -20,15 +20,14 @@
 package org.apache.iotdb.tool.ui.view;
 
 import org.apache.iotdb.tool.ui.config.TableAlign;
+import org.apache.iotdb.tool.ui.scene.IoTDBParsePageV3;
 
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.Tooltip;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.Pane;
+import javafx.scene.text.Font;
 import javafx.util.Callback;
 
 /**
@@ -37,6 +36,7 @@ import javafx.util.Callback;
  * @author shenguanchu
  */
 public class BaseTableView {
+  TextArea textPopArea;
 
   public BaseTableView() {}
 
@@ -51,6 +51,39 @@ public class BaseTableView {
     pane.getChildren().add(tableView);
     tableView.getColumns().addAll(genColumn);
     tableView.setVisible(isShow);
+    textPopArea = new TextArea();
+    textPopArea.setLayoutX(50);
+    textPopArea.setPrefWidth(700);
+    textPopArea.setPrefHeight(90);
+    textPopArea.setEditable(false);
+    textPopArea.setFont(new Font(15));
+    tableView.setOnMouseClicked(
+        event -> {
+          textPopArea.setLayoutY(event.getY());
+        });
+    textPopArea.setOnMouseExited(
+        (event -> {
+          textPopArea.setVisible(false);
+        }));
+    textPopArea.setVisible(false);
+    pane.getChildren().addAll(textPopArea);
+    tableView
+        .getSelectionModel()
+        .selectedItemProperty()
+        .addListener(
+            (observable, oldValue, newValue) -> {
+              IoTDBParsePageV3.TimesValues cur = (IoTDBParsePageV3.TimesValues) newValue;
+              StringBuilder builder = new StringBuilder();
+              builder
+                  .append("\n  TIMESTAMP:    ")
+                  .append(cur.getTimestamp())
+                  .append(",\n")
+                  .append("  VALUE:    ")
+                  .append(cur.getValue());
+              textPopArea.setText(builder.toString());
+              textPopArea.setVisible(true);
+            });
+
     //    tableView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue,
     // newValue) -> {
     //      Object value = observable.getValue();

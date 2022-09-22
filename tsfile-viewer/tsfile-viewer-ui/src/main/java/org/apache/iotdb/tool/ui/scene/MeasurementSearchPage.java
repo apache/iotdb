@@ -110,9 +110,11 @@ public class MeasurementSearchPage {
 
     Label startTime = new Label("startTime:");
     LocalDateTime now = LocalDateTime.now();
-    DateTimePicker startPicker = new DateTimePicker(now, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    DateTimePicker startPicker =
+        new DateTimePicker(now, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     Label endTime = new Label("endTime:");
-    DateTimePicker endPicker = new DateTimePicker(now, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    DateTimePicker endPicker =
+        new DateTimePicker(now, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     ObservableList<Node> searchFilterBoxChildren = searchFilterBox.getChildren();
     searchFilterBoxChildren.addAll(startTime, startPicker, endTime, endPicker);
 
