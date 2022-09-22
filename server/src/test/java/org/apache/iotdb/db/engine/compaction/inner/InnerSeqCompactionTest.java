@@ -63,6 +63,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putChunk;
@@ -350,7 +351,7 @@ public class InnerSeqCompactionTest {
           }
         }
       }
-    } catch (InterruptedException | StorageEngineException e) {
+    } catch (InterruptedException | StorageEngineException | ExecutionException e) {
       e.printStackTrace();
     } finally {
       IoTDBDescriptor.getInstance()
@@ -365,7 +366,7 @@ public class InnerSeqCompactionTest {
   @Test
   public void testAppendPage()
       throws IOException, MetadataException, InterruptedException, StorageEngineException,
-          WriteProcessException {
+          WriteProcessException, ExecutionException {
 
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
@@ -632,7 +633,7 @@ public class InnerSeqCompactionTest {
   @Test
   public void testAppendChunk()
       throws IOException, IllegalPathException, MetadataException, StorageEngineException,
-          WriteProcessException {
+          WriteProcessException, ExecutionException {
     long prevChunkPointNumLowerBoundInCompaction =
         IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
     IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);

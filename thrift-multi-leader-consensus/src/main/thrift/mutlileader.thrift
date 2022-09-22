@@ -27,8 +27,10 @@ struct TLogBatch {
 }
 
 struct TSyncLogReq {
-  1: required common.TConsensusGroupId consensusGroupId
-  2: required list<TLogBatch> batches
+  # source peer where the TSyncLogReq is generated
+  1: required string peerId
+  2: required common.TConsensusGroupId consensusGroupId
+  3: required list<TLogBatch> batches
 }
 
 struct TSyncLogRes {

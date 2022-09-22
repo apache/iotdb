@@ -61,7 +61,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -97,7 +96,8 @@ public class ReadPointCompactionPerformer
 
   @Override
   public void perform()
-      throws IOException, MetadataException, StorageEngineException, InterruptedException {
+      throws IOException, MetadataException, StorageEngineException, InterruptedException,
+          ExecutionException {
     long queryId = QueryResourceManager.getInstance().assignCompactionQueryId();
     FragmentInstanceContext fragmentInstanceContext =
         FragmentInstanceContext.createFragmentInstanceContextForCompaction(queryId);
@@ -128,7 +128,6 @@ public class ReadPointCompactionPerformer
       }
 
       compactionWriter.endFile();
-      updateDeviceStartTimeAndEndTime(targetFiles, compactionWriter);
       updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
@@ -152,7 +151,7 @@ public class ReadPointCompactionPerformer
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource)
       throws IOException, MetadataException {
-    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllMeasurementSchemas();
+    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
     if (measurementSchemas.isEmpty()) {
       return;
@@ -166,7 +165,7 @@ public class ReadPointCompactionPerformer
             device,
             existedMeasurements,
             measurementSchemas,
-            schemaMap.keySet(),
+            new ArrayList<>(schemaMap.keySet()),
             fragmentInstanceContext,
             queryDataSource,
             true);
@@ -175,9 +174,10 @@ public class ReadPointCompactionPerformer
       // chunkgroup is serialized only when at least one timeseries under this device has data
       compactionWriter.startChunkGroup(device, true);
       compactionWriter.startMeasurement(measurementSchemas, 0);
-      writeWithReader(compactionWriter, dataBlockReader, 0, true);
+      writeWithReader(compactionWriter, dataBlockReader, device, 0, true);
       compactionWriter.endMeasurement(0);
       compactionWriter.endChunkGroup();
+      compactionWriter.checkAndMayFlushChunkMetadata();
     }
   }
 
@@ -187,45 +187,36 @@ public class ReadPointCompactionPerformer
       AbstractCompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource)
-      throws IOException, InterruptedException {
-    Map<String, MeasurementSchema> measurementSchemaMap = deviceIterator.getAllMeasurementSchemas();
-    int subTaskNums = Math.min(measurementSchemaMap.size(), subTaskNum);
-
-    // assign all measurements to different sub tasks
-    Set<String>[] measurementsForEachSubTask = new HashSet[subTaskNums];
-    int idx = 0;
-    for (String measurement : measurementSchemaMap.keySet()) {
-      if (measurementsForEachSubTask[idx % subTaskNums] == null) {
-        measurementsForEachSubTask[idx % subTaskNums] = new HashSet<>();
-      }
-      measurementsForEachSubTask[idx++ % subTaskNums].add(measurement);
-    }
-
+      throws IOException, InterruptedException, IllegalPathException, ExecutionException {
+    MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
+        deviceIterator.iterateNotAlignedSeries(device, false);
+    List<String> allMeasurements =
+        new ArrayList<>(deviceIterator.getAllSchemasOfCurrentDevice().keySet());
+    allMeasurements.sort((String::compareTo));
+    int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
+    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
     // construct sub tasks and start compacting measurements in parallel
-    List<Future<Void>> futures = new ArrayList<>();
     compactionWriter.startChunkGroup(device, false);
-    for (int i = 0; i < subTaskNums; i++) {
-      futures.add(
-          CompactionTaskManager.getInstance()
-              .submitSubTask(
-                  new ReadPointPerformerSubTask(
-                      device,
-                      measurementsForEachSubTask[i],
-                      fragmentInstanceContext,
-                      queryDataSource,
-                      compactionWriter,
-                      measurementSchemaMap,
-                      i)));
-    }
-
-    // wait for all sub tasks finish
-    for (int i = 0; i < subTaskNums; i++) {
-      try {
-        futures.get(i).get();
-      } catch (ExecutionException e) {
-        LOGGER.error("[Compaction] SubCompactionTask meet errors ", e);
-        throw new IOException(e);
+    for (int taskCount = 0; taskCount < allMeasurements.size(); ) {
+      List<Future<Void>> futures = new ArrayList<>();
+      for (int i = 0; i < subTaskNums && taskCount < allMeasurements.size(); i++) {
+        futures.add(
+            CompactionTaskManager.getInstance()
+                .submitSubTask(
+                    new ReadPointPerformerSubTask(
+                        device,
+                        Collections.singletonList(allMeasurements.get(taskCount++)),
+                        fragmentInstanceContext,
+                        queryDataSource,
+                        compactionWriter,
+                        schemaMap,
+                        i)));
       }
+      for (Future<Void> future : futures) {
+        future.get();
+      }
+      // sync all the subtask, and check the writer chunk metadata size
+      compactionWriter.checkAndMayFlushChunkMetadata();
     }
 
     compactionWriter.endChunkGroup();
@@ -262,7 +253,7 @@ public class ReadPointCompactionPerformer
       String deviceId,
       List<String> measurementIds,
       List<IMeasurementSchema> measurementSchemas,
-      Set<String> allSensors,
+      List<String> allSensors,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource,
       boolean isAlign)
@@ -277,11 +268,20 @@ public class ReadPointCompactionPerformer
       tsDataType = measurementSchemas.get(0).getType();
     }
     return new SeriesDataBlockReader(
-        seriesPath, allSensors, tsDataType, fragmentInstanceContext, queryDataSource, true);
+        seriesPath,
+        new HashSet<>(allSensors),
+        tsDataType,
+        fragmentInstanceContext,
+        queryDataSource,
+        true);
   }
 
   public static void writeWithReader(
-      AbstractCompactionWriter writer, IDataBlockReader reader, int subTaskId, boolean isAligned)
+      AbstractCompactionWriter writer,
+      IDataBlockReader reader,
+      String device,
+      int subTaskId,
+      boolean isAligned)
       throws IOException {
     while (reader.hasNextBatch()) {
       TsBlock tsBlock = reader.nextBatch();
@@ -289,6 +289,7 @@ public class ReadPointCompactionPerformer
         writer.write(
             tsBlock.getTimeColumn(),
             tsBlock.getValueColumns(),
+            device,
             subTaskId,
             tsBlock.getPositionCount());
       } else {
@@ -297,6 +298,7 @@ public class ReadPointCompactionPerformer
           TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
           writer.write(
               timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(), subTaskId);
+          writer.updateStartTimeAndEndTime(device, timeValuePair.getTimestamp(), subTaskId);
         }
       }
     }

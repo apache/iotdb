@@ -16,10 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat;
+package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 
 public class NodeHeartbeatSample {
 
@@ -28,8 +29,11 @@ public class NodeHeartbeatSample {
   private final long receiveTimestamp;
 
   private NodeStatus status;
-  private short cpu;
-  private short memory;
+  private String statusReason;
+
+  private short cpuUsageRate;
+  private double memoryUsageRate;
+  private double diskUsageRate;
 
   /** Constructor for ConfigNode sample */
   public NodeHeartbeatSample(long sendTimestamp, long receiveTimestamp) {
@@ -41,9 +45,16 @@ public class NodeHeartbeatSample {
   public NodeHeartbeatSample(THeartbeatResp heartbeatResp, long receiveTimestamp) {
     this.sendTimestamp = heartbeatResp.getHeartbeatTimestamp();
     this.receiveTimestamp = receiveTimestamp;
+
     this.status = NodeStatus.parse(heartbeatResp.getStatus());
-    this.cpu = heartbeatResp.getCpu();
-    this.memory = heartbeatResp.getMemory();
+    this.statusReason = heartbeatResp.isSetStatusReason() ? heartbeatResp.getStatusReason() : null;
+
+    if (heartbeatResp.isSetLoadSample()) {
+      TLoadSample loadSample = heartbeatResp.getLoadSample();
+      this.cpuUsageRate = loadSample.getCpuUsageRate();
+      this.memoryUsageRate = loadSample.getMemoryUsageRate();
+      this.diskUsageRate = loadSample.getDiskUsageRate();
+    }
   }
 
   public long getSendTimestamp() {
@@ -58,11 +69,19 @@ public class NodeHeartbeatSample {
     return status;
   }
 
-  public short getCpu() {
-    return cpu;
+  public String getStatusReason() {
+    return statusReason;
   }
 
-  public short getMemory() {
-    return memory;
+  public short getCpuUsageRate() {
+    return cpuUsageRate;
+  }
+
+  public double getMemoryUsageRate() {
+    return memoryUsageRate;
+  }
+
+  public double getDiskUsageRate() {
+    return diskUsageRate;
   }
 }
