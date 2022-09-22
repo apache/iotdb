@@ -25,6 +25,7 @@ import org.apache.iotdb.tool.ui.scene.IoTDBParsePageV3;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 
 import java.util.List;
+import javafx.scene.Cursor;
 import javafx.scene.Group;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
@@ -153,6 +154,10 @@ public class EntityNode {
                 stretch = true;
                 stretch();
               }
+            });
+        childButton.setOnMouseEntered(
+            event -> {
+              childButton.setCursor(Cursor.HAND);
             });
       }
     }
