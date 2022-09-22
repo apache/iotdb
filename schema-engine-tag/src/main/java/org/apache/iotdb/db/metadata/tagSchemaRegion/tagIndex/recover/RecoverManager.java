@@ -24,7 +24,11 @@ import org.apache.iotdb.lsm.context.Context;
 import org.apache.iotdb.lsm.context.DeleteContext;
 import org.apache.iotdb.lsm.context.InsertContext;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class RecoverManager {
+  private static final Logger logger = LoggerFactory.getLogger(RecoverManager.class);
 
   private WALManager walManager;
 
@@ -33,6 +37,7 @@ public class RecoverManager {
   }
 
   public void recover(ITagInvertedIndex tagInvertedIndex) {
+    logger.info("recover tagInvertedIndex");
     while (true) {
       Context context = walManager.read();
       switch (context.getType()) {

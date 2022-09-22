@@ -35,7 +35,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
-import org.apache.iotdb.db.metadata.schemaregion.tagschemaregion.MockTagSchemaRegion;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.external.api.ISeriesNumerLimiter;
@@ -326,8 +325,9 @@ public class SchemaEngine {
         break;
       case Tag:
         schemaRegion =
-            new MockTagSchemaRegion(
-                storageGroup, schemaRegionId, storageGroupMNode, seriesNumerLimiter);
+            new TagSchemaRegionLoader()
+                .loadTagSchemaRegion(
+                    storageGroup, schemaRegionId, storageGroupMNode, seriesNumerLimiter);
         break;
       default:
         throw new UnsupportedOperationException(

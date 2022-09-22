@@ -53,35 +53,39 @@ public class TagInvertedIndex implements ITagInvertedIndex {
   private static final TagSchemaConfig tagSchemaConfig =
       TagSchemaDescriptor.getInstance().getTagSchemaConfig();
 
-  private final InsertionManager insertionManager;
+  private InsertionManager insertionManager;
 
-  private final DeletionManager deletionManager;
+  private DeletionManager deletionManager;
 
-  private final QueryManager queryManager;
+  private QueryManager queryManager;
 
-  private final WALManager walManager;
+  private WALManager walManager;
 
-  private final RecoverManager recoverManager;
+  private RecoverManager recoverManager;
 
-  private final int numOfDeviceIdsInMemTable;
+  private int numOfDeviceIdsInMemTable;
 
-  private final Map<Integer, MemTable> immutableMemTables;
+  private Map<Integer, MemTable> immutableMemTables;
 
   private MemTable workingMemTable;
 
   private int maxDeviceID;
 
-  public TagInvertedIndex(String schemaDirPath) throws IOException {
-    walManager = new WALManager(schemaDirPath);
-    insertionManager = new InsertionManager(walManager);
-    deletionManager = new DeletionManager(walManager);
-    recoverManager = new RecoverManager(walManager);
-    queryManager = new QueryManager();
-    workingMemTable = new MemTable(MemTable.WORKING);
-    immutableMemTables = new HashMap<>();
-    numOfDeviceIdsInMemTable = tagSchemaConfig.getNumOfDeviceIdsInMemTable();
-    maxDeviceID = 0;
-    recover();
+  public TagInvertedIndex(String schemaDirPath) {
+    try {
+      walManager = new WALManager(schemaDirPath);
+      insertionManager = new InsertionManager(walManager);
+      deletionManager = new DeletionManager(walManager);
+      recoverManager = new RecoverManager(walManager);
+      queryManager = new QueryManager();
+      workingMemTable = new MemTable(MemTable.WORKING);
+      immutableMemTables = new HashMap<>();
+      numOfDeviceIdsInMemTable = tagSchemaConfig.getNumOfDeviceIdsInMemTable();
+      maxDeviceID = 0;
+      recover();
+    } catch (IOException e) {
+      logger.error("create TagInvertedIndex fail", e);
+    }
   }
 
   public synchronized void recover() {

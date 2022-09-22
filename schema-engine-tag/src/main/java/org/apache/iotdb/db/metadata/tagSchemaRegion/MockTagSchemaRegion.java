@@ -21,9 +21,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -32,7 +30,6 @@ import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
@@ -50,12 +47,6 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.deviceidlist.DeviceIDList;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.deviceidlist.IDeviceIDList;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.TagInvertedIndex;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.MeasurementPathUtils;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.PathTagConverterUtils;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ShowTimeSeriesResultUtils;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.MeasurementSchemaInfo;
@@ -80,58 +71,77 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
-public class TagSchemaRegion implements ISchemaRegion {
-  private static final Logger logger = LoggerFactory.getLogger(TagSchemaRegion.class);
+public class MockTagSchemaRegion implements ISchemaRegion {
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final String TAIL = ".**";
   private final IStorageGroupMNode storageGroupMNode;
-  private final String storageGroupFullPath;
-  private final SchemaRegionId schemaRegionId;
-  private final String schemaRegionDirPath;
+  private String storageGroupFullPath;
+  private SchemaRegionId schemaRegionId;
 
-  private final TagInvertedIndex tagInvertedIndex;
+  private Map<String, Map<String, List<Integer>>> tagInvertedIndex;
 
-  private final IDeviceIDList deviceIDList;
+  private List<IDeviceID> deviceIDS;
 
-  private final IDTable idTable;
+  private IDTable idTable;
 
   private final ISeriesNumerLimiter seriesNumerLimiter;
 
-  public TagSchemaRegion(
+  public MockTagSchemaRegion(
       PartialPath storageGroup,
       SchemaRegionId schemaRegionId,
       IStorageGroupMNode storageGroupMNode,
       ISeriesNumerLimiter seriesNumerLimiter)
       throws MetadataException {
+
     storageGroupFullPath = storageGroup.getFullPath();
     this.schemaRegionId = schemaRegionId;
-    String storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
-    schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
     this.storageGroupMNode = storageGroupMNode;
+    this.deviceIDS = new ArrayList<>();
     this.seriesNumerLimiter = seriesNumerLimiter;
+    tagInvertedIndex = new ConcurrentHashMap<>();
     idTable = IDTableManager.getInstance().getIDTable(storageGroup);
-    tagInvertedIndex = new TagInvertedIndex(schemaRegionDirPath);
-    deviceIDList = new DeviceIDList(schemaRegionDirPath);
     init();
+  }
+
+  @NotNull
+  private Map<String, String> pathToTags(String path) {
+    if (path.length() <= storageGroupFullPath.length()) return new TreeMap<>();
+    String devicePath = path.substring(storageGroupFullPath.length() + 1);
+    String[] tags = devicePath.split("\\.");
+    Map<String, String> tagsMap = new TreeMap<>();
+    for (int i = 0; i < tags.length; i += 2) {
+      tagsMap.put(tags[i], tags[i + 1]);
+    }
+    return tagsMap;
+  }
+
+  public String tagsToPath(Map<String, String> tags) {
+    StringBuilder stringBuilder = new StringBuilder(storageGroupFullPath);
+    for (String tagKey : tags.keySet()) {
+      stringBuilder.append(".").append(tagKey).append(".").append(tags.get(tagKey));
+    }
+    return stringBuilder.toString();
   }
 
   @Override
@@ -141,34 +151,16 @@ public class TagSchemaRegion implements ISchemaRegion {
       throw new MetadataException(
           "enableIDTableLogFile OR deviceIDTransformationMethod==\"Plain\"");
     }
-    File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
-    if (!schemaRegionFolder.exists()) {
-      if (schemaRegionFolder.mkdirs()) {
-        logger.info("create schema region folder {}", schemaRegionDirPath);
-      } else {
-        if (!schemaRegionFolder.exists()) {
-          logger.error("create schema region folder {} failed.", schemaRegionDirPath);
-          throw new SchemaDirCreationFailureException(schemaRegionDirPath);
-        }
-      }
-    }
-
-    logger.info("initialized successfully: {}", this);
   }
 
   @Override
   public void clear() {
-    try {
-      tagInvertedIndex.clear();
-      deviceIDList.clear();
-    } catch (IOException e) {
-      logger.error("clear tag inverted index failed", e);
-    }
+    return;
   }
 
   @Override
   public void forceMlog() {
-    // no need to record mlog
+    return;
   }
 
   @Override
@@ -183,36 +175,32 @@ public class TagSchemaRegion implements ISchemaRegion {
 
   @Override
   public void deleteSchemaRegion() throws MetadataException {
-    clear();
-    SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+    return;
   }
 
   @Override
   public boolean createSnapshot(File snapshotDir) {
-    // todo implement this
-    throw new UnsupportedOperationException("Tag mode currently doesn't support snapshot feature.");
+    return false;
   }
 
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
-    // todo implement this
-    throw new UnsupportedOperationException("Tag mode currently doesn't support snapshot feature.");
+    return;
   }
 
   private void createTagInvertedIndex(PartialPath devicePath) {
     IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
-    Map<String, String> tagsMap =
-        PathTagConverterUtils.pathToTags(storageGroupFullPath, devicePath.getFullPath());
-    synchronized (deviceIDList) {
-      deviceIDList.add(deviceID);
-      tagInvertedIndex.addTags(tagsMap, deviceIDList.size() - 1);
-    }
-  }
+    Map<String, String> tagsMap = pathToTags(devicePath.getFullPath());
 
-  private List<Integer> getDeviceIDsByInvertedIndex(PartialPath path) {
-    Map<String, String> tags =
-        PathTagConverterUtils.pathToTags(storageGroupFullPath, path.getFullPath());
-    return tagInvertedIndex.getMatchedIDs(tags);
+    deviceIDS.add(deviceID);
+
+    for (String tagkey : tagsMap.keySet()) {
+      String tagValue = tagsMap.get(tagkey);
+      Map<String, List<Integer>> tagkeyMap =
+          tagInvertedIndex.computeIfAbsent(tagkey, key -> new HashMap<>());
+      List<Integer> ids = tagkeyMap.computeIfAbsent(tagValue, key -> new ArrayList<>());
+      ids.add(deviceIDS.size() - 1);
+    }
   }
 
   private void createTimeseries(
@@ -241,11 +229,8 @@ public class TagSchemaRegion implements ISchemaRegion {
   @Override // [iotdb|newIotdb/创建非对齐时间序列] [newIotdb/insert 2自动创建时间序列]
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     PartialPath devicePath = plan.getPath().getDevicePath();
-    PartialPath path =
-        new PartialPath(
-            PathTagConverterUtils.pathToTagsSortPath(storageGroupFullPath, devicePath.getFullPath())
-                + "."
-                + plan.getPath().getMeasurement());
+    Map<String, String> tags = pathToTags(devicePath.getFullPath());
+    PartialPath path = new PartialPath(tagsToPath(tags) + "." + plan.getPath().getMeasurement());
     plan.setPath(path);
     devicePath = plan.getPath().getDevicePath();
     DeviceEntry deviceEntry = idTable.getDeviceEntry(devicePath.getFullPath());
@@ -260,7 +245,6 @@ public class TagSchemaRegion implements ISchemaRegion {
       }
     }
     idTable.createTimeseries(plan);
-    // write the device path for the first time
     if (deviceEntry == null) {
       createTagInvertedIndex(devicePath);
     }
@@ -269,10 +253,8 @@ public class TagSchemaRegion implements ISchemaRegion {
   @Override // [iotdb|newIotdb/对齐时间序列] [newIotdb/insert 2自动创建时间序列]
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     PartialPath devicePath = plan.getPrefixPath();
-    PartialPath path =
-        new PartialPath(
-            PathTagConverterUtils.pathToTagsSortPath(
-                storageGroupFullPath, devicePath.getFullPath()));
+    Map<String, String> tags = pathToTags(devicePath.getFullPath());
+    PartialPath path = new PartialPath(tagsToPath(tags));
     plan.setPrefixPath(path);
     devicePath = plan.getPrefixPath();
     DeviceEntry deviceEntry = idTable.getDeviceEntry(devicePath.getFullPath());
@@ -282,79 +264,69 @@ public class TagSchemaRegion implements ISchemaRegion {
             "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
             devicePath.getFullPath());
       } else {
-        filterExistingMeasurements(plan, deviceEntry.getMeasurementMap().keySet());
-        if (plan.getMeasurements().size() == 0)
+        List<String> measurements = plan.getMeasurements();
+        List<TSDataType> dataTypes = plan.getDataTypes();
+        List<TSEncoding> encodings = plan.getEncodings();
+        List<CompressionType> compressors = plan.getCompressors();
+
+        List<String> tmpMeasurements = new LinkedList<>();
+        List<TSDataType> tmpDataTypes = new LinkedList<>();
+        List<TSEncoding> tmpEncodings = new LinkedList<>();
+        List<CompressionType> tmpCompressors = new LinkedList<>();
+        for (int i = 0; i < measurements.size(); i++) {
+          String measurement = measurements.get(i);
+          if (!deviceEntry.getMeasurementMap().containsKey(measurement)) {
+            tmpMeasurements.add(measurements.get(i));
+            tmpDataTypes.add(dataTypes.get(i));
+            tmpEncodings.add(encodings.get(i));
+            tmpCompressors.add(compressors.get(i));
+          }
+        }
+        if (tmpMeasurements.size() == 0)
           throw new PathAlreadyExistException(devicePath.getFullPath());
+        plan.setMeasurements(tmpMeasurements);
+        plan.setDataTypes(tmpDataTypes);
+        plan.setEncodings(tmpEncodings);
+        plan.setCompressors(tmpCompressors);
       }
     }
     idTable.createAlignedTimeseries(plan);
-    // write the device path for the first time
     if (deviceEntry == null) {
       createTagInvertedIndex(devicePath);
     }
   }
 
-  private void filterExistingMeasurements(
-      CreateAlignedTimeSeriesPlan plan, Set<String> measurementSet) {
-    List<String> measurements = plan.getMeasurements();
-    List<TSDataType> dataTypes = plan.getDataTypes();
-    List<TSEncoding> encodings = plan.getEncodings();
-    List<CompressionType> compressors = plan.getCompressors();
-
-    List<String> tmpMeasurements = new LinkedList<>();
-    List<TSDataType> tmpDataTypes = new LinkedList<>();
-    List<TSEncoding> tmpEncodings = new LinkedList<>();
-    List<CompressionType> tmpCompressors = new LinkedList<>();
-    for (int i = 0; i < measurements.size(); i++) {
-      String measurement = measurements.get(i);
-      if (!measurementSet.contains(measurement)) {
-        tmpMeasurements.add(measurements.get(i));
-        tmpDataTypes.add(dataTypes.get(i));
-        tmpEncodings.add(encodings.get(i));
-        tmpCompressors.add(compressors.get(i));
-      }
-    }
-    plan.setMeasurements(tmpMeasurements);
-    plan.setDataTypes(tmpDataTypes);
-    plan.setEncodings(tmpEncodings);
-    plan.setCompressors(tmpCompressors);
-  }
-
   @Override
   public Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    throw new UnsupportedOperationException("deleteTimeseries");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException("constructSchemaBlackList");
+    return 0;
   }
 
   @Override
-  public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException("rollbackSchemaBlackList");
-  }
+  public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {}
 
   @Override
   public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
       throws MetadataException {
-    throw new UnsupportedOperationException("fetchSchemaBlackList");
+    return null;
   }
 
   @Override
-  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException("deleteTimeseriesInBlackList");
-  }
+  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {}
 
   @Override
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException("autoCreateDeviceMNode");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public boolean isPathExist(PartialPath path) throws MetadataException {
-    throw new UnsupportedOperationException("isPathExist");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
@@ -372,20 +344,20 @@ public class TagSchemaRegion implements ISchemaRegion {
   public int getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
-    throw new UnsupportedOperationException("getAllTimeseriesCount");
+    return 0;
   }
 
   @Override
   public int getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
       throws MetadataException {
-    throw new UnsupportedOperationException("getAllTimeseriesCount");
+    return 0;
   }
 
   @Override
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    throw new UnsupportedOperationException("getMeasurementCountGroupByLevel");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
@@ -397,25 +369,23 @@ public class TagSchemaRegion implements ISchemaRegion {
       String value,
       boolean isContains)
       throws MetadataException {
-    throw new UnsupportedOperationException("getMeasurementCountGroupByLevel");
+    return null;
   }
 
   @Override
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    synchronized (deviceIDList) {
-      if (pathPattern.getFullPath().length() <= storageGroupFullPath.length()) {
-        return deviceIDList.size();
-      } else {
-        return getDeviceIDsByInvertedIndex(pathPattern).size();
-      }
+    if (pathPattern.getFullPath().length() <= storageGroupFullPath.length()) {
+      return deviceIDS.size();
+    } else {
+      return getDeviceIDsByInvertedIndex(pathPattern).size();
     }
   }
 
   @Override
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
-    throw new UnsupportedOperationException("getNodesCountInGivenLevel");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
@@ -425,113 +395,68 @@ public class TagSchemaRegion implements ISchemaRegion {
       boolean isPrefixMatch,
       LocalSchemaProcessor.StorageGroupFilter filter)
       throws MetadataException {
-    throw new UnsupportedOperationException("getNodesListInGivenLevel");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
       throws MetadataException {
-    throw new UnsupportedOperationException("getChildNodePathInNextLevel");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-    throw new UnsupportedOperationException("getChildNodeNameInNextLevel");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
-    throw new UnsupportedOperationException("getBelongedDevices");
+    throw new UnsupportedOperationException("");
   }
 
   @Override // [newIotdb/show timeseries] [newIotdb/count device] [newIotdb/count timeseries]
   public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(pathPattern);
-    Set<PartialPath> matchedDevices = new HashSet<>();
+    Set<PartialPath> res = new HashSet<>();
     String devicePath = pathPattern.getFullPath();
-    // exact query
     if (!devicePath.endsWith(TAIL) && !devicePath.equals(storageGroupFullPath)) {
       DeviceEntry deviceEntry = idTable.getDeviceEntry(devicePath);
       if (deviceEntry != null) {
-        matchedDevices.add(pathPattern);
+        res.add(pathPattern);
       }
-      return matchedDevices;
+      return res;
     }
-    List<String> devicePaths = getDevicePaths(deviceIDs);
-    for (String path : devicePaths) {
-      matchedDevices.add(new PartialPath(path));
-    }
-    return matchedDevices;
-  }
-
-  private List<String> getDevicePaths(List<IDeviceID> deviceIDS) {
-    List<String> devicePaths = new ArrayList<>();
-    if (config.getDeviceIDTransformationMethod().equals("SHA256")) {
-      List<SchemaEntry> schemaEntries = new ArrayList<>();
-      for (IDeviceID deviceID : deviceIDS) {
+    for (IDeviceID deviceID : deviceIDs) {
+      if (deviceID instanceof SHA256DeviceID) {
         DeviceEntry deviceEntry = idTable.getDeviceEntry(deviceID.toStringID());
         Map<String, SchemaEntry> map = deviceEntry.getMeasurementMap();
-        // For each device, only one SchemaEntry needs to be obtained
-        for (Map.Entry<String, SchemaEntry> entry : map.entrySet()) {
-          schemaEntries.add(entry.getValue());
+        for (String m : map.keySet()) {
+          SchemaEntry schemaEntry = map.get(m);
+          List<SchemaEntry> schemaEntries = new ArrayList<>();
+          schemaEntries.add(schemaEntry);
+          List<DiskSchemaEntry> diskSchemaEntries = idTable.getDiskSchemaEntries(schemaEntries);
+          DiskSchemaEntry diskSchemaEntry = diskSchemaEntries.get(0);
+          res.add(
+              new PartialPath(
+                  diskSchemaEntry.seriesKey.substring(
+                      0,
+                      diskSchemaEntry.seriesKey.length()
+                          - diskSchemaEntry.measurementName.length()
+                          - 1)));
           break;
         }
-      }
-      List<DiskSchemaEntry> diskSchemaEntries = idTable.getDiskSchemaEntries(schemaEntries);
-      for (DiskSchemaEntry diskSchemaEntry : diskSchemaEntries) {
-        devicePaths.add(diskSchemaEntry.getDevicePath());
-      }
-    } else {
-      for (IDeviceID deviceID : deviceIDS) {
-        devicePaths.add(deviceID.toStringID());
+      } else {
+        res.add(new PartialPath(deviceID.toStringID()));
       }
     }
-    return devicePaths;
-  }
-
-  private List<SchemaEntry> getSchemaEntries(List<IDeviceID> deviceIDS) {
-    List<SchemaEntry> schemaEntries = new ArrayList<>();
-    for (IDeviceID deviceID : deviceIDS) {
-      DeviceEntry deviceEntry = idTable.getDeviceEntry(deviceID.toStringID());
-      Map<String, SchemaEntry> schemaMap = deviceEntry.getMeasurementMap();
-      for (Map.Entry<String, SchemaEntry> entry : schemaMap.entrySet()) {
-        schemaEntries.add(entry.getValue());
-      }
-    }
-    return schemaEntries;
-  }
-
-  private List<MeasurementPath> getMeasurementPaths(List<IDeviceID> deviceIDS)
-      throws IllegalPathException {
-    List<MeasurementPath> measurementPaths = new ArrayList<>();
-    if (config.getDeviceIDTransformationMethod().equals("SHA256")) {
-      List<SchemaEntry> schemaEntries = getSchemaEntries(deviceIDS);
-      List<DiskSchemaEntry> diskSchemaEntries = idTable.getDiskSchemaEntries(schemaEntries);
-      for (DiskSchemaEntry diskSchemaEntry : diskSchemaEntries) {
-        MeasurementPath measurementPath =
-            MeasurementPathUtils.generateMeasurementPath(diskSchemaEntry);
-        measurementPaths.add(measurementPath);
-      }
-    } else {
-      for (IDeviceID deviceID : deviceIDS) {
-        DeviceEntry deviceEntry = idTable.getDeviceEntry(deviceID.toStringID());
-        Map<String, SchemaEntry> schemaMap = deviceEntry.getMeasurementMap();
-        for (Map.Entry<String, SchemaEntry> entry : schemaMap.entrySet()) {
-          MeasurementPath measurementPath =
-              MeasurementPathUtils.generateMeasurementPath(
-                  deviceID.toStringID(), entry.getKey(), entry.getValue(), deviceEntry.isAligned());
-          measurementPaths.add(measurementPath);
-        }
-      }
-    }
-    return measurementPaths;
+    return res;
   }
 
   @Override
   public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(ShowDevicesPlan plan)
       throws MetadataException {
-    throw new UnsupportedOperationException("getMatchedDevices");
+    throw new UnsupportedOperationException("");
   }
 
   @Override // [newIotDB / insert1,3] [newIotDB/select] [newIotdb/select count()] [newIotdb/select
@@ -552,25 +477,74 @@ public class TagSchemaRegion implements ISchemaRegion {
 
   private List<MeasurementPath> getMeasurementPathsWithPointQuery(
       PartialPath devicePath, boolean isPrefixMatch) throws MetadataException {
-    List<MeasurementPath> measurementPaths = new LinkedList<>();
-    String path =
-        PathTagConverterUtils.pathToTagsSortPath(storageGroupFullPath, devicePath.getFullPath());
+    List<MeasurementPath> res = new LinkedList<>();
+    String path = devicePath.getFullPath();
+    Map<String, String> tags = pathToTags(path);
+    path = tagsToPath(tags);
     DeviceEntry deviceEntry = idTable.getDeviceEntry(path);
-    if (deviceEntry == null) return measurementPaths;
+    if (deviceEntry == null) return res;
     Map<String, SchemaEntry> schemaMap = deviceEntry.getMeasurementMap();
-    for (Map.Entry<String, SchemaEntry> entry : schemaMap.entrySet()) {
+    for (String measurement : schemaMap.keySet()) {
+      SchemaEntry schemaEntry = schemaMap.get(measurement);
       MeasurementPath measurementPath =
-          MeasurementPathUtils.generateMeasurementPath(
-              path, entry.getKey(), entry.getValue(), deviceEntry.isAligned());
-      measurementPaths.add(measurementPath);
+          new MeasurementPath(
+              path,
+              measurement,
+              new MeasurementSchema(
+                  measurement,
+                  schemaEntry.getTSDataType(),
+                  schemaEntry.getTSEncoding(),
+                  schemaEntry.getCompressionType()));
+      measurementPath.setUnderAlignedEntity(deviceEntry.isAligned());
+      res.add(measurementPath);
     }
-    return measurementPaths;
+
+    return res;
   }
 
   private List<MeasurementPath> getMeasurementPathsWithBatchQuery(
       PartialPath devicePath, boolean isPrefixMatch) throws MetadataException {
+    List<MeasurementPath> res = new LinkedList<>();
     List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(devicePath);
-    return getMeasurementPaths(deviceIDs);
+    for (IDeviceID deviceID : deviceIDs) {
+      DeviceEntry deviceEntry = idTable.getDeviceEntry(deviceID.toStringID());
+      Map<String, SchemaEntry> schemaMap = deviceEntry.getMeasurementMap();
+      if (deviceID instanceof SHA256DeviceID) {
+        for (String measurement : schemaMap.keySet()) {
+          SchemaEntry schemaEntry = schemaMap.get(measurement);
+          List<SchemaEntry> schemaEntries = new ArrayList<>();
+          schemaEntries.add(schemaEntry);
+          List<DiskSchemaEntry> diskSchemaEntries = idTable.getDiskSchemaEntries(schemaEntries);
+          DiskSchemaEntry diskSchemaEntry = diskSchemaEntries.get(0);
+          MeasurementPath measurementPath =
+              new MeasurementPath(
+                  new PartialPath(diskSchemaEntry.seriesKey),
+                  new MeasurementSchema(
+                      measurement,
+                      schemaEntry.getTSDataType(),
+                      schemaEntry.getTSEncoding(),
+                      schemaEntry.getCompressionType()));
+          measurementPath.setUnderAlignedEntity(deviceEntry.isAligned());
+          res.add(measurementPath);
+        }
+      } else {
+        for (String measurement : schemaMap.keySet()) {
+          SchemaEntry schemaEntry = schemaMap.get(measurement);
+          MeasurementPath measurementPath =
+              new MeasurementPath(
+                  deviceID.toStringID(),
+                  measurement,
+                  new MeasurementSchema(
+                      measurement,
+                      schemaEntry.getTSDataType(),
+                      schemaEntry.getTSEncoding(),
+                      schemaEntry.getCompressionType()));
+          measurementPath.setUnderAlignedEntity(deviceEntry.isAligned());
+          res.add(measurementPath);
+        }
+      }
+    }
+    return res;
   }
 
   // [iotdb/select] [iotdb/select last] [iotdb/select count()] [iotdb/select ...groupby level]
@@ -586,62 +560,44 @@ public class TagSchemaRegion implements ISchemaRegion {
   @Override
   public List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
-    throw new UnsupportedOperationException("fetchSchema");
+    return null;
   }
 
   // show 时间序列
   @Override // [iotdb/show timeseries]
   public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
-    List<ShowTimeSeriesResult> ShowTimeSeriesResults = new ArrayList<>();
-    Pair<List<ShowTimeSeriesResult>, Integer> result = new Pair<>(ShowTimeSeriesResults, 0);
+    List<ShowTimeSeriesResult> res = new ArrayList<>();
+    Pair<List<ShowTimeSeriesResult>, Integer> result = new Pair<>(res, 0);
     String path = plan.getPath().getFullPath();
-    // point query
     if (!path.endsWith(TAIL)) {
-      path = PathTagConverterUtils.pathToTagsSortPath(storageGroupFullPath, path);
+      Map<String, String> tags = pathToTags(path);
+      path = tagsToPath(tags);
       DeviceEntry deviceEntry = idTable.getDeviceEntry(path);
       if (deviceEntry != null) {
         Map<String, SchemaEntry> measurementMap = deviceEntry.getMeasurementMap();
         for (String m : measurementMap.keySet()) {
           SchemaEntry schemaEntry = measurementMap.get(m);
-          ShowTimeSeriesResults.add(
-              ShowTimeSeriesResultUtils.generateShowTimeSeriesResult(
-                  storageGroupFullPath, path, m, schemaEntry));
+          res.add(
+              new ShowTimeSeriesResult(
+                  path + "." + m,
+                  "null",
+                  storageGroupFullPath,
+                  schemaEntry.getTSDataType(),
+                  schemaEntry.getTSEncoding(),
+                  schemaEntry.getCompressionType(),
+                  schemaEntry.getLastTime(),
+                  new HashMap<>(),
+                  new HashMap<>()));
         }
       }
       return result;
     }
-    // batch query
     List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(plan.getPath());
     for (IDeviceID deviceID : deviceIDs) {
-      getTimeSeriesResultOfDeviceFromIDTable(ShowTimeSeriesResults, deviceID);
+      getTimeSeriesResultOfDeviceFromIDTable(res, deviceID);
     }
     return result;
-  }
-
-  private void getTimeSeriesResultOfDeviceFromIDTable(
-      List<ShowTimeSeriesResult> ShowTimeSeriesResults, IDeviceID deviceID) {
-    Map<String, SchemaEntry> measurementMap =
-        idTable.getDeviceEntry(deviceID.toStringID()).getMeasurementMap();
-    if (deviceID instanceof SHA256DeviceID) {
-      for (String m : measurementMap.keySet()) {
-        SchemaEntry schemaEntry = measurementMap.get(m);
-        List<SchemaEntry> schemaEntries = new ArrayList<>();
-        schemaEntries.add(schemaEntry);
-        List<DiskSchemaEntry> diskSchemaEntries = idTable.getDiskSchemaEntries(schemaEntries);
-        DiskSchemaEntry diskSchemaEntry = diskSchemaEntries.get(0);
-        ShowTimeSeriesResults.add(
-            ShowTimeSeriesResultUtils.generateShowTimeSeriesResult(
-                storageGroupFullPath, diskSchemaEntry.seriesKey, schemaEntry));
-      }
-    } else {
-      for (String m : measurementMap.keySet()) {
-        SchemaEntry schemaEntry = measurementMap.get(m);
-        ShowTimeSeriesResults.add(
-            ShowTimeSeriesResultUtils.generateShowTimeSeriesResult(
-                storageGroupFullPath, deviceID.toStringID(), m, schemaEntry));
-      }
-    }
   }
 
   private List<IDeviceID> getDeviceIdFromInvertedIndex(PartialPath devicePath)
@@ -651,26 +607,85 @@ public class TagSchemaRegion implements ISchemaRegion {
       path = path.substring(0, path.length() - TAIL.length());
       devicePath = new PartialPath(path);
     }
-    synchronized (deviceIDList) {
-      if (devicePath.getFullPath().length() <= storageGroupFullPath.length()) {
-        return deviceIDList.getAllDeviceIDS();
-      } else {
-        List<IDeviceID> IDS = new LinkedList<>();
-        List<Integer> ids = getDeviceIDsByInvertedIndex(devicePath);
-        if (ids.size() > 0) {
-          for (int id : ids) {
-            IDS.add(deviceIDList.get(id));
-          }
+    if (devicePath.getFullPath().length() <= storageGroupFullPath.length()) {
+      return deviceIDS;
+    } else {
+      List<IDeviceID> res = new LinkedList<>();
+      List<Integer> ids = getDeviceIDsByInvertedIndex(devicePath);
+      if (ids.size() > 0) {
+        for (int id : ids) {
+          res.add(deviceIDS.get(id));
         }
-        return IDS;
+      }
+      return res;
+    }
+  }
+
+  private void getTimeSeriesResultOfDeviceFromIDTable(
+      List<ShowTimeSeriesResult> res, IDeviceID deviceID) {
+    Map<String, SchemaEntry> measurementMap =
+        idTable.getDeviceEntry(deviceID.toStringID()).getMeasurementMap();
+    if (deviceID instanceof SHA256DeviceID) {
+      for (String m : measurementMap.keySet()) {
+        SchemaEntry schemaEntry = measurementMap.get(m);
+        List<SchemaEntry> schemaEntries = new ArrayList<>();
+        schemaEntries.add(schemaEntry);
+        List<DiskSchemaEntry> diskSchemaEntries = idTable.getDiskSchemaEntries(schemaEntries);
+        DiskSchemaEntry diskSchemaEntry = diskSchemaEntries.get(0);
+        res.add(
+            new ShowTimeSeriesResult(
+                diskSchemaEntry.seriesKey,
+                "null",
+                storageGroupFullPath,
+                schemaEntry.getTSDataType(),
+                schemaEntry.getTSEncoding(),
+                schemaEntry.getCompressionType(),
+                schemaEntry.getLastTime(),
+                new HashMap<>(),
+                new HashMap<>()));
+      }
+    } else {
+      for (String m : measurementMap.keySet()) {
+        SchemaEntry schemaEntry = measurementMap.get(m);
+        res.add(
+            new ShowTimeSeriesResult(
+                deviceID.toStringID() + "." + m,
+                "null",
+                storageGroupFullPath,
+                schemaEntry.getTSDataType(),
+                schemaEntry.getTSEncoding(),
+                schemaEntry.getCompressionType(),
+                schemaEntry.getLastTime(),
+                new HashMap<>(),
+                new HashMap<>()));
       }
     }
+  }
+
+  private List<Integer> getDeviceIDsByInvertedIndex(PartialPath path) {
+    Map<String, String> tags = pathToTags(path.getFullPath());
+    List<List> idsCollection = new ArrayList<>(tags.keySet().size());
+    for (String tagKey : tags.keySet()) {
+      if (!tagInvertedIndex.containsKey(tagKey)
+          || !tagInvertedIndex.get(tagKey).containsKey(tags.get(tagKey))) {
+        return new ArrayList<>();
+      }
+      List<Integer> ids = tagInvertedIndex.get(tagKey).get(tags.get(tagKey));
+      idsCollection.add(new ArrayList(ids));
+    }
+    if (idsCollection.size() == 0) return new ArrayList<>();
+    List<Integer> ids = idsCollection.get(0);
+    for (int i = 1; i < idsCollection.size(); i++) {
+      List<Integer> list = idsCollection.get(i);
+      ids.retainAll(list);
+    }
+    return ids;
   }
 
   @Override
   public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
       throws PathNotExistException {
-    throw new UnsupportedOperationException("getAllMeasurementByDevicePath");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
@@ -682,12 +697,12 @@ public class TagSchemaRegion implements ISchemaRegion {
 
   @Override
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
-    throw new UnsupportedOperationException("getMeasurementMNode");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public void changeAlias(PartialPath path, String alias) throws MetadataException, IOException {
-    throw new UnsupportedOperationException("changeAlias");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
@@ -697,37 +712,37 @@ public class TagSchemaRegion implements ISchemaRegion {
       Map<String, String> attributesMap,
       PartialPath fullPath)
       throws MetadataException, IOException {
-    throw new UnsupportedOperationException("upsertTagsAndAttributes");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    throw new UnsupportedOperationException("addAttributes");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    throw new UnsupportedOperationException("addTags");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException {
-    throw new UnsupportedOperationException("dropTagsOrAttributes");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    throw new UnsupportedOperationException("setTagsOrAttributesValue");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
-    throw new UnsupportedOperationException("renameTagOrAttributeKey");
+    throw new UnsupportedOperationException("");
   }
 
   // insert data
@@ -735,10 +750,8 @@ public class TagSchemaRegion implements ISchemaRegion {
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
     PartialPath devicePath = plan.getDevicePath();
-    devicePath =
-        new PartialPath(
-            PathTagConverterUtils.pathToTagsSortPath(
-                storageGroupFullPath, devicePath.getFullPath()));
+    Map<String, String> tags = pathToTags(devicePath.getFullPath());
+    devicePath = new PartialPath(tagsToPath(tags));
     plan.setDevicePath(devicePath);
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
@@ -749,6 +762,16 @@ public class TagSchemaRegion implements ISchemaRegion {
     Map<String, SchemaEntry> schemaMap = deviceEntry.getMeasurementMap();
     for (int i = 0; i < measurementList.length; i++) {
       SchemaEntry schemaEntry = schemaMap.get(measurementList[i]);
+      //      measurementMNode =
+      //          new MeasurementMNode(
+      //              deviceMNode,
+      //              measurementList[i],
+      //              new MeasurementSchema(
+      //                  measurementList[i],
+      //                  schemaEntry.getTSDataType(),
+      //                  schemaEntry.getTSEncoding(),
+      //                  schemaEntry.getCompressionType()),
+      //              null);
       measurementMNode = new InsertMeasurementMNode(measurementList[i], schemaEntry, null);
       // check type is match
       try {
@@ -855,67 +878,51 @@ public class TagSchemaRegion implements ISchemaRegion {
 
   @Override
   public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException("getPathsSetTemplate");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException("getPathsUsingTemplate");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public boolean isTemplateAppendable(Template template, List<String> measurements)
       throws MetadataException {
-    throw new UnsupportedOperationException("isTemplateAppendable");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException("setSchemaTemplate");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException("unsetSchemaTemplate");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException("setUsingSchemaTemplate");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
-      throws MetadataException {
-    throw new UnsupportedOperationException("activateSchemaTemplate");
-  }
+      throws MetadataException {}
 
   @Override
   public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
-    throw new UnsupportedOperationException("getPathsUsingTemplate");
+    return null;
   }
 
   @Override
   public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
-    throw new UnsupportedOperationException("getMNodeForTrigger");
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException {
-    throw new UnsupportedOperationException("releaseMNodeAfterDropTrigger");
-  }
-
-  @Override
-  public String toString() {
-    return "TagSchemaRegion{"
-        + "storageGroupFullPath='"
-        + storageGroupFullPath
-        + '\''
-        + ", schemaRegionId="
-        + schemaRegionId
-        + ", schemaRegionDirPath='"
-        + schemaRegionDirPath
-        + '\''
-        + '}';
+    throw new UnsupportedOperationException("");
   }
 }

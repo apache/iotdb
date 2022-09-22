@@ -65,10 +65,10 @@ public class WALReader implements IWALReader {
       nextRecord = prototype.clone();
       nextRecord.deserialize(logStream);
     } catch (EOFException e) {
-      logger.info("");
+      logger.info(e.getMessage());
       return false;
     } catch (IOException e) {
-      logger.warn("");
+      logger.warn(e.getMessage());
       fileCorrupted = true;
       return false;
     }

@@ -16,24 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.wal;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.deviceidlist;
 
-import java.io.DataInputStream;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
+
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.util.List;
 
-public abstract class WALRecord implements Cloneable {
+public interface IDeviceIDList {
 
-  public abstract void serialize(ByteBuffer buffer);
+  void add(IDeviceID deviceID);
 
-  public abstract void deserialize(DataInputStream stream) throws IOException;
+  IDeviceID get(int index);
 
-  @Override
-  public WALRecord clone() {
-    try {
-      return (WALRecord) super.clone();
-    } catch (CloneNotSupportedException e) {
-      throw new AssertionError(e.getMessage());
-    }
-  }
+  int size();
+
+  List<IDeviceID> getAllDeviceIDS();
+
+  @TestOnly
+  void clear() throws IOException;
 }

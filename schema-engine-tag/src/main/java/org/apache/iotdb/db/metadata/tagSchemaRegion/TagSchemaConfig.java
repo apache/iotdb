@@ -39,4 +39,14 @@ public class TagSchemaConfig {
   public void setWalBufferSize(int walBufferSize) {
     this.walBufferSize = walBufferSize;
   }
+
+  @Override
+  public String toString() {
+    return "TagSchemaConfig["
+        + "numOfDeviceIdsInMemTable="
+        + numOfDeviceIdsInMemTable
+        + ", walBufferSize="
+        + walBufferSize
+        + "]";
+  }
 }

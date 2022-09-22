@@ -74,6 +74,10 @@ public class DiskSchemaEntry {
     this.isAligned = isAligned;
   }
 
+  public String getDevicePath() {
+    return seriesKey.substring(0, seriesKey.length() - measurementName.length() - 1);
+  }
+
   public int serialize(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(deviceID, outputStream);

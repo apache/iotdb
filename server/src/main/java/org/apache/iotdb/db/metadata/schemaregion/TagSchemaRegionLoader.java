@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.schemaregion;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.external.api.ISeriesNumerLimiter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,16 +40,14 @@ public class TagSchemaRegionLoader {
   private static URLClassLoader urlClassLoader = null;
   private static final String TAG_SCHEMA_REGION_CLASS_NAME =
       "org.apache.iotdb.db.metadata.tagSchemaRegion.TagSchemaRegion";
-  private static final String TAG_SCHEMA_CONF_DESCRIPTOR_CLASS_NAME =
-      "org.apache.iotdb.db.metadata.tagSchemaRegion.TagSchemaDescriptor";
   private static final String LIB_PATH =
       ".." + File.separator + "lib" + File.separator + "tag-schema-region" + File.separator;
 
   public TagSchemaRegionLoader() {}
 
   /**
-   * Load the jar files for RSchemaRegion and create an instance of it. The jar files should be
-   * located in "../lib/rschema-region". If jar files cannot be found, the function will return
+   * Load the jar files for TagSchemaRegion and create an instance of it. The jar files should be
+   * located in "../lib/tag-schema-region". If jar files cannot be found, the function will return
    * null.
    *
    * @param storageGroup
@@ -56,25 +55,26 @@ public class TagSchemaRegionLoader {
    * @param node
    * @return
    */
-  public ISchemaRegion loadRSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode node) {
+  public ISchemaRegion loadTagSchemaRegion(
+      PartialPath storageGroup,
+      SchemaRegionId schemaRegionId,
+      IStorageGroupMNode node,
+      ISeriesNumerLimiter seriesNumerLimiter) {
     ISchemaRegion region = null;
-    LOGGER.info("Creating instance for schema-engine-rocksdb");
+    LOGGER.info("Creating instance for schema-engine-tag");
     try {
-      loadRSchemaRegionJar();
+      loadTagSchemaRegionJar();
       Class<?> classForTagSchemaRegion = urlClassLoader.loadClass(TAG_SCHEMA_REGION_CLASS_NAME);
-      Class<?> classForTagSchemaDescriptor =
-          urlClassLoader.loadClass(TAG_SCHEMA_CONF_DESCRIPTOR_CLASS_NAME);
       Constructor<?> constructor =
           classForTagSchemaRegion.getConstructor(
               PartialPath.class,
               SchemaRegionId.class,
               IStorageGroupMNode.class,
-              classForTagSchemaDescriptor);
-      Object rSchemaLoader = classForTagSchemaDescriptor.getConstructor().newInstance();
+              ISeriesNumerLimiter.class);
+
       region =
           (ISchemaRegion)
-              constructor.newInstance(storageGroup, schemaRegionId, node, rSchemaLoader);
+              constructor.newInstance(storageGroup, schemaRegionId, node, seriesNumerLimiter);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -82,18 +82,18 @@ public class TagSchemaRegionLoader {
         | IllegalAccessException
         | MalformedURLException
         | RuntimeException e) {
-      LOGGER.error("Cannot initialize RSchemaRegion", e);
+      LOGGER.error("Cannot initialize TagSchemaRegion", e);
       return null;
     }
     return region;
   }
 
   /**
-   * Load the jar files for rocksdb and RSchemaRegion. The jar files should be located in directory
-   * "../lib/rschema-region". If the jar files have been loaded, it will do nothing.
+   * Load the jar files for TagSchemaRegion. The jar files should be located in directory
+   * "../lib/tag-schema-region". If the jar files have been loaded, it will do nothing.
    */
-  private void loadRSchemaRegionJar() throws MalformedURLException {
-    LOGGER.info("Loading jar for schema-engine-rocksdb");
+  private void loadTagSchemaRegionJar() throws MalformedURLException {
+    LOGGER.info("Loading jar for schema-engine-tag");
     if (urlClassLoader == null) {
       File[] jars = new File(LIB_PATH).listFiles();
       if (jars == null) {
@@ -106,6 +106,7 @@ public class TagSchemaRegionLoader {
           dependentJars.add(new URL("file:" + jar.getAbsolutePath()));
         }
       }
+      LOGGER.info("load jars: " + dependentJars);
       urlClassLoader = new URLClassLoader(dependentJars.toArray(new URL[] {}));
     }
   }
