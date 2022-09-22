@@ -1844,7 +1844,7 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Delete-Data/Delete-Data','删除数据'],
-							['Operate-Metadata/TTL','TTL']
+							['Delete-Data/TTL','TTL']
 						]
 					},
 					{
