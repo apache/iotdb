@@ -558,8 +558,15 @@ public class DataNodeRemoveHandler {
       return Optional.empty();
     }
 
+    List<TDataNodeLocation> aliveDataNodes =
+        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
+            .map(TDataNodeConfiguration::getLocation)
+            .collect(Collectors.toList());
+
     // TODO replace findAny() by select the low load node.
-    return regionReplicaNodes.stream().filter(e -> !e.equals(filterLocation)).findAny();
+    return regionReplicaNodes.stream()
+        .filter(e -> aliveDataNodes.contains(e) && !e.equals(filterLocation))
+        .findAny();
   }
 
   private String getIdWithRpcEndpoint(TDataNodeLocation location) {
