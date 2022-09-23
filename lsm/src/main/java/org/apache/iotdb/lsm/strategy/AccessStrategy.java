@@ -18,11 +18,19 @@
  */
 package org.apache.iotdb.lsm.strategy;
 
-import org.apache.iotdb.lsm.context.Context;
+import org.apache.iotdb.lsm.context.RequestContext;
 import org.apache.iotdb.lsm.levelProcess.BasicLevelProcess;
 
+/** access strategy for memory nodes */
 public interface AccessStrategy {
 
-  <I, O, C extends Context> void execute(
+  /**
+   * implementation of access strategy
+   *
+   * @param levelProcess current level process
+   * @param memNode memory node
+   * @param context request context
+   */
+  <I, O, C extends RequestContext> void execute(
       BasicLevelProcess<I, O, C> levelProcess, I memNode, C context);
 }

@@ -29,11 +29,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.NoSuchElementException;
 
+/** get records in wal file */
 public class WALReader implements IWALReader {
   private static final Logger logger = LoggerFactory.getLogger(WALReader.class);
+  // wal file
   private final File logFile;
+  // wal record prototype, clone on read
   private final WALRecord prototype;
   private DataInputStream logStream;
+  // next wal record
   private WALRecord nextRecord;
   private boolean fileCorrupted = false;
 
@@ -63,7 +67,9 @@ public class WALReader implements IWALReader {
       if (logSize <= 0) {
         return false;
       }
+      // first clone the object through the prototype
       nextRecord = prototype.clone();
+      // then perform deserialization and assign a value to the new object
       nextRecord.deserialize(logStream);
     } catch (EOFException e) {
       logger.info(e.getMessage());

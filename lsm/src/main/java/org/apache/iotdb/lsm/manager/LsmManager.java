@@ -18,12 +18,25 @@
  */
 package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.lsm.context.Context;
+import org.apache.iotdb.lsm.context.RequestContext;
 import org.apache.iotdb.lsm.levelProcess.LevelProcess;
 
-public interface LsmManager<T, C extends Context> {
+// used to implement lsm manager
+public interface LsmManager<T, C extends RequestContext> {
 
+  /**
+   * use this method to process root memory node
+   *
+   * @param memNode memory node
+   * @param context request context
+   */
   void process(T memNode, C context) throws Exception;
 
+  /**
+   * add the LevelProcess of the next layer of memory nodes
+   *
+   * @param next LevelProcess of the next layer
+   * @return LevelProcess of the next layer
+   */
   <O> LevelProcess<T, O, C> nextLevel(LevelProcess<T, O, C> next);
 }

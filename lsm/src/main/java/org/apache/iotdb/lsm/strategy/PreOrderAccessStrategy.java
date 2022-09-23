@@ -18,23 +18,34 @@
  */
 package org.apache.iotdb.lsm.strategy;
 
-import org.apache.iotdb.lsm.context.Context;
+import org.apache.iotdb.lsm.context.RequestContext;
 import org.apache.iotdb.lsm.levelProcess.BasicLevelProcess;
 
 import java.util.List;
 
+/** pre-order traversal access strategy implementation class */
 public class PreOrderAccessStrategy implements AccessStrategy {
 
+  /**
+   * pre-order traversal access strategy
+   *
+   * @param levelProcess current level process
+   * @param memNode memory node
+   * @param context request context
+   */
   @Override
-  public <I, O, C extends Context> void execute(
+  public <I, O, C extends RequestContext> void execute(
       BasicLevelProcess<I, O, C> levelProcess, I memNode, C context) {
     int currentLevel = context.getLevel();
+    // process the current memory node
     levelProcess.handle(memNode, context);
+    // get all memory nodes to be processed in the next layer
     List<O> children = levelProcess.getChildren(memNode, context);
 
     if (levelProcess.hasNext()) {
       context.setLevel(currentLevel + 1);
       for (O child : children) {
+        // process next level memory node
         levelProcess.getNext().process(child, context);
       }
     }

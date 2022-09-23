@@ -21,11 +21,28 @@ package org.apache.iotdb.lsm.wal;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
+/** get records in wal file */
 public interface IWALReader {
 
+  /**
+   * close resource
+   *
+   * @throws IOException
+   */
   void close() throws IOException;
 
+  /**
+   * determine if there is a next record
+   *
+   * @return returns true if there is, else returns false
+   * @throws FileNotFoundException
+   */
   boolean hasNext() throws FileNotFoundException;
 
+  /**
+   * return the next record
+   *
+   * @throws FileNotFoundException
+   */
   WALRecord next() throws FileNotFoundException;
 }

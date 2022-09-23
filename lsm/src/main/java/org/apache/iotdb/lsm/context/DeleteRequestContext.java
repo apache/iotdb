@@ -24,20 +24,53 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class QueryContext extends Context {
+/**
+ * represents the context of a deletion request, this class can be extended to implement a custom
+ * context
+ */
+public class DeleteRequestContext extends RequestContext {
 
+  // save the key of each level
   List<Object> keys;
 
-  public QueryContext(Object... ks) {
+  // value to delete
+  Object value;
+
+  public DeleteRequestContext() {
     super();
+    type = RequestType.DELETE;
+    // post-order traversal strategy is used by default
+    accessStrategy = new PostOrderAccessStrategy();
+  }
+
+  public DeleteRequestContext(Object value, Object... ks) {
+    super();
+    this.value = value;
     keys = new ArrayList<>();
     keys.addAll(Arrays.asList(ks));
-    type = ContextType.QUERY;
+    type = RequestType.DELETE;
+    // post-order traversal strategy is used by default
     accessStrategy = new PostOrderAccessStrategy();
+  }
+
+  public void setKeys(List<Object> keys) {
+    this.keys = keys;
+  }
+
+  public void setValue(Object value) {
+    this.value = value;
   }
 
   public Object getKey() {
     return keys.get(level);
+  }
+
+  public List<Object> getKeys() {
+    return keys;
+  }
+
+  public Object getValue() {
+    return value;
   }
 
   public int size() {

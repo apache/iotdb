@@ -23,7 +23,7 @@
 
 # How To Use
 
-Firstly, you should package **schema-engine-rocksdb** by the following command:
+Firstly, you should package **schema-engine-tag** by the following command:
 
 ```shell
 mvn clean package -pl schema-engine-tag -am -DskipTests

@@ -20,17 +20,24 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
-import org.apache.iotdb.lsm.context.InsertContext;
+import org.apache.iotdb.lsm.context.InsertRequestContext;
 import org.apache.iotdb.lsm.levelProcess.InsertLevelProcess;
 
 import java.util.ArrayList;
 import java.util.List;
 
-// memtable的insert操作
+/** insertion for MemTable */
 public class MemTableInsertion extends InsertLevelProcess<MemTable, MemChunkGroup> {
 
+  /**
+   * get all MemChunkGroups that need to be processed in the current MemTable
+   *
+   * @param memNode memory node
+   * @param context request context
+   * @return A list of saved MemChunkGroups
+   */
   @Override
-  public List<MemChunkGroup> getChildren(MemTable memNode, InsertContext context) {
+  public List<MemChunkGroup> getChildren(MemTable memNode, InsertRequestContext context) {
     if (memNode.isImmutable()) return new ArrayList<>();
     List<MemChunkGroup> memChunkGroups = new ArrayList<>();
     String tagKey = (String) context.getKey();
@@ -39,8 +46,14 @@ public class MemTableInsertion extends InsertLevelProcess<MemTable, MemChunkGrou
     return memChunkGroups;
   }
 
+  /**
+   * the insert method corresponding to the MemTable node
+   *
+   * @param memNode memory node
+   * @param context insert request context
+   */
   @Override
-  public void insert(MemTable memNode, InsertContext context) {
+  public void insert(MemTable memNode, InsertRequestContext context) {
     if (memNode.isImmutable()) return;
     String tagKey = (String) context.getKey();
     memNode.put(tagKey);

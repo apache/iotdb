@@ -27,11 +27,16 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+/** represents a record in the wal file */
 public class WALEntry extends WALRecord {
+
+  // can be insertion(1) or deletion(2)
   private int type;
 
+  // keys at each level
   private List<String> keys;
 
+  // device id
   private int deviceID;
 
   public WALEntry() {
@@ -45,6 +50,11 @@ public class WALEntry extends WALRecord {
     this.deviceID = deviceID;
   }
 
+  /**
+   * serialize the wal entry
+   *
+   * @param buffer byte buffer
+   */
   @Override
   public void serialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(type, buffer);
@@ -55,6 +65,12 @@ public class WALEntry extends WALRecord {
     }
   }
 
+  /**
+   * deserialize from DataInputStream
+   *
+   * @param stream data input stream
+   * @throws IOException
+   */
   @Override
   public void deserialize(DataInputStream stream) throws IOException {
     this.type = stream.readInt();

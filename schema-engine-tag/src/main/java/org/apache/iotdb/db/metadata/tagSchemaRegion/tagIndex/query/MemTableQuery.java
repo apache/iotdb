@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
-import org.apache.iotdb.lsm.context.QueryContext;
+import org.apache.iotdb.lsm.context.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcess;
 
 import org.roaringbitmap.RoaringBitmap;
@@ -29,10 +29,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+/** query for MemTable */
 public class MemTableQuery extends QueryLevelProcess<MemTable, MemChunkGroup> {
 
+  /**
+   * get all MemChunkGroups that need to be processed in the current MemTable
+   *
+   * @param memNode memory node
+   * @param context request context
+   * @return A list of saved MemChunkGroups
+   */
   @Override
-  public List<MemChunkGroup> getChildren(MemTable memNode, QueryContext context) {
+  public List<MemChunkGroup> getChildren(MemTable memNode, QueryRequestContext context) {
     List<MemChunkGroup> memChunkGroups = new ArrayList<>();
     String tagKey = (String) context.getKey();
     MemChunkGroup child = memNode.get(tagKey);
@@ -40,9 +48,15 @@ public class MemTableQuery extends QueryLevelProcess<MemTable, MemChunkGroup> {
     return memChunkGroups;
   }
 
+  /**
+   * the query method corresponding to the MemTable node
+   *
+   * @param memNode memory node
+   * @param context query request context
+   */
   @Override
-  public void query(MemTable memNode, QueryContext context) {
-    // 如果是immutable，则需要在查询结果中删除deletionList中的id
+  public void query(MemTable memNode, QueryRequestContext context) {
+    // if the memTable is immutable, we need to delete the id in deletionList in the query result
     if (memNode.isImmutable()) {
       RoaringBitmap roaringBitmap = (RoaringBitmap) context.getResult();
       Set<Integer> deletionList = memNode.getDeletionList();

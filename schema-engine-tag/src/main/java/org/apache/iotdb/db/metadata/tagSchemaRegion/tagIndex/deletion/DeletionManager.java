@@ -20,11 +20,13 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
-import org.apache.iotdb.lsm.context.DeleteContext;
+import org.apache.iotdb.lsm.context.DeleteRequestContext;
 import org.apache.iotdb.lsm.manager.BasicLsmManager;
 
-public class DeletionManager extends BasicLsmManager<MemTable, DeleteContext> {
+/** manage deletion to MemTable */
+public class DeletionManager extends BasicLsmManager<MemTable, DeleteRequestContext> {
 
+  // use wal manager object to write wal file on deletion
   private WALManager walManager;
 
   public DeletionManager(WALManager walManager) {
@@ -32,13 +34,21 @@ public class DeletionManager extends BasicLsmManager<MemTable, DeleteContext> {
     initLevelProcess();
   }
 
+  /**
+   * write wal file on deletion
+   *
+   * @param root root memory node
+   * @param context request context
+   * @throws Exception
+   */
   @Override
-  public void preProcess(MemTable root, DeleteContext context) throws Exception {
+  public void preProcess(MemTable root, DeleteRequestContext context) throws Exception {
     if (!context.isRecover()) {
       walManager.write(context);
     }
   }
 
+  /** set the delete operation for each layer of memory nodes */
   private void initLevelProcess() {
     this.nextLevel(new MemTableDeletion())
         .nextLevel(new MemChunkGroupDeletion())

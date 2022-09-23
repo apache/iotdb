@@ -29,12 +29,16 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 
+/** write records to wal file */
 public class WALWriter implements IWALWriter {
   private static final Logger logger = LoggerFactory.getLogger(WALWriter.class);
+  // wal file
   private File logFile;
   private FileOutputStream fileOutputStream;
   private FileChannel channel;
+  // 4-bit buffer
   private final ByteBuffer lengthBuffer;
+  // save wal record serialized byte data
   private final ByteBuffer walBuffer;
   private final boolean forceEachWrite;
 
@@ -48,6 +52,12 @@ public class WALWriter implements IWALWriter {
     walBuffer = ByteBuffer.allocate(walBufferSize);
   }
 
+  /**
+   * write walRecord to wal file
+   *
+   * @param walRecord record to be written
+   * @throws IOException
+   */
   @Override
   public void write(WALRecord walRecord) throws IOException {
     if (channel == null) {

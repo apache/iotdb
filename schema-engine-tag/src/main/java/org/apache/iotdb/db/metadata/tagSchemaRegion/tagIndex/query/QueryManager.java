@@ -19,15 +19,17 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
-import org.apache.iotdb.lsm.context.QueryContext;
+import org.apache.iotdb.lsm.context.QueryRequestContext;
 import org.apache.iotdb.lsm.manager.BasicLsmManager;
 
-public class QueryManager extends BasicLsmManager<MemTable, QueryContext> {
+/** manage insertion to MemTable */
+public class QueryManager extends BasicLsmManager<MemTable, QueryRequestContext> {
 
   public QueryManager() {
     initLevelProcess();
   }
 
+  /** set the query operation for each layer of memory nodes */
   private void initLevelProcess() {
     this.nextLevel(new MemTableQuery())
         .nextLevel(new MemChunkGroupQuery())

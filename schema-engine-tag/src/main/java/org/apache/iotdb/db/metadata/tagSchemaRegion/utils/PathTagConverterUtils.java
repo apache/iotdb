@@ -21,8 +21,16 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.utils;
 import java.util.Map;
 import java.util.TreeMap;
 
+/** path and tag converter */
 public class PathTagConverterUtils {
 
+  /**
+   * convert the path of the tree model to the tags of the tag model
+   *
+   * @param storageGroupFullPath storage group full path
+   * @param path path of the tree model
+   * @return tags of the tag model
+   */
   public static Map<String, String> pathToTags(String storageGroupFullPath, String path) {
     if (path.length() <= storageGroupFullPath.length()) return new TreeMap<>();
     String devicePath = path.substring(storageGroupFullPath.length() + 1);
@@ -34,6 +42,13 @@ public class PathTagConverterUtils {
     return tagsMap;
   }
 
+  /**
+   * convert the tags of the tag model to the path of the tree model
+   *
+   * @param storageGroupFullPath storage group full path
+   * @param tags tags of the tag model
+   * @return path of the tree model
+   */
   public static String tagsToPath(String storageGroupFullPath, Map<String, String> tags) {
     StringBuilder stringBuilder = new StringBuilder(storageGroupFullPath);
     for (String tagKey : tags.keySet()) {
@@ -42,6 +57,13 @@ public class PathTagConverterUtils {
     return stringBuilder.toString();
   }
 
+  /**
+   * generate unique path for paths with the same semantics
+   *
+   * @param storageGroupFullPath storage group full path
+   * @param path path of the tree model
+   * @return unique path of the tree model
+   */
   public static String pathToTagsSortPath(String storageGroupFullPath, String path) {
     return tagsToPath(storageGroupFullPath, pathToTags(storageGroupFullPath, path));
   }

@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.TagSchemaConfig;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.TagSchemaDescriptor;
-import org.apache.iotdb.lsm.context.Context;
-import org.apache.iotdb.lsm.context.DeleteContext;
-import org.apache.iotdb.lsm.context.InsertContext;
+import org.apache.iotdb.lsm.context.DeleteRequestContext;
+import org.apache.iotdb.lsm.context.InsertRequestContext;
+import org.apache.iotdb.lsm.context.RequestContext;
 import org.apache.iotdb.lsm.wal.WALReader;
 import org.apache.iotdb.lsm.wal.WALWriter;
 
@@ -31,7 +32,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Manage wal entry writes and reads */
 public class WALManager {
+
   private static final String WAL_FILE_NAME = "tag_inverted_index.log";
 
   private static final int INSERT = 1;
@@ -45,8 +48,10 @@ public class WALManager {
 
   private File walFile;
 
+  // directly use the wal writer that comes with the lsm framework
   private WALWriter walWriter;
 
+  // directly use the wal reader that comes with the lsm framework
   private WALReader walReader;
 
   public WALManager(String schemaDirPath) throws IOException {
@@ -66,21 +71,31 @@ public class WALManager {
     }
   }
 
-  public synchronized void write(Context context) throws IOException {
+  /**
+   * handle wal log writes for each request context
+   *
+   * @param context request context
+   * @throws IOException
+   */
+  public synchronized void write(RequestContext context) throws IOException {
     switch (context.getType()) {
       case INSERT:
-        process((InsertContext) context);
+        process((InsertRequestContext) context);
         break;
       case DELETE:
-        process((DeleteContext) context);
+        process((DeleteRequestContext) context);
         break;
       default:
         break;
     }
   }
 
-  // 用于recover
-  public synchronized Context read() {
+  /**
+   * for recover
+   *
+   * @return request context
+   */
+  public synchronized RequestContext read() {
     if (walReader.hasNext()) {
       WALEntry walEntry = (WALEntry) walReader.next();
       if (walEntry.getType() == INSERT) {
@@ -90,11 +105,17 @@ public class WALManager {
         return generateDeleteContext(walEntry);
       }
     }
-    return new Context();
+    return new RequestContext();
   }
 
-  private InsertContext generateInsertContext(WALEntry walEntry) {
-    InsertContext insertContext = new InsertContext();
+  /**
+   * generate insert context from wal entry
+   *
+   * @param walEntry wal entry
+   * @return insert context
+   */
+  private InsertRequestContext generateInsertContext(WALEntry walEntry) {
+    InsertRequestContext insertContext = new InsertRequestContext();
     List<Object> objects = new ArrayList<>();
     objects.addAll(walEntry.getKeys());
     insertContext.setKeys(objects);
@@ -103,8 +124,15 @@ public class WALManager {
     return insertContext;
   }
 
-  private DeleteContext generateDeleteContext(WALEntry walEntry) {
-    DeleteContext deleteContext = new DeleteContext(walEntry.getDeviceID(), walEntry.getKeys());
+  /**
+   * generate delete context from wal entry
+   *
+   * @param walEntry wal entry
+   * @return delete context
+   */
+  private DeleteRequestContext generateDeleteContext(WALEntry walEntry) {
+    DeleteRequestContext deleteContext =
+        new DeleteRequestContext(walEntry.getDeviceID(), walEntry.getKeys());
     List<Object> objects = new ArrayList<>();
     objects.addAll(walEntry.getKeys());
     deleteContext.setKeys(objects);
@@ -113,7 +141,13 @@ public class WALManager {
     return deleteContext;
   }
 
-  private void process(InsertContext insertContext) throws IOException {
+  /**
+   * handle wal log writes for each insert context
+   *
+   * @param insertContext insert context
+   * @throws IOException
+   */
+  private void process(InsertRequestContext insertContext) throws IOException {
     List<Object> objects = insertContext.getKeys();
     List<String> keys = new ArrayList<>();
     for (Object o : objects) {
@@ -123,7 +157,13 @@ public class WALManager {
     walWriter.write(walEntry);
   }
 
-  private void process(DeleteContext deleteContext) throws IOException {
+  /**
+   * handle wal log writes for each delete context
+   *
+   * @param deleteContext delete context
+   * @throws IOException
+   */
+  private void process(DeleteRequestContext deleteContext) throws IOException {
     List<Object> objects = deleteContext.getKeys();
     List<String> keys = new ArrayList<>();
     for (Object o : objects) {
@@ -133,6 +173,7 @@ public class WALManager {
     walWriter.write(walEntry);
   }
 
+  @TestOnly
   public void close() throws IOException {
     walWriter.close();
     walReader.close();

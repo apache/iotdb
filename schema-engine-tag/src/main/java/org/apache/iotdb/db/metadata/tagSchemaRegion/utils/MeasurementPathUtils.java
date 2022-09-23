@@ -28,7 +28,19 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+/** process MeasurementPath */
 public class MeasurementPathUtils {
+
+  /**
+   * generate MeasurementPath
+   *
+   * @param devicePath device path
+   * @param measurement measurement
+   * @param schemaEntry schema entry
+   * @param isAligned is aligned
+   * @return MeasurementPath
+   * @throws IllegalPathException
+   */
   public static MeasurementPath generateMeasurementPath(
       String devicePath, String measurement, SchemaEntry schemaEntry, boolean isAligned)
       throws IllegalPathException {
@@ -45,6 +57,13 @@ public class MeasurementPathUtils {
     return measurementPath;
   }
 
+  /**
+   * generate MeasurementPath
+   *
+   * @param diskSchemaEntry disk schema entry
+   * @return MeasurementPath
+   * @throws IllegalPathException
+   */
   public static MeasurementPath generateMeasurementPath(DiskSchemaEntry diskSchemaEntry)
       throws IllegalPathException {
     MeasurementPath measurementPath =

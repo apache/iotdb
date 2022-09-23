@@ -19,21 +19,36 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
-import org.apache.iotdb.lsm.context.QueryContext;
+import org.apache.iotdb.lsm.context.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcess;
 
 import org.roaringbitmap.RoaringBitmap;
 
 import java.util.List;
 
+/** query for MemChunk */
 public class MemChunkQuery extends QueryLevelProcess<MemChunk, Object> {
+
+  /**
+   * MemChunk is the last layer of memory nodes, no children
+   *
+   * @param memNode memory node
+   * @param context request context
+   * @return null
+   */
   @Override
-  public List<Object> getChildren(MemChunk memNode, QueryContext context) {
+  public List<Object> getChildren(MemChunk memNode, QueryRequestContext context) {
     return null;
   }
 
+  /**
+   * the query method corresponding to the MemChunk node
+   *
+   * @param memNode memory node
+   * @param context query request context
+   */
   @Override
-  public void query(MemChunk memNode, QueryContext context) {
+  public void query(MemChunk memNode, QueryRequestContext context) {
     RoaringBitmap roaringBitmap = (RoaringBitmap) context.getResult();
     if (roaringBitmap == null) roaringBitmap = new RoaringBitmap();
     RoaringBitmap now = RoaringBitmap.or(roaringBitmap, memNode.getRoaringBitmap());

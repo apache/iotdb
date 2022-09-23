@@ -18,12 +18,24 @@
  */
 package org.apache.iotdb.lsm.levelProcess;
 
-import org.apache.iotdb.lsm.context.Context;
+import org.apache.iotdb.lsm.context.RequestContext;
 
-public interface LevelProcess<I, O, C extends Context> {
+/** the processing method corresponding to each layer of memory nodes */
+public interface LevelProcess<I, O, C extends RequestContext> {
+
+  /**
+   * add the LevelProcess of the next layer of memory nodes
+   *
+   * @param next LevelProcess of the next layer
+   * @return LevelProcess of the next layer
+   */
   <T> LevelProcess<O, T, C> nextLevel(LevelProcess<O, T, C> next);
 
+  /**
+   * use this method to process memory nodes at each layer according to the access strategy
+   *
+   * @param memNode memory node
+   * @param context request context
+   */
   void process(I memNode, C context);
-
-  void handle(I memNode, C context);
 }

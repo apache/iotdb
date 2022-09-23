@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+/** manager tag schema config */
 public class TagSchemaDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(TagSchemaDescriptor.class);
 
@@ -47,9 +48,16 @@ public class TagSchemaDescriptor {
   }
 
   private void loadProperties() {
-    String iotdbHomePath = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    String iotDBHomePath = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    if (iotDBHomePath == null) {
+      logger.warn(
+          "Cannot find IOTDB_HOME environment variable when loading "
+              + "config file {}, use default configuration",
+          TAG_SCHEMA_CONFIG_FILE_NAME);
+      return;
+    }
     String tagSchemaConfigPath =
-        iotdbHomePath
+        iotDBHomePath
             + File.separatorChar
             + "conf"
             + File.separatorChar

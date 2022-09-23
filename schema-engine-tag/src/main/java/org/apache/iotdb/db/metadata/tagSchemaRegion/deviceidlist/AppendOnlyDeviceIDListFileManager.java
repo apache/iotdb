@@ -30,6 +30,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+/** for append-only writing of device id list to disk */
 public class AppendOnlyDeviceIDListFileManager {
 
   private static final Logger logger =
@@ -68,17 +69,27 @@ public class AppendOnlyDeviceIDListFileManager {
     }
   }
 
-  public void serialize(String deviceID) {
+  /**
+   * write the device id to file
+   *
+   * @param deviceID device id
+   */
+  public void write(String deviceID) {
     try {
       if (!isRecover) {
         ReadWriteIOUtils.write(deviceID, outputStream);
       }
     } catch (IOException e) {
-      logger.error("failed to serialize device id: " + deviceID);
-      throw new IllegalArgumentException("can't serialize device id of " + deviceID);
+      logger.error("failed to write device id: " + deviceID);
+      throw new IllegalArgumentException("can't write device id of " + deviceID);
     }
   }
 
+  /**
+   * recover device id list
+   *
+   * @param deviceIDList device id list
+   */
   public void recover(DeviceIDList deviceIDList) {
     logger.info("recover device id list using file {}", deviceIDSFile);
     try (FileInputStream inputStream = new FileInputStream(deviceIDSFile)) {

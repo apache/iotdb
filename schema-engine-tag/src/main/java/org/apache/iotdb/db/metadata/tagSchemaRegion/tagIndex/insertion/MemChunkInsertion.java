@@ -19,19 +19,34 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
-import org.apache.iotdb.lsm.context.InsertContext;
+import org.apache.iotdb.lsm.context.InsertRequestContext;
 import org.apache.iotdb.lsm.levelProcess.InsertLevelProcess;
 
 import java.util.List;
 
+/** insertion for MemChunk */
 public class MemChunkInsertion extends InsertLevelProcess<MemChunk, Object> {
+
+  /**
+   * MemChunk is the last layer of memory nodes, no children
+   *
+   * @param memNode memory node
+   * @param context request context
+   * @return null
+   */
   @Override
-  public List<Object> getChildren(MemChunk memNode, InsertContext context) {
+  public List<Object> getChildren(MemChunk memNode, InsertRequestContext context) {
     return null;
   }
 
+  /**
+   * the insert method corresponding to the MemChunk node
+   *
+   * @param memNode memory node
+   * @param context insert request context
+   */
   @Override
-  public void insert(MemChunk memNode, InsertContext context) {
+  public void insert(MemChunk memNode, InsertRequestContext context) {
     Integer deviceID = (Integer) context.getValue();
     memNode.put(deviceID);
   }

@@ -24,14 +24,36 @@ import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import java.io.IOException;
 import java.util.List;
 
+/** manage device id -> int32 id */
 public interface IDeviceIDList {
 
+  /**
+   * insert a device id
+   *
+   * @param deviceID device id
+   */
   void add(IDeviceID deviceID);
 
+  /**
+   * get device id using int32 id
+   *
+   * @param index int32 id
+   * @return device id
+   */
   IDeviceID get(int index);
 
+  /**
+   * returns the number of managed device ids
+   *
+   * @return the number of managed device ids
+   */
   int size();
 
+  /**
+   * get all managed device ids
+   *
+   * @return all managed device ids
+   */
   List<IDeviceID> getAllDeviceIDS();
 
   @TestOnly

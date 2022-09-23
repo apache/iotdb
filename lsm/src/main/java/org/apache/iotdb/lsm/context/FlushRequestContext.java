@@ -18,10 +18,17 @@
  */
 package org.apache.iotdb.lsm.context;
 
-public enum ContextType {
-  NONE,
-  INSERT,
-  QUERY,
-  DELETE,
-  FLUSH;
+import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
+
+/**
+ * represents the context of a flush request, this class can be extended to implement a custom
+ * context
+ */
+public class FlushRequestContext extends RequestContext {
+  public FlushRequestContext() {
+    super();
+    type = RequestType.FLUSH;
+    // use the reverse breadth-first traversal strategy to access memory nodes
+    accessStrategy = new RBFSAccessStrategy();
+  }
 }

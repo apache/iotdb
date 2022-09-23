@@ -18,10 +18,35 @@
  */
 package org.apache.iotdb.lsm.context;
 
-import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
+import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
 
-public class FlushContext extends Context {
-  public FlushContext() {
-    accessStrategy = new RBFSAccessStrategy();
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * represents the context of a query request, this class can be extended to implement a custom
+ * context
+ */
+public class QueryRequestContext extends RequestContext {
+
+  // save the key of each level
+  List<Object> keys;
+
+  public QueryRequestContext(Object... ks) {
+    super();
+    keys = new ArrayList<>();
+    keys.addAll(Arrays.asList(ks));
+    type = RequestType.QUERY;
+    // post-order traversal strategy is used by default
+    accessStrategy = new PostOrderAccessStrategy();
+  }
+
+  public Object getKey() {
+    return keys.get(level);
+  }
+
+  public int size() {
+    return keys.size();
   }
 }

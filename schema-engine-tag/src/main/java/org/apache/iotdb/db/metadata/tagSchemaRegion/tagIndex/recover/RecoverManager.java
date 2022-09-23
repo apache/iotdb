@@ -20,13 +20,14 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.recover;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.ITagInvertedIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
-import org.apache.iotdb.lsm.context.Context;
-import org.apache.iotdb.lsm.context.DeleteContext;
-import org.apache.iotdb.lsm.context.InsertContext;
+import org.apache.iotdb.lsm.context.DeleteRequestContext;
+import org.apache.iotdb.lsm.context.InsertRequestContext;
+import org.apache.iotdb.lsm.context.RequestContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** for memory structure recovery */
 public class RecoverManager {
   private static final Logger logger = LoggerFactory.getLogger(RecoverManager.class);
 
@@ -36,16 +37,21 @@ public class RecoverManager {
     this.walManager = walManager;
   }
 
+  /**
+   * recover tagInvertedIndex
+   *
+   * @param tagInvertedIndex tag inverted index
+   */
   public void recover(ITagInvertedIndex tagInvertedIndex) {
     logger.info("recover tagInvertedIndex");
     while (true) {
-      Context context = walManager.read();
+      RequestContext context = walManager.read();
       switch (context.getType()) {
         case INSERT:
-          tagInvertedIndex.addTags((InsertContext) context);
+          tagInvertedIndex.addTags((InsertRequestContext) context);
           break;
         case DELETE:
-          tagInvertedIndex.removeTags((DeleteContext) context);
+          tagInvertedIndex.removeTags((DeleteRequestContext) context);
           break;
         default:
           return;

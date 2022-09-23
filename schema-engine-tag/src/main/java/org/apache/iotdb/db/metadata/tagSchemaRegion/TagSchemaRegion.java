@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
@@ -96,21 +97,27 @@ import java.util.function.Function;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
+/** tag schema region */
 public class TagSchemaRegion implements ISchemaRegion {
   private static final Logger logger = LoggerFactory.getLogger(TagSchemaRegion.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  // when a path ends with ".**", it represents batch processing
   private final String TAIL = ".**";
+
   private final IStorageGroupMNode storageGroupMNode;
   private final String storageGroupFullPath;
   private final SchemaRegionId schemaRegionId;
   private final String schemaRegionDirPath;
 
+  // tag inverted index
   private final TagInvertedIndex tagInvertedIndex;
 
+  // manager device id -> INT32 id
   private final IDeviceIDList deviceIDList;
 
+  // manager timeSeries
   private final IDTable idTable;
 
   private final ISeriesNumerLimiter seriesNumerLimiter;
@@ -135,6 +142,7 @@ public class TagSchemaRegion implements ISchemaRegion {
 
   @Override
   public void init() throws MetadataException {
+    // must enableIDTableLogFile or deviceIDTransformationMethod=="Plain"
     if (!config.isEnableIDTableLogFile()
         && config.getDeviceIDTransformationMethod().equals("SHA256")) {
       throw new MetadataException(
@@ -151,11 +159,11 @@ public class TagSchemaRegion implements ISchemaRegion {
         }
       }
     }
-
     logger.info("initialized successfully: {}", this);
   }
 
   @Override
+  @TestOnly
   public void clear() {
     try {
       tagInvertedIndex.clear();

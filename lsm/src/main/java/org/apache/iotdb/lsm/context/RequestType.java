@@ -16,30 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.example;
+package org.apache.iotdb.lsm.context;
 
-import java.util.HashMap;
-import java.util.Map;
-
-// tagvalue -> memChunk
-public class MemGroup {
-
-  Map<String, MemChunk> map;
-
-  public MemGroup() {
-    map = new HashMap<>();
-  }
-
-  public Map<String, MemChunk> getMap() {
-    return map;
-  }
-
-  public void setMap(Map<String, MemChunk> map) {
-    this.map = map;
-  }
-
-  @Override
-  public String toString() {
-    return "MemGroup{" + map.toString() + '}';
-  }
+public enum RequestType {
+  NONE,
+  INSERT,
+  QUERY,
+  DELETE,
+  FLUSH;
 }

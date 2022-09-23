@@ -23,15 +23,20 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+/** used to manage tagKey -> MemChunkGroup */
 public class MemTable {
+
   public static final String WORKING = "working";
 
   public static final String IMMUTABLE = "immutable";
 
+  // manage tagKey -> MemChunkGroup
   private Map<String, MemChunkGroup> memChunkGroupMap;
 
   private String status;
 
+  // if the memTable is immutable, the data cannot be deleted directly, and the deleted data needs
+  // to be recorded in the deletionList
   private Set<Integer> deletionList;
 
   public MemTable(String status) {

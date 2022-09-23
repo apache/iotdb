@@ -20,11 +20,28 @@ package org.apache.iotdb.lsm.wal;
 
 import java.io.IOException;
 
+/** write records to wal file */
 public interface IWALWriter {
 
+  /**
+   * write walRecord to wal file
+   *
+   * @param walRecord record to be written
+   * @throws IOException
+   */
   void write(WALRecord walRecord) throws IOException;
 
+  /**
+   * force brush
+   *
+   * @throws IOException
+   */
   void force() throws IOException;
 
+  /**
+   * close resource
+   *
+   * @throws IOException
+   */
   void close() throws IOException;
 }

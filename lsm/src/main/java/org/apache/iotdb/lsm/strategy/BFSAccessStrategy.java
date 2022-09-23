@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.strategy;
 
-import org.apache.iotdb.lsm.context.Context;
+import org.apache.iotdb.lsm.context.RequestContext;
 import org.apache.iotdb.lsm.levelProcess.BasicLevelProcess;
 
 import java.util.ArrayList;
@@ -26,18 +26,29 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
+/** breadth-first access strategy implementation class */
 public class BFSAccessStrategy implements AccessStrategy {
 
+  // same level memory nodes, used to implement BFSAccessStrategy
   Queue<Object> sameLevelMemNodes;
 
+  /**
+   * breadth-first access strategy implementation
+   *
+   * @param levelProcess current level process
+   * @param memNode memory node
+   * @param context request context
+   */
   @Override
-  public <I, O, C extends Context> void execute(
+  public <I, O, C extends RequestContext> void execute(
       BasicLevelProcess<I, O, C> levelProcess, I memNode, C context) {
     List<O> children = new ArrayList<>();
     int currentLevel = context.getLevel();
     if (sameLevelMemNodes == null) {
       sameLevelMemNodes = new LinkedList<>();
+      // process the current memory node
       levelProcess.handle(memNode, context);
+      // get all memory nodes to be processed in the next layer
       children = levelProcess.getChildren(memNode, context);
     } else {
       while (!sameLevelMemNodes.isEmpty()) {

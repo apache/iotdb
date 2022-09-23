@@ -18,21 +18,50 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex;
 
-import org.apache.iotdb.lsm.context.DeleteContext;
-import org.apache.iotdb.lsm.context.InsertContext;
+import org.apache.iotdb.lsm.context.DeleteRequestContext;
+import org.apache.iotdb.lsm.context.InsertRequestContext;
 
 import java.util.List;
 import java.util.Map;
 
+/** tag inverted index interface */
 public interface ITagInvertedIndex {
 
-  void addTags(InsertContext context);
+  /**
+   * insert tags and id using insert request context
+   *
+   * @param context insert request context
+   */
+  void addTags(InsertRequestContext context);
 
+  /**
+   * insert tags and device id
+   *
+   * @param tags tags like: <tagKey,tagValue>
+   * @param id INT32 device id
+   */
   void addTags(Map<String, String> tags, int id);
 
-  void removeTags(DeleteContext context);
+  /**
+   * delete tags and id using delete request context
+   *
+   * @param context delete request context
+   */
+  void removeTags(DeleteRequestContext context);
 
+  /**
+   * delete tags and id using delete request context
+   *
+   * @param tags tags like: <tagKey,tagValue>
+   * @param id INT32 device id
+   */
   void removeTags(Map<String, String> tags, int id);
 
+  /**
+   * get all matching device ids
+   *
+   * @param tags tags like: <tagKey,tagValue>
+   * @return device ids
+   */
   List<Integer> getMatchedIDs(Map<String, String> tags);
 }

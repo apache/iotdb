@@ -89,6 +89,7 @@ import java.util.function.Function;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
+/** Mock tag schema region, only used for test */
 public class MockTagSchemaRegion implements ISchemaRegion {
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();

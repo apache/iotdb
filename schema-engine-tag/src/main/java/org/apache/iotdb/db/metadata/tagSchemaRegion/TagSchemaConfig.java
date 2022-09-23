@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion;
 
+/** tag schema region config */
 public class TagSchemaConfig {
 
+  // the maximum number of device ids managed by a working memTable
   private int numOfDeviceIdsInMemTable = 65536;
 
+  // the size of wal buffer used to store a wal record
   private int walBufferSize = 1024 * 1024;
 
   public int getNumOfDeviceIdsInMemTable() {

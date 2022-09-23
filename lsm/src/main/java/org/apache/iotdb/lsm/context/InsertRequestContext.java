@@ -18,31 +18,43 @@
  */
 package org.apache.iotdb.lsm.context;
 
-import org.apache.iotdb.lsm.strategy.PostOrderAccessStrategy;
+import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class DeleteContext extends Context {
+/**
+ * represents the context of a insertion request, this class can be extended to implement a custom
+ * context
+ */
+public class InsertRequestContext extends RequestContext {
 
+  // save the key of each level
   List<Object> keys;
 
+  // value to insert
   Object value;
 
-  public DeleteContext() {
+  public InsertRequestContext() {
     super();
-    type = ContextType.DELETE;
-    accessStrategy = new PostOrderAccessStrategy();
+    type = RequestType.INSERT;
+    // preorder traversal strategy is used by default
+    accessStrategy = new PreOrderAccessStrategy();
   }
 
-  public DeleteContext(Object value, Object... ks) {
+  public InsertRequestContext(Object value, Object... keys) {
     super();
     this.value = value;
-    keys = new ArrayList<>();
-    keys.addAll(Arrays.asList(ks));
-    type = ContextType.DELETE;
-    accessStrategy = new PostOrderAccessStrategy();
+    this.keys = new ArrayList<>();
+    this.keys.addAll(Arrays.asList(keys));
+    type = RequestType.INSERT;
+    // preorder traversal strategy is used by default
+    accessStrategy = new PreOrderAccessStrategy();
+  }
+
+  public Object getKey() {
+    return keys.get(level);
   }
 
   public void setKeys(List<Object> keys) {
@@ -53,19 +65,11 @@ public class DeleteContext extends Context {
     this.value = value;
   }
 
-  public Object getKey() {
-    return keys.get(level);
-  }
-
   public List<Object> getKeys() {
     return keys;
   }
 
   public Object getValue() {
     return value;
-  }
-
-  public int size() {
-    return keys.size();
   }
 }

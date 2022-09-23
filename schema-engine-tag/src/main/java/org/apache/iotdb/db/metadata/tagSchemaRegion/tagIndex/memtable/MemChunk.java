@@ -20,8 +20,10 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 
 import org.roaringbitmap.RoaringBitmap;
 
-// 管理设备id集合
+/** used to manage the device id collection */
 public class MemChunk {
+
+  // manage the device id collection, see: https://github.com/RoaringBitmap/RoaringBitmap
   private RoaringBitmap roaringBitmap;
 
   public MemChunk() {

@@ -23,7 +23,18 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 
 import java.util.HashMap;
 
+/** process show timeSeries result */
 public class ShowTimeSeriesResultUtils {
+
+  /**
+   * generate show timeSeries result
+   *
+   * @param sgName storage group name
+   * @param devicePath device path
+   * @param measurement measurement
+   * @param schemaEntry schema entry
+   * @return ShowTimeSeriesResult
+   */
   public static ShowTimeSeriesResult generateShowTimeSeriesResult(
       String sgName, String devicePath, String measurement, SchemaEntry schemaEntry) {
     return new ShowTimeSeriesResult(
@@ -38,6 +49,14 @@ public class ShowTimeSeriesResultUtils {
         new HashMap<>());
   }
 
+  /**
+   * generate show timeSeries result
+   *
+   * @param sgName storage group name
+   * @param timeSeriesPath timeSeries path
+   * @param schemaEntry schema entry
+   * @return ShowTimeSeriesResult
+   */
   public static ShowTimeSeriesResult generateShowTimeSeriesResult(
       String sgName, String timeSeriesPath, SchemaEntry schemaEntry) {
     return new ShowTimeSeriesResult(

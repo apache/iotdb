@@ -20,15 +20,24 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
-import org.apache.iotdb.lsm.context.QueryContext;
+import org.apache.iotdb.lsm.context.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcess;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/** query for MemChunkGroup */
 public class MemChunkGroupQuery extends QueryLevelProcess<MemChunkGroup, MemChunk> {
+
+  /**
+   * get all MemChunks that need to be processed in the current MemChunkGroup
+   *
+   * @param memNode memory node
+   * @param context request context
+   * @return A list of saved MemChunks
+   */
   @Override
-  public List<MemChunk> getChildren(MemChunkGroup memNode, QueryContext context) {
+  public List<MemChunk> getChildren(MemChunkGroup memNode, QueryRequestContext context) {
     List<MemChunk> memChunks = new ArrayList<>();
     String tagValue = (String) context.getKey();
     MemChunk child = memNode.get(tagValue);
@@ -36,6 +45,12 @@ public class MemChunkGroupQuery extends QueryLevelProcess<MemChunkGroup, MemChun
     return memChunks;
   }
 
+  /**
+   * the insert method corresponding to the MemChunkGroup node
+   *
+   * @param memNode memory node
+   * @param context query request context
+   */
   @Override
-  public void query(MemChunkGroup memNode, QueryContext context) {}
+  public void query(MemChunkGroup memNode, QueryRequestContext context) {}
 }

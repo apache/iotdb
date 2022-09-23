@@ -21,7 +21,10 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 import java.util.HashMap;
 import java.util.Map;
 
+/** used to manage tagValue -> MemChunk */
 public class MemChunkGroup {
+
+  // manage tagValue -> MemChunk
   private Map<String, MemChunk> memChunkMap;
 
   public MemChunkGroup() {

@@ -22,10 +22,22 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+/** represents a wal record, which can be extended to implement more complex wal records */
 public abstract class WALRecord implements Cloneable {
 
+  /**
+   * serialize the wal record
+   *
+   * @param buffer byte buffer
+   */
   public abstract void serialize(ByteBuffer buffer);
 
+  /**
+   * deserialize via input stream
+   *
+   * @param stream data input stream
+   * @throws IOException
+   */
   public abstract void deserialize(DataInputStream stream) throws IOException;
 
   @Override

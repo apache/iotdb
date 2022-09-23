@@ -21,27 +21,32 @@ package org.apache.iotdb.lsm.context;
 import org.apache.iotdb.lsm.strategy.AccessStrategy;
 import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;
 
-public class Context {
+/** represents the context of a request */
+public class RequestContext {
 
-  ContextType type;
+  // request type
+  RequestType type;
 
+  // memory Structure Access Policy
   AccessStrategy accessStrategy;
 
+  // the tree level of the currently pending memory node
   int level;
 
-  int threadNums;
-
+  // the maximum level of memory nodes that can be processed
   int levelUpperBound;
 
+  // return value after request processing is complete
   Object result;
 
+  // whether the request context is only used for recovery
   boolean recover;
 
-  public Context() {
+  public RequestContext() {
+    // preorder traversal strategy is used by default
     accessStrategy = new PreOrderAccessStrategy();
-    type = ContextType.NONE;
+    type = RequestType.NONE;
     level = 0;
-    threadNums = 1;
     levelUpperBound = Integer.MAX_VALUE;
     recover = false;
   }
@@ -54,20 +59,12 @@ public class Context {
     return level;
   }
 
-  public ContextType getType() {
+  public RequestType getType() {
     return type;
   }
 
-  public int getThreadNums() {
-    return threadNums;
-  }
-
-  public void setType(ContextType type) {
+  public void setType(RequestType type) {
     this.type = type;
-  }
-
-  public void setThreadNums(int threadNums) {
-    this.threadNums = threadNums;
   }
 
   public Object getResult() {

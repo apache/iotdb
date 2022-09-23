@@ -18,43 +18,63 @@
  */
 package org.apache.iotdb.lsm.strategy;
 
-import org.apache.iotdb.lsm.context.Context;
+import org.apache.iotdb.lsm.context.RequestContext;
 import org.apache.iotdb.lsm.levelProcess.BasicLevelProcess;
 
 import java.util.List;
 
+/** reverse breadth first traversal access strategy implementation class */
 public class RBFSAccessStrategy implements AccessStrategy {
+
+  /**
+   * reverse breadth first traversal access strategy
+   *
+   * @param levelProcess current level process
+   * @param memNode memory node
+   * @param context request context
+   */
   @Override
-  public <I, O, C extends Context> void execute(
+  public <I, O, C extends RequestContext> void execute(
       BasicLevelProcess<I, O, C> levelProcess, I memNode, C context) {
     int currentLevel = context.getLevel();
+
+    // if the upper bound has not been set and there is no next-level processing method, set the
+    // upper bound to the current level
     if (Integer.MAX_VALUE == context.getLevelUpperBound() && !levelProcess.hasNext()) {
       context.setLevelUpperBound(context.getLevel());
     }
 
+    // if the current memory node is the root
     if (currentLevel == 0) {
+      // if all the next level nodes of the root node have not been processed
       while (context.getLevelUpperBound() != currentLevel) {
+        // process all pending next-level nodes
         List<O> children = levelProcess.getChildren(memNode, context);
         for (O child : children) {
-
           context.setLevel(currentLevel + 1);
+          // use the processing method of the next layer to process the next layer of nodes
           levelProcess.getNext().process(child, context);
           context.setLevel(currentLevel);
         }
 
+        // after each layer is processed, the upper bound is reduced by one
         context.setLevelUpperBound(context.getLevelUpperBound() - 1);
       }
 
+      // process the current memory node
       levelProcess.handle(memNode, context);
       return;
     }
 
     if (currentLevel > context.getLevelUpperBound()) return;
 
+    // only process memory nodes with equal level and upper bound
     if (currentLevel == context.getLevelUpperBound()) {
       levelProcess.handle(memNode, context);
       return;
     }
+
+    // process all pending next-level nodes
     List<O> children = levelProcess.getChildren(memNode, context);
     for (O child : children) {
       context.setLevel(currentLevel + 1);

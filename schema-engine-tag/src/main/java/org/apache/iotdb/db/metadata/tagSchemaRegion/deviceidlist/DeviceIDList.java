@@ -25,8 +25,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/** manage device id -> int32 id */
 public class DeviceIDList implements IDeviceIDList {
 
+  // use an array list to manage device id -> int id
   private final List<IDeviceID> deviceIDS;
 
   private AppendOnlyDeviceIDListFileManager appendOnlyDeviceIDListFileManager;
@@ -44,7 +46,7 @@ public class DeviceIDList implements IDeviceIDList {
   @Override
   public void add(IDeviceID deviceID) {
     deviceIDS.add(deviceID);
-    appendOnlyDeviceIDListFileManager.serialize(deviceID.toStringID());
+    appendOnlyDeviceIDListFileManager.write(deviceID.toStringID());
   }
 
   @Override

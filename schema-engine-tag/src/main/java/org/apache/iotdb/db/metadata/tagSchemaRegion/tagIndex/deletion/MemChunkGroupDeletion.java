@@ -20,15 +20,24 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
-import org.apache.iotdb.lsm.context.DeleteContext;
+import org.apache.iotdb.lsm.context.DeleteRequestContext;
 import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcess;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/** deletion for MemChunkGroup */
 public class MemChunkGroupDeletion extends DeleteLevelProcess<MemChunkGroup, MemChunk> {
+
+  /**
+   * get all MemChunks that need to be processed in the current MemChunkGroup
+   *
+   * @param memNode memory node
+   * @param context request context
+   * @return A list of saved MemChunks
+   */
   @Override
-  public List<MemChunk> getChildren(MemChunkGroup memNode, DeleteContext context) {
+  public List<MemChunk> getChildren(MemChunkGroup memNode, DeleteRequestContext context) {
     List<MemChunk> memChunks = new ArrayList<>();
     String tagValue = (String) context.getKey();
     MemChunk child = memNode.get(tagValue);
@@ -36,8 +45,14 @@ public class MemChunkGroupDeletion extends DeleteLevelProcess<MemChunkGroup, Mem
     return memChunks;
   }
 
+  /**
+   * the delete method corresponding to the MemChunkGroup node
+   *
+   * @param memNode memory node
+   * @param context deletion request context
+   */
   @Override
-  public void delete(MemChunkGroup memNode, DeleteContext context) {
+  public void delete(MemChunkGroup memNode, DeleteRequestContext context) {
     String tagValue = (String) context.getKey();
     MemChunk child = memNode.get(tagValue);
     if (child == null || child.isEmpty()) {
