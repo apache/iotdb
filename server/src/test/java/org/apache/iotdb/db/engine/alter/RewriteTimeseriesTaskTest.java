@@ -84,6 +84,8 @@ public class RewriteTimeseriesTaskTest {
   String storageGroupName = "root.alttask1";
   String device = "root.alttask1.device_0";
   String alignedDevice = "root.alttask1.device_1";
+  String deviceNotRewrite = "root.alttask1.device_3";
+  String alignedDeviceNotRewrite = "root.alttask1.device_4";
   String sensorPrefix = "sensor_";
   // the number of rows to include in the tablet
   int rowNum = 1000000;
@@ -93,6 +95,7 @@ public class RewriteTimeseriesTaskTest {
   TSEncoding defaultEncoding = TSEncoding.TS_2DIFF;
   CompressionType defaultCompressionType = CompressionType.GZIP;
   TsFileManager tsFileManager = null;
+  int fileCount = 4;
 
   @Before
   public void setUp() throws Exception {
@@ -116,7 +119,7 @@ public class RewriteTimeseriesTaskTest {
       AlteringRecordsCache.getInstance().putRecord(storageGroupName, fullPath.getFullPath(), TSEncoding.GORILLA, CompressionType.GZIP);
       AlteringRecordsCache.getInstance().putRecord(storageGroupName, fullPathAlign.getFullPath(), TSEncoding.RLE, CompressionType.GZIP);
       tsFileManager = new TsFileManager(storageGroupName,dataRegionId, storageGroupSysDir.getPath());
-      for (int fnum = 1; fnum <= 3; fnum++) {
+      for (int fnum = 1; fnum <= fileCount - 1; fnum++) {
         File f = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum+ "-0-0-0.tsfile"));
         if (f.exists() && !f.delete()) {
           throw new RuntimeException("can not delete " + f.getAbsolutePath());
@@ -124,8 +127,17 @@ public class RewriteTimeseriesTaskTest {
 
         long beginTime = fnum * rowNum;
         long beginValue = fnum * 1000000L;
-        writeFile(f, beginTime, beginValue);
+        writeFile(f, beginTime, beginValue, device, alignedDevice);
       }
+      int fnum = fileCount;
+      File f = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum+ "-0-0-0.tsfile"));
+      if (f.exists() && !f.delete()) {
+        throw new RuntimeException("can not delete " + f.getAbsolutePath());
+      }
+
+      long beginTime = fnum * rowNum;
+      long beginValue = fnum * 1000000L;
+      writeFile(f, beginTime, beginValue, deviceNotRewrite, alignedDeviceNotRewrite);
     } catch (Exception e) {
       throw new Exception("meet error in TsFileWrite with tablet", e);
     }
@@ -164,7 +176,7 @@ public class RewriteTimeseriesTaskTest {
         Assert.assertTrue(summary.isFinished());
         Assert.assertTrue(summary.isSuccess());
       }
-      for (int fnum = 1; fnum <= 3; fnum++) {
+      for (int fnum = 1; fnum <= fileCount; fnum++) {
         File f = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum + "-0-0-0.tsfile"));
         File falter = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum + "-0-0-0.alter"));
         File fold = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum + "-0-0-0.alter.old"));
@@ -244,7 +256,7 @@ public class RewriteTimeseriesTaskTest {
     }
   }
 
-  private void writeFile(File f, long beginTime, long beginValue) throws IOException, WriteProcessException {
+  private void writeFile(File f, long beginTime, long beginValue, String device, String alignedDevice) throws IOException, WriteProcessException {
     Schema schema = new Schema();
     List<MeasurementSchema> measurementSchemas = new ArrayList<>();
     // add measurements into file schema (all with INT64 data type)
@@ -355,7 +367,7 @@ public class RewriteTimeseriesTaskTest {
           }
         });
       } else {
-        for (int fnum = 1; fnum <= 3; fnum++) {
+        for (int fnum = 1; fnum <= fileCount; fnum++) {
           File f = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum + "-0-0-0.tsfile"));
           if (f.exists()) {
             FileUtils.forceDeleteOnExit(f);
