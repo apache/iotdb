@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.LoadFileException;
@@ -105,6 +104,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -1502,10 +1502,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
       String device = entry.getKey();
       long endTime = device2MaxTime.get(device);
-      long interval = StorageEngineV2.getTimePartitionInterval();
+      long interval =
+          IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
       long time = (entry.getValue() / interval) * interval;
       for (; time <= endTime; time += interval) {
-        timePartitionSlots.add(StorageEngineV2.getTimePartitionSlot(time));
+        timePartitionSlots.add(TimePartitionUtils.getTimePartitionForRouting(time));
       }
 
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
