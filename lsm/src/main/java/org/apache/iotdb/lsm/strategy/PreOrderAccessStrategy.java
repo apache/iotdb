@@ -29,11 +29,9 @@ public class PreOrderAccessStrategy implements AccessStrategy {
   public <I, O, C extends Context> void execute(
       BasicLevelProcess<I, O, C> levelProcess, I memNode, C context) {
     int currentLevel = context.getLevel();
-    // 处理该节点
     levelProcess.handle(memNode, context);
     List<O> children = levelProcess.getChildren(memNode, context);
 
-    // 处理子节点
     if (levelProcess.hasNext()) {
       context.setLevel(currentLevel + 1);
       for (O child : children) {

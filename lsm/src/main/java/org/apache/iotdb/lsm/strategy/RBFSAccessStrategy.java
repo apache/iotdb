@@ -31,28 +31,26 @@ public class RBFSAccessStrategy implements AccessStrategy {
     if (Integer.MAX_VALUE == context.getLevelUpperBound() && !levelProcess.hasNext()) {
       context.setLevelUpperBound(context.getLevel());
     }
-    // 如果是根节点
+
     if (currentLevel == 0) {
       while (context.getLevelUpperBound() != currentLevel) {
         List<O> children = levelProcess.getChildren(memNode, context);
         for (O child : children) {
-          // 处理子节点
+
           context.setLevel(currentLevel + 1);
           levelProcess.getNext().process(child, context);
           context.setLevel(currentLevel);
         }
-        // 每次处理完-1
+
         context.setLevelUpperBound(context.getLevelUpperBound() - 1);
       }
-      // 处理root节点
+
       levelProcess.handle(memNode, context);
       return;
     }
 
-    // 已经处理过，直接return
     if (currentLevel > context.getLevelUpperBound()) return;
 
-    // 处理子节点
     if (currentLevel == context.getLevelUpperBound()) {
       levelProcess.handle(memNode, context);
       return;

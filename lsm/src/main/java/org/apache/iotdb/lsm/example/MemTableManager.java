@@ -21,16 +21,12 @@ package org.apache.iotdb.lsm.example;
 import java.util.HashMap;
 import java.util.Map;
 
-// 管理working memtable , immutable memtables,框架用户自定义
 public class MemTableManager {
 
-  // 可写的memtable
   private MemTable working;
 
-  // 只读的memtables
   private Map<Integer, MemTable> immutables;
 
-  // 记录已插入的最大的deviceid
   private int maxDeviceID;
 
   public MemTableManager() {

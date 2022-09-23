@@ -23,25 +23,18 @@ import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;
 
 public class Context {
 
-  // 类型
   ContextType type;
 
-  // 访问策略
   AccessStrategy accessStrategy;
 
-  // 所处的树深度
   int level;
 
-  // 多少个线程处理该节点的子节点
   int threadNums;
 
-  // 上界,大于该值的层级不会被处理
   int levelUpperBound;
 
-  // 返回值
   Object result;
 
-  // 是否正在recover
   boolean recover;
 
   public Context() {

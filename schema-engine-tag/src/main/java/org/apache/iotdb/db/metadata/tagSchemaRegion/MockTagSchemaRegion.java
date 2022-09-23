@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.metadata.tagSchemaRegion;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
@@ -226,7 +225,7 @@ public class MockTagSchemaRegion implements ISchemaRegion {
             prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
   }
 
-  @Override // [iotdb|newIotdb/创建非对齐时间序列] [newIotdb/insert 2自动创建时间序列]
+  @Override
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     PartialPath devicePath = plan.getPath().getDevicePath();
     Map<String, String> tags = pathToTags(devicePath.getFullPath());
@@ -250,7 +249,7 @@ public class MockTagSchemaRegion implements ISchemaRegion {
     }
   }
 
-  @Override // [iotdb|newIotdb/对齐时间序列] [newIotdb/insert 2自动创建时间序列]
+  @Override
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     PartialPath devicePath = plan.getPrefixPath();
     Map<String, String> tags = pathToTags(devicePath.getFullPath());
@@ -414,7 +413,7 @@ public class MockTagSchemaRegion implements ISchemaRegion {
     throw new UnsupportedOperationException("");
   }
 
-  @Override // [newIotdb/show timeseries] [newIotdb/count device] [newIotdb/count timeseries]
+  @Override
   public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(pathPattern);
@@ -459,15 +458,10 @@ public class MockTagSchemaRegion implements ISchemaRegion {
     throw new UnsupportedOperationException("");
   }
 
-  @Override // [newIotDB / insert1,3] [newIotDB/select] [newIotdb/select count()] [newIotdb/select
-  // .. groupby level]
+  @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     PartialPath devicePath = pathPattern.getDevicePath();
-    // 批量查询.路径以".**"结尾,如：
-    // root.sg.tag1.a.**
-    // root.sg.tagx.c.tag2.v.**
-    // 点查询.路径不以".**",直接走IDTable,精确查询
     if (devicePath.getFullPath().endsWith(TAIL)) {
       return getMeasurementPathsWithBatchQuery(devicePath, isPrefixMatch);
     } else {
@@ -547,7 +541,6 @@ public class MockTagSchemaRegion implements ISchemaRegion {
     return res;
   }
 
-  // [iotdb/select] [iotdb/select last] [iotdb/select count()] [iotdb/select ...groupby level]
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
@@ -563,8 +556,7 @@ public class MockTagSchemaRegion implements ISchemaRegion {
     return null;
   }
 
-  // show 时间序列
-  @Override // [iotdb/show timeseries]
+  @Override
   public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     List<ShowTimeSeriesResult> res = new ArrayList<>();
@@ -745,8 +737,7 @@ public class MockTagSchemaRegion implements ISchemaRegion {
     throw new UnsupportedOperationException("");
   }
 
-  // insert data
-  @Override // [iotdb/insert ]
+  @Override
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
     PartialPath devicePath = plan.getDevicePath();

@@ -35,7 +35,6 @@ public class BFSAccessStrategy implements AccessStrategy {
       BasicLevelProcess<I, O, C> levelProcess, I memNode, C context) {
     List<O> children = new ArrayList<>();
     int currentLevel = context.getLevel();
-    // 第一个使用bfs策略的节点
     if (sameLevelMemNodes == null) {
       sameLevelMemNodes = new LinkedList<>();
       levelProcess.handle(memNode, context);

@@ -31,7 +31,6 @@ public class PostOrderAccessStrategy implements AccessStrategy {
     int currentLevel = context.getLevel();
     AccessStrategy accessStrategy = context.getAccessStrategy();
     List<O> children = levelProcess.getChildren(memNode, context);
-    // 处理子节点
     if (levelProcess.hasNext()) {
       context.setLevel(currentLevel + 1);
       for (O child : children) {
@@ -41,7 +40,6 @@ public class PostOrderAccessStrategy implements AccessStrategy {
 
     context.setLevel(currentLevel);
     context.setAccessStrategy(accessStrategy);
-    // 处理该节点
     levelProcess.handle(memNode, context);
   }
 }

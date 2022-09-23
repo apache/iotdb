@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.metadata.tagSchemaRegion.deviceidlist;
 
 import org.apache.iotdb.commons.utils.TestOnly;
