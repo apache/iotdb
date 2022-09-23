@@ -157,7 +157,7 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
             }
           });
       candidateResourceList.removeAll(removeList);
-      if ((System.currentTimeMillis() - begin) < waitTimeout) {
+      if ((System.currentTimeMillis() - begin) > waitTimeout) {
         LOGGER.error("[rewriteTimeseries] {} setSourceFilesToCompactionCandidate timeout", logKey);
         break;
       }

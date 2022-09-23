@@ -81,7 +81,6 @@ public class RewriteTimeseriesTaskTest {
                   .concat(File.separator)
                   .concat("0")
                   .concat(File.separator);
-  String targetPath;
   String storageGroupName = "root.alttask1";
   String device = "root.alttask1.device_0";
   String alignedDevice = "root.alttask1.device_1";
@@ -98,13 +97,13 @@ public class RewriteTimeseriesTaskTest {
   @Before
   public void setUp() throws Exception {
     try {
-      File storageGroupDirFile = SystemFileFactory.INSTANCE.getFile(FilePathUtils.regularizePath(IoTDBDescriptor.getInstance().getConfig().getSystemDir())
+      File storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(FilePathUtils.regularizePath(IoTDBDescriptor.getInstance().getConfig().getSystemDir())
               + "storage_groups" + File.separator + File.separator + storageGroupName, dataRegionId);
-      if(!storageGroupDirFile.exists()) {
-        storageGroupDirFile.mkdirs();
+      if(!storageGroupSysDir.exists()) {
+        storageGroupSysDir.mkdirs();
       }
       File logFile = SystemFileFactory.INSTANCE.getFile(
-                      storageGroupDirFile.getParent(), AlteringLogger.ALTERING_LOG_NAME);
+              storageGroupSysDir.getPath(), AlteringLogger.ALTERING_LOG_NAME);
       if(!logFile.exists()) {
         logFile.createNewFile();
       }
@@ -113,9 +112,10 @@ public class RewriteTimeseriesTaskTest {
       alteringLogger.addAlterParam(fullPath, TSEncoding.GORILLA, CompressionType.GZIP);
       PartialPath fullPathAlign = new PartialPath(alignedDevice, sensorPrefix + "1");
       alteringLogger.addAlterParam(fullPathAlign, TSEncoding.RLE, CompressionType.GZIP);
+      alteringLogger.close();
       AlteringRecordsCache.getInstance().putRecord(storageGroupName, fullPath.getFullPath(), TSEncoding.GORILLA, CompressionType.GZIP);
       AlteringRecordsCache.getInstance().putRecord(storageGroupName, fullPathAlign.getFullPath(), TSEncoding.RLE, CompressionType.GZIP);
-      tsFileManager = new TsFileManager(storageGroupName,dataRegionId, storageGroupDirFile.getPath());
+      tsFileManager = new TsFileManager(storageGroupName,dataRegionId, storageGroupSysDir.getPath());
       for (int fnum = 1; fnum <= 3; fnum++) {
         File f = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum+ "-0-0-0.tsfile"));
         if (f.exists() && !f.delete()) {
@@ -125,11 +125,6 @@ public class RewriteTimeseriesTaskTest {
         long beginTime = fnum * rowNum;
         long beginValue = fnum * 1000000L;
         writeFile(f, beginTime, beginValue);
-        TsFileResource tsFileResource = new TsFileResource(f);
-        tsFileResource.serialize();
-        tsFileResource.close();
-        TsFileResourceManager.getInstance().registerSealedTsFileResource(tsFileResource);
-        tsFileManager.keepOrderInsert(tsFileResource, true);
       }
     } catch (Exception e) {
       throw new Exception("meet error in TsFileWrite with tablet", e);
@@ -151,6 +146,7 @@ public class RewriteTimeseriesTaskTest {
       if (!analyzer.isClearBegin()) {
         AlteringLogger.clearBegin(logFile);
       }
+      CompactionTaskManager.getInstance().start();
       RewriteTimeseriesTask task = new RewriteTimeseriesTask(storageGroupName, dataRegionId, timepartitions, tsFileManager, CompactionTaskManager.currentTaskNum,
               tsFileManager.getNextCompactionTaskId(),
               analyzer.isClearBegin(),
@@ -158,11 +154,16 @@ public class RewriteTimeseriesTaskTest {
               logFile);
       boolean b = CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       Assert.assertTrue(b);
-      Future<CompactionTaskSummary> future = CompactionTaskManager.getInstance().getCompactionTaskFutureMayBlock(task);
-      Assert.assertNotNull(future);
-      CompactionTaskSummary summary = future.get(600000, TimeUnit.MILLISECONDS);
-      Assert.assertNotNull(summary);
-      Assert.assertTrue(summary.isFinished());
+      Future<CompactionTaskSummary> future = CompactionTaskManager.getInstance().getCompactionTaskFutureCheckStatusMayBlock(task);
+      if(future == null) {
+        Assert.assertTrue(task.isTaskFinished());
+        Assert.assertTrue(task.isSuccess());
+      } else {
+        CompactionTaskSummary summary = future.get(600000, TimeUnit.MILLISECONDS);
+        Assert.assertNotNull(summary);
+        Assert.assertTrue(summary.isFinished());
+        Assert.assertTrue(summary.isSuccess());
+      }
       for (int fnum = 1; fnum <= 3; fnum++) {
         File f = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum + "-0-0-0.tsfile"));
         File falter = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum + "-0-0-0.alter"));
@@ -240,17 +241,6 @@ public class RewriteTimeseriesTaskTest {
       }
     } catch (IOException e) {
       Assert.fail(e.getMessage());
-    } finally {
-      if (targetPath != null) {
-        try {
-          File file = new File(targetPath);
-          if (file.exists()) {
-            FileUtils.forceDelete(file);
-          }
-        } catch (IOException e) {
-          Assert.fail(e.getMessage());
-        }
-      }
     }
   }
 
@@ -335,6 +325,16 @@ public class RewriteTimeseriesTaskTest {
         tablet.reset();
       }
     }
+    Map<String, Integer> deviceToIndex = new HashMap<>();
+    deviceToIndex.put(device, 0);
+    deviceToIndex.put(alignedDevice, 1);
+    long[] startTimes = {beginTime, beginTime};
+    long[] endTimes = {beginTime + rowNum - 1, beginTime + rowNum - 1};
+    TsFileResource tsFileResource = new TsFileResource(f, deviceToIndex, startTimes, endTimes);
+    tsFileResource.serialize();
+    tsFileResource.close();
+    TsFileResourceManager.getInstance().registerSealedTsFileResource(tsFileResource);
+    tsFileManager.keepOrderInsert(tsFileResource, true);
   }
 
   @After
@@ -362,6 +362,7 @@ public class RewriteTimeseriesTaskTest {
           }
         }
       }
+      FileUtils.forceDeleteOnExit(new File(pathBase));
       AlteringRecordsCache.getInstance().clear();
     } catch (IOException e) {
       Assert.fail(e.getMessage());

@@ -116,11 +116,17 @@ public class RewriteTimeseriesTaskManager {
           String logKey = task.getStorageGroupName() + "-" + task.getDataRegionId();
           try {
             Future<CompactionTaskSummary> future =
-                compactionTaskManager.getCompactionTaskFutureMayBlock(task);
+                compactionTaskManager.getCompactionTaskFutureCheckStatusMayBlock(task);
+            boolean isFinished = false;
             if (future != null) {
-              future.get();
-              LOGGER.info("[rewriteTimeseries] {} task finished", logKey);
+              CompactionTaskSummary summary = future.get();
+              if(summary == null) {
+                LOGGER.info("[rewriteTimeseries] {} task summary is null", logKey);
+                return;
+              }
+              isFinished = summary.isFinished();
             }
+            LOGGER.info("[rewriteTimeseries] {} task isFinished:{}", logKey, future == null ? task.isTaskFinished() : isFinished);
           } catch (Exception e) {
             LOGGER.error("rewrite future failed " + logKey, e);
           }
