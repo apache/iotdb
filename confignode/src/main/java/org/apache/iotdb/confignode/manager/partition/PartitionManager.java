@@ -456,7 +456,8 @@ public class PartitionManager {
     List<Pair<Long, TConsensusGroupId>> result = new ArrayList<>();
     for (Pair<Long, TConsensusGroupId> slotsCounter : regionGroupSlotsCounter) {
       // Use Running or Available RegionGroups
-      if (!RegionGroupStatus.Disabled.equals(getRegionGroupStatus(slotsCounter.getRight()))) {
+      if (RegionGroupStatus.Running.equals(getRegionGroupStatus(slotsCounter.getRight()))
+          || RegionGroupStatus.Available.equals(getRegionGroupStatus(slotsCounter.getRight()))) {
         result.add(slotsCounter);
       }
     }

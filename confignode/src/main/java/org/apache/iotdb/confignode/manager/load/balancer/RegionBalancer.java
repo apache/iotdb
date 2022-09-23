@@ -72,8 +72,7 @@ public class RegionBalancer {
     // Some new Regions will have to occupy unknown DataNodes
     // if the number of online DataNodes is insufficient
     List<TDataNodeConfiguration> availableDataNodes =
-        getNodeManager().filterDataNodeThroughStatus(NodeStatus.Unknown);
-    availableDataNodes.addAll(onlineDataNodes);
+        getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown);
 
     // Make sure the number of available DataNodes is enough for allocating new Regions
     for (String storageGroup : allotmentMap.keySet()) {

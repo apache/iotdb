@@ -97,7 +97,24 @@ public class RegionGroupCache {
         : RegionStatus.Unknown;
   }
 
-  public RegionGroupStatus getRegionGroupStatus() {}
+  public RegionGroupStatus getRegionGroupStatus() {
+    int unknownCount = 0;
+    for (RegionCache regionCache : regionCacheMap.values()) {
+      if (RegionStatus.ReadOnly.equals(regionCache.getStatus())
+          || RegionStatus.Removing.equals(regionCache.getStatus())) {
+        return RegionGroupStatus.Disabled;
+      }
+      unknownCount += RegionStatus.Unknown.equals(regionCache.getStatus()) ? 1 : 0;
+    }
+
+    if (unknownCount == 0) {
+      return RegionGroupStatus.Running;
+    } else {
+      return unknownCount < regionCacheMap.size() / 2
+          ? RegionGroupStatus.Available
+          : RegionGroupStatus.Disabled;
+    }
+  }
 
   public TConsensusGroupId getConsensusGroupId() {
     return consensusGroupId;
