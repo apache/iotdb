@@ -270,9 +270,7 @@ public class LogDispatcher {
       // indicating that insert nodes whose search index are before this value can be deleted
       // safely
       long currentSafelyDeletedSearchIndex = impl.getCurrentSafelyDeletedSearchIndex();
-      reader.setSafelyDeletedSearchIndex(
-          currentSafelyDeletedSearchIndex
-              - currentSafelyDeletedSearchIndex % config.getReplication().getCheckpointGap());
+      reader.setSafelyDeletedSearchIndex(currentSafelyDeletedSearchIndex);
       // notify
       if (impl.unblockWrite()) {
         impl.signal();
