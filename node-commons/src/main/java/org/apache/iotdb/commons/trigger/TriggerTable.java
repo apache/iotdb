@@ -23,8 +23,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /** This Class used to save the information of Triggers and implements methods of manipulate it. */
 @NotThreadSafe
@@ -36,7 +38,7 @@ public class TriggerTable {
   // one.
 
   public TriggerTable() {
-    triggerTable = new HashMap<>();
+    triggerTable = new ConcurrentHashMap<>();
   }
 
   public TriggerTable(Map<String, TriggerInformation> triggerTable) {
@@ -57,20 +59,12 @@ public class TriggerTable {
     return triggerTable.containsKey(triggerName);
   }
 
-  public void activeTrigger(String triggerName) {
-    triggerTable.get(triggerName).setTriggerState(TTriggerState.ACTIVE);
-  }
-
-  // for showTrigger
-  public Map<String, TTriggerState> getAllTriggerStates() {
-    Map<String, TTriggerState> allTriggerStates = new HashMap<>(triggerTable.size());
-
-    triggerTable.forEach((k, v) -> allTriggerStates.put(k, v.getTriggerState()));
-    return allTriggerStates;
+  public void setTriggerState(String triggerName, TTriggerState triggerState) {
+    triggerTable.get(triggerName).setTriggerState(triggerState);
   }
 
   // for getTriggerTable
-  public Map<String, TriggerInformation> getTable() {
-    return triggerTable;
+  public List<TriggerInformation> getAllTriggerInformation() {
+    return triggerTable.values().stream().collect(Collectors.toList());
   }
 }

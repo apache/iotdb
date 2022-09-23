@@ -247,9 +247,7 @@ struct TDropFunctionReq {
 enum TTriggerState {
   // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
   INACTIVE
-  // The intermediate state of Create trigger, the trigger need to create has activated on some DataNodes.
-  PARTIAL_ACTIVE
-  // Triggers on all DataNodes are available.
+  // The successful state of Create trigger, the trigger need to create has activated on some DataNodes.
   ACTIVE
   // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
   DROPPING

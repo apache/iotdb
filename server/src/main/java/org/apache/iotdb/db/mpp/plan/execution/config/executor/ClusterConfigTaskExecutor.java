@@ -90,6 +90,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -100,6 +101,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
@@ -277,6 +279,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      PublicBAOS publicBAOS = new PublicBAOS();
+
       TCreateTriggerReq tCreateTriggerReq =
           new TCreateTriggerReq(
               createTriggerStatement.getTriggerName(),
@@ -290,6 +294,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (!createTriggerStatement.isUsingURI()) {
         // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
+        tCreateTriggerReq.setJarPath(new File(createTriggerStatement.getJarPath()).getName());
+
         tCreateTriggerReq.setJarFile(
             ExecutableManager.transferToBytebuffer(createTriggerStatement.getJarPath()));
         // set md5 of the jar file

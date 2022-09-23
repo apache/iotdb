@@ -58,11 +58,15 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPl
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
@@ -101,19 +105,23 @@ public class ConfigPlanExecutor {
 
   private final UDFInfo udfInfo;
 
+  private final TriggerInfo triggerInfo;
+
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
       ClusterSchemaInfo clusterSchemaInfo,
       PartitionInfo partitionInfo,
       AuthorInfo authorInfo,
       ProcedureInfo procedureInfo,
-      UDFInfo udfInfo) {
+      UDFInfo udfInfo,
+      TriggerInfo triggerInfo) {
     this.nodeInfo = nodeInfo;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.partitionInfo = partitionInfo;
     this.authorInfo = authorInfo;
     this.procedureInfo = procedureInfo;
     this.udfInfo = udfInfo;
+    this.triggerInfo = triggerInfo;
   }
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
@@ -224,6 +232,12 @@ public class ConfigPlanExecutor {
         return udfInfo.createFunction((CreateFunctionPlan) physicalPlan);
       case DropFunction:
         return udfInfo.dropFunction((DropFunctionPlan) physicalPlan);
+      case AddTriggerInTable:
+        return triggerInfo.addTriggerInTable((AddTriggerInTablePlan) physicalPlan);
+      case DeleteTriggerInTable:
+        return triggerInfo.deleteTriggerInTable((DeleteTriggerInTablePlan) physicalPlan);
+      case UpdateTriggerStateInTable:
+        return triggerInfo.updateTriggerStateInTable((UpdateTriggerStateInTablePlan) physicalPlan);
       case CreateSchemaTemplate:
         return clusterSchemaInfo.createSchemaTemplate((CreateSchemaTemplatePlan) physicalPlan);
       case UpdateRegionLocation:

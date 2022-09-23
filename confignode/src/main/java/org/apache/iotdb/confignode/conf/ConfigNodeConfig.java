@@ -100,6 +100,10 @@ public class ConfigNodeConfig {
   private String udfLibDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
+  /** External lib directory for Trigger, stores user-uploaded JAR files */
+  private String triggerLibDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
+
   /** External temporary lib directory for storing downloaded JAR files */
   private String temporaryLibDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
@@ -362,6 +366,22 @@ public class ConfigNodeConfig {
 
   public void setUdfLibDir(String udfLibDir) {
     this.udfLibDir = udfLibDir;
+  }
+
+  public String getExtLibDir() {
+    return extLibDir;
+  }
+
+  public void setExtLibDir(String extLibDir) {
+    this.extLibDir = extLibDir;
+  }
+
+  public String getTriggerLibDir() {
+    return triggerLibDir;
+  }
+
+  public void setTriggerLibDir(String triggerLibDir) {
+    this.triggerLibDir = triggerLibDir;
   }
 
   public String getTemporaryLibDir() {

@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
@@ -87,12 +88,12 @@ public class TriggerManagementService implements IService {
     } finally {
       releaseLock();
     }
-  };
+  }
 
   public void activeTrigger(String triggerName) {
     try {
       acquireLock();
-      triggerTable.activeTrigger(triggerName);
+      triggerTable.setTriggerState(triggerName, TTriggerState.ACTIVE);
     } catch (Exception e) {
       LOGGER.warn(
           "Failed to active trigger({}) on data node, the cause is: {}",
@@ -101,7 +102,21 @@ public class TriggerManagementService implements IService {
     } finally {
       releaseLock();
     }
-  };
+  }
+
+  public void inactiveTrigger(String triggerName) {
+    try {
+      acquireLock();
+      triggerTable.setTriggerState(triggerName, TTriggerState.INACTIVE);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to active trigger({}) on data node, the cause is: {}",
+          triggerName,
+          e.getMessage());
+    } finally {
+      releaseLock();
+    }
+  }
 
   private void checkIfRegistered(TriggerInformation triggerInformation)
       throws TriggerManagementException {

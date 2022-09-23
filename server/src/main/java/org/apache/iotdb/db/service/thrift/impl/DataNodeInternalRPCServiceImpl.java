@@ -109,6 +109,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
@@ -951,6 +952,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus activeTriggerInstance(TActiveTriggerInstanceReq req) throws TException {
     try {
       TriggerManagementService.getInstance().activeTrigger(req.triggerName);
+    } catch (Exception e) {
+      LOGGER.error("Error occurred during ");
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TSStatus inactiveTriggerInstance(TInactiveTriggerInstanceReq req) throws TException {
+    try {
+      TriggerManagementService.getInstance().inactiveTrigger(req.triggerName);
     } catch (Exception e) {
       LOGGER.error("Error occurred during ");
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())

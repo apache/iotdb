@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -97,7 +98,7 @@ public class TriggerInformation {
 
   public static TriggerInformation deserialize(ByteBuffer byteBuffer) {
     TriggerInformation triggerInformation = new TriggerInformation();
-    triggerInformation.pathPattern = PartialPath.deserialize(byteBuffer);
+    triggerInformation.pathPattern = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     triggerInformation.triggerName = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.className = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.jarName = ReadWriteIOUtils.readString(byteBuffer);
