@@ -547,7 +547,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:-------------------------------------------------------------------------------------------------------|
 |Description| Time range for dividing storage group, time series data will be divided into groups by this time range |
 |Type| Int64                                                                                                  |
-|Default| 604800                                                                                                 |
+|Default| 86400                                                                                                  |
 |Effective| Only allowed to be modified in first start up                                                          |
 
 
@@ -1112,24 +1112,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| DOUBLE, FLOAT or TEXT |
 |Default|FLOAT |
 |Effective|After restarting system|
-
-* enable\_partition
-
-|Name| enable\_partition |
-|:---:|:---|
-|Description| whether enable data partition. If disabled, all data belongs to partition 0|
-|Type| BOOLEAN |
-|Default|false |
-|Effective|Only allowed to be modified in first start up|
-
-* time\_partition\_interval\_for\_storage
-
-|Name| time\_partition\_interval\_for\_storage |
-|:---:|:---|
-|Description| time range for partitioning data inside each storage group, the unit is second|
-|Type| LONG |
-|Default| 604800 |
-|Effective|Only allowed to be modified in first start up|
 
 * data\_region\_num
 
