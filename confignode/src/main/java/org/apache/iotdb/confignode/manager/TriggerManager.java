@@ -58,11 +58,11 @@ public class TriggerManager {
             req.getTriggerName(),
             req.getClassName(),
             req.getJarPath(), // TODO: download jar if is URI
-            req.getJarMD5(),
             req.getAttributes(),
             TTriggerState.INACTIVE,
             isStateful,
-            dataNodeLocation);
+            dataNodeLocation,
+            req.getJarMD5());
     return configManager
         .getProcedureManager()
         .createTrigger(triggerInformation, new Binary(req.getJarFile()));
