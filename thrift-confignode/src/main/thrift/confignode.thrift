@@ -263,12 +263,8 @@ struct TCreateTriggerReq {
   7: required binary pathPattern,
   8: required map<string, string> attributes,
   9: optional binary jarFile,
-<<<<<<< HEAD
-  10: optional string jarMD5
-=======
   10: optional string jarMD5,
   11: required i32 failureStrategy
->>>>>>> IOTDB-4491
 }
 
 struct TDropTriggerReq {
