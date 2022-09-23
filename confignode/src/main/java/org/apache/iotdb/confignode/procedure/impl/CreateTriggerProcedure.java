@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -120,7 +121,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
                       triggerInformation.getTriggerName(), TTriggerState.ACTIVE));
           setNextState(CreateTriggerState.CONFIG_NODE_ACTIVE);
           break;
-        case CONFIG_NODE_ACTIVE:
+        case CONFIG_NODE_ACTIVE: // TODO change name to END
           env.getConfigManager().getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
           return Flow.NO_MORE_STATE;
       }
@@ -144,7 +145,48 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, CreateTriggerState state)
       throws IOException, InterruptedException, ProcedureException {
-    // TODO
+    switch (state) {
+      case INIT:
+        LOG.info("Start [INIT] rollback of trigger [{}]", triggerInformation.getTriggerName());
+        env.getConfigManager()
+            .getConsensusManager()
+            .write(new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()));
+        env.getConfigManager().getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
+        break;
+      case CONFIG_NODE_INACTIVE:
+        LOG.info(
+            "Start to [CONFIG_NODE_INACTIVE] rollback of trigger [{}]",
+            triggerInformation.getTriggerName());
+        if (RpcUtils.squashResponseStatusList(env.dropTriggerOnDataNodes(triggerInformation))
+                .getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        } else {
+          throw new TriggerManagementException(
+              String.format(
+                  "Fail to [CONFIG_NODE_INACTIVE] rollback of trigger [{}]",
+                  triggerInformation.getTriggerName()));
+        }
+        break;
+      case DATA_NODE_INACTIVE:
+        LOG.info(
+            "Start to [DATA_NODE_INACTIVE] rollback of trigger [{}]",
+            triggerInformation.getTriggerName());
+        if (RpcUtils.squashResponseStatusList(
+                    env.inactiveTriggerOnDataNodes(triggerInformation.getTriggerName()))
+                .getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          setNextState(CreateTriggerState.DATA_NODE_ACTIVE);
+        } else {
+          throw new TriggerManagementException(
+              String.format(
+                  "Fail to [DATA_NODE_INACTIVE] rollback of trigger [{}]",
+                  triggerInformation.getTriggerName()));
+        }
+        break;
+      case DATA_NODE_ACTIVE:
+      case CONFIG_NODE_ACTIVE:
+        break;
+    }
   }
 
   @Override

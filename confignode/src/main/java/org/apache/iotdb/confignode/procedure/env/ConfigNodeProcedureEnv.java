@@ -50,6 +50,8 @@ import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -374,6 +376,24 @@ public class ConfigNodeProcedureEnv {
     return dataNodeResponseStatus;
   }
 
+  public List<TSStatus> dropTriggerOnDataNodes(TriggerInformation triggerInformation)
+      throws IOException {
+    NodeManager nodeManager = configManager.getNodeManager();
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        nodeManager.getRegisteredDataNodeLocations();
+    final List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    final TDropTriggerInstanceReq request =
+        new TDropTriggerInstanceReq(triggerInformation.getTriggerName(), false);
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            request,
+            dataNodeLocationMap,
+            DataNodeRequestType.DROP_TRIGGER_INSTANCE,
+            dataNodeResponseStatus);
+    return dataNodeResponseStatus;
+  }
+
   public List<TSStatus> activeTriggerOnDataNodes(String triggerName) throws IOException {
     NodeManager nodeManager = configManager.getNodeManager();
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
@@ -387,6 +407,23 @@ public class ConfigNodeProcedureEnv {
             request,
             dataNodeLocationMap,
             DataNodeRequestType.ACTIVE_TRIGGER_INSTANCE,
+            dataNodeResponseStatus);
+    return dataNodeResponseStatus;
+  }
+
+  public List<TSStatus> inactiveTriggerOnDataNodes(String triggerName) throws IOException {
+    NodeManager nodeManager = configManager.getNodeManager();
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        nodeManager.getRegisteredDataNodeLocations();
+    final List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    final TInactiveTriggerInstanceReq request = new TInactiveTriggerInstanceReq(triggerName);
+
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            request,
+            dataNodeLocationMap,
+            DataNodeRequestType.INACTIVE_TRIGGER_INSTANCE,
             dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
