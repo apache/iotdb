@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -54,7 +55,7 @@ public class TriggerManager {
         isStateful ? configManager.getNodeManager().getLowestLoadDataNode() : null;
     TriggerInformation triggerInformation =
         new TriggerInformation(
-            PartialPath.deserialize(req.pathPattern),
+            (PartialPath) PathDeserializeUtil.deserialize(req.pathPattern),
             req.getTriggerName(),
             req.getClassName(),
             req.getJarPath(), // TODO: download jar if is URI

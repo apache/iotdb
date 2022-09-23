@@ -73,7 +73,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
               triggerInfo.validate(
                   triggerInformation.getTriggerName(),
                   triggerInformation.getJarName(),
-                  triggerInformation.getJarMD5());
+                  triggerInformation.getJarFileMD5());
           env.getConfigManager()
               .getConsensusManager()
               .write(new AddTriggerInTablePlan(triggerInformation, needToSaveJar ? jarFile : null));

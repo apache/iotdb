@@ -138,6 +138,7 @@ public class ExecutableManager {
       }
       ByteBuffer byteBuffer = ByteBuffer.allocate((int) size);
       fileChannel.read(byteBuffer);
+      byteBuffer.flip();
       return byteBuffer;
     } catch (Exception e) {
       LOGGER.warn(

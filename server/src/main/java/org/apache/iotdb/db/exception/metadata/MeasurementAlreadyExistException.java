@@ -21,7 +21,7 @@
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class MeasurementAlreadyExistException extends MetadataException {

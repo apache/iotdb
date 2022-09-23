@@ -474,14 +474,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus createTrigger(TCreateTriggerReq req) throws TException {
-    // todo : implementation
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return configManager.createTrigger(req);
   }
 
   @Override
   public TSStatus dropTrigger(TDropTriggerReq req) throws TException {
-    // todo : implementation
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return configManager.dropTrigger(req);
   }
 
   @Override
