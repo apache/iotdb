@@ -24,10 +24,10 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -127,14 +127,14 @@ public class InsertRowStatement extends InsertBaseStatement {
   }
 
   public List<TTimePartitionSlot> getTimePartitionSlots() {
-    return Collections.singletonList(StorageEngineV2.getTimePartitionSlot(time));
+    return Collections.singletonList(TimePartitionUtils.getTimePartitionForRouting(time));
   }
 
   @Override
   public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
     TRegionReplicaSet regionReplicaSet =
         dataPartition.getDataRegionReplicaSetForWriting(
-            devicePath.getFullPath(), StorageEngineV2.getTimePartitionSlot(time));
+            devicePath.getFullPath(), TimePartitionUtils.getTimePartitionForRouting(time));
     return Collections.singletonList(
         regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
   }
