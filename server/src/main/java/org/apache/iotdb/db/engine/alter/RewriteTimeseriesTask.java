@@ -64,7 +64,7 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     super(storageGroupName, dataRegionId, 0L, tsFileManager, currentTaskNum, serialId);
     this.logKey = storageGroupName + dataRegionId;
     this.logFile = logFile;
-    this.performer = new TsFileRewriteExcutor();
+    this.performer = new TsFileRewritePerformer();
     if (timePartitions == null || timePartitions.size() <= 0) {
       LOGGER.warn("[rewriteTimeseries] {} timePartitions is null or empty!!!!!!", logKey);
       return;
@@ -223,7 +223,7 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
     this.performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
     this.performer.setSummary(this.summary);
     this.performer.perform();
-    boolean hasRewrite = ((TsFileRewriteExcutor) this.performer).hasRewrite();
+    boolean hasRewrite = ((TsFileRewritePerformer) this.performer).hasRewrite();
     if (!hasRewrite) {
       CompactionUtils.deleteTsFileWithoutMods(targetTsFileResource);
       if (LOGGER.isDebugEnabled()) {

@@ -60,7 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class TsFileRewriteExcutorTest {
+public class TsFileRewritePerformerTest {
 
   String path =
       "data"
@@ -197,7 +197,7 @@ public class TsFileRewriteExcutorTest {
     notalginMap.put(sensorPrefix + "1", new Pair<>(TSEncoding.GORILLA, CompressionType.GZIP));
 
     File targetTsFile = null;
-    TsFileRewriteExcutor excutor = null;
+    TsFileRewritePerformer excutor = null;
     try {
       AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
       alters.forEach(
@@ -223,7 +223,7 @@ public class TsFileRewriteExcutorTest {
       tsFileResource.close();
       TsFileResource targetTsFileResource =
           TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
-      excutor = new TsFileRewriteExcutor();
+      excutor = new TsFileRewritePerformer();
       excutor.setSourceFiles(Collections.singletonList(tsFileResource));
       excutor.setTargetFiles(Collections.singletonList(targetTsFileResource));
       excutor.setSummary(new CompactionTaskSummary());

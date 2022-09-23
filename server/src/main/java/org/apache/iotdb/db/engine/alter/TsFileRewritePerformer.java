@@ -60,9 +60,9 @@ import java.util.Map;
 import java.util.Set;
 
 /** This class is used to rewrite one tsfile with current encoding & compressionType. */
-public class TsFileRewriteExcutor implements ICompactionPerformer {
+public class TsFileRewritePerformer implements ICompactionPerformer {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileRewriteExcutor.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileRewritePerformer.class);
 
   private TsFileResource tsFileResource;
   private TsFileResource targetTsFileResource;
@@ -74,7 +74,7 @@ public class TsFileRewriteExcutor implements ICompactionPerformer {
 
   private final AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
 
-  public TsFileRewriteExcutor() {}
+  public TsFileRewritePerformer() {}
 
   @Override
   public void perform()
