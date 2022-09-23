@@ -95,7 +95,7 @@ public class RewriteTimeseriesTaskTest {
   TSEncoding defaultEncoding = TSEncoding.TS_2DIFF;
   CompressionType defaultCompressionType = CompressionType.GZIP;
   TsFileManager tsFileManager = null;
-  int fileCount = 4;
+  int fileCount = 6;
 
   @Before
   public void setUp() throws Exception {
@@ -119,7 +119,7 @@ public class RewriteTimeseriesTaskTest {
       AlteringRecordsCache.getInstance().putRecord(storageGroupName, fullPath.getFullPath(), TSEncoding.GORILLA, CompressionType.GZIP);
       AlteringRecordsCache.getInstance().putRecord(storageGroupName, fullPathAlign.getFullPath(), TSEncoding.RLE, CompressionType.GZIP);
       tsFileManager = new TsFileManager(storageGroupName,dataRegionId, storageGroupSysDir.getPath());
-      for (int fnum = 1; fnum <= fileCount - 1; fnum++) {
+      for (int fnum = 1; fnum <= 3; fnum++) {
         File f = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum+ "-0-0-0.tsfile"));
         if (f.exists() && !f.delete()) {
           throw new RuntimeException("can not delete " + f.getAbsolutePath());
@@ -129,15 +129,33 @@ public class RewriteTimeseriesTaskTest {
         long beginValue = fnum * 1000000L;
         writeFile(f, beginTime, beginValue, device, alignedDevice);
       }
-      int fnum = fileCount;
+      int fnum = 4;
       File f = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum+ "-0-0-0.tsfile"));
       if (f.exists() && !f.delete()) {
         throw new RuntimeException("can not delete " + f.getAbsolutePath());
       }
-
       long beginTime = fnum * rowNum;
       long beginValue = fnum * 1000000L;
       writeFile(f, beginTime, beginValue, deviceNotRewrite, alignedDeviceNotRewrite);
+
+      fnum = 5;
+      f = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum+ "-0-0-0.tsfile"));
+      if (f.exists() && !f.delete()) {
+        throw new RuntimeException("can not delete " + f.getAbsolutePath());
+      }
+      beginTime = fnum * rowNum;
+      beginValue = fnum * 1000000L;
+      writeFile(f, beginTime, beginValue, device, alignedDeviceNotRewrite);
+
+      fnum = 6;
+      f = FSFactoryProducer.getFSFactory().getFile(pathBase.concat(fnum+ "-0-0-0.tsfile"));
+      if (f.exists() && !f.delete()) {
+        throw new RuntimeException("can not delete " + f.getAbsolutePath());
+      }
+      beginTime = fnum * rowNum;
+      beginValue = fnum * 1000000L;
+      writeFile(f, beginTime, beginValue, deviceNotRewrite, alignedDevice);
+
     } catch (Exception e) {
       throw new Exception("meet error in TsFileWrite with tablet", e);
     }
