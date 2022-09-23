@@ -75,6 +75,15 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_FUNCTION_TYPE = "function type";
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
 
+  // column names for show triggers statement
+  public static final String COLUMN_TRIGGER_NAME = "Trigger Name";
+  public static final String COLUMN_TRIGGER_EVENT = "Trigger Event";
+  public static final String COLUMN_TRIGGER_TYPE = "Trigger Type";
+  public static final String COLUMN_TRIGGER_STATE = "Trigger STATE";
+  public static final String COLUMN_TRIGGER_PATTERN = "Trigger PathPattern";
+  public static final String COLUMN_TRIGGER_CLASSNAME = "Trigger ClassName";
+  public static final String COLUMN_TRIGGER_LOCATION = "Trigger Location";
+
   // column names for show region statement
   public static final String COLUMN_REGION_ID = "RegionId";
   public static final String COLUMN_TYPE = "Type";
@@ -235,6 +244,15 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_FUNCTION_NAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_FUNCTION_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_FUNCTION_CLASS, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showTriggersColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_TRIGGER_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_EVENT, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_STATE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_PATTERN, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TRIGGER_LOCATION, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSchemaTemplateHeaders =
       ImmutableList.of(new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT));

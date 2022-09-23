@@ -46,7 +46,7 @@ public class TriggerManagementService implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManagementService.class);
 
-  private final ReentrantLock registrationLock;
+  private final ReentrantLock lock;
 
   private final TriggerTable triggerTable;
 
@@ -57,24 +57,32 @@ public class TriggerManagementService implements IService {
   private TDataNodeLocation tDataNodeLocationCache;
 
   private TriggerManagementService() {
-    this.registrationLock = new ReentrantLock();
+    this.lock = new ReentrantLock();
     this.triggerTable = new TriggerTable();
     this.executorMap = new ConcurrentHashMap<>();
   }
 
   public void acquireRegistrationLock() {
-    registrationLock.lock();
+    lock.lock();
   }
 
   public void releaseRegistrationLock() {
-    registrationLock.unlock();
+    lock.unlock();
   }
 
   public void register(TriggerInformation triggerInformation) {
-    acquireRegistrationLock();
-    checkIfRegistered(triggerInformation);
-    doRegister(triggerInformation);
-    releaseRegistrationLock();
+    try {
+      acquireRegistrationLock();
+      checkIfRegistered(triggerInformation);
+      doRegister(triggerInformation);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to register trigger({}) on data node, the cause is: {}",
+          triggerInformation.getTriggerName(),
+          e.getMessage());
+    } finally {
+      releaseRegistrationLock();
+    }
   };
 
   public void activeTrigger(String triggerName) {
