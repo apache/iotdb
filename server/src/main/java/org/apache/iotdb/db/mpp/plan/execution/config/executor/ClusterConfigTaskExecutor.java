@@ -92,6 +92,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -102,6 +103,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -289,6 +292,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
         tCreateTriggerReq.setJarFile(
             ExecutableManager.transferToBytebuffer(createTriggerStatement.getJarPath()));
+        // set md5 of the jar file
+        tCreateTriggerReq.setJarMD5(
+            DigestUtils.md5Hex(
+                Files.newInputStream(Paths.get(createTriggerStatement.getJarPath()))));
       }
 
       final TSStatus executionStatus = client.createTrigger(tCreateTriggerReq);

@@ -166,4 +166,39 @@ public class ExecutableManager {
       throw e;
     }
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // other functions
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * @param fileName given file name
+   * @return true if file exists under LibRoot
+   */
+  public boolean hasFileUnderLibRoot(String fileName) {
+    return Files.exists(Paths.get(this.libRoot + File.separator + fileName));
+  }
+
+  public boolean hasFileUnderTemporaryRoot(String fileName) {
+    return Files.exists(Paths.get(this.temporaryLibRoot + File.separator + fileName));
+  }
+
+  public void saveTextAsFileUnderTemporaryRoot(String text, String fileName) throws IOException {
+    Path path = Paths.get(this.temporaryLibRoot + File.separator + fileName);
+    Files.deleteIfExists(path);
+    Files.write(path, text.getBytes());
+  }
+
+  public String readTextFromFileUnderTemporaryRoot(String fileName) throws IOException {
+    Path path = Paths.get(this.temporaryLibRoot + File.separator + fileName);
+    return new String(Files.readAllBytes(path));
+  }
+
+  public String getTemporaryLibRoot() {
+    return temporaryLibRoot;
+  }
+
+  public String getLibRoot() {
+    return libRoot;
+  }
 }
