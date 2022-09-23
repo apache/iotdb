@@ -67,7 +67,6 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_NODE_TYPE = "NodeType";
   public static final String COLUMN_STATUS = "Status";
   public static final String COLUMN_HOST = "Host";
-  public static final String COLUMN_PORT = "Port";
   public static final String COLUMN_INTERNAL_PORT = "InternalPort";
   public static final String COLUMN_RPC_PORT = "RpcPort";
 
@@ -202,8 +201,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT64),
           new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64),
           new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
-          new ColumnHeader(COLUMN_RPC_PORT, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PORT, TSDataType.INT32),
+          new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_RPC_PORT, TSDataType.INT32),
           new ColumnHeader(COLUMN_ROLE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDataNodesColumnHeaders =

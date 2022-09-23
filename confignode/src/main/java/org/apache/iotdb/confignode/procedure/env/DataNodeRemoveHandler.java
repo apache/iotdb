@@ -507,8 +507,12 @@ public class DataNodeRemoveHandler {
     if (allDataNodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
       status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
       status.setMessage(
-          "due to the limit of replication factor, max allowed removed Data Node size is: "
-              + (allDataNodeSize - NodeInfo.getMinimumDataNode()));
+          String.format(
+              "Can't remove datanode due to the limit of replication factor, "
+                  + "allDataNodeSize: %s, maxReplicaFactor: %s, max allowed removed Data Node size is: %s",
+              allDataNodeSize,
+              NodeInfo.getMinimumDataNode(),
+              (allDataNodeSize - NodeInfo.getMinimumDataNode())));
     }
     return status;
   }
