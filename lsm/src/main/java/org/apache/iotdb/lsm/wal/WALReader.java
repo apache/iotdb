@@ -33,7 +33,7 @@ public class WALReader implements IWALReader {
   private static final Logger logger = LoggerFactory.getLogger(WALReader.class);
   private final File logFile;
   private final WALRecord prototype;
-  private final DataInputStream logStream;
+  private DataInputStream logStream;
   private WALRecord nextRecord;
   private boolean fileCorrupted = false;
 
@@ -47,6 +47,7 @@ public class WALReader implements IWALReader {
   @Override
   public void close() throws IOException {
     logStream.close();
+    logStream = null;
   }
 
   @Override

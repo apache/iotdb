@@ -29,6 +29,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -100,12 +101,15 @@ public class DeviceIDListTest {
   }
 
   @Test
-  public void testRecover() {
+  public void testRecover() throws IOException {
     List<IDeviceID> deviceIDS = generateTestDeviceIDS();
     for (IDeviceID deviceID : deviceIDS) {
       deviceIDList.add(deviceID);
       System.out.println(deviceID.toStringID());
     }
+
+    deviceIDList.clear();
+
     deviceIDList = new DeviceIDList(schemaRegionDirPath);
     for (int i = 0; i < deviceIDS.size(); i++) {
       assertEquals(deviceIDS.get(i), deviceIDList.get(i));

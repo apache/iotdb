@@ -96,6 +96,7 @@ public class AppendOnlyDeviceIDListFileManager {
   public void close() throws IOException {
     try {
       outputStream.close();
+      outputStream = null;
     } catch (IOException e) {
       logger.error("close device id list file failed");
       throw e;
