@@ -48,6 +48,10 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
   private TriggerInformation triggerInformation;
   private Binary jarFile;
 
+  public CreateTriggerProcedure() {
+    super();
+  }
+
   public CreateTriggerProcedure(TriggerInformation triggerInformation, Binary jarFile) {
     super();
     this.triggerInformation = triggerInformation;
