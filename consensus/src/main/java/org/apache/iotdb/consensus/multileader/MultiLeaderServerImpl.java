@@ -127,7 +127,9 @@ public class MultiLeaderServerImpl {
               !stateMachineCondition.await(
                   config.getReplication().getThrottleTimeOutMs(), TimeUnit.MILLISECONDS);
           if (timeout) {
-            return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
+            return RpcUtils.getStatus(
+                TSStatusCode.WRITE_PROCESS_REJECT,
+                "Reject write because there are too many requests need to process");
           }
         } catch (InterruptedException e) {
           logger.error("Failed to throttle down because ", e);

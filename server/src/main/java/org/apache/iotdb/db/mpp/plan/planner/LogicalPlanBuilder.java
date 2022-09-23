@@ -776,6 +776,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
+  @SuppressWarnings({"checkstyle:Indentation", "checkstyle:CommentsIndentation"})
   public LogicalPlanBuilder planSchemaFetchSource(
       List<String> storageGroupList,
       PathPatternTree patternTree,
@@ -788,7 +789,8 @@ public class LogicalPlanBuilder {
         for (PartialPath pathPattern :
             patternTree.getOverlappedPathPatterns(
                 storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
-          overlappedPatternTree.appendPathPattern(pathPattern);
+          // pathPattern has been deduplicated, no need to deduplicate again
+          overlappedPatternTree.appendFullPath(pathPattern);
         }
         this.root.addChild(
             new SchemaFetchScanNode(

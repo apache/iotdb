@@ -397,6 +397,9 @@ public class IoTDBConfig {
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 100000;
 
+  /** When a chunk in memtable reaches this threshold, flush the memtable to disk */
+  private long maxChunkRawSizeThreshold = 1024 * 1024 * 20L;
+
   /** Enable inner space compaction for sequence files */
   private boolean enableSeqSpaceCompaction = true;
 
@@ -472,6 +475,9 @@ public class IoTDBConfig {
 
   /** The max candidate file num in cross space compaction */
   private int maxCrossCompactionCandidateFileNum = 1000;
+
+  /** The max total size of candidate files in cross space compaction */
+  private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
@@ -1970,6 +1976,14 @@ public class IoTDBConfig {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
   }
 
+  public long getMaxChunkRawSizeThreshold() {
+    return maxChunkRawSizeThreshold;
+  }
+
+  public void setMaxChunkRawSizeThreshold(long maxChunkRawSizeThreshold) {
+    this.maxChunkRawSizeThreshold = maxChunkRawSizeThreshold;
+  }
+
   public long getCrossCompactionFileSelectionTimeBudget() {
     return crossCompactionFileSelectionTimeBudget;
   }
@@ -2781,6 +2795,14 @@ public class IoTDBConfig {
 
   public void setMaxCrossCompactionCandidateFileNum(int maxCrossCompactionCandidateFileNum) {
     this.maxCrossCompactionCandidateFileNum = maxCrossCompactionCandidateFileNum;
+  }
+
+  public long getMaxCrossCompactionCandidateFileSize() {
+    return maxCrossCompactionCandidateFileSize;
+  }
+
+  public void setMaxCrossCompactionCandidateFileSize(long maxCrossCompactionCandidateFileSize) {
+    this.maxCrossCompactionCandidateFileSize = maxCrossCompactionCandidateFileSize;
   }
 
   public long getCompactionSubmissionIntervalInMs() {
