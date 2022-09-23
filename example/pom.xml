@@ -49,6 +49,7 @@
         <module>rabbitmq</module>
         <module>rest-java-example</module>
         <module>influxdb-protocol-example</module>
+        <module>ext-pipe-plugin-example</module>
     </modules>
     <build>
         <pluginManagement>
