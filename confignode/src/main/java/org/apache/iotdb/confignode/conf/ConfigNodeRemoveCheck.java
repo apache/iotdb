@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
@@ -50,7 +49,7 @@ public class ConfigNodeRemoveCheck {
     systemProperties = new Properties();
   }
 
-  public TConfigNodeLocation removeCheck(TEndPoint endPoint) {
+  public TConfigNodeLocation removeCheck(int id) {
     TConfigNodeLocation nodeLocation = new TConfigNodeLocation();
     if (!systemPropertiesFile.exists()) {
       LOGGER.error("The system properties file is not exists. IoTDB-ConfigNode is shutdown.");
@@ -60,7 +59,7 @@ public class ConfigNodeRemoveCheck {
       systemProperties.load(inputStream);
       nodeLocation =
           getConfigNodeList().stream()
-              .filter(e -> e.getInternalEndPoint().equals(endPoint))
+              .filter(e -> e.getConfigNodeId() == id)
               .findFirst()
               .orElse(null);
     } catch (IOException | BadNodeUrlException e) {
