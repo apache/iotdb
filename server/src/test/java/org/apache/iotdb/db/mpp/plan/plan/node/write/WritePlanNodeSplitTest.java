@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;
@@ -70,6 +71,7 @@ public class WritePlanNodeSplitTest {
     prevTimePartitionInterval =
         IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
     IoTDBDescriptor.getInstance().getConfig().setTimePartitionIntervalForRouting(100);
+    TimePartitionUtils.setTimePartitionIntervalForRouting(100);
 
     executorClassName = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
     seriesSlotPartitionNum = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum();
@@ -295,6 +297,7 @@ public class WritePlanNodeSplitTest {
 
   @After
   public void tearDown() {
+    TimePartitionUtils.setTimePartitionIntervalForRouting(prevTimePartitionInterval);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTimePartitionIntervalForRouting(prevTimePartitionInterval);

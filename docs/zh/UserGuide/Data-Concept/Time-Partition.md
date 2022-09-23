@@ -34,9 +34,9 @@
 |默认值| false |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
-* partition\_interval
+* time\_partition\_interval\_for\_storage
 
-|名字| partition\_interval |
+|名字| time\_partition\_interval\_for\_storage |
 |:---:|:---|
 |描述| 存储组分区的时间段长度，用户指定的存储组下会使用该时间段进行分区，单位：秒 |
 |类型|Int64|

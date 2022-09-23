@@ -72,7 +72,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   @ServerConfigConsistent
-  private static long timePartitionIntervalForRouting =
+  private long timePartitionIntervalForRouting =
       IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
 
   private long[] times; // times should be sorted. It is done in the session API.

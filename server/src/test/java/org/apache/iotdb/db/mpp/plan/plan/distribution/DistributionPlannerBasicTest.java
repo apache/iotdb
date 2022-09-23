@@ -353,7 +353,7 @@ public class DistributionPlannerBasicTest {
             false,
             new String[] {"s1"},
             new TSDataType[] {TSDataType.INT32},
-            100000L,
+            10000L,
             new Object[] {10},
             false);
     insertRowNode2.setMeasurementSchemas(

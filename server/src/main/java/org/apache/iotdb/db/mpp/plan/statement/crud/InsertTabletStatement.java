@@ -37,7 +37,7 @@ import java.util.List;
 public class InsertTabletStatement extends InsertBaseStatement {
 
   @ServerConfigConsistent
-  private static long timePartitionIntervalForRouting =
+  private long timePartitionIntervalForRouting =
       IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
 
   private long[] times; // times should be sorted. It is done in the session API.

@@ -107,7 +107,7 @@ struct TSetTimePartitionIntervalReq {
   2: required i64 timePartitionInterval
 }
 
-struct TCountStorageGroupResp {
+struct TCountStorageGroupResp {inter
   1: required common.TSStatus status
   2: optional i32 count
 }

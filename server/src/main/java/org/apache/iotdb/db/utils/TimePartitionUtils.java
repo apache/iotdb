@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
 
@@ -31,5 +32,10 @@ public class TimePartitionUtils {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
     timePartitionSlot.setStartTime(time - time % timePartitionIntervalForRouting);
     return timePartitionSlot;
+  }
+
+  @TestOnly
+  public static void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
+    TimePartitionUtils.timePartitionIntervalForRouting = timePartitionIntervalForRouting;
   }
 }
