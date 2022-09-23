@@ -116,6 +116,9 @@ public class IoTDBAlterTimeSeriesIT {
         }
         assertEquals(1010, count);
       }
+
+      statement.execute(
+              "REWRITE TIMESERIES root.alterTimeSeriesTest");
     }
   }
 }
