@@ -246,11 +246,11 @@ The global configuration of cluster is in ConfigNode.
 
 * time\_partition\_interval\_for\_routing
 
-|Name| time\_partition\_interval\_for\_routing                                     |
+|Name| time\_partition\_interval\_for\_routing                       |
 |:---:|:--------------------------------------------------------------|
 |Description| Time partition interval of data when ConfigNode allocate data |
 |Type| Long                                                          |
-|Default| 604800                                                        |
+|Default| 86400                                                         |
 |Effective| Only allowed to be modified in first start up                 |
 
 
