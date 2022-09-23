@@ -741,7 +741,8 @@ public class WALNode implements IWALNode {
       int fileIndex = WALFileUtils.binarySearchFileBySearchIndex(filesToSearch, nextSearchIndex);
       logger.debug(
           "searchIndex: {}, result: {}, files: {}, ", nextSearchIndex, fileIndex, filesToSearch);
-      // (xingtanzjr) When the target entry does not exist, the reader will return minimum one whose searchIndex is larger than target searchIndex
+      // (xingtanzjr) When the target entry does not exist, the reader will return minimum one whose
+      // searchIndex is larger than target searchIndex
       if (fileIndex == -1) {
         fileIndex = 0;
       }
