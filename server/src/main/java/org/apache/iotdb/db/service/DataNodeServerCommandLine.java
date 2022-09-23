@@ -28,7 +28,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -110,8 +109,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
       return;
     }
 
-    ConfigNodeInfo.getInstance()
-        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getTargetConfigNodeList());
+    ConfigNodeInfo.getInstance().loadConfigNodeList();
     List<TDataNodeLocation> dataNodeLocations = buildDataNodeLocations(args[1]);
     if (dataNodeLocations.isEmpty()) {
       throw new BadNodeUrlException("No DataNode to remove");
