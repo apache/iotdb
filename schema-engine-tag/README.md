@@ -19,6 +19,8 @@
 
 -->
 
+# Tag Schema Region
+`TagSchemaRegion` is an implementation of `SchemaRegion`
 <pre>
   _____             _____      _                           ______           _             
 |_   _|           /  ___|    | |                          | ___ \         (_)            
