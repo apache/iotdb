@@ -52,7 +52,7 @@ the metadata.
 
 IoTDB offers different ways to interact with server, here we introduce the basic steps of using Cli tool to insert and query data.
 The command line cli is interactive, so you should see the welcome logo and statements if everything is ready:
-```txt
+```sql
 ---------------------
 Starting IoTDB Cli
 ---------------------
@@ -70,13 +70,13 @@ IoTDB> login successfully
 
 - create timeseries
 
-```txt
+```sql
 IoTDB> create timeseries root.ln.tag1.a.tag2.b.status with datatype=BOOLEAN,encoding=PLAIN
 Msg: The statement is executed successfully.
 ```
 - create aligned timeseries
 
-```txt
+```sql
 IoTDB> CREATE ALIGNED TIMESERIES root.ln.tag1.a.tag2.c(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT  encoding=PLAIN compressor=SNAPPY)
 
 Msg: The statement is executed successfully.
@@ -88,7 +88,7 @@ Msg: The statement is executed successfully.
 
 enter a full path
 
-```txt
+```sql
 IoTDB> show timeseries root.ln.tag2.c.tag1.a
 +-------------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                     timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
@@ -102,7 +102,7 @@ IoTDB> show timeseries root.ln.tag2.c.tag1.a
 
 paths ending in ".**" indicate batch query
 
-```txt
+```sql
 IoTDB> show timeseries root.ln.tag1.a.**
 +-------------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                     timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
@@ -132,7 +132,7 @@ IoTDB> show timeseries root.ln.tag2.b.**
 
 - insert a single column of data
 
-```txt
+```sql
 IoTDB> insert into root.ln.tag2.d(timestamp,status) values(1,true)
 Msg: The statement is executed successfully.
 IoTDB> insert into root.ln.tag2.d(timestamp,status) values(2,false)
@@ -145,7 +145,7 @@ Msg: The statement is executed successfully.
 
 - insert alignment data
 
-```txt
+```sql
 IoTDB> insert into root.sg1.tag1.a(time, s1, s2) aligned values(2, 2, 2), (3, 3, 3)
 Msg: The statement is executed successfully.
 ```
@@ -154,7 +154,7 @@ Msg: The statement is executed successfully.
 
 - point query
 
-```txt
+```sql
 IoTDB> select * from root.sg1.tag1.a
 +-----------------------------+------------------+------------------+
 |                         Time|root.sg1.tag1.a.s1|root.sg1.tag1.a.s2|
@@ -166,7 +166,7 @@ IoTDB> select * from root.sg1.tag1.a
 
 - align by device
 
-```txt
+```sql
 IoTDB> select * from root.sg1.tag1.a align by device
 +-----------------------------+---------------+---+---+
 |                         Time|         Device| s1| s2|
@@ -178,7 +178,7 @@ IoTDB> select * from root.sg1.tag1.a align by device
 
 - batch query
 
-```txt
+```sql
 IoTDB> select status from root.ln.tag2.d.** where time < 2017-11-01T00:08:00.000
 +-----------------------------+----------------------------+---------------------+
 |                         Time|root.ln.tag1.a.tag2.d.status|root.ln.tag2.d.status|
