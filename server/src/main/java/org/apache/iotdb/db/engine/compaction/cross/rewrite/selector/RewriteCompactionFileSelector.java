@@ -66,7 +66,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
 
   private Collection<Integer> tmpSelectedSeqFiles;
   private long tempMaxSeqFileCost;
-
+  protected double selectedSeqFileSize = 0;
+  protected double selectedUnseqFileSize = 0;
   private boolean[] seqSelected;
   private int seqSelectedNum;
 
