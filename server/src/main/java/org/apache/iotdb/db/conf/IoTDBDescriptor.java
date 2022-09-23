@@ -604,10 +604,10 @@ public class IoTDBDescriptor {
                 Integer.toString(conf.getMaxCrossCompactionCandidateFileNum()))));
 
     conf.setMaxCrossCompactionCandidateFileSize(
-            Long.parseLong(
-                    properties.getProperty(
-                            "max_cross_compaction_candidate_file_size",
-                            Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
+        Long.parseLong(
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_size",
+                Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
 
     conf.setCompactionWriteThroughputMbPerSec(
         Integer.parseInt(
