@@ -189,7 +189,7 @@ public class TriggerManagementService implements IService {
     }
   }
 
-  private Trigger constructTriggerInstance(String className, TriggerClassLoader classLoader)
+  public Trigger constructTriggerInstance(String className, TriggerClassLoader classLoader)
       throws TriggerManagementException {
     try {
       Class<?> triggerClass = Class.forName(className, true, classLoader);

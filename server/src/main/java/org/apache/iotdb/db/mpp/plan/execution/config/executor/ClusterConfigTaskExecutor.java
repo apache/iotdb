@@ -27,8 +27,12 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
+import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
+import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
+import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -90,6 +94,8 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.trigger.api.Trigger;
+import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -100,12 +106,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -286,9 +294,39 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createTriggerStatement.getTriggerEvent().getId(),
               createTriggerStatement.getTriggerType().getId(),
               createTriggerStatement.getPathPattern().serialize(),
-              createTriggerStatement.getAttributes());
+              createTriggerStatement.getAttributes(),
+              FailureStrategy.OPTIMISTIC.getId()); // set default strategy
 
-      if (!createTriggerStatement.isUsingURI()) {
+      if (createTriggerStatement.isUsingURI()) {
+        try {
+          // download executable
+          ExecutableResource resource =
+              TriggerExecutableManager.getInstance()
+                  .request(Collections.singletonList(createTriggerStatement.getJarPath()));
+          String uriString = createTriggerStatement.getJarPath();
+          String jarFileName = uriString.substring(uriString.lastIndexOf("/") + 1);
+          // move to ext
+          TriggerExecutableManager.getInstance()
+              .moveFileUnderTempRootToExtLibDir(resource, jarFileName);
+          tCreateTriggerReq.setJarPath(jarFileName);
+          // jarFilePath after moving to ext lib
+          String jarFilePathUnderLib =
+              TriggerExecutableManager.getInstance().getFileStringUnderLibRootByName(jarFileName);
+          tCreateTriggerReq.setJarFile(ExecutableManager.transferToBytebuffer(jarFilePathUnderLib));
+          tCreateTriggerReq.setJarMD5(
+              DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderLib))));
+
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Failed to download executable for trigger({}) using URI: {}, the cause is: {}",
+              createTriggerStatement.getTriggerName(),
+              createTriggerStatement.getJarPath(),
+              e.getMessage());
+          throw e;
+        }
+      } else {
+        // set jarPath to file name instead of the full path
+        tCreateTriggerReq.setJarPath(new File(createTriggerStatement.getJarPath()).getName());
         // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
         tCreateTriggerReq.setJarFile(
             ExecutableManager.transferToBytebuffer(createTriggerStatement.getJarPath()));
@@ -296,6 +334,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tCreateTriggerReq.setJarMD5(
             DigestUtils.md5Hex(
                 Files.newInputStream(Paths.get(createTriggerStatement.getJarPath()))));
+      }
+
+      // try to create instance, this request will fail if creation is not successful
+      try (TriggerClassLoader classLoader =
+          TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
+        Class<?> triggerClass =
+            Class.forName(createTriggerStatement.getClassName(), true, classLoader);
+        Trigger trigger = (Trigger) triggerClass.getDeclaredConstructor().newInstance();
+        tCreateTriggerReq.setFailureStrategy(trigger.getFailureStrategy().getId());
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Failed to create trigger when try to create trigger({}) instance first, the cause is: {}",
+            createTriggerStatement.getTriggerName(),
+            e.getMessage());
+        throw e;
       }
 
       final TSStatus executionStatus = client.createTrigger(tCreateTriggerReq);
@@ -310,7 +363,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (TException | IOException e) {
+    } catch (Exception e) {
       future.setException(e);
     }
     return future;
