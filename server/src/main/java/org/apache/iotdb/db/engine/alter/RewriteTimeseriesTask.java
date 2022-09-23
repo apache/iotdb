@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.engine.alter;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -101,19 +120,18 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
                       TsFileNameGenerator.getTsFileName(tsFileIdentifier.getFilename());
                   TsFileNameGenerator.TsFileName tsFileName =
                       TsFileNameGenerator.getTsFileName(tsFileResource.getTsFile().getName());
-                  // As long as time and version are the same, they are considered to be the
-                  // same
+                  // As long as time and version are the same, they are considered to be the same
                   // file
                   if (logTsFileName.getTime() == tsFileName.getTime()
                       && logTsFileName.getVersion() == tsFileName.getVersion()) {
                     LOGGER.info(
-                        "[rewriteTimeseries] {} the file {} has been done",
+                        "[rewriteTimeseries] {} the file {} has been rewritten",
                         logKey,
                         tsFileResource.getTsFilePath());
                     return;
                   }
                 } catch (IOException e) {
-                  LOGGER.warn("tsfile name parseFailed");
+                  LOGGER.warn("tsfile-{} name parseFailed", tsFileIdentifier);
                   return;
                 }
               }
@@ -169,7 +187,6 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
 
     // rewrite target tsfiles
     try (AlteringLogger alteringLogger = new AlteringLogger(logFile)) {
-      LOGGER.info("[rewriteTimeseries] {} rewriteDataInTsFiles", logKey);
       if (readyResourceList.isEmpty()) {
         return;
       }
