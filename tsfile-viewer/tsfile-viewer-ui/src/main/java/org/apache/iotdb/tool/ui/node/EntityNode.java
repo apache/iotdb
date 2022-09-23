@@ -22,6 +22,7 @@ package org.apache.iotdb.tool.ui.node;
 import org.apache.iotdb.tool.core.model.TimeSeriesMetadataNode;
 import org.apache.iotdb.tool.ui.scene.IndexNodeInfoPage;
 import org.apache.iotdb.tool.ui.scene.IoTDBParsePageV3;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 
 import java.util.List;
@@ -36,6 +37,7 @@ import javafx.scene.shape.Circle;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
 /**
  * index entity node
@@ -166,21 +168,28 @@ public class EntityNode {
   private String getTip() {
 
     StringBuilder sb = new StringBuilder();
-    sb.append("type:").append(this.timeSeriesMetadataNode.getNodeType().toString());
+    sb.append("【type】").append(this.timeSeriesMetadataNode.getNodeType().toString());
     sb.append("\n");
-    sb.append("position:").append(this.timeSeriesMetadataNode.getPosition());
-    sb.append("\n");
+    sb.append("【position】").append(this.timeSeriesMetadataNode.getPosition());
     switch (this.timeSeriesMetadataNode.getNodeType()) {
       case LEAF_DEVICE:
-        sb.append("deviceId:");
+        sb.append("\n");
+        sb.append("【deviceId】");
         sb.append(this.timeSeriesMetadataNode.getDeviceId());
         break;
       case LEAF_MEASUREMENT:
+        ITimeSeriesMetadata timeseriesMetadata = this.timeSeriesMetadataNode.getTimeseriesMetadata();
+        sb.append("\n");
         sb.append(
-            "measurementId:"
-                + this.timeSeriesMetadataNode.getMeasurementId()
-                + ",statistics:"
-                + this.timeSeriesMetadataNode.getTimeseriesMetadata());
+            "【measurementId】"
+                + this.timeSeriesMetadataNode.getMeasurementId());
+        if(timeseriesMetadata != null) {
+          Statistics statistics = timeseriesMetadata.getStatistics();
+          if(statistics != null) {
+            sb.append("\n");
+            sb.append("【statistics】" + statistics);
+          }
+        }
         break;
       default:
         break;
