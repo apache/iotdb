@@ -68,7 +68,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
 
   private Collection<Integer> tmpSelectedSeqFiles;
   private long tempMaxSeqFileCost;
-
+  private long totalSize;
+  private final long maxCrossCompactionFileSize;
   private boolean[] seqSelected;
   private int seqSelectedNum;
 
@@ -77,6 +78,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     this.memoryBudget = memoryBudget;
     this.maxCrossCompactionFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+    this.maxCrossCompactionFileSize =
+        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileSize();
   }
 
   /**
@@ -104,6 +107,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   @Override
   public List[] select() throws MergeException {
     long startTime = System.currentTimeMillis();
+    totalSize = 0;
     try {
       logger.debug(
           "Selecting merge candidates from {} seqFile, {} unseqFiles",
@@ -185,6 +189,11 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         }
       }
 
+      for (int seqIndex : tmpSelectedSeqFiles) {
+        totalSize += resource.getSeqFiles().get(seqIndex).getTsFileSize();
+      }
+      totalSize += unseqFile.getTsFileSize();
+
       tempMaxSeqFileCost = maxSeqFileCost;
       long newCost =
           useTightBound
@@ -210,6 +219,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     if (selectedUnseqFiles.size() == 0
         || (seqSelectedNum + selectedUnseqFiles.size() + 1 + tmpSelectedSeqFiles.size()
                 <= maxCrossCompactionFileNum
+            && totalSize <= maxCrossCompactionFileSize
             && totalCost + newCost < memoryBudget)) {
       selectedUnseqFiles.add(unseqFile);
       maxSeqFileCost = tempMaxSeqFileCost;
