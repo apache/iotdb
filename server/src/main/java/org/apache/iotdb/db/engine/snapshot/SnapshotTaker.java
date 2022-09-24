@@ -178,7 +178,7 @@ public class SnapshotTaker {
     if (!source.exists()) {
       LOGGER.error("Hard link source file {} doesn't exist", source);
     }
-
+    Files.deleteIfExists(target.toPath());
     Files.createLink(target.getAbsoluteFile().toPath(), source.getAbsoluteFile().toPath());
     snapshotLogger.logFile(source.getAbsolutePath(), target.getAbsolutePath());
   }
