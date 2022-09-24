@@ -76,31 +76,16 @@ public class Utils {
   }
 
   public static long getFileSize(File file) {
-      if (!file.exists()) {
-          logger.warn("file is not exists");
+    final List<Path> paths = listAllRegularFilesRecursively(file);
+    long size = 0;
+
+    for (Path path : paths) {
+      final long length = path.toFile().length();
+      if (length > 0) {
+        size += length;
       }
+    }
 
-      return getSize(file);
-  }
-
-  private static long getDirectorySize(File file) {
-      File[] files = file.listFiles();
-      if (files == null) {
-          return 0L;
-      }
-      else {
-          long size = 0L;
-          for(File subFile : files) {
-              if (!Files.isSymbolicLink(file.toPath())) {
-                  size += getSize(subFile);
-              }
-          }
-
-          return size;
-      }
-  }
-
-  private static long getSize(File file) {
-      return file.isDirectory() ? getDirectorySize(file) : file.length();
+    return size;
   }
 }

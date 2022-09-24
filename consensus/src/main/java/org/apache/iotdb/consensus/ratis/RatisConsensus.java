@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
@@ -589,26 +588,26 @@ class RatisConsensus implements IConsensus {
     Iterable<RaftGroupId> groupIds = server.getGroupIds();
 
     while (groupIds.iterator().hasNext()) {
-      RaftGroupId raftGroupId = groupIds.iterator().next();
+      final RaftGroupId raftGroupId = groupIds.iterator().next();
       File currentDir = null;
 
       try {
-         currentDir = server.getDivision(raftGroupId).getRaftStorage().getStorageDir()
-                .getCurrentDir();
-      }
-      catch (IOException e) {
-        logger.warn(" Get division failed: ",e);
+        currentDir =
+            server.getDivision(raftGroupId).getRaftStorage().getStorageDir().getCurrentDir();
+      } catch (IOException e) {
+        logger.warn(" Get division failed: ", e);
       }
 
-      long currentDirLength = org.apache.iotdb.consensus.common.Utils.getFileSize(currentDir);
-      long triggerSnapshotFileSize = config.getRatisConfig().getSnapshot().getTriggerSnapshotFileSize();
+      final long currentDirLength = org.apache.iotdb.consensus.common.Utils.getFileSize(currentDir);
+      final long triggerSnapshotFileSize =
+          config.getRatisConfig().getSnapshot().getTriggerSnapshotFileSize();
 
       if (currentDirLength >= triggerSnapshotFileSize) {
-        ConsensusGenericResponse consensusGenericResponse = triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
-        if (consensusGenericResponse.isSuccess()){
+        ConsensusGenericResponse consensusGenericResponse =
+            triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
+        if (consensusGenericResponse.isSuccess()) {
           logger.info("Raft group " + raftGroupId + " took snapshot successfully");
-        }
-        else {
+        } else {
           logger.warn("Raft group " + raftGroupId + " failed to take snapshot");
         }
       }
@@ -617,16 +616,11 @@ class RatisConsensus implements IConsensus {
 
   private void createSnapshotThread() {
     ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-    Runnable command = this :: triggerSnapshotByCustomize;
+    Runnable command = this::triggerSnapshotByCustomize;
     long delay = config.getRatisConfig().getSnapshot().getTriggerSnapshotTime();
 
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-            executor,
-            command,
-            0,
-            delay,
-            TimeUnit.SECONDS
-    );
+        executor, command, 0, delay, TimeUnit.SECONDS);
   }
 
   private ConsensusGenericResponse failed(ConsensusException e) {

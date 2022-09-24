@@ -68,7 +68,11 @@ public class RatisConsensusTest {
                       .setPurgeGap(10)
                       .setUnsafeFlushEnabled(false)
                       .build())
-              .setSnapshot(RatisConfig.Snapshot.newBuilder().setAutoTriggerThreshold(100).build())
+              .setSnapshot(
+                  RatisConfig.Snapshot.newBuilder()
+                      .setAutoTriggerThreshold(100)
+                      .setTriggerSnapshotFileSize(1024)
+                      .build())
               .build();
       int finalI = i;
       servers.add(
@@ -183,6 +187,15 @@ public class RatisConsensusTest {
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());
     servers.get(2).createPeer(group.getGroupId(), group.getPeers());
     doConsensus(servers.get(0), gid, 10, 210);
+  }
+
+  @Test
+  public void triggerSnapshotByCustomizeTest() throws Exception {
+    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
+
+    doConsensus(servers.get(0), group.getGroupId(), 50, 50);
   }
 
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
