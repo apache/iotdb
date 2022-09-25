@@ -70,7 +70,7 @@ public class BackFloatTVList extends QuickFloatTVList implements BackwardSort {
   public void checkTmpLength(int len) {
     while (len > tmpLength) {
       tmpTimestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
-      tmpValues.add((float[]) getPrimitiveArraysByType(TSDataType.INT32));
+      tmpValues.add((float[]) getPrimitiveArraysByType(TSDataType.FLOAT));
       tmpLength += ARRAY_SIZE;
     }
   }

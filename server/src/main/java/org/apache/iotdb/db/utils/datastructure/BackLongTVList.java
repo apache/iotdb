@@ -70,7 +70,7 @@ public class BackLongTVList extends QuickLongTVList implements BackwardSort {
   public void checkTmpLength(int len) {
     while (len > tmpLength) {
       tmpTimestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
-      tmpValues.add((long[]) getPrimitiveArraysByType(TSDataType.INT32));
+      tmpValues.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
       tmpLength += ARRAY_SIZE;
     }
   }

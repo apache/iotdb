@@ -70,7 +70,7 @@ public class BackBooleanTVList extends QuickBooleanTVList implements BackwardSor
   public void checkTmpLength(int len) {
     while (len > tmpLength) {
       tmpTimestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
-      tmpValues.add((boolean[]) getPrimitiveArraysByType(TSDataType.INT32));
+      tmpValues.add((boolean[]) getPrimitiveArraysByType(TSDataType.BOOLEAN));
       tmpLength += ARRAY_SIZE;
     }
   }

@@ -71,7 +71,7 @@ public class BackBinaryTVList extends QuickBinaryTVList implements BackwardSort 
   public void checkTmpLength(int len) {
     while (len > tmpLength) {
       tmpTimestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
-      tmpValues.add((Binary[]) getPrimitiveArraysByType(TSDataType.INT32));
+      tmpValues.add((Binary[]) getPrimitiveArraysByType(TSDataType.TEXT));
       tmpLength += ARRAY_SIZE;
     }
   }

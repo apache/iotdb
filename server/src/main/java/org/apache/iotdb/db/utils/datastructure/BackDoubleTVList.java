@@ -70,7 +70,7 @@ public class BackDoubleTVList extends QuickDoubleTVList implements BackwardSort 
   public void checkTmpLength(int len) {
     while (len > tmpLength) {
       tmpTimestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
-      tmpValues.add((double[]) getPrimitiveArraysByType(TSDataType.INT32));
+      tmpValues.add((double[]) getPrimitiveArraysByType(TSDataType.DOUBLE));
       tmpLength += ARRAY_SIZE;
     }
   }
