@@ -80,5 +80,6 @@ public enum ConfigPhysicalPlanType {
   OfferRegionMaintainTasks,
   PollRegionMaintainTask,
   CreatePipeSink,
-  DropPipeSink
+  DropPipeSink,
+  GetPipeSink
 }

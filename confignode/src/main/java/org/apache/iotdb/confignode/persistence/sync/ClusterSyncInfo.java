@@ -25,16 +25,20 @@ import org.apache.iotdb.commons.sync.metadata.SyncMetadata;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 public class ClusterSyncInfo implements SnapshotProcessor {
@@ -73,6 +77,18 @@ public class ClusterSyncInfo implements SnapshotProcessor {
   public TSStatus dropPipeSink(DropPipeSinkPlan plan) {
     syncMetadata.dropPipeSink(plan.getPipeSinkName());
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public PipeSinkResp getPipeSink(GetPipeSinkPlan plan) {
+    PipeSinkResp resp = new PipeSinkResp();
+    if (StringUtils.isEmpty(plan.getPipeSinkName())) {
+      resp.setPipeSinkList(syncMetadata.getAllPipeSink());
+    } else {
+      resp.setPipeSinkList(
+          Collections.singletonList(syncMetadata.getPipeSink(plan.getPipeSinkName())));
+    }
+    resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return resp;
   }
 
   public PipeSink getPipeSink(String name) {

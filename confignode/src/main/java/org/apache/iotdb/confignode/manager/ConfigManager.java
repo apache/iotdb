@@ -83,7 +83,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -150,7 +149,7 @@ public class ConfigManager implements IManager {
   /** UDF */
   private final UDFManager udfManager;
 
-  /** UDF */
+  /** Sync */
   private final SyncManager syncManager;
 
   public ConfigManager() throws IOException {
@@ -166,7 +165,13 @@ public class ConfigManager implements IManager {
     // Build state machine and executor
     ConfigPlanExecutor executor =
         new ConfigPlanExecutor(
-            nodeInfo, clusterSchemaInfo, partitionInfo, authorInfo, procedureInfo, udfInfo);
+            nodeInfo,
+            clusterSchemaInfo,
+            partitionInfo,
+            authorInfo,
+            procedureInfo,
+            udfInfo,
+            syncInfo);
     PartitionRegionStateMachine stateMachine = new PartitionRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -950,23 +955,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TGetAllPipeSinkResp getAllPipeSink() {
-    TSStatus status = confirmLeader();
-    TGetAllPipeSinkResp resp = new TGetAllPipeSinkResp();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return resp.setPipeSinkInfoList(syncManager.getAllPipeSink()).setStatus(StatusUtils.OK);
-    } else {
-      return resp.setStatus(status);
-    }
-  }
-
-  @Override
   public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) {
     TSStatus status = confirmLeader();
     TGetPipeSinkResp resp = new TGetPipeSinkResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return resp.setPipeSinkInfo(syncManager.getPipeSink(req.getPipeSinkName()))
-          .setStatus(StatusUtils.OK);
+      return syncManager.getPipeSink(req.getPipeSinkName());
     } else {
       return resp.setStatus(status);
     }

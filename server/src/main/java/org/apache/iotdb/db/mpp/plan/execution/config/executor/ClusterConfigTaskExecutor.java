@@ -37,7 +37,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -110,7 +109,6 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -756,16 +754,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      if (StringUtils.isEmpty(showPipeSinkStatement.getPipeSinkName())) {
-        TGetAllPipeSinkResp resp = configNodeClient.getAllPipeSink();
-        ShowPipeSinkTask.buildTSBlockByTPipeSinkInfo(resp.getPipeSinkInfoList(), future);
-      } else {
-        TGetPipeSinkResp resp =
-            configNodeClient.getPipeSink(
-                new TGetPipeSinkReq(showPipeSinkStatement.getPipeSinkName()));
-        ShowPipeSinkTask.buildTSBlockByTPipeSinkInfo(
-            Collections.singletonList(resp.getPipeSinkInfo()), future);
+      TGetPipeSinkReq tGetPipeSinkReq = new TGetPipeSinkReq();
+      if (!StringUtils.isEmpty(showPipeSinkStatement.getPipeSinkName())) {
+        tGetPipeSinkReq.setPipeSinkName(showPipeSinkStatement.getPipeSinkName());
       }
+      TGetPipeSinkResp resp = configNodeClient.getPipeSink(tGetPipeSinkReq);
+      ShowPipeSinkTask.buildTSBlockByTPipeSinkInfo(resp.getPipeSinkInfoList(), future);
     } catch (Exception e) {
       future.setException(e);
     }

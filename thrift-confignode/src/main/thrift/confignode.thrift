@@ -396,15 +396,10 @@ struct TDropPipeSinkReq {
 }
 
 struct TGetPipeSinkReq {
-  1: required string pipeSinkName
+  1: optional string pipeSinkName
 }
 
 struct TGetPipeSinkResp {
-  1: required common.TSStatus status
-  2: required TPipeSinkInfo pipeSinkInfo
-}
-
-struct TGetAllPipeSinkResp {
   1: required common.TSStatus status
   2: required list<TPipeSinkInfo> pipeSinkInfoList
 }
@@ -764,10 +759,7 @@ service IConfigNodeRPCService {
   /** Drop PipeSink */
   common.TSStatus dropPipeSink(TDropPipeSinkReq req)
 
-  /** Get all PipeSink */
-  TGetAllPipeSinkResp getAllPipeSink()
-
-  /** Get PipeSink by name */
+  /** Get PipeSink by name, if name is empty, get all PipeSink */
   TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
 }
 

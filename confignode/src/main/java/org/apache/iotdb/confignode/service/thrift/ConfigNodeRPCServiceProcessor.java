@@ -83,7 +83,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -605,11 +604,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus dropPipeSink(TDropPipeSinkReq req) throws TException {
     return configManager.dropPipeSink(new DropPipeSinkPlan(req.getPipeSinkName()));
-  }
-
-  @Override
-  public TGetAllPipeSinkResp getAllPipeSink() throws TException {
-    return configManager.getAllPipeSink();
   }
 
   @Override

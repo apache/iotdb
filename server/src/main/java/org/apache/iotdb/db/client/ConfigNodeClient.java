@@ -55,7 +55,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -1027,22 +1026,6 @@ public class ConfigNodeClient
         TSStatus status = client.dropPipeSink(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
-  }
-
-  @Override
-  public TGetAllPipeSinkResp getAllPipeSink() throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TGetAllPipeSinkResp resp = client.getAllPipeSink();
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
         }
       } catch (TException e) {
         configLeader = null;

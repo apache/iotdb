@@ -45,7 +45,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -380,14 +379,7 @@ public interface IManager {
   TSStatus dropPipeSink(DropPipeSinkPlan plan);
 
   /**
-   * Get all PipeSinks
-   *
-   * @return TGetAllPipeSinkResp contains PipeSink list
-   */
-  TGetAllPipeSinkResp getAllPipeSink();
-
-  /**
-   * Get PipeSink by name
+   * Get PipeSink by name. If pipeSinkName is empty, get all PipeSinks.
    *
    * @param req specify the pipeSinkName
    * @return TGetPipeSinkResp contains the PipeSink

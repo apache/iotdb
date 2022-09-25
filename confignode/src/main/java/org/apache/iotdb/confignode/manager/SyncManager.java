@@ -23,14 +23,15 @@ import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
 public class SyncManager {
@@ -52,7 +53,7 @@ public class SyncManager {
   public TSStatus createPipeSink(CreatePipeSinkPlan plan) {
     try {
       clusterSyncInfo.checkAddPipeSink(plan.getPipeSinkInfo().getPipeSinkName());
-      return clusterSyncInfo.addPipeSink(plan);
+      return getConsensusManager().write(plan).getStatus();
     } catch (PipeSinkException e) {
       LOGGER.error(e.getMessage());
       return new TSStatus(TSStatusCode.PIPESINK_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -62,21 +63,26 @@ public class SyncManager {
   public TSStatus dropPipeSink(DropPipeSinkPlan plan) {
     try {
       clusterSyncInfo.checkDropPipeSink(plan.getPipeSinkName());
-      return clusterSyncInfo.dropPipeSink(plan);
+      return getConsensusManager().write(plan).getStatus();
     } catch (PipeSinkException e) {
       LOGGER.error(e.getMessage());
       return new TSStatus(TSStatusCode.PIPESINK_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
   }
 
-  public List<TPipeSinkInfo> getAllPipeSink() {
-    return clusterSyncInfo.getAllPipeSink().stream()
-        .map(PipeSink::getTPipeSinkInfo)
-        .collect(Collectors.toList());
-  }
-
-  public TPipeSinkInfo getPipeSink(String pipeSinkName) {
-    return clusterSyncInfo.getPipeSink(pipeSinkName).getTPipeSinkInfo();
+  public TGetPipeSinkResp getPipeSink(String pipeSinkName) {
+    GetPipeSinkPlan getPipeSinkPlan = new GetPipeSinkPlan(pipeSinkName);
+    PipeSinkResp pipeSinkResp =
+        (PipeSinkResp) getConsensusManager().read(getPipeSinkPlan).getDataset();
+    TGetPipeSinkResp resp = new TGetPipeSinkResp();
+    resp.setStatus(pipeSinkResp.getStatus());
+    if (pipeSinkResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      resp.setPipeSinkInfoList(
+          pipeSinkResp.getPipeSinkList().stream()
+              .map(PipeSink::getTPipeSinkInfo)
+              .collect(Collectors.toList()));
+    }
+    return resp;
   }
 
   // endregion
