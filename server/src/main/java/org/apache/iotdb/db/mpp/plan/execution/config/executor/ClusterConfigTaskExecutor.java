@@ -325,11 +325,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           throw e;
         }
       } else {
+        TriggerExecutableManager.getInstance()
+            .copyFileToExtLibDir(createTriggerStatement.getJarPath());
         // set jarPath to file name instead of the full path
         tCreateTriggerReq.setJarPath(new File(createTriggerStatement.getJarPath()).getName());
         // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
-        tCreateTriggerReq.setJarPath(new File(createTriggerStatement.getJarPath()).getName());
-
         tCreateTriggerReq.setJarFile(
             ExecutableManager.transferToBytebuffer(createTriggerStatement.getJarPath()));
         // set md5 of the jar file

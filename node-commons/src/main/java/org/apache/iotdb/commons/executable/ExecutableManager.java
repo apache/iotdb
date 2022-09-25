@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -78,6 +79,12 @@ public class ExecutableManager {
 
   public void removeFromTemporaryLibRoot(ExecutableResource resource) {
     removeFromTemporaryLibRoot(resource.getRequestId());
+  }
+
+  public void copyFileToExtLibDir(String filePath) throws IOException {
+    FileUtils.copyFileToDirectory(
+        FSFactoryProducer.getFSFactory().getFile(filePath),
+        FSFactoryProducer.getFSFactory().getFile(this.libRoot));
   }
 
   private synchronized long generateNextRequestId() throws IOException {
@@ -174,10 +181,9 @@ public class ExecutableManager {
    */
   public void writeToLibDir(ByteBuffer byteBuffer, String fileName) throws IOException {
     String destination = this.libRoot + File.separator + fileName;
-    Path path = Paths.get(destination);
-    Files.deleteIfExists(path);
-    try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE)) {
-      fileChannel.write(byteBuffer);
+    Files.deleteIfExists(Paths.get(destination));
+    try (FileOutputStream outputStream = new FileOutputStream(destination)) {
+      outputStream.getChannel().write(byteBuffer);
     } catch (IOException e) {
       LOGGER.warn(
           "Error occurred during writing bytebuffer to {} , the cause is {}",
