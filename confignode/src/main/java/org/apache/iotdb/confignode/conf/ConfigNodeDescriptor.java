@@ -205,7 +205,8 @@ public class ConfigNodeDescriptor {
       conf.setTimePartitionInterval(
           Long.parseLong(
               properties.getProperty(
-                  "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))));
+                  "time_partition_interval_for_routing",
+                  String.valueOf(conf.getTimePartitionInterval()))));
 
       conf.setSchemaReplicationFactor(
           Integer.parseInt(
@@ -286,6 +287,41 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "ratis_log_appender_buffer_size_max",
                 String.valueOf(conf.getRatisConsensusLogAppenderBufferSize()))));
+
+    conf.setRatisSnapshotTriggerThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_snapshot_trigger_threshold",
+                String.valueOf(conf.getRatisConsensusLogAppenderBufferSize()))));
+
+    conf.setRatisLogUnsafeFlushEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "ratis_log_unsafe_flush_enable",
+                String.valueOf(conf.isRatisLogUnsafeFlushEnable()))));
+
+    conf.setRatisLogSegmentSizeMax(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_log_segment_size_max", String.valueOf(conf.getRatisLogSegmentSizeMax()))));
+
+    conf.setRatisGrpcFlowControlWindow(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_grpc_flow_control_window",
+                String.valueOf(conf.getRatisGrpcFlowControlWindow()))));
+
+    conf.setRatisRpcLeaderElectionTimeoutMinMs(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_rpc_leader_election_timeout_min_ms",
+                String.valueOf(conf.getRatisRpcLeaderElectionTimeoutMinMs()))));
+
+    conf.setRatisRpcLeaderElectionTimeoutMinMs(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_rpc_leader_election_timeout_max_ms",
+                String.valueOf(conf.getRatisRpcLeaderElectionTimeoutMaxMs()))));
   }
 
   /**

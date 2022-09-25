@@ -492,10 +492,10 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
 
   protected TsFileResource endFileAndGenerateResource(TsFileIOWriter tsFileIOWriter)
       throws IOException {
-    tsFileIOWriter.endFile();
-    TsFileResource tsFileResource = new TsFileResource(tsFileIOWriter.getFile());
     Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
         tsFileIOWriter.getDeviceTimeseriesMetadataMap();
+    tsFileIOWriter.endFile();
+    TsFileResource tsFileResource = new TsFileResource(tsFileIOWriter.getFile());
     for (Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap.entrySet()) {
       String device = entry.getKey();
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {

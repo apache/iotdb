@@ -168,6 +168,7 @@ public class StatementMemorySourceVisitor
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(IoTDBConstant.VERSION));
+    tsBlockBuilder.getColumnBuilder(1).writeBinary(new Binary(IoTDBConstant.BUILD_INFO));
     tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());

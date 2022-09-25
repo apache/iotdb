@@ -64,7 +64,7 @@ public class MPPQueryContext {
     this.session = session;
     this.localDataBlockEndpoint = localDataBlockEndpoint;
     this.localInternalEndpoint = localInternalEndpoint;
-    this.resultNodeContext = new ResultNodeContext(queryId);
+    this.initResultNodeContext();
   }
 
   public MPPQueryContext(
@@ -76,9 +76,17 @@ public class MPPQueryContext {
       long timeOut,
       long startTime) {
     this(sql, queryId, session, localDataBlockEndpoint, localInternalEndpoint);
-    this.resultNodeContext = new ResultNodeContext(queryId);
     this.timeOut = timeOut;
     this.startTime = startTime;
+    this.initResultNodeContext();
+  }
+
+  public void prepareForRetry() {
+    this.initResultNodeContext();
+  }
+
+  private void initResultNodeContext() {
+    this.resultNodeContext = new ResultNodeContext(queryId);
   }
 
   public QueryId getQueryId() {

@@ -38,6 +38,7 @@ import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -345,8 +346,15 @@ public class IoTDBDescriptor {
       conf.setSyncMlogPeriodInMs(forceMlogPeriodInMs);
     }
 
+    String oldMultiDirStrategyClassName = conf.getMultiDirStrategyClassName();
     conf.setMultiDirStrategyClassName(
         properties.getProperty("multi_dir_strategy", conf.getMultiDirStrategyClassName()));
+    try {
+      conf.checkMultiDirStrategyClassName();
+    } catch (Exception e) {
+      conf.setMultiDirStrategyClassName(oldMultiDirStrategyClassName);
+      throw e;
+    }
 
     conf.setBatchSize(
         Integer.parseInt(
@@ -386,11 +394,22 @@ public class IoTDBDescriptor {
       conf.setMemtableSizeThreshold(memTableSizeThreshold);
     }
 
+    conf.setTvListSortAlgorithm(
+        TVListSortAlgorithm.valueOf(
+            properties.getProperty(
+                "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
+
     conf.setAvgSeriesPointNumberThreshold(
         Integer.parseInt(
             properties.getProperty(
                 "avg_series_point_number_threshold",
                 Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
+
+    conf.setMaxChunkRawSizeThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "max_chunk_raw_size_threshold",
+                Long.toString(conf.getMaxChunkRawSizeThreshold()))));
 
     conf.setCheckPeriodWhenInsertBlocked(
         Integer.parseInt(
@@ -616,6 +635,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "concurrent_compaction_thread",
                 Integer.toString(conf.getConcurrentCompactionThread()))));
+    conf.setChunkMetadataSizeProportionInCompaction(
+        Double.parseDouble(
+            properties.getProperty(
+                "chunk_metadata_size_proportion_in_compaction",
+                Double.toString(conf.getChunkMetadataSizeProportionInCompaction()))));
     conf.setTargetCompactionFileSize(
         Long.parseLong(
             properties.getProperty(
@@ -647,6 +671,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "max_cross_compaction_candidate_file_num",
                 Integer.toString(conf.getMaxCrossCompactionCandidateFileNum()))));
+    conf.setMaxCrossCompactionCandidateFileSize(
+        Long.parseLong(
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_size",
+                Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
 
     conf.setCompactionWriteThroughputMbPerSec(
         Integer.parseInt(
@@ -870,6 +899,12 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "partition_interval", String.valueOf(conf.getPartitionInterval()))));
+
+    conf.setTimePartitionIntervalForStorage(
+        Long.parseLong(
+            properties.getProperty(
+                "time_partition_interval_for_storage",
+                String.valueOf(conf.getTimePartitionIntervalForStorage()))));
 
     conf.setSelectIntoInsertTabletPlanRowLimit(
         Integer.parseInt(
@@ -1445,6 +1480,12 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
+      conf.setChunkMetadataSizeProportionInWrite(
+          Double.parseDouble(
+              properties.getProperty(
+                  "chunk_metadata_size_proportion_in_write",
+                  Double.toString(conf.getChunkMetadataSizeProportionInWrite()))));
+
       // update max_deduplicated_path_num
       conf.setMaxQueryDeduplicatedPathNum(
           Integer.parseInt(
@@ -1880,12 +1921,18 @@ public class IoTDBDescriptor {
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
-    conf.setPartitionInterval(globalConfig.timePartitionInterval);
+    conf.setTimePartitionIntervalForRouting(globalConfig.timePartitionInterval);
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
   public void loadRatisConfig(TRatisConfig ratisConfig) {
     conf.setRatisConsensusLogAppenderBufferSizeMax(ratisConfig.getAppenderBufferSize());
+    conf.setRatisConsensusSnapshotTriggerThreshold(ratisConfig.getSnapshotTriggerThreshold());
+    conf.setRatisConsensusLogUnsafeFlushEnable(ratisConfig.isLogUnsafeFlushEnable());
+    conf.setRatisConsensusLogSegmentSizeMax(ratisConfig.getLogSegmentSizeMax());
+    conf.setRatisConsensusGrpcFlowControlWindow(ratisConfig.getGrpcFlowControlWindow());
+    conf.setRatisConsensusLeaderElectionTimeoutMinMs(ratisConfig.getLeaderElectionTimeoutMin());
+    conf.setRatisConsensusLeaderElectionTimeoutMaxMs(ratisConfig.getLeaderElectionTimeoutMax());
   }
 
   public void initClusterSchemaMemoryAllocate() {

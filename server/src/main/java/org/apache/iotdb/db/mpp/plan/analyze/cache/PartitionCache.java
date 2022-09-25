@@ -313,7 +313,6 @@ public class PartitionCache {
       List<String> devicePaths,
       boolean secondTry,
       boolean isAutoCreate) {
-    Map<String, String> deviceToStorageGroupMap = new HashMap<>();
     // miss when devicePath contains *
     for (String devicePath : devicePaths) {
       if (devicePath.contains("*")) {
@@ -328,7 +327,7 @@ public class PartitionCache {
         fetchStorageGroupAndUpdateCache(result, devicePaths);
         // second try to hit storage group in fast-fail way
         getStorageGroupMap(result, devicePaths, true);
-        if (!result.isSuccess() && isAutoCreate) {
+        if (!result.isSuccess() && isAutoCreate && config.isAutoCreateSchemaEnabled()) {
           // try to auto create storage group of failed device
           createStorageGroupAndUpdateCache(result, devicePaths);
           // third try to hit storage group in fast-fail way
