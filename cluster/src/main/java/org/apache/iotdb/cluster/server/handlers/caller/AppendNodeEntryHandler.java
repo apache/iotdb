@@ -73,8 +73,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     if (Timer.ENABLE_INSTRUMENTING) {
       Statistic.RAFT_SENDER_SEND_LOG_ASYNC.calOperationCostTimeFromStart(sendStart);
     }
-    if (log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
-      // the request already failed
+    if (log.isHasFailed()) {
       return;
     }
 
@@ -123,10 +122,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     } else if (resp == RESPONSE_WEAK_ACCEPT) {
       synchronized (log) {
         log.getWeaklyAcceptedNodeIds().add(trueReceiver.nodeIdentifier);
-        if (log.getWeaklyAcceptedNodeIds().size() + log.getStronglyAcceptedNodeIds().size()
-            >= quorumSize) {
-          log.acceptedTime.set(System.nanoTime());
-        }
         log.notifyAll();
       }
     } else {
@@ -173,7 +168,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       log.getFailedNodeIds().add(trueReceiver.nodeIdentifier);
       if (log.getFailedNodeIds().size() > quorumSize) {
         // quorum members have failed, there is no need to wait for others
-        log.getStronglyAcceptedNodeIds().add(Integer.MAX_VALUE);
+        log.setHasFailed(true);
         log.notifyAll();
         if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
           member.removeAppendLogHandler(

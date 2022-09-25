@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log;
 
+import java.util.Map.Entry;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.logtypes.FragmentedLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -26,6 +27,7 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,13 +47,15 @@ public class FragmentedLogDispatcher extends LogDispatcher {
 
     long startTime = Statistic.LOG_DISPATCHER_LOG_ENQUEUE.getOperationStartTime();
     request.getVotingLog().getLog().setEnqueueTime(System.nanoTime());
-    for (int i = 0; i < nodesLogQueues.size(); i++) {
-      BlockingQueue<SendLogRequest> nodeLogQueue = nodesLogQueues.get(i);
+
+    int i = 0;
+    for (Pair<Node, BlockingQueue<SendLogRequest>> entry : nodesLogQueuesList) {
+      BlockingQueue<SendLogRequest> nodeLogQueue = entry.right;
       SendLogRequest fragmentedRequest = new SendLogRequest(request);
       fragmentedRequest.setVotingLog(new VotingLog(request.getVotingLog()));
       fragmentedRequest
           .getVotingLog()
-          .setLog(new FragmentedLog((FragmentedLog) request.getVotingLog().getLog(), i));
+          .setLog(new FragmentedLog((FragmentedLog) request.getVotingLog().getLog(), i++));
       try {
         boolean addSucceeded;
         if (ClusterDescriptor.getInstance().getConfig().isWaitForSlowNode()) {

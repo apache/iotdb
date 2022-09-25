@@ -894,9 +894,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       addNodeLog.setNewNode(newNode);
 
       logManager.append(addNodeLog);
-      if (getAllNodes().size() > 1) {
-        votingLogList.insert(votingLog);
-      }
     }
 
     int retryTime = 0;
@@ -909,7 +906,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       AppendLogResult result = sendLogToFollowers(votingLog);
       switch (result) {
         case OK:
-          commitLog(addNodeLog);
+          waitApply(addNodeLog);
           logger.info("{}: Join request of {} is accepted", name, newNode);
 
           synchronized (partitionTable) {
@@ -1649,9 +1646,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       removeNodeLog.setRemovedNode(target);
 
       logManager.append(removeNodeLog);
-      if (getAllNodes().size() > 1) {
-        votingLogList.insert(votingLog);
-      }
     }
 
     int retryTime = 0;
@@ -1664,7 +1658,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       AppendLogResult result = sendLogToFollowers(votingLog);
       switch (result) {
         case OK:
-          commitLog(removeNodeLog);
+          waitApply(removeNodeLog);
           logger.info("{}: Removal request of {} is accepted", name, target);
           return Response.RESPONSE_AGREE;
         case TIME_OUT:

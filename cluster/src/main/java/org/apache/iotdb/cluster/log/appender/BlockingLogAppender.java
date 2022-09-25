@@ -103,6 +103,10 @@ public class BlockingLogAppender implements LogAppender {
     if (success != -1) {
       logger.debug("{} append a new log {}", member.getName(), log);
       result.status = Response.RESPONSE_STRONG_ACCEPT;
+      if (request.isSetSubReceivers() && !request.getSubReceivers().isEmpty()) {
+        request.entry.rewind();
+        member.getLogRelay().offer(request, request.subReceivers);
+      }
     } else {
       // the incoming log points to an illegal position, reject it
       result.status = Response.RESPONSE_LOG_MISMATCH;
@@ -118,12 +122,13 @@ public class BlockingLogAppender implements LogAppender {
     Object logUpdateCondition = logManager.getLogUpdateCondition(prevLogIndex);
     long lastLogIndex = logManager.getLastLogIndex();
     Timer.Statistic.RAFT_RECEIVER_INDEX_DIFF.add(prevLogIndex - lastLogIndex);
+    long waitTime = 10;
     while (lastLogIndex < prevLogIndex
         && alreadyWait <= ClusterConstant.getWriteOperationTimeoutMS()) {
       try {
         // each time new logs are appended, this will be notified
         synchronized (logUpdateCondition) {
-          logUpdateCondition.wait(1);
+          logUpdateCondition.wait(waitTime);
         }
         lastLogIndex = logManager.getLastLogIndex();
         if (lastLogIndex >= prevLogIndex) {
@@ -133,6 +138,7 @@ public class BlockingLogAppender implements LogAppender {
         Thread.currentThread().interrupt();
         return false;
       }
+      waitTime = waitTime * 2;
       alreadyWait = System.currentTimeMillis() - waitStart;
     }
 
@@ -190,29 +196,11 @@ public class BlockingLogAppender implements LogAppender {
               logManager.maybeAppend(
                   request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
           Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
-          if (resp != -1) {
-            if (logger.isDebugEnabled()) {
-              logger.debug(
-                  "{} append a new log list {}, commit to {}",
-                  member.getName(),
-                  logs,
-                  request.leaderCommit);
-            }
-            result.status = Response.RESPONSE_STRONG_ACCEPT;
-            result.setLastLogIndex(logManager.getLastLogIndex());
-            result.setLastLogTerm(logManager.getLastLogTerm());
 
-            if (request.isSetSubReceivers()) {
-              request.entries.forEach(Buffer::rewind);
-              member.getLogRelay().offer(request, request.subReceivers);
-            }
-          } else {
-            // the incoming log points to an illegal position, reject it
-            result.status = Response.RESPONSE_LOG_MISMATCH;
-          }
           break;
         }
       }
+
       try {
         TimeUnit.MILLISECONDS.sleep(
             IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
@@ -224,6 +212,27 @@ public class BlockingLogAppender implements LogAppender {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
+    }
+
+    if (resp != -1) {
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "{} append a new log list {}, commit to {}",
+            member.getName(),
+            logs,
+            request.leaderCommit);
+      }
+      result.status = Response.RESPONSE_STRONG_ACCEPT;
+      result.setLastLogIndex(logManager.getLastLogIndex());
+      result.setLastLogTerm(logManager.getLastLogTerm());
+
+      if (request.isSetSubReceivers()) {
+        request.entries.forEach(Buffer::rewind);
+        member.getLogRelay().offer(request, request.subReceivers);
+      }
+    } else {
+      // the incoming log points to an illegal position, reject it
+      result.status = Response.RESPONSE_LOG_MISMATCH;
     }
     return result;
   }

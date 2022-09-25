@@ -19,26 +19,20 @@
 
 package org.apache.iotdb.cluster.log;
 
-import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.expr.vgraft.TrustValueHolder;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 public class VotingLog {
   protected Log log;
-  protected Set<Integer> stronglyAcceptedNodeIds;
   protected Set<Integer> weaklyAcceptedNodeIds;
   protected Set<Integer> failedNodeIds;
   protected Set<byte[]> signatures;
   public AtomicLong acceptedTime;
+  private boolean hasFailed;
 
   public VotingLog(Log log, int groupSize) {
     this.log = log;
-    stronglyAcceptedNodeIds = new HashSet<>(groupSize);
     weaklyAcceptedNodeIds = new HashSet<>(groupSize);
     acceptedTime = new AtomicLong();
     failedNodeIds = new HashSet<>(groupSize);
@@ -47,7 +41,6 @@ public class VotingLog {
 
   public VotingLog(VotingLog another) {
     this.log = another.log;
-    this.stronglyAcceptedNodeIds = another.stronglyAcceptedNodeIds;
     this.weaklyAcceptedNodeIds = another.weaklyAcceptedNodeIds;
     this.acceptedTime = another.acceptedTime;
     this.failedNodeIds = another.failedNodeIds;
@@ -60,36 +53,6 @@ public class VotingLog {
 
   public void setLog(Log log) {
     this.log = log;
-  }
-
-  public Set<Integer> getStronglyAcceptedNodeIds() {
-    return stronglyAcceptedNodeIds;
-  }
-
-  public boolean onStronglyAccept(long index, long term, Node acceptingNode, int quorumSize,
-      ByteBuffer signature, int nodeNum) {
-    if (getLog().getCurrLogIndex() <= index
-        && getLog().getCurrLogTerm() == term) {
-      synchronized (this) {
-        getStronglyAcceptedNodeIds().add(acceptingNode.nodeIdentifier);
-        if (signature != null) {
-          signatures.add(Arrays.copyOfRange(signature.array(), signature.arrayOffset(),
-              signature.arrayOffset() + signature.remaining()));
-        }
-      }
-
-      if (getStronglyAcceptedNodeIds().size()
-          + getWeaklyAcceptedNodeIds().size()
-          >= quorumSize) {
-        acceptedTime.set(System.nanoTime());
-      }
-      if (ClusterDescriptor.getInstance().getConfig().isUseVGRaft()) {
-        return signatures.size() > TrustValueHolder.verifierGroupSize(nodeNum) / 2;
-      } else {
-        return getStronglyAcceptedNodeIds().size() >= quorumSize;
-      }
-    }
-    return false;
   }
 
   public Set<Integer> getWeaklyAcceptedNodeIds() {
@@ -107,5 +70,13 @@ public class VotingLog {
 
   public Set<byte[]> getSignatures() {
     return signatures;
+  }
+
+  public boolean isHasFailed() {
+    return hasFailed;
+  }
+
+  public void setHasFailed(boolean hasFailed) {
+    this.hasFailed = hasFailed;
   }
 }

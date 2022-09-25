@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.log.applier;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
+import org.apache.iotdb.cluster.log.logtypes.FragmentedLog;
 import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
@@ -130,6 +132,8 @@ public class AsyncDataLogApplier implements LogApplier {
         // unreachable
       }
       return partialPath;
+    } else if (log instanceof FragmentedLog) {
+      return new PartialPath("dummy", false);
     }
     return null;
   }
@@ -164,6 +168,8 @@ public class AsyncDataLogApplier implements LogApplier {
     } else if (plan instanceof CreateTimeSeriesPlan) {
       PartialPath path = ((CreateTimeSeriesPlan) plan).getPath();
       sgPath = IoTDB.schemaProcessor.getBelongedStorageGroup(path);
+    } else if (plan instanceof DummyPlan) {
+      sgPath = new PartialPath("dummy", false);
     }
     return sgPath;
   }

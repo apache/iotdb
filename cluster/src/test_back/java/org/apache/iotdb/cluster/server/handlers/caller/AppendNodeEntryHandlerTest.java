@@ -70,7 +70,6 @@ public class AppendNodeEntryHandlerTest {
     try {
       ClusterDescriptor.getInstance().getConfig().setReplicationNum(10);
       VotingLog votingLog = new VotingLog(log, 10);
-      member.getVotingLogList().insert(votingLog);
       PeerInfo peerInfo = new PeerInfo(1);
       for (int i = 0; i < 10; i++) {
         AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
@@ -85,11 +84,7 @@ public class AppendNodeEntryHandlerTest {
         result.setStatus(resp);
         new Thread(() -> handler.onComplete(result)).start();
       }
-      while (votingLog.getStronglyAcceptedNodeIds().size() < 5) {
-        synchronized (votingLog) {
-          votingLog.wait(1);
-        }
-      }
+
       assertEquals(-1, receiverTerm.get());
       assertFalse(leadershipStale.get());
       assertEquals(5, votingLog.getStronglyAcceptedNodeIds().size());
@@ -104,7 +99,6 @@ public class AppendNodeEntryHandlerTest {
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
     VotingLog votingLog = new VotingLog(log, 10);
-    member.getVotingLogList().insert(votingLog);
     PeerInfo peerInfo = new PeerInfo(1);
 
     for (int i = 0; i < 3; i++) {

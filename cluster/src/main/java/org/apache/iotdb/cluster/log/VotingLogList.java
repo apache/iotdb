@@ -20,6 +20,11 @@
 package org.apache.iotdb.cluster.log;
 
 import java.nio.ByteBuffer;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -36,30 +41,22 @@ public class VotingLogList {
 
   private static final Logger logger = LoggerFactory.getLogger(VotingLogList.class);
 
-  private List<VotingLog> logList = new ArrayList<>();
   private volatile long currTerm = -1;
   private int quorumSize;
   private RaftMember member;
+  private Map<Integer, Long> stronglyAcceptedIndices = new ConcurrentHashMap<>();
 
   public VotingLogList(int quorumSize, RaftMember member) {
     this.quorumSize = quorumSize;
     this.member = member;
   }
 
-  /**
-   * Insert a voting entry into the list. Notice the logs must be inserted in order of index, as
-   * they are inserted as soon as created
-   *
-   * @param log
-   */
-  public synchronized void insert(VotingLog log) {
-    if (log.getLog().getCurrLogTerm() != currTerm) {
-      clear();
-      currTerm = log.getLog().getCurrLogTerm();
-    }
-    logList.add(log);
-  }
 
+  private long computeNewCommitIndex() {
+    List<Entry<Integer, Long>> nodeIndices = new ArrayList<>(stronglyAcceptedIndices.entrySet());
+    nodeIndices.sort(Entry.comparingByValue());
+    return nodeIndices.get(quorumSize - 1).getValue();
+  }
   /**
    * When an entry of index-term is strongly accepted by a node of acceptingNodeId, record the id in
    * all entries whose index <= the accepted entry. If any entry is accepted by a quorum, remove it
@@ -73,55 +70,35 @@ public class VotingLogList {
    */
   public void onStronglyAccept(long index, long term, Node acceptingNode, ByteBuffer signature) {
     logger.debug("{}-{} is strongly accepted by {}", index, term, acceptingNode);
-    int lastEntryIndexToCommit = -1;
 
-    List<VotingLog> acceptedLogs;
-    synchronized (this) {
-      for (int i = 0, logListSize = logList.size(); i < logListSize; i++) {
-        VotingLog votingLog = logList.get(i);
-        if (votingLog.onStronglyAccept(index, term, acceptingNode, quorumSize,
-            signature, member.getAllNodes().size())) {
-          lastEntryIndexToCommit = i;
-        }
-        if (votingLog.getLog().getCurrLogIndex() > index) {
-          break;
-        }
+    stronglyAcceptedIndices.compute(acceptingNode.nodeIdentifier, (nid, idx) -> {
+      if (idx == null) {
+        return index;
+      } else {
+        return Math.max(index, idx);
       }
+    });
 
-      List<VotingLog> tmpAcceptedLogs = logList.subList(0, lastEntryIndexToCommit + 1);
-      acceptedLogs = new ArrayList<>(tmpAcceptedLogs);
-      tmpAcceptedLogs.clear();
-    }
-
-    if (lastEntryIndexToCommit != -1) {
-      Log lastLog = acceptedLogs.get(acceptedLogs.size() - 1).log;
+    long newCommitIndex = computeNewCommitIndex();
+    if (newCommitIndex > member.getCommitIndex()) {
       synchronized (member.getLogManager()) {
         try {
-          member.getLogManager().commitTo(lastLog.getCurrLogIndex());
+          member.getLogManager().commitTo(newCommitIndex);
         } catch (LogExecutionException e) {
-          logger.error("Fail to commit {}", lastLog, e);
-        }
-      }
-
-      for (VotingLog acceptedLog : acceptedLogs) {
-        synchronized (acceptedLog) {
-          acceptedLog.acceptedTime.set(System.nanoTime());
-          acceptedLog.notifyAll();
-        }
-        if (ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting()) {
-          member.removeAppendLogHandler(
-              new Pair<>(
-                  acceptedLog.getLog().getCurrLogIndex(), acceptedLog.getLog().getCurrLogTerm()));
+          logger.error("Fail to commit {}", newCommitIndex, e);
         }
       }
     }
   }
 
-  public synchronized void clear() {
-    logList.clear();
-  }
-
-  public int size() {
-    return logList.size();
+  public int totalAcceptedNodeNum(VotingLog log) {
+    long index = log.getLog().getCurrLogIndex();
+    int num = log.getWeaklyAcceptedNodeIds().size();
+    for (Entry<Integer, Long> entry : stronglyAcceptedIndices.entrySet()) {
+      if (entry.getValue() >= index) {
+        num ++;
+      }
+    }
+    return num;
   }
 }

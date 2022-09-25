@@ -661,6 +661,11 @@ public abstract class RaftLogManager {
       // success or fail together approximately.
       // TODO: make it real atomic
       getCommittedEntryManager().append(entries);
+      for (Log entry : entries) {
+        synchronized (entry) {
+          entry.notifyAll();
+        }
+      }
       Log lastLog = entries.get(entries.size() - 1);
       getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
       commitIndex = lastLog.getCurrLogIndex();

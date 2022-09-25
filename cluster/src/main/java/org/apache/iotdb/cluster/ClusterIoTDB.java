@@ -51,6 +51,7 @@ import org.apache.iotdb.cluster.server.monitor.NodeReport;
 import org.apache.iotdb.cluster.server.monitor.NodeStatus;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.server.raft.DataRaftHeartBeatService;
 import org.apache.iotdb.cluster.server.raft.DataRaftService;
 import org.apache.iotdb.cluster.server.raft.MetaRaftHeartBeatService;
@@ -308,6 +309,10 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       logger.info("Send nums: {}", sendNums);
       logger.info("Send latency sum: {}", sendLatencySums);
       logger.info("Send latency avg: {}", sendLatencyAvg);
+      logger.info("Append time: {}", Statistic.RAFT_SENDER_SEND_LOG);
+      logger.info("Index diff: {}", Statistic.RAFT_RECEIVER_INDEX_DIFF);
+      logger.info("Follower time: {}", Statistic.RAFT_RECEIVER_APPEND_ENTRY_FULL);
+      logger.info("Window length: {}", Statistic.RAFT_WINDOW_LENGTH);
     }
   }
 

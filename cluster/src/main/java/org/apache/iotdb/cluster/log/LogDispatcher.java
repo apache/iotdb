@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -55,7 +56,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -76,12 +76,10 @@ public class LogDispatcher {
   RaftMember member;
   private static final ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
   protected boolean useBatchInLogCatchUp = clusterConfig.isUseBatchInLogCatchUp();
-  Map<Node, BlockingQueue<SendLogRequest>> nodesLogQueues = new HashMap<>();
-  Map<Node, Boolean> nodesEnabled = new HashMap<>();
-  ExecutorService executorService;
-  private static ExecutorService serializationService =
-      IoTDBThreadPoolFactory.newFixedThreadPoolWithDaemonThread(
-          Runtime.getRuntime().availableProcessors(), "DispatcherEncoder");
+  Map<Node, BlockingQueue<SendLogRequest>> nodesLogQueueMap = new HashMap<>();
+  List<Pair<Node, BlockingQueue<SendLogRequest>>> nodesLogQueuesList = new ArrayList<>();
+  Map<Node, Boolean> nodesEnabled;
+  Map<Node, ExecutorService> executorServices = new HashMap<>();
 
   public static int bindingThreadNum = clusterConfig.getDispatcherBindingThreadNum();
   public static int maxBatchSize = 10;
@@ -89,35 +87,36 @@ public class LogDispatcher {
 
   public LogDispatcher(RaftMember member) {
     this.member = member;
-    executorService =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            bindingThreadNum * (member.getAllNodes().size() - 1),
-            "LogDispatcher-" + member.getName());
     createQueueAndBindingThreads();
   }
 
   void createQueueAndBindingThreads() {
     for (Node node : member.getAllNodes()) {
       if (!ClusterUtils.isNodeEquals(node, member.getThisNode())) {
-        nodesEnabled.put(node, true);
-        nodesLogQueues.put(node, createQueueAndBindingThread(node));
+        BlockingQueue<SendLogRequest> logBlockingQueue;
+        logBlockingQueue =
+            new ArrayBlockingQueue<>(
+                ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+        nodesLogQueuesList.add(new Pair<>(node, logBlockingQueue));
+      }
+    }
+
+    for (int i = 0; i < bindingThreadNum; i++) {
+      for (Pair<Node, BlockingQueue<SendLogRequest>> pair : nodesLogQueuesList) {
+        executorServices.computeIfAbsent(pair.left, n -> IoTDBThreadPoolFactory.newCachedThreadPool(
+                "LogDispatcher-" + member.getName() + "-" + ClusterUtils.nodeToString(pair.left)))
+            .submit(newDispatcherThread(pair.left, pair.right));
       }
     }
   }
 
   @TestOnly
   public void close() throws InterruptedException {
-    executorService.shutdownNow();
-    executorService.awaitTermination(10, TimeUnit.SECONDS);
-  }
-
-  private ByteBuffer serializeTask(SendLogRequest request) {
-    ByteBuffer byteBuffer = request.getVotingLog().getLog().serialize();
-    request.getVotingLog().getLog().setByteSize(byteBuffer.capacity());
-    if (clusterConfig.isUseVGRaft()) {
-      request.getAppendEntryRequest().setEntryHash(byteBuffer.hashCode());
+    for (Entry<Node, ExecutorService> entry : executorServices.entrySet()) {
+      ExecutorService value = entry.getValue();
+      value.shutdownNow();
+      value.awaitTermination(10, TimeUnit.SECONDS);
     }
-    return byteBuffer;
   }
 
   protected SendLogRequest transformRequest(Node node, SendLogRequest request) {
@@ -125,12 +124,29 @@ public class LogDispatcher {
     return newRequest;
   }
 
-  public void offer(SendLogRequest request) {
-    // do serialization here to avoid taking LogManager for too long
-    if (!nodesLogQueues.isEmpty()) {
-      SendLogRequest finalRequest = request;
-      request.serializedLogFuture = serializationService.submit(() -> serializeTask(finalRequest));
+
+  private boolean addToQueue(BlockingQueue<SendLogRequest> nodeLogQueue, SendLogRequest request) {
+    if (ClusterDescriptor.getInstance().getConfig().isWaitForSlowNode()) {
+      long waitStart = System.currentTimeMillis();
+      long waitTime = 1;
+      while (System.currentTimeMillis() - waitStart < clusterConfig.getConnectionTimeoutInMS()) {
+        if (nodeLogQueue.add(request)) {
+          return true;
+        } else {
+          try {
+            member.getLogManager().wait(waitTime);
+            waitTime *= 2;
+          } catch (InterruptedException e) {
+            logger.warn("Unexpected interruption");
+          }
+        }
+      }
+      return false;
+    } else {
+      return nodeLogQueue.add(request);
     }
+  }
+  public void offer(SendLogRequest request) {
 
     long startTime = Statistic.LOG_DISPATCHER_LOG_ENQUEUE.getOperationStartTime();
     request.getVotingLog().getLog().setEnqueueTime(System.nanoTime());
@@ -138,34 +154,25 @@ public class LogDispatcher {
     if (clusterConfig.isUseVGRaft()) {
       verifiers = member.getTrustValueHolder().chooseVerifiers();
     }
-    for (Entry<Node, BlockingQueue<SendLogRequest>> entry : nodesLogQueues.entrySet()) {
-      boolean nodeEnabled = this.nodesEnabled.getOrDefault(entry.getKey(), false);
-      if (!nodeEnabled) {
+
+    for (Pair<Node, BlockingQueue<SendLogRequest>> entry : nodesLogQueuesList) {
+      if (nodesEnabled != null && !this.nodesEnabled.getOrDefault(entry.left, false)) {
         continue;
       }
 
-      request = transformRequest(entry.getKey(), request);
-      if (clusterConfig.isUseVGRaft() && ClusterUtils.isNodeIn(entry.getKey(), verifiers)) {
+      if (clusterConfig.isUseVGRaft() && ClusterUtils.isNodeIn(entry.left, verifiers)) {
+        request = transformRequest(entry.left, request);
         request.setVerifier(true);
       }
 
-      BlockingQueue<SendLogRequest> nodeLogQueue = entry.getValue();
+      BlockingQueue<SendLogRequest> nodeLogQueue = entry.right;
       try {
-        boolean addSucceeded;
-        if (ClusterDescriptor.getInstance().getConfig().isWaitForSlowNode()) {
-          addSucceeded =
-              nodeLogQueue.offer(
-                  request,
-                  ClusterDescriptor.getInstance().getConfig().getWriteOperationTimeoutMS(),
-                  TimeUnit.MILLISECONDS);
-        } else {
-          addSucceeded = nodeLogQueue.add(request);
-        }
+        boolean addSucceeded = addToQueue(nodeLogQueue, request);
 
         if (!addSucceeded) {
           logger.debug(
               "Log queue[{}] of {} is full, ignore the request to this node",
-              entry.getKey(),
+              entry.left,
               member.getName());
         } else {
           request.setEnqueueTime(System.nanoTime());
@@ -173,10 +180,8 @@ public class LogDispatcher {
       } catch (IllegalStateException e) {
         logger.debug(
             "Log queue[{}] of {} is full, ignore the request to this node",
-            entry.getKey(),
+            entry.left,
             member.getName());
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
       }
     }
     Statistic.LOG_DISPATCHER_LOG_ENQUEUE.calOperationCostTimeFromStart(startTime);
@@ -185,17 +190,6 @@ public class LogDispatcher {
       Statistic.LOG_DISPATCHER_FROM_CREATE_TO_ENQUEUE.calOperationCostTimeFromStart(
           request.getVotingLog().getLog().getCreateTime());
     }
-  }
-
-  BlockingQueue<SendLogRequest> createQueueAndBindingThread(Node node) {
-    BlockingQueue<SendLogRequest> logBlockingQueue;
-    logBlockingQueue =
-        new ArrayBlockingQueue<>(
-            ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
-    for (int i = 0; i < bindingThreadNum; i++) {
-      executorService.submit(newDispatcherThread(node, logBlockingQueue));
-    }
-    return logBlockingQueue;
   }
 
   DispatcherThread newDispatcherThread(Node node, BlockingQueue<SendLogRequest> logBlockingQueue) {
@@ -315,8 +309,6 @@ public class LogDispatcher {
       baseName = "LogDispatcher-" + member.getName() + "-" + receiver;
     }
 
-
-
     @Override
     public void run() {
       if (logger.isDebugEnabled()) {
@@ -347,14 +339,20 @@ public class LogDispatcher {
       logger.info("Dispatcher exits");
     }
 
-    protected void serializeEntries() throws ExecutionException, InterruptedException {
+    protected void serializeEntries() throws InterruptedException {
       for (SendLogRequest request : currBatch) {
         Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.calOperationCostTimeFromStart(
             request.getVotingLog().getLog().getEnqueueTime());
         Statistic.LOG_DISPATCHER_FROM_CREATE_TO_DEQUEUE.calOperationCostTimeFromStart(
             request.getVotingLog().getLog().getCreateTime());
         long start = Statistic.RAFT_SENDER_SERIALIZE_LOG.getOperationStartTime();
-        request.getAppendEntryRequest().entry = request.serializedLogFuture.get();
+        request.getAppendEntryRequest().entry = request.getVotingLog().getLog().serialize();
+        request.getVotingLog().getLog()
+            .setByteSize(request.getAppendEntryRequest().entry.capacity());
+        if (clusterConfig.isUseVGRaft()) {
+          request.getAppendEntryRequest()
+              .setEntryHash(request.getAppendEntryRequest().entry.hashCode());
+        }
         Statistic.RAFT_SENDER_SERIALIZE_LOG.calOperationCostTimeFromStart(start);
       }
     }
@@ -376,17 +374,7 @@ public class LogDispatcher {
     private void appendEntriesSync(
         List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch) {
 
-      long startTime = Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.getOperationStartTime();
-      if (!member.waitForPrevLog(peerInfo, currBatch.get(0).getVotingLog().getLog())) {
-        logger.warn(
-            "{}: node {} timed out when appending {}",
-            member.getName(),
-            receiver,
-            currBatch.get(0).getVotingLog());
-        return;
-      }
-      Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
-
+      long startTime;
       AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
       startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
       try {
