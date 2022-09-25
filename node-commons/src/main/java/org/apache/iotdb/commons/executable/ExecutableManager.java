@@ -77,14 +77,21 @@ public class ExecutableManager {
         false);
   }
 
-  public void removeFromTemporaryLibRoot(ExecutableResource resource) {
-    removeFromTemporaryLibRoot(resource.getRequestId());
+  public void moveFileUnderTempRootToExtLibDir(ExecutableResource resource, String name)
+      throws IOException {
+    FileUtils.moveFileToDirectory(
+        getFileByFullPath(
+            getDirStringUnderTempRootByRequestId(resource.getRequestId()) + File.separator + name),
+        getFileByFullPath(libRoot),
+        false);
   }
 
   public void copyFileToExtLibDir(String filePath) throws IOException {
     FileUtils.copyFileToDirectory(
         FSFactoryProducer.getFSFactory().getFile(filePath),
         FSFactoryProducer.getFSFactory().getFile(this.libRoot));
+  public void removeFromTemporaryLibRoot(ExecutableResource resource) {
+    removeFromTemporaryLibRoot(resource.getRequestId());
   }
 
   private synchronized long generateNextRequestId() throws IOException {
