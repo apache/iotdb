@@ -271,6 +271,12 @@ struct TDropTriggerReq {
   1: required string triggerName
 }
 
+// Get trigger table from config node
+struct TGetTriggerTableResp {
+  1: required common.TSStatus status
+  2: required binary triggerTable
+}
+
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status
@@ -649,22 +655,27 @@ service IConfigNodeRPCService {
   // Trigger
   // ======================================================
 
-   /**
-      * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
-      * and sync Information of it to all ConfigNodes
-      *
-      * @return SUCCESS_STATUS if the trigger was created successfully
-      *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-      */
+  /**
+     * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+     * and sync Information of it to all ConfigNodes
+     *
+     * @return SUCCESS_STATUS if the trigger was created successfully
+     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     */
   common.TSStatus createTrigger(TCreateTriggerReq req)
 
   /**
-       * Remove a trigger on all online ConfigNodes and DataNodes
-       *
-       * @return SUCCESS_STATUS if the function was removed successfully
-       *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-       */
-    common.TSStatus dropTrigger(TDropTriggerReq req)
+     * Remove a trigger on all online ConfigNodes and DataNodes
+     *
+     * @return SUCCESS_STATUS if the function was removed successfully
+     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     */
+  common.TSStatus dropTrigger(TDropTriggerReq req)
+
+  /**
+     * Return the trigger table of config leader
+     */
+  TGetTriggerTableResp getTriggerTable()
 
   // ======================================================
   // Maintenance Tools
