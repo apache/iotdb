@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
@@ -43,6 +44,7 @@ import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.partition.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -341,6 +343,19 @@ public class ConfigNodeProcedureEnv {
     getConsensusManager().write(createRegionGroupsPlan);
     // Broadcast the latest RegionRouteMap
     getLoadManager().broadcastLatestRegionRouteMap();
+  }
+
+  public void buildRegionGroupCache(
+      TConsensusGroupId regionGroupId, Map<Integer, RegionStatus> regionStatusMap) {
+    long currentTime = System.currentTimeMillis();
+    regionStatusMap.forEach(
+        (dataNodeId, regionStatus) ->
+            getPartitionManager()
+                .cacheHeartbeatSample(
+                    regionGroupId,
+                    new RegionHeartbeatSample(
+                        currentTime, currentTime, dataNodeId, false, regionStatus)));
+    getPartitionManager().getRegionGroupCacheMap().get(regionGroupId).updateRegionStatistics();
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {

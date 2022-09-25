@@ -110,7 +110,7 @@ public class RegionGroupCache {
     if (unknownCount == 0) {
       return RegionGroupStatus.Running;
     } else {
-      return unknownCount < regionCacheMap.size() / 2
+      return unknownCount <= ((regionCacheMap.size() - 1) / 2)
           ? RegionGroupStatus.Available
           : RegionGroupStatus.Disabled;
     }

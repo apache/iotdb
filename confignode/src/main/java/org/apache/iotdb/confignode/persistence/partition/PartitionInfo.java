@@ -286,6 +286,8 @@ public class PartitionInfo implements SnapshotProcessor {
                     // Remove empty Map
                     schemaPartition.remove(storageGroup);
                   }
+                } else {
+                  isAllPartitionsExist.set(false);
                 }
               });
     }
@@ -323,6 +325,8 @@ public class PartitionInfo implements SnapshotProcessor {
                   // Remove empty Map
                   dataPartition.remove(storageGroup);
                 }
+              } else {
+                isAllPartitionsExist.set(false);
               }
             });
 
