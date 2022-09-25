@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,12 +44,10 @@ public class TriggerTable {
   public TriggerTable(Map<String, TriggerInformation> triggerTable) {
     this.triggerTable = triggerTable;
   }
-
   // for createTrigger
   public void addTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
     triggerTable.put(triggerName, triggerInformation);
   }
-
   // for dropTrigger
   public void deleteTriggerInformation(String triggerName) {
     triggerTable.remove(triggerName);
@@ -63,8 +61,30 @@ public class TriggerTable {
     triggerTable.get(triggerName).setTriggerState(triggerState);
   }
 
+  public TriggerInformation getTriggerInformation(String triggerName) {
+    return triggerTable.get(triggerName);
+  }
+
+  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
+    triggerTable.put(triggerName, triggerInformation);
+  }
+
+  // for showTrigger
+  public Map<String, TTriggerState> getAllTriggerStates() {
+    Map<String, TTriggerState> allTriggerStates = new HashMap<>(triggerTable.size());
+    triggerTable.forEach((k, v) -> allTriggerStates.put(k, v.getTriggerState()));
+    return allTriggerStates;
+  }
   // for getTriggerTable
   public List<TriggerInformation> getAllTriggerInformation() {
     return triggerTable.values().stream().collect(Collectors.toList());
+  }
+
+  public boolean isEmpty() {
+    return triggerTable.isEmpty();
+  }
+
+  public Map<String, TriggerInformation> getTable() {
+    return triggerTable;
   }
 }

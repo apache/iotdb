@@ -169,7 +169,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
 
   private boolean isAvailableDataNode(TDataNodeLocation dataNodeLocation) {
     for (TEndPoint endPoint : queryContext.getEndPointBlackList()) {
-      if (endPoint.getIp().equals(dataNodeLocation.internalEndPoint.getIp())) {
+      if (endPoint.equals(dataNodeLocation.internalEndPoint)) {
         return false;
       }
     }

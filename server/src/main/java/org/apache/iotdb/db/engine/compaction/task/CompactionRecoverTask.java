@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -349,6 +350,12 @@ public class CompactionRecoverTask {
         File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
         if (tmpTargetFile != null) {
           tmpTargetFile.delete();
+          File chunkMetadataTempFile =
+              new File(
+                  tmpTargetFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX);
+          if (chunkMetadataTempFile.exists()) {
+            chunkMetadataTempFile.delete();
+          }
         }
       }
 
