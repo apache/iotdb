@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.sync.metadata.SyncMetadata;
-import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
@@ -39,7 +38,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 
 public class ClusterSyncInfo implements SnapshotProcessor {
 
@@ -89,14 +87,6 @@ public class ClusterSyncInfo implements SnapshotProcessor {
     }
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return resp;
-  }
-
-  public PipeSink getPipeSink(String name) {
-    return syncMetadata.getPipeSink(name);
-  }
-
-  public List<PipeSink> getAllPipeSink() {
-    return syncMetadata.getAllPipeSink();
   }
 
   @Override
