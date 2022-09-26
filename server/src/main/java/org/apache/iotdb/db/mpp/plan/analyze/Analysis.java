@@ -107,7 +107,7 @@ public class Analysis {
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
-  private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
+  private Map<String, List<Integer>> deviceViewInputIndexesMap;
 
   private Set<Expression> deviceViewOutputExpressions;
 
@@ -286,13 +286,12 @@ public class Analysis {
     this.finishQueryAfterAnalyze = finishQueryAfterAnalyze;
   }
 
-  public void setDeviceToMeasurementIndexesMap(
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
-    this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
+  public void setDeviceViewInputIndexesMap(Map<String, List<Integer>> deviceViewInputIndexesMap) {
+    this.deviceViewInputIndexesMap = deviceViewInputIndexesMap;
   }
 
-  public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
-    return deviceToMeasurementIndexesMap;
+  public Map<String, List<Integer>> getDeviceViewInputIndexesMap() {
+    return deviceViewInputIndexesMap;
   }
 
   public Set<Expression> getSourceExpressions() {

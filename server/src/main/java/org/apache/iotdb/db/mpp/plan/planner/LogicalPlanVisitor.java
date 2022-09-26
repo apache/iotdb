@@ -125,7 +125,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
           planBuilder.planDeviceView(
               deviceToSubPlanMap,
               analysis.getDeviceViewOutputExpressions(),
-              analysis.getDeviceToMeasurementIndexesMap(),
+              analysis.getDeviceViewInputIndexesMap(),
               queryStatement.getResultTimeOrder());
     } else {
       planBuilder =
@@ -142,10 +142,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     // other upstream node
     planBuilder =
         planBuilder
-            .planGroupByLevel(
-                analysis.getGroupByLevelExpressions(),
-                analysis.getGroupByTimeParameter(),
-                queryStatement.getResultTimeOrder())
             .planHaving(
                 analysis.getHavingExpression(),
                 analysis.getSelectExpressions(),
@@ -185,7 +181,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     } else {
       // aggregation query
       boolean isRawDataSource =
-          (whereExpression != null) || needTransform(sourceTransformExpressions);
+          analysis.hasValueFilter() || needTransform(sourceTransformExpressions);
       AggregationStep curStep;
       if (isRawDataSource) {
         planBuilder =

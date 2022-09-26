@@ -785,14 +785,14 @@ public class ExpressionAnalyzer {
    * @param isFirstOr whether it is the first LogicOrExpression encountered
    * @return global time filter
    */
-  public static Pair<Filter, Boolean> transformToGlobalTimeFilter(
+  public static Pair<Filter, Boolean> extractGlobalTimeFilter(
       Expression predicate, boolean canRewrite, boolean isFirstOr) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
       Pair<Filter, Boolean> leftResultPair =
-          transformToGlobalTimeFilter(
+          extractGlobalTimeFilter(
               ((BinaryExpression) predicate).getLeftExpression(), canRewrite, isFirstOr);
       Pair<Filter, Boolean> rightResultPair =
-          transformToGlobalTimeFilter(
+          extractGlobalTimeFilter(
               ((BinaryExpression) predicate).getRightExpression(), canRewrite, isFirstOr);
 
       // rewrite predicate to avoid duplicate calculation on time filter
@@ -821,10 +821,9 @@ public class ExpressionAnalyzer {
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
       Pair<Filter, Boolean> leftResultPair =
-          transformToGlobalTimeFilter(
-              ((BinaryExpression) predicate).getLeftExpression(), false, false);
+          extractGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression(), false, false);
       Pair<Filter, Boolean> rightResultPair =
-          transformToGlobalTimeFilter(
+          extractGlobalTimeFilter(
               ((BinaryExpression) predicate).getRightExpression(), false, false);
 
       if (leftResultPair.left != null && rightResultPair.left != null) {
@@ -841,7 +840,7 @@ public class ExpressionAnalyzer {
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
       Pair<Filter, Boolean> childResultPair =
-          transformToGlobalTimeFilter(
+          extractGlobalTimeFilter(
               ((UnaryExpression) predicate).getExpression(), canRewrite, isFirstOr);
       return new Pair<>(FilterFactory.not(childResultPair.left), childResultPair.right);
     } else if (predicate.isCompareBinaryExpression()) {
@@ -906,11 +905,9 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Search for subexpressions that can be queried natively, including time series raw data and
-   * built-in aggregate functions.
+   * Search for subexpressions that can be queried natively, including all time series.
    *
    * @param expression expression to be searched
-   * @param isRawDataSource if true, built-in aggregate functions are not be returned
    * @return searched subexpression list
    */
   public static List<Expression> searchSourceExpressions(Expression expression) {

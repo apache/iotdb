@@ -228,8 +228,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeDeviceToSourceTransform(analysis, queryStatement);
 
         analyzeDeviceToSource(analysis, queryStatement);
-
-        analyzeDeviceView(analysis, queryStatement, outputExpressions, new LinkedHashMap<>());
+        analyzeDeviceView(analysis, queryStatement, outputExpressions);
       } else {
         // Example 1: select s1, s1 + s2 as t, udf(udf(s1)) from root.sg.d1
         //   outputExpressions: [<root.sg.d1.s1,null>, <root.sg.d1.s1 + root.sg.d1.s2,t>,
@@ -301,7 +300,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Expression predicate = queryStatement.getWhereCondition().getPredicate();
       WhereCondition whereCondition = queryStatement.getWhereCondition();
       Pair<Filter, Boolean> resultPair =
-          ExpressionAnalyzer.transformToGlobalTimeFilter(predicate, true, true);
+          ExpressionAnalyzer.extractGlobalTimeFilter(predicate, true, true);
       predicate = ExpressionAnalyzer.evaluatePredicate(predicate);
 
       // set where condition to null if predicate is true
@@ -717,17 +716,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     if (queryStatement.isGroupByLevel()) {
       Set<Expression> aggregationExpressions =
-          new HashSet<>(analysis.getGroupByLevelExpressions().keySet());
+          analysis.getGroupByLevelExpressions().values().stream()
+              .flatMap(Set::stream)
+              .collect(Collectors.toSet());
+      analysis.setAggregationExpressions(aggregationExpressions);
+    } else {
+      Set<Expression> aggregationExpressions = new HashSet<>();
+      for (Expression expression : analysis.getSelectExpressions()) {
+        aggregationExpressions.addAll(ExpressionAnalyzer.searchAggregationExpressions(expression));
+      }
+      if (queryStatement.hasHaving()) {
+        aggregationExpressions.addAll(
+            ExpressionAnalyzer.searchAggregationExpressions(analysis.getHavingExpression()));
+      }
       analysis.setAggregationExpressions(aggregationExpressions);
     }
-
-    Set<Expression> aggregationExpressions = new HashSet<>();
-    for (Expression expression : analysis.getSelectExpressions()) {
-      aggregationExpressions.addAll(ExpressionAnalyzer.searchAggregationExpressions(expression));
-    }
-    aggregationExpressions.addAll(
-        ExpressionAnalyzer.searchAggregationExpressions(analysis.getHavingExpression()));
-    analysis.setAggregationExpressions(aggregationExpressions);
   }
 
   private void analyzeDeviceToSourceTransform(Analysis analysis, QueryStatement queryStatement) {
@@ -858,8 +861,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private void analyzeDeviceView(
       Analysis analysis,
       QueryStatement queryStatement,
-      List<Pair<Expression, String>> outputExpressions,
-      Map<String, Set<String>> deviceToMeasurementsMap) {
+      List<Pair<Expression, String>> outputExpressions) {
     Set<Expression> selectExpressions =
         outputExpressions.stream()
             .map(Pair::getLeft)
@@ -873,22 +875,35 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     analysis.setDeviceViewOutputExpressions(deviceViewOutputExpressions);
 
-    List<String> allMeasurements =
+    List<String> deviceViewOutputColumns =
         deviceViewOutputExpressions.stream()
             .map(Expression::getExpressionString)
             .collect(Collectors.toList());
 
-    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
-    for (String deviceName : deviceToMeasurementsMap.keySet()) {
-      List<String> measurementsUnderDevice =
-          new ArrayList<>(deviceToMeasurementsMap.get(deviceName));
-      List<Integer> indexes = new ArrayList<>();
-      for (String measurement : measurementsUnderDevice) {
-        indexes.add(allMeasurements.indexOf(measurement) + 1); // add 1 to skip device column
+    Map<String, Set<String>> deviceToOutputColumnsMap = new LinkedHashMap<>();
+    Map<String, Set<Expression>> deviceToOutputExpressions =
+        queryStatement.isAggregationQuery()
+            ? analysis.getDeviceToAggregationExpressions()
+            : analysis.getDeviceToSourceTransformExpressions();
+    for (String deviceName : deviceToOutputExpressions.keySet()) {
+      Set<Expression> outputExpressionsUnderDevice = deviceToOutputExpressions.get(deviceName);
+      Set<String> outputColumns = new LinkedHashSet<>();
+      for (Expression expression : outputExpressionsUnderDevice) {
+        outputColumns.add(ExpressionAnalyzer.getMeasurementExpression(expression).toString());
       }
-      deviceToMeasurementIndexesMap.put(deviceName, indexes);
+      deviceToOutputColumnsMap.put(deviceName, outputColumns);
     }
-    analysis.setDeviceToMeasurementIndexesMap(deviceToMeasurementIndexesMap);
+
+    Map<String, List<Integer>> deviceViewInputIndexesMap = new HashMap<>();
+    for (String deviceName : deviceToOutputColumnsMap.keySet()) {
+      List<String> outputsUnderDevice = new ArrayList<>(deviceToOutputColumnsMap.get(deviceName));
+      List<Integer> indexes = new ArrayList<>();
+      for (String output : outputsUnderDevice) {
+        indexes.add(deviceViewOutputColumns.indexOf(output) + 1); // add 1 to skip device column
+      }
+      deviceViewInputIndexesMap.put(deviceName, indexes);
+    }
+    analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
   }
 
   private void analyzeOutput(

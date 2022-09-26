@@ -228,8 +228,8 @@ public class AnalyzeTest {
         actualAnalysis.getDeviceToSelectExpressions(),
         expectedAnalysis.getDeviceToSelectExpressions());
     assertEquals(
-        actualAnalysis.getDeviceToMeasurementIndexesMap(),
-        expectedAnalysis.getDeviceToMeasurementIndexesMap());
+        actualAnalysis.getDeviceViewInputIndexesMap(),
+        expectedAnalysis.getDeviceViewInputIndexesMap());
     assertEquals(
         actualAnalysis.getDeviceViewOutputExpressions(),
         actualAnalysis.getDeviceViewOutputExpressions());
