@@ -82,9 +82,7 @@ public class IoTDBClusterPartitionIT {
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 5;
   private static final int seriesPartitionSlotsNum = 10000;
-  private static final int seriesPartitionBatchSize = 1000;
   private static final int timePartitionSlotsNum = 10;
-  private static final int timePartitionBatchSize = 10;
 
   @Before
   public void setUp() throws Exception {
@@ -257,14 +255,14 @@ public class IoTDBClusterPartitionIT {
     Assert.assertTrue(dataPartitionTable.containsKey(storageGroup));
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
         seriesPartitionTable = dataPartitionTable.get(storageGroup);
-    Assert.assertEquals(seriesPartitionBatchSize, seriesPartitionTable.size());
+    Assert.assertEquals(seriesSlotEnd - seriesSlotStart, seriesPartitionTable.size());
 
     for (int i = seriesSlotStart; i < seriesSlotEnd; i++) {
       TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
       Assert.assertTrue(seriesPartitionTable.containsKey(seriesPartitionSlot));
       Map<TTimePartitionSlot, List<TConsensusGroupId>> timePartitionTable =
           seriesPartitionTable.get(seriesPartitionSlot);
-      Assert.assertEquals(timePartitionBatchSize, timePartitionTable.size());
+      Assert.assertEquals(timeSlotEnd - timeSlotStart, timePartitionTable.size());
 
       for (long j = timeSlotStart; j < timeSlotEnd; j++) {
         TTimePartitionSlot timePartitionSlot =
@@ -283,6 +281,9 @@ public class IoTDBClusterPartitionIT {
 
   @Test
   public void testGetAndCreateDataPartition() throws TException, IOException {
+    final int seriesPartitionBatchSize = 1000;
+    final int timePartitionBatchSize = 10;
+
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
       TSStatus status;
@@ -367,6 +368,9 @@ public class IoTDBClusterPartitionIT {
   @Test
   public void testPartitionDurable() throws IOException, TException, InterruptedException {
     final int testDataNodeId = 0;
+    final int seriesPartitionBatchSize = 10;
+    final int timePartitionBatchSize = 10;
+
     // Shutdown the first DataNode
     EnvFactory.getEnv().shutdownDataNode(testDataNodeId);
 
