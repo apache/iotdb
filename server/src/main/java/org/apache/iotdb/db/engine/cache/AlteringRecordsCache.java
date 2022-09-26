@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.engine.cache;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -53,12 +55,12 @@ public class AlteringRecordsCache {
 
   private AlteringRecordsCache() {}
 
-  public void startAlter() {
+  public synchronized void startAlter() {
     isAltering.set(true);
   }
 
-  public void putRecord(String fullPath, TSEncoding encoding, CompressionType compressionType)
-      throws Exception {
+  public synchronized void putRecord(
+      String fullPath, TSEncoding encoding, CompressionType compressionType) throws Exception {
     if (fullPath != null) {
       PartialPath path = new PartialPath(fullPath);
       String storageGroupName = StorageEngine.getInstance().getStorageGroupName(path);
@@ -75,7 +77,7 @@ public class AlteringRecordsCache {
    * @param compressionType
    * @throws Exception
    */
-  public void putRecord(
+  public synchronized void putRecord(
       String storageGroupName,
       String fullPath,
       TSEncoding encoding,
@@ -124,11 +126,40 @@ public class AlteringRecordsCache {
     return AlteringRecordsCacheHolder.INSTANCE;
   }
 
-  public synchronized void clear() {
-    alteringRecords.clear();
-    alteringDeviceRecords.clear();
-    sgDeviceMap.clear();
-    isAltering.set(false);
+  public synchronized void clear(String storageGroupName) {
+
+    if (!isStorageGroupExsist(storageGroupName)) {
+      return;
+    }
+    Set<String> devices = sgDeviceMap.get(storageGroupName);
+    if (devices != null) {
+      sgDeviceMap.remove(storageGroupName);
+      devices.forEach(
+          device -> {
+            Map<String, Pair<TSEncoding, CompressionType>> deviceMap =
+                alteringDeviceRecords.get(device);
+            if (deviceMap != null) {
+              alteringDeviceRecords.remove(device);
+              deviceMap.forEach(
+                  (k, v) -> {
+                    try {
+                      PartialPath fullPath = new PartialPath(device, k);
+                      alteringRecords.remove(fullPath);
+                    } catch (IllegalPathException e) {
+                      logger.error("fullPath error!!!!!", e);
+                    }
+                  });
+            }
+          });
+    }
+    if (sgDeviceMap.isEmpty()) {
+      isAltering.set(false);
+    }
+  }
+
+  @TestOnly
+  public boolean isAltering() {
+    return isAltering.get();
   }
 
   /** singleton pattern. */

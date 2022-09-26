@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogAnalyzer;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogger;
+import org.apache.iotdb.db.engine.cache.AlteringRecordsCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -47,12 +48,14 @@ public class RewriteTimeseriesTaskManager {
 
   private final CompactionTaskManager compactionTaskManager = CompactionTaskManager.getInstance();
 
+  private AlteringRecordsCache alteringRecordsCache = AlteringRecordsCache.getInstance();
+
   private RewriteTimeseriesTaskManager() {}
 
   public void rewriteTimeseries(DataRegion[] dataRegions, StorageGroupManager storageGroupManager)
       throws Exception {
 
-    if (storageGroupManager == null || dataRegions == null) {
+    if (storageGroupManager == null || dataRegions == null || dataRegions.length <= 0) {
       return;
     }
     if (storageGroupManager.isAlterLocked()) {
@@ -64,6 +67,11 @@ public class RewriteTimeseriesTaskManager {
       Thread thread =
           new Thread(
               () -> {
+                DataRegion dataRegion = dataRegions[0];
+                if (dataRegion == null) {
+                  return;
+                }
+                String storageGroupName = dataRegion.getStorageGroupName();
                 storageGroupManager.alterLock();
                 try {
                   // rewrite DataRegions
@@ -71,6 +79,7 @@ public class RewriteTimeseriesTaskManager {
                 } catch (Exception e) {
                   LOGGER.error("RewriteTimeseriesTaskManager Error", e);
                 } finally {
+                  alteringRecordsCache.clear(storageGroupName);
                   storageGroupManager.alterUnlock();
                 }
               },

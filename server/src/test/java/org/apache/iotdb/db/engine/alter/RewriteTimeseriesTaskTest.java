@@ -427,7 +427,7 @@ public class RewriteTimeseriesTaskTest {
         }
       }
       FileUtils.forceDeleteOnExit(new File(pathBase));
-      AlteringRecordsCache.getInstance().clear();
+      AlteringRecordsCache.getInstance().clear(storageGroupName);
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }

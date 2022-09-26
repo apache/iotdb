@@ -229,6 +229,7 @@ public class TsFileRewritePerformerTest {
       excutor.setSummary(new CompactionTaskSummary());
       excutor.perform();
       targetTsFile = targetTsFileResource.getTsFile();
+      alteringRecordsCache.clear(storageGroupName);
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
@@ -236,6 +237,7 @@ public class TsFileRewritePerformerTest {
       throw new RuntimeException("target not exists " + targetTsFile.getAbsolutePath());
     }
     targetPath = targetTsFile.getAbsolutePath();
+    Assert.assertFalse(AlteringRecordsCache.getInstance().isAltering());
     readCheck(alters, targetTsFile);
   }
 
