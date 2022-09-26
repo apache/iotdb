@@ -39,7 +39,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-// class name is short for IoTDBSessionAlignedAlignedByDeviceIT
+// class name is short for IoTDBSessionAlignedAlignByDeviceIT
 public class IoTDBSessionAlignedABDeviceIT {
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
   private static final String ROOT_SG1_D2 = "root.sg1.d2";
