@@ -282,4 +282,12 @@ public class EncodeAnalysePage {
   public boolean isShow() {
     return this.parent == null ? false : this.parent.isShowing();
   }
+
+  public synchronized void alwaysTop(boolean alwayTop) {
+    if(alwayTop) {
+      this.parent.setAlwaysOnTop(true);
+    } else {
+      this.parent.setAlwaysOnTop(false);
+    }
+  }
 }

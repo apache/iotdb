@@ -125,6 +125,24 @@ public class IoTDBParsePageV3 extends IoTDBParsePage {
     treeView.setPrefHeight(HEIGHT * 0.93);
     this.root.getChildren().add(treeView);
 
+    baseStage.focusedProperty().addListener((observableValue, aBoolean, t1) -> {
+      if(!aBoolean) {
+        if(this.measurementSearchPage != null && this.measurementSearchPage.isShow()) {
+          this.measurementSearchPage.alwaysTop(true);
+        }
+        if(this.encodeAnalysePage != null && this.encodeAnalysePage.isShow()) {
+          this.encodeAnalysePage.alwaysTop(true);
+        }
+      } else {
+        if(this.measurementSearchPage != null) {
+          this.measurementSearchPage.alwaysTop(false);
+        }
+        if(this.encodeAnalysePage != null && this.encodeAnalysePage.isShow()) {
+          this.encodeAnalysePage.alwaysTop(false);
+        }
+      }
+    });
+
     // tree listener
     treeView
         .getSelectionModel()
@@ -307,6 +325,7 @@ public class IoTDBParsePageV3 extends IoTDBParsePage {
             measurementSearchPage.close();
           }
           Stage measurementSearchStage = new Stage();
+
           measurementSearchStage.initStyle(StageStyle.UTILITY);
           measurementSearchPage = new MeasurementSearchPage(measurementSearchStage, this);
         });
