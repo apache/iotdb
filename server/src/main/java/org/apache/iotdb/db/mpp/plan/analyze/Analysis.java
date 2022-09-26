@@ -78,29 +78,17 @@ public class Analysis {
   // input expressions of aggregations to be calculated
   private Set<Expression> sourceTransformExpressions;
 
+  private Expression whereExpression;
+
   // all aggregations that need to be calculated
   private Set<Expression> aggregationExpressions;
-
-  // expression of output column to be calculated
-  private Set<Expression> selectExpressions;
-
-  private Expression whereExpression;
 
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
 
-  // map from raw path to grouped path in `GROUP BY LEVEL` clause
-  private Map<Expression, Expression> rawPathToGroupedPathMap;
-
-  private boolean isRawDataSource;
-
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY DEVICE)
   /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // used to planTransform after planDeviceView
-  Set<Expression> transformInput;
-  Set<Expression> transformOutput;
 
   // map from device name to series/aggregation under this device
   private Map<String, Set<Expression>> deviceToSourceExpressions;
@@ -108,20 +96,18 @@ public class Analysis {
   // input expressions of aggregations to be calculated
   private Map<String, Set<Expression>> deviceToSourceTransformExpressions;
 
+  // map from device name to query filter under this device
+  private Map<String, Expression> deviceToWhereExpression;
+
   // all aggregations that need to be calculated
   private Map<String, Set<Expression>> deviceToAggregationExpressions;
 
   // expression of output column to be calculated
   private Map<String, Set<Expression>> deviceToSelectExpressions;
 
-  // map from device name to query filter under this device
-  private Map<String, Expression> deviceToWhereExpression;
-
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
   private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
-
-  private Map<String, Boolean> deviceToIsRawDataSource;
 
   private Set<Expression> deviceViewOutputExpressions;
 
@@ -132,13 +118,13 @@ public class Analysis {
   // indicate is there a value filter
   private boolean hasValueFilter = false;
 
-  private Expression havingExpression;
-
-  // true if nested expressions and UDFs exist in aggregation function
-  private boolean isHasRawDataInputAggregation;
-
   // a global time filter used in `initQueryDataSource` and filter push down
   private Filter globalTimeFilter;
+
+  // expression of output column to be calculated
+  private Set<Expression> selectExpressions;
+
+  private Expression havingExpression;
 
   // parameter of `FILL` clause
   private FillDescriptor fillDescriptor;
@@ -146,10 +132,10 @@ public class Analysis {
   // parameter of `GROUP BY TIME` clause
   private GroupByTimeParameter groupByTimeParameter;
 
+  private OrderByParameter mergeOrderParameter;
+
   // header of result dataset
   private DatasetHeader respDatasetHeader;
-
-  private OrderByParameter mergeOrderParameter;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Schema Query Analysis
@@ -236,35 +222,12 @@ public class Analysis {
         || (schemaPartition != null && !schemaPartition.isEmpty());
   }
 
-  public boolean isHasRawDataInputAggregation() {
-    return isHasRawDataInputAggregation;
-  }
-
-  public void setHasRawDataInputAggregation(boolean hasRawDataInputAggregation) {
-    isHasRawDataInputAggregation = hasRawDataInputAggregation;
-  }
-
   public Map<Expression, Set<Expression>> getGroupByLevelExpressions() {
     return groupByLevelExpressions;
   }
 
   public void setGroupByLevelExpressions(Map<Expression, Set<Expression>> groupByLevelExpressions) {
     this.groupByLevelExpressions = groupByLevelExpressions;
-  }
-
-  public void setRawPathToGroupedPathMap(Map<Expression, Expression> rawPathToGroupedPathMap) {
-    this.rawPathToGroupedPathMap = rawPathToGroupedPathMap;
-  }
-
-  public Expression getGroupedExpressionByLevel(Expression expression) {
-    if (rawPathToGroupedPathMap.containsKey(expression)) {
-      return rawPathToGroupedPathMap.get(expression);
-    }
-    if (rawPathToGroupedPathMap.containsValue(expression)) {
-      return expression;
-    }
-    throw new IllegalArgumentException(
-        String.format("GROUP BY LEVEL: Unknown input expression '%s'", expression));
   }
 
   public FillDescriptor getFillDescriptor() {
@@ -364,22 +327,6 @@ public class Analysis {
     this.selectExpressions = selectExpressions;
   }
 
-  public Set<Expression> getTransformInput() {
-    return transformInput;
-  }
-
-  public void setTransformInput(Set<Expression> transformInput) {
-    this.transformInput = transformInput;
-  }
-
-  public Set<Expression> getTransformOutput() {
-    return transformOutput;
-  }
-
-  public void setTransformOutput(Set<Expression> transformOutput) {
-    this.transformOutput = transformOutput;
-  }
-
   public Map<String, Set<Expression>> getDeviceToSourceExpressions() {
     return deviceToSourceExpressions;
   }
@@ -412,22 +359,6 @@ public class Analysis {
 
   public void setDeviceToSelectExpressions(Map<String, Set<Expression>> deviceToSelectExpressions) {
     this.deviceToSelectExpressions = deviceToSelectExpressions;
-  }
-
-  public boolean isRawDataSource() {
-    return isRawDataSource;
-  }
-
-  public void setRawDataSource(boolean rawDataSource) {
-    isRawDataSource = rawDataSource;
-  }
-
-  public Map<String, Boolean> getDeviceToIsRawDataSource() {
-    return deviceToIsRawDataSource;
-  }
-
-  public void setDeviceToIsRawDataSource(Map<String, Boolean> deviceToIsRawDataSource) {
-    this.deviceToIsRawDataSource = deviceToIsRawDataSource;
   }
 
   public Set<TSchemaNode> getMatchedNodes() {
