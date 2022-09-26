@@ -23,7 +23,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
@@ -36,18 +39,57 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.ratis.thirdparty.com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class AnalyzeTest {
 
   @Test
   public void testRawDataQuery() {
-    // TODO: @lmh add UTs
+    String sql = "select s1, status, s1 + 1 as t from root.sg.d1 where s2 > 10;";
+    try {
+      Analysis actualAnalysis = analyzeSQL(sql);
+
+      Analysis expectedAnalysis = new Analysis();
+      expectedAnalysis.setSelectExpressions(
+          Sets.newHashSet(
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+              new AdditionExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new ConstantOperand(TSDataType.INT64, "1"))));
+      expectedAnalysis.setWhereExpression(
+          new GreaterThanExpression(
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+              new ConstantOperand(TSDataType.INT64, "10")));
+      expectedAnalysis.setSourceTransformExpressions(
+          Sets.newHashSet(
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+              new AdditionExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new ConstantOperand(TSDataType.INT64, "1"))));
+      expectedAnalysis.setSourceExpressions(
+          Sets.newHashSet(
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))));
+      expectedAnalysis.setRespDatasetHeader(
+          new DatasetHeader(
+              Arrays.asList(
+                  new ColumnHeader("root.sg.d1.s1", TSDataType.INT32),
+                  new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, "status"),
+                  new ColumnHeader("root.sg.d1.s1 + 1", TSDataType.INT32, "t")),
+              false));
+      alignByTimeAnalysisEqualTest(actualAnalysis, expectedAnalysis);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   @Test
@@ -135,7 +177,7 @@ public class AnalyzeTest {
       if (predicates[i] == null) {
         Assert.assertNull(queryStatement.getWhereCondition());
       } else {
-        Assert.assertEquals(predicates[i], queryStatement.getWhereCondition().getPredicate());
+        assertEquals(predicates[i], queryStatement.getWhereCondition().getPredicate());
       }
     }
   }
@@ -154,5 +196,49 @@ public class AnalyzeTest {
     }
     fail();
     return null;
+  }
+
+  private void alignByTimeAnalysisEqualTest(Analysis actualAnalysis, Analysis expectedAnalysis) {
+    commonAnalysisEqualTest(actualAnalysis, expectedAnalysis);
+    assertEquals(actualAnalysis.getSourceExpressions(), expectedAnalysis.getSourceExpressions());
+    assertEquals(
+        actualAnalysis.getSourceTransformExpressions(),
+        expectedAnalysis.getSourceTransformExpressions());
+    assertEquals(actualAnalysis.getWhereExpression(), expectedAnalysis.getWhereExpression());
+    assertEquals(
+        actualAnalysis.getAggregationExpressions(), expectedAnalysis.getAggregationExpressions());
+    assertEquals(
+        actualAnalysis.getGroupByLevelExpressions(), expectedAnalysis.getGroupByLevelExpressions());
+  }
+
+  private void alignByDeviceAnalysisEqualTest(Analysis actualAnalysis, Analysis expectedAnalysis) {
+    commonAnalysisEqualTest(actualAnalysis, expectedAnalysis);
+    assertEquals(
+        actualAnalysis.getDeviceToSourceExpressions(),
+        expectedAnalysis.getDeviceToSourceExpressions());
+    assertEquals(
+        actualAnalysis.getDeviceToSourceTransformExpressions(),
+        expectedAnalysis.getDeviceToSourceTransformExpressions());
+    assertEquals(
+        actualAnalysis.getDeviceToWhereExpression(), expectedAnalysis.getDeviceToWhereExpression());
+    assertEquals(
+        actualAnalysis.getDeviceToAggregationExpressions(),
+        expectedAnalysis.getDeviceToWhereExpression());
+    assertEquals(
+        actualAnalysis.getDeviceToSelectExpressions(),
+        expectedAnalysis.getDeviceToSelectExpressions());
+    assertEquals(
+        actualAnalysis.getDeviceToMeasurementIndexesMap(),
+        expectedAnalysis.getDeviceToMeasurementIndexesMap());
+    assertEquals(
+        actualAnalysis.getDeviceViewOutputExpressions(),
+        actualAnalysis.getDeviceViewOutputExpressions());
+  }
+
+  private void commonAnalysisEqualTest(Analysis actualAnalysis, Analysis expectedAnalysis) {
+    assertEquals(expectedAnalysis.getSelectExpressions(), actualAnalysis.getSelectExpressions());
+    assertEquals(expectedAnalysis.getHavingExpression(), actualAnalysis.getHavingExpression());
+    assertEquals(expectedAnalysis.getRespDatasetHeader(), actualAnalysis.getRespDatasetHeader());
+    assertEquals(expectedAnalysis.getGlobalTimeFilter(), actualAnalysis.getGlobalTimeFilter());
   }
 }
