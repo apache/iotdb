@@ -52,6 +52,12 @@ public class ClusterSyncInfo implements SnapshotProcessor {
   // region Implement of PipeSink
   // ======================================================
 
+  /**
+   * Check PipeSink before create operation
+   *
+   * @param pipeSinkName name
+   * @throws PipeSinkException if there is PipeSink with the same name exists
+   */
   public void checkAddPipeSink(String pipeSinkName) throws PipeSinkException {
     syncMetadata.checkAddPipeSink(pipeSinkName);
   }
@@ -68,6 +74,12 @@ public class ClusterSyncInfo implements SnapshotProcessor {
     return status;
   }
 
+  /**
+   * Check PipeSink before drop operation
+   *
+   * @param pipeSinkName name
+   * @throws PipeSinkException if PipeSink is being used or does not exist
+   */
   public void checkDropPipeSink(String pipeSinkName) throws PipeSinkException {
     syncMetadata.checkDropPipeSink(pipeSinkName);
   }
@@ -92,12 +104,14 @@ public class ClusterSyncInfo implements SnapshotProcessor {
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     // TODO: merge snapshot logic into SyncLogWritter and SyncLogReader
+    // TODO: add ClusterSyncInfoTest later
     return true;
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     // TODO: merge snapshot logic into SyncLogWritter and SyncLogReader
+    // TODO: add ClusterSyncInfoTest later
   }
 
   // endregion
