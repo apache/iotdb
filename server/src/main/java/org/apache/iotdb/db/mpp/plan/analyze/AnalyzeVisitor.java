@@ -1477,7 +1477,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     // auto create and verify schema
-    if (loadTsFileStatement.isVerifySchema() || loadTsFileStatement.isAutoCreateSchema()) {
+    if (loadTsFileStatement.isAutoCreateSchema()) {
       try {
         if (loadTsFileStatement.isVerifySchema()) {
           verifyLoadingMeasurements(device2Schemas);

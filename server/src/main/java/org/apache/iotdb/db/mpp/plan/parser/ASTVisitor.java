@@ -163,6 +163,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.FileNotFoundException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.ZoneId;
@@ -1437,12 +1438,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitLoadFile(IoTDBSqlParser.LoadFileContext ctx) {
-    LoadTsFileStatement loadTsFileStatement =
-        new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
-    if (ctx.loadFilesClause() != null) {
-      parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
+    try {
+      LoadTsFileStatement loadTsFileStatement =
+          new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
+      if (ctx.loadFilesClause() != null) {
+        parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
+      }
+      return loadTsFileStatement;
+    } catch (FileNotFoundException e) {
+      throw new SQLParserException(e.getMessage());
     }
-    return loadTsFileStatement;
   }
 
   /**
