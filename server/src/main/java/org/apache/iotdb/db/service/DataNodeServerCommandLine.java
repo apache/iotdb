@@ -145,7 +145,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     }
 
     // Now support only single datanode deletion
-    if (args.split(",").length > 1){
+    if (args.split(",").length > 1) {
       logger.info("Incorrect input format, usage: <id>/<ip>:<rpc-port>");
       return dataNodeLocations;
     }
