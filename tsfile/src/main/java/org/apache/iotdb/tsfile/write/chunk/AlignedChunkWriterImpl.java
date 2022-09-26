@@ -128,6 +128,30 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
+  public void write(long time, int value, boolean isNull, int valueIndex) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void write(long time, long value, boolean isNull, int valueIndex) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void write(long time, boolean value, boolean isNull, int valueIndex) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void write(long time, float value, boolean isNull, int valueIndex) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void write(long time, double value, boolean isNull, int valueIndex) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void write(long time, Binary value, boolean isNull, int valueIndex) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
   public void write(long time, TsPrimitiveType[] points) {
     valueIndex = 0;
     for (TsPrimitiveType point : points) {
@@ -222,6 +246,34 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
+  public void writeByColumn(long time, int value, boolean isNull) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void writeByColumn(long time, long value, boolean isNull) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void writeByColumn(long time, boolean value, boolean isNull) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void writeByColumn(long time, float value, boolean isNull) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void writeByColumn(long time, double value, boolean isNull) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void writeByColumn(long time, Binary value, boolean isNull) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void nextColumn() {
+    valueIndex++;
+  }
+
   /**
    * check occupied memory size, if it exceeds the PageSize threshold, construct a page and put it
    * to pageBuffer
@@ -243,6 +295,16 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       valueChunkWriter.writePageToPageBuffer();
     }
+  }
+
+  public void writePageHeaderAndDataIntoTimeBuff(ByteBuffer data, PageHeader header)
+      throws PageException {
+    timeChunkWriter.writePageHeaderAndDataIntoBuff(data, header);
+  }
+
+  public void writePageHeaderAndDataIntoValueBuff(
+      ByteBuffer data, PageHeader header, int valueIndex) throws PageException {
+    valueChunkWriterList.get(valueIndex).writePageHeaderAndDataIntoBuff(data, header);
   }
 
   @Override
@@ -297,16 +359,6 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
       }
     }
     return false;
-  }
-
-  public void writePageHeaderAndDataIntoTimeBuff(ByteBuffer data, PageHeader header)
-      throws PageException {
-    // timeChunkWriter.writePageHeaderAndDataIntoBuff(data, header);
-  }
-
-  public void writePageHeaderAndDataIntoValueBuff(
-      ByteBuffer data, PageHeader header, int valueIndex) throws PageException {
-    // valueChunkWriterList.get(valueIndex).writePageHeaderAndDataIntoBuff(data, header);
   }
 
   public TSDataType getCurrentValueChunkType() {

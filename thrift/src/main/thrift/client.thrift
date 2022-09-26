@@ -353,6 +353,7 @@ struct ServerProperties {
   8: optional i32 watermarkParamMaxRightBit;
   9: optional i32 thriftMaxFrameSize;
   10:optional bool isReadOnly;
+  11:optional string buildInfo;
 }
 
 struct TSSetSchemaTemplateReq {
@@ -407,6 +408,25 @@ struct TSUnsetSchemaTemplateReq {
 struct TSDropSchemaTemplateReq {
   1: required i64 sessionId
   2: required string templateName
+}
+
+// The sender and receiver need to check some info to confirm validity
+struct TSyncIdentityInfo{
+  // Check whether the ip of sender is in the white list of receiver.
+  1:required string address
+  // Sender needs to tell receiver its identity.
+  2:required string pipeName
+  3:required i64 createTime
+  // The version of sender and receiver need to be the same.
+  4:required string version
+  5:required string storageGroup
+}
+
+struct TSyncTransportMetaInfo{
+  // The name of the file in sending.
+  1:required string fileName
+  // The start index of the file slice in sending.
+  2:required i64 startIndex
 }
 
 service IClientRPCService {
@@ -499,4 +519,10 @@ service IClientRPCService {
   common.TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
 
   common.TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
+
+  common.TSStatus handshake(TSyncIdentityInfo info);
+
+  common.TSStatus sendPipeData(1:binary buff);
+
+  common.TSStatus sendFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
 }

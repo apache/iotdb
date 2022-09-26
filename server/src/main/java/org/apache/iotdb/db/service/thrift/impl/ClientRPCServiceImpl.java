@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -57,9 +58,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplat
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Operation;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.ConfigNodeConnectionException;
@@ -103,14 +106,16 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
+import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -269,7 +274,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public ServerProperties getProperties() {
     ServerProperties properties = new ServerProperties();
     properties.setVersion(IoTDBConstant.VERSION);
-    LOGGER.info("IoTDB server version: {}", IoTDBConstant.VERSION);
+    properties.setBuildInfo(IoTDBConstant.BUILD_INFO);
+    LOGGER.info("IoTDB server version: {}", IoTDBConstant.VERSION_WITH_BUILD);
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MAX_TIME);
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
@@ -285,7 +291,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMarkRate());
     properties.setWatermarkParamMaxRightBit(
         IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMaxRightBit());
-    properties.setIsReadOnly(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
+    properties.setIsReadOnly(CommonDescriptor.getInstance().getConfig().isReadOnly());
     properties.setThriftMaxFrameSize(
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
     return properties;
@@ -379,17 +385,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
-      }
-
-      // if measurements.size() == 1, convert to create timeseries
-      if (req.measurements.size() == 1) {
-        return createTimeseries(
-            new TSCreateTimeseriesReq(
-                req.sessionId,
-                req.prefixPath + "." + req.measurements.get(0),
-                req.dataTypes.get(0),
-                req.encodings.get(0),
-                req.compressors.get(0)));
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -729,6 +724,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -780,6 +779,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -831,6 +834,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -880,6 +887,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       PathUtils.isLegalSingleMeasurements(req.getMeasurements());
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -922,6 +933,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement =
           (InsertMultiTabletsStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -964,6 +979,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement =
           (InsertTabletStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -1013,6 +1032,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
@@ -1463,6 +1486,22 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
+  public TSStatus handshake(TSyncIdentityInfo info) throws TException {
+    // TODO(sync): Check permissions here
+    return SyncService.getInstance().handshake(info);
+  }
+
+  @Override
+  public TSStatus sendPipeData(ByteBuffer buff) throws TException {
+    return SyncService.getInstance().transportPipeData(buff);
+  }
+
+  @Override
+  public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
+    return SyncService.getInstance().transportFile(metaInfo, buff);
+  }
+
+  @Override
   public TSStatus insertStringRecord(TSInsertStringRecordReq req) {
     long t1 = System.currentTimeMillis();
     try {
@@ -1531,16 +1570,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .histogram(
               System.currentTimeMillis() - startTime,
               "operation_histogram",
               MetricLevel.IMPORTANT,
               "name",
               operation.getName());
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
     }
   }
@@ -1552,13 +1589,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
       closeSession(req);
     }
+    SyncService.getInstance().handleClientExit();
   }
 
   private void cleanupQueryExecution(Long queryId) {
     IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
     if (queryExecution != null) {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-        LOGGER.info("stop and clean up");
+        LOGGER.info("[CleanUpQuery]]");
         queryExecution.stopAndCleanup();
         COORDINATOR.removeQueryExecution(queryId);
       }

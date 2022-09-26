@@ -19,11 +19,30 @@
 package org.apache.iotdb.commons.conf;
 
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
 
 public class IoTDBConstant {
 
   private IoTDBConstant() {}
+
+  static {
+    Properties prop = new Properties();
+    String finalBuildInfo = "UNKNOWN";
+    try {
+      prop.load(IoTDBConstant.class.getResourceAsStream("/git.properties"));
+      finalBuildInfo = prop.getProperty("git.commit.id.abbrev", "UNKNOWN");
+      String isDirty = prop.getProperty("git.dirty", "false");
+      if (isDirty.equalsIgnoreCase("true")) {
+        finalBuildInfo += "-dev";
+      }
+    } catch (Exception e) {
+      System.err.println("get git.properties error: " + e.getMessage());
+    }
+    BUILD_INFO = finalBuildInfo;
+  }
+
+  public static final String BUILD_INFO;
 
   public static final String ENV_FILE_NAME = "datanode-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
@@ -46,6 +65,7 @@ public class IoTDBConstant {
       "UNKNOWN".equals(VERSION)
           ? "UNKNOWN"
           : VERSION.split("\\.")[0] + "." + VERSION.split("\\.")[1];
+  public static final String VERSION_WITH_BUILD = VERSION + " (Build: " + BUILD_INFO + ")";
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
@@ -85,7 +105,8 @@ public class IoTDBConstant {
   // show info
   public static final String COLUMN_ITEM = "                             item";
   public static final String COLUMN_VALUE = "value";
-  public static final String COLUMN_VERSION = "        version";
+  public static final String COLUMN_VERSION = "version";
+  public static final String COLUMN_BUILD_INFO = "build info";
   public static final String COLUMN_TIMESERIES = "timeseries";
   public static final String COLUMN_TIMESERIES_ALIAS = "alias";
   public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
@@ -149,6 +170,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
 
   // sync module
+  // TODO(sync): delete this in new-standalone version
   public static final String COLUMN_PIPESERVER_STATUS = "enable";
   public static final String COLUMN_PIPESINK_NAME = "name";
   public static final String COLUMN_PIPESINK_TYPE = "type";
@@ -159,8 +181,6 @@ public class IoTDBConstant {
   public static final String COLUMN_PIPE_REMOTE = "remote";
   public static final String COLUMN_PIPE_STATUS = "status";
   public static final String COLUMN_PIPE_MSG = "message";
-  public static final String COLUMN_PIPE_ERRORS = "errors";
-  public static final String COLUMN_PIPE_PERF_INFO = "performance_info";
 
   public static final String ONE_LEVEL_PATH_WILDCARD = "*";
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
@@ -189,17 +209,24 @@ public class IoTDBConstant {
   // system folder name
   public static final String SYSTEM_FOLDER_NAME = "system";
   public static final String SCHEMA_FOLDER_NAME = "schema";
+  public static final String LOAD_TSFILE_FOLDER_NAME = "load";
   public static final String SYNC_FOLDER_NAME = "sync";
   public static final String QUERY_FOLDER_NAME = "query";
   public static final String TRACING_FOLDER_NAME = "tracing";
   public static final String TRACING_LOG = "tracing.txt";
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
-  public static final String TMP_FOLDER_NAME = "temporary";
+  public static final String UDF_TMP_FOLDER_NAME = "udf_temporary";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
+
+  public static final String TRIGGER_TMP_FOLDER_NAME = "trigger_temporary";
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";
   public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
+
+  public static final String EXT_PROPERTIES_LOADER_FOLDER_NAME = "loader";
+
+  public static final String EXT_LIMITER = "limiter";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";

@@ -35,6 +35,7 @@ struct TDataNodeRegisterResp {
   3: optional i32 dataNodeId
   4: optional TGlobalConfig globalConfig
   5: optional binary templateInfo
+  6: optional TRatisConfig ratisConfig
 }
 
 struct TGlobalConfig {
@@ -44,6 +45,17 @@ struct TGlobalConfig {
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
+  7: required double diskSpaceWarningThreshold
+}
+
+struct TRatisConfig {
+  1: optional i64 appenderBufferSize
+  2: optional i64 snapshotTriggerThreshold
+  3: optional bool logUnsafeFlushEnable
+  4: optional i64 logSegmentSizeMax
+  5: optional i64 grpcFlowControlWindow
+  6: optional i64 leaderElectionTimeoutMin
+  7: optional i64 leaderElectionTimeoutMax
 }
 
 struct TDataNodeRemoveReq {
@@ -102,7 +114,7 @@ struct TCountStorageGroupResp {
 
 struct TStorageGroupSchemaResp {
   1: required common.TSStatus status
-  // map<string, StorageGroupMessage>
+  // map<string, TStorageGroupSchema>
   2: optional map<string, TStorageGroupSchema> storageGroupSchemaMap
 }
 
@@ -119,13 +131,6 @@ struct TStorageGroupSchema {
 // Schema
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
-}
-
-// TODO: Replace this by TSchemaPartitionTableResp
-struct TSchemaPartitionResp {
-  1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
-  2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
 }
 
 struct TSchemaPartitionTableResp {
@@ -151,13 +156,6 @@ struct TSchemaNodeManagementResp {
 struct TDataPartitionReq {
   // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
   1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
-}
-
-// TODO: Replace this by TDataPartitionTableResp
-struct TDataPartitionResp {
-  1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
-  2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
 }
 
 struct TDataPartitionTableResp {
@@ -206,7 +204,7 @@ struct TLoginReq {
 }
 
 struct TCheckUserPrivilegesReq {
-  1: required string username;
+  1: required string username
   2: required list<string> paths
   3: required i32 permission
 }
@@ -227,6 +225,7 @@ struct TConfigNodeRegisterReq {
   10: required i32 dataReplicationFactor
   11: required double dataRegionPerProcessor
   12: required string readConsistencyLevel
+  13: required double diskSpaceWarningThreshold
 }
 
 struct TAddConsensusGroupReq {
@@ -242,6 +241,40 @@ struct TCreateFunctionReq {
 
 struct TDropFunctionReq {
   1: required string udfName
+}
+
+// Trigger
+enum TTriggerState {
+  // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
+  INACTIVE
+  // The intermediate state of Create trigger, the trigger need to create has activated on some DataNodes.
+  PARTIAL_ACTIVE
+  // Triggers on all DataNodes are available.
+  ACTIVE
+  // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
+  DROPPING
+}
+
+struct TCreateTriggerReq {
+  1: required string triggerName
+  2: required string className,
+  3: required string jarPath,
+  4: required bool usingURI,
+  5: required byte triggerEvent,
+  6: required byte triggerType
+  7: required binary pathPattern,
+  8: required map<string, string> attributes,
+  9: optional binary jarFile
+}
+
+struct TDropTriggerReq {
+  1: required string triggerName
+}
+
+// Get trigger table from config node
+struct TGetTriggerTableResp {
+  1: required common.TSStatus status
+  2: required binary triggerTable
 }
 
 // Show cluster
@@ -273,11 +306,29 @@ struct TConfigNodeInfo {
   2: required string status
   3: required string internalAddress
   4: required i32 internalPort
+  5: required string roleType
 }
 
 struct TShowConfigNodesResp {
   1: required common.TSStatus status
   2: optional list<TConfigNodeInfo> configNodesInfoList
+}
+
+// Show storageGroup
+struct TStorageGroupInfo {
+  1: required string name
+  2: required i64 TTL
+  3: required i32 schemaReplicationFactor
+  4: required i32 dataReplicationFactor
+  5: required i64 timePartitionInterval
+  6: required i32 schemaRegionNum
+  7: required i32 dataRegionNum
+}
+
+struct TShowStorageGroupResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, TStorageGroupInfo>
+  2: optional map<string, TStorageGroupInfo> storageGroupInfoMap
 }
 
 // Show regions
@@ -295,6 +346,7 @@ struct TRegionInfo {
   6: required i64 seriesSlots
   7: required i64 timeSlots
   8: optional string status
+  9: optional string roleType
 }
 
 struct TShowRegionResp {
@@ -337,13 +389,24 @@ struct TGetPathsSetTemplatesResp {
   2: optional list<string> pathList
 }
 
-// Maintenance Tools
-struct TMergeReq {
-  1: optional i32 dataNodeId
+// Show pipe
+struct TPipeInfo {
+  1: required i64 createTime
+  2: required string pipeName
+  3: required string role
+  4: required string remote
+  5: required string status
+  6: required string message
 }
 
-struct TClearCacheReq {
-   1: optional i32 dataNodeId
+struct TShowPipeResp {
+  1: required common.TSStatus status
+  2: optional list<TPipeInfo> pipeInfoList
+}
+
+struct TDeleteTimeSeriesReq{
+  1: required string queryId
+  2: required binary pathPatternTree
 }
 
 service IConfigNodeRPCService {
@@ -437,18 +500,12 @@ service IConfigNodeRPCService {
   // SchemaPartition
   // ======================================================
 
-  // TODO: Replace this by getSchemaPartitionTable
-  TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
-
   /**
    * Get SchemaPartitionTable by specific PathPatternTree,
    * the returned SchemaPartitionTable will not contain the unallocated SeriesPartitionSlots
    * See https://apache-iotdb.feishu.cn/docs/doccnqe3PLPEKwsCX1xadXQ2JOg for detailed matching rules
    */
   TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
-
-  // TODO: Replace this by getOrCreateSchemaPartitionTable
-  TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
 
   /**
    * Get or create SchemaPartitionTable by specific PathPatternTree,
@@ -471,17 +528,11 @@ service IConfigNodeRPCService {
   // DataPartition
   // ======================================================
 
-  // TODO: Replace this by getDataPartitionTable
-  TDataPartitionResp getDataPartition(TDataPartitionReq req)
-
   /**
    * Get DataPartitionTable by specific PartitionSlotsMap,
    * the returned DataPartitionTable will not contain the unallocated SeriesPartitionSlots and TimePartitionSlots
    */
   TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req)
-
-  // TODO: Replace this by getOrCreateDataPartitionTable
-  TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
   /**
    * Get or create DataPartitionTable by specific PartitionSlotsMap,
@@ -495,15 +546,45 @@ service IConfigNodeRPCService {
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
   // ======================================================
-  // Authorize TODO: @RYH61 add interface annotation
+  // Authorize
   // ======================================================
 
+  /**
+   * Execute permission write operations such as create user, create role, and grant permission.
+   * There is no need to update the cache information of the DataNode for creating users and roles
+   *
+   * @return SUCCESS_STATUS if the permission write operation is executed successfully
+   *         INVALIDATE_PERMISSION_CACHE_ERROR if the update cache of the permission information in the datanode fails
+   *         EXECUTE_PERMISSION_EXCEPTION_ERROR if the permission write operation fails, like the user doesn't exist
+   *         INTERNAL_SERVER_ERROR if the permission type does not exist
+   */
   common.TSStatus operatePermission(TAuthorizerReq req)
 
+  /**
+   * Execute permission read operations such as list user
+   *
+   * @return SUCCESS_STATUS if the permission read operation is executed successfully
+   *         ROLE_NOT_EXIST_ERROR if the role does not exist
+   *         USER_NOT_EXIST_ERROR if the user does not exist
+   *         INTERNAL_SERVER_ERROR if the permission type does not exist
+   */
   TAuthorizerResp queryPermission(TAuthorizerReq req)
 
+  /**
+   * Authenticate user login
+   *
+   * @return SUCCESS_STATUS if the user exists and the correct username and password are entered
+   *         WRONG_LOGIN_PASSWORD_ERROR if the user enters the wrong username or password
+   */
   TPermissionInfoResp login(TLoginReq req)
 
+  /**
+   * Permission checking for user operations
+   *
+   * @return SUCCESS_STATUS if the user has the permission
+   *         EXECUTE_PERMISSION_EXCEPTION_ERROR if the seriesPath or the privilege is illegal.
+   *         NO_PERMISSION_ERROR if the user does not have this permission
+   */
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
   // ======================================================
@@ -571,14 +652,49 @@ service IConfigNodeRPCService {
   common.TSStatus dropFunction(TDropFunctionReq req)
 
   // ======================================================
-  // Maintenance Tools TODO: @RYH61 add interface annotation
+  // Trigger
   // ======================================================
 
-  common.TSStatus merge(TMergeReq req)
+  /**
+     * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+     * and sync Information of it to all ConfigNodes
+     *
+     * @return SUCCESS_STATUS if the trigger was created successfully
+     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     */
+  common.TSStatus createTrigger(TCreateTriggerReq req)
 
+  /**
+     * Remove a trigger on all online ConfigNodes and DataNodes
+     *
+     * @return SUCCESS_STATUS if the function was removed successfully
+     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     */
+  common.TSStatus dropTrigger(TDropTriggerReq req)
+
+  /**
+     * Return the trigger table of config leader
+     */
+  TGetTriggerTableResp getTriggerTable()
+
+  // ======================================================
+  // Maintenance Tools
+  // ======================================================
+
+  /** Execute Level Compaction and unsequence Compaction task on all DataNodes */
+  common.TSStatus merge()
+
+  /** Persist all the data points in the memory table of the storage group to the disk, and seal the data file on all DataNodes */
   common.TSStatus flush(common.TFlushReq req)
 
-  common.TSStatus clearCache(TClearCacheReq req)
+  /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
+  common.TSStatus clearCache()
+
+  /** Load configuration on all DataNodes */
+  common.TSStatus loadConfiguration()
+
+  /** Set system status on DataNodes */
+  common.TSStatus setSystemStatus(string status)
 
   // ======================================================
   // Cluster Tools
@@ -592,6 +708,9 @@ service IConfigNodeRPCService {
 
   /** Show cluster ConfigNodes' information */
   TShowConfigNodesResp showConfigNodes()
+
+  /** Show cluster StorageGroups' information */
+  TShowStorageGroupResp showStorageGroup(list<string> storageGroupPathPattern)
 
   /**
    * Show the matched cluster Regions' information
@@ -620,5 +739,14 @@ service IConfigNodeRPCService {
 
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+
+  /**
+   * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
+   *
+   * @return SUCCESS_STATUS if the DeleteTimeSeriesProcedure submitted and executed successfully
+   *         TIMESERIES_NOT_EXIST if the specific TimeSeries doesn't exist
+   *         EXECUTE_STATEMENT_ERROR if failed to submit or execute the DeleteTimeSeriesProcedure
+   */
+  common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 }
 

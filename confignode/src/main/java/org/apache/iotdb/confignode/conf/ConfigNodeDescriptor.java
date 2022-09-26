@@ -205,7 +205,8 @@ public class ConfigNodeDescriptor {
       conf.setTimePartitionInterval(
           Long.parseLong(
               properties.getProperty(
-                  "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))));
+                  "time_partition_interval_for_routing",
+                  String.valueOf(conf.getTimePartitionInterval()))));
 
       conf.setSchemaReplicationFactor(
           Integer.parseInt(
@@ -223,8 +224,8 @@ public class ConfigNodeDescriptor {
                   "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
 
       String routingPolicy = properties.getProperty("routing_policy", conf.getRoutingPolicy());
-      if (routingPolicy.equals(RouteBalancer.greedyPolicy)
-          || routingPolicy.equals(RouteBalancer.leaderPolicy)) {
+      if (routingPolicy.equals(RouteBalancer.GREEDY_POLICY)
+          || routingPolicy.equals(RouteBalancer.LEADER_POLICY)) {
         conf.setRoutingPolicy(routingPolicy);
       } else {
         throw new IOException(
@@ -266,6 +267,7 @@ public class ConfigNodeDescriptor {
                   "procedure_core_worker_thread_size",
                   String.valueOf(conf.getProcedureCoreWorkerThreadsSize()))));
 
+      loadRatisConsensusConfig(properties);
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
@@ -279,13 +281,58 @@ public class ConfigNodeDescriptor {
     }
   }
 
+  private void loadRatisConsensusConfig(Properties properties) {
+    conf.setRatisConsensusLogAppenderBufferSize(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_log_appender_buffer_size_max",
+                String.valueOf(conf.getRatisConsensusLogAppenderBufferSize()))));
+
+    conf.setRatisSnapshotTriggerThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_snapshot_trigger_threshold",
+                String.valueOf(conf.getRatisConsensusLogAppenderBufferSize()))));
+
+    conf.setRatisLogUnsafeFlushEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "ratis_log_unsafe_flush_enable",
+                String.valueOf(conf.isRatisLogUnsafeFlushEnable()))));
+
+    conf.setRatisLogSegmentSizeMax(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_log_segment_size_max", String.valueOf(conf.getRatisLogSegmentSizeMax()))));
+
+    conf.setRatisGrpcFlowControlWindow(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_grpc_flow_control_window",
+                String.valueOf(conf.getRatisGrpcFlowControlWindow()))));
+
+    conf.setRatisRpcLeaderElectionTimeoutMinMs(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_rpc_leader_election_timeout_min_ms",
+                String.valueOf(conf.getRatisRpcLeaderElectionTimeoutMinMs()))));
+
+    conf.setRatisRpcLeaderElectionTimeoutMinMs(
+        Long.parseLong(
+            properties.getProperty(
+                "ratis_rpc_leader_election_timeout_max_ms",
+                String.valueOf(conf.getRatisRpcLeaderElectionTimeoutMaxMs()))));
+  }
+
   /**
    * Check if the current ConfigNode is SeedConfigNode.
    *
    * @return True if the target_config_nodes points to itself
    */
   public boolean isSeedConfigNode() {
-    return conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+    return (conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+            || (NodeUrlUtils.isLocalAddress(conf.getInternalAddress())
+                && NodeUrlUtils.isLocalAddress(conf.getTargetConfigNode().getIp())))
         && conf.getInternalPort() == conf.getTargetConfigNode().getPort();
   }
 

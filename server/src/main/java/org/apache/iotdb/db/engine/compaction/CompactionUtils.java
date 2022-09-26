@@ -23,10 +23,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceCompactionFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -228,18 +224,6 @@ public class CompactionUtils {
       if (normalModification.exists()) {
         normalModification.remove();
       }
-    }
-  }
-
-  public static ICrossSpaceCompactionFileSelector getCrossSpaceFileSelector(
-      long budget, CrossSpaceCompactionResource resource) {
-    CrossCompactionSelector strategy =
-        IoTDBDescriptor.getInstance().getConfig().getCrossCompactionSelector();
-    switch (strategy) {
-      case REWRITE:
-        return new RewriteCompactionFileSelector(resource, budget);
-      default:
-        throw new UnsupportedOperationException("Unknown CrossSpaceFileStrategy " + strategy);
     }
   }
 

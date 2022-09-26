@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class DataPartitionTable {
 
@@ -95,14 +95,36 @@ public class DataPartitionTable {
   }
 
   /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does
+   *
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @param timePartitionInterval Time partition interval
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPrecededDataPartition(
+      TSeriesPartitionSlot seriesPartitionSlot,
+      TTimePartitionSlot timePartitionSlot,
+      long timePartitionInterval) {
+    if (dataPartitionMap.containsKey(seriesPartitionSlot)) {
+      return dataPartitionMap
+          .get(seriesPartitionSlot)
+          .getPrecededDataPartition(timePartitionSlot, timePartitionInterval);
+    } else {
+      return null;
+    }
+  }
+
+  /**
    * Create DataPartition within the specific StorageGroup
    *
    * @param assignedDataPartition Assigned result
-   * @return Number of DataPartitions added to each Region
+   * @return Map<TConsensusGroupId, Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count>>
    */
-  public Map<TConsensusGroupId, AtomicInteger> createDataPartition(
+  public Map<TConsensusGroupId, Map<TSeriesPartitionSlot, AtomicLong>> createDataPartition(
       DataPartitionTable assignedDataPartition) {
-    Map<TConsensusGroupId, AtomicInteger> deltaMap = new ConcurrentHashMap<>();
+    Map<TConsensusGroupId, Map<TSeriesPartitionSlot, AtomicLong>> groupDeltaMap =
+        new ConcurrentHashMap<>();
 
     assignedDataPartition
         .getDataPartitionMap()
@@ -110,9 +132,10 @@ public class DataPartitionTable {
             ((seriesPartitionSlot, seriesPartitionTable) ->
                 dataPartitionMap
                     .computeIfAbsent(seriesPartitionSlot, empty -> new SeriesPartitionTable())
-                    .createDataPartition(seriesPartitionTable, deltaMap)));
+                    .createDataPartition(
+                        seriesPartitionTable, seriesPartitionSlot, groupDeltaMap)));
 
-    return deltaMap;
+    return groupDeltaMap;
   }
 
   /**

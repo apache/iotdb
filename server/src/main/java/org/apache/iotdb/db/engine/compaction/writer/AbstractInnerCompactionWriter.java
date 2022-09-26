@@ -21,8 +21,11 @@ public abstract class AbstractInnerCompactionWriter implements ICompactionWriter
 
   protected String deviceId;
 
+  protected TsFileResource targetResource;
+
   public AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
     this.fileWriter = new TsFileIOWriter(targetFileResource.getTsFile());
+    this.targetResource = targetFileResource;
     isEmptyFile = true;
   }
 
@@ -79,5 +82,14 @@ public abstract class AbstractInnerCompactionWriter implements ICompactionWriter
   @Override
   public List<TsFileIOWriter> getFileIOWriter() {
     return Collections.singletonList(fileWriter);
+  }
+
+  @Override
+  public void updateStartTimeAndEndTime(String device, long time, int subTaskId) {
+    // we need to synchronized here to avoid multi-thread competition in sub-task
+    synchronized (this) {
+      targetResource.updateStartTime(device, time);
+      targetResource.updateEndTime(device, time);
+    }
   }
 }

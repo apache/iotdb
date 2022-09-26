@@ -40,9 +40,9 @@ import java.util.List;
 /** remove data node procedure */
 public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNodeState> {
   private static final Logger LOG = LoggerFactory.getLogger(RemoveDataNodeProcedure.class);
-  private static final int retryThreshold = 5;
+  private static final int RETRY_THRESHOLD = 5;
 
-  private TDataNodeLocation tDataNodeLocation;
+  private TDataNodeLocation disableDataNodeLocation;
 
   private List<TConsensusGroupId> execDataNodeRegionIds = new ArrayList<>();
 
@@ -50,26 +50,28 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
     super();
   }
 
-  public RemoveDataNodeProcedure(TDataNodeLocation tDataNodeLocation) {
+  public RemoveDataNodeProcedure(TDataNodeLocation disableDataNodeLocation) {
     super();
-    this.tDataNodeLocation = tDataNodeLocation;
+    this.disableDataNodeLocation = disableDataNodeLocation;
   }
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, RemoveDataNodeState state) {
-    if (tDataNodeLocation == null) {
+    if (disableDataNodeLocation == null) {
       return Flow.NO_MORE_STATE;
     }
     try {
       switch (state) {
         case REMOVE_DATA_NODE_PREPARE:
+          // mark the datanode as removing status and broadcast region route map
+          env.markDataNodeAsRemovingAndBroadCast(disableDataNodeLocation);
           execDataNodeRegionIds =
-              env.getDataNodeRemoveHandler().getDataNodeRegionIds(tDataNodeLocation);
+              env.getDataNodeRemoveHandler().getDataNodeRegionIds(disableDataNodeLocation);
           LOG.info("DataNode region id is {}", execDataNodeRegionIds);
           setNextState(RemoveDataNodeState.BROADCAST_DISABLE_DATA_NODE);
           break;
         case BROADCAST_DISABLE_DATA_NODE:
-          env.getDataNodeRemoveHandler().broadcastDisableDataNode(tDataNodeLocation);
+          env.getDataNodeRemoveHandler().broadcastDisableDataNode(disableDataNodeLocation);
           setNextState(RemoveDataNodeState.SUBMIT_REGION_MIGRATE);
           break;
         case SUBMIT_REGION_MIGRATE:
@@ -77,8 +79,8 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
           setNextState(RemoveDataNodeState.STOP_DATA_NODE);
           break;
         case STOP_DATA_NODE:
-          env.getDataNodeRemoveHandler().stopDataNode(tDataNodeLocation);
-          env.getDataNodeRemoveHandler().removeDataNodePersistence(tDataNodeLocation);
+          env.getDataNodeRemoveHandler().removeDataNodePersistence(disableDataNodeLocation);
+          env.getDataNodeRemoveHandler().stopDataNode(disableDataNodeLocation);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -87,10 +89,10 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
       } else {
         LOG.error(
             "Retrievable error trying to remove data node {}, state {}",
-            tDataNodeLocation,
+            disableDataNodeLocation,
             state,
             e);
-        if (getCycles() > retryThreshold) {
+        if (getCycles() > RETRY_THRESHOLD) {
           setFailure(new ProcedureException("State stuck at " + state));
         }
       }
@@ -136,7 +138,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeInt(ProcedureFactory.ProcedureType.REMOVE_DATA_NODE_PROCEDURE.ordinal());
     super.serialize(stream);
-    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(tDataNodeLocation, stream);
+    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(disableDataNodeLocation, stream);
     stream.writeInt(execDataNodeRegionIds.size());
     execDataNodeRegionIds.forEach(
         tid -> ThriftCommonsSerDeUtils.serializeTConsensusGroupId(tid, stream));
@@ -146,7 +148,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     try {
-      tDataNodeLocation = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
+      disableDataNodeLocation = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
       int regionSize = byteBuffer.getInt();
       execDataNodeRegionIds = new ArrayList<>(regionSize);
       for (int i = 0; i < regionSize; i++) {
@@ -163,7 +165,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
       RemoveDataNodeProcedure thatProc = (RemoveDataNodeProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
-          && thatProc.tDataNodeLocation.equals(this.tDataNodeLocation);
+          && thatProc.disableDataNodeLocation.equals(this.disableDataNodeLocation);
     }
     return false;
   }
@@ -175,7 +177,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
               env.getDataNodeRemoveHandler().findDestDataNode(regionId);
           if (destDataNode != null) {
             RegionMigrateProcedure regionMigrateProcedure =
-                new RegionMigrateProcedure(regionId, tDataNodeLocation, destDataNode);
+                new RegionMigrateProcedure(regionId, disableDataNodeLocation, destDataNode);
             addChildProcedure(regionMigrateProcedure);
             LOG.info("Submit child procedure, {}", regionMigrateProcedure);
           }

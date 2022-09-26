@@ -36,8 +36,10 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
+import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -652,5 +654,129 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
         return window;
       }
     };
+  }
+
+  @Override
+  protected LayerRowWindowReader constructRowSessionTimeWindowReader(
+      SessionTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
+      throws QueryProcessException {
+    final long displayWindowBegin = strategy.getDisplayWindowBegin();
+    final long displayWindowEnd = strategy.getDisplayWindowEnd();
+    final long sessionTimeGap = strategy.getSessionTimeGap();
+
+    final IUDFInputDataSet udfInputDataSet = this;
+    final ElasticSerializableRowRecordList rowRecordList =
+        new ElasticSerializableRowRecordList(
+            dataTypes, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+    final ElasticSerializableRowRecordListBackedMultiColumnWindow window =
+        new ElasticSerializableRowRecordListBackedMultiColumnWindow(rowRecordList);
+
+    return new LayerRowWindowReader() {
+
+      private boolean isFirstIteration = true;
+      private boolean hasAtLeastOneRow = false;
+
+      private long nextWindowTimeBegin = displayWindowBegin;
+      private long nextWindowTimeEnd = 0;
+      private int nextIndexBegin = 0;
+      private int nextIndexEnd = 1;
+
+      @Override
+      public YieldableState yield() throws IOException, QueryProcessException {
+        if (isFirstIteration) {
+          if (rowRecordList.size() == 0) {
+            final YieldableState yieldableState =
+                LayerCacheUtils.yieldRow(udfInputDataSet, rowRecordList);
+            if (yieldableState != YieldableState.YIELDABLE) {
+              return yieldableState;
+            }
+          }
+          nextWindowTimeBegin = Math.max(displayWindowBegin, rowRecordList.getTime(0));
+          hasAtLeastOneRow = rowRecordList.size() != 0;
+          isFirstIteration = false;
+        }
+
+        if (!hasAtLeastOneRow || displayWindowEnd <= nextWindowTimeBegin) {
+          return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+        }
+
+        while (rowRecordList.getTime(rowRecordList.size() - 1) < displayWindowEnd) {
+          final YieldableState yieldableState =
+              LayerCacheUtils.yieldRow(udfInputDataSet, rowRecordList);
+          if (yieldableState == YieldableState.YIELDABLE) {
+            if (rowRecordList.getTime(rowRecordList.size() - 2) >= displayWindowBegin
+                && rowRecordList.getTime(rowRecordList.size() - 1)
+                        - rowRecordList.getTime(rowRecordList.size() - 2)
+                    >= sessionTimeGap) {
+              nextIndexEnd = rowRecordList.size() - 1;
+              break;
+            } else {
+              nextIndexEnd++;
+            }
+          } else if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+            return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+          } else if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+            nextIndexEnd = rowRecordList.size();
+            break;
+          }
+        }
+
+        nextWindowTimeEnd = rowRecordList.getTime(nextIndexEnd - 1);
+
+        if (nextIndexBegin == nextIndexEnd) {
+          return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+        }
+
+        // Only if encounter user set the strategy's displayWindowBegin, which will go into the for
+        // loop to find the true index of the first window begin.
+        // For other situation, we will only go into if (nextWindowTimeBegin <= tvList.getTime(i))
+        // once.
+        for (int i = nextIndexBegin; i < rowRecordList.size(); ++i) {
+          if (nextWindowTimeBegin <= rowRecordList.getTime(i)) {
+            nextIndexBegin = i;
+            break;
+          }
+          // The first window's beginning time is greater than all the timestamp of the query result
+          // set
+          if (i == rowRecordList.size() - 1) {
+            return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+          }
+        }
+
+        window.seek(nextIndexBegin, nextIndexEnd, nextWindowTimeBegin, nextWindowTimeEnd);
+
+        return YieldableState.YIELDABLE;
+      }
+
+      @Override
+      public boolean next() throws IOException, QueryProcessException {
+        return false;
+      }
+
+      @Override
+      public void readyForNext() throws IOException, QueryProcessException {
+        if (nextIndexEnd < rowRecordList.size()) {
+          nextWindowTimeBegin = rowRecordList.getTime(nextIndexEnd);
+        }
+        rowRecordList.setEvictionUpperBound(nextIndexBegin + 1);
+        nextIndexBegin = nextIndexEnd;
+      }
+
+      @Override
+      public TSDataType[] getDataTypes() {
+        return dataTypes;
+      }
+
+      @Override
+      public RowWindow currentWindow() {
+        return window;
+      }
+    };
+  }
+
+  @Override
+  protected LayerRowWindowReader constructRowStateWindowReader(
+      StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
+    throw new UnsupportedOperationException();
   }
 }

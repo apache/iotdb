@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
-import io.airlift.concurrent.SetThreadName;
 import io.airlift.units.Duration;
 
 import java.util.concurrent.Executor;
@@ -40,8 +40,9 @@ public class DriverTaskThread extends AbstractDriverThread {
           IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
           TimeUnit.MILLISECONDS);
 
-  // As the callback is lightweight enough, there's no need to use another one thread to execute.
-  private static final Executor listeningExecutor = MoreExecutors.directExecutor();
+  // we manage thread pool size directly, so create an unlimited pool
+  private static final Executor listeningExecutor =
+      IoTDBThreadPoolFactory.newCachedThreadPool("scheduler-notification");
 
   public DriverTaskThread(
       String workerId,

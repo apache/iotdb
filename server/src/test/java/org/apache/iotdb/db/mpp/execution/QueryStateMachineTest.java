@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -58,30 +57,6 @@ public class QueryStateMachineTest {
     stateMachine = genQueryStateMachine();
     stateMachine.transitionToFinished();
     Assert.assertEquals(stateMachine.getState(), QueryState.FINISHED);
-  }
-
-  @Test
-  public void TestFragmentInstanceToFinished() {
-    List<FragmentInstanceId> instanceIds = genFragmentInstanceIdList();
-    QueryStateMachine stateMachine = genQueryStateMachine();
-    for (FragmentInstanceId id : instanceIds) {
-      stateMachine.initialFragInstanceState(id, FragmentInstanceState.RUNNING);
-    }
-    for (FragmentInstanceId id : instanceIds) {
-      stateMachine.updateFragInstanceState(id, FragmentInstanceState.FINISHED);
-    }
-    Assert.assertEquals(stateMachine.getState(), QueryState.FINISHED);
-  }
-
-  @Test
-  public void TestFragmentInstanceToTerminalState() {
-    List<FragmentInstanceId> instanceIds = genFragmentInstanceIdList();
-    QueryStateMachine stateMachine = genQueryStateMachine();
-    for (FragmentInstanceId id : instanceIds) {
-      stateMachine.initialFragInstanceState(id, FragmentInstanceState.RUNNING);
-    }
-    stateMachine.updateFragInstanceState(instanceIds.get(0), FragmentInstanceState.FAILED);
-    Assert.assertEquals(stateMachine.getState(), QueryState.FAILED);
   }
 
   @Test

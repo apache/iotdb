@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.extpipe;
 
-import org.apache.iotdb.pipe.external.api.DataType;
 import org.apache.iotdb.pipe.external.api.ExternalPipeSinkWriterStatus;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriter;
 
@@ -29,148 +28,137 @@ import java.util.Map;
 
 public class ExtPipeSinkWriterImpl implements IExternalPipeSinkWriter {
   private Map<String, String> sinkParams;
-  //private ExtSession extSession;   //maintain the connect to ext DB system
+  // private ExtSession extSession;   //maintain the connect to ext DB system
   private long startTime;
 
   public ExtPipeSinkWriterImpl(Map<String, String> sinkParams) {
-    this.sinkParams= sinkParams;
+    this.sinkParams = sinkParams;
   }
 
-  /**
-   * IoTDB call this method to initialize 1 IExternalPipeSinkWriter instance.
-   */
+  /** IoTDB call this method to initialize 1 IExternalPipeSinkWriter instance. */
   @Override
   public void open() {
-    //== Use the parameters in sinkParams to start 1 session to ext DB system
-    //extSession = new ExtSession(sinkParams);
+    // == Use the parameters in sinkParams to start 1 session to ext DB system
+    // extSession = new ExtSession(sinkParams);
 
-    //== Record the start-time of current external session.
+    // == Record the start-time of current external session.
     startTime = System.currentTimeMillis();
   }
 
   @Override
-  public synchronized void insertBoolean(String[] path, long timestamp, boolean value)
+  public void insertBoolean(String sgName, String[] path, long timestamp, boolean value)
       throws IOException {
-    //== Here, handle inserted Boolean type data from IoTDB.
-    //extSession.insertBoolean(...);
-    //...
+    // == Here, handle inserted Boolean type data from IoTDB.
+    // extSession.insertBoolean(...);
+    // ...
   }
 
   @Override
-  public synchronized void insertInt32(String[] path, long timestamp, int value)
+  public void insertInt32(String sgName, String[] path, long timestamp, int value)
       throws IOException {
-    //== Here, handle inserted Int32 type data from IoTDB.
-    //extSession.insertInt32(...);
-    //...
+    // == Here, handle inserted Int32 type data from IoTDB.
+    // extSession.insertInt32(...);
+    // ...
   }
 
   @Override
-  public synchronized void insertInt64(String[] path, long timestamp, long value)
+  public void insertInt64(String sgName, String[] path, long time, long value) throws IOException {
+    // == Here, handle inserted Int64 type data from IoTDB.
+    // ...
+  }
+
+  @Override
+  public void insertFloat(String sgName, String[] path, long time, float value) throws IOException {
+    // == Here, handle inserted float type data from IoTDB.
+    // extSession.insertFloat(...);
+    // ...
+  }
+
+  @Override
+  public void insertDouble(String sgName, String[] path, long time, double value)
       throws IOException {
-    //== Here, handle inserted Int64 type data from IoTDB.
-    //...
+    // == Here, handle inserted double type data from IoTDB.
+    // extSession.insertDouble(...);
+    // ...
   }
 
   @Override
-  public synchronized void insertFloat(String[] path, long timestamp, float value)
+  public void insertText(String sgName, String[] path, long time, String value) throws IOException {
+    // == Here, handle inserted Text type data from IoTDB.
+    // extSession.insertText(...);
+    // ..
+  }
+
+  @Override
+  public void delete(String sgName, String delPath, long startTime, long endTime)
       throws IOException {
-    //== Here, handle inserted float type data from IoTDB.
-    //extSession.insertFloat(...);
-    //...
+
+    // == Here, handle delete operation.
+    // extSession.delete(...);
+    // ...
   }
 
-  @Override
-  public synchronized void insertDouble(String[] path, long timestamp, double value)
-      throws IOException {
-    //== Here, handle inserted double type data from IoTDB.
-    //extSession.insertDouble(...);
-    //...
-  }
-
-  @Override
-  public synchronized void insertText(String[] path, long timestamp, String value)
-      throws IOException {
-    //== Here, handle inserted Text type data from IoTDB.
-    //extSession.insertText(...);
-    //..
-  }
-
-  @Override
-  public synchronized void insertVector(String[] path, DataType[] dataTypes, long timestamp,
-                                        Object[] values)
-      throws IOException {
-    //== Here, handle inserted Vector type data from IoTDB.
-    //extSession.insertVector(...);
-    //...
-  }
-
-  @Override
-  public synchronized void delete(String[] s, long l) {
-    //== Here, handle delete operation.
-    //extSession.delete(...);
-    //...
-  }
-
-  @Override
-  public synchronized void createTimeSeries(String[] path, DataType dataType) {
-    //== Here, handle create TimeSeries operation.
-    //extSession.createTable(...);
-    //...
-  }
-
-  @Override
-  public synchronized void deleteTimeSeries(String[] path) {
-    //== Here, handle delete TimeSeries operation.
-    //extSession.deleteTable(...);
-    //...
-  }
+  //  @Override
+  //  public void createTimeSeries(String[] path, DataType dataType) {
+  //    //== Here, handle create TimeSeries operation.
+  //    //extSession.createTable(...);
+  //    //...
+  //  }
+  //
+  //  @Override
+  //  public void deleteTimeSeries(String[] path) {
+  //    //== Here, handle delete TimeSeries operation.
+  //    //extSession.deleteTable(...);
+  //    //...
+  //  }
 
   /**
    * IoTDB call this method to flush data in plugin buf to external DB system, if data buf exist.
+   *
    * @throws IOException
    */
   @Override
-  public synchronized void flush() throws IOException {
-    //extSession.flush(...);
-    //...
+  public void flush() throws IOException {
+    // extSession.flush(...);
+    // ...
   }
 
   /**
-   * When run CMD "stop pipe ..." or "drop pipe ..."  ,
-   * IoTDB will call this method to close connection to external DB system.
+   * When run CMD "stop pipe ..." or "drop pipe ..." , IoTDB will call this method to close
+   * connection to external DB system.
+   *
    * @throws IOException
    */
   @Override
-  public synchronized void close() throws IOException {
+  public void close() throws IOException {
     flush();
 
-    //== Close connection to external DB system.
-    //extSession.close(...);
+    // == Close connection to external DB system.
+    // extSession.close(...);
   }
 
   /**
-  /**
-   * IoTDB use this method to collect statistic info of 1 ExternalPipeSinkWriter.
-   * When run CMD "show pipes", the statistic information will be show.
+   * /** IoTDB use this method to collect statistic info of 1 ExternalPipeSinkWriter. When run CMD
+   * "show pipes", the statistic information will be show.
+   *
    * @return
    */
   @Override
   public ExternalPipeSinkWriterStatus getStatus() {
     ExternalPipeSinkWriterStatus status = new ExternalPipeSinkWriterStatus();
 
-    //== set basic statistic info
-    status.setStartTime(startTime);  //ExternalPipeSinkWriter's beginning time
-    //status.setNumOfRecordsTransmitted(extSession.getNumOffRecords());
-    //status.setNumOfBytesTransmitted(extSession.getNumOfBytes());
+    // == set basic statistic info
+    status.setStartTime(startTime); // ExternalPipeSinkWriter's beginning time
+    // status.setNumOfRecordsTransmitted(extSession.getNumOffRecords());
+    // status.setNumOfBytesTransmitted(extSession.getNumOfBytes());
 
-    //== Here, customer may define & add other information.
+    // == Here, customer may define & add other information.
     Map<String, String> extendedFields = new HashMap<>();
-    //extendedFields.put("AverageSpeed", Long.toString(extSession.getAvgSpeed());
-    //extendedFields.put("Speed", Long.toString(extSession.getSpeed()));
-    //extendedFields.put("SessionId", extSession == null ? "N/A" : extSession.getId());
+    // extendedFields.put("AverageSpeed", Long.toString(extSession.getAvgSpeed());
+    // extendedFields.put("Speed", Long.toString(extSession.getSpeed()));
+    // extendedFields.put("SessionId", extSession == null ? "N/A" : extSession.getId());
     status.setExtendedFields(extendedFields);
 
     return status;
   }
-
 }

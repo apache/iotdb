@@ -54,7 +54,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1656334292304,
+  "iteration": 1661505081134,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -1814,6 +1814,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB DataNode Dashboard",
   "uid": "TbEVYRw7m",
-  "version": 15,
+  "version": 2,
   "weekStart": ""
 }

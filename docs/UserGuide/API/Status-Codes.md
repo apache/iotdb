@@ -43,7 +43,7 @@ With Status Code, instead of writing codes like `if (e.getErrorMessage().contain
 Here is a list of Status Code and related message:
 
 |Status Code|Status Type|Meanings|
-|:---|:---|:---|
+|:--|:---|:---|
 |200|SUCCESS_STATUS||
 |201|STILL_EXECUTING_STATUS||
 |202|INVALID_HANDLE_STATUS||
@@ -89,9 +89,10 @@ Here is a list of Status Code and related message:
 |504|START_UP_ERROR|Meet error while starting up|
 |505|SHUT_DOWN_ERROR|Meet error while shutdown|
 |506|MULTIPLE_ERROR|Meet error when executing multiple statements|
+|507|SESSION_EXPIRED|Session expired|
 |600|WRONG_LOGIN_PASSWORD_ERROR|Username or password is wrong|
 |601|NOT_LOGIN_ERROR|Has not logged in|
-|602|NO_PERMISSION_ERROR|No permissions for this operation|
+|602|NO_PERMISSION_ERROR|No permissions for this operation, please add privilege|
 |603|UNINITIALIZED_AUTH_ERROR|Uninitialized authorizer|
 |700|PARTITION_NOT_READY|Partition table not ready|
 |701|TIME_OUT|Operation timeout|

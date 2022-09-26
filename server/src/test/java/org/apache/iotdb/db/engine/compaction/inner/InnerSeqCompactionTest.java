@@ -62,6 +62,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putChunk;
@@ -349,7 +350,7 @@ public class InnerSeqCompactionTest {
           }
         }
       }
-    } catch (InterruptedException | StorageEngineException e) {
+    } catch (InterruptedException | StorageEngineException | ExecutionException e) {
       e.printStackTrace();
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -365,7 +366,6 @@ public class InnerSeqCompactionTest {
 
   @Test
   public void testAppendPage() throws Exception {
-
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
         for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {

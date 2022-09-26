@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -32,12 +33,16 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
@@ -59,7 +64,7 @@ public class Analysis {
   private ISchemaTree schemaTree;
 
   // map from output column name (for every node) to its datatype
-  private TypeProvider typeProvider;
+  private final Map<NodeRef<Expression>, TSDataType> expressionTypes = new LinkedHashMap<>();
 
   private boolean finishQueryAfterAnalyze;
 
@@ -93,6 +98,10 @@ public class Analysis {
   // Query Analysis (used in ALIGN BY DEVICE)
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // used to planTransform after planDeviceView
+  Set<Expression> transformInput;
+  Set<Expression> transformOutput;
+
   // map from device name to series/aggregation under this device
   private Map<String, Set<Expression>> deviceToSourceExpressions;
 
@@ -118,8 +127,12 @@ public class Analysis {
   // Query Common Analysis (above DeviceView)
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  private List<Pair<Expression, String>> outputExpressions;
+
   // indicate is there a value filter
   private boolean hasValueFilter = false;
+
+  private Expression havingExpression;
 
   // true if nested expressions and UDFs exist in aggregation function
   private boolean isHasRawDataInputAggregation;
@@ -212,12 +225,10 @@ public class Analysis {
     this.respDatasetHeader = respDatasetHeader;
   }
 
-  public TypeProvider getTypeProvider() {
-    return typeProvider;
-  }
-
-  public void setTypeProvider(TypeProvider typeProvider) {
-    this.typeProvider = typeProvider;
+  public TSDataType getType(Expression expression) {
+    TSDataType type = expressionTypes.get(NodeRef.of(expression));
+    checkArgument(type != null, "Expression not analyzed: %s", expression);
+    return type;
   }
 
   public boolean hasDataSource() {
@@ -292,6 +303,14 @@ public class Analysis {
     return groupByTimeParameter;
   }
 
+  public Expression getHavingExpression() {
+    return havingExpression;
+  }
+
+  public void setHavingExpression(Expression havingExpression) {
+    this.havingExpression = havingExpression;
+  }
+
   public void setGroupByTimeParameter(GroupByTimeParameter groupByTimeParameter) {
     this.groupByTimeParameter = groupByTimeParameter;
   }
@@ -343,6 +362,22 @@ public class Analysis {
 
   public void setTransformExpressions(Set<Expression> transformExpressions) {
     this.transformExpressions = transformExpressions;
+  }
+
+  public Set<Expression> getTransformInput() {
+    return transformInput;
+  }
+
+  public void setTransformInput(Set<Expression> transformInput) {
+    this.transformInput = transformInput;
+  }
+
+  public Set<Expression> getTransformOutput() {
+    return transformOutput;
+  }
+
+  public void setTransformOutput(Set<Expression> transformOutput) {
+    this.transformOutput = transformOutput;
   }
 
   public Map<String, Set<Expression>> getDeviceToSourceExpressions() {
@@ -426,5 +461,17 @@ public class Analysis {
 
   public void setRelatedTemplateInfo(Map<Integer, Template> relatedTemplateInfo) {
     this.relatedTemplateInfo = relatedTemplateInfo;
+  }
+
+  public void addTypes(Map<NodeRef<Expression>, TSDataType> types) {
+    this.expressionTypes.putAll(types);
+  }
+
+  public List<Pair<Expression, String>> getOutputExpressions() {
+    return outputExpressions;
+  }
+
+  public void setOutputExpressions(List<Pair<Expression, String>> outputExpressions) {
+    this.outputExpressions = outputExpressions;
   }
 }

@@ -34,14 +34,14 @@ Time partition divides data according to time, and a time partition is used to s
 |Default| false |
 |Effective|Only allowed to be modified in first start up|
 
-* partition\_interval
+* time\_partition\_interval\_for\_storage
 
-|Name| partition\_interval |
-|:---:|:---|
+|Name| time\_partition\_interval\_for\_storage                                                                |
+|:---:|:-------------------------------------------------------------------------------------------------------|
 |Description| Time range for dividing storage group, time series data will be divided into groups by this time range |
-|Type|Int64|
-|Default| 604800 |
-|Effective|Only allowed to be modified in first start up|
+|Type| Int64                                                                                                  |
+|Default| 86400                                                                                                  |
+|Effective| Only allowed to be modified in first start up                                                          |
 
 ## Configuration example
 
@@ -55,7 +55,7 @@ Enable time partition and set partition_interval to 86400 (one day), then the da
 
 ## Suggestions
 
-When enabling time partition, it is better to enable timed flush memtable, configuration params are detailed in [Config manual for timed flush](../Reference/Config-Manual.md).
+When enabling time partition, it is better to enable timed flush memtable, configuration params are detailed in [Config manual for timed flush](../Reference/DataNode-Config-Manual.md).
 
 * enable_timed_flush_unseq_memtable: Whether to enable timed flush unsequence memtable, enabled by default.
 

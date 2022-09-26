@@ -38,24 +38,31 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.nio.ByteBuffer;
 
 /**
- * This class translate an IMNode into a bytebuffer, or otherwise. Expected to support record as
- * entry of segment-level index further. Coupling with IMNode structure.
+ * This class translate an IMNode into a bytebuffer, or vice versa. Expected to support record as
+ * entry of segment-level index further. Coupling with IMNode structure.<br>
+ * <br>
+ * TODO: Guardian statements on higher stack NEEDED. The longest ALIAS is limited to 0x7fff(32767)
+ * bytes for that a Short is used to record the length, hence a colossal record may collapse the
+ * stack.
  */
 public class RecordUtils {
   // Offsets of IMNode infos in a record buffer
-  static short INTERNAL_NODE_LENGTH = (short) 1 + 2 + 8 + 4 + 1; // always fixed length record
-  static short MEASUREMENT_BASIC_LENGTH =
+  private static final short INTERNAL_NODE_LENGTH =
+      (short) 1 + 2 + 8 + 4 + 1; // always fixed length record
+  private static final short MEASUREMENT_BASIC_LENGTH =
       (short) 1 + 2 + 8 + 8; // final length depends on its alias
 
-  static short LENGTH_OFFSET = 1;
-  static short ALIAS_OFFSET = 19;
-  static short SEG_ADDRESS_OFFSET = 3;
-  static short SCHEMA_OFFSET = 11;
-  static short INTERNAL_BITFLAG_OFFSET = 15;
+  /** These offset rather than magic number may also be used to track usage of related field. */
+  private static final short LENGTH_OFFSET = 1;
 
-  static byte INTERNAL_TYPE = 0;
-  static byte ENTITY_TYPE = 1;
-  static byte MEASUREMENT_TYPE = 4;
+  private static final short ALIAS_OFFSET = 19;
+  private static final short SEG_ADDRESS_OFFSET = 3;
+  private static final short SCHEMA_OFFSET = 11;
+  private static final short INTERNAL_BITFLAG_OFFSET = 15;
+
+  private static final byte INTERNAL_TYPE = 0;
+  private static final byte ENTITY_TYPE = 1;
+  private static final byte MEASUREMENT_TYPE = 4;
 
   public static ByteBuffer node2Buffer(IMNode node) {
     if (node.isMeasurement()) {
@@ -111,7 +118,9 @@ public class RecordUtils {
   }
 
   /**
-   * TODO: properties unhandled yet
+   * Properties are bound to tagIndex so no extra process needed.<br>
+   * It is convenient to expand the semantic of the statusBytes for further status of a measurement,
+   * e.g., preDelete, since 8 bytes are far more sufficient to represent the schema of it.
    *
    * <p>Measurement MNode Record Structure: <br>
    * (var length record, with length member)
@@ -120,7 +129,7 @@ public class RecordUtils {
    *   <li>1 byte: nodeType, as above
    *   <li>1 short (2 bytes): recLength, length of whole record
    *   <li>1 long (8 bytes): tagIndex, value of the offset within a measurement
-   *   <li>1 long (8 bytes): schemaBytes, including datatype/compressionType/encoding and so on
+   *   <li>1 long (8 bytes): statusBytes, including datatype/compressionType/encoding and so on
    *   <li>var length string (4+var_length bytes): alias
    * </ul>
    *
@@ -136,14 +145,19 @@ public class RecordUtils {
     ReadWriteIOUtils.write(MEASUREMENT_TYPE, buffer);
     ReadWriteIOUtils.write((short) bufferLength, buffer);
     ReadWriteIOUtils.write(convertTags2Long(node), buffer);
-    ReadWriteIOUtils.write(convertSchema2Long(node), buffer);
+    ReadWriteIOUtils.write(convertMeasStat2Long(node), buffer);
     ReadWriteIOUtils.write(node.getAlias(), buffer);
     return buffer;
   }
 
   /**
    * NOTICE: Make sure that buffer has set its position and limit clearly before pass to this
-   * method.
+   * method.<br>
+   * <br>
+   * FIXME: recLen is not futile although 'never used', since when decode from a buffer, this field
+   * alleviate an extra mem read for length of alias. BUT it is indeed redundant with length of
+   * alias which flushed by {@linkplain ReadWriteIOUtils#write(String, ByteBuffer)}, and error-prone
+   * since it only contains 2 bytes while the latter contains 4.
    *
    * @param nodeName name of the constructed node
    * @param buffer content of the node
@@ -212,14 +226,16 @@ public class RecordUtils {
     return addr;
   }
 
-  public static byte[] getSchemaBytes(ByteBuffer recBuf) {
-    byte[] res = new byte[3];
+  /** return as: [dataType, encoding, compression, preDelete] */
+  public static byte[] getMeasStatsBytes(ByteBuffer recBuf) {
+    byte[] res = new byte[4];
     int oriPos = recBuf.position();
     recBuf.position(oriPos + SCHEMA_OFFSET);
-    long schemaBytes = ReadWriteIOUtils.readLong(recBuf);
-    res[0] = (byte) (schemaBytes >>> 16);
-    res[1] = (byte) ((schemaBytes >>> 8) & 0xffL);
-    res[2] = (byte) (schemaBytes & 0xffL);
+    long statusBytes = ReadWriteIOUtils.readLong(recBuf);
+    res[0] = (byte) (statusBytes >>> 16 & 0xffL);
+    res[1] = (byte) (statusBytes >>> 8 & 0xffL);
+    res[2] = (byte) (statusBytes & 0xffL);
+    res[3] = (byte) (statusBytes >>> 24 & 0xffL);
     recBuf.position(oriPos);
     return res;
   }
@@ -234,6 +250,10 @@ public class RecordUtils {
 
   public static String getRecordAlias(ByteBuffer recBuf) {
     int oriPos = recBuf.position();
+    if (ReadWriteIOUtils.readByte(recBuf) != MEASUREMENT_TYPE) {
+      recBuf.position(oriPos);
+      return null;
+    }
     recBuf.position(oriPos + ALIAS_OFFSET);
     String alias = ReadWriteIOUtils.readString(recBuf);
     recBuf.position(oriPos);
@@ -312,19 +332,22 @@ public class RecordUtils {
     return node;
   }
 
-  private static long convertSchema2Long(IMeasurementMNode node) {
+  /** Including schema and pre-delete flag of a measurement, could be expanded further. */
+  private static long convertMeasStat2Long(IMeasurementMNode node) {
     byte dataType = node.getSchema().getTypeInByte();
     byte encoding = node.getSchema().getEncodingType().serialize();
     byte compressor = node.getSchema().getCompressor().serialize();
+    byte preDelete = (byte) (node.getAsMeasurementMNode().isPreDeleted() ? 0x01 : 0x00);
 
-    return (dataType << 16 | encoding << 8 | compressor);
+    return (preDelete << 24 | dataType << 16 | encoding << 8 | compressor);
   }
 
   private static IMNode paddingMeasurement(
-      String nodeName, long tagIndex, long schemaBytes, String alias) {
-    byte dataType = (byte) (schemaBytes >>> 16);
-    byte encoding = (byte) ((schemaBytes >>> 8) & 0xffL);
-    byte compressor = (byte) (schemaBytes & 0xffL);
+      String nodeName, long tagIndex, long statsBytes, String alias) {
+    byte preDel = (byte) (statsBytes >>> 24);
+    byte dataType = (byte) (statsBytes >>> 16);
+    byte encoding = (byte) ((statsBytes >>> 8) & 0xffL);
+    byte compressor = (byte) (statsBytes & 0xffL);
 
     IMeasurementSchema schema =
         new MeasurementSchema(
@@ -335,6 +358,11 @@ public class RecordUtils {
 
     IMNode res = MeasurementMNode.getMeasurementMNode(null, nodeName, schema, alias);
     res.getAsMeasurementMNode().setOffset(tagIndex);
+
+    if (preDel > 0) {
+      res.getAsMeasurementMNode().setPreDeleted(true);
+    }
+
     return res;
   }
 

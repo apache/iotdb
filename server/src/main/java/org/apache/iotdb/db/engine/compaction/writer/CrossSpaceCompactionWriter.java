@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -39,6 +41,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   // source tsfiles
   private List<TsFileResource> seqTsFileResources;
+  private List<TsFileResource> targetTsFileResources;
 
   // Each sub task has its corresponding seq file index.
   // The index of the array corresponds to subTaskId.
@@ -59,11 +62,21 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
+    this.targetTsFileResources = targetResources;
     currentDeviceEndTime = new long[seqFileResources.size()];
     isEmptyFile = new boolean[seqFileResources.size()];
     isDeviceExistedInTargetFiles = new boolean[targetResources.size()];
+    long memorySizeForEachWriter =
+        (long)
+            (SystemInfo.getInstance().getMemorySizeForCompaction()
+                / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                * IoTDBDescriptor.getInstance()
+                    .getConfig()
+                    .getChunkMetadataSizeProportionInCompaction()
+                / targetResources.size());
     for (int i = 0; i < targetResources.size(); i++) {
-      this.fileWriterList.add(new TsFileIOWriter(targetResources.get(i).getTsFile()));
+      this.fileWriterList.add(
+          new TsFileIOWriter(targetResources.get(i).getTsFile(), true, memorySizeForEachWriter));
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
@@ -119,12 +132,19 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   }
 
   @Override
-  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+  public void write(
+      TimeColumn timestamps, Column[] columns, String device, int subTaskId, int batchSize)
       throws IOException {
     // todo control time range of target tsfile
     checkTimeAndMayFlushChunkToCurrentFile(timestamps.getStartTime(), subTaskId);
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
+    synchronized (this) {
+      // we need to synchronized here to avoid multi-thread competition in sub-task
+      TsFileResource resource = targetTsFileResources.get(seqFileIndexArray[subTaskId]);
+      resource.updateStartTime(device, timestamps.getStartTime());
+      resource.updateEndTime(device, timestamps.getEndTime());
+    }
     CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
         fileWriterList.get(seqFileIndexArray[subTaskId]), chunkWriter, true);
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
@@ -200,6 +220,17 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
       }
 
       fileIndex++;
+    }
+  }
+
+  @Override
+  public void updateStartTimeAndEndTime(String device, long time, int subTaskId) {
+    synchronized (this) {
+      int fileIndex = seqFileIndexArray[subTaskId];
+      TsFileResource resource = targetTsFileResources.get(fileIndex);
+      // we need to synchronized here to avoid multi-thread competition in sub-task
+      resource.updateStartTime(device, time);
+      resource.updateEndTime(device, time);
     }
   }
 }

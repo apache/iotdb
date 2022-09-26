@@ -61,6 +61,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.junit.Assert.assertEquals;
 
 public class AggregationOperatorTest {
@@ -319,9 +321,11 @@ public class AggregationOperatorTest {
             Collections.singleton("sensor0"),
             fragmentInstanceContext.getOperatorContexts().get(0),
             aggregators,
+            initTimeRangeIterator(groupByTimeParameter, true, true),
             null,
             true,
-            groupByTimeParameter);
+            groupByTimeParameter,
+            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
     List<TsFileResource> seqResources1 = new ArrayList<>();
     List<TsFileResource> unSeqResources1 = new ArrayList<>();
     seqResources1.add(seqResources.get(0));
@@ -341,9 +345,11 @@ public class AggregationOperatorTest {
             Collections.singleton("sensor0"),
             fragmentInstanceContext.getOperatorContexts().get(1),
             aggregators,
+            initTimeRangeIterator(groupByTimeParameter, true, true),
             null,
             true,
-            groupByTimeParameter);
+            groupByTimeParameter,
+            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
     List<TsFileResource> seqResources2 = new ArrayList<>();
     List<TsFileResource> unSeqResources2 = new ArrayList<>();
     seqResources2.add(seqResources.get(2));
@@ -368,9 +374,8 @@ public class AggregationOperatorTest {
     return new AggregationOperator(
         fragmentInstanceContext.getOperatorContexts().get(2),
         finalAggregators,
+        initTimeRangeIterator(groupByTimeParameter, true, true),
         children,
-        true,
-        groupByTimeParameter,
-        true);
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
   }
 }

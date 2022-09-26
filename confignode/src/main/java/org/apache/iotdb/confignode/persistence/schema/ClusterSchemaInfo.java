@@ -31,13 +31,13 @@ import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
@@ -157,7 +157,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.warn("Storage group not exist", e);
       result
           .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-          .setMessage("Storage group not exist");
+          .setMessage("Storage group not exist: " + e.getMessage());
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
@@ -176,7 +176,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error("Error StorageGroup name", e);
       result.setStatus(
           new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-              .setMessage("Error StorageGroup name"));
+              .setMessage("Error StorageGroup name: " + e.getMessage()));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
@@ -202,7 +202,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error("Error StorageGroup name", e);
       result.setStatus(
           new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-              .setMessage("Error StorageGroup name"));
+              .setMessage("Error StorageGroup name: " + e.getMessage()));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }

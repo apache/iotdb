@@ -20,16 +20,19 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -46,13 +49,13 @@ import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
@@ -66,6 +69,8 @@ import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -73,40 +78,35 @@ import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
-import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -114,7 +114,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -170,12 +169,15 @@ public class ConfigManager implements IManager {
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
+
+    // ConsensusManager must be initialized last, as it would load states from disk and reinitialize
+    // above managers
     this.consensusManager = new ConsensusManager(this, stateMachine);
   }
 
   public void close() throws IOException {
     consensusManager.close();
-    partitionManager.getRegionCleaner().shutdown();
+    partitionManager.getRegionMaintainer().shutdown();
     procedureManager.shiftExecutor(false);
   }
 
@@ -240,16 +242,16 @@ public class ConfigManager implements IManager {
       List<TConfigNodeLocation> configNodeLocations = getNodeManager().getRegisteredConfigNodes();
       configNodeLocations.sort(Comparator.comparingInt(TConfigNodeLocation::getConfigNodeId));
       List<TDataNodeLocation> dataNodeInfoLocations =
-          getNodeManager().getRegisteredDataNodes(-1).stream()
+          getNodeManager().getRegisteredDataNodes().stream()
               .map(TDataNodeConfiguration::getLocation)
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
       Map<Integer, String> nodeStatus = new HashMap<>();
-      getLoadManager()
+      getNodeManager()
           .getNodeCacheMap()
           .forEach(
               (nodeId, heartbeatCache) ->
-                  nodeStatus.put(nodeId, heartbeatCache.getNodeStatus().getStatus()));
+                  nodeStatus.put(nodeId, heartbeatCache.getNodeStatusWithReason()));
       return new TShowClusterResp(status, configNodeLocations, dataNodeInfoLocations, nodeStatus);
     } else {
       return new TShowClusterResp(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
@@ -370,143 +372,105 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public Object getSchemaPartition(PathPatternTree patternTree, boolean isContainedReplicaSet) {
-    // Construct empty response from parameter isContainedReplicaSet
-    Object resp;
-    if (isContainedReplicaSet) {
-      resp = new TSchemaPartitionResp();
-    } else {
-      resp = new TSchemaPartitionTableResp();
-    }
+  public TSchemaPartitionTableResp getSchemaPartition(PathPatternTree patternTree) {
+    // Construct empty response
+    TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
 
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // Build GetSchemaPartitionPlan
-      Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-      List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
-      List<String> allStorageGroups = getClusterSchemaManager().getStorageGroupNames();
-      Map<String, Boolean> scanAllRegions = new HashMap<>();
-      for (PartialPath path : relatedPaths) {
-        for (String storageGroup : allStorageGroups) {
-          try {
-            PartialPath storageGroupPath = new PartialPath(storageGroup);
-            if (path.overlapWith(storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
-                && !scanAllRegions.containsKey(storageGroup)) {
-              List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, storageGroupPath);
-              if (relatedSlot.isEmpty()) {
-                scanAllRegions.put(storageGroup, true);
-                partitionSlotsMap.put(storageGroup, new HashSet<>());
-              } else {
-                partitionSlotsMap
-                    .computeIfAbsent(storageGroup, k -> new HashSet<>())
-                    .addAll(relatedSlot);
-              }
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.setStatus(status);
+    }
+
+    // Build GetSchemaPartitionPlan
+    Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+    List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
+    List<String> allStorageGroups = getClusterSchemaManager().getStorageGroupNames();
+    Map<String, Boolean> scanAllRegions = new HashMap<>();
+    for (PartialPath path : relatedPaths) {
+      for (String storageGroup : allStorageGroups) {
+        try {
+          PartialPath storageGroupPath = new PartialPath(storageGroup);
+          if (path.overlapWith(storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
+              && !scanAllRegions.containsKey(storageGroup)) {
+            List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, storageGroupPath);
+            if (relatedSlot.isEmpty()) {
+              scanAllRegions.put(storageGroup, true);
+              partitionSlotsMap.put(storageGroup, new HashSet<>());
+            } else {
+              partitionSlotsMap
+                  .computeIfAbsent(storageGroup, k -> new HashSet<>())
+                  .addAll(relatedSlot);
             }
-          } catch (IllegalPathException e) {
-            // this line won't be reached in general
-            throw new RuntimeException(e);
           }
+        } catch (IllegalPathException e) {
+          // this line won't be reached in general
+          throw new RuntimeException(e);
         }
-      }
-
-      // Return empty resp if the partitionSlotsMap is empty
-      if (partitionSlotsMap.isEmpty()) {
-        if (isContainedReplicaSet) {
-          return ((TSchemaPartitionResp) resp)
-              .setStatus(StatusUtils.OK)
-              .setSchemaRegionMap(new HashMap<>());
-        } else {
-          return ((TSchemaPartitionTableResp) resp)
-              .setStatus(StatusUtils.OK)
-              .setSchemaPartitionTable(new HashMap<>());
-        }
-      }
-
-      GetSchemaPartitionPlan getSchemaPartitionPlan =
-          new GetSchemaPartitionPlan(
-              partitionSlotsMap.entrySet().stream()
-                  .collect(
-                      Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue()))));
-      SchemaPartitionResp queryResult =
-          (SchemaPartitionResp) partitionManager.getSchemaPartition(getSchemaPartitionPlan);
-      if (isContainedReplicaSet) {
-        resp =
-            queryResult.convertToRpcSchemaPartitionResp(getLoadManager().genLatestRegionRouteMap());
-      } else {
-        resp = queryResult.convertToRpcSchemaPartitionTableResp();
-      }
-
-      // TODO: Delete or hide this LOGGER before officially release.
-      LOGGER.info("GetSchemaPartition receive paths: {}, return: {}", relatedPaths, resp);
-
-      return resp;
-    } else {
-      if (isContainedReplicaSet) {
-        return ((TSchemaPartitionResp) resp).setStatus(status);
-      } else {
-        return ((TSchemaPartitionTableResp) resp).setStatus(status);
       }
     }
+
+    // Return empty resp if the partitionSlotsMap is empty
+    if (partitionSlotsMap.isEmpty()) {
+      return resp.setStatus(StatusUtils.OK).setSchemaPartitionTable(new HashMap<>());
+    }
+
+    GetSchemaPartitionPlan getSchemaPartitionPlan =
+        new GetSchemaPartitionPlan(
+            partitionSlotsMap.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue()))));
+    SchemaPartitionResp queryResult =
+        (SchemaPartitionResp) partitionManager.getSchemaPartition(getSchemaPartitionPlan);
+    resp = queryResult.convertToRpcSchemaPartitionTableResp();
+
+    // TODO: Delete or hide this LOGGER before officially release.
+    LOGGER.info("GetSchemaPartition receive paths: {}, return: {}", relatedPaths, resp);
+
+    return resp;
   }
 
   @Override
-  public Object getOrCreateSchemaPartition(
-      PathPatternTree patternTree, boolean isContainedReplicaSet) {
-    // Construct empty response from parameter isContainedReplicaSet
-    Object resp;
-    if (isContainedReplicaSet) {
-      resp = new TSchemaPartitionResp();
-    } else {
-      resp = new TSchemaPartitionTableResp();
-    }
+  public TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree) {
+    // Construct empty response
+    TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
 
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<String> devicePaths = patternTree.getAllDevicePatterns();
-      List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.setStatus(status);
+    }
 
-      // Build GetOrCreateSchemaPartitionPlan
-      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-      for (String devicePath : devicePaths) {
-        if (!devicePath.contains("*")) {
-          // Only check devicePaths that without "*"
-          for (String storageGroup : storageGroups) {
-            if (PathUtils.isStartWith(devicePath, storageGroup)) {
-              partitionSlotsMap
-                  .computeIfAbsent(storageGroup, key -> new ArrayList<>())
-                  .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
-              break;
-            }
+    List<String> devicePaths = patternTree.getAllDevicePatterns();
+    List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
+
+    // Build GetOrCreateSchemaPartitionPlan
+    Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+    for (String devicePath : devicePaths) {
+      if (!devicePath.contains("*")) {
+        // Only check devicePaths that without "*"
+        for (String storageGroup : storageGroups) {
+          if (PathUtils.isStartWith(devicePath, storageGroup)) {
+            partitionSlotsMap
+                .computeIfAbsent(storageGroup, key -> new ArrayList<>())
+                .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
+            break;
           }
         }
       }
-      GetOrCreateSchemaPartitionPlan getOrCreateSchemaPartitionPlan =
-          new GetOrCreateSchemaPartitionPlan(partitionSlotsMap);
-
-      SchemaPartitionResp queryResult =
-          (SchemaPartitionResp)
-              partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
-      if (isContainedReplicaSet) {
-        resp =
-            queryResult.convertToRpcSchemaPartitionResp(getLoadManager().genLatestRegionRouteMap());
-      } else {
-        resp = queryResult.convertToRpcSchemaPartitionTableResp();
-      }
-
-      // TODO: Delete or hide this LOGGER before officially release.
-      LOGGER.info(
-          "GetOrCreateSchemaPartition receive devicePaths: {}, return TSchemaPartitionResp: {}",
-          devicePaths,
-          resp);
-
-      return resp;
-    } else {
-      if (isContainedReplicaSet) {
-        return ((TSchemaPartitionResp) resp).setStatus(status);
-      } else {
-        return ((TSchemaPartitionTableResp) resp).setStatus(status);
-      }
     }
+    GetOrCreateSchemaPartitionPlan getOrCreateSchemaPartitionPlan =
+        new GetOrCreateSchemaPartitionPlan(partitionSlotsMap);
+
+    SchemaPartitionResp queryResult =
+        (SchemaPartitionResp)
+            partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
+    resp = queryResult.convertToRpcSchemaPartitionTableResp();
+
+    // TODO: Delete or hide this LOGGER before officially release.
+    LOGGER.info(
+        "GetOrCreateSchemaPartition receive devicePaths: {}, return TSchemaPartitionResp: {}",
+        devicePaths,
+        resp);
+
+    return resp;
   }
 
   @Override
@@ -539,99 +503,55 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public Object getDataPartition(
-      GetDataPartitionPlan getDataPartitionPlan, boolean isContainedReplicaSet) {
-    // Construct empty response from parameter isContainedReplicaSet
-    Object resp;
-    if (isContainedReplicaSet) {
-      resp = new TDataPartitionResp();
-    } else {
-      resp = new TDataPartitionTableResp();
-    }
+  public TDataPartitionTableResp getDataPartition(GetDataPartitionPlan getDataPartitionPlan) {
+    // Construct empty response
+    TDataPartitionTableResp resp = new TDataPartitionTableResp();
 
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      DataPartitionResp queryResult =
-          (DataPartitionResp) partitionManager.getDataPartition(getDataPartitionPlan);
-
-      if (isContainedReplicaSet) {
-        resp = queryResult.convertToTDataPartitionResp(getLoadManager().genLatestRegionRouteMap());
-      } else {
-        resp = queryResult.convertToTDataPartitionTableResp();
-      }
-
-      // TODO: Delete or hide this LOGGER before officially release.
-      LOGGER.info(
-          "GetDataPartition interface receive PartitionSlotsMap: {}, return: {}",
-          getDataPartitionPlan.getPartitionSlotsMap(),
-          resp);
-
-      return resp;
-    } else {
-      if (isContainedReplicaSet) {
-        return ((TDataPartitionResp) resp).setStatus(status);
-      } else {
-        return ((TDataPartitionTableResp) resp).setStatus(status);
-      }
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.setStatus(status);
     }
+    DataPartitionResp queryResult =
+        (DataPartitionResp) partitionManager.getDataPartition(getDataPartitionPlan);
+
+    resp = queryResult.convertToTDataPartitionTableResp();
+
+    // TODO: Delete or hide this LOGGER before officially release.
+    LOGGER.info(
+        "GetDataPartition interface receive PartitionSlotsMap: {}, return: {}",
+        getDataPartitionPlan.getPartitionSlotsMap(),
+        resp);
+
+    return resp;
   }
 
   @Override
-  public Object getOrCreateDataPartition(
-      GetOrCreateDataPartitionPlan getOrCreateDataPartitionReq, boolean isContainedReplicaSet) {
-    // Construct empty response from parameter isContainedReplicaSet
-    Object resp;
-    if (isContainedReplicaSet) {
-      resp = new TDataPartitionResp();
-    } else {
-      resp = new TDataPartitionTableResp();
-    }
+  public TDataPartitionTableResp getOrCreateDataPartition(
+      GetOrCreateDataPartitionPlan getOrCreateDataPartitionReq) {
+    // Construct empty response
+    TDataPartitionTableResp resp = new TDataPartitionTableResp();
 
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      DataPartitionResp queryResult =
-          (DataPartitionResp)
-              partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
-
-      if (isContainedReplicaSet) {
-        resp = queryResult.convertToTDataPartitionResp(getLoadManager().genLatestRegionRouteMap());
-      } else {
-        resp = queryResult.convertToTDataPartitionTableResp();
-      }
-
-      // TODO: Delete or hide this LOGGER before officially release.
-      LOGGER.info(
-          "GetOrCreateDataPartition success. receive PartitionSlotsMap: {}, return: {}",
-          getOrCreateDataPartitionReq.getPartitionSlotsMap(),
-          resp);
-
-      return resp;
-    } else {
-      if (isContainedReplicaSet) {
-        return ((TDataPartitionResp) resp).setStatus(status);
-      } else {
-        return ((TDataPartitionTableResp) resp).setStatus(status);
-      }
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.setStatus(status);
     }
+
+    DataPartitionResp queryResult =
+        (DataPartitionResp) partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
+
+    resp = queryResult.convertToTDataPartitionTableResp();
+
+    // TODO: Delete or hide this LOGGER before officially release.
+    LOGGER.info(
+        "GetOrCreateDataPartition success. receive PartitionSlotsMap: {}, return: {}",
+        getOrCreateDataPartitionReq.getPartitionSlotsMap(),
+        resp);
+
+    return resp;
   }
 
   private TSStatus confirmLeader() {
-    TSStatus result = new TSStatus();
-
-    if (getConsensusManager().isLeader()) {
-      return result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } else {
-      result.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
-      result.setMessage(
-          "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
-
-      TConfigNodeLocation leaderLocation = consensusManager.getLeader();
-      if (leaderLocation != null) {
-        result.setRedirectNode(leaderLocation.getInternalEndPoint());
-      }
-
-      return result;
-    }
+    return getConsensusManager().confirmLeader();
   }
 
   @Override
@@ -750,7 +670,8 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
     if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
-      return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + "time_partition_interval_for_routing" + errorSuffix);
     }
     if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);
@@ -767,12 +688,16 @@ public class ConfigManager implements IManager {
     if (!req.getReadConsistencyLevel().equals(conf.getReadConsistencyLevel())) {
       return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
     }
+    if (req.getDiskSpaceWarningThreshold()
+        != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
+      return errorStatus.setMessage(errorPrefix + "disk_full_threshold" + errorSuffix);
+    }
     return null;
   }
 
   @Override
-  public TSStatus addConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    consensusManager.addConsensusGroup(configNodeLocations);
+  public TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
+    consensusManager.createPeerForConsensusGroup(configNodeLocations);
     return StatusUtils.OK;
   }
 
@@ -781,7 +706,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      status = nodeManager.checkConfigNode(removeConfigNodePlan);
+      status = nodeManager.checkConfigNodeBeforeRemove(removeConfigNodePlan);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         procedureManager.removeConfigNode(removeConfigNodePlan);
       }
@@ -807,10 +732,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus merge(TMergeReq req) {
+  public TSStatus merge() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.merge(req))
+        ? RpcUtils.squashResponseStatusList(nodeManager.merge())
         : status;
   }
 
@@ -823,10 +748,26 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus clearCache(TClearCacheReq req) {
+  public TSStatus clearCache() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache(req))
+        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache())
+        : status;
+  }
+
+  @Override
+  public TSStatus loadConfiguration() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.loadConfiguration())
+        : status;
+  }
+
+  @Override
+  public TSStatus setSystemStatus(String systemStatus) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.setSystemStatus(systemStatus))
         : status;
   }
 
@@ -849,10 +790,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan) {
+  public RegionInfoListResp showRegion(GetRegionInfoListPlan getRegionInfoListPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return partitionManager.getRegionInfoList(getRegionInfoListPlan);
+      return (RegionInfoListResp) partitionManager.getRegionInfoList(getRegionInfoListPlan);
     } else {
       RegionInfoListResp regionResp = new RegionInfoListResp();
       regionResp.setStatus(status);
@@ -865,48 +806,8 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     TShowDataNodesResp resp = new TShowDataNodesResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<TDataNodeInfo> registeredDataNodesInfoList = nodeManager.getRegisteredDataNodeInfoList();
-
-      // Map<DataNodeId, DataRegionNum>
-      Map<Integer, AtomicInteger> dataRegionNumMap = new HashMap<>();
-      // Map<DataNodeId, SchemaRegionNum>
-      Map<Integer, AtomicInteger> schemaRegionNumMap = new HashMap<>();
-
-      List<TRegionInfo> regionInfoList =
-          ((RegionInfoListResp) partitionManager.getRegionInfoList(new GetRegionInfoListPlan()))
-              .getRegionInfoList();
-      if (CollectionUtils.isNotEmpty(regionInfoList)) {
-
-        regionInfoList.forEach(
-            (regionInfo) -> {
-              int dataNodeId = regionInfo.getDataNodeId();
-              int regionTypeValue = regionInfo.getConsensusGroupId().getType().getValue();
-              int dataRegionNum =
-                  regionTypeValue == TConsensusGroupType.DataRegion.getValue() ? 1 : 0;
-              int schemaRegionNum =
-                  regionTypeValue == TConsensusGroupType.SchemaRegion.getValue() ? 1 : 0;
-              dataRegionNumMap
-                  .computeIfAbsent(dataNodeId, key -> new AtomicInteger())
-                  .addAndGet(dataRegionNum);
-              schemaRegionNumMap
-                  .computeIfAbsent(dataNodeId, key -> new AtomicInteger())
-                  .addAndGet(schemaRegionNum);
-            });
-
-        registeredDataNodesInfoList.forEach(
-            (dataNodesInfo -> {
-              if (dataRegionNumMap.containsKey(dataNodesInfo.getDataNodeId())) {
-                dataNodesInfo.setDataRegionNum(
-                    dataRegionNumMap.get(dataNodesInfo.getDataNodeId()).get());
-              }
-              if (schemaRegionNumMap.containsKey(dataNodesInfo.getDataNodeId())) {
-                dataNodesInfo.setSchemaRegionNum(
-                    schemaRegionNumMap.get(dataNodesInfo.getDataNodeId()).get());
-              }
-            }));
-      }
-
-      return resp.setDataNodesInfoList(registeredDataNodesInfoList).setStatus(StatusUtils.OK);
+      return resp.setDataNodesInfoList(nodeManager.getRegisteredDataNodeInfoList())
+          .setStatus(StatusUtils.OK);
     } else {
       return resp.setStatus(status);
     }
@@ -921,6 +822,16 @@ public class ConfigManager implements IManager {
           .setStatus(StatusUtils.OK);
     } else {
       return resp.setStatus(status);
+    }
+  }
+
+  @Override
+  public TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return getClusterSchemaManager().showStorageGroup(getStorageGroupPlan);
+    } else {
+      return new TShowStorageGroupResp().setStatus(status);
     }
   }
 
@@ -1002,5 +913,81 @@ public class ConfigManager implements IManager {
     } else {
       return new TGetPathsSetTemplatesResp(status);
     }
+  }
+
+  @Override
+  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.deleteTimeSeries(req);
+    } else {
+      return status;
+    }
+  }
+
+  /** Get all related schemaRegion which may contains the timeseries matched by given patternTree */
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
+      PathPatternTree patternTree) {
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        getSchemaPartition(patternTree).getSchemaPartitionTable();
+
+    List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
+    Set<TConsensusGroupId> groupIdSet =
+        schemaPartitionTable.values().stream()
+            .flatMap(m -> m.values().stream())
+            .collect(Collectors.toSet());
+    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+      if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
+        filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+      }
+    }
+    return filteredRegionReplicaSets;
+  }
+
+  /**
+   * Get all related dataRegion which may contains the data of specific timeseries matched by given
+   * patternTree
+   */
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedDataRegionGroup(
+      PathPatternTree patternTree) {
+    // get all storage group and slot by getting schema partition
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        getSchemaPartition(patternTree).getSchemaPartitionTable();
+
+    // construct request for getting data partition
+    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+        new HashMap<>();
+    schemaPartitionTable.forEach(
+        (key, value) -> {
+          Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> slotListMap = new HashMap<>();
+          value.keySet().forEach(slot -> slotListMap.put(slot, Collections.emptyList()));
+          partitionSlotsMap.put(key, slotListMap);
+        });
+
+    // get all data partitions
+    GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+        dataPartitionTable = getDataPartition(getDataPartitionPlan).getDataPartitionTable();
+
+    // get all region replicaset of target data partitions
+    List<TRegionReplicaSet> allRegionReplicaSets = getPartitionManager().getAllReplicaSets();
+    Set<TConsensusGroupId> groupIdSet =
+        dataPartitionTable.values().stream()
+            .flatMap(
+                tSeriesPartitionSlotMapMap ->
+                    tSeriesPartitionSlotMapMap.values().stream()
+                        .flatMap(
+                            tTimePartitionSlotListMap ->
+                                tTimePartitionSlotListMap.values().stream()
+                                    .flatMap(Collection::stream)))
+            .collect(Collectors.toSet());
+    Map<TConsensusGroupId, TRegionReplicaSet> filteredRegionReplicaSets = new HashMap<>();
+    for (TRegionReplicaSet regionReplicaSet : allRegionReplicaSets) {
+      if (groupIdSet.contains(regionReplicaSet.getRegionId())) {
+        filteredRegionReplicaSets.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+      }
+    }
+    return filteredRegionReplicaSets;
   }
 }

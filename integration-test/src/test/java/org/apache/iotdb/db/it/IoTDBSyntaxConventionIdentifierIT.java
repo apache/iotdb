@@ -152,6 +152,16 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "````",
       "`c.d.```",
       "`abc`",
+      "`+12`",
+      "`1e3`",
+      "`001`",
+      "`-1.0`",
+      "`01e-3`",
+      "`+0001`",
+      "`-0001`",
+      "`++1`",
+      "`+-1`",
+      "`--1`"
     };
 
     String[] resultTimeseries = {
@@ -166,6 +176,16 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "root.sg1.d1.````",
       "root.sg1.d1.`c.d.```",
       "root.sg1.d1.abc",
+      "root.sg1.d1.`+12`",
+      "root.sg1.d1.`1e3`",
+      "root.sg1.d1.`001`",
+      "root.sg1.d1.`-1.0`",
+      "root.sg1.d1.`01e-3`",
+      "root.sg1.d1.`+0001`",
+      "root.sg1.d1.`-0001`",
+      "root.sg1.d1.`++1`",
+      "root.sg1.d1.`+-1`",
+      "root.sg1.d1.`--1`"
     };
 
     String[] selectNodeNames = {
@@ -180,6 +200,16 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "````",
       "`c.d.```",
       "abc",
+      "`+12`",
+      "`1e3`",
+      "`001`",
+      "`-1.0`",
+      "`01e-3`",
+      "`+0001`",
+      "`-0001`",
+      "`++1`",
+      "`+-1`",
+      "`--1`"
     };
 
     String[] suffixInResultColumns = {
@@ -194,6 +224,16 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "````",
       "`c.d.```",
       "abc",
+      "`+12`",
+      "`1e3`",
+      "`001`",
+      "`-1.0`",
+      "`01e-3`",
+      "`+0001`",
+      "`-0001`",
+      "`++1`",
+      "`+-1`",
+      "`--1`"
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -367,6 +407,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       statement.execute("CREATE TIMESERIES root.sg1.d1.`1` INT32");
       statement.execute("CREATE TIMESERIES root.sg1.d1.`a.b` INT32");
       statement.execute("CREATE TIMESERIES root.sg1.d1.`a.``b` INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.text TEXT");
       int pointCnt = 3;
       for (int i = 0; i < pointCnt; i++) {
         statement.execute(
@@ -443,6 +484,44 @@ public class IoTDBSyntaxConventionIdentifierIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
+      }
+
+      cnt = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT text FROM root.sg1.d1 where text = '\'")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+
+      cnt = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT text FROM root.sg1.d1 where text = '\' or text = 'asdf'")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+
+      cnt = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT text FROM root.sg1.d1 where text = '\\'")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+
+      cnt = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT text FROM root.sg1.d1 where text = '\\' and text = 'asdf'")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
       }
     } catch (SQLException e) {
       e.printStackTrace();

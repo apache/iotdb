@@ -46,6 +46,8 @@ public abstract class AbstractCrossCompactionWriter implements ICompactionWriter
   // current chunk group header size
   private int chunkGroupHeaderSize;
 
+  protected List<TsFileResource> targetResources;
+
   public AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
@@ -57,6 +59,7 @@ public abstract class AbstractCrossCompactionWriter implements ICompactionWriter
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
+    this.targetResources = targetResources;
   }
 
   @Override
@@ -185,6 +188,17 @@ public abstract class AbstractCrossCompactionWriter implements ICompactionWriter
       }
 
       fileIndex++;
+    }
+  }
+
+  @Override
+  public void updateStartTimeAndEndTime(String device, long time, int subTaskId) {
+    synchronized (this) {
+      int fileIndex = seqFileIndexArray[subTaskId];
+      TsFileResource resource = targetResources.get(fileIndex);
+      // we need to synchronized here to avoid multi-thread competition in sub-task
+      resource.updateStartTime(device, time);
+      resource.updateEndTime(device, time);
     }
   }
 }

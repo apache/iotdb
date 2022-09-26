@@ -112,6 +112,7 @@ public class IoTDBCheckConfigIT {
     try {
       IoTDBStartCheck.getInstance().checkConfig();
     } catch (ConfigurationException t) {
+      t.printStackTrace();
       assertEquals("time_encoder", t.getParameter());
       assertEquals("REGULAR", t.getCorrectValue());
       return;

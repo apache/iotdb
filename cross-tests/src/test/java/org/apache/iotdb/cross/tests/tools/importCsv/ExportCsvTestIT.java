@@ -70,7 +70,7 @@ public class ExportCsvTestIT extends AbstractScript {
     String[] params = {"-td", "target/", "-q", "select c1,c2,c3 from root.test.t1"};
     prepareData();
     testMethod(params, null);
-    CSVParser parser = readCsvFile("target/dump0.csv");
+    CSVParser parser = readCsvFile("target/dump0_0.csv");
     String[] realRecords = {
       "root.test.t1.c1,root.test.t1.c2,root.test.t1.c3", "1.0,\"\"abc\",aa\",\"abbe's\""
     };
@@ -90,7 +90,7 @@ public class ExportCsvTestIT extends AbstractScript {
     };
     prepareData();
     testMethod(params, null);
-    CSVParser parser = readCsvFile("target/dump0.csv");
+    CSVParser parser = readCsvFile("target/dump0_0.csv");
     String[] realRecords = {
       "root.test.t1.c1(FLOAT),root.test.t1.c2(TEXT),root.test.t1.c3(TEXT)",
       "1.0,\"\"abc\",aa\",\"abbe's\""
@@ -111,7 +111,7 @@ public class ExportCsvTestIT extends AbstractScript {
     };
     prepareData();
     testMethod(params, null);
-    CSVParser parser = readCsvFile("target/dump0.csv");
+    CSVParser parser = readCsvFile("target/dump0_0.csv");
     String[] realRecords = {
       "count(root.test.t1.c1),count(root.test.t1.c2),count(root.test.t1.c3)", "1,1,1"
     };

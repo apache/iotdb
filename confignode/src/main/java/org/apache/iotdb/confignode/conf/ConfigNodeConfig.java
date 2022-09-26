@@ -39,7 +39,7 @@ public class ConfigNodeConfig {
   private int consensusPort = 22278;
 
   /** Used for connecting to the ConfigNodeGroup */
-  private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
+  private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 22277);
 
   // TODO: Read from iotdb-confignode.properties
   private int partitionRegionId = 0;
@@ -102,10 +102,10 @@ public class ConfigNodeConfig {
 
   /** External temporary lib directory for storing downloaded JAR files */
   private String temporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
 
   /** Time partition interval in seconds */
-  private long timePartitionInterval = 604800;
+  private long timePartitionInterval = 86400;
 
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 1;
@@ -127,9 +127,33 @@ public class ConfigNodeConfig {
   private long heartbeatInterval = 1000;
 
   /** The routing policy of read/write requests */
-  private String routingPolicy = RouteBalancer.leaderPolicy;
+  private String routingPolicy = RouteBalancer.LEADER_POLICY;
 
   private String readConsistencyLevel = "strong";
+
+  /** RatisConsensus protocol, Max size for a single log append request from leader */
+  private long ratisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
+
+  /**
+   * RatisConsensus protocol, trigger a snapshot when ratis_snapshot_trigger_threshold logs are
+   * written
+   */
+  private long ratisSnapshotTriggerThreshold = 400000L;
+
+  /** RatisConsensus protocol, allow flushing Raft Log asynchronously */
+  private boolean ratisLogUnsafeFlushEnable = false;
+
+  /** RatisConsensus protocol, max capacity of a single Raft Log segment */
+  private long ratisLogSegmentSizeMax = 24 * 1024 * 1024L;
+
+  /** RatisConsensus protocol, flow control window for ratis grpc log appender */
+  private long ratisGrpcFlowControlWindow = 4 * 1024 * 1024L;
+
+  /** RatisConsensus protocol, min election timeout for leader election */
+  private long ratisRpcLeaderElectionTimeoutMinMs = 2000L;
+
+  /** RatisConsensus protocol, max election timeout for leader election */
+  private long ratisRpcLeaderElectionTimeoutMaxMs = 4000L;
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -410,5 +434,61 @@ public class ConfigNodeConfig {
 
   public void setReadConsistencyLevel(String readConsistencyLevel) {
     this.readConsistencyLevel = readConsistencyLevel;
+  }
+
+  public long getRatisConsensusLogAppenderBufferSize() {
+    return ratisConsensusLogAppenderBufferSize;
+  }
+
+  public void setRatisConsensusLogAppenderBufferSize(long ratisConsensusLogAppenderBufferSize) {
+    this.ratisConsensusLogAppenderBufferSize = ratisConsensusLogAppenderBufferSize;
+  }
+
+  public long getRatisSnapshotTriggerThreshold() {
+    return ratisSnapshotTriggerThreshold;
+  }
+
+  public void setRatisSnapshotTriggerThreshold(long ratisSnapshotTriggerThreshold) {
+    this.ratisSnapshotTriggerThreshold = ratisSnapshotTriggerThreshold;
+  }
+
+  public boolean isRatisLogUnsafeFlushEnable() {
+    return ratisLogUnsafeFlushEnable;
+  }
+
+  public void setRatisLogUnsafeFlushEnable(boolean ratisLogUnsafeFlushEnable) {
+    this.ratisLogUnsafeFlushEnable = ratisLogUnsafeFlushEnable;
+  }
+
+  public long getRatisLogSegmentSizeMax() {
+    return ratisLogSegmentSizeMax;
+  }
+
+  public void setRatisLogSegmentSizeMax(long ratisLogSegmentSizeMax) {
+    this.ratisLogSegmentSizeMax = ratisLogSegmentSizeMax;
+  }
+
+  public long getRatisGrpcFlowControlWindow() {
+    return ratisGrpcFlowControlWindow;
+  }
+
+  public void setRatisGrpcFlowControlWindow(long ratisGrpcFlowControlWindow) {
+    this.ratisGrpcFlowControlWindow = ratisGrpcFlowControlWindow;
+  }
+
+  public long getRatisRpcLeaderElectionTimeoutMinMs() {
+    return ratisRpcLeaderElectionTimeoutMinMs;
+  }
+
+  public void setRatisRpcLeaderElectionTimeoutMinMs(long ratisRpcLeaderElectionTimeoutMinMs) {
+    this.ratisRpcLeaderElectionTimeoutMinMs = ratisRpcLeaderElectionTimeoutMinMs;
+  }
+
+  public long getRatisRpcLeaderElectionTimeoutMaxMs() {
+    return ratisRpcLeaderElectionTimeoutMaxMs;
+  }
+
+  public void setRatisRpcLeaderElectionTimeoutMaxMs(long ratisRpcLeaderElectionTimeoutMaxMs) {
+    this.ratisRpcLeaderElectionTimeoutMaxMs = ratisRpcLeaderElectionTimeoutMaxMs;
   }
 }

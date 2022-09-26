@@ -34,7 +34,7 @@ public class LongTVListTest {
 
   @Test
   public void testLongTVList1() {
-    LongTVList tvList = new LongTVList();
+    LongTVList tvList = LongTVList.newList();
     for (long i = 0; i < 1000; i++) {
       tvList.putLong(i, i);
     }
@@ -47,7 +47,7 @@ public class LongTVListTest {
 
   @Test
   public void testLongTVList2() {
-    LongTVList tvList = new LongTVList();
+    LongTVList tvList = LongTVList.newList();
     for (long i = 1000; i >= 0; i--) {
       tvList.putLong(i, i);
     }
@@ -61,7 +61,7 @@ public class LongTVListTest {
   @Test
   public void testLongTVList3() {
     Random random = new Random();
-    LongTVList tvList = new LongTVList();
+    LongTVList tvList = LongTVList.newList();
     List<TimeValuePair> inputs = new ArrayList<>();
     for (long i = 0; i < 10000; i++) {
       long time = random.nextInt(10000);
@@ -79,7 +79,7 @@ public class LongTVListTest {
 
   @Test
   public void testPutLongsWithoutBitMap() {
-    LongTVList tvList = new LongTVList();
+    LongTVList tvList = LongTVList.newList();
     List<Long> longList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     for (long i = 1000; i >= 0; i--) {
@@ -100,7 +100,7 @@ public class LongTVListTest {
 
   @Test
   public void testPutIntsWithBitMap() {
-    LongTVList tvList = new LongTVList();
+    LongTVList tvList = LongTVList.newList();
     List<Long> longList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);
@@ -131,7 +131,7 @@ public class LongTVListTest {
 
   @Test
   public void testClone() {
-    LongTVList tvList = new LongTVList();
+    LongTVList tvList = LongTVList.newList();
     List<Long> longList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);

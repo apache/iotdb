@@ -226,4 +226,17 @@ public class MppConfig implements BaseConfig {
         "data_region_consensus_protocol_class", dataRegionConsensusProtocolClass);
     return this;
   }
+
+  @Override
+  public BaseConfig setTimePartitionInterval(long timePartitionInterval) {
+    confignodeProperties.setProperty(
+        "time_partition_interval", String.valueOf(timePartitionInterval));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setEnableMemControl(boolean enableMemControl) {
+    confignodeProperties.setProperty("enable_mem_control", String.valueOf(enableMemControl));
+    return this;
+  }
 }

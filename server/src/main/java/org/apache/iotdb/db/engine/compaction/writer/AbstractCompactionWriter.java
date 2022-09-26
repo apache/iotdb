@@ -42,6 +42,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected String deviceId;
 
+  private final long targetChunkSize =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+
   // Each sub task has point count in current measurment, which is used to check size.
   // The index of the array corresponds to subTaskId.
   protected int[] measurementPointCountArray = new int[subTaskNum];
@@ -63,7 +66,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public abstract void write(long timestamp, Object value, int subTaskId) throws IOException;
 
-  public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+  public abstract void write(
+      TimeColumn timestamps, Column[] columns, String device, int subTaskId, int batchSize)
       throws IOException;
 
   public abstract void endFile() throws IOException;
@@ -71,4 +75,13 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   public abstract void close() throws IOException;
 
   public abstract List<TsFileIOWriter> getFileIOWriter();
+
+  public abstract void updateStartTimeAndEndTime(String device, long time, int subTaskId);
+
+  public void checkAndMayFlushChunkMetadata() throws IOException {
+    List<TsFileIOWriter> writers = this.getFileIOWriter();
+    for (TsFileIOWriter writer : writers) {
+      writer.checkMetadataSizeAndMayFlush();
+    }
+  }
 }

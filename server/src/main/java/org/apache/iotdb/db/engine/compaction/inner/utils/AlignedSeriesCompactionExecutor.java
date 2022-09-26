@@ -157,6 +157,7 @@ public class AlignedSeriesCompactionExecutor {
       }
       chunkWriter.writeToFileWriter(writer);
     }
+    writer.checkMetadataSizeAndMayFlush();
   }
 
   private void compactOneAlignedChunk(AlignedChunkReader chunkReader) throws IOException {

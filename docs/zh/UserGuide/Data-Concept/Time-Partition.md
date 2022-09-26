@@ -34,14 +34,14 @@
 |默认值| false |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
-* partition\_interval
+* time\_partition\_interval\_for\_storage
 
-|名字| partition\_interval |
-|:---:|:---|
-|描述| 存储组分区的时间段长度，用户指定的存储组下会使用该时间段进行分区，单位：秒 |
-|类型|Int64|
-|默认值| 604800 |
-|改后生效方式|仅允许在第一次启动服务前修改|
+|名字| time\_partition\_interval\_for\_storage |
+|:---:|:----------------------------------------|
+|描述| 存储组分区的时间段长度，用户指定的存储组下会使用该时间段进行分区，单位：秒   |
+|类型| Int64                                   |
+|默认值| 86400                                   |
+|改后生效方式| 仅允许在第一次启动服务前修改                          |
 
 ## 配置示例
 
@@ -55,7 +55,7 @@
 
 ## 使用建议
 
-使用时间分区功能时，建议同时打开 Memtable 的定时刷盘功能和 TsFileProcessor 的定时关闭功能，共 9 个相关配置参数（详情见 [timed_flush与timed_close配置项](../Reference/Config-Manual.md)）。
+使用时间分区功能时，建议同时打开 Memtable 的定时刷盘功能和 TsFileProcessor 的定时关闭功能，共 9 个相关配置参数（详情见 [timed_flush与timed_close配置项](../Reference/DataNode-Config-Manual.md)）。
 
 * enable_timed_flush_unseq_memtable: 是否开启乱序 Memtable 的定时刷盘，默认打开。
 

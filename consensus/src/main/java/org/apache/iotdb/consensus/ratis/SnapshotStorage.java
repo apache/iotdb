@@ -34,14 +34,11 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public class SnapshotStorage implements StateMachineStorage {
@@ -90,49 +87,24 @@ public class SnapshotStorage implements StateMachineStorage {
     if (snapshots == null || snapshots.length == 0) {
       return null;
     }
-    return snapshots[snapshots.length - 1].toFile();
-  }
-
-  private List<Path> getAllFilesUnder(File rootDir) {
-    List<Path> allFiles = new ArrayList<>();
-    try {
-      Files.walkFileTree(
-          rootDir.toPath(),
-          new FileVisitor<Path>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
-                throws IOException {
-              return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                throws IOException {
-              if (attrs.isRegularFile()) {
-                allFiles.add(file);
-              }
-              return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-              logger.info("visit file {} failed due to {}", file.toAbsolutePath(), exc);
-              return FileVisitResult.TERMINATE;
-            }
-
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc)
-                throws IOException {
-              return FileVisitResult.CONTINUE;
-            }
-          });
-    } catch (IOException ioException) {
-      logger.error("IOException occurred during listing snapshot directory: ", ioException);
-      return Collections.emptyList();
+    int i = snapshots.length - 1;
+    for (; i >= 0; i--) {
+      String metafilePath =
+          getMetafilePath(snapshots[i].toFile(), snapshots[i].getFileName().toString());
+      if (new File(metafilePath).exists()) {
+        break;
+      } else {
+        try {
+          FileUtils.deleteFully(snapshots[i]);
+        } catch (IOException e) {
+          logger.warn("delete incomplete snapshot directory {} failed due to {}", snapshots[i], e);
+        }
+      }
     }
-    return allFiles;
+    return i < 0 ? null : snapshots[i].toFile();
   }
 
+  // TODO optimize: cache latest snapshot instead of query statemachine everytime
   @Override
   public SnapshotInfo getLatestSnapshot() {
     File latestSnapshotDir = findLatestSnapshotDir();
@@ -141,14 +113,23 @@ public class SnapshotStorage implements StateMachineStorage {
     }
     TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
 
+    List<Path> actualSnapshotFiles = applicationStateMachine.getSnapshotFiles(latestSnapshotDir);
+    if (actualSnapshotFiles == null) {
+      return null;
+    }
+    Path metaFilePath = Paths.get(getMetafilePath(latestSnapshotDir, latestSnapshotDir.getName()));
+
     List<FileInfo> fileInfos = new ArrayList<>();
-    for (Path file : getAllFilesUnder(latestSnapshotDir)) {
-      if (file.endsWith(".md5")) {
+    for (Path file : actualSnapshotFiles) {
+      if (file.endsWith(".md5") || file.startsWith(META_FILE_PREFIX)) {
         continue;
       }
       FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
       fileInfos.add(fileInfo);
     }
+    // metafile should be sent last for atomicity considerations
+    FileInfo metafileInfo = new FileInfoWithDelayedMd5Computing(metaFilePath);
+    fileInfos.add(metafileInfo);
 
     return new FileListSnapshotInfo(
         fileInfos, snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());
@@ -201,11 +182,6 @@ public class SnapshotStorage implements StateMachineStorage {
     return snapshotDir.getAbsolutePath() + File.separator + META_FILE_PREFIX + termIndexMetadata;
   }
 
-  private String getMetafileMatcherRegex() {
-    // meta file should always end with term_index
-    return META_FILE_PREFIX + "\\d+_\\d+$";
-  }
-
   /**
    * After leader InstallSnapshot to a slow follower, Ratis will put all snapshot files directly
    * under statemachineDir. We need to handle this special scenario and rearrange these files to
@@ -214,7 +190,7 @@ public class SnapshotStorage implements StateMachineStorage {
    */
   void moveSnapshotFileToSubDirectory() {
     File[] potentialMetafile =
-        stateMachineDir.listFiles((dir, name) -> name.matches(getMetafileMatcherRegex()));
+        stateMachineDir.listFiles((dir, name) -> name.startsWith(META_FILE_PREFIX));
     if (potentialMetafile == null || potentialMetafile.length == 0) {
       // the statemachine dir contains no direct metafile
       return;

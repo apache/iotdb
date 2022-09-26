@@ -37,4 +37,13 @@ public interface ICompactionWriter extends AutoCloseable {
   void endFile() throws IOException;
 
   List<TsFileIOWriter> getFileIOWriter();
+
+  public default void checkAndMayFlushChunkMetadata() throws IOException {
+    List<TsFileIOWriter> writers = this.getFileIOWriter();
+    for (TsFileIOWriter writer : writers) {
+      writer.checkMetadataSizeAndMayFlush();
+    }
+  }
+
+  void updateStartTimeAndEndTime(String device, long time, int subTaskId);
 }

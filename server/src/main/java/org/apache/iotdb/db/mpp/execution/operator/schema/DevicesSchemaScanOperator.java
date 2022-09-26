@@ -20,18 +20,24 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
   private final boolean hasSgCol;
+  private final List<TSDataType> outputDataTypes;
 
   public DevicesSchemaScanOperator(
       PlanNodeId sourceId,
@@ -43,15 +49,16 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
       boolean hasSgCol) {
     super(sourceId, operatorContext, limit, offset, partialPath, isPrefixPath);
     this.hasSgCol = hasSgCol;
+    this.outputDataTypes =
+        (hasSgCol
+                ? ColumnHeaderConstant.showDevicesWithSgColumnHeaders
+                : ColumnHeaderConstant.showDevicesColumnHeaders)
+            .stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
   @Override
   protected TsBlock createTsBlock() {
-    TsBlockBuilder builder =
-        new TsBlockBuilder(
-            hasSgCol
-                ? HeaderConstant.showDevicesWithSgHeader.getRespDataTypes()
-                : HeaderConstant.showDevicesHeader.getRespDataTypes());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     try {
       ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
           .getSchemaRegion()

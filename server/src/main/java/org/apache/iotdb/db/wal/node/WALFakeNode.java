@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.wal.node;
 
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -68,6 +69,11 @@ public class WALFakeNode implements IWALNode {
     return getResult();
   }
 
+  @Override
+  public WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode) {
+    return getResult();
+  }
+
   private WALFlushListener getResult() {
     WALFlushListener walFlushListener = new WALFlushListener(false);
     switch (status) {
@@ -114,6 +120,11 @@ public class WALFakeNode implements IWALNode {
   @Override
   public long getCurrentSearchIndex() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public long getTotalSize() {
+    return 0;
   }
 
   public static WALFakeNode getFailureInstance(Exception e) {

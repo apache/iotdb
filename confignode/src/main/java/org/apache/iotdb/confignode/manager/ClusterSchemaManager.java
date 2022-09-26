@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
@@ -37,23 +38,28 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaT
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -151,6 +157,45 @@ public class ClusterSchemaManager {
    */
   public DataSet getMatchedStorageGroupSchema(GetStorageGroupPlan getStorageGroupPlan) {
     return getConsensusManager().read(getStorageGroupPlan).getDataset();
+  }
+
+  /** Only used in cluster tool show StorageGroup */
+  public TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan) {
+    StorageGroupSchemaResp storageGroupSchemaResp =
+        (StorageGroupSchemaResp) getMatchedStorageGroupSchema(getStorageGroupPlan);
+    if (storageGroupSchemaResp.getStatus().getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Return immediately if some StorageGroups doesn't exist
+      return new TShowStorageGroupResp().setStatus(storageGroupSchemaResp.getStatus());
+    }
+
+    Map<String, TStorageGroupInfo> infoMap = new ConcurrentHashMap<>();
+    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
+      String name = storageGroupSchema.getName();
+      TStorageGroupInfo storageGroupInfo = new TStorageGroupInfo();
+      storageGroupInfo.setName(name);
+      storageGroupInfo.setTTL(storageGroupSchema.getTTL());
+      storageGroupInfo.setSchemaReplicationFactor(storageGroupSchema.getSchemaReplicationFactor());
+      storageGroupInfo.setDataReplicationFactor(storageGroupSchema.getDataReplicationFactor());
+      storageGroupInfo.setTimePartitionInterval(storageGroupSchema.getTimePartitionInterval());
+
+      try {
+        storageGroupInfo.setSchemaRegionNum(
+            getPartitionManager().getRegionCount(name, TConsensusGroupType.SchemaRegion));
+        storageGroupInfo.setDataRegionNum(
+            getPartitionManager().getRegionCount(name, TConsensusGroupType.DataRegion));
+      } catch (StorageGroupNotExistsException e) {
+        // Return immediately if some StorageGroups doesn't exist
+        return new TShowStorageGroupResp()
+            .setStatus(
+                new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+                    .setMessage(e.getMessage()));
+      }
+
+      infoMap.put(name, storageGroupInfo);
+    }
+
+    return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
   }
 
   /**
@@ -407,7 +452,7 @@ public class ClusterSchemaManager {
     // sync template set info to all dataNodes
     TSStatus status;
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+        configManager.getNodeManager().getRegisteredDataNodes();
     for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
       status =
           SyncDataNodeClientPool.getInstance()
@@ -447,7 +492,7 @@ public class ClusterSchemaManager {
 
     // get all dataNodes
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+        configManager.getNodeManager().getRegisteredDataNodes();
 
     // send rollbackReq
     TSStatus status;

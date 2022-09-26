@@ -27,7 +27,6 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -76,22 +75,24 @@ public class ClusterScheduler implements IScheduler {
     this.queryType = queryType;
     this.dispatcher =
         new FragmentInstanceDispatcherImpl(
-            queryType, executor, writeOperationExecutor, internalServiceClientManager);
+            queryType,
+            queryContext,
+            executor,
+            writeOperationExecutor,
+            internalServiceClientManager);
     if (queryType == QueryType.READ) {
       this.stateTracker =
           new FixedRateFragInsStateTracker(
               stateMachine, scheduledExecutor, instances, internalServiceClientManager);
       this.queryTerminator =
           new SimpleQueryTerminator(
-              scheduledExecutor,
-              queryContext.getQueryId(),
-              instances,
-              internalServiceClientManager);
+              scheduledExecutor, queryContext, instances, internalServiceClientManager);
     }
   }
 
   private boolean needRetry(TSStatus failureStatus) {
     return failureStatus != null
+        && queryType == QueryType.READ
         && failureStatus.getCode() == TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode();
   }
 
@@ -106,7 +107,7 @@ public class ClusterScheduler implements IScheduler {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
         if (needRetry(result.getFailureStatus())) {
-          stateMachine.transitionToRetrying(result.getFailureStatus());
+          stateMachine.transitionToPendingRetry(result.getFailureStatus());
         } else {
           stateMachine.transitionToFailed(result.getFailureStatus());
         }
@@ -130,10 +131,6 @@ public class ClusterScheduler implements IScheduler {
     // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
     // QueryState to Running
     stateMachine.transitionToRunning();
-    instances.forEach(
-        instance -> {
-          stateMachine.initialFragInstanceState(instance.getId(), FragmentInstanceState.RUNNING);
-        });
 
     // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
     this.stateTracker.start();

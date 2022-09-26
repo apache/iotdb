@@ -87,6 +87,9 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
         LOGGER.error("Meet error when doing remove", e);
         return -1;
       }
+    } else {
+      LOGGER.error("Unsupported startup mode: {}", mode);
+      return -1;
     }
 
     return 0;
@@ -95,7 +98,7 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
   private void doRemoveNode(String[] args) throws IOException {
     LOGGER.info("Starting to remove {}...", ConfigNodeConstant.GLOBAL_NAME);
     if (args.length != 3) {
-      LOGGER.info("Usage: -r <ip>:<rpcPort>");
+      LOGGER.info("Usage: -r <internal_address>:<internal_port>");
       return;
     }
 
@@ -104,7 +107,8 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
       TConfigNodeLocation removeConfigNodeLocation =
           ConfigNodeRemoveCheck.getInstance().removeCheck(endPoint);
       if (removeConfigNodeLocation == null) {
-        LOGGER.error("The ConfigNode not in the Cluster.");
+        LOGGER.error(
+            "The ConfigNode to be removed is not in the cluster, please check the ip:port input.");
         return;
       }
 

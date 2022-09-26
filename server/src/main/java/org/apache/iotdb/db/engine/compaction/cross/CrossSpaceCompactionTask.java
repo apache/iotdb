@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -56,7 +57,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResource> targetTsfileResourceList;
   protected List<TsFileResource> holdReadLockList = new ArrayList<>();
   protected List<TsFileResource> holdWriteLockList = new ArrayList<>();
-  protected long selectedFileSize = 0;
+  protected double selectedSeqFileSize = 0;
+  protected double selectedUnseqFileSize = 0;
+  protected long memoryCost = 0L;
 
   public CrossSpaceCompactionTask(
       long timePartition,
@@ -65,6 +68,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       List<TsFileResource> selectedUnsequenceFiles,
       ICrossCompactionPerformer performer,
       AtomicInteger currentTaskNum,
+      long memoryCost,
       long serialId) {
     super(
         tsFileManager.getStorageGroupName(),
@@ -79,10 +83,17 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     this.unseqTsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
+    this.memoryCost = memoryCost;
   }
 
   @Override
   protected void doCompaction() {
+    try {
+      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost);
+    } catch (InterruptedException e) {
+      LOGGER.error("Interrupted when allocating memory for compaction", e);
+      return;
+    }
     try {
       if (!tsFileManager.isAllowCompaction()) {
         return;
@@ -102,19 +113,23 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
 
       for (TsFileResource resource : selectedSequenceFiles) {
-        selectedFileSize += resource.getTsFileSize();
+        selectedSeqFileSize += resource.getTsFileSize();
       }
+
       for (TsFileResource resource : selectedUnsequenceFiles) {
-        selectedFileSize += resource.getTsFileSize();
+        selectedUnseqFileSize += resource.getTsFileSize();
       }
 
       LOGGER.info(
-          "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files and {} unsequence files. Total size is {} MB",
+          "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files and {} unsequence files. Sequence files size is {} MB, unsequence file size is {} MB, total size is {} MB",
           storageGroupName,
           dataRegionId,
           selectedSequenceFiles.size(),
           selectedUnsequenceFiles.size(),
-          ((double) selectedFileSize) / 1024.0 / 1024.0);
+          selectedSeqFileSize / 1024 / 1024,
+          selectedUnseqFileSize / 1024 / 1024,
+          (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024);
+
       logFile =
           new File(
               selectedSequenceFiles.get(0).getTsFile().getParent()
@@ -165,7 +180,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             storageGroupName,
             dataRegionId,
             costTime,
-            ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
+            (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024 / costTime);
       }
     } catch (Throwable throwable) {
       // catch throwable to handle OOM errors
@@ -193,6 +208,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           false,
           true);
     } finally {
+      SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       releaseAllLock();
     }
   }

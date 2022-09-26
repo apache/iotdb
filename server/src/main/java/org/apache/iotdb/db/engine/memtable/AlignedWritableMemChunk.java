@@ -22,6 +22,7 @@ import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -43,6 +44,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class AlignedWritableMemChunk implements IWritableMemChunk {
@@ -50,6 +52,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   private final Map<String, Integer> measurementIndexMap;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
+
+  private static final int maxNumberOfPointsInPage =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
   private static final Logger LOGGER = LoggerFactory.getLogger(AlignedWritableMemChunk.class);
 
@@ -102,7 +108,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putBinary(long t, Binary v) {
+  public boolean putBinaryWithFlushCheck(long t, Binary v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
@@ -112,8 +118,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putAlignedValue(long t, Object[] v, int[] columnIndexArray) {
+  public boolean putAlignedValueWithFlushCheck(long t, Object[] v, int[] columnIndexArray) {
     list.putAlignedValue(t, v, columnIndexArray);
+    return list.reachMaxChunkSizeThreshold();
   }
 
   @Override
@@ -137,7 +144,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end) {
+  public boolean putBinariesWithFlushCheck(
+      long[] t, Binary[] v, BitMap bitMap, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
@@ -147,31 +155,32 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putAlignedValues(
+  public boolean putAlignedValuesWithFlushCheck(
       long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end) {
     list.putAlignedValues(t, v, bitMaps, columnIndexArray, start, end);
+    return list.reachMaxChunkSizeThreshold();
   }
 
   @Override
-  public void write(long insertTime, Object objectValue) {
+  public boolean writeWithFlushCheck(long insertTime, Object objectValue) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void writeAlignedValue(
+  public boolean writeAlignedValueWithFlushCheck(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
     int[] columnIndexArray = checkColumnsInInsertPlan(schemaList);
-    putAlignedValue(insertTime, objectValue, columnIndexArray);
+    return putAlignedValueWithFlushCheck(insertTime, objectValue, columnIndexArray);
   }
 
   @Override
-  public void write(
+  public boolean writeWithFlushCheck(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
-  public void writeAlignedValues(
+  public boolean writeAlignedValuesWithFlushCheck(
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,
@@ -179,7 +188,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       int start,
       int end) {
     int[] columnIndexArray = checkColumnsInInsertPlan(schemaList);
-    putAlignedValues(times, valueList, bitMaps, columnIndexArray, start, end);
+    return putAlignedValuesWithFlushCheck(times, valueList, bitMaps, columnIndexArray, start, end);
   }
 
   /**
@@ -295,65 +304,119 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public void encode(IChunkWriter chunkWriter) {
     AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
-    List<Integer> timeDuplicateAlignedRowIndexList = null;
+
+    boolean[] timeDuplicateInfo = null;
+    List<Integer> pageRange = new ArrayList<>();
+    int range = 0;
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
-      // skip duplicated data
-      if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
-        // record the time duplicated row index list for vector type
-        if (timeDuplicateAlignedRowIndexList == null) {
-          timeDuplicateAlignedRowIndexList = new ArrayList<>();
-          timeDuplicateAlignedRowIndexList.add(list.getValueIndex(sortedRowIndex));
+      if (sortedRowIndex == list.rowCount() - 1 || time != list.getTime(sortedRowIndex + 1)) {
+        if (range == 0) {
+          pageRange.add(sortedRowIndex);
         }
-        timeDuplicateAlignedRowIndexList.add(list.getValueIndex(sortedRowIndex + 1));
-        continue;
+        range++;
+        if (range == maxNumberOfPointsInPage) {
+          pageRange.add(sortedRowIndex);
+          range = 0;
+        }
+      } else {
+        if (Objects.isNull(timeDuplicateInfo)) {
+          timeDuplicateInfo = new boolean[list.rowCount()];
+        }
+        timeDuplicateInfo[sortedRowIndex] = true;
       }
-      List<TSDataType> dataTypes = list.getTsDataTypes();
-      int originRowIndex = list.getValueIndex(sortedRowIndex);
+    }
+
+    if (range != 0) {
+      pageRange.add(list.rowCount() - 1);
+    }
+
+    List<TSDataType> dataTypes = list.getTsDataTypes();
+    for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
       for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-        // write the time duplicated rows
-        if (timeDuplicateAlignedRowIndexList != null
-            && !timeDuplicateAlignedRowIndexList.isEmpty()) {
-          originRowIndex =
-              list.getValidRowIndexForTimeDuplicatedRows(
-                  timeDuplicateAlignedRowIndexList, columnIndex);
+        // Pair of Time and Index
+        Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
+        if (Objects.nonNull(timeDuplicateInfo)) {
+          lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
         }
-        boolean isNull = list.isNullValue(originRowIndex, columnIndex);
-        switch (dataTypes.get(columnIndex)) {
-          case BOOLEAN:
-            alignedChunkWriter.write(
-                time, list.getBooleanByValueIndex(originRowIndex, columnIndex), isNull);
-            break;
-          case INT32:
-            alignedChunkWriter.write(
-                time, list.getIntByValueIndex(originRowIndex, columnIndex), isNull);
-            break;
-          case INT64:
-            alignedChunkWriter.write(
-                time, list.getLongByValueIndex(originRowIndex, columnIndex), isNull);
-            break;
-          case FLOAT:
-            alignedChunkWriter.write(
-                time, list.getFloatByValueIndex(originRowIndex, columnIndex), isNull);
-            break;
-          case DOUBLE:
-            alignedChunkWriter.write(
-                time, list.getDoubleByValueIndex(originRowIndex, columnIndex), isNull);
-            break;
-          case TEXT:
-            alignedChunkWriter.write(
-                time, list.getBinaryByValueIndex(originRowIndex, columnIndex), isNull);
-            break;
-          default:
-            LOGGER.error(
-                "AlignedWritableMemChunk does not support data type: {}",
-                dataTypes.get(columnIndex));
-            break;
+        for (int sortedRowIndex = pageRange.get(pageNum * 2);
+            sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
+            sortedRowIndex++) {
+
+          // skip time duplicated rows
+          long time = list.getTime(sortedRowIndex);
+          if (Objects.nonNull(timeDuplicateInfo)) {
+            if (!list.isNullValue(list.getValueIndex(sortedRowIndex), columnIndex)) {
+              lastValidPointIndexForTimeDupCheck.left = time;
+              lastValidPointIndexForTimeDupCheck.right = list.getValueIndex(sortedRowIndex);
+            }
+            if (timeDuplicateInfo[sortedRowIndex]) {
+              continue;
+            }
+          }
+
+          // The part of code solves the following problem:
+          // Time: 1,2,2,3
+          // Value: 1,2,null,null
+          // When rowIndex:1, pair(min,null), timeDuplicateInfo:false, write(T:1,V:1)
+          // When rowIndex:2, pair(2,2), timeDuplicateInfo:true, skip writing value
+          // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2!=air.left:2, write(T:2,V:2)
+          // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2,
+          // write(T:3,V:null)
+
+          int originRowIndex;
+          if (Objects.nonNull(lastValidPointIndexForTimeDupCheck)
+              && (time == lastValidPointIndexForTimeDupCheck.left)) {
+            originRowIndex = lastValidPointIndexForTimeDupCheck.right;
+          } else {
+            originRowIndex = list.getValueIndex(sortedRowIndex);
+          }
+
+          boolean isNull = list.isNullValue(originRowIndex, columnIndex);
+          switch (dataTypes.get(columnIndex)) {
+            case BOOLEAN:
+              alignedChunkWriter.writeByColumn(
+                  time, list.getBooleanByValueIndex(originRowIndex, columnIndex), isNull);
+              break;
+            case INT32:
+              alignedChunkWriter.writeByColumn(
+                  time, list.getIntByValueIndex(originRowIndex, columnIndex), isNull);
+              break;
+            case INT64:
+              alignedChunkWriter.writeByColumn(
+                  time, list.getLongByValueIndex(originRowIndex, columnIndex), isNull);
+              break;
+            case FLOAT:
+              alignedChunkWriter.writeByColumn(
+                  time, list.getFloatByValueIndex(originRowIndex, columnIndex), isNull);
+              break;
+            case DOUBLE:
+              alignedChunkWriter.writeByColumn(
+                  time, list.getDoubleByValueIndex(originRowIndex, columnIndex), isNull);
+              break;
+            case TEXT:
+              alignedChunkWriter.writeByColumn(
+                  time, list.getBinaryByValueIndex(originRowIndex, columnIndex), isNull);
+              break;
+            default:
+              break;
+          }
+        }
+        alignedChunkWriter.nextColumn();
+      }
+
+      long[] times = new long[maxNumberOfPointsInPage];
+      int pointsInPage = 0;
+      for (int sortedRowIndex = pageRange.get(pageNum * 2);
+          sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
+          sortedRowIndex++) {
+        if (Objects.isNull(timeDuplicateInfo) || !timeDuplicateInfo[sortedRowIndex]) {
+          times[pointsInPage++] = list.getTime(sortedRowIndex);
         }
       }
-      alignedChunkWriter.write(time);
-      timeDuplicateAlignedRowIndexList = null;
+
+      alignedChunkWriter.write(times, pointsInPage, 0);
     }
   }
 

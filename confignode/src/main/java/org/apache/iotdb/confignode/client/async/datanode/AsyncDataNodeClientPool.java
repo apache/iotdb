@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.client.async.datanode;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -31,24 +32,40 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
 import org.apache.iotdb.confignode.client.async.handlers.ClearCacheHandler;
+import org.apache.iotdb.confignode.client.async.handlers.ConstructSchemaBlackListHandler;
 import org.apache.iotdb.confignode.client.async.handlers.CreateRegionHandler;
+import org.apache.iotdb.confignode.client.async.handlers.DeleteDataForDeleteTimeSeriesHandler;
+import org.apache.iotdb.confignode.client.async.handlers.DeleteTimeSeriesHandler;
+import org.apache.iotdb.confignode.client.async.handlers.FetchSchemaBlackLsitHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
+import org.apache.iotdb.confignode.client.async.handlers.InvalidateMatchedSchemaCacheHandler;
+import org.apache.iotdb.confignode.client.async.handlers.LoadConfigurationHandler;
 import org.apache.iotdb.confignode.client.async.handlers.MergeHandler;
+import org.apache.iotdb.confignode.client.async.handlers.RollbackSchemaBlackListHandler;
+import org.apache.iotdb.confignode.client.async.handlers.SetSystemStatusHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.client.async.task.AbstractDataNodeTask;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,7 +78,7 @@ public class AsyncDataNodeClientPool {
 
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager;
 
-  private final int retryNum = 6;
+  private static final int MAX_RETRY_NUM = 6;
 
   private AsyncDataNodeClientPool() {
     clientManager =
@@ -87,7 +104,7 @@ public class AsyncDataNodeClientPool {
     if (dataNodeLocationMap.isEmpty()) {
       return;
     }
-    for (int retry = 0; retry < retryNum; retry++) {
+    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
       for (TDataNodeLocation targetDataNode : dataNodeLocationMap.values()) {
         AbstractRetryHandler handler;
@@ -134,6 +151,24 @@ public class AsyncDataNodeClientPool {
                     dataNodeLocationMap,
                     dataNodeResponseStatus);
             break;
+          case LOAD_CONFIGURATION:
+            handler =
+                new LoadConfigurationHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
+          case SET_SYSTEM_STATUS:
+            handler =
+                new SetSystemStatusHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
           case UPDATE_REGION_ROUTE_MAP:
             handler =
                 new UpdateRegionRouteMapHandler(
@@ -144,6 +179,35 @@ public class AsyncDataNodeClientPool {
                 new UpdateConfigNodeGroupHandler(
                     countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
             break;
+          case CONSTRUCT_SCHEMA_BLACK_LIST:
+            handler =
+                new ConstructSchemaBlackListHandler(
+                    countDownLatch, targetDataNode, dataNodeLocationMap);
+            break;
+          case ROLLBACK_SCHEMA_BLACK_LIST:
+            handler =
+                new RollbackSchemaBlackListHandler(
+                    countDownLatch, targetDataNode, dataNodeLocationMap);
+            break;
+          case FETCH_SCHEMA_BLACK_LIST:
+            handler =
+                new FetchSchemaBlackLsitHandler(
+                    countDownLatch, targetDataNode, dataNodeLocationMap);
+            break;
+          case INVALIDATE_MATCHED_SCHEMA_CACHE:
+            handler =
+                new InvalidateMatchedSchemaCacheHandler(
+                    countDownLatch, targetDataNode, dataNodeLocationMap);
+            break;
+          case DELETE_DATA_FOR_DELETE_TIMESERIES:
+            handler =
+                new DeleteDataForDeleteTimeSeriesHandler(
+                    countDownLatch, targetDataNode, dataNodeLocationMap);
+            break;
+          case DELETE_TIMESERIES:
+            handler =
+                new DeleteTimeSeriesHandler(countDownLatch, targetDataNode, dataNodeLocationMap);
+            break;
           default:
             return;
         }
@@ -153,6 +217,33 @@ public class AsyncDataNodeClientPool {
         countDownLatch.await();
       } catch (InterruptedException e) {
         LOGGER.error("Interrupted during {} on ConfigNode", requestType);
+      }
+      // Check if there is a node that fails to send the request, and retry if there is one
+      if (dataNodeLocationMap.isEmpty()) {
+        break;
+      }
+    }
+  }
+
+  public void sendAsyncRequestToDataNodeWithRetry(
+      Object req, AbstractDataNodeTask<?> dataNodeTask) {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = dataNodeTask.getDataNodeLocationMap();
+    if (dataNodeLocationMap.isEmpty()) {
+      return;
+    }
+    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
+      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
+      for (TDataNodeLocation targetDataNode : dataNodeLocationMap.values()) {
+        AbstractRetryHandler handler = dataNodeTask.getSingleRequestHandler();
+        handler.setCountDownLatch(countDownLatch);
+        handler.setTargetDataNode(targetDataNode);
+        sendAsyncRequestToDataNode(targetDataNode, req, handler, retry);
+      }
+
+      try {
+        countDownLatch.await();
+      } catch (InterruptedException e) {
+        LOGGER.error("Interrupted during {} on ConfigNode", dataNodeTask.getDataNodeRequestType());
       }
       // Check if there is a node that fails to send the request, and retry if there is one
       if (dataNodeLocationMap.isEmpty()) {
@@ -173,10 +264,10 @@ public class AsyncDataNodeClientPool {
         case SET_TTL:
           client.setTTL((TSetTTLReq) req, (SetTTLHandler) handler);
           break;
-        case CREATE_DATA_REGIONS:
+        case CREATE_DATA_REGION:
           client.createDataRegion((TCreateDataRegionReq) req, (CreateRegionHandler) handler);
           break;
-        case CREATE_SCHEMA_REGIONS:
+        case CREATE_SCHEMA_REGION:
           client.createSchemaRegion((TCreateSchemaRegionReq) req, (CreateRegionHandler) handler);
           break;
         case CREATE_FUNCTION:
@@ -195,12 +286,43 @@ public class AsyncDataNodeClientPool {
         case CLEAR_CACHE:
           client.clearCache((ClearCacheHandler) handler);
           break;
+        case LOAD_CONFIGURATION:
+          client.loadConfiguration((LoadConfigurationHandler) handler);
+          break;
+        case SET_SYSTEM_STATUS:
+          client.setSystemStatus((String) req, (SetSystemStatusHandler) handler);
+          break;
         case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);
           break;
         case BROADCAST_LATEST_CONFIG_NODE_GROUP:
           client.updateConfigNodeGroup(
               (TUpdateConfigNodeGroupReq) req, (UpdateConfigNodeGroupHandler) handler);
+          break;
+        case CONSTRUCT_SCHEMA_BLACK_LIST:
+          client.constructSchemaBlackList(
+              (TConstructSchemaBlackListReq) req, (ConstructSchemaBlackListHandler) handler);
+          break;
+        case ROLLBACK_SCHEMA_BLACK_LIST:
+          client.rollbackSchemaBlackList(
+              (TRollbackSchemaBlackListReq) req, (RollbackSchemaBlackListHandler) handler);
+          break;
+        case FETCH_SCHEMA_BLACK_LIST:
+          client.fetchSchemaBlackList(
+              (TFetchSchemaBlackListReq) req, (FetchSchemaBlackLsitHandler) handler);
+          break;
+        case INVALIDATE_MATCHED_SCHEMA_CACHE:
+          client.invalidateMatchedSchemaCache(
+              (TInvalidateMatchedSchemaCacheReq) req,
+              (InvalidateMatchedSchemaCacheHandler) handler);
+          break;
+        case DELETE_DATA_FOR_DELETE_TIMESERIES:
+          client.deleteDataForDeleteTimeSeries(
+              (TDeleteDataForDeleteTimeSeriesReq) req,
+              (DeleteDataForDeleteTimeSeriesHandler) handler);
+          break;
+        case DELETE_TIMESERIES:
+          client.deleteTimeSeries((TDeleteTimeSeriesReq) req, (DeleteTimeSeriesHandler) handler);
           break;
         default:
           LOGGER.error(
@@ -218,18 +340,18 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Execute CreateRegionsReq asynchronously
+   * Execute CreateRegionGroupsPlan asynchronously
    *
-   * @param createRegionGroupsPlan CreateRegionsReq
    * @param ttlMap Map<StorageGroupName, TTL>
+   * @return Those RegionReplicas that failed to create
    */
-  public void createRegions(
+  public Map<TConsensusGroupId, TRegionReplicaSet> createRegionGroups(
       CreateRegionGroupsPlan createRegionGroupsPlan, Map<String, Long> ttlMap) {
     // Because different requests will be sent to the same node when createRegions,
     // so for CreateRegions use Map<index, TDataNodeLocation>
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
     int index = 0;
-    // Count the datanodes to be sent
+    // Count the DataNodes to be sent
     for (List<TRegionReplicaSet> regionReplicaSets :
         createRegionGroupsPlan.getRegionGroupMap().values()) {
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
@@ -239,9 +361,9 @@ public class AsyncDataNodeClientPool {
       }
     }
     if (dataNodeLocationMap.isEmpty()) {
-      return;
+      return new HashMap<>();
     }
-    for (int retry = 0; retry < retryNum; retry++) {
+    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
       index = 0;
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
       for (Map.Entry<String, List<TRegionReplicaSet>> entry :
@@ -257,7 +379,7 @@ public class AsyncDataNodeClientPool {
                   handler =
                       new CreateRegionHandler(
                           countDownLatch,
-                          DataNodeRequestType.CREATE_SCHEMA_REGIONS,
+                          DataNodeRequestType.CREATE_SCHEMA_REGION,
                           regionReplicaSet.regionId,
                           targetDataNode,
                           dataNodeLocationMap,
@@ -272,7 +394,7 @@ public class AsyncDataNodeClientPool {
                   handler =
                       new CreateRegionHandler(
                           countDownLatch,
-                          DataNodeRequestType.CREATE_DATA_REGIONS,
+                          DataNodeRequestType.CREATE_DATA_REGION,
                           regionReplicaSet.regionId,
                           targetDataNode,
                           dataNodeLocationMap,
@@ -285,7 +407,7 @@ public class AsyncDataNodeClientPool {
                       retry);
                   break;
                 default:
-                  return;
+                  break;
               }
             } else {
               index++;
@@ -304,6 +426,43 @@ public class AsyncDataNodeClientPool {
         break;
       }
     }
+
+    // Filter RegionGroups that weren't created successfully
+    index = 0;
+    Map<TConsensusGroupId, TRegionReplicaSet> failedRegions = new HashMap<>();
+    for (List<TRegionReplicaSet> regionReplicaSets :
+        createRegionGroupsPlan.getRegionGroupMap().values()) {
+      for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+          if (dataNodeLocationMap.containsKey(index)) {
+            failedRegions
+                .computeIfAbsent(
+                    regionReplicaSet.getRegionId(),
+                    empty -> new TRegionReplicaSet().setRegionId(regionReplicaSet.getRegionId()))
+                .addToDataNodeLocations(dataNodeLocation);
+          }
+          index += 1;
+        }
+      }
+    }
+    return failedRegions;
+  }
+
+  private TCreateSchemaRegionReq genCreateSchemaRegionReq(
+      String storageGroup, TRegionReplicaSet regionReplicaSet) {
+    TCreateSchemaRegionReq req = new TCreateSchemaRegionReq();
+    req.setStorageGroup(storageGroup);
+    req.setRegionReplicaSet(regionReplicaSet);
+    return req;
+  }
+
+  private TCreateDataRegionReq genCreateDataRegionReq(
+      String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
+    TCreateDataRegionReq req = new TCreateDataRegionReq();
+    req.setStorageGroup(storageGroup);
+    req.setRegionReplicaSet(regionReplicaSet);
+    req.setTtl(TTL);
+    return req;
   }
 
   /**
@@ -326,23 +485,6 @@ public class AsyncDataNodeClientPool {
           null);
       LOGGER.info("Broadcast the latest configNodeGroup finished.");
     }
-  }
-
-  private TCreateSchemaRegionReq genCreateSchemaRegionReq(
-      String storageGroup, TRegionReplicaSet regionReplicaSet) {
-    TCreateSchemaRegionReq req = new TCreateSchemaRegionReq();
-    req.setStorageGroup(storageGroup);
-    req.setRegionReplicaSet(regionReplicaSet);
-    return req;
-  }
-
-  private TCreateDataRegionReq genCreateDataRegionReq(
-      String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
-    TCreateDataRegionReq req = new TCreateDataRegionReq();
-    req.setStorageGroup(storageGroup);
-    req.setRegionReplicaSet(regionReplicaSet);
-    req.setTtl(TTL);
-    return req;
   }
 
   /**

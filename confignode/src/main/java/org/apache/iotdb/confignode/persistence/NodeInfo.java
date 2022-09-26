@@ -22,22 +22,16 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -100,33 +94,6 @@ public class NodeInfo implements SnapshotProcessor {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.registeredConfigNodes = new HashSet<>();
-  }
-
-  public void addMetrics() {
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.CONFIG_NODE.toString(),
-              MetricLevel.CORE,
-              registeredConfigNodes,
-              o -> getRegisteredConfigNodeCount(),
-              Tag.NAME.toString(),
-              "total",
-              Tag.STATUS.toString(),
-              NodeStatus.Registered.toString());
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.DATA_NODE.toString(),
-              MetricLevel.CORE,
-              registeredDataNodes,
-              Map::size,
-              Tag.NAME.toString(),
-              "total",
-              Tag.STATUS.toString(),
-              NodeStatus.Registered.toString());
-    }
   }
 
   /**
@@ -297,22 +264,12 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /**
-   * Return the specific registered DataNode
-   *
-   * @param dataNodeId Specific DataNodeId
-   * @return All registered DataNodes if dataNodeId equals -1. And return the specific DataNode
-   *     otherwise.
-   */
-  public List<TDataNodeConfiguration> getRegisteredDataNodes(int dataNodeId) {
+  /** Return All registered DataNodes */
+  public List<TDataNodeConfiguration> getRegisteredDataNodes() {
     List<TDataNodeConfiguration> result;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
-      if (dataNodeId == -1) {
-        result = new ArrayList<>(registeredDataNodes.values());
-      } else {
-        result = Collections.singletonList(registeredDataNodes.get(dataNodeId));
-      }
+      result = new ArrayList<>(registeredDataNodes.values());
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
     }

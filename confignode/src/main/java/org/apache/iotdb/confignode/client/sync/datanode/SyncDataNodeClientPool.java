@@ -21,17 +21,18 @@ package org.apache.iotdb.confignode.client.sync.datanode;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.mpp.rpc.thrift.TAddConsensusGroup;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
-import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -42,11 +43,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /** Synchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
@@ -75,18 +71,30 @@ public class SyncDataNodeClientPool {
             return client.invalidatePartitionCache((TInvalidateCacheReq) req);
           case INVALIDATE_SCHEMA_CACHE:
             return client.invalidateSchemaCache((TInvalidateCacheReq) req);
-          case DELETE_REGIONS:
+          case CREATE_SCHEMA_REGION:
+            return client.createSchemaRegion((TCreateSchemaRegionReq) req);
+          case CREATE_DATA_REGION:
+            return client.createDataRegion((TCreateDataRegionReq) req);
+          case DELETE_REGION:
             return client.deleteRegion((TConsensusGroupId) req);
           case INVALIDATE_PERMISSION_CACHE:
             return client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req);
-          case MIGRATE_REGION:
-            return client.migrateRegion((TMigrateRegionReq) req);
           case DISABLE_DATA_NODE:
             return client.disableDataNode((TDisableDataNodeReq) req);
           case STOP_DATA_NODE:
             return client.stopDataNode();
+          case SET_SYSTEM_STATUS:
+            return client.setSystemStatus((String) req);
           case UPDATE_TEMPLATE:
             return client.updateTemplate((TUpdateTemplateReq) req);
+          case CREATE_NEW_REGION_PEER:
+            return client.createNewRegionPeer((TCreatePeerReq) req);
+          case ADD_REGION_PEER:
+            return client.addRegionPeer((TMaintainPeerReq) req);
+          case REMOVE_REGION_PEER:
+            return client.removeRegionPeer((TMaintainPeerReq) req);
+          case DELETE_OLD_REGION_PEER:
+            return client.deleteOldRegionPeer((TMaintainPeerReq) req);
           default:
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
@@ -104,39 +112,7 @@ public class SyncDataNodeClientPool {
     }
     LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
-        .setMessage("All retry failed due to" + lastException.getMessage());
-  }
-
-  public void deleteRegions(Set<TRegionReplicaSet> deletedRegionSet) {
-    Map<TDataNodeLocation, List<TConsensusGroupId>> regionInfoMap = new HashMap<>();
-    deletedRegionSet.forEach(
-        (tRegionReplicaSet) -> {
-          for (TDataNodeLocation dataNodeLocation : tRegionReplicaSet.getDataNodeLocations()) {
-            regionInfoMap
-                .computeIfAbsent(dataNodeLocation, k -> new ArrayList<>())
-                .add(tRegionReplicaSet.getRegionId());
-          }
-        });
-    LOGGER.info("Current regionInfoMap {} ", regionInfoMap);
-    regionInfoMap.forEach(
-        (dataNodeLocation, regionIds) ->
-            deleteRegions(dataNodeLocation.getInternalEndPoint(), regionIds, deletedRegionSet));
-  }
-
-  private void deleteRegions(
-      TEndPoint endPoint,
-      List<TConsensusGroupId> regionIds,
-      Set<TRegionReplicaSet> deletedRegionSet) {
-    for (TConsensusGroupId regionId : regionIds) {
-      LOGGER.debug("Delete region {} ", regionId);
-      final TSStatus status =
-          sendSyncRequestToDataNodeWithRetry(
-              endPoint, regionId, DataNodeRequestType.DELETE_REGIONS);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info("DELETE Region {} successfully", regionId);
-        deletedRegionSet.removeIf(k -> k.getRegionId().equals(regionId));
-      }
-    }
+        .setMessage("All retry failed due to: " + lastException.getMessage());
   }
 
   private void doRetryWait(int retryNum) {
@@ -170,34 +146,6 @@ public class SyncDataNodeClientPool {
     } catch (TException e) {
       LOGGER.error("Change regions leader error on Date node: {}", dataNode, e);
       status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_FAILED.getStatusCode());
-      status.setMessage(e.getMessage());
-    }
-    return status;
-  }
-
-  public TSStatus addToRegionConsensusGroup(
-      List<TDataNodeLocation> regionOriginalPeerNodes,
-      TConsensusGroupId regionId,
-      TDataNodeLocation newPeerNode,
-      String storageGroup,
-      long ttl) {
-    TSStatus status;
-    // do addConsensusGroup in new node locally
-    try (SyncDataNodeInternalServiceClient client =
-        clientManager.borrowClient(newPeerNode.getInternalEndPoint())) {
-      List<TDataNodeLocation> currentPeerNodes = new ArrayList<>(regionOriginalPeerNodes);
-      currentPeerNodes.add(newPeerNode);
-      TAddConsensusGroup req = new TAddConsensusGroup(regionId, currentPeerNodes, storageGroup);
-      req.setTtl(ttl);
-      status = client.addToRegionConsensusGroup(req);
-    } catch (IOException e) {
-      LOGGER.error("Can't connect to Data Node {}.", newPeerNode.getInternalEndPoint(), e);
-      status = new TSStatus(TSStatusCode.NO_CONNECTION.getStatusCode());
-      status.setMessage(e.getMessage());
-    } catch (TException e) {
-      LOGGER.error(
-          "Add region consensus {} group failed to Date node: {}", regionId, newPeerNode, e);
-      status = new TSStatus(TSStatusCode.REGION_MIGRATE_FAILED.getStatusCode());
       status.setMessage(e.getMessage());
     }
     return status;

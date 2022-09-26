@@ -20,6 +20,10 @@ package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
@@ -37,8 +41,16 @@ public class MPPQueryContext {
   private TEndPoint localInternalEndpoint;
   private ResultNodeContext resultNodeContext;
 
+  // When some DataNode cannot be connected, its endPoint will be put
+  // in this list. And the following retry will avoid planning fragment
+  // onto this node.
+  private final List<TEndPoint> endPointBlackList;
+
+  private final TypeProvider typeProvider = new TypeProvider();
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
+    this.endPointBlackList = new LinkedList<>();
   }
 
   public MPPQueryContext(
@@ -47,12 +59,12 @@ public class MPPQueryContext {
       SessionInfo session,
       TEndPoint localDataBlockEndpoint,
       TEndPoint localInternalEndpoint) {
+    this(queryId);
     this.sql = sql;
-    this.queryId = queryId;
     this.session = session;
     this.localDataBlockEndpoint = localDataBlockEndpoint;
     this.localInternalEndpoint = localInternalEndpoint;
-    this.resultNodeContext = new ResultNodeContext(queryId);
+    this.initResultNodeContext();
   }
 
   public MPPQueryContext(
@@ -63,14 +75,18 @@ public class MPPQueryContext {
       TEndPoint localInternalEndpoint,
       long timeOut,
       long startTime) {
-    this.sql = sql;
-    this.queryId = queryId;
-    this.session = session;
-    this.localDataBlockEndpoint = localDataBlockEndpoint;
-    this.localInternalEndpoint = localInternalEndpoint;
-    this.resultNodeContext = new ResultNodeContext(queryId);
+    this(sql, queryId, session, localDataBlockEndpoint, localInternalEndpoint);
     this.timeOut = timeOut;
     this.startTime = startTime;
+    this.initResultNodeContext();
+  }
+
+  public void prepareForRetry() {
+    this.initResultNodeContext();
+  }
+
+  private void initResultNodeContext() {
+    this.resultNodeContext = new ResultNodeContext(queryId);
   }
 
   public QueryId getQueryId() {
@@ -115,5 +131,17 @@ public class MPPQueryContext {
 
   public void setStartTime(long startTime) {
     this.startTime = startTime;
+  }
+
+  public void addFailedEndPoint(TEndPoint endPoint) {
+    this.endPointBlackList.add(endPoint);
+  }
+
+  public List<TEndPoint> getEndPointBlackList() {
+    return endPointBlackList;
+  }
+
+  public TypeProvider getTypeProvider() {
+    return typeProvider;
   }
 }

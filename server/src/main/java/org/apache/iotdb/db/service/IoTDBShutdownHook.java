@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.wal.WALManager;
@@ -36,14 +36,18 @@ public class IoTDBShutdownHook extends Thread {
 
   @Override
   public void run() {
-    CompactionTaskManager.getInstance().stop();
     // close rocksdb if possible to avoid lose data
     if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
         .equals(SchemaEngineMode.Rocksdb_based)) {
       IoTDB.configManager.clear();
     }
 
-    // == flush data to Tsfile and remove WAL log files
+    // reject write operations to make sure all tsfiles will be sealed
+    CommonDescriptor.getInstance().getConfig().setNodeStatusToShutdown();
+    // wait all wal are flushed
+    WALManager.getInstance().waitAllWALFlushed();
+
+    // flush data to Tsfile and remove WAL log files
     if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
       if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
         StorageEngineV2.getInstance().syncCloseAllProcessor();
@@ -53,7 +57,7 @@ public class IoTDBShutdownHook extends Thread {
     }
     WALManager.getInstance().deleteOutdatedWALFiles();
 
-    if (IoTDB.isClusterMode()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       // This setting ensures that compaction work is not discarded
       // even if there are frequent restarts
       DataRegionConsensusImpl.getInstance()

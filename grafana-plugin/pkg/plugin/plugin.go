@@ -133,7 +133,7 @@ type QueryDataReq struct {
 type QueryDataResponse struct {
 	Expressions []string    `json:"expressions"`
 	Timestamps  []int64     `json:"timestamps"`
-	Values      [][]float32 `json:"values"`
+	Values      [][]interface{} `json:"values"`
 	ColumnNames interface{} `json:"columnNames"`
 	Code        int32       `json:"code"`
 	Message     string      `json:"message"`
@@ -221,11 +221,11 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 	frame := data.NewFrame("response")
 	for i := 0; i < len(queryDataResp.Expressions); i++ {
 		times := make([]time.Time, len(queryDataResp.Timestamps))
-		values := make([]float32, len(queryDataResp.Timestamps))
 		for c := 0; c < len(queryDataResp.Timestamps); c++ {
 			times[c] = time.Unix(queryDataResp.Timestamps[c]/1000, 0)
-			values[c] = queryDataResp.Values[i][c]
 		}
+		values :=  recoverType(queryDataResp.Values[i])
+
 		frame.Fields = append(frame.Fields,
 			data.NewField("time", nil, times),
 			data.NewField(queryDataResp.Expressions[i], nil, values),
@@ -234,6 +234,43 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 
 	response.Frames = append(response.Frames, frame)
 	return response
+}
+
+func recoverType(m []interface{}) interface{} {
+    if len(m) > 0 {
+        switch m[0].(type) {
+        case float64:
+            tmp := make([]float64, len(m))
+            for i := range m {
+                tmp[i] = m[i].(float64)
+            }
+            return tmp
+        case string:
+            tmp := make([]string, len(m))
+            for i := range m {
+                tmp[i] = m[i].(string)
+            }
+            return tmp
+        case bool:
+            tmp := make([]float64, len(m))
+            for i := range m {
+                if m[i].(bool) {
+                    tmp[i] = 1
+                } else {
+                    tmp[i] = 0
+                }
+            }
+            return tmp
+        default:
+            tmp := make([]float64, len(m))
+            for i := range m {
+                tmp[i] = 0
+            }
+            return tmp
+        }
+    } else {
+        return make([]float64, 0)
+    }
 }
 
 // Whether the last character of the URL for processing datasource configuration is "/"
