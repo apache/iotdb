@@ -117,6 +117,7 @@ public class TsFileIOWriter implements AutoCloseable {
   protected boolean enableMemoryControl = false;
   private Path lastSerializePath = null;
   protected LinkedList<Long> endPosInCMTForDevice = new LinkedList<>();
+  private volatile int chunkMetadataCount = 0;
   public static final String CHUNK_METADATA_TEMP_FILE_SUFFIX = ".meta";
 
   /** empty construct function. */
@@ -287,6 +288,7 @@ public class TsFileIOWriter implements AutoCloseable {
     if (enableMemoryControl) {
       this.currentChunkMetadataSize += currentChunkMetadata.calculateRamSize();
     }
+    chunkMetadataCount++;
     chunkMetadataList.add(currentChunkMetadata);
     currentChunkMetadata = null;
   }
@@ -609,7 +611,14 @@ public class TsFileIOWriter implements AutoCloseable {
     // This function should be called after all data of an aligned device has been written
     if (enableMemoryControl && currentChunkMetadataSize > maxMetadataSize) {
       try {
+        logger.debug(
+            "Flushing chunk metadata, total size is {}, count is {}, avg size is {}",
+            currentChunkMetadataSize,
+            chunkMetadataCount,
+            currentChunkMetadataSize / chunkMetadataCount);
         sortAndFlushChunkMetadata();
+        chunkMetadataCount = 0;
+        currentChunkMetadataSize = 0;
       } catch (IOException e) {
         logger.error("Meets exception when flushing metadata to temp file for {}", file, e);
         throw e;
