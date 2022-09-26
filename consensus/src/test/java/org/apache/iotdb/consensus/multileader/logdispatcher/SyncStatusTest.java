@@ -56,7 +56,7 @@ public class SyncStatusTest {
   @Test
   public void sequenceTest() throws InterruptedException {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
     SyncStatus status = new SyncStatus(controller, config);
@@ -82,7 +82,7 @@ public class SyncStatusTest {
   @Test
   public void reverseTest() throws InterruptedException {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -115,7 +115,7 @@ public class SyncStatusTest {
   @Test
   public void mixedTest() throws InterruptedException {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -160,7 +160,7 @@ public class SyncStatusTest {
   @Test
   public void waitTest() throws InterruptedException, ExecutionException {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
     SyncStatus status = new SyncStatus(controller, config);

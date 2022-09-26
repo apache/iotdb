@@ -205,6 +205,8 @@ public class QueryExecution implements IQueryExecution {
     stateMachine.transitionToQueued();
     // force invalid PartitionCache
     partitionFetcher.invalidAllCache();
+    // clear runtime variables in MPPQueryContext
+    context.prepareForRetry();
     // re-analyze the query
     this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
     // re-start the QueryExecution

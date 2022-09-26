@@ -67,7 +67,7 @@ public class TriggerManagementService {
     lock.unlock();
   }
 
-  public void register(TriggerInformation triggerInformation) throws Exception {
+  public void register(TriggerInformation triggerInformation) throws IOException {
     try {
       acquireLock();
       checkIfRegistered(triggerInformation);
@@ -75,7 +75,7 @@ public class TriggerManagementService {
     } finally {
       releaseLock();
     }
-  };
+  }
 
   public void activeTrigger(String triggerName) {
     try {

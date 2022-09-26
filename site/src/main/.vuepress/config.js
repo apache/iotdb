@@ -894,18 +894,24 @@ var config = {
 							['Operate-Metadata/Node','Node'],
 							['Operate-Metadata/Timeseries','Timeseries'],
 							['Operate-Metadata/Template','Schema Template'],
-							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata']
 						]
 					},
 					{
-						title: 'Write and Delete Data',
+						title: 'Write Data',
 						sidebarDepth: 1,
 						children: [
-							['Write-And-Delete-Data/Write-Data','Write Data'],
-							['Write-And-Delete-Data/Load-External-Tsfile','Load External Tsfile'],
-							['Write-And-Delete-Data/CSV-Tool','CSV Tool'],
-							['Write-And-Delete-Data/Delete-Data','Delete Data']
+							['Write-Data/Write-Data','Write Data'],
+							['Write-Data/Load-External-Tsfile','Load External Tsfile'],
+							['Write-Data/CSV-Tool','CSV Tool'],
+						]
+					},
+					{
+						title: 'Delete Data',
+						sidebarDepth: 1,
+						children: [
+							['Delete-Data/Delete-Data','Delete Data'],
+							['Delete-Data/TTL','TTL']
 						]
 					},
 					{
@@ -1821,18 +1827,24 @@ var config = {
 							['Operate-Metadata/Node','节点操作'],
 							['Operate-Metadata/Timeseries','时间序列操作'],
 							['Operate-Metadata/Template','元数据模板'],
-							['Operate-Metadata/TTL','TTL'],
 							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据']
 						]
 					},
 					{
-						title: '数据写入和删除',
+						title: '数据写入',
 						sidebarDepth: 1,
 						children: [
-							['Write-And-Delete-Data/Write-Data','写入数据'],
-							['Write-And-Delete-Data/Load-External-Tsfile','加载 TsFile'],
-							['Write-And-Delete-Data/CSV-Tool','导入导出 CSV'],
-							['Write-And-Delete-Data/Delete-Data','删除数据']
+							['Write-Data/Write-Data','写入数据'],
+							['Write-Data/Load-External-Tsfile','加载 TsFile'],
+							['Write-Data/CSV-Tool','导入导出 CSV']
+						]
+					},
+					{
+						title: '数据删除',
+						sidebarDepth: 1,
+						children: [
+							['Delete-Data/Delete-Data','删除数据'],
+							['Delete-Data/TTL','TTL']
 						]
 					},
 					{

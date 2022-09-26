@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -47,7 +46,6 @@ public class TriggerInformation {
 
   /** indicate this Trigger is Stateful or Stateless */
   private boolean isStateful;
-
   /** only used for Stateful Trigger */
   private TDataNodeLocation dataNodeLocation;
 
