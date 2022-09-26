@@ -100,13 +100,13 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
   /**
    * remove datanodes from cluster
    *
-   * @param args ids for removed datanodes, split with ','
+   * @param args id or ip:rpc_port for removed datanode
    */
   private void doRemoveNode(String[] args) throws BadNodeUrlException, TException, IoTDBException {
 
     logger.info("Start to remove DataNode from cluster");
     if (args.length != 2) {
-      logger.info("Usage: <node-id>/<ip>:<rpc-port>s, split by ','");
+      logger.info("Usage: <node-id>/<ip>:<rpc-port>");
       return;
     }
 
@@ -135,7 +135,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
   /**
    * fetch all datanode info from ConfigNode, then compare with input 'args'
    *
-   * @param args datanode ids or ip:rpc_ports, split with ','
+   * @param args datanode id or ip:rpc_port
    * @return TDataNodeLocation list
    */
   private List<TDataNodeLocation> buildDataNodeLocations(String args) {
@@ -144,6 +144,13 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
       return dataNodeLocations;
     }
 
+    // Now support only single datanode deletion
+    if (args.split(",").length > 1){
+      logger.info("Incorrect input format, usage: <id>/<ip>:<rpc-port>");
+      return dataNodeLocations;
+    }
+
+    // Below supports multiple datanode deletion, split by ',', and is reserved for extension
     try {
       List<TEndPoint> endPoints = NodeUrlUtils.parseTEndPointUrls(args);
       try (ConfigNodeClient client = new ConfigNodeClient()) {
@@ -174,7 +181,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
       } catch (TException e1) {
         logger.error("Get data node locations failed", e);
       } catch (NumberFormatException e2) {
-        logger.info("Incorrect input format, usage: <id>/<ip>:<rpc-port>s, split with ','");
+        logger.info("Incorrect input format, usage: <id>/<ip>:<rpc-port>");
       }
     }
 
