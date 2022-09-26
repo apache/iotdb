@@ -30,8 +30,6 @@ import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
@@ -91,6 +89,8 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
+import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
+import org.apache.iotdb.db.trigger.service.TriggerClassLoaderManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -108,7 +108,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.SocketTimeoutException;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -316,7 +318,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           tCreateTriggerReq.setJarMD5(
               DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderLib))));
 
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
           LOGGER.warn(
               "Failed to download executable for trigger({}) using URI: {}, the cause is: {}",
               createTriggerStatement.getTriggerName(),
@@ -351,7 +353,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             Class.forName(createTriggerStatement.getClassName(), true, classLoader);
         Trigger trigger = (Trigger) triggerClass.getDeclaredConstructor().newInstance();
         tCreateTriggerReq.setFailureStrategy(trigger.getFailureStrategy().getId());
-      } catch (ClassNotFoundException e) {
+      } catch (ClassNotFoundException
+          | NoSuchMethodException
+          | InstantiationException
+          | IllegalAccessException
+          | InvocationTargetException e) {
         LOGGER.warn(
             "Failed to create trigger when try to create trigger({}) instance first, the cause is: {}",
             createTriggerStatement.getTriggerName(),
@@ -378,7 +384,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (Exception e) {
+    } catch (TException | IOException e) {
       future.setException(e);
     }
     return future;

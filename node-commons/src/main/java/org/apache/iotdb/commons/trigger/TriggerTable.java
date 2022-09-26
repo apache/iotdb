@@ -65,8 +65,8 @@ public class TriggerTable {
     return triggerTable.containsKey(triggerName);
   }
 
-  public void activeTrigger(String triggerName) {
-    triggerTable.get(triggerName).setTriggerState(TTriggerState.ACTIVE);
+  public void setTriggerState(String triggerName, TTriggerState triggerState) {
+    triggerTable.get(triggerName).setTriggerState(triggerState);
   }
 
   // for showTrigger

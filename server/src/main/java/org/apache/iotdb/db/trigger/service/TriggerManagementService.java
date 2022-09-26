@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.db.trigger.service;
 
-import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.trigger.api.Trigger;
@@ -46,7 +41,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class TriggerManagementService implements IService {
+public class TriggerManagementService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManagementService.class);
 
@@ -55,8 +50,6 @@ public class TriggerManagementService implements IService {
   private final TriggerTable triggerTable;
 
   private final Map<String, TriggerExecutor> executorMap;
-
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
@@ -87,11 +80,20 @@ public class TriggerManagementService implements IService {
   public void activeTrigger(String triggerName) {
     try {
       acquireLock();
-      triggerTable.activeTrigger(triggerName);
+      triggerTable.setTriggerState(triggerName, TTriggerState.ACTIVE);
     } finally {
       releaseLock();
     }
-  };
+  }
+
+  public void inactiveTrigger(String triggerName) {
+    try {
+      acquireLock();
+      triggerTable.setTriggerState(triggerName, TTriggerState.INACTIVE);
+    } finally {
+      releaseLock();
+    }
+  }
 
   private void checkIfRegistered(TriggerInformation triggerInformation) throws IOException {
     String triggerName = triggerInformation.getTriggerName();
@@ -192,33 +194,14 @@ public class TriggerManagementService implements IService {
     }
   }
 
-  @Override
-  public void start() throws StartupException {}
-
-  @Override
-  public void stop() {
-    // nothing to do
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.TRIGGER_REGISTRATION_SERVICE;
-  }
-
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder
   /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  private static TriggerManagementService INSTANCE = null;
-
-  public static synchronized TriggerManagementService setupAndGetInstance() {
-    if (INSTANCE == null) {
-      INSTANCE = new TriggerManagementService();
-    }
-    return INSTANCE;
+  public static TriggerManagementService getInstance() {
+    return TriggerManagementServiceHolder.INSTANCE;
   }
 
-  public static TriggerManagementService getInstance() {
-    return INSTANCE;
+  private static class TriggerManagementServiceHolder {
+    private static final TriggerManagementService INSTANCE = new TriggerManagementService();
   }
 }
