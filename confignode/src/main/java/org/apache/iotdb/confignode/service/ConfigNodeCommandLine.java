@@ -96,16 +96,16 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
   private void doRemoveNode(String[] args) throws IOException {
     LOGGER.info("Starting to remove {}...", ConfigNodeConstant.GLOBAL_NAME);
     if (args.length != 2) {
-      LOGGER.info("Usage: <Node-id>");
+      LOGGER.info("Usage: <Node-id>/<internal_address>:<internal_port>");
       return;
     }
 
     try {
       TConfigNodeLocation removeConfigNodeLocation =
-          ConfigNodeRemoveCheck.getInstance().removeCheck(Integer.parseInt(args[1]));
+          ConfigNodeRemoveCheck.getInstance().removeCheck(args[1]);
       if (removeConfigNodeLocation == null) {
         LOGGER.error(
-            "The ConfigNode to be removed is not in the cluster, please check the id input.");
+            "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
         return;
       }
 

@@ -20,10 +20,12 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.ServerCommandLine;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -136,42 +138,49 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
   }
 
   /**
-   * fetch all datanode info from ConfigNode, then compare with input 'ids'
+   * fetch all datanode info from ConfigNode, then compare with input 'args'
    *
-   * @param ids datanode id, split with ':'
+   * @param args datanode id or ip:rpc_port, split with ','
    * @return TDataNodeLocation list
    */
-  private List<TDataNodeLocation> buildDataNodeLocations(String ids) {
+  private List<TDataNodeLocation> buildDataNodeLocations(String args) {
     List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
-    if (ids == null || ids.trim().isEmpty()) {
+    if (args == null || args.trim().isEmpty()) {
       return dataNodeLocations;
     }
 
-    // Currently support only single id, delete this line when supports multi ones
-    if (ids.split(":").length > 1) {
-      logger.info("Incorrect id format, usage: <node-id>");
-      return dataNodeLocations;
-    }
-
-    try (ConfigNodeClient client = new ConfigNodeClient()) {
-      for (String id : ids.split(":")) {
-        List<TDataNodeLocation> NodeLocationResult =
-            client.getDataNodeConfiguration(Integer.parseInt(id)).getDataNodeConfigurationMap()
-                .values().stream()
+    try {
+      List<TEndPoint> endPoints = NodeUrlUtils.parseTEndPointUrls(args);
+      try (ConfigNodeClient client = new ConfigNodeClient()) {
+        dataNodeLocations =
+            client.getDataNodeConfiguration(-1).getDataNodeConfigurationMap().values().stream()
                 .map(TDataNodeConfiguration::getLocation)
+                .filter(location -> endPoints.contains(location.getClientRpcEndPoint()))
                 .collect(Collectors.toList());
-        if (NodeLocationResult.isEmpty()) {
-          logger.warn("DataNode {} is not in cluster, skipped...", id);
-          continue;
-        }
-        if (!dataNodeLocations.contains(NodeLocationResult.get(0))) {
-          dataNodeLocations.add(NodeLocationResult.get(0));
-        }
+      } catch (TException e) {
+        logger.error("get data node locations failed", e);
       }
-    } catch (TException e) {
-      logger.error("Get data node locations failed", e);
-    } catch (NumberFormatException e) {
-      logger.info("Incorrect id format, usage: <node-ids>, split with ':'");
+    } catch (BadNodeUrlException e) {
+      try (ConfigNodeClient client = new ConfigNodeClient()) {
+        for (String id : args.split(",")) {
+          List<TDataNodeLocation> NodeLocationResult =
+              client.getDataNodeConfiguration(Integer.parseInt(id)).getDataNodeConfigurationMap()
+                  .values().stream()
+                  .map(TDataNodeConfiguration::getLocation)
+                  .collect(Collectors.toList());
+          if (NodeLocationResult.isEmpty()) {
+            logger.warn("DataNode {} is not in cluster, skipped...", id);
+            continue;
+          }
+          if (!dataNodeLocations.contains(NodeLocationResult.get(0))) {
+            dataNodeLocations.add(NodeLocationResult.get(0));
+          }
+        }
+      } catch (TException e1) {
+        logger.error("Get data node locations failed", e);
+      } catch (NumberFormatException e2) {
+        logger.info("Incorrect input format, usage: <id>/<ip>:<rpc-port>s, split with ','");
+      }
     }
 
     return dataNodeLocations;

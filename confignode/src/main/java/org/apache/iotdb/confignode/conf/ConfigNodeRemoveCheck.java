@@ -19,9 +19,11 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,7 +51,7 @@ public class ConfigNodeRemoveCheck {
     systemProperties = new Properties();
   }
 
-  public TConfigNodeLocation removeCheck(int id) {
+  public TConfigNodeLocation removeCheck(String args) {
     TConfigNodeLocation nodeLocation = new TConfigNodeLocation();
     if (!systemPropertiesFile.exists()) {
       LOGGER.error("The system properties file is not exists. IoTDB-ConfigNode is shutdown.");
@@ -57,11 +59,26 @@ public class ConfigNodeRemoveCheck {
     }
     try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
       systemProperties.load(inputStream);
-      nodeLocation =
-          getConfigNodeList().stream()
-              .filter(e -> e.getConfigNodeId() == id)
-              .findFirst()
-              .orElse(null);
+      try {
+        int id = Integer.parseInt(args);
+        nodeLocation =
+            getConfigNodeList().stream()
+                .filter(e -> e.getConfigNodeId() == id)
+                .findFirst()
+                .orElse(null);
+      } catch (NumberFormatException e1) {
+        try {
+          TEndPoint endPoint = NodeUrlUtils.parseTEndPointUrl(args);
+          nodeLocation =
+              getConfigNodeList().stream()
+                  .filter(e -> e.getInternalEndPoint().equals(endPoint))
+                  .findFirst()
+                  .orElse(null);
+        } catch (BadNodeUrlException e2) {
+          LOGGER.info("Usage: <Node-id>/<internal_address>:<internal_port>");
+          return nodeLocation;
+        }
+      }
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.error("Load system properties file failed.", e);
     }
