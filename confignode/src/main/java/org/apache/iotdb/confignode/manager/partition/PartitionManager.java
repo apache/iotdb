@@ -374,7 +374,8 @@ public class PartitionManager {
 
         // 3. All RegionGroups in the specified StorageGroup are disabled currently
         if (allocatedRegionCount
-            == filterRegionGroupThroughStatus(storageGroup, RegionGroupStatus.Disabled).size()) {
+                == filterRegionGroupThroughStatus(storageGroup, RegionGroupStatus.Disabled).size()
+            && allocatedRegionCount < maxRegionCount) {
           allotmentMap.put(storageGroup, 1);
         }
       }
