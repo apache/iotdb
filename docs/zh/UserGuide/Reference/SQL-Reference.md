@@ -200,6 +200,17 @@ EG: ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag2=newV2, tag3=v3) ATTRIBU
 Eg: ALTER timeseries root.turbine.d1.s1 SETTYPE encoding=plain, compression=SNAPPY
 ```
 
+* 重写时间序列语句
+```
+REWRITE TIMESERIES prefixPath
+prefixPath
+    : ROOT (DOT nodeName)*
+    ;
+Eg: Rewrite Timeseries root.ln
+Note: This statement can be used when "ALTER timeseries" has been called
+Note: prefixPath is a storageGroup path
+```
+
 * 显示所有时间序列语句
 
 ```
