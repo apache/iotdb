@@ -106,8 +106,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
 
     logger.info("Start to remove DataNode from cluster");
     if (args.length != 2) {
-      // logger.info("Usage: <node-ids>, split with ':'");
-      logger.info("Usage: <node-id>");
+      logger.info("Usage: <node-id>/<ip>:<rpc-port>s, split by ','");
       return;
     }
 
@@ -116,10 +115,6 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     if (dataNodeLocations.isEmpty()) {
       throw new BadNodeUrlException("No DataNode to remove");
     }
-    //    logger.info(
-    //        "There are DataNodes to be removed. size is: {}, detail: {}",
-    //        dataNodeLocations.size(),
-    //        dataNodeLocations);
     logger.info("Start to remove datanode, detail:{}", dataNodeLocations);
     TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(dataNodeLocations);
     try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
@@ -140,7 +135,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
   /**
    * fetch all datanode info from ConfigNode, then compare with input 'args'
    *
-   * @param args datanode id or ip:rpc_port, split with ','
+   * @param args datanode ids or ip:rpc_ports, split with ','
    * @return TDataNodeLocation list
    */
   private List<TDataNodeLocation> buildDataNodeLocations(String args) {
