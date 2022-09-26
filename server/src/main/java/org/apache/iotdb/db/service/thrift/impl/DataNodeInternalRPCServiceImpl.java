@@ -940,7 +940,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       LOGGER.warn(
           "Error occurred when creating trigger instance for trigger: {}. The cause is {}.",
           triggerInformation.getTriggerName(),
-          e.getMessage());
+          e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
@@ -952,7 +952,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       TriggerManagementService.getInstance().activeTrigger(req.triggerName);
     } catch (Exception e) {
-      LOGGER.error("Error occurred during ");
+      LOGGER.error(
+          "Error occurred during active trigger instance for trigger: {}. The cause is {}.",
+          req.triggerName,
+          e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }

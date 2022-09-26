@@ -74,16 +74,11 @@ public class TriggerManagementService implements IService {
     lock.unlock();
   }
 
-  public void register(TriggerInformation triggerInformation) {
+  public void register(TriggerInformation triggerInformation) throws Exception {
     try {
       acquireLock();
       checkIfRegistered(triggerInformation);
       doRegister(triggerInformation);
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to register trigger({}) on data node, the cause is: {}",
-          triggerInformation.getTriggerName(),
-          e.getMessage());
     } finally {
       releaseLock();
     }
@@ -93,18 +88,12 @@ public class TriggerManagementService implements IService {
     try {
       acquireLock();
       triggerTable.activeTrigger(triggerName);
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to active trigger({}) on data node, the cause is: {}",
-          triggerName,
-          e.getMessage());
     } finally {
       releaseLock();
     }
   };
 
-  private void checkIfRegistered(TriggerInformation triggerInformation)
-      throws TriggerManagementException {
+  private void checkIfRegistered(TriggerInformation triggerInformation) throws IOException {
     String triggerName = triggerInformation.getTriggerName();
     if (triggerTable.containsTrigger(triggerName)) {
       String jarName = triggerInformation.getJarName();
@@ -144,7 +133,7 @@ public class TriggerManagementService implements IService {
                         + "because error occurred when trying to compute md5 of jar file for trigger %s ",
                     triggerName, triggerName);
             LOGGER.warn(errorMessage);
-            throw new TriggerManagementException(errorMessage);
+            throw e;
           }
         }
 
@@ -162,7 +151,7 @@ public class TriggerManagementService implements IService {
     }
   }
 
-  private void doRegister(TriggerInformation triggerInformation) {
+  private void doRegister(TriggerInformation triggerInformation) throws IOException {
     try (TriggerClassLoader currentActiveClassLoader =
         TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
       String triggerName = triggerInformation.getTriggerName();
@@ -181,11 +170,9 @@ public class TriggerManagementService implements IService {
       String errorMessage =
           String.format(
               "Failed to register trigger %s with className: %s. The cause is: %s",
-              triggerInformation.getTriggerName(),
-              triggerInformation.getClassName(),
-              e.getMessage());
+              triggerInformation.getTriggerName(), triggerInformation.getClassName(), e);
       LOGGER.warn(errorMessage);
-      throw new TriggerManagementException(errorMessage);
+      throw e;
     }
   }
 

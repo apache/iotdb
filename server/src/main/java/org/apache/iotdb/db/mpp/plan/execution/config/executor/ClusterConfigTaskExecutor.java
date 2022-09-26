@@ -316,13 +316,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           tCreateTriggerReq.setJarMD5(
               DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderLib))));
 
-        } catch (Exception e) {
+        } catch (IOException e) {
           LOGGER.warn(
               "Failed to download executable for trigger({}) using URI: {}, the cause is: {}",
               createTriggerStatement.getTriggerName(),
               createTriggerStatement.getJarPath(),
-              e.getMessage());
-          throw e;
+              e);
+          future.setException(
+              new IoTDBException(
+                  "Failed to download executable for trigger '"
+                      + createTriggerStatement.getTriggerName()
+                      + "'",
+                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+          return future;
         }
       } else {
         TriggerExecutableManager.getInstance()
@@ -345,12 +351,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             Class.forName(createTriggerStatement.getClassName(), true, classLoader);
         Trigger trigger = (Trigger) triggerClass.getDeclaredConstructor().newInstance();
         tCreateTriggerReq.setFailureStrategy(trigger.getFailureStrategy().getId());
-      } catch (Exception e) {
+      } catch (ClassNotFoundException e) {
         LOGGER.warn(
             "Failed to create trigger when try to create trigger({}) instance first, the cause is: {}",
             createTriggerStatement.getTriggerName(),
-            e.getMessage());
-        throw e;
+            e);
+        future.setException(
+            new IoTDBException(
+                "Failed to load class '"
+                    + createTriggerStatement.getClassName()
+                    + "', because it's not found in jar file: "
+                    + createTriggerStatement.getJarPath(),
+                TSStatusCode.TRIGGER_LOAD_CLASS.getStatusCode()));
+        return future;
       }
 
       final TSStatus executionStatus = client.createTrigger(tCreateTriggerReq);
