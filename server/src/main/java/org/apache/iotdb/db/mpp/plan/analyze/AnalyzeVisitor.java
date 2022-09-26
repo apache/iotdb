@@ -1502,8 +1502,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
       String device = entry.getKey();
       long endTime = device2MaxTime.get(device);
-      long interval =
-          IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
+      long interval = TimePartitionUtils.timePartitionIntervalForRouting;
       long time = (entry.getValue() / interval) * interval;
       for (; time <= endTime; time += interval) {
         timePartitionSlots.add(TimePartitionUtils.getTimePartitionForRouting(time));
