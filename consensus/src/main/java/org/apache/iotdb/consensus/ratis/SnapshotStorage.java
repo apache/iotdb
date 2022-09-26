@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -103,6 +104,7 @@ public class SnapshotStorage implements StateMachineStorage {
     return i < 0 ? null : snapshots[i].toFile();
   }
 
+  // TODO optimize: cache latest snapshot instead of query statemachine everytime
   @Override
   public SnapshotInfo getLatestSnapshot() {
     File latestSnapshotDir = findLatestSnapshotDir();
@@ -115,21 +117,18 @@ public class SnapshotStorage implements StateMachineStorage {
     if (actualSnapshotFiles == null) {
       return null;
     }
+    Path metaFilePath = Paths.get(getMetafilePath(latestSnapshotDir, latestSnapshotDir.getName()));
 
     List<FileInfo> fileInfos = new ArrayList<>();
-    FileInfo metafileInfo = null;
     for (Path file : actualSnapshotFiles) {
-      if (file.endsWith(".md5")) {
+      if (file.endsWith(".md5") || file.startsWith(META_FILE_PREFIX)) {
         continue;
       }
       FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
-      if (file.toFile().getName().startsWith(META_FILE_PREFIX)) {
-        metafileInfo = fileInfo;
-      } else {
-        fileInfos.add(fileInfo);
-      }
+      fileInfos.add(fileInfo);
     }
     // metafile should be sent last for atomicity considerations
+    FileInfo metafileInfo = new FileInfoWithDelayedMd5Computing(metaFilePath);
     fileInfos.add(metafileInfo);
 
     return new FileListSnapshotInfo(

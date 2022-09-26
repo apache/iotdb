@@ -188,13 +188,14 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
               .filter(location -> endPoints.contains(location.getClientRpcEndPoint()))
               .collect(Collectors.toList());
     } catch (TException e) {
-      logger.error("get data node locations failed", e);
+      logger.error("Get data node locations failed", e);
     }
 
     if (endPoints.size() != dataNodeLocations.size()) {
       logger.error(
-          "build DataNode locations error, "
-              + "because number of input DataNode({}) NOT EQUALS the number of fetched DataNodeLocations({}), will return empty locations",
+          "Build DataNode locations error, "
+              + "because number of input DataNode({}) not equals the number of fetched DataNodeLocations({}), "
+              + "please check your IP:RPC_PORT inputs",
           endPoints.size(),
           dataNodeLocations.size());
       dataNodeLocations.clear();

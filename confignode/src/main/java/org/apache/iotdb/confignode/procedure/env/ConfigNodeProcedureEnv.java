@@ -40,9 +40,9 @@ import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
-import org.apache.iotdb.confignode.manager.NodeManager;
-import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -155,7 +155,7 @@ public class ConfigNodeProcedureEnv {
                   DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
       if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
         LOG.error(
-            "Invalidate cache failed, invalidate partition cache status is {}， invalidate schema cache status is {}",
+            "Invalidate cache failed, invalidate partition cache status is {}, invalidate schema cache status is {}",
             invalidatePartitionStatus,
             invalidateSchemaStatus);
         return false;
@@ -307,8 +307,7 @@ public class ConfigNodeProcedureEnv {
    * @param dataNodeLocation the datanode to be marked as removing status
    */
   public void markDataNodeAsRemovingAndBroadCast(TDataNodeLocation dataNodeLocation) {
-    int dataNodeId = dataNodeLocation.getDataNodeId();
-    configManager.getNodeManager().setNodeRemovingStatus(dataNodeId, true);
+    configManager.getNodeManager().setNodeRemovingStatus(dataNodeLocation);
     configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
 

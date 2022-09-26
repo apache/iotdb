@@ -178,7 +178,14 @@ public class TsFileProcessor {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.storageGroupInfo = storageGroupInfo;
-    this.writer = new RestorableTsFileIOWriter(tsfile);
+    this.writer =
+        new RestorableTsFileIOWriter(
+            tsfile,
+            (long)
+                (IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold()
+                    * IoTDBDescriptor.getInstance()
+                        .getConfig()
+                        .getChunkMetadataSizeProportionInWrite()));
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
     this.walNode = WALManager.getInstance().applyForWALNode(storageGroupName);
@@ -1235,7 +1242,7 @@ public class TsFileProcessor {
           logger.info(
               "{}: {} is closed during flush, abandon flush task",
               storageGroupName,
-              tsFileResource.getTsFile().getName());
+              tsFileResource.getTsFile().getAbsolutePath());
           synchronized (flushingMemTables) {
             flushingMemTables.notifyAll();
           }
@@ -1243,21 +1250,21 @@ public class TsFileProcessor {
           logger.error(
               "{}: {} meet error when flushing a memtable, change system mode to error",
               storageGroupName,
-              tsFileResource.getTsFile().getName(),
+              tsFileResource.getTsFile().getAbsolutePath(),
               e);
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
           try {
             logger.error(
                 "{}: {} IOTask meets error, truncate the corrupted data",
                 storageGroupName,
-                tsFileResource.getTsFile().getName(),
+                tsFileResource.getTsFile().getAbsolutePath(),
                 e);
             writer.reset();
           } catch (IOException e1) {
             logger.error(
                 "{}: {} Truncate corrupted data meets error",
                 storageGroupName,
-                tsFileResource.getTsFile().getName(),
+                tsFileResource.getTsFile().getAbsolutePath(),
                 e1);
           }
           // release resource
@@ -1279,7 +1286,7 @@ public class TsFileProcessor {
             logger.error(
                 "{}: {} Release resource meets error",
                 storageGroupName,
-                tsFileResource.getTsFile().getName(),
+                tsFileResource.getTsFile().getAbsolutePath(),
                 e1);
           }
           return;
@@ -1311,7 +1318,7 @@ public class TsFileProcessor {
     } catch (IOException e) {
       logger.error(
           "Meet error when writing into ModificationFile file of {} ",
-          tsFileResource.getTsFile().getName(),
+          tsFileResource.getTsFile().getAbsolutePath(),
           e);
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -1321,7 +1328,7 @@ public class TsFileProcessor {
       logger.debug(
           "{}: {} try get lock to release a memtable (signal={})",
           storageGroupName,
-          tsFileResource.getTsFile().getName(),
+          tsFileResource.getTsFile().getAbsolutePath(),
           memTableToFlush.isSignalMemTable());
     }
 

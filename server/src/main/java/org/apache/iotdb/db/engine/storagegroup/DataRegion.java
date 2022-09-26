@@ -3073,7 +3073,7 @@ public class DataRegion {
       if (deleteOriginFile) {
         FileUtils.moveFile(tsFileToLoad, targetFile);
       } else {
-        Files.createLink(targetFile.toPath(), tsFileToLoad.toPath());
+        Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
       }
     } catch (IOException e) {
       logger.error(
@@ -3095,7 +3095,7 @@ public class DataRegion {
       if (deleteOriginFile) {
         FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
       } else {
-        Files.createLink(targetResourceFile.toPath(), resourceFileToLoad.toPath());
+        Files.copy(resourceFileToLoad.toPath(), targetResourceFile.toPath());
       }
     } catch (IOException e) {
       logger.error(
@@ -3127,7 +3127,7 @@ public class DataRegion {
         if (deleteOriginFile) {
           FileUtils.moveFile(modFileToLoad, targetModFile);
         } else {
-          Files.createLink(targetModFile.toPath(), modFileToLoad.toPath());
+          Files.copy(modFileToLoad.toPath(), targetModFile.toPath());
         }
       } catch (IOException e) {
         logger.error(
