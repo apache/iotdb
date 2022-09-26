@@ -51,6 +51,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /** Manage all asynchronous replication threads and corresponding async clients */
@@ -154,10 +155,9 @@ public class LogDispatcher {
                 "{}->{}: Push a log to the queue, where the queue length is {}",
                 impl.getThisNode().getGroupId(),
                 thread.getPeer().getEndpoint().getIp(),
-                thread.getPendingRequest().size());
-            if (!thread
-                .getPendingRequest()
-                .offer(new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
+                thread.getPendingRequestSize());
+            if (!thread.offer(
+                new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
               logger.debug(
                   "{}: Log queue of {} is full, ignore the log to this node, searchIndex: {}",
                   impl.getThisNode().getGroupId(),
@@ -184,8 +184,9 @@ public class LogDispatcher {
     private final ConsensusReqReader reader =
         (ConsensusReqReader) impl.getStateMachine().read(new GetConsensusReqReaderPlan());
     private volatile boolean stopped = false;
+    private final AtomicLong requestsSizeInByte = new AtomicLong(0);
 
-    private ConsensusReqReader.ReqIterator walEntryiterator;
+    private ConsensusReqReader.ReqIterator walEntryIterator;
 
     public LogDispatcherThread(Peer peer, MultiLeaderConfig config, long initialSyncIndex) {
       this.peer = peer;
@@ -199,7 +200,7 @@ public class LogDispatcher {
               initialSyncIndex,
               config.getReplication().getCheckpointGap());
       this.syncStatus = new SyncStatus(controller, config);
-      this.walEntryiterator = reader.getReqIterator(START_INDEX);
+      this.walEntryIterator = reader.getReqIterator(START_INDEX);
     }
 
     public IndexController getController() {
@@ -218,8 +219,25 @@ public class LogDispatcher {
       return config;
     }
 
-    public BlockingQueue<IndexedConsensusRequest> getPendingRequest() {
-      return pendingRequest;
+    public int getPendingRequestSize() {
+      return pendingRequest.size();
+    }
+
+    /** try to offer a request into queue with memory control */
+    public boolean offer(IndexedConsensusRequest indexedConsensusRequest) {
+      if (requestsSizeInByte.get() > config.getReplication().getMaxPendingBatchSizeInByte()) {
+        return false;
+      }
+      requestsSizeInByte.addAndGet(indexedConsensusRequest.getSerializedSize());
+      return pendingRequest.offer(indexedConsensusRequest);
+    }
+
+    /** try to remove a request from queue with memory control */
+    private void remove(
+        IndexedConsensusRequest indexedConsensusRequest,
+        Iterator<IndexedConsensusRequest> iterator) {
+      iterator.remove();
+      requestsSizeInByte.addAndGet(-indexedConsensusRequest.getSerializedSize());
     }
 
     public void stop() {
@@ -289,7 +307,7 @@ public class LogDispatcher {
         logger.debug(
             "{} : pendingRequest Size: {}, bufferedRequest size: {}",
             impl.getThisNode().getGroupId(),
-            pendingRequest.size(),
+            getPendingRequestSize(),
             bufferedRequest.size());
         synchronized (impl.getIndexObject()) {
           pendingRequest.drainTo(
@@ -302,7 +320,7 @@ public class LogDispatcher {
         while (iterator.hasNext()) {
           IndexedConsensusRequest request = iterator.next();
           if (request.getSearchIndex() < startIndex) {
-            iterator.remove();
+            remove(request, iterator);
           } else {
             break;
           }
@@ -332,7 +350,7 @@ public class LogDispatcher {
         }
         constructBatchIndexedFromConsensusRequest(prev, logBatches);
         endIndex = prev.getSearchIndex();
-        iterator.remove();
+        remove(prev, iterator);
         while (iterator.hasNext()
             && logBatches.size() <= config.getReplication().getMaxRequestPerBatch()) {
           IndexedConsensusRequest current = iterator.next();
@@ -356,7 +374,7 @@ public class LogDispatcher {
           // We might not be able to remove all the elements in the bufferedRequest in the
           // current function, but that's fine, we'll continue processing these elements in the
           // bufferedRequest the next time we go into the function, they're never lost
-          iterator.remove();
+          remove(current, iterator);
         }
         batch = new PendingBatch(startIndex, endIndex, logBatches);
         logger.debug(
@@ -395,17 +413,17 @@ public class LogDispatcher {
       // targetIndex is the index of request that we need to find
       long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.
-      walEntryiterator.skipTo(targetIndex);
+      walEntryIterator.skipTo(targetIndex);
       while (targetIndex < maxIndex
           && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
         logger.debug("construct from WAL for one Entry, index : {}", targetIndex);
         try {
-          walEntryiterator.waitForNextReady();
+          walEntryIterator.waitForNextReady();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("wait for next WAL entry is interrupted");
         }
-        IndexedConsensusRequest data = walEntryiterator.next();
+        IndexedConsensusRequest data = walEntryIterator.next();
         if (targetIndex > data.getSearchIndex()) {
           // if the index of request is smaller than currentIndex, then continue
           logger.warn(

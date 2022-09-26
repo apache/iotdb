@@ -85,6 +85,7 @@ public class DataRegionConsensusImpl {
                               .setReplication(
                                   MultiLeaderConfig.Replication.newBuilder()
                                       .setWalThrottleThreshold(conf.getThrottleThreshold())
+                                      .setMaxPendingBatchSizeInByte(conf.getPendingQueueSize())
                                       .build())
                               .build())
                       .setRatisConfig(

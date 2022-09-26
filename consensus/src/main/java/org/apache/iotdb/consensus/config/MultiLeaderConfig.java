@@ -199,6 +199,7 @@ public class MultiLeaderConfig {
     private final int maxPendingRequestNumPerNode;
     private final int maxRequestPerBatch;
     private final int maxPendingBatch;
+    private final long maxPendingBatchSizeInByte;
     private final int maxWaitingTimeForAccumulatingBatchInMs;
     private final long basicRetryWaitTimeMs;
     private final long maxRetryWaitTimeMs;
@@ -210,6 +211,7 @@ public class MultiLeaderConfig {
         int maxPendingRequestNumPerNode,
         int maxRequestPerBatch,
         int maxPendingBatch,
+        long maxPendingBatchSizeInByte,
         int maxWaitingTimeForAccumulatingBatchInMs,
         long basicRetryWaitTimeMs,
         long maxRetryWaitTimeMs,
@@ -219,6 +221,7 @@ public class MultiLeaderConfig {
       this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
       this.maxRequestPerBatch = maxRequestPerBatch;
       this.maxPendingBatch = maxPendingBatch;
+      this.maxPendingBatchSizeInByte = maxPendingBatchSizeInByte;
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
@@ -237,6 +240,10 @@ public class MultiLeaderConfig {
 
     public int getMaxPendingBatch() {
       return maxPendingBatch;
+    }
+
+    public long getMaxPendingBatchSizeInByte() {
+      return maxPendingBatchSizeInByte;
     }
 
     public int getMaxWaitingTimeForAccumulatingBatchInMs() {
@@ -270,6 +277,7 @@ public class MultiLeaderConfig {
     public static class Builder {
       private int maxPendingRequestNumPerNode = 600;
       private int maxRequestPerBatch = 30;
+      private long maxPendingBatchSizeInByte = 1024 * 1024 * 1024L;
       // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
       // in DataRegionStateMachine
       private int maxPendingBatch = 5;
@@ -292,6 +300,11 @@ public class MultiLeaderConfig {
 
       public Replication.Builder setMaxPendingBatch(int maxPendingBatch) {
         this.maxPendingBatch = maxPendingBatch;
+        return this;
+      }
+
+      public Replication.Builder setMaxPendingBatchSizeInByte(long maxPendingBatchSizeInByte) {
+        this.maxPendingBatchSizeInByte = maxPendingBatchSizeInByte;
         return this;
       }
 
@@ -326,6 +339,7 @@ public class MultiLeaderConfig {
             maxPendingRequestNumPerNode,
             maxRequestPerBatch,
             maxPendingBatch,
+            maxPendingBatchSizeInByte,
             maxWaitingTimeForAccumulatingBatchInMs,
             basicRetryWaitTimeMs,
             maxRetryWaitTimeMs,
