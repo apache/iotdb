@@ -119,8 +119,7 @@ public class DataPartition extends Partition {
               .flatMap(entry -> entry.getValue().stream())
               .collect(Collectors.toList());
       // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there
-      // are
-      // more than 1 Regions for one timeSlot
+      // are more than 1 Regions for one timeSlot
       return regions.get(0);
     } catch (NullPointerException exception) {
       throw new RuntimeException(
