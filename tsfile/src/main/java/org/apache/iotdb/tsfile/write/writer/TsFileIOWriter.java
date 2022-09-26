@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.writer.tsmiterator.TSMIterator;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,7 +117,7 @@ public class TsFileIOWriter implements AutoCloseable {
   protected boolean enableMemoryControl = false;
   private Path lastSerializePath = null;
   protected LinkedList<Long> endPosInCMTForDevice = new LinkedList<>();
-  public static final String CHUNK_METADATA_TEMP_FILE_SUFFIX = ".cmt";
+  public static final String CHUNK_METADATA_TEMP_FILE_SUFFIX = ".meta";
 
   /** empty construct function. */
   protected TsFileIOWriter() {}
@@ -312,6 +313,12 @@ public class TsFileIOWriter implements AutoCloseable {
     out.close();
     if (resourceLogger.isDebugEnabled() && file != null) {
       resourceLogger.debug("{} writer is closed.", file.getName());
+    }
+    if (file != null) {
+      File chunkMetadataFile = new File(file.getAbsolutePath() + CHUNK_METADATA_TEMP_FILE_SUFFIX);
+      if (chunkMetadataFile.exists()) {
+        FileUtils.delete(chunkMetadataFile);
+      }
     }
     canWrite = false;
   }

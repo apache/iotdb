@@ -122,6 +122,12 @@ public class SnapshotLoader {
         return null;
       }
       LOGGER.info("Moving snapshot file to data dirs");
+      try {
+        deleteAllFilesInDataDirs();
+        LOGGER.info("Remove all data files in original data dir");
+      } catch (IOException e) {
+        return null;
+      }
       createLinksFromSnapshotDirToDataDirWithoutLog(new File(snapshotPath));
       return loadSnapshot();
     } catch (IOException | DiskSpaceInsufficientException e) {

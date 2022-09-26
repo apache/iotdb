@@ -858,6 +858,7 @@ public class ProcedureExecutor<Env> {
 
   public void join() {
     timeoutExecutor.awaitTermination();
+    workerMonitorExecutor.awaitTermination();
     for (WorkerThread workerThread : workerThreads) {
       workerThread.awaitTermination();
     }

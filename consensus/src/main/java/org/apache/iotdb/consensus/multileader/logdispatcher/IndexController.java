@@ -45,13 +45,15 @@ public class IndexController {
 
   private final String storageDir;
   private final String prefix;
+  private final long initialIndex;
 
   private final long checkpointGap;
 
-  public IndexController(String storageDir, String prefix, long checkpointGap) {
+  public IndexController(String storageDir, String prefix, long initialIndex, long checkpointGap) {
     this.storageDir = storageDir;
     this.prefix = prefix + '-';
     this.checkpointGap = checkpointGap;
+    this.initialIndex = initialIndex;
     restore();
   }
 
@@ -100,11 +102,17 @@ public class IndexController {
     try {
       if (oldFile.exists()) {
         FileUtils.moveFile(oldFile, newFile);
+        logger.info(
+            "version file updated, previous: {}, current: {}",
+            oldFile.getAbsolutePath(),
+            newFile.getAbsolutePath());
+      } else {
+        // In the normal state, this branch should not be triggered.
+        logger.error(
+            "failed to flush sync index. cannot find previous version file. previous: {}",
+            lastFlushedIndex);
       }
-      logger.info(
-          "Version file updated, previous: {}, current: {}",
-          oldFile.getAbsolutePath(),
-          newFile.getAbsolutePath());
+
       lastFlushedIndex = flushIndex;
     } catch (IOException e) {
       logger.error("Error occurred when flushing next version", e);
@@ -138,11 +146,25 @@ public class IndexController {
       }
       currentIndex = lastFlushedIndex;
     } else {
-      versionFile = new File(directory, prefix + "0");
+      currentIndex = initialIndex;
+      versionFile = new File(directory, prefix + initialIndex);
       try {
         Files.createFile(versionFile.toPath());
+        lastFlushedIndex = initialIndex;
       } catch (IOException e) {
+        // TODO: (xingtanzjr) we need to handle the situation that file creation failed.
+        //  Or the dispatcher won't run correctly
         logger.error("Error occurred when creating new file {}", versionFile.getAbsolutePath(), e);
+      }
+    }
+  }
+
+  public void cleanupVersionFiles() throws IOException {
+    File directory = new File(storageDir);
+    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(prefix));
+    if (versionFiles != null && versionFiles.length > 0) {
+      for (File versionFile : versionFiles) {
+        Files.delete(versionFile.toPath());
       }
     }
   }

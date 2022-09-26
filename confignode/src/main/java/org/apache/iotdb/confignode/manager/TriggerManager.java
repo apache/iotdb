@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -58,8 +59,9 @@ public class TriggerManager {
             (PartialPath) PathDeserializeUtil.deserialize(req.pathPattern),
             req.getTriggerName(),
             req.getClassName(),
-            req.getJarPath(), // TODO: download jar if is URI
+            req.getJarPath(),
             req.getAttributes(),
+            TriggerEvent.construct(req.triggerEvent),
             TTriggerState.INACTIVE,
             isStateful,
             dataNodeLocation,

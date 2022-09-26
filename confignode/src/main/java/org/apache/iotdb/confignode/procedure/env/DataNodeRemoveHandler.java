@@ -507,8 +507,12 @@ public class DataNodeRemoveHandler {
     if (allDataNodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
       status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
       status.setMessage(
-          "lack replication, allow most removed Data Node size : "
-              + (allDataNodeSize - NodeInfo.getMinimumDataNode()));
+          String.format(
+              "Can't remove datanode due to the limit of replication factor, "
+                  + "allDataNodeSize: %s, maxReplicaFactor: %s, max allowed removed Data Node size is: %s",
+              allDataNodeSize,
+              NodeInfo.getMinimumDataNode(),
+              (allDataNodeSize - NodeInfo.getMinimumDataNode())));
     }
     return status;
   }
@@ -558,8 +562,15 @@ public class DataNodeRemoveHandler {
       return Optional.empty();
     }
 
+    List<TDataNodeLocation> aliveDataNodes =
+        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
+            .map(TDataNodeConfiguration::getLocation)
+            .collect(Collectors.toList());
+
     // TODO replace findAny() by select the low load node.
-    return regionReplicaNodes.stream().filter(e -> !e.equals(filterLocation)).findAny();
+    return regionReplicaNodes.stream()
+        .filter(e -> aliveDataNodes.contains(e) && !e.equals(filterLocation))
+        .findAny();
   }
 
   private String getIdWithRpcEndpoint(TDataNodeLocation location) {

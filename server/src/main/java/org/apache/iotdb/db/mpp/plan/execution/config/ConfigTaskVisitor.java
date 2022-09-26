@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowFunctionsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.UnSetTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.SetSchemaTemplateTask;
@@ -74,6 +75,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
@@ -204,14 +206,22 @@ public class ConfigTaskVisitor
     return new ShowFunctionsTask();
   }
 
+  @Override
   public IConfigTask visitCreateTrigger(
       CreateTriggerStatement createTriggerStatement, TaskContext context) {
     return new CreateTriggerTask(createTriggerStatement);
   }
 
+  @Override
   public IConfigTask visitDropTrigger(
       DropTriggerStatement dropTriggerStatement, TaskContext context) {
     return new DropTriggerTask(dropTriggerStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowTriggers(
+      ShowTriggersStatement showTriggersStatement, TaskContext context) {
+    return new ShowTriggersTask();
   }
 
   @Override
