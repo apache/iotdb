@@ -93,7 +93,6 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
-import org.apache.iotdb.db.trigger.service.TriggerClassLoaderManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -302,6 +301,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createTriggerStatement.getAttributes(),
               FailureStrategy.OPTIMISTIC.getId()); // set default strategy
 
+      String libRoot = TriggerExecutableManager.getInstance().getLibRoot();
       if (createTriggerStatement.isUsingURI()) {
         try {
           // download executable
@@ -336,8 +336,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           return future;
         }
       } else {
-        TriggerExecutableManager.getInstance()
-            .copyFileToExtLibDir(createTriggerStatement.getJarPath());
+        // change libRoot
+        libRoot = createTriggerStatement.getJarPath();
         // set jarPath to file name instead of the full path
         tCreateTriggerReq.setJarPath(new File(createTriggerStatement.getJarPath()).getName());
         // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
@@ -350,8 +350,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
 
       // try to create instance, this request will fail if creation is not successful
-      try (TriggerClassLoader classLoader =
-          TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
+      try (TriggerClassLoader classLoader = new TriggerClassLoader(libRoot)) {
         Class<?> triggerClass =
             Class.forName(createTriggerStatement.getClassName(), true, classLoader);
         Trigger trigger = (Trigger) triggerClass.getDeclaredConstructor().newInstance();
