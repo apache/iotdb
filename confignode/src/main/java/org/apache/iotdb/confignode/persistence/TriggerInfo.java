@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -149,5 +150,11 @@ public class TriggerInfo implements SnapshotProcessor {
   public TSStatus updateTriggerStateInTable(UpdateTriggerStateInTablePlan physicalPlan) {
     triggerTable.setTriggerState(physicalPlan.getTriggerName(), physicalPlan.getTriggerState());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public TriggerTableResp getTriggerTable() {
+    return new TriggerTableResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        triggerTable.getAllTriggerInformation());
   }
 }
