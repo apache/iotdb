@@ -48,6 +48,14 @@ public class TriggerTable {
     triggerTable.put(triggerName, triggerInformation);
   }
 
+  public TriggerInformation getTriggerInformation(String triggerName) {
+    return triggerTable.get(triggerName);
+  }
+
+  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
+    triggerTable.put(triggerName, triggerInformation);
+  }
+
   // for dropTrigger
   public void deleteTriggerInformation(String triggerName) {
     triggerTable.remove(triggerName);
@@ -72,5 +80,9 @@ public class TriggerTable {
   // for getTriggerTable
   public Map<String, TriggerInformation> getTable() {
     return triggerTable;
+  }
+
+  public boolean isEmpty() {
+    return triggerTable.isEmpty();
   }
 }

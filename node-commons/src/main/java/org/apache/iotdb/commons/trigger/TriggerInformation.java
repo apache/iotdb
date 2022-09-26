@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -39,6 +40,8 @@ public class TriggerInformation {
   private String jarName;
 
   private Map<String, String> attributes;
+
+  private TriggerEvent event;
 
   private TTriggerState triggerState;
 
@@ -59,6 +62,7 @@ public class TriggerInformation {
       String className,
       String jarName,
       Map<String, String> attributes,
+      TriggerEvent event,
       TTriggerState triggerState,
       boolean isStateful,
       TDataNodeLocation dataNodeLocation,
@@ -68,6 +72,7 @@ public class TriggerInformation {
     this.className = className;
     this.jarName = jarName;
     this.attributes = attributes;
+    this.event = event;
     this.triggerState = triggerState;
     this.isStateful = isStateful;
     this.dataNodeLocation = dataNodeLocation;
@@ -87,6 +92,7 @@ public class TriggerInformation {
     ReadWriteIOUtils.write(className, outputStream);
     ReadWriteIOUtils.write(jarName, outputStream);
     ReadWriteIOUtils.write(attributes, outputStream);
+    ReadWriteIOUtils.write(event.getId(), outputStream);
     ReadWriteIOUtils.write(triggerState.getValue(), outputStream);
     ReadWriteIOUtils.write(isStateful, outputStream);
     if (isStateful) {
@@ -102,6 +108,7 @@ public class TriggerInformation {
     triggerInformation.className = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.jarName = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.attributes = ReadWriteIOUtils.readMap(byteBuffer);
+    triggerInformation.event = TriggerEvent.construct(ReadWriteIOUtils.readByte(byteBuffer));
     triggerInformation.triggerState =
         TTriggerState.findByValue(ReadWriteIOUtils.readInt(byteBuffer));
     boolean isStateful = ReadWriteIOUtils.readBool(byteBuffer);
@@ -136,6 +143,14 @@ public class TriggerInformation {
 
   public void setClassName(String className) {
     this.className = className;
+  }
+
+  public TriggerEvent getEvent() {
+    return event;
+  }
+
+  public void setEvent(TriggerEvent event) {
+    this.event = event;
   }
 
   public Map<String, String> getAttributes() {
