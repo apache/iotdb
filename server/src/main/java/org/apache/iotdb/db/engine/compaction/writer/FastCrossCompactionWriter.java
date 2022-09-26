@@ -122,7 +122,6 @@ public class FastCrossCompactionWriter implements AutoCloseable {
               CompactionWriterUtils.writeDataPoint(
                   batchData.currentTime(),
                   batchData.currentValue(),
-                  isAlign,
                   chunkWriters[subTaskId],
                   ++measurementPointCountArray[subTaskId] % checkPoint == 0
                       ? targetFileWriters.get(targetFileIndex)
@@ -203,7 +202,6 @@ public class FastCrossCompactionWriter implements AutoCloseable {
               CompactionWriterUtils.writeDataPoint(
                   seqTimestamp,
                   batchData.currentValue(),
-                  isAlign,
                   chunkWriters[subTaskId],
                   ++measurementPointCountArray[subTaskId] % checkPoint == 0
                       ? targetFileWriters.get(targetFileIndex)

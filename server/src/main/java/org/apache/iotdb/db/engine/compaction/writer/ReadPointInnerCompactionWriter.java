@@ -19,7 +19,6 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
     CompactionWriterUtils.writeDataPoint(
         timestamp,
         value,
-        isAlign,
         chunkWriters[subTaskId],
         ++measurementPointCountArray[subTaskId] % checkPoint == 0 ? fileWriter : null,
         false);

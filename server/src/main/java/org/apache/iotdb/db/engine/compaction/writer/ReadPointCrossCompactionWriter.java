@@ -25,7 +25,6 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
     CompactionWriterUtils.writeDataPoint(
         timestamp,
         value,
-        isAlign,
         chunkWriters[subTaskId],
         ++measurementPointCountArray[subTaskId] % checkPoint == 0
             ? targetFileWriters.get(seqFileIndex)

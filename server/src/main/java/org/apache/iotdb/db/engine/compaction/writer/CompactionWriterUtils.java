@@ -31,12 +31,11 @@ public class CompactionWriterUtils {
   public static void writeDataPoint(
       Long timestamp,
       Object value,
-      boolean isAlign,
       IChunkWriter iChunkWriter,
       TsFileIOWriter tsFileIOWriter,
       boolean isCrossSpace)
       throws IOException {
-    if (!isAlign) {
+    if (iChunkWriter instanceof ChunkWriterImpl) {
       ChunkWriterImpl chunkWriter = (ChunkWriterImpl) iChunkWriter;
       switch (chunkWriter.getDataType()) {
         case TEXT:

@@ -1,25 +1,33 @@
 package org.apache.iotdb.db.engine.compaction.cross.utils;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
 
 public class PointElement {
-    public long timestamp;
-    public int priority;
-    public TimeValuePair timeValuePair;
-    public TsBlock.TsBlockSingleColumnIterator page;
-    public PageElement pageElement;
+  public long timestamp;
+  public int priority;
+  public Pair<Long, Object> timeValuePair;
+  public IBatchDataIterator page;
+  public PageElement pageElement;
 
-    public PointElement(PageElement pageElement){
-        this.pageElement=pageElement;
-        this.page=pageElement.batchData.getTsBlockSingleColumnIterator();
-        this.timeValuePair=page.currentTimeValuePair();
-        this.timestamp=timeValuePair.getTimestamp();
-        this.priority=pageElement.priority;
+  public PointElement(PageElement pageElement) throws IOException {
+    this.pageElement = pageElement;
+    if (pageElement.iChunkReader instanceof ChunkReader) {
+      this.page = pageElement.batchData.getTsBlockSingleColumnIterator();
+    } else {
+      this.page = pageElement.batchData.getTsBlockAlignedRowIterator();
     }
+    this.timestamp = page.currentTime();
+    this.timeValuePair = new Pair<>(timestamp, page.currentValue());
+    this.priority = pageElement.priority;
+  }
 
-    public void setPoint(TimeValuePair timeValuePair){
-        this.timeValuePair=timeValuePair;
-        this.timestamp=timeValuePair.getTimestamp();
-    }
+  public void setPoint(Long timestamp, Object value) {
+    this.timeValuePair.left = timestamp;
+    timeValuePair.right = value;
+    this.timestamp = timestamp;
+  }
 }

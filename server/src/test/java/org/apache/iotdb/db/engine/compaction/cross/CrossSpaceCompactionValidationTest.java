@@ -77,7 +77,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
   public void test1() throws MetadataException, IOException, WriteProcessException, MergeException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
-    createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
+    createFiles(2, 10, 10, 1001, 2100, 2100, 100, 100, true, false);
     createFiles(1, 10, 10, 1000, 4200, 4200, 100, 100, true, true);
     createFiles(1, 10, 10, 1000, 5300, 5300, 100, 100, true, true);
     tsFileManager.addAll(seqResources, true);
@@ -92,7 +92,6 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(1, result[0].size());
     Assert.assertEquals(2, result[1].size());
     Assert.assertEquals(result[0].get(0), seqResources.get(2));
-
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
     Assert.assertEquals(result[1].get(1), unseqResources.get(1));
 

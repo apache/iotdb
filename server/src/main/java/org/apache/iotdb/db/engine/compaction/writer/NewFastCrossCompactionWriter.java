@@ -27,7 +27,12 @@ public class NewFastCrossCompactionWriter extends AbstractCrossCompactionWriter 
   }
 
   @Override
-  public void write(long timestamp, Object value, int subTaskId) throws IOException {}
+  public void write(long timestamp, Object value, int subTaskId) throws IOException {
+    checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
+    CompactionWriterUtils.writeDataPoint(timestamp, value, chunkWriters[subTaskId], null, true);
+    isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
+    isEmptyFile[seqFileIndexArray[subTaskId]] = false;
+  }
 
   @Override
   public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)

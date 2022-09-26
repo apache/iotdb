@@ -16,17 +16,24 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -96,15 +103,23 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
 
         compactionWriter.startChunkGroup(device, isAligned);
 
+        //        List<AlignedChunkMetadata> alignedMeasurementChunkMetadatas =
+        //            getModifiedAlignedChunkMetadatasByDevice(device);
+        // alignedMeasurementChunkMetadatas.get(0)
+
         Map<String, List<ChunkMetadata>> measurementChunkMetadatas =
-            getAllModifiedChunkMetadatasByDevice(device);
+            getModifiedChunkMetadatasByDevice(device);
 
         Map<String, MeasurementSchema> measurementSchemaMap =
             CompactionUtils.getMeasurementSchema(
                 device, measurementChunkMetadatas.keySet(), sortedSourceFiles, readerCacheMap);
 
         if (isAligned) {
-
+          compactAlignedSeries(
+              new ArrayList<>(measurementChunkMetadatas.keySet()),
+              new ArrayList<>(measurementChunkMetadatas.values()),
+              new ArrayList<>(measurementSchemaMap.values()),
+              compactionWriter);
         } else {
           compactNonAlignedSeries(
               new ArrayList<>(measurementChunkMetadatas.keySet()),
@@ -155,12 +170,28 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
         }));
   }
 
-  private void compactAlignedSeries() {}
+  private void compactAlignedSeries(
+      List<String> allMeasurements,
+      List<List<ChunkMetadata>> allChunkMetadataList,
+      List<IMeasurementSchema> measurementSchemas,
+      NewFastCrossCompactionWriter newFastCrossCompactionWriter)
+      throws PageException, IOException, WriteProcessException {
+    new NewFastCompactionPerformerSubTask(
+            allMeasurements,
+            Collections.emptyList(),
+            allChunkMetadataList,
+            null,
+            measurementSchemas,
+            true,
+            newFastCrossCompactionWriter,
+            0)
+        .call();
+  }
 
   private void compactNonAlignedSeries(
       List<String> allMeasurements,
       List<List<ChunkMetadata>> allChunkMetadataList,
-      List<MeasurementSchema> measurementSchemas,
+      List<IMeasurementSchema> measurementSchemas,
       NewFastCrossCompactionWriter newFastCrossCompactionWriter)
       throws IOException, InterruptedException {
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
@@ -184,7 +215,9 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
                       allMeasurements,
                       measurementsForEachSubTask[i],
                       allChunkMetadataList,
+                      null,
                       measurementSchemas,
+                      false,
                       newFastCrossCompactionWriter,
                       i)));
     }
@@ -209,14 +242,33 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
     return allUnseqMeasurements;
   }
 
-  private Map<String, List<ChunkMetadata>> getAllModifiedChunkMetadatasByDevice(String device)
+  private List<AlignedChunkMetadata> getModifiedAlignedChunkMetadatasByDevice(String device)
+      throws IOException, IllegalPathException {
+    List<AlignedChunkMetadata> alignedChunkMetadatas = new ArrayList<>();
+    List<TsFileResource> allResources = new ArrayList<>(seqFiles);
+    allResources.addAll(unseqFiles);
+    for (TsFileResource resource : allResources) {
+      List<AlignedChunkMetadata> alignedChunkMetadataList =
+          getReaderFromCache(resource).getAlignedChunkMetadata(device);
+      List<List<Modification>> valueModifications = new ArrayList<>();
+      for (IChunkMetadata valueChunkMetadata :
+          alignedChunkMetadataList.get(0).getValueChunkMetadataList()) {
+        valueModifications.add(
+            getModifications(
+                resource, new PartialPath(device, valueChunkMetadata.getMeasurementUid())));
+      }
+      QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
+      alignedChunkMetadatas.addAll(alignedChunkMetadataList);
+    }
+    return alignedChunkMetadatas;
+  }
+
+  private Map<String, List<ChunkMetadata>> getModifiedChunkMetadatasByDevice(String device)
       throws IOException, IllegalPathException {
     Map<String, List<ChunkMetadata>> chunkMetadataMap = new HashMap<>();
     List<TsFileResource> allResources = new ArrayList<>(seqFiles);
     allResources.addAll(unseqFiles);
     for (TsFileResource resource : allResources) {
-      Map<String, List<ChunkMetadata>> mm =
-          getReaderFromCache(resource).readChunkMetadataInDevice(device);
       for (Map.Entry<String, List<ChunkMetadata>> entry :
           getReaderFromCache(resource).readChunkMetadataInDevice(device).entrySet()) {
         String sensor = entry.getKey();
@@ -226,8 +278,10 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
           chunkMetadataList.forEach(x -> x.setFilePath(resource.getTsFilePath()));
 
           // modify chunk metadatas
-          QueryUtils.modifyChunkMetaData(
-              chunkMetadataList, getModifications(resource, new PartialPath(device, sensor)));
+          if (!sensor.equals("")) {
+            QueryUtils.modifyChunkMetaData(
+                chunkMetadataList, getModifications(resource, new PartialPath(device, sensor)));
+          }
 
           if (!chunkMetadataMap.containsKey(sensor)) {
             chunkMetadataMap.put(sensor, chunkMetadataList);
@@ -236,7 +290,6 @@ public class NewFastCompactionPerformer implements ICrossCompactionPerformer {
           }
         }
       }
-
     }
     return chunkMetadataMap;
   }

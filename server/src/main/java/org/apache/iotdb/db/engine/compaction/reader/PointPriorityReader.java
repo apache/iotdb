@@ -4,8 +4,8 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.NewFastCompactio
 import org.apache.iotdb.db.engine.compaction.cross.utils.PageElement;
 import org.apache.iotdb.db.engine.compaction.cross.utils.PointElement;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.List;
@@ -18,7 +18,7 @@ public class PointPriorityReader {
 
   private final NewFastCompactionPerformerSubTask.RemovePage removePage;
 
-  private TimeValuePair currentPoint;
+  private Pair<Long, Object> currentPoint;
 
   private boolean isNewPoint = true;
 
@@ -34,11 +34,11 @@ public class PointPriorityReader {
             });
   }
 
-  public TimeValuePair currentPoint() {
+  public Pair<Long, Object> currentPoint() {
     if (isNewPoint) {
       // get the highest priority point
       currentPoint = pointQueue.peek().timeValuePair;
-      lastTime = currentPoint.getTimestamp();
+      lastTime = currentPoint.left;
       isNewPoint = false;
     }
     return currentPoint;
@@ -51,12 +51,12 @@ public class PointPriorityReader {
         break;
       }
       PointElement pointElement = pointQueue.poll();
-      TsBlock.TsBlockSingleColumnIterator pageData = pointElement.page;
+      IBatchDataIterator pageData = pointElement.page;
       while (pageData.hasNext() && pageData.currentTime() <= lastTime) {
         pageData.next();
       }
       if (pageData.hasNext()) {
-        pointElement.setPoint(pageData.currentTimeValuePair());
+        pointElement.setPoint(pageData.currentTime(), pageData.currentValue());
         pointQueue.add(pointElement);
       } else {
         // end page

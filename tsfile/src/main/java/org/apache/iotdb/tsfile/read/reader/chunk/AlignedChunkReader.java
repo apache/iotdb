@@ -250,7 +250,7 @@ public class AlignedChunkReader implements IChunkReader {
     return alignedPageReader;
   }
 
-  /** Read data from compressed page data. Uncompress the page and decode it to batch data. */
+  /** Read data from compressed page data. Uncompress the page and decode it to tsblock data. */
   public TsBlock readPageData(
       PageHeader timePageHeader,
       List<PageHeader> valuePageHeaders,
@@ -286,6 +286,7 @@ public class AlignedChunkReader implements IChunkReader {
             valueTypes,
             valueDecoders,
             null);
+    alignedPageReader.initTsBlockBuilder(valueTypes);
     return alignedPageReader.getAllSatisfiedData();
   }
 

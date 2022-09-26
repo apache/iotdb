@@ -23,13 +23,15 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -66,7 +68,9 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
   // chunk metadata list of all timeseries of this device in this seq file
   private final List<List<ChunkMetadata>> allSensorMetadatas;
 
-  private final List<MeasurementSchema> measurementSchemas;
+  private final List<AlignedChunkMetadata> alignedSensorMetadatas;
+
+  private final List<IMeasurementSchema> measurementSchemas;
 
   private final PointPriorityReader pointPriorityReader = new PointPriorityReader(this::removePage);
 
@@ -83,7 +87,9 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       List<String> allMeasurements,
       List<Integer> pathsIndex,
       List<List<ChunkMetadata>> allSensorMetadatas,
-      List<MeasurementSchema> measurementSchemas,
+      List<AlignedChunkMetadata> alignedSensorMetadatas,
+      List<IMeasurementSchema> measurementSchemas,
+      boolean isAligned,
       NewFastCrossCompactionWriter compactionWriter,
       int subTaskId) {
     this.compactionWriter = compactionWriter;
@@ -92,6 +98,8 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     this.measurementSchemas = measurementSchemas;
     this.pathsIndex = pathsIndex;
     this.allSensorMetadatas = allSensorMetadatas;
+    this.alignedSensorMetadatas = alignedSensorMetadatas;
+    this.isAligned = isAligned;
     chunkMetadataQueue =
         new PriorityQueue<>(
             (o1, o2) -> {
@@ -109,31 +117,36 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
 
   @Override
   public Void call() throws IOException, PageException, WriteProcessException {
-    for (Integer index : pathsIndex) {
-      if (allSensorMetadatas.get(index).isEmpty()) {
-        continue;
-      }
+    if (isAligned) {
       int chunkMetadataPriority = 0;
-      if (isAligned) {
-        for (int i = 0; i < allSensorMetadatas.get(0).size(); i++) {
-          List<IChunkMetadata> alignedChunkMetadatas = new ArrayList<>();
-          int idx = i;
-          allSensorMetadatas.forEach(x -> alignedChunkMetadatas.add(x.get(idx)));
-          chunkMetadataQueue.add(
-              new ChunkMetadataElement(
-                  new AlignedChunkMetadata(alignedChunkMetadatas.remove(0), alignedChunkMetadatas),
-                  chunkMetadataPriority++));
+      // put aligned chunk metadatas into queue
+      for (int i = 0; i < allSensorMetadatas.get(0).size(); i++) {
+        List<IChunkMetadata> alignedChunkMetadatas = new ArrayList<>();
+        int idx = i;
+        allSensorMetadatas.forEach(x -> alignedChunkMetadatas.add(x.get(idx)));
+        chunkMetadataQueue.add(
+            new ChunkMetadataElement(
+                new AlignedChunkMetadata(alignedChunkMetadatas.remove(0), alignedChunkMetadatas),
+                chunkMetadataPriority++));
+      }
+      compactionWriter.startMeasurement(measurementSchemas, subTaskId);
+      compactChunks();
+      compactionWriter.endMeasurement(subTaskId);
+    } else {
+      for (Integer index : pathsIndex) {
+        if (allSensorMetadatas.get(index).isEmpty()) {
+          continue;
         }
-      } else {
+        int chunkMetadataPriority = 0;
         for (ChunkMetadata chunkMetadata : allSensorMetadatas.get(index)) {
           chunkMetadataQueue.add(new ChunkMetadataElement(chunkMetadata, chunkMetadataPriority++));
         }
-      }
 
-      compactionWriter.startMeasurement(
-          Collections.singletonList(measurementSchemas.get(index)), subTaskId);
-      compactChunks();
-      compactionWriter.endMeasurement(subTaskId);
+        compactionWriter.startMeasurement(
+            Collections.singletonList(measurementSchemas.get(index)), subTaskId);
+        compactChunks();
+        compactionWriter.endMeasurement(subTaskId);
+      }
     }
     return null;
   }
@@ -162,37 +175,14 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       List<ChunkMetadataElement> overlappedChunkMetadatas =
           findOverlapChunkMetadatas(firstChunkMetadataElement);
       boolean isChunkOverlap = overlappedChunkMetadatas.size() > 1;
-      List<TimeRange> deletons =
-          isAligned
-              ? getAlignedChunkDeletions(
-                  (AlignedChunkMetadata) firstChunkMetadataElement.chunkMetadata)
-              : firstChunkMetadataElement.chunkMetadata.getDeleteIntervalList();
-      int modifiedStatus =
-          isPageOrChunkModified(
-              firstChunkMetadataElement.startTime,
-              firstChunkMetadataElement.chunkMetadata.getEndTime(),
-              deletons);
-      modifiedStatus = modifiedStatus == 1 ? 0 : modifiedStatus;
+      boolean isModified = isChunkModified(firstChunkMetadataElement);
 
-      switch (modifiedStatus) {
-        case -1:
-          // no data on this chunk has been deleted
-          if (isChunkOverlap) {
-            // has overlap chunks, deserialize it
-            compactWithOverlapChunks(overlappedChunkMetadatas);
-          } else {
-            // has none overlap chunk, flush it to file writer directly
-            compactWithNonOverlapChunks(firstChunkMetadataElement);
-          }
-          break;
-        case 0:
-          // there is data on this chunk been deleted, deserialize it
-          compactWithOverlapChunks(overlappedChunkMetadatas);
-          break;
-        case 1:
-          // all data on this chunk has been deleted, remove it
-          removeChunk(firstChunkMetadataElement);
-          break;
+      if (isChunkOverlap || isModified) {
+        // has overlap or modified chunk, then deserialize it
+        compactWithOverlapChunks(overlappedChunkMetadatas);
+      } else {
+        // has none overlap or modified chunk, flush it to file writer directly
+        compactWithNonOverlapChunks(firstChunkMetadataElement);
       }
     }
   }
@@ -310,11 +300,18 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
         chunkReader = new ChunkReader(valueChunk);
         chunkDataBuffer = valueChunk.getData();
         chunkHeader = valueChunk.getHeader();
-        valuePageHeaders.add(new ArrayList<>());
-        compressedValuePageDatas.add(new ArrayList<>());
+        // valuePageHeaders.add(new ArrayList<>());
+        // compressedValuePageDatas.add(new ArrayList<>());
         valueChunks.add(valueChunk);
+        int count = 0;
         while (chunkDataBuffer.remaining() > 0) {
           // deserialize a PageHeader from chunkDataBuffer
+          if (valuePageHeaders.size() <= count) {
+            valuePageHeaders.add(new ArrayList<>());
+          }
+          if (compressedValuePageDatas.size() <= count) {
+            compressedValuePageDatas.add(new ArrayList<>());
+          }
           PageHeader pageHeader;
           if (((byte) (chunkHeader.getChunkType() & 0x3F))
               == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
@@ -324,15 +321,13 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
             pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
           }
           ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-          valuePageHeaders.get(i).add(pageHeader);
-          compressedValuePageDatas.get(i).add(compressedPageData);
+          valuePageHeaders.get(count).add(pageHeader);
+          compressedValuePageDatas.get(count++).add(compressedPageData);
         }
       }
 
       // add aligned pages into page queue
       for (int i = 0; i < timePageHeaders.size(); i++) {
-        AlignedChunkReader alignedChunkReader =
-            new AlignedChunkReader(timeChunk, valueChunks, null);
         pageQueue.add(
             new PageElement(
                 timePageHeaders.get(i),
@@ -347,7 +342,6 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     }
   }
 
-
   /**
    * Compact pages in page queue.
    *
@@ -359,15 +353,16 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       PageElement firstPageElement = pageQueue.peek();
       List<PageElement> overlappedPages = findOverlapPages(firstPageElement);
       boolean isPageOverlap = overlappedPages.size() > 1;
-      switch (isPageOrChunkModified(
-          firstPageElement.startTime,
-          firstPageElement.pageHeader.getEndTime(),
-          firstPageElement.chunkMetadataElement.chunkMetadata.getDeleteIntervalList())) {
+      int modifiedStatus = isPageModified(firstPageElement);
+
+      switch (modifiedStatus) {
         case -1:
-          // no data on this page has been deleted, flush it to chunk writer directly
+          // no data on this page has been deleted
           if (isPageOverlap) {
+            // has overlap pages, deserialize it
             compactWithOverlapPages(overlappedPages);
           } else {
+            // has none overlap pages,  flush it to chunk writer directly
             compactWithNonOverlapPage(firstPageElement);
           }
           break;
@@ -424,21 +419,20 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
         PageElement nextPageElement = overlappedPages.get(pageIndex);
 
         // write currentPage.point.time < nextPage.startTime to chunk writer
-        while (pointPriorityReader.currentPoint().getTimestamp() < nextPageElement.startTime) {
+        while (pointPriorityReader.currentPoint().left < nextPageElement.startTime) {
           // write data point to chunk writer
-          compactionWriter.writeTimeValue(pointPriorityReader.currentPoint(), subTaskId);
+          compactionWriter.write(
+              pointPriorityReader.currentPoint().left,
+              pointPriorityReader.currentPoint().right,
+              subTaskId);
           pointPriorityReader.next();
         }
 
         boolean isNextPageOverlap =
-            !(pointPriorityReader.currentPoint().getTimestamp()
-                    > nextPageElement.pageHeader.getEndTime()
+            !(pointPriorityReader.currentPoint().left > nextPageElement.pageHeader.getEndTime()
                 && !isPageOverlap(nextPageElement));
 
-        switch (isPageOrChunkModified(
-            nextPageElement.startTime,
-            nextPageElement.pageHeader.getEndTime(),
-            nextPageElement.chunkMetadataElement.chunkMetadata.getDeleteIntervalList())) {
+        switch (isPageModified(nextPageElement)) {
           case -1:
             // no data on this page has been deleted
             if (isNextPageOverlap) {
@@ -465,7 +459,10 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
       // write remaining data points
       while (pointPriorityReader.hasNext()) {
         // write data point to chunk writer
-        compactionWriter.writeTimeValue(pointPriorityReader.currentPoint(), subTaskId);
+        compactionWriter.write(
+            pointPriorityReader.currentPoint().left,
+            pointPriorityReader.currentPoint().right,
+            subTaskId);
         pointPriorityReader.next();
         if (overlappedPages.size() > 0) {
           // finish compacting the first page and find the new overlapped pages, then start
@@ -552,23 +549,59 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     return false;
   }
 
+  private boolean isChunkModified(ChunkMetadataElement chunkMetadataElement) {
+    return chunkMetadataElement.chunkMetadata.isModified();
+  }
+
   /**
-   * -1 means that no data on this page or chunk has been deleted. <br>
-   * 0 means that there is data on this page or chunk been deleted. <br>
-   * 1 means that all data on this page or chunk has been deleted.
+   * -1 means that no data on this page has been deleted. <br>
+   * 0 means that there is data on this page been deleted. <br>
+   * 1 means that all data on this page has been deleted.
+   *
+   * <p>Notice: If is aligned page, return 1 if and only if all value pages are deleted. Return -1
+   * if and only if no data exists on all value pages is deleted
    */
-  private int isPageOrChunkModified(
-      long startTime, long endTime, List<TimeRange> deleteIntervalList) {
+  private int isPageModified(PageElement pageElement) {
+    long startTime = pageElement.startTime;
+    long endTime = pageElement.pageHeader.getEndTime();
+    if (isAligned) {
+      AlignedChunkMetadata alignedChunkMetadata =
+          (AlignedChunkMetadata) pageElement.chunkMetadataElement.chunkMetadata;
+      int lastPageStatus = Integer.MIN_VALUE;
+      for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+        int tempStatus =
+            checkIsModified(startTime, endTime, valueChunkMetadata.getDeleteIntervalList());
+        if (tempStatus == 0) {
+          return 0;
+        }
+        if (lastPageStatus < -1) {
+          // first page
+          lastPageStatus = tempStatus;
+          continue;
+        }
+        if (tempStatus != lastPageStatus) {
+          return 0;
+        }
+      }
+      return lastPageStatus;
+    } else {
+      return checkIsModified(
+          startTime,
+          endTime,
+          pageElement.chunkMetadataElement.chunkMetadata.getDeleteIntervalList());
+    }
+  }
+
+  private int checkIsModified(long startTime, long endTime, Collection<TimeRange> deletions) {
     int status = -1;
-    if (deleteIntervalList != null) {
-      for (TimeRange range : deleteIntervalList) {
+    if (deletions != null) {
+      for (TimeRange range : deletions) {
         if (range.contains(startTime, endTime)) {
           // all data on this page has been deleted
           return 1;
         }
         if (range.overlaps(new TimeRange(startTime, endTime))) {
           // exist data on this page been deleted
-          // pageHeader.setModified(true);
           status = 0;
         }
       }
@@ -613,11 +646,12 @@ public class NewFastCompactionPerformerSubTask implements Callable<Void> {
     }
   }
 
-  private List<TimeRange> getAlignedChunkDeletions(AlignedChunkMetadata alignedChunkMetadata) {
-    List<TimeRange> deletions = new ArrayList<>();
-    deletions.addAll(alignedChunkMetadata.getTimeChunkMetadata().getDeleteIntervalList());
+  private List<Collection<TimeRange>> getAlignedChunkDeletions(
+      AlignedChunkMetadata alignedChunkMetadata) {
+    List<Collection<TimeRange>> deletions = new ArrayList<>();
     for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      deletions.addAll(valueChunkMetadata.getDeleteIntervalList());
+      Collection<TimeRange> valueDeletions = valueChunkMetadata.getDeleteIntervalList();
+      deletions.add(valueDeletions);
     }
     return deletions;
   }

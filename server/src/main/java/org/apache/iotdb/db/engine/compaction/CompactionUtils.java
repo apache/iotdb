@@ -321,6 +321,9 @@ public class CompactionUtils {
       throws IllegalPathException, IOException {
     HashMap<String, MeasurementSchema> schemaMap = new HashMap<>();
     for (String measurement : measurements) {
+      if (measurement.equals("")) {
+        continue;
+      }
       for (TsFileResource tsFileResource : allResources) {
         if (!tsFileResource.mayContainsDevice(device)) {
           continue;
