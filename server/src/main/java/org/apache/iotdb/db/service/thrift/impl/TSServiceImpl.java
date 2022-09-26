@@ -1163,7 +1163,8 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   public ServerProperties getProperties() {
     ServerProperties properties = new ServerProperties();
     properties.setVersion(IoTDBConstant.VERSION);
-    LOGGER.info("IoTDB server version: {}", IoTDBConstant.VERSION);
+    properties.setBuildInfo(IoTDBConstant.BUILD_INFO);
+    LOGGER.info("IoTDB server version: {}", IoTDBConstant.VERSION_WITH_BUILD);
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MAX_TIME);
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);

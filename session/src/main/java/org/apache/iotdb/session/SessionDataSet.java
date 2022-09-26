@@ -66,7 +66,7 @@ public class SessionDataSet implements AutoCloseable {
             client,
             sessionId,
             queryDataSet,
-            Config.DEFAULT_FETCH_SIZE,
+            SessionConfig.DEFAULT_FETCH_SIZE,
             0);
   }
 
@@ -94,7 +94,7 @@ public class SessionDataSet implements AutoCloseable {
             client,
             sessionId,
             queryDataSet,
-            Config.DEFAULT_FETCH_SIZE,
+            SessionConfig.DEFAULT_FETCH_SIZE,
             timeout);
   }
 

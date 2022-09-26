@@ -69,6 +69,8 @@ import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -249,7 +251,7 @@ public class ConfigManager implements IManager {
           .getNodeCacheMap()
           .forEach(
               (nodeId, heartbeatCache) ->
-                  nodeStatus.put(nodeId, heartbeatCache.getNodeStatus().getStatus()));
+                  nodeStatus.put(nodeId, heartbeatCache.getNodeStatusWithReason()));
       return new TShowClusterResp(status, configNodeLocations, dataNodeInfoLocations, nodeStatus);
     } else {
       return new TShowClusterResp(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
@@ -668,7 +670,8 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
     if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
-      return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
+      return errorStatus.setMessage(
+          errorPrefix + "time_partition_interval_for_routing" + errorSuffix);
     }
     if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);
@@ -684,6 +687,10 @@ public class ConfigManager implements IManager {
     }
     if (!req.getReadConsistencyLevel().equals(conf.getReadConsistencyLevel())) {
       return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
+    }
+    if (req.getDiskSpaceWarningThreshold()
+        != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
+      return errorStatus.setMessage(errorPrefix + "disk_full_threshold" + errorSuffix);
     }
     return null;
   }

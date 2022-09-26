@@ -73,6 +73,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> dropTrigger(String triggerName);
 
+  SettableFuture<ConfigTaskResult> showTriggers();
+
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
   SettableFuture<ConfigTaskResult> merge(boolean onCluster);

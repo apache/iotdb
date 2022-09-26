@@ -45,10 +45,17 @@ struct TGlobalConfig {
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
+  7: required double diskSpaceWarningThreshold
 }
 
 struct TRatisConfig {
   1: optional i64 appenderBufferSize
+  2: optional i64 snapshotTriggerThreshold
+  3: optional bool logUnsafeFlushEnable
+  4: optional i64 logSegmentSizeMax
+  5: optional i64 grpcFlowControlWindow
+  6: optional i64 leaderElectionTimeoutMin
+  7: optional i64 leaderElectionTimeoutMax
 }
 
 struct TDataNodeRemoveReq {
@@ -218,6 +225,7 @@ struct TConfigNodeRegisterReq {
   10: required i32 dataReplicationFactor
   11: required double dataRegionPerProcessor
   12: required string readConsistencyLevel
+  13: required double diskSpaceWarningThreshold
 }
 
 struct TAddConsensusGroupReq {
@@ -261,6 +269,12 @@ struct TCreateTriggerReq {
 
 struct TDropTriggerReq {
   1: required string triggerName
+}
+
+// Get trigger table from config node
+struct TGetTriggerTableResp {
+  1: required common.TSStatus status
+  2: required binary triggerTable
 }
 
 // Show cluster
@@ -641,22 +655,27 @@ service IConfigNodeRPCService {
   // Trigger
   // ======================================================
 
-   /**
-      * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
-      * and sync Information of it to all ConfigNodes
-      *
-      * @return SUCCESS_STATUS if the trigger was created successfully
-      *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-      */
+  /**
+     * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+     * and sync Information of it to all ConfigNodes
+     *
+     * @return SUCCESS_STATUS if the trigger was created successfully
+     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     */
   common.TSStatus createTrigger(TCreateTriggerReq req)
 
   /**
-       * Remove a trigger on all online ConfigNodes and DataNodes
-       *
-       * @return SUCCESS_STATUS if the function was removed successfully
-       *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-       */
-    common.TSStatus dropTrigger(TDropTriggerReq req)
+     * Remove a trigger on all online ConfigNodes and DataNodes
+     *
+     * @return SUCCESS_STATUS if the function was removed successfully
+     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     */
+  common.TSStatus dropTrigger(TDropTriggerReq req)
+
+  /**
+     * Return the trigger table of config leader
+     */
+  TGetTriggerTableResp getTriggerTable()
 
   // ======================================================
   // Maintenance Tools

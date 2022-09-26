@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,5 +105,15 @@ public class CommonDescriptor {
         HandleSystemErrorStrategy.valueOf(
             properties.getProperty(
                 "handle_system_error", String.valueOf(config.getHandleSystemErrorStrategy()))));
+
+    config.setDiskSpaceWarningThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "disk_space_warning_threshold",
+                String.valueOf(config.getDiskSpaceWarningThreshold()))));
+  }
+
+  public void loadGlobalConfig(TGlobalConfig globalConfig) {
+    config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
   }
 }
