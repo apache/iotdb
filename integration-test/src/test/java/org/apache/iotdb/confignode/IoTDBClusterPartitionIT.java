@@ -392,8 +392,16 @@ public class IoTDBClusterPartitionIT {
       Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
           constructPartitionSlotsMap(sg0, 0, seriesPartitionBatchSize, 0, timePartitionBatchSize);
       TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
-      TDataPartitionTableResp dataPartitionTableResp =
-          client.getOrCreateDataPartitionTable(dataPartitionReq);
+      TDataPartitionTableResp dataPartitionTableResp = null;
+      for (int retry = 0; retry < 3; retry++) {
+        try {
+          dataPartitionTableResp = client.getOrCreateDataPartitionTable(dataPartitionReq);
+          break;
+        } catch (Exception ignore) {
+          // Retry sometimes in order to avoid request timeout
+        }
+      }
+      Assert.assertNotNull(dataPartitionTableResp);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataPartitionTableResp.getStatus().getCode());
@@ -458,7 +466,15 @@ public class IoTDBClusterPartitionIT {
       partitionSlotsMap =
           constructPartitionSlotsMap(sg1, 0, seriesPartitionBatchSize, 0, timePartitionBatchSize);
       dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
-      dataPartitionTableResp = client.getOrCreateDataPartitionTable(dataPartitionReq);
+      for (int retry = 0; retry < 3; retry++) {
+        try {
+          dataPartitionTableResp = client.getOrCreateDataPartitionTable(dataPartitionReq);
+          break;
+        } catch (Exception ignore) {
+          // Retry sometimes in order to avoid request timeout
+        }
+      }
+      Assert.assertNotNull(dataPartitionTableResp);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataPartitionTableResp.getStatus().getCode());
