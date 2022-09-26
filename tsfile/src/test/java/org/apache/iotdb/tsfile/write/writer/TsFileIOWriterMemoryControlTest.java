@@ -293,6 +293,9 @@ public class TsFileIOWriterMemoryControlTest {
       Assert.assertTrue(writer.hasChunkMetadataInDisk);
       writer.endFile();
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originData);
   }
@@ -377,6 +380,9 @@ public class TsFileIOWriterMemoryControlTest {
       Assert.assertTrue(writer.hasChunkMetadataInDisk);
       writer.endFile();
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originData);
   }
@@ -464,6 +470,9 @@ public class TsFileIOWriterMemoryControlTest {
       Assert.assertFalse(writer.chunkGroupMetadataList.isEmpty());
       writer.endFile();
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originData);
   }
@@ -552,6 +561,9 @@ public class TsFileIOWriterMemoryControlTest {
     } finally {
       TEST_CHUNK_SIZE = originTestChunkSize;
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originData);
   }
@@ -640,6 +652,9 @@ public class TsFileIOWriterMemoryControlTest {
     } finally {
       TEST_CHUNK_SIZE = originTestChunkSize;
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originTimes);
   }
@@ -728,6 +743,9 @@ public class TsFileIOWriterMemoryControlTest {
     } finally {
       TEST_CHUNK_SIZE = originTestChunkSize;
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originTimes);
   }
@@ -762,6 +780,9 @@ public class TsFileIOWriterMemoryControlTest {
       writer.endFile();
       Assert.assertTrue(writer.hasChunkMetadataInDisk);
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originData);
   }
@@ -798,6 +819,9 @@ public class TsFileIOWriterMemoryControlTest {
       writer.endFile();
       Assert.assertTrue(writer.hasChunkMetadataInDisk);
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originData);
   }
@@ -840,6 +864,9 @@ public class TsFileIOWriterMemoryControlTest {
     } finally {
       TEST_CHUNK_SIZE = originTestPointNum;
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originData);
   }
@@ -878,6 +905,9 @@ public class TsFileIOWriterMemoryControlTest {
     } finally {
       TEST_CHUNK_SIZE = originTestPointNum;
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originData);
   }
@@ -934,6 +964,9 @@ public class TsFileIOWriterMemoryControlTest {
       }
       writer.endFile();
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originValue);
   }
@@ -1030,6 +1063,9 @@ public class TsFileIOWriterMemoryControlTest {
       writer.endFile();
       Assert.assertTrue(writer.hasChunkMetadataInDisk);
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originData);
   }
@@ -1081,6 +1117,9 @@ public class TsFileIOWriterMemoryControlTest {
       }
       writer.endFile();
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originValue);
   }
@@ -1136,6 +1175,9 @@ public class TsFileIOWriterMemoryControlTest {
       }
       writer.endFile();
     }
+    Assert.assertFalse(
+        new File(testFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX)
+            .exists());
     TsFileIntegrityCheckingTool.checkIntegrityBySequenceRead(testFile.getPath());
     TsFileIntegrityCheckingTool.checkIntegrityByQuery(testFile.getPath(), originValue);
   }

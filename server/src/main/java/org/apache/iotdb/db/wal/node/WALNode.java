@@ -683,15 +683,21 @@ public class WALNode implements IWALNode {
 
     @Override
     public void waitForNextReady() throws InterruptedException {
+      boolean walFileRolled = false;
       while (!hasNext()) {
-        boolean timeout =
-            !buffer.waitForFlush(WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
-        if (timeout) {
-          logger.info(
-              "timeout when waiting for next WAL entry ready, execute rollWALFile. Current search index in wal buffer is {}, and next target index is {}",
-              buffer.getCurrentSearchIndex(),
-              nextSearchIndex);
-          rollWALFile();
+        if (!walFileRolled) {
+          boolean timeout =
+              !buffer.waitForFlush(WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
+          if (timeout) {
+            logger.info(
+                "timeout when waiting for next WAL entry ready, execute rollWALFile. Current search index in wal buffer is {}, and next target index is {}",
+                buffer.getCurrentSearchIndex(),
+                nextSearchIndex);
+            rollWALFile();
+            walFileRolled = true;
+          }
+        } else {
+          buffer.waitForFlush();
         }
       }
     }
@@ -735,6 +741,11 @@ public class WALNode implements IWALNode {
       int fileIndex = WALFileUtils.binarySearchFileBySearchIndex(filesToSearch, nextSearchIndex);
       logger.debug(
           "searchIndex: {}, result: {}, files: {}, ", nextSearchIndex, fileIndex, filesToSearch);
+      // (xingtanzjr) When the target entry does not exist, the reader will return minimum one whose
+      // searchIndex is larger than target searchIndex
+      if (fileIndex == -1) {
+        fileIndex = 0;
+      }
       if (filesToSearch != null
           && (fileIndex >= 0 && fileIndex < filesToSearch.length - 1)) { // possible to find next
         this.filesToSearch = filesToSearch;
