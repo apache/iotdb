@@ -308,10 +308,10 @@ public class IOTDBLoadTsFileIT {
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
               SchemaConfig.MEASUREMENT_13));
-      generator.generateData(SchemaConfig.DEVICE_0, 100, false);
-      generator.generateData(SchemaConfig.DEVICE_1, 100, true);
-      generator.generateDeletion(SchemaConfig.DEVICE_0, 2);
-      generator.generateDeletion(SchemaConfig.DEVICE_1, 2);
+      generator.generateData(SchemaConfig.DEVICE_0, 100000, false);
+      generator.generateData(SchemaConfig.DEVICE_1, 100000, true);
+      generator.generateDeletion(SchemaConfig.DEVICE_0, 10);
+      generator.generateDeletion(SchemaConfig.DEVICE_1, 10);
       writtenPoint1 = generator.getTotalNumber();
     }
 

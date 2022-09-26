@@ -124,6 +124,8 @@ public class TsFileGenerator implements AutoCloseable {
       }
       tablet.reset();
     }
+
+    logger.info(String.format("Write %d points into device %s", number, device));
   }
 
   private void generateDataPoint(Object obj, int row, MeasurementSchema schema) {
@@ -210,6 +212,8 @@ public class TsFileGenerator implements AutoCloseable {
         for (long j = startTime; j <= endTime; j++) {
           timeSet.remove(j);
         }
+        logger.info(
+            String.format("Delete %d - %d timestamp of device %s", startTime, endTime, device));
       }
     }
   }
