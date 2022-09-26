@@ -327,13 +327,18 @@ public class PartitionCache {
         fetchStorageGroupAndUpdateCache(result, devicePaths);
         // second try to hit storage group in fast-fail way
         getStorageGroupMap(result, devicePaths, true);
-        if (!result.isSuccess() && isAutoCreate && config.isAutoCreateSchemaEnabled()) {
-          // try to auto create storage group of failed device
-          createStorageGroupAndUpdateCache(result, devicePaths);
-          // third try to hit storage group in fast-fail way
-          getStorageGroupMap(result, devicePaths, true);
-          if (!result.isSuccess()) {
-            throw new StatementAnalyzeException("Failed to get Storage Group Map in three try.");
+        if (!result.isSuccess() && isAutoCreate) {
+          if (config.isAutoCreateSchemaEnabled()) {
+            // try to auto create storage group of failed device
+            createStorageGroupAndUpdateCache(result, devicePaths);
+            // third try to hit storage group in fast-fail way
+            getStorageGroupMap(result, devicePaths, true);
+            if (!result.isSuccess()) {
+              throw new StatementAnalyzeException("Failed to get Storage Group Map in three try.");
+            }
+          } else {
+            throw new StatementAnalyzeException(
+                "Failed to auto create storage group because enable_auto_create_schema is FALSE.");
           }
         }
       } catch (TException | MetadataException | IOException e) {
