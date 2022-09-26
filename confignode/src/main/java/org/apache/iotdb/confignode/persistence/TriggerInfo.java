@@ -115,7 +115,9 @@ public class TriggerInfo implements SnapshotProcessor {
   public TSStatus addTriggerInTable(AddTriggerInTablePlan physicalPlan) {
     try {
       TriggerInformation triggerInformation = physicalPlan.getTriggerInformation();
-      triggerTable.addTriggerInformation(triggerInformation.getTriggerName(), triggerInformation);
+      String triggerName = triggerInformation.getTriggerName();
+      triggerTable.addTriggerInformation(triggerName, triggerInformation);
+      existedJarToMD5.put(triggerName, triggerInformation.getJarFileMD5());
       if (physicalPlan.getJarFile() != null) {
         triggerExecutableManager.writeToLibDir(
             ByteBuffer.wrap(physicalPlan.getJarFile().getValues()),

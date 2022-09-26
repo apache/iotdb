@@ -77,19 +77,12 @@ public class ExecutableManager {
         false);
   }
 
-  public void moveFileUnderTempRootToExtLibDir(ExecutableResource resource, String name)
-      throws IOException {
-    FileUtils.moveFileToDirectory(
-        getFileByFullPath(
-            getDirStringUnderTempRootByRequestId(resource.getRequestId()) + File.separator + name),
-        getFileByFullPath(libRoot),
-        false);
-  }
-
   public void copyFileToExtLibDir(String filePath) throws IOException {
     FileUtils.copyFileToDirectory(
         FSFactoryProducer.getFSFactory().getFile(filePath),
         FSFactoryProducer.getFSFactory().getFile(this.libRoot));
+  }
+
   public void removeFromTemporaryLibRoot(ExecutableResource resource) {
     removeFromTemporaryLibRoot(resource.getRequestId());
   }
@@ -188,7 +181,9 @@ public class ExecutableManager {
    */
   public void writeToLibDir(ByteBuffer byteBuffer, String fileName) throws IOException {
     String destination = this.libRoot + File.separator + fileName;
-    Files.deleteIfExists(Paths.get(destination));
+    Path path = Paths.get(destination);
+    Files.deleteIfExists(path);
+    Files.createFile(path);
     try (FileOutputStream outputStream = new FileOutputStream(destination)) {
       outputStream.getChannel().write(byteBuffer);
     } catch (IOException e) {
