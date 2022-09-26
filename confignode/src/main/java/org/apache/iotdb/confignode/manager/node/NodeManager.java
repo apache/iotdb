@@ -702,7 +702,7 @@ public class NodeManager {
 
     LOGGER.info(
         "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
-    return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result);
+    return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
   }
 
   public boolean isNodeRemoving(int dataNodeId) {
