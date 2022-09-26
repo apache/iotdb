@@ -30,6 +30,11 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
       throws IOException {
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
+    synchronized (this) {
+      // we need to synchronized here to avoid multi-thread competition in sub-task
+      targetResource.updateStartTime(deviceId, timestamps.getStartTime());
+      targetResource.updateEndTime(deviceId, timestamps.getEndTime());
+    }
     CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriter, false);
     isEmptyFile = false;
   }
