@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
@@ -64,6 +65,11 @@ public class TriggerInfo implements SnapshotProcessor {
     triggerExecutableManager =
         TriggerExecutableManager.setupAndGetInstance(
             CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getTriggerLibDir());
+    try {
+      triggerExecutableManager.start();
+    } catch (StartupException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public void acquireTriggerTableLock() {

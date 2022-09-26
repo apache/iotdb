@@ -173,6 +173,7 @@ public class ConfigNodeConfig {
     extLibDir = addHomeDir(extLibDir);
     udfLibDir = addHomeDir(udfLibDir);
     temporaryLibDir = addHomeDir(temporaryLibDir);
+    triggerLibDir = addHomeDir(triggerLibDir);
   }
 
   private String addHomeDir(String dir) {
