@@ -61,6 +61,7 @@ public class AnalyzeTest {
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
               new AdditionExpression(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                   new ConstantOperand(TSDataType.INT64, "1"))));
@@ -71,6 +72,7 @@ public class AnalyzeTest {
       expectedAnalysis.setSourceTransformExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
               new AdditionExpression(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                   new ConstantOperand(TSDataType.INT64, "1"))));
@@ -82,8 +84,8 @@ public class AnalyzeTest {
           new DatasetHeader(
               Arrays.asList(
                   new ColumnHeader("root.sg.d1.s1", TSDataType.INT32),
-                  new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, "status"),
-                  new ColumnHeader("root.sg.d1.s1 + 1", TSDataType.INT32, "t")),
+                  new ColumnHeader("root.sg.d1.s2", TSDataType.DOUBLE, "root.sg.d1.status"),
+                  new ColumnHeader("root.sg.d1.s1 + 1", TSDataType.DOUBLE, "t")),
               false));
       alignByTimeAnalysisEqualTest(actualAnalysis, expectedAnalysis);
     } catch (Exception e) {
