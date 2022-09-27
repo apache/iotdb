@@ -53,7 +53,6 @@ public class TimePartitionUtils {
 
   @TestOnly
   public static void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
-    TimePartitionUtils.timePartitionIntervalForRouting =
-        convertMilliWithPrecision(timePartitionIntervalForRouting * 1000L);
+    TimePartitionUtils.timePartitionIntervalForRouting = timePartitionIntervalForRouting;
   }
 }
