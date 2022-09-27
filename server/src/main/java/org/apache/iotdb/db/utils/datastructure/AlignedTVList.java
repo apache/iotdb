@@ -79,12 +79,14 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public static AlignedTVList newAlignedList(List<TSDataType> dataTypes) {
-    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
-      return new QuickAlignedTVList(dataTypes);
-    } else if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.BACKWARD) {
-      return new BackAlignedTVList(dataTypes);
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickAlignedTVList(dataTypes);
+      case BACKWARD:
+        return new BackAlignedTVList(dataTypes);
+      default:
+        return new TimAlignedTVList(dataTypes);
     }
-    return new TimAlignedTVList(dataTypes);
   }
 
   @Override

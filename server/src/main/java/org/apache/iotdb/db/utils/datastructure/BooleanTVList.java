@@ -49,12 +49,14 @@ public abstract class BooleanTVList extends TVList {
   }
 
   public static BooleanTVList newList() {
-    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
-      return new QuickBooleanTVList();
-    } else if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.BACKWARD) {
-      return new BackBooleanTVList();
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickBooleanTVList();
+      case BACKWARD:
+        return new BackBooleanTVList();
+      default:
+        return new TimBooleanTVList();
     }
-    return new TimBooleanTVList();
   }
 
   @Override
