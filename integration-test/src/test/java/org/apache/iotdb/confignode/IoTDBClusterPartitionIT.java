@@ -398,8 +398,10 @@ public class IoTDBClusterPartitionIT {
       TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
       TDataPartitionTableResp dataPartitionTableResp = null;
       for (int retry = 0; retry < 5; retry++) {
-        try {
-          dataPartitionTableResp = client.getOrCreateDataPartitionTable(dataPartitionReq);
+        // Build new Client since it's unstable in Win8 environment
+        try (SyncConfigNodeIServiceClient configNodeClient =
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+          dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
           if (dataPartitionTableResp != null) {
             break;
           }
@@ -475,8 +477,10 @@ public class IoTDBClusterPartitionIT {
           constructPartitionSlotsMap(sg1, 0, seriesPartitionBatchSize, 0, timePartitionBatchSize);
       dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
       for (int retry = 0; retry < 5; retry++) {
-        try {
-          dataPartitionTableResp = client.getOrCreateDataPartitionTable(dataPartitionReq);
+        // Build new Client since it's unstable in Win8 environment
+        try (SyncConfigNodeIServiceClient configNodeClient =
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+          dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
           if (dataPartitionTableResp != null) {
             break;
           }
