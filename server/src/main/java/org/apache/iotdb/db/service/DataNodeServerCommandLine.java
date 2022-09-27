@@ -171,17 +171,17 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
             logger.warn("Incorrect id format {}, skipped...", id);
             continue;
           }
-          List<TDataNodeLocation> NodeLocationResult =
+          List<TDataNodeLocation> nodeLocationResult =
               client.getDataNodeConfiguration(Integer.parseInt(id)).getDataNodeConfigurationMap()
                   .values().stream()
                   .map(TDataNodeConfiguration::getLocation)
                   .collect(Collectors.toList());
-          if (NodeLocationResult.isEmpty()) {
+          if (nodeLocationResult.isEmpty()) {
             logger.warn("DataNode {} is not in cluster, skipped...", id);
             continue;
           }
-          if (!dataNodeLocations.contains(NodeLocationResult.get(0))) {
-            dataNodeLocations.add(NodeLocationResult.get(0));
+          if (!dataNodeLocations.contains(nodeLocationResult.get(0))) {
+            dataNodeLocations.add(nodeLocationResult.get(0));
           }
         }
       } catch (TException e1) {
