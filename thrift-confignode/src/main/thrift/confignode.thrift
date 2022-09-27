@@ -274,7 +274,7 @@ struct TDropTriggerReq {
 // Get trigger table from config node
 struct TGetTriggerTableResp {
   1: required common.TSStatus status
-  2: required binary triggerTable
+  2: required list<binary> allTriggerInformation
 }
 
 // Show cluster

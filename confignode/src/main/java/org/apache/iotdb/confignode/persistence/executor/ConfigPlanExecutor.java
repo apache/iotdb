@@ -170,6 +170,8 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.getAllTemplateSetInfo();
       case GetPipeSink:
         return syncInfo.getPipeSink((GetPipeSinkPlan) req);
+      case GetTriggerTable:
+        return triggerInfo.getTriggerTable();
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }

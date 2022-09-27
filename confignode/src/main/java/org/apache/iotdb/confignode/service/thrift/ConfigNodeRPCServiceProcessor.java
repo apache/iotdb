@@ -490,9 +490,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   public TGetTriggerTableResp getTriggerTable() throws TException {
-    // todo: implementation
-    return new TGetTriggerTableResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), null);
+    return configManager.getTriggerTable();
   }
 
   @Override

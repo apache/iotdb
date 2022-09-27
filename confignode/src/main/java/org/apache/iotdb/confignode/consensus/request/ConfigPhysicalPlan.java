@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -227,6 +228,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case UpdateTriggerStateInTable:
           req = new UpdateTriggerStateInTablePlan();
+          break;
+        case GetTriggerTable:
+          req = new GetTriggerTablePlan();
           break;
         case CreateSchemaTemplate:
           req = new CreateSchemaTemplatePlan();
