@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -83,6 +84,9 @@ public class ConsensusManager {
                 ConsensusConfig.newBuilder()
                     .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
                     .setStorageDir(CONF.getConsensusDir())
+                    .setRatisConfig(RatisConfig.newBuilder()
+                        .setSnapshot(RatisConfig.Snapshot.newBuilder().setAutoTriggerThreshold(100).build())
+                        .build())
                     .build(),
                 gid -> stateMachine)
             .orElseThrow(
