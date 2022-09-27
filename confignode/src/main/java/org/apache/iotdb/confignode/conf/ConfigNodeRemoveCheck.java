@@ -37,6 +37,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Properties;
 
+import static org.apache.commons.lang3.StringUtils.isNumeric;
+
 public class ConfigNodeRemoveCheck {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
@@ -59,14 +61,14 @@ public class ConfigNodeRemoveCheck {
     }
     try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
       systemProperties.load(inputStream);
-      try {
+      if (isNumeric(args)) {
         int id = Integer.parseInt(args);
         nodeLocation =
             getConfigNodeList().stream()
                 .filter(e -> e.getConfigNodeId() == id)
                 .findFirst()
                 .orElse(null);
-      } catch (NumberFormatException e1) {
+      } else {
         try {
           TEndPoint endPoint = NodeUrlUtils.parseTEndPointUrl(args);
           nodeLocation =
