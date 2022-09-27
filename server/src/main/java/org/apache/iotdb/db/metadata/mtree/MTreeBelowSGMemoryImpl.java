@@ -464,6 +464,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           }
         };
     collector.setResultSet(result);
+    collector.setShouldTraverseTemplate(false);
     collector.traverse();
     return result;
   }
@@ -1075,6 +1076,21 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       }
     }
     return leafMNodes;
+  }
+
+  public List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
+      throws MetadataException {
+    List<IMeasurementMNode> result = new ArrayList<>();
+    MeasurementCollector<List<IMeasurementMNode>> collector =
+        new MeasurementCollector<List<IMeasurementMNode>>(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+            result.add(node);
+          }
+        };
+    collector.setShouldTraverseTemplate(false);
+    collector.traverse();
+    return result;
   }
 
   // endregion

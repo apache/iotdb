@@ -264,7 +264,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           try {
             SchemaValidator.validate(insertNode);
           } catch (SemanticException e) {
-            throw new FragmentInstanceDispatchException(e);
+            throw new FragmentInstanceDispatchException(
+                RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getMessage()));
           }
           hasFailedMeasurement = insertNode.hasFailedMeasurements();
           if (hasFailedMeasurement) {
