@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner;
 
-import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.SimplePlanVisitor;
