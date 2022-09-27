@@ -26,7 +26,7 @@ import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.archive.ArchiveManager;
+import org.apache.iotdb.db.engine.archiving.ArchivingManager;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -144,8 +144,8 @@ public class EnvironmentUtils {
       fail();
     }
 
-    // clear archive manager
-    ArchiveManager.getInstance().close();
+    // clear archiving manager
+    ArchivingManager.getInstance().close();
 
     IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.NORMAL);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our

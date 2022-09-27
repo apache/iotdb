@@ -563,7 +563,7 @@ public abstract class PhysicalPlan {
     PRUNE_TEMPLATE,
     DROP_TEMPLATE,
     DEACTIVATE_TEMPLATE,
-    ARCHIVE
+    ARCHIVING
   }
 
   public long getIndex() {

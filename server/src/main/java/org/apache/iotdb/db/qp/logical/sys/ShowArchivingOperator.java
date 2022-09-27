@@ -22,16 +22,16 @@ package org.apache.iotdb.db.qp.logical.sys;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowArchivePlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowArchivingPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.util.List;
 
-public class ShowArchiveOperator extends ShowOperator {
+public class ShowArchivingOperator extends ShowOperator {
   private List<PartialPath> storageGroups;
 
-  public ShowArchiveOperator(List<PartialPath> storageGroups) {
-    super(SQLConstant.TOK_SHOW, OperatorType.SHOW_ARCHIVE);
+  public ShowArchivingOperator(List<PartialPath> storageGroups) {
+    super(SQLConstant.TOK_SHOW, OperatorType.SHOW_ARCHIVING);
     this.storageGroups = storageGroups;
   }
 
@@ -41,6 +41,6 @@ public class ShowArchiveOperator extends ShowOperator {
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
-    return new ShowArchivePlan(storageGroups);
+    return new ShowArchivingPlan(storageGroups);
   }
 }

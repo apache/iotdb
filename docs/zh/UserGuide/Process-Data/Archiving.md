@@ -33,8 +33,8 @@
 #### 语法
 
 ```sql
-SHOW ALL ARCHIVE
-SHOW ARCHIVE ON <storage_group>
+SHOW ALL ARCHIVING
+SHOW ARCHIVING ON <storage_group>
 ```
 
 - `<storage_group>` 返回指定存储组上的任务参数以及状态。
@@ -56,8 +56,8 @@ SHOW ARCHIVE ON <storage_group>
 #### 语法
 
 ```sql
-SET ARCHIVE TO <storage_group> <start_time> <ttl> <target_dir>
-SET ARCHIVE TO storage_group=<storage_group> start_time=<start_time> ttl=<ttl> target_dir=<target_dir>
+SET ARCHIVING TO <storage_group> <start_time> <ttl> <target_dir>
+SET ARCHIVING TO storage_group=<storage_group> start_time=<start_time> ttl=<ttl> target_dir=<target_dir>
 ```
 
 - `<storage_group>` 指定的归档的存储组。
@@ -68,8 +68,8 @@ SET ARCHIVE TO storage_group=<storage_group> start_time=<start_time> ttl=<ttl> t
 #### 示例
 
 ```sql
-SET ARCHIVE TO storage_group=root.ln start_time=2023-01-01 ttl=360000 target_dir="/tmp"
-SET ARCHIVE TO root.ln 2023-01-01 360000 "/tmp"
+SET ARCHIVING TO storage_group=root.ln start_time=2023-01-01 ttl=360000 target_dir="/tmp"
+SET ARCHIVING TO root.ln 2023-01-01 360000 "/tmp"
 ```
 
 #### 提示
@@ -85,8 +85,8 @@ SET ARCHIVE TO root.ln 2023-01-01 360000 "/tmp"
 #### 语法
 
 ```sql
-CANCEL ARCHIVE <task_id>
-CANCEL ARCHIVE ON <storage_group>
+CANCEL ARCHIVING <task_id>
+CANCEL ARCHIVING ON <storage_group>
 ```
 
 - `<task_id>` 归档任务的索引号。
@@ -95,8 +95,8 @@ CANCEL ARCHIVE ON <storage_group>
 #### 示例
 
 ```sql
-CANCEL ARCHIVE 0
-CANCEL ARCHIVE ON root.ln
+CANCEL ARCHIVING 0
+CANCEL ARCHIVING ON root.ln
 ```
 
 ### 暂停数据归档任务
@@ -106,8 +106,8 @@ CANCEL ARCHIVE ON root.ln
 #### 语法
 
 ```sql
-PAUSE ARCHIVE <task_id>
-PAUSE ARCHIVE ON <storage_group>
+PAUSE ARCHIVING <task_id>
+PAUSE ARCHIVING ON <storage_group>
 ```
 
 - `<task_id>` 归档任务的索引号。
@@ -116,8 +116,8 @@ PAUSE ARCHIVE ON <storage_group>
 #### 示例
 
 ```sql
-PAUSE ARCHIVE 0
-PAUSE ARCHIVE ON root.ln
+PAUSE ARCHIVING 0
+PAUSE ARCHIVING ON root.ln
 ```
 
 ### 继续数据归档任务
@@ -127,8 +127,8 @@ PAUSE ARCHIVE ON root.ln
 #### 语法
 
 ```sql
-RESUME ARCHIVE <task_id>
-RESUME ARCHIVE ON <storage_group>
+RESUME ARCHIVING <task_id>
+RESUME ARCHIVING ON <storage_group>
 ```
 
 - `<task_id>` 归档任务的索引号。
@@ -137,12 +137,12 @@ RESUME ARCHIVE ON <storage_group>
 #### 示例
 
 ```sql
-RESUME ARCHIVE 0
-RESUME ARCHIVE ON root.ln
+RESUME ARCHIVING 0
+RESUME ARCHIVING ON root.ln
 ```
 
 ## 系统参数配置
 
-| 参数名               | 描述                     | 数据类型 | 默认值 |
-| :------------------- | ------------------------ | -------- | ------ |
-| `archive_thread_num` | 数据归档任务使用的线程数 | int      | 2      |
+| 参数名                    | 描述                     | 数据类型 | 默认值 |
+|:-----------------------| ------------------------ | -------- | ------ |
+| `archiving_thread_num` | 数据归档任务使用的线程数 | int      | 2      |

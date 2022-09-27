@@ -18,7 +18,7 @@
  *
  */
 
-package org.apache.iotdb.db.engine.archive;
+package org.apache.iotdb.db.engine.archiving;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -39,9 +39,9 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.sys.PauseArchivePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetArchivePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowArchivePlan;
+import org.apache.iotdb.db.qp.physical.sys.PauseArchivingPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetArchivingPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowArchivingPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -71,9 +71,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class ArchiveTest {
-  private final String sg1 = "root.ARCHIVE_SG1";
-  private final String sg2 = "root.ARCHIVE_SG2";
+public class ArchivingTest {
+  private final String sg1 = "root.ARCHIVING_SG1";
+  private final String sg2 = "root.ARCHIVING_SG2";
   private final long ttl = 12345;
   private long startTime; // 2023-01-01
   private VirtualStorageGroupProcessor virtualStorageGroupProcessor;
@@ -160,7 +160,7 @@ public class ArchiveTest {
   }
 
   @Test
-  public void testArchive()
+  public void testArchiving()
       throws StorageEngineException, WriteProcessException, QueryProcessException,
           IllegalPathException, IOException {
     prepareData();
@@ -209,11 +209,11 @@ public class ArchiveTest {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    // create a new ArchiveTask with specified params
-    ArchiveTask task = new ArchiveTask(0, new PartialPath(sg1), targetDir, 500, 0);
-    task.setStatus(ArchiveTask.ArchiveTaskStatus.RUNNING);
+    // create a new ArchivingTask with specified params
+    ArchivingTask task = new ArchivingTask(0, new PartialPath(sg1), targetDir, 500, 0);
+    task.setStatus(ArchivingTask.ArchivingTaskStatus.RUNNING);
     task.startTask();
-    virtualStorageGroupProcessor.checkArchiveTask(task);
+    virtualStorageGroupProcessor.checkArchivingTask(task);
     task.close();
 
     // files after archiving
@@ -261,78 +261,80 @@ public class ArchiveTest {
   }
 
   @Test
-  public void testParseSetArchive() throws QueryProcessException {
+  public void testParseSetArchiving() throws QueryProcessException {
     Planner planner = new Planner();
-    SetArchivePlan plan =
-        (SetArchivePlan)
+    SetArchivingPlan plan =
+        (SetArchivingPlan)
             planner.parseSQLToPhysicalPlan(
-                String.format("SET ARCHIVE TO %s 2023-01-01 10000 '%s'", sg1, targetDir.getPath()));
+                String.format(
+                    "SET ARCHIVING TO %s 2023-01-01 10000 '%s'", sg1, targetDir.getPath()));
     assertEquals(sg1, plan.getStorageGroup().getFullPath());
     assertEquals(10000, plan.getTTL());
     assertEquals(startTime, plan.getStartTime());
     assertEquals(targetDir.getPath(), plan.getTargetDir().getPath());
 
     plan =
-        (SetArchivePlan)
+        (SetArchivingPlan)
             planner.parseSQLToPhysicalPlan(
                 String.format(
-                    "SET ARCHIVE TO start_time=2023-01-01 storage_group=%s ttl=10000 target_dir='%s'",
+                    "SET ARCHIVING TO start_time=2023-01-01 storage_group=%s ttl=10000 target_dir='%s'",
                     sg1, targetDir.getPath()));
     assertEquals(sg1, plan.getStorageGroup().getFullPath());
     assertEquals(10000, plan.getTTL());
     assertEquals(startTime, plan.getStartTime());
     assertEquals(targetDir.getPath(), plan.getTargetDir().getPath());
 
-    plan = (SetArchivePlan) planner.parseSQLToPhysicalPlan("CANCEL ARCHIVE ON " + sg2);
+    plan = (SetArchivingPlan) planner.parseSQLToPhysicalPlan("CANCEL ARCHIVING ON " + sg2);
     assertEquals(sg2, plan.getStorageGroup().getFullPath());
     assertEquals(Long.MAX_VALUE, plan.getTTL());
     assertEquals(Long.MAX_VALUE, plan.getStartTime());
 
-    plan = (SetArchivePlan) planner.parseSQLToPhysicalPlan("CANCEL ARCHIVE 99");
+    plan = (SetArchivingPlan) planner.parseSQLToPhysicalPlan("CANCEL ARCHIVING 99");
     assertEquals(99, plan.getTaskId());
     assertEquals(Long.MAX_VALUE, plan.getTTL());
     assertEquals(Long.MAX_VALUE, plan.getStartTime());
   }
 
   @Test
-  public void testParsePauseArchive() throws QueryProcessException {
+  public void testParsePauseArchiving() throws QueryProcessException {
     Planner planner = new Planner();
-    PauseArchivePlan plan =
-        (PauseArchivePlan) planner.parseSQLToPhysicalPlan("PAUSE ARCHIVE ON " + sg2);
+    PauseArchivingPlan plan =
+        (PauseArchivingPlan) planner.parseSQLToPhysicalPlan("PAUSE ARCHIVING ON " + sg2);
     assertEquals(sg2, plan.getStorageGroup().getFullPath());
     assertTrue(plan.isPause());
 
-    plan = (PauseArchivePlan) planner.parseSQLToPhysicalPlan("PAUSE ARCHIVE 10");
+    plan = (PauseArchivingPlan) planner.parseSQLToPhysicalPlan("PAUSE ARCHIVING 10");
     assertEquals(10, plan.getTaskId());
     assertTrue(plan.isPause());
 
-    plan = (PauseArchivePlan) planner.parseSQLToPhysicalPlan("RESUME ARCHIVE ON " + sg1);
+    plan = (PauseArchivingPlan) planner.parseSQLToPhysicalPlan("RESUME ARCHIVING ON " + sg1);
     assertEquals(sg1, plan.getStorageGroup().getFullPath());
     assertFalse(plan.isPause());
 
-    plan = (PauseArchivePlan) planner.parseSQLToPhysicalPlan("RESUME ARCHIVE 16");
+    plan = (PauseArchivingPlan) planner.parseSQLToPhysicalPlan("RESUME ARCHIVING 16");
     assertEquals(16, plan.getTaskId());
     assertFalse(plan.isPause());
   }
 
   @Test
-  public void testParseShowArchive() throws QueryProcessException {
+  public void testParseShowArchiving() throws QueryProcessException {
     Planner planner = new Planner();
-    ShowArchivePlan plan = (ShowArchivePlan) planner.parseSQLToPhysicalPlan("SHOW ALL ARCHIVE");
+    ShowArchivingPlan plan =
+        (ShowArchivingPlan) planner.parseSQLToPhysicalPlan("SHOW ALL ARCHIVING");
     assertTrue(plan.getStorageGroups().isEmpty());
 
-    plan = (ShowArchivePlan) planner.parseSQLToPhysicalPlan("SHOW ARCHIVE ON " + sg1);
+    plan = (ShowArchivingPlan) planner.parseSQLToPhysicalPlan("SHOW ARCHIVING ON " + sg1);
     assertEquals(sg1, plan.getStorageGroups().get(0).getFullPath());
   }
 
   @Test
-  public void testShowArchive()
+  public void testShowArchiving()
       throws IOException, QueryProcessException, QueryFilterOptimizationException,
           StorageEngineException, MetadataException, InterruptedException {
-    ArchiveManager archiveManager = ArchiveManager.getInstance();
-    archiveManager.setArchive(new PartialPath(sg1), targetDir, ttl, startTime);
+    ArchivingManager archivingManager = ArchivingManager.getInstance();
+    archivingManager.setArchiving(new PartialPath(sg1), targetDir, ttl, startTime);
 
-    ShowArchivePlan plan = new ShowArchivePlan(Collections.emptyList());
+    ShowArchivingPlan plan = new ShowArchivingPlan(Collections.emptyList());
     PlanExecutor executor = new PlanExecutor();
     QueryDataSet queryDataSet = executor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
@@ -353,7 +355,7 @@ public class ArchiveTest {
   }
 
   @Test
-  public void testArchiveCleanFile()
+  public void testArchivingCleanFile()
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
     prepareData();
@@ -362,9 +364,9 @@ public class ArchiveTest {
     assertEquals(4, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(4, virtualStorageGroupProcessor.getUnSequenceFileList().size());
 
-    ArchiveTask task = new ArchiveTask(0, new PartialPath(sg1), targetDir, 0, 0);
-    task.setStatus(ArchiveTask.ArchiveTaskStatus.RUNNING);
-    virtualStorageGroupProcessor.checkArchiveTask(task);
+    ArchivingTask task = new ArchivingTask(0, new PartialPath(sg1), targetDir, 0, 0);
+    task.setStatus(ArchivingTask.ArchivingTaskStatus.RUNNING);
+    virtualStorageGroupProcessor.checkArchivingTask(task);
 
     assertEquals(0, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(0, virtualStorageGroupProcessor.getUnSequenceFileList().size());

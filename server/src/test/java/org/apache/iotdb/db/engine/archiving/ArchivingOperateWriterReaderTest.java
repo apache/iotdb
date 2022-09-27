@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.archive;
+package org.apache.iotdb.db.engine.archiving;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -40,46 +40,46 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class ArchiveOperateWriterReaderTest {
+public class ArchivingOperateWriterReaderTest {
   private static final String filePath = "logtest.test";
-  private final String sg1 = "root.ARCHIVE_SG1";
-  private final String sg2 = "root.ARCHIVE_SG1";
+  private final String sg1 = "root.ARCHIVING_SG1";
+  private final String sg2 = "root.ARCHIVING_SG1";
   private long startTime; // 2023-01-01
   private final long ttl = 2000;
   private final String targetDirPath = Paths.get("data", "separated").toString();
-  List<ArchiveOperate> archiveOperate;
-  ArchiveTask task1, task2;
+  List<ArchivingOperate> archivingOperate;
+  ArchivingTask task1, task2;
 
   @Before
   public void prepare() throws IllegalPathException, LogicalOperatorException {
     if (new File(filePath).exists()) {
       new File(filePath).delete();
     }
-    task1 = new ArchiveTask(120, new PartialPath(sg1), new File(targetDirPath), startTime, ttl);
-    task2 = new ArchiveTask(999, new PartialPath(sg2), new File(targetDirPath), startTime, ttl);
+    task1 = new ArchivingTask(120, new PartialPath(sg1), new File(targetDirPath), startTime, ttl);
+    task2 = new ArchivingTask(999, new PartialPath(sg2), new File(targetDirPath), startTime, ttl);
 
-    archiveOperate = new ArrayList<>();
-    archiveOperate.add(new ArchiveOperate(ArchiveOperate.ArchiveOperateType.START, task1));
-    archiveOperate.add(new ArchiveOperate(ArchiveOperate.ArchiveOperateType.SET, task1));
-    archiveOperate.add(new ArchiveOperate(ArchiveOperate.ArchiveOperateType.CANCEL, task2));
-    archiveOperate.add(new ArchiveOperate(ArchiveOperate.ArchiveOperateType.PAUSE, task2));
-    archiveOperate.add(new ArchiveOperate(ArchiveOperate.ArchiveOperateType.RESUME, task2));
+    archivingOperate = new ArrayList<>();
+    archivingOperate.add(new ArchivingOperate(ArchivingOperate.ArchivingOperateType.START, task1));
+    archivingOperate.add(new ArchivingOperate(ArchivingOperate.ArchivingOperateType.SET, task1));
+    archivingOperate.add(new ArchivingOperate(ArchivingOperate.ArchivingOperateType.CANCEL, task2));
+    archivingOperate.add(new ArchivingOperate(ArchivingOperate.ArchivingOperateType.PAUSE, task2));
+    archivingOperate.add(new ArchivingOperate(ArchivingOperate.ArchivingOperateType.RESUME, task2));
 
     startTime = DatetimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
     task1.close();
     task2.close();
   }
 
-  public void writeLog(ArchiveOperateWriter writer) throws IOException {
-    writer.log(ArchiveOperate.ArchiveOperateType.START, task1);
-    writer.log(ArchiveOperate.ArchiveOperateType.SET, task1);
-    writer.log(ArchiveOperate.ArchiveOperateType.CANCEL, task2);
-    writer.log(ArchiveOperate.ArchiveOperateType.PAUSE, task2);
-    writer.log(ArchiveOperate.ArchiveOperateType.RESUME, task2);
+  public void writeLog(ArchivingOperateWriter writer) throws IOException {
+    writer.log(ArchivingOperate.ArchivingOperateType.START, task1);
+    writer.log(ArchivingOperate.ArchivingOperateType.SET, task1);
+    writer.log(ArchivingOperate.ArchivingOperateType.CANCEL, task2);
+    writer.log(ArchivingOperate.ArchivingOperateType.PAUSE, task2);
+    writer.log(ArchivingOperate.ArchivingOperateType.RESUME, task2);
   }
 
   /** check if two logs have equal fields */
-  public boolean logEquals(ArchiveOperate log1, ArchiveOperate log2) {
+  public boolean logEquals(ArchivingOperate log1, ArchivingOperate log2) {
     if (log1.getType() != log2.getType()) {
       return false;
     }
@@ -87,7 +87,7 @@ public class ArchiveOperateWriterReaderTest {
       return false;
     }
 
-    if (log1.getType() == ArchiveOperate.ArchiveOperateType.SET) {
+    if (log1.getType() == ArchivingOperate.ArchivingOperateType.SET) {
       // check other fields only if SET
       if (log1.getTask().getStartTime() != log2.getTask().getStartTime()) {
         return false;
@@ -114,16 +114,16 @@ public class ArchiveOperateWriterReaderTest {
 
   @Test
   public void testWriteAndRead() throws Exception {
-    ArchiveOperateWriter writer = new ArchiveOperateWriter(filePath);
+    ArchivingOperateWriter writer = new ArchivingOperateWriter(filePath);
     writeLog(writer);
-    try (ArchiveOperateReader reader = new ArchiveOperateReader(new File(filePath))) {
+    try (ArchivingOperateReader reader = new ArchivingOperateReader(new File(filePath))) {
       writer.close();
-      List<ArchiveOperate> res = new ArrayList<>();
+      List<ArchivingOperate> res = new ArrayList<>();
       while (reader.hasNext()) {
         res.add(reader.next());
       }
-      for (int i = 0; i < archiveOperate.size(); i++) {
-        assertTrue(logEquals(archiveOperate.get(i), res.get(i)));
+      for (int i = 0; i < archivingOperate.size(); i++) {
+        assertTrue(logEquals(archivingOperate.get(i), res.get(i)));
       }
     } finally {
       new File(filePath).delete();
@@ -134,7 +134,7 @@ public class ArchiveOperateWriterReaderTest {
   public void testTruncateBrokenLogs() throws Exception {
     try {
       // write normal data
-      try (ArchiveOperateWriter writer = new ArchiveOperateWriter(filePath)) {
+      try (ArchivingOperateWriter writer = new ArchivingOperateWriter(filePath)) {
         writeLog(writer);
       }
       long expectedLength = new File(filePath).length();
@@ -157,13 +157,13 @@ public class ArchiveOperateWriterReaderTest {
       }
 
       // read & check
-      try (ArchiveOperateReader reader = new ArchiveOperateReader(new File(filePath))) {
-        List<ArchiveOperate> res = new ArrayList<>();
+      try (ArchivingOperateReader reader = new ArchivingOperateReader(new File(filePath))) {
+        List<ArchivingOperate> res = new ArrayList<>();
         while (reader.hasNext()) {
           res.add(reader.next());
         }
-        for (int i = 0; i < archiveOperate.size(); i++) {
-          assertTrue(logEquals(archiveOperate.get(i), res.get(i)));
+        for (int i = 0; i < archivingOperate.size(); i++) {
+          assertTrue(logEquals(archivingOperate.get(i), res.get(i)));
         }
       }
       assertEquals(expectedLength, new File(filePath).length());

@@ -30,8 +30,8 @@ import org.apache.iotdb.db.doublelive.OperationSyncLogService;
 import org.apache.iotdb.db.doublelive.OperationSyncPlanTypeUtils;
 import org.apache.iotdb.db.doublelive.OperationSyncProducer;
 import org.apache.iotdb.db.doublelive.OperationSyncWriteTask;
-import org.apache.iotdb.db.engine.archive.ArchiveManager;
-import org.apache.iotdb.db.engine.archive.ArchiveOperate;
+import org.apache.iotdb.db.engine.archiving.ArchivingManager;
+import org.apache.iotdb.db.engine.archiving.ArchivingOperate;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -171,7 +171,7 @@ public class StorageEngine implements IService {
   ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>>
       arrayListBlockQueue;
 
-  private ArchiveManager archiveManager = ArchiveManager.getInstance();
+  private ArchivingManager archivingManager = ArchivingManager.getInstance();
 
   private StorageEngine() {
     if (isEnableOperationSync) {
@@ -591,7 +591,7 @@ public class StorageEngine implements IService {
     shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     processorMap.clear();
-    archiveManager.close();
+    archivingManager.close();
   }
 
   private void shutdownTimedService(ScheduledExecutorService pool, String poolName) {
@@ -1336,29 +1336,29 @@ public class StorageEngine implements IService {
     }
   }
 
-  /** push the archive info to archiveManager */
-  public void setArchive(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
-    boolean result = archiveManager.setArchive(storageGroup, targetDir, ttl, startTime);
+  /** push the archiving info to archivingManager */
+  public void setArchiving(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
+    boolean result = archivingManager.setArchiving(storageGroup, targetDir, ttl, startTime);
     if (result) {
-      logger.info("set archive task successfully.");
+      logger.info("set archiving task successfully.");
     } else {
-      logger.info("set archive task failed.");
+      logger.info("set archiving task failed.");
     }
   }
 
-  public void operateArchive(
-      ArchiveOperate.ArchiveOperateType operateType, long taskId, PartialPath storageGroup) {
+  public void operateArchiving(
+      ArchivingOperate.ArchivingOperateType operateType, long taskId, PartialPath storageGroup) {
     if (taskId >= 0) {
-      archiveManager.operate(operateType, taskId);
+      archivingManager.operate(operateType, taskId);
     } else if (storageGroup != null) {
-      archiveManager.operate(operateType, storageGroup);
+      archivingManager.operate(operateType, storageGroup);
     } else {
-      logger.error("{} archive cannot recognize taskId or storagegroup", operateType.name());
+      logger.error("{} archiving cannot recognize taskId or storagegroup", operateType.name());
     }
   }
 
-  public ArchiveManager getArchiveManager() {
-    return archiveManager;
+  public ArchivingManager getArchivingManager() {
+    return archivingManager;
   }
 
   static class InstanceHolder {

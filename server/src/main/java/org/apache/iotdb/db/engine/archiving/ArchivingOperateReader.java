@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.archive;
+package org.apache.iotdb.db.engine.archiving;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -31,30 +31,30 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 
 /**
- * ArchiveOperateReader reads binarized ArchiveOperate from file using FileInputStream from head to
- * tail.
+ * ArchivingOperateReader reads binarized ArchivingOperate from file using FileInputStream from head
+ * to tail.
  */
-public class ArchiveOperateReader implements AutoCloseable {
-  private static final Logger logger = LoggerFactory.getLogger(ArchiveOperateReader.class);
+public class ArchivingOperateReader implements AutoCloseable {
+  private static final Logger logger = LoggerFactory.getLogger(ArchivingOperateReader.class);
   private final File logFile;
   private FileInputStream logFileInStream;
-  private ArchiveOperate operate;
+  private ArchivingOperate operate;
   private long unbrokenLogsSize = 0;
 
-  public ArchiveOperateReader(String logFilePath) throws IOException {
+  public ArchivingOperateReader(String logFilePath) throws IOException {
     this.logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     logFileInStream = new FileInputStream(logFile);
   }
 
-  public ArchiveOperateReader(File logFile) throws IOException {
+  public ArchivingOperateReader(File logFile) throws IOException {
     this.logFile = logFile;
     logFileInStream = new FileInputStream(logFile);
   }
 
-  /** @return ArchiveOperate parsed from log file, null if nothing left in file */
-  private ArchiveOperate readOperate() {
+  /** @return ArchivingOperate parsed from log file, null if nothing left in file */
+  private ArchivingOperate readOperate() {
     try {
-      ArchiveOperate log = ArchiveOperate.deserialize(logFileInStream);
+      ArchivingOperate log = ArchivingOperate.deserialize(logFileInStream);
 
       unbrokenLogsSize = logFileInStream.getChannel().position();
       return log;
@@ -63,8 +63,8 @@ public class ArchiveOperateReader implements AutoCloseable {
     }
   }
 
-  public ArchiveOperate next() {
-    ArchiveOperate ret = operate;
+  public ArchivingOperate next() {
+    ArchivingOperate ret = operate;
     operate = null;
     return ret;
   }
@@ -100,7 +100,7 @@ public class ArchiveOperateReader implements AutoCloseable {
     try {
       logFileInStream.close();
     } catch (IOException e) {
-      logger.error("Failed to close archive log");
+      logger.error("Failed to close archiving log");
     }
   }
 }

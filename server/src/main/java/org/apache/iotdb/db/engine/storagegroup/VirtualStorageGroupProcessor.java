@@ -26,7 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.archive.ArchiveTask;
+import org.apache.iotdb.db.engine.archiving.ArchivingTask;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverManager;
@@ -1556,10 +1556,10 @@ public class VirtualStorageGroupProcessor {
   }
 
   /** iterate over TsFiles and move to targetDir if out of ttl */
-  public void checkArchiveTask(ArchiveTask task) {
+  public void checkArchivingTask(ArchivingTask task) {
     if (task.getTTL() == Long.MAX_VALUE) {
       logger.debug(
-          "{}: Archive ttl not set, ignore the check",
+          "{}: Archiving ttl not set, ignore the check",
           logicalStorageGroupName + "-" + virtualStorageGroupId);
       return;
     }
@@ -1574,30 +1574,30 @@ public class VirtualStorageGroupProcessor {
     List<TsFileResource> unseqFiles = new ArrayList<>(tsFileManager.getTsFileList(false));
 
     for (TsFileResource tsFileResource : seqFiles) {
-      if (task.getStatus() != ArchiveTask.ArchiveTaskStatus.RUNNING) {
+      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.RUNNING) {
         // task stopped running (eg. the task is paused), return
         return;
       }
-      checkArchiveTaskFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, true);
+      checkArchivingTaskFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, true);
     }
 
     for (TsFileResource tsFileResource : unseqFiles) {
-      if (task.getStatus() != ArchiveTask.ArchiveTaskStatus.RUNNING) {
+      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.RUNNING) {
         // task stopped running, return
         return;
       }
-      checkArchiveTaskFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, false);
+      checkArchivingTaskFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, false);
     }
   }
 
   /** archive the file to targetDir */
-  public void checkArchiveTaskFile(
-      ArchiveTask task,
+  public void checkArchivingTaskFile(
+      ArchivingTask task,
       TsFileResource resource,
       File targetDir,
       long ttlLowerBound,
       boolean isSeq) {
-    writeLock("checkArchiveLock");
+    writeLock("checkArchivingLock");
     try {
       if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
         return;
@@ -1616,10 +1616,10 @@ public class VirtualStorageGroupProcessor {
             File archivedFile = resource.archive(targetDir);
           } else {
             // archive file couldn't start
-            logger.error("{} archive logger error", resource.getTsFilePath());
+            logger.error("{} archiving logger error", resource.getTsFilePath());
           }
         } catch (IOException e) {
-          logger.error("{} archive error", resource.getTsFilePath());
+          logger.error("{} archiving error", resource.getTsFilePath());
         } finally {
           resource.writeUnlock();
         }

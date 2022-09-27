@@ -19,31 +19,15 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 import java.util.List;
 
-public class PauseArchivePlan extends PhysicalPlan {
-  private long taskId = -1;
-  private PartialPath storageGroup;
-  private boolean pause = true;
+public class ShowArchivingPlan extends ShowPlan {
+  private List<PartialPath> storageGroups;
 
-  public PauseArchivePlan(boolean pause) {
-    super(Operator.OperatorType.PAUSE_ARCHIVE);
-    this.pause = pause;
-  }
-
-  public PauseArchivePlan(PartialPath storageGroup, boolean pause) {
-    super(Operator.OperatorType.PAUSE_ARCHIVE);
-    this.storageGroup = storageGroup;
-    this.pause = pause;
-  }
-
-  public PauseArchivePlan(long taskId, boolean pause) {
-    super(Operator.OperatorType.PAUSE_ARCHIVE);
-    this.taskId = taskId;
-    this.pause = pause;
+  public ShowArchivingPlan(List<PartialPath> storageGroups) {
+    super(ShowContentType.SHOW_ARCHIVING);
+    this.storageGroups = storageGroups;
   }
 
   @Override
@@ -51,15 +35,7 @@ public class PauseArchivePlan extends PhysicalPlan {
     return null;
   }
 
-  public long getTaskId() {
-    return taskId;
-  }
-
-  public boolean isPause() {
-    return pause;
-  }
-
-  public PartialPath getStorageGroup() {
-    return storageGroup;
+  public List<PartialPath> getStorageGroups() {
+    return storageGroups;
   }
 }

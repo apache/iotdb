@@ -44,9 +44,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @Category({LocalStandaloneTest.class})
-public class IoTDBArchiveIT {
+public class IoTDBArchivingIT {
   File testTargetDir;
-  final long ARCHIVE_CHECK_TIME = 60L;
+  final long ARCHIVING_CHECK_TIME = 60L;
 
   @Before
   public void setUp() throws Exception {
@@ -65,39 +65,39 @@ public class IoTDBArchiveIT {
 
   @Test
   @Category({ClusterTest.class})
-  public void testArchive() throws SQLException, InterruptedException {
-    StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(ARCHIVE_CHECK_TIME);
+  public void testArchiving() throws SQLException, InterruptedException {
+    StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(ARCHIVING_CHECK_TIME);
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
         statement.execute(
-            "SET ARCHIVE TO root.ARCHIVE_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
+            "SET ARCHIVING TO root.ARCHIVING_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
-        statement.execute("CANCEL ARCHIVE ON root.ARCHIVE_SG1");
+        statement.execute("CANCEL ARCHIVING ON root.ARCHIVING_SG1");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
-        statement.execute("PAUSE ARCHIVE ON root.ARCHIVE_SG1");
+        statement.execute("PAUSE ARCHIVING ON root.ARCHIVING_SG1");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
-        statement.execute("RESUME ARCHIVE ON root.ARCHIVE_SG1");
+        statement.execute("RESUME ARCHIVING ON root.ARCHIVING_SG1");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
-      statement.execute("SET STORAGE GROUP TO root.ARCHIVE_SG1");
+      statement.execute("SET STORAGE GROUP TO root.ARCHIVING_SG1");
       statement.execute(
-          "CREATE TIMESERIES root.ARCHIVE_SG1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
+          "CREATE TIMESERIES root.ARCHIVING_SG1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
 
       try {
-        statement.execute("SET ARCHIVE TO storage_group=root.ARCHIVE_SG1");
+        statement.execute("SET ARCHIVING TO storage_group=root.ARCHIVING_SG1");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getErrorCode());
       }
@@ -108,11 +108,11 @@ public class IoTDBArchiveIT {
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.ARCHIVE_SG1(timestamp, s1) VALUES (%d, %d)",
+                "INSERT INTO root.ARCHIVING_SG1(timestamp, s1) VALUES (%d, %d)",
                 now - 100000 + i, i));
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -124,11 +124,11 @@ public class IoTDBArchiveIT {
       StorageEngine.getInstance().syncCloseAllProcessor();
 
       statement.execute(
-          "SET ARCHIVE TO root.ARCHIVE_SG1 1999-01-01 1000 '" + testTargetDir.getPath() + "'");
+          "SET ARCHIVING TO root.ARCHIVING_SG1 1999-01-01 1000 '" + testTargetDir.getPath() + "'");
 
-      Thread.sleep(ARCHIVE_CHECK_TIME * 2);
+      Thread.sleep(ARCHIVING_CHECK_TIME * 2);
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -141,10 +141,11 @@ public class IoTDBArchiveIT {
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.ARCHIVE_SG1(timestamp, s1) VALUES (%d, %d)", now - 5000 + i, i));
+                "INSERT INTO root.ARCHIVING_SG1(timestamp, s1) VALUES (%d, %d)",
+                now - 5000 + i, i));
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -155,11 +156,13 @@ public class IoTDBArchiveIT {
       StorageEngine.getInstance().syncCloseAllProcessor();
 
       statement.execute(
-          "SET ARCHIVE TO root.ARCHIVE_SG1 1999-01-01 100000 '" + testTargetDir.getPath() + "'");
+          "SET ARCHIVING TO root.ARCHIVING_SG1 1999-01-01 100000 '"
+              + testTargetDir.getPath()
+              + "'");
 
-      Thread.sleep(ARCHIVE_CHECK_TIME * 2);
+      Thread.sleep(ARCHIVING_CHECK_TIME * 2);
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -169,17 +172,17 @@ public class IoTDBArchiveIT {
 
       StorageEngine.getInstance().syncCloseAllProcessor();
 
-      StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(Long.MAX_VALUE);
+      StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(Long.MAX_VALUE);
 
       statement.execute(
-          "SET ARCHIVE TO root.ARCHIVE_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
-      statement.execute("PAUSE ARCHIVE ON root.ARCHIVE_SG1");
+          "SET ARCHIVING TO root.ARCHIVING_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
+      statement.execute("PAUSE ARCHIVING ON root.ARCHIVING_SG1");
 
-      StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(ARCHIVE_CHECK_TIME);
+      StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(ARCHIVING_CHECK_TIME);
 
-      Thread.sleep(ARCHIVE_CHECK_TIME * 2);
+      Thread.sleep(ARCHIVING_CHECK_TIME * 2);
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -190,11 +193,11 @@ public class IoTDBArchiveIT {
       StorageEngine.getInstance().syncCloseAllProcessor();
 
       // test resume archive
-      statement.execute("RESUME ARCHIVE ON root.ARCHIVE_SG1");
+      statement.execute("RESUME ARCHIVING ON root.ARCHIVING_SG1");
 
-      Thread.sleep(ARCHIVE_CHECK_TIME * 2);
+      Thread.sleep(ARCHIVING_CHECK_TIME * 2);
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -207,10 +210,11 @@ public class IoTDBArchiveIT {
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.ARCHIVE_SG1(timestamp, s1) VALUES (%d, %d)", now - 5000 + i, i));
+                "INSERT INTO root.ARCHIVING_SG1(timestamp, s1) VALUES (%d, %d)",
+                now - 5000 + i, i));
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -220,17 +224,17 @@ public class IoTDBArchiveIT {
 
       StorageEngine.getInstance().syncCloseAllProcessor();
 
-      StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(Long.MAX_VALUE);
+      StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(Long.MAX_VALUE);
 
       statement.execute(
-          "SET ARCHIVE TO root.ARCHIVE_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
-      statement.execute("CANCEL ARCHIVE ON root.ARCHIVE_SG1");
+          "SET ARCHIVING TO root.ARCHIVING_SG1 1999-01-01 0 '" + testTargetDir.getPath() + "'");
+      statement.execute("CANCEL ARCHIVING ON root.ARCHIVING_SG1");
 
-      StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(ARCHIVE_CHECK_TIME);
+      StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(ARCHIVING_CHECK_TIME);
 
-      Thread.sleep(ARCHIVE_CHECK_TIME * 2);
+      Thread.sleep(ARCHIVING_CHECK_TIME * 2);
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVE_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -242,24 +246,24 @@ public class IoTDBArchiveIT {
 
   @Test
   @Category({ClusterTest.class})
-  public void testShowArchive() throws SQLException {
+  public void testShowArchiving() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(Long.MAX_VALUE);
+      StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(Long.MAX_VALUE);
 
-      statement.execute("SET STORAGE GROUP TO root.ARCHIVE_SG2");
+      statement.execute("SET STORAGE GROUP TO root.ARCHIVING_SG2");
       statement.execute(
-          "CREATE TIMESERIES root.ARCHIVE_SG2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN");
+          "CREATE TIMESERIES root.ARCHIVING_SG2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN");
 
       statement.execute(
-          "SET ARCHIVE TO root.ARCHIVE_SG2 2000-12-13 100 '" + testTargetDir.getPath() + "'");
+          "SET ARCHIVING TO root.ARCHIVING_SG2 2000-12-13 100 '" + testTargetDir.getPath() + "'");
 
-      ResultSet resultSet = statement.executeQuery("SHOW ALL ARCHIVE");
+      ResultSet resultSet = statement.executeQuery("SHOW ALL ARCHIVING");
 
       boolean flag = false;
 
       while (resultSet.next()) {
-        if (resultSet.getString(3).equals("root.ARCHIVE_SG2")) {
+        if (resultSet.getString(3).equals("root.ARCHIVING_SG2")) {
           flag = true;
           assertEquals("READY", resultSet.getString(4));
           assertTrue(resultSet.getString(5).startsWith("2000-12-13"));
@@ -277,25 +281,26 @@ public class IoTDBArchiveIT {
   public void testSetArchive() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      StorageEngine.getInstance().getArchiveManager().setCheckThreadTime(Long.MAX_VALUE);
+      StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(Long.MAX_VALUE);
 
-      statement.execute("SET STORAGE GROUP TO root.ARCHIVE_SG3");
+      statement.execute("SET STORAGE GROUP TO root.ARCHIVING_SG3");
       statement.execute(
-          "CREATE TIMESERIES root.ARCHIVE_SG3.s3 WITH DATATYPE=INT32, ENCODING=PLAIN");
+          "CREATE TIMESERIES root.ARCHIVING_SG3.s3 WITH DATATYPE=INT32, ENCODING=PLAIN");
 
       for (int i = 0; i < 1000; i++) {
         // test concurrent set
         statement.execute(
             String.format(
-                "SET ARCHIVE TO root.ARCHIVE_SG3 2000-12-13 %d '%s'", i, testTargetDir.getPath()));
+                "SET ARCHIVING TO root.ARCHIVING_SG3 2000-12-13 %d '%s'",
+                i, testTargetDir.getPath()));
       }
 
-      ResultSet resultSet = statement.executeQuery("SHOW ALL ARCHIVE");
+      ResultSet resultSet = statement.executeQuery("SHOW ALL ARCHIVING");
       Set<Integer> checkTaskId = new HashSet<>();
       Set<Integer> checkTTL = new HashSet<>();
 
       while (resultSet.next()) {
-        if (resultSet.getString(3).equals("root.ARCHIVE_SG3")) {
+        if (resultSet.getString(3).equals("root.ARCHIVING_SG3")) {
           int taskId = Integer.parseInt(resultSet.getString(1));
           int ttl = Integer.parseInt(resultSet.getString(6));
           assertFalse(checkTaskId.contains(taskId));
@@ -310,13 +315,13 @@ public class IoTDBArchiveIT {
 
       for (int i : checkTaskId) {
         // test concurrent cancel
-        statement.execute(String.format("CANCEL ARCHIVE %d", i));
+        statement.execute(String.format("CANCEL ARCHIVING %d", i));
       }
 
-      resultSet = statement.executeQuery("SHOW ALL ARCHIVE");
+      resultSet = statement.executeQuery("SHOW ALL ARCHIVING");
 
       while (resultSet.next()) {
-        if (resultSet.getString(3).equals("root.ARCHIVE_SG3")) {
+        if (resultSet.getString(3).equals("root.ARCHIVING_SG3")) {
           assertEquals("CANCELED", resultSet.getString(4));
         }
       }

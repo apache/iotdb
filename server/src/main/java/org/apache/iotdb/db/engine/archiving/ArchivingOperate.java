@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.archive;
+package org.apache.iotdb.db.engine.archiving;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -28,26 +28,26 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-/** ArchiveOperate is ArchiveOperateType (SET, CANCEL, PAUSE, etc) and an ArchiveTask */
-public class ArchiveOperate {
-  private ArchiveOperateType type;
-  private ArchiveTask task;
+/** ArchivingOperate is ArchivingOperateType (SET, CANCEL, PAUSE, etc) and an ArchivingTask */
+public class ArchivingOperate {
+  private ArchivingOperateType type;
+  private ArchivingTask task;
 
-  public ArchiveOperate(ArchiveOperateType type, ArchiveTask task) {
+  public ArchivingOperate(ArchivingOperateType type, ArchivingTask task) {
     this.type = type;
-    this.task = new ArchiveTask(task);
+    this.task = new ArchivingTask(task);
   }
 
-  public ArchiveOperate(ArchiveOperateType type, long taskId) {
+  public ArchivingOperate(ArchivingOperateType type, long taskId) {
     this.type = type;
-    this.task = new ArchiveTask(taskId);
+    this.task = new ArchivingTask(taskId);
   }
 
-  public ArchiveOperateType getType() {
+  public ArchivingOperateType getType() {
     return type;
   }
 
-  public ArchiveTask getTask() {
+  public ArchivingTask getTask() {
     return task;
   }
 
@@ -56,7 +56,7 @@ public class ArchiveOperate {
     ReadWriteIOUtils.write((byte) typeNum, logFileOutStream);
     ReadWriteIOUtils.write(task.getTaskId(), logFileOutStream);
 
-    if (type == ArchiveOperateType.SET) {
+    if (type == ArchivingOperateType.SET) {
       ReadWriteIOUtils.write(task.getStorageGroup().getFullPath(), logFileOutStream);
       ReadWriteIOUtils.write(task.getTargetDir().getPath(), logFileOutStream);
       ReadWriteIOUtils.write(task.getStartTime(), logFileOutStream);
@@ -67,19 +67,19 @@ public class ArchiveOperate {
     logFileOutStream.flush();
   }
 
-  public static ArchiveOperate deserialize(FileInputStream logFileInStream)
+  public static ArchivingOperate deserialize(FileInputStream logFileInStream)
       throws IOException, IllegalPathException {
-    ArchiveOperateType operateType;
+    ArchivingOperateType operateType;
 
     int typeNum = ReadWriteIOUtils.readByte(logFileInStream);
-    if (typeNum >= 0 && typeNum < ArchiveOperateType.values().length)
-      operateType = ArchiveOperateType.values()[typeNum];
+    if (typeNum >= 0 && typeNum < ArchivingOperateType.values().length)
+      operateType = ArchivingOperateType.values()[typeNum];
     else throw new IOException();
 
     long taskId = ReadWriteIOUtils.readLong(logFileInStream);
 
-    ArchiveTask deserializedTask;
-    if (operateType == ArchiveOperateType.SET) {
+    ArchivingTask deserializedTask;
+    if (operateType == ArchivingOperateType.SET) {
       PartialPath storageGroup = new PartialPath(ReadWriteIOUtils.readString(logFileInStream));
       String targetDirPath = ReadWriteIOUtils.readString(logFileInStream);
       File targetDir = FSFactoryProducer.getFSFactory().getFile(targetDirPath);
@@ -88,14 +88,14 @@ public class ArchiveOperate {
       long submitTime = ReadWriteIOUtils.readLong(logFileInStream);
 
       deserializedTask =
-          new ArchiveTask(taskId, storageGroup, targetDir, ttl, startTime, submitTime);
+          new ArchivingTask(taskId, storageGroup, targetDir, ttl, startTime, submitTime);
     } else {
-      deserializedTask = new ArchiveTask(taskId);
+      deserializedTask = new ArchivingTask(taskId);
     }
-    return new ArchiveOperate(operateType, deserializedTask);
+    return new ArchivingOperate(operateType, deserializedTask);
   }
 
-  public enum ArchiveOperateType {
+  public enum ArchivingOperateType {
     SET,
     CANCEL,
     START,

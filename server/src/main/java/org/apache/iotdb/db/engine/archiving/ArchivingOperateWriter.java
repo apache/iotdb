@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.archive;
+package org.apache.iotdb.db.engine.archiving;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.logfile.MLogTxtWriter;
@@ -30,36 +30,38 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
- * ArchiveOperateWriter writes the binary logs of ArchiveOperate into file using FileOutputStream
+ * ArchivingOperateWriter writes the binary logs of ArchivingOperate into file using
+ * FileOutputStream
  */
-public class ArchiveOperateWriter implements AutoCloseable {
+public class ArchivingOperateWriter implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(MLogTxtWriter.class);
   private final File logFile;
   private FileOutputStream logFileOutStream;
 
-  public ArchiveOperateWriter(String logFileName) throws FileNotFoundException {
+  public ArchivingOperateWriter(String logFileName) throws FileNotFoundException {
     this(SystemFileFactory.INSTANCE.getFile(logFileName));
   }
 
-  public ArchiveOperateWriter(File logFile) throws FileNotFoundException {
+  public ArchivingOperateWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
     if (!logFile.exists()) {
       if (logFile.getParentFile() != null) {
         if (logFile.getParentFile().mkdirs()) {
-          logger.info("created archive log folder");
+          logger.info("created archiving log folder");
         } else {
-          logger.info("create archive log folder failed");
+          logger.info("create archiving log folder failed");
         }
       }
     }
     logFileOutStream = new FileOutputStream(logFile, true);
   }
 
-  public void log(ArchiveOperate.ArchiveOperateType type, ArchiveTask task) throws IOException {
-    ArchiveOperate operate;
+  public void log(ArchivingOperate.ArchivingOperateType type, ArchivingTask task)
+      throws IOException {
+    ArchivingOperate operate;
     switch (type) {
       case SET:
-        operate = new ArchiveOperate(ArchiveOperate.ArchiveOperateType.SET, task);
+        operate = new ArchivingOperate(ArchivingOperate.ArchivingOperateType.SET, task);
         operate.serialize(logFileOutStream);
         break;
       case CANCEL:
@@ -68,7 +70,7 @@ public class ArchiveOperateWriter implements AutoCloseable {
       case RESUME:
       case FINISHED:
       case ERROR:
-        operate = new ArchiveOperate(type, task.getTaskId());
+        operate = new ArchivingOperate(type, task.getTaskId());
         operate.serialize(logFileOutStream);
         break;
     }

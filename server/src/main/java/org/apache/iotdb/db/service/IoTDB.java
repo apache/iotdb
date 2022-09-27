@@ -26,7 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.archive.ArchiveManager;
+import org.apache.iotdb.db.engine.archiving.ArchivingManager;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
@@ -142,7 +142,7 @@ public class IoTDB implements IoTDBMBean {
     logger.info("recover the schema...");
     initMManager();
     initServiceProvider();
-    initArchiveManager();
+    initArchivingManager();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
@@ -231,9 +231,9 @@ public class IoTDB implements IoTDBMBean {
         IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
   }
 
-  private void initArchiveManager() {
-    // recover ArchiveTasks, finish archiving unfinished tsfiles, start check threads
-    ArchiveManager.getInstance().init();
+  private void initArchivingManager() {
+    // recover ArchivingTasks, finish archiving unfinished tsfiles, start check threads
+    ArchivingManager.getInstance().init();
   }
 
   @Override

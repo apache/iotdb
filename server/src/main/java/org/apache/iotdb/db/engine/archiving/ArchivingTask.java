@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.archive;
+package org.apache.iotdb.db.engine.archiving;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -35,32 +35,32 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Paths;
 
-/** Class for each Archive Task */
-public class ArchiveTask {
+/** Class for each Archiving Task */
+public class ArchivingTask {
   private long taskId;
   private PartialPath storageGroup;
   private File targetDir;
   private long startTime;
   private long ttl;
-  private volatile ArchiveTaskStatus status = ArchiveTaskStatus.READY;
+  private volatile ArchivingTaskStatus status = ArchivingTaskStatus.READY;
   private long submitTime;
 
-  private static final Logger logger = LoggerFactory.getLogger(ArchiveTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(ArchivingTask.class);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   FileOutputStream logFileOutput = null;
   private static final File ARCHIVING_LOG_DIR =
       SystemFileFactory.INSTANCE.getFile(
           Paths.get(
                   FilePathUtils.regularizePath(config.getSystemDir()),
-                  IoTDBConstant.ARCHIVE_FOLDER_NAME,
-                  IoTDBConstant.ARCHIVE_LOG_FOLDER_NAME)
+                  IoTDBConstant.ARCHIVING_FOLDER_NAME,
+                  IoTDBConstant.ARCHIVING_LOG_FOLDER_NAME)
               .toString());
 
-  public ArchiveTask(long taskId) {
+  public ArchivingTask(long taskId) {
     this.taskId = taskId;
   }
 
-  public ArchiveTask(ArchiveTask task) {
+  public ArchivingTask(ArchivingTask task) {
     this.taskId = task.getTaskId();
     this.storageGroup = task.getStorageGroup();
     this.targetDir = task.getTargetDir();
@@ -69,7 +69,7 @@ public class ArchiveTask {
     this.submitTime = task.getSubmitTime();
   }
 
-  public ArchiveTask(
+  public ArchivingTask(
       long taskId, PartialPath storageGroup, File targetDir, long ttl, long startTime) {
     this.taskId = taskId;
     this.storageGroup = storageGroup;
@@ -79,7 +79,7 @@ public class ArchiveTask {
     this.submitTime = DatetimeUtils.currentTime();
   }
 
-  public ArchiveTask(
+  public ArchivingTask(
       long taskId,
       PartialPath storageGroup,
       File targetDir,
@@ -95,7 +95,7 @@ public class ArchiveTask {
   }
 
   /**
-   * started the archive task, write to log
+   * started the archiving task, write to log
    *
    * @return true if write log successful, false otherwise
    */
@@ -125,7 +125,7 @@ public class ArchiveTask {
    */
   public boolean startFile(File tsfile) throws IOException {
     if (logFileOutput == null) {
-      logger.error("need to run ArchiveTask.startTask before ArchiveTask.start");
+      logger.error("need to run ArchivingTask.startTask before ArchivingTask.start");
       return false;
     }
 
@@ -178,7 +178,7 @@ public class ArchiveTask {
     return startTime;
   }
 
-  public ArchiveTaskStatus getStatus() {
+  public ArchivingTaskStatus getStatus() {
     return status;
   }
 
@@ -186,11 +186,11 @@ public class ArchiveTask {
     return submitTime;
   }
 
-  public void setStatus(ArchiveTaskStatus status) {
+  public void setStatus(ArchivingTaskStatus status) {
     this.status = status;
   }
 
-  public enum ArchiveTaskStatus {
+  public enum ArchivingTaskStatus {
     READY,
     RUNNING,
     PAUSED,

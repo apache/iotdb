@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.archive;
+package org.apache.iotdb.db.engine.archiving;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -41,52 +41,52 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * ArchiveRecover class encapsulates the recover logic, it retrieves the ArchiveTasks and finishes
- * archiving the tsfiles.
+ * ArchivingRecover class encapsulates the recover logic, it retrieves the ArchivingTasks and
+ * finishes archiving the tsfiles.
  */
-public class ArchiveRecover {
-  private static final Logger logger = LoggerFactory.getLogger(ArchiveRecover.class);
+public class ArchivingRecover {
+  private static final Logger logger = LoggerFactory.getLogger(ArchivingRecover.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final File LOG_FILE =
       SystemFileFactory.INSTANCE.getFile(
           Paths.get(
                   FilePathUtils.regularizePath(config.getSystemDir()),
-                  IoTDBConstant.ARCHIVE_FOLDER_NAME,
+                  IoTDBConstant.ARCHIVING_FOLDER_NAME,
                   "log.bin")
               .toString());
   private static final File ARCHIVING_LOG_DIR =
       SystemFileFactory.INSTANCE.getFile(
           Paths.get(
                   FilePathUtils.regularizePath(config.getSystemDir()),
-                  IoTDBConstant.ARCHIVE_FOLDER_NAME,
-                  IoTDBConstant.ARCHIVE_LOG_FOLDER_NAME)
+                  IoTDBConstant.ARCHIVING_FOLDER_NAME,
+                  IoTDBConstant.ARCHIVING_LOG_FOLDER_NAME)
               .toString());
-  private Map<Long, ArchiveTask> archiveTasks;
+  private Map<Long, ArchivingTask> archivingTasks;
   private long currentTaskId = 0;
 
-  public List<ArchiveTask> recover() {
+  public List<ArchivingTask> recover() {
     // first recover archiving tsfiles
     recoverArchivingFiles();
 
-    archiveTasks = new HashMap<>();
+    archivingTasks = new HashMap<>();
     currentTaskId = 0;
 
     // read from logReader
-    try (ArchiveOperateReader logReader = new ArchiveOperateReader(LOG_FILE);
-        ArchiveOperateWriter logWriter = new ArchiveOperateWriter(LOG_FILE)) {
+    try (ArchivingOperateReader logReader = new ArchivingOperateReader(LOG_FILE);
+        ArchivingOperateWriter logWriter = new ArchivingOperateWriter(LOG_FILE)) {
       Set<Long> errorSet = new HashSet<>();
 
       while (logReader.hasNext()) {
-        ArchiveOperate operate = logReader.next();
+        ArchivingOperate operate = logReader.next();
         long taskId = operate.getTask().getTaskId();
 
         switch (operate.getType()) {
           case SET:
-            setArchiveFromLog(operate.getTask());
+            setArchivingFromLog(operate.getTask());
             break;
           case CANCEL:
-            operateFromLog(ArchiveOperate.ArchiveOperateType.CANCEL, taskId);
+            operateFromLog(ArchivingOperate.ArchivingOperateType.CANCEL, taskId);
             break;
           case START:
             // if task started but didn't finish, then error occurred
@@ -94,86 +94,86 @@ public class ArchiveRecover {
             break;
           case PAUSE:
             errorSet.remove(taskId);
-            operateFromLog(ArchiveOperate.ArchiveOperateType.PAUSE, taskId);
+            operateFromLog(ArchivingOperate.ArchivingOperateType.PAUSE, taskId);
             break;
           case RESUME:
-            operateFromLog(ArchiveOperate.ArchiveOperateType.RESUME, taskId);
+            operateFromLog(ArchivingOperate.ArchivingOperateType.RESUME, taskId);
             break;
           case FINISHED:
             // finished task => remove from list and remove from potential error task
             errorSet.remove(taskId);
-            archiveTasks.remove(taskId);
-            operateFromLog(ArchiveOperate.ArchiveOperateType.FINISHED, taskId);
+            archivingTasks.remove(taskId);
+            operateFromLog(ArchivingOperate.ArchivingOperateType.FINISHED, taskId);
             break;
           case ERROR:
             // already put error in log
             errorSet.remove(taskId);
-            operateFromLog(ArchiveOperate.ArchiveOperateType.ERROR, taskId);
+            operateFromLog(ArchivingOperate.ArchivingOperateType.ERROR, taskId);
             break;
           default:
-            logger.error("read archive log: unknown type");
+            logger.error("read archiving log: unknown type");
         }
       }
 
       // for each task in errorSet, the task started but didn't finish (an error)
       for (long errTaskId : errorSet) {
-        if (archiveTasks.containsKey(errTaskId)) {
+        if (archivingTasks.containsKey(errTaskId)) {
           // write to log and set task in ERROR in memory
-          logWriter.log(ArchiveOperate.ArchiveOperateType.ERROR, archiveTasks.get(errTaskId));
-          operateFromLog(ArchiveOperate.ArchiveOperateType.ERROR, errTaskId);
+          logWriter.log(ArchivingOperate.ArchivingOperateType.ERROR, archivingTasks.get(errTaskId));
+          operateFromLog(ArchivingOperate.ArchivingOperateType.ERROR, errTaskId);
         } else {
           logger.error("unknown error taskId");
         }
       }
     } catch (Exception e) {
-      logger.error("Cannot read log for archive.");
+      logger.error("Cannot read log for archiving.");
     }
 
     recoverArchivingFiles();
 
-    return new ArrayList<>(archiveTasks.values());
+    return new ArrayList<>(archivingTasks.values());
   }
 
-  /** add archive task to archiveTasks from log, does not write to log */
-  public void setArchiveFromLog(ArchiveTask newTask) {
+  /** add archiving task to archivingTasks from log, does not write to log */
+  public void setArchivingFromLog(ArchivingTask newTask) {
     if (currentTaskId > newTask.getTaskId()) {
-      logger.error("set archive error, current index larger than log index");
+      logger.error("set archiving error, current index larger than log index");
     }
 
-    archiveTasks.put(newTask.getTaskId(), newTask);
+    archivingTasks.put(newTask.getTaskId(), newTask);
     currentTaskId = newTask.getTaskId() + 1;
   }
 
-  private ArchiveTask.ArchiveTaskStatus statusFromOperateType(
-      ArchiveOperate.ArchiveOperateType archiveOperateType) {
-    switch (archiveOperateType) {
+  private ArchivingTask.ArchivingTaskStatus statusFromOperateType(
+      ArchivingOperate.ArchivingOperateType archivingOperateType) {
+    switch (archivingOperateType) {
       case RESUME:
-        return ArchiveTask.ArchiveTaskStatus.READY;
+        return ArchivingTask.ArchivingTaskStatus.READY;
       case CANCEL:
-        return ArchiveTask.ArchiveTaskStatus.CANCELED;
+        return ArchivingTask.ArchivingTaskStatus.CANCELED;
       case START:
-        return ArchiveTask.ArchiveTaskStatus.RUNNING;
+        return ArchivingTask.ArchivingTaskStatus.RUNNING;
       case PAUSE:
-        return ArchiveTask.ArchiveTaskStatus.PAUSED;
+        return ArchivingTask.ArchivingTaskStatus.PAUSED;
       case FINISHED:
-        return ArchiveTask.ArchiveTaskStatus.FINISHED;
+        return ArchivingTask.ArchivingTaskStatus.FINISHED;
       case ERROR:
-        return ArchiveTask.ArchiveTaskStatus.ERROR;
+        return ArchivingTask.ArchivingTaskStatus.ERROR;
     }
     return null;
   }
 
-  /** operate Archive to archiveTasks from log, does not write to log */
-  public boolean operateFromLog(ArchiveOperate.ArchiveOperateType operateType, long taskId) {
-    if (archiveTasks.containsKey(taskId)) {
-      archiveTasks.get(taskId).setStatus(statusFromOperateType(operateType));
+  /** operate Archiving to archivingTasks from log, does not write to log */
+  public boolean operateFromLog(ArchivingOperate.ArchivingOperateType operateType, long taskId) {
+    if (archivingTasks.containsKey(taskId)) {
+      archivingTasks.get(taskId).setStatus(statusFromOperateType(operateType));
       return true;
     } else {
       return false;
     }
   }
 
-  /** finish the unfinished ArchiveTask using log files under ARCHIVING_LOG_DIR */
+  /** finish the unfinished ArchivingTask using log files under ARCHIVING_LOG_DIR */
   public void recoverArchivingFiles() {
     File[] archivingLogFiles = ARCHIVING_LOG_DIR.listFiles();
     for (File logFile : archivingLogFiles) {
@@ -200,7 +200,7 @@ public class ArchiveRecover {
         }
       } catch (IOException e) {
         // could not read log file, continue to next log
-        logger.error("ArchiveRecover: log file not found");
+        logger.error("ArchivingRecover: log file not found");
         continue;
       }
 
@@ -229,8 +229,8 @@ public class ArchiveRecover {
     }
   }
 
-  public List<ArchiveTask> getArchiveTasks() {
-    return new ArrayList<>(archiveTasks.values());
+  public List<ArchivingTask> getArchivingTasks() {
+    return new ArrayList<>(archivingTasks.values());
   }
 
   public long getCurrentTaskId() {

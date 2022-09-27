@@ -787,11 +787,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return operator;
   }
 
-  // Set Archive
-
+  // Set Archiving
   @Override
-  public Operator visitSetArchive(IoTDBSqlParser.SetArchiveContext ctx) {
-    SetArchiveOperator operator = new SetArchiveOperator(SQLConstant.TOK_SET);
+  public Operator visitSetArchiving(IoTDBSqlParser.SetArchivingContext ctx) {
+    SetArchivingOperator operator = new SetArchivingOperator(SQLConstant.TOK_SET);
 
     if (ctx.storageGroup != null) {
       operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
@@ -813,16 +812,17 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       operator.setTargetDir(targetDir);
     }
 
-    // parse the setArchiveClause
-    for (IoTDBSqlParser.SetArchiveClauseContext setArchiveClauseContext : ctx.setArchiveClause()) {
-      parseSetArchiveClause(operator, setArchiveClauseContext);
+    // parse the setArchivingClause
+    for (IoTDBSqlParser.SetArchivingClauseContext setArchivingClauseContext :
+        ctx.setArchivingClause()) {
+      parseSetArchivingClause(operator, setArchivingClauseContext);
     }
 
     return operator;
   }
 
-  private void parseSetArchiveClause(
-      SetArchiveOperator operator, IoTDBSqlParser.SetArchiveClauseContext ctx) {
+  private void parseSetArchivingClause(
+      SetArchivingOperator operator, IoTDBSqlParser.SetArchivingClauseContext ctx) {
     if (ctx.storageGroup != null) {
       operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
     }
@@ -844,62 +844,67 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
-  // Cancel Archive
-  public Operator visitCancelArchive(IoTDBSqlParser.CancelArchiveContext ctx) {
-    CancelArchiveOperator operator = new CancelArchiveOperator(SQLConstant.TOK_UNSET);
+  // Cancel Archiving
+  @Override
+  public Operator visitCancelArchiving(IoTDBSqlParser.CancelArchivingContext ctx) {
+    CancelArchivingOperator operator = new CancelArchivingOperator(SQLConstant.TOK_UNSET);
     if (ctx.storageGroup != null) {
       operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
     } else if (ctx.taskId != null) {
       operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
     } else {
       // unknown case
-      throw new SQLParserException("cancel archive unknown case");
+      throw new SQLParserException("cancel archiving unknown case");
     }
     return operator;
   }
 
-  // Pause Archive
-  public Operator visitPauseArchive(IoTDBSqlParser.PauseArchiveContext ctx) {
-    PauseArchiveOperator operator = new PauseArchiveOperator(SQLConstant.TOK_SET);
+  // Pause Archiving
+  @Override
+  public Operator visitPauseArchiving(IoTDBSqlParser.PauseArchivingContext ctx) {
+    PauseArchivingOperator operator = new PauseArchivingOperator(SQLConstant.TOK_SET);
     if (ctx.storageGroup != null) {
       operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
     } else if (ctx.taskId != null) {
       operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
     } else {
       // unknown case
-      throw new SQLParserException("pause archive unknown case");
+      throw new SQLParserException("pause archiving unknown case");
     }
     return operator;
   }
 
-  // Resume Archive
-  public Operator visitResumeArchive(IoTDBSqlParser.ResumeArchiveContext ctx) {
-    ResumeArchiveOperator operator = new ResumeArchiveOperator(SQLConstant.TOK_UNSET);
+  // Resume Archiving
+  @Override
+  public Operator visitResumeArchiving(IoTDBSqlParser.ResumeArchivingContext ctx) {
+    ResumeArchivingOperator operator = new ResumeArchivingOperator(SQLConstant.TOK_UNSET);
     if (ctx.storageGroup != null) {
       operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
     } else if (ctx.taskId != null) {
       operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
     } else {
       // unknown case
-      throw new SQLParserException("resume archive unknown case");
+      throw new SQLParserException("resume archiving unknown case");
     }
     return operator;
   }
 
-  // Show Archive
-  public Operator visitShowArchive(IoTDBSqlParser.ShowArchiveContext ctx) {
+  // Show Archiving
+  @Override
+  public Operator visitShowArchiving(IoTDBSqlParser.ShowArchivingContext ctx) {
     List<PartialPath> storageGroups = new ArrayList<>();
     List<IoTDBSqlParser.PrefixPathContext> prefixPathList = ctx.prefixPath();
     for (IoTDBSqlParser.PrefixPathContext prefixPath : prefixPathList) {
       storageGroups.add(parsePrefixPath(prefixPath));
     }
-    return new ShowArchiveOperator(storageGroups);
+    return new ShowArchivingOperator(storageGroups);
   }
 
-  // Show All Archive
-  public Operator visitShowAllArchive(IoTDBSqlParser.ShowAllArchiveContext ctx) {
+  // Show All Archiving
+  @Override
+  public Operator visitShowAllArchiving(IoTDBSqlParser.ShowAllArchivingContext ctx) {
     List<PartialPath> storageGroups = new ArrayList<>();
-    return new ShowArchiveOperator(storageGroups);
+    return new ShowArchivingOperator(storageGroups);
   }
 
   // Start Trigger

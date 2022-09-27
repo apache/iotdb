@@ -94,9 +94,9 @@ public class IoTDBConstant {
 
   public static final String COLUMN_TASK_ID = "task id";
   public static final String COLUMN_SUBMIT_TIME = "submit time";
-  public static final String COLUMN_ARCHIVE_START_TIME = "start time";
-  public static final String COLUMN_ARCHIVE_STATUS = "status";
-  public static final String COLUMN_ARCHIVE_TARGET_DIRECTORY = "target directory";
+  public static final String COLUMN_ARCHIVING_START_TIME = "start time";
+  public static final String COLUMN_ARCHIVING_STATUS = "status";
+  public static final String COLUMN_ARCHIVING_TARGET_DIRECTORY = "target directory";
   public static final String COLUMN_EXPIRE_TIME = "expire time(ms)";
 
   public static final String COLUMN_TASK_NAME = "task name";
@@ -161,8 +161,8 @@ public class IoTDBConstant {
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
-  public static final String ARCHIVE_FOLDER_NAME = "archive";
-  public static final String ARCHIVE_LOG_FOLDER_NAME = "archive";
+  public static final String ARCHIVING_FOLDER_NAME = "archiving";
+  public static final String ARCHIVING_LOG_FOLDER_NAME = "archiving_task";
 
   // Operation Sync folder name
   public static final String OPERATION_SYNC_FOLDER_NAME = "operationsync";

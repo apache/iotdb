@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.archive;
+package org.apache.iotdb.db.engine.archiving;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
@@ -46,18 +46,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * ArchiveManager keep tracks of all Archive Tasks, creates the threads to check/run the
- * ArchiveTasks.
+ * ArchivingManager keep tracks of all Archiving Tasks, creates the threads to check/run the
+ * ArchivingTasks.
  */
-public class ArchiveManager {
-  private static final Logger logger = LoggerFactory.getLogger(ArchiveManager.class);
+public class ArchivingManager {
+  private static final Logger logger = LoggerFactory.getLogger(ArchivingManager.class);
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final ReentrantLock lock = new ReentrantLock();
   // region lock resources
-  private ArchiveOperateWriter logWriter;
-  // define ordering for archiveTasks, dictionary order on (status, startTime, storageGroup, -ttl)
-  private final Set<ArchiveTask> archiveTasks =
+  private ArchivingOperateWriter logWriter;
+  // define ordering for archivingTasks, dictionary order on (status, startTime, storageGroup, -ttl)
+  private final Set<ArchivingTask> archivingTasks =
       new TreeSet<>(
           (task1, task2) -> {
             int statusDiff = task1.getStatus().ordinal() - task2.getStatus().ordinal();
@@ -69,42 +69,42 @@ public class ArchiveManager {
             long ttlDiff = task2.getTTL() - task1.getTTL();
             return ttlDiff > 0 ? 1 : -1;
           });
-  // the current largest ArchiveTask id + 1, used to create new tasks
+  // the current largest ArchivingTask id + 1, used to create new tasks
   private long currentTaskId = 0;
   // endregion
 
-  // single thread to iterate through archiveTasks and check start
-  private ScheduledExecutorService archiveTaskCheckThread;
+  // single thread to iterate through archivingTasks and check start
+  private ScheduledExecutorService archivingTaskCheckThread;
   // multiple threads to run the tasks
-  private ExecutorService archiveTaskThreadPool;
+  private ExecutorService archivingTaskThreadPool;
 
   private boolean initialized = false;
-  private static final long ARCHIVE_CHECK_INTERVAL = 60 * 1000L;
+  private static final long ARCHIVING_CHECK_INTERVAL = 60 * 1000L;
 
   private static final File LOG_FILE =
       SystemFileFactory.INSTANCE.getFile(
           Paths.get(
                   FilePathUtils.regularizePath(config.getSystemDir()),
-                  IoTDBConstant.ARCHIVE_FOLDER_NAME,
+                  IoTDBConstant.ARCHIVING_FOLDER_NAME,
                   "log.bin")
               .toString());
   private static final File ARCHIVING_LOG_DIR =
       SystemFileFactory.INSTANCE.getFile(
           Paths.get(
                   FilePathUtils.regularizePath(config.getSystemDir()),
-                  IoTDBConstant.ARCHIVE_FOLDER_NAME,
-                  IoTDBConstant.ARCHIVE_LOG_FOLDER_NAME)
+                  IoTDBConstant.ARCHIVING_FOLDER_NAME,
+                  IoTDBConstant.ARCHIVING_LOG_FOLDER_NAME)
               .toString());
 
   // singleton
-  private static class ArchiveManagerHolder {
-    private ArchiveManagerHolder() {}
+  private static class ArchivingManagerHolder {
+    private ArchivingManagerHolder() {}
 
-    private static final ArchiveManager INSTANCE = new ArchiveManager();
+    private static final ArchivingManager INSTANCE = new ArchivingManager();
   }
 
-  public static ArchiveManager getInstance() {
-    return ArchiveManagerHolder.INSTANCE;
+  public static ArchivingManager getInstance() {
+    return ArchivingManagerHolder.INSTANCE;
   }
 
   public void init() {
@@ -136,31 +136,31 @@ public class ArchiveManager {
       }
 
       // recover
-      ArchiveRecover recover = new ArchiveRecover();
+      ArchivingRecover recover = new ArchivingRecover();
       recover.recover();
-      this.archiveTasks.addAll(recover.getArchiveTasks());
+      this.archivingTasks.addAll(recover.getArchivingTasks());
       this.currentTaskId = recover.getCurrentTaskId();
 
       try {
-        logWriter = new ArchiveOperateWriter(LOG_FILE);
+        logWriter = new ArchivingOperateWriter(LOG_FILE);
       } catch (FileNotFoundException e) {
         logger.error("Cannot find/create log for archiving.");
         return;
       }
 
-      archiveTaskCheckThread =
+      archivingTaskCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.ARCHIVE_CHECK.getName());
-      archiveTaskCheckThread.scheduleAtFixedRate(
-          this::checkArchiveTasks,
-          ARCHIVE_CHECK_INTERVAL,
-          ARCHIVE_CHECK_INTERVAL,
+              ThreadName.ARCHIVING_CHECK.getName());
+      archivingTaskCheckThread.scheduleAtFixedRate(
+          this::checkArchivingTasks,
+          ARCHIVING_CHECK_INTERVAL,
+          ARCHIVING_CHECK_INTERVAL,
           TimeUnit.MILLISECONDS);
 
-      archiveTaskThreadPool =
+      archivingTaskThreadPool =
           IoTDBThreadPoolFactory.newFixedThreadPool(
-              config.getArchiveThreadNum(), ThreadName.ARCHIVE_TASK.getName());
-      logger.info("start archive check thread successfully.");
+              config.getArchivingThreadNum(), ThreadName.ARCHIVING_TASK.getName());
+      logger.info("start archiving check thread successfully.");
       initialized = true;
     } finally {
       lock.unlock();
@@ -170,60 +170,61 @@ public class ArchiveManager {
   /** close all resources used */
   public void close() {
     initialized = false;
-    archiveTaskCheckThread.shutdown();
-    archiveTaskThreadPool.shutdown();
+    archivingTaskCheckThread.shutdown();
+    archivingTaskThreadPool.shutdown();
 
     try {
       logWriter.close();
     } catch (Exception e) {
-      logger.error("Cannot close archive log writer, because:", e);
+      logger.error("Cannot close archiving log writer, because:", e);
     }
 
-    for (ArchiveTask task : archiveTasks) {
+    for (ArchivingTask task : archivingTasks) {
       task.close();
     }
-    archiveTasks.clear();
+    archivingTasks.clear();
     currentTaskId = 0;
   }
 
-  /** creates a copy of archiveTasks and returns */
-  public List<ArchiveTask> getArchiveTasks() {
+  /** creates a copy of archivingTasks and returns */
+  public List<ArchivingTask> getArchivingTasks() {
     try {
       lock.lock();
-      return new ArrayList<>(archiveTasks);
+      return new ArrayList<>(archivingTasks);
     } finally {
       lock.unlock();
     }
   }
 
   /**
-   * add archive task to archiveTasks
+   * add archiving task to archivingTasks
    *
    * @return true if set successful, false if exists duplicates or unsuccessful
    */
-  public boolean setArchive(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
+  public boolean setArchiving(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
     try {
       lock.lock();
 
       // check if there are duplicates
-      for (ArchiveTask archiveTask : archiveTasks) {
-        if (archiveTask.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
-            && archiveTask.getTargetDir().equals(targetDir)
-            && archiveTask.getTTL() == ttl
-            && archiveTask.getStartTime() == startTime) {
-          logger.info("archive task already equals archive task {}", archiveTask.getTaskId());
+      for (ArchivingTask archivingTask : archivingTasks) {
+        if (archivingTask.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())
+            && archivingTask.getTargetDir().equals(targetDir)
+            && archivingTask.getTTL() == ttl
+            && archivingTask.getStartTime() == startTime) {
+          logger.info("archiving task already equals archiving task {}", archivingTask.getTaskId());
           return false;
         }
       }
 
-      ArchiveTask newTask = new ArchiveTask(currentTaskId, storageGroup, targetDir, ttl, startTime);
+      ArchivingTask newTask =
+          new ArchivingTask(currentTaskId, storageGroup, targetDir, ttl, startTime);
       try {
-        logWriter.log(ArchiveOperate.ArchiveOperateType.SET, newTask);
+        logWriter.log(ArchivingOperate.ArchivingOperateType.SET, newTask);
       } catch (IOException e) {
         logger.error("write log error");
         return false;
       }
-      archiveTasks.add(newTask);
+      archivingTasks.add(newTask);
       currentTaskId++;
       return true;
     } finally {
@@ -231,22 +232,22 @@ public class ArchiveManager {
     }
   }
 
-  /** @return the status after operate archiveOperateType */
-  private ArchiveTask.ArchiveTaskStatus statusFromOperateType(
-      ArchiveOperate.ArchiveOperateType archiveOperateType) {
-    switch (archiveOperateType) {
+  /** @return the status after operate archivingOperateType */
+  private ArchivingTask.ArchivingTaskStatus statusFromOperateType(
+      ArchivingOperate.ArchivingOperateType archivingOperateType) {
+    switch (archivingOperateType) {
       case RESUME:
-        return ArchiveTask.ArchiveTaskStatus.READY;
+        return ArchivingTask.ArchivingTaskStatus.READY;
       case CANCEL:
-        return ArchiveTask.ArchiveTaskStatus.CANCELED;
+        return ArchivingTask.ArchivingTaskStatus.CANCELED;
       case START:
-        return ArchiveTask.ArchiveTaskStatus.RUNNING;
+        return ArchivingTask.ArchivingTaskStatus.RUNNING;
       case PAUSE:
-        return ArchiveTask.ArchiveTaskStatus.PAUSED;
+        return ArchivingTask.ArchivingTaskStatus.PAUSED;
       case FINISHED:
-        return ArchiveTask.ArchiveTaskStatus.FINISHED;
+        return ArchivingTask.ArchivingTaskStatus.FINISHED;
       case ERROR:
-        return ArchiveTask.ArchiveTaskStatus.ERROR;
+        return ArchivingTask.ArchivingTaskStatus.ERROR;
     }
     return null;
   }
@@ -254,19 +255,19 @@ public class ArchiveManager {
   /**
    * Operate on task (pause, cancel, resume, etc)
    *
-   * @param archiveOperateType the operator on task
-   * @param taskId taskId of ArchiveTask to operate on
+   * @param archivingOperateType the operator on task
+   * @param taskId taskId of ArchivingTask to operate on
    * @return true if exists task with taskId and operate successfully
    */
-  public boolean operate(ArchiveOperate.ArchiveOperateType archiveOperateType, long taskId) {
+  public boolean operate(ArchivingOperate.ArchivingOperateType archivingOperateType, long taskId) {
     try {
       lock.lock();
 
-      ArchiveTask task = null;
+      ArchivingTask task = null;
       // find matching task
-      for (ArchiveTask archiveTask : archiveTasks) {
-        if (archiveTask.getTaskId() == taskId) {
-          task = archiveTask;
+      for (ArchivingTask archivingTask : archivingTasks) {
+        if (archivingTask.getTaskId() == taskId) {
+          task = archivingTask;
           break;
         }
       }
@@ -275,7 +276,7 @@ public class ArchiveManager {
         return false;
       }
 
-      return operate(archiveOperateType, task);
+      return operate(archivingOperateType, task);
     } finally {
       lock.unlock();
     }
@@ -284,20 +285,20 @@ public class ArchiveManager {
   /**
    * Operate on task (pause, cancel, resume, etc)
    *
-   * @param archiveOperateType the operator on task
-   * @param storageGroup StorageGroup of ArchiveTask to operate on
+   * @param archivingOperateType the operator on task
+   * @param storageGroup StorageGroup of ArchivingTask to operate on
    * @return true if exists task with storageGroup and operate successfully
    */
   public boolean operate(
-      ArchiveOperate.ArchiveOperateType archiveOperateType, PartialPath storageGroup) {
+      ArchivingOperate.ArchivingOperateType archivingOperateType, PartialPath storageGroup) {
     try {
       lock.lock();
 
-      ArchiveTask task = null;
+      ArchivingTask task = null;
       // find matching task
-      for (ArchiveTask archiveTask : archiveTasks) {
-        if (archiveTask.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())) {
-          task = archiveTask;
+      for (ArchivingTask archivingTask : archivingTasks) {
+        if (archivingTask.getStorageGroup().getFullPath().equals(storageGroup.getFullPath())) {
+          task = archivingTask;
           break;
         }
       }
@@ -306,15 +307,16 @@ public class ArchiveManager {
         return false;
       }
 
-      return operate(archiveOperateType, task);
+      return operate(archivingOperateType, task);
     } finally {
       lock.unlock();
     }
   }
 
-  private boolean operate(ArchiveOperate.ArchiveOperateType archiveOperateType, ArchiveTask task) {
+  private boolean operate(
+      ArchivingOperate.ArchivingOperateType archivingOperateType, ArchivingTask task) {
     // check if task has valid status
-    switch (archiveOperateType) {
+    switch (archivingOperateType) {
       case SET:
       case START:
       case FINISHED:
@@ -323,48 +325,48 @@ public class ArchiveManager {
       case CANCEL:
       case PAUSE:
         // can cancel/pause only when status=READY/RUNNING
-        if (!(task.getStatus() == ArchiveTask.ArchiveTaskStatus.READY
-            || task.getStatus() == ArchiveTask.ArchiveTaskStatus.RUNNING)) {
+        if (!(task.getStatus() == ArchivingTask.ArchivingTaskStatus.READY
+            || task.getStatus() == ArchivingTask.ArchivingTaskStatus.RUNNING)) {
           return false;
         }
         break;
       case RESUME:
         // can resume only when status=PAUSED
-        if (!(task.getStatus() == ArchiveTask.ArchiveTaskStatus.PAUSED)) {
+        if (!(task.getStatus() == ArchivingTask.ArchivingTaskStatus.PAUSED)) {
           return false;
         }
         break;
     }
 
     // operate
-    switch (archiveOperateType) {
+    switch (archivingOperateType) {
       case PAUSE:
       case CANCEL:
       case RESUME:
         // write to log
         try {
-          logWriter.log(archiveOperateType, task);
+          logWriter.log(archivingOperateType, task);
         } catch (IOException e) {
           logger.error("write log error");
           return false;
         }
-        task.setStatus(statusFromOperateType(archiveOperateType));
+        task.setStatus(statusFromOperateType(archivingOperateType));
         return true;
       default:
         return false;
     }
   }
 
-  /** check if any of the archiveTasks can start */
-  public void checkArchiveTasks() {
+  /** check if any of the archivingTasks can start */
+  public void checkArchivingTasks() {
     try {
       lock.lock();
 
-      logger.info("checking archingTasks");
-      for (ArchiveTask task : archiveTasks) {
+      logger.info("checking archivingTasks");
+      for (ArchivingTask task : archivingTasks) {
 
         if (task.getStartTime() - DatetimeUtils.currentTime() <= 0
-            && task.getStatus() == ArchiveTask.ArchiveTaskStatus.READY) {
+            && task.getStatus() == ArchivingTask.ArchivingTaskStatus.READY) {
 
           // storage group has no data
           if (!StorageEngine.getInstance().getProcessorMap().containsKey(task.getStorageGroup())) {
@@ -372,36 +374,37 @@ public class ArchiveManager {
           }
 
           // set task to running
-          task.setStatus(ArchiveTask.ArchiveTaskStatus.RUNNING);
+          task.setStatus(ArchivingTask.ArchivingTaskStatus.RUNNING);
 
-          // push check archiveTask to storageGroupManager, use Runnable to give task to thread pool
-          archiveTaskThreadPool.execute(
+          // push check archivingTask to storageGroupManager, use Runnable to give task to thread
+          // pool
+          archivingTaskThreadPool.execute(
               () -> {
                 try {
-                  logWriter.log(ArchiveOperate.ArchiveOperateType.START, task);
+                  logWriter.log(ArchivingOperate.ArchivingOperateType.START, task);
                   task.startTask();
                 } catch (IOException e) {
                   logger.error("write log error");
-                  task.setStatus(ArchiveTask.ArchiveTaskStatus.ERROR);
+                  task.setStatus(ArchivingTask.ArchivingTaskStatus.ERROR);
                   return;
                 }
 
                 StorageEngine.getInstance()
                     .getProcessorMap()
                     .get(task.getStorageGroup())
-                    .checkArchiveTask(task);
-                logger.info("check archive task successfully.");
+                    .checkArchivingTask(task);
+                logger.info("check archiving task successfully.");
 
                 // set state and remove
                 try {
-                  logWriter.log(ArchiveOperate.ArchiveOperateType.FINISHED, task);
+                  logWriter.log(ArchivingOperate.ArchivingOperateType.FINISHED, task);
                   task.finish();
                 } catch (IOException e) {
                   logger.error("write log error");
-                  task.setStatus(ArchiveTask.ArchiveTaskStatus.ERROR);
+                  task.setStatus(ArchivingTask.ArchivingTaskStatus.ERROR);
                   return;
                 }
-                task.setStatus(ArchiveTask.ArchiveTaskStatus.FINISHED);
+                task.setStatus(ArchivingTask.ArchivingTaskStatus.FINISHED);
               });
         }
       }
@@ -412,11 +415,12 @@ public class ArchiveManager {
 
   // test
   public void setCheckThreadTime(long checkThreadTime) {
-    archiveTaskCheckThread.shutdown();
+    archivingTaskCheckThread.shutdown();
 
-    archiveTaskCheckThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.ARCHIVE_CHECK.getName());
-    archiveTaskCheckThread.scheduleAtFixedRate(
-        this::checkArchiveTasks, checkThreadTime, checkThreadTime, TimeUnit.MILLISECONDS);
+    archivingTaskCheckThread =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.ARCHIVING_CHECK.getName());
+    archivingTaskCheckThread.scheduleAtFixedRate(
+        this::checkArchivingTasks, checkThreadTime, checkThreadTime, TimeUnit.MILLISECONDS);
   }
 }

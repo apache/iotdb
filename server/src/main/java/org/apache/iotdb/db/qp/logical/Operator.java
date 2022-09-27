@@ -198,8 +198,8 @@ public abstract class Operator {
 
     DEACTIVATE_TEMPLATE,
 
-    SET_ARCHIVE,
-    PAUSE_ARCHIVE,
-    SHOW_ARCHIVE
+    SET_ARCHIVING,
+    PAUSE_ARCHIVING,
+    SHOW_ARCHIVING
   }
 }

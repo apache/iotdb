@@ -22,16 +22,16 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.PauseArchivePlan;
+import org.apache.iotdb.db.qp.physical.sys.PauseArchivingPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class PauseArchiveOperator extends Operator {
+public class PauseArchivingOperator extends Operator {
   private long taskId = -1;
   private PartialPath storageGroup;
 
-  public PauseArchiveOperator(int tokenIntType) {
+  public PauseArchivingOperator(int tokenIntType) {
     super(tokenIntType);
-    this.operatorType = OperatorType.PAUSE_ARCHIVE;
+    this.operatorType = OperatorType.PAUSE_ARCHIVING;
   }
 
   public long getTaskId() {
@@ -54,11 +54,11 @@ public class PauseArchiveOperator extends Operator {
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     if (storageGroup != null) {
-      return new PauseArchivePlan(storageGroup, true);
+      return new PauseArchivingPlan(storageGroup, true);
     } else if (taskId != -1) {
-      return new PauseArchivePlan(taskId, true);
+      return new PauseArchivingPlan(taskId, true);
     } else {
-      return new PauseArchivePlan(true);
+      return new PauseArchivingPlan(true);
     }
   }
 }

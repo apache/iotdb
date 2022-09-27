@@ -46,8 +46,8 @@ ddlStatement
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
-    | setArchive | cancelArchive | pauseArchive | resumeArchive | showArchive
-    | showAllArchive
+    | setArchiving | cancelArchiving | pauseArchiving | resumeArchiving | showArchiving
+    | showAllArchiving
     ;
 
 dmlStatement
@@ -332,42 +332,42 @@ countNodes
     : COUNT NODES prefixPath LEVEL OPERATOR_EQ INTEGER_LITERAL
     ;
 
-// Set Archive
-setArchive
-    : SET ARCHIVE TO storageGroup=prefixPath startTime=DATETIME_LITERAL ttl=INTEGER_LITERAL targetDir=STRING_LITERAL
-    | SET ARCHIVE TO setArchiveClause*
+// Set Archiving
+setArchiving
+    : SET ARCHIVING TO storageGroup=prefixPath startTime=DATETIME_LITERAL ttl=INTEGER_LITERAL targetDir=STRING_LITERAL
+    | SET ARCHIVING TO setArchivingClause*
     ;
 
-setArchiveClause
+setArchivingClause
     : STORAGE_GROUP     OPERATOR_EQ storageGroup=prefixPath
     | START_TIME        OPERATOR_EQ startTime=DATETIME_LITERAL
     | TTL               OPERATOR_EQ ttl=INTEGER_LITERAL
     | TARGET_DIR        OPERATOR_EQ targetDir=STRING_LITERAL
     ;
 
-// Cancel Archive
-cancelArchive
-    : CANCEL ARCHIVE (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
+// Cancel Archiving
+cancelArchiving
+    : CANCEL ARCHIVING (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
     ;
 
-// Pause Archive
-pauseArchive
-    : PAUSE ARCHIVE (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
+// Pause Archiving
+pauseArchiving
+    : PAUSE ARCHIVING (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
     ;
 
-// Unpause/Resume Archive
-resumeArchive
-    : RESUME ARCHIVE (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
+// Unpause/Resume Archiving
+resumeArchiving
+    : RESUME ARCHIVING (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
     ;
 
-// Show Archive
-showArchive
-    : SHOW ARCHIVE ON prefixPath (COMMA prefixPath)*
+// Show Archiving
+showArchiving
+    : SHOW ARCHIVING ON prefixPath (COMMA prefixPath)*
     ;
 
-// Show All Archive
-showAllArchive
-    : SHOW ALL ARCHIVE
+// Show All Archiving
+showAllArchiving
+    : SHOW ALL ARCHIVING
     ;
 
 

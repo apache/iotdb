@@ -73,8 +73,8 @@ APPEND
     : A P P E N D
     ;
 
-ARCHIVE
-    : A R C H I V E
+ARCHIVING
+    : A R C H I V I N G
     ;
 
 AS

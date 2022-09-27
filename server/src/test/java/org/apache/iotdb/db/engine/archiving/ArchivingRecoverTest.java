@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.archive;
+package org.apache.iotdb.db.engine.archiving;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -48,14 +48,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class ArchiveRecoverTest {
+public class ArchivingRecoverTest {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final File ARCHIVING_LOG_DIR =
       SystemFileFactory.INSTANCE.getFile(
           Paths.get(
                   FilePathUtils.regularizePath(config.getSystemDir()),
-                  IoTDBConstant.ARCHIVE_FOLDER_NAME,
-                  IoTDBConstant.ARCHIVE_LOG_FOLDER_NAME)
+                  IoTDBConstant.ARCHIVING_FOLDER_NAME,
+                  IoTDBConstant.ARCHIVING_LOG_FOLDER_NAME)
               .toString());
   private long testTaskId = 99;
   private File testLogFile;
@@ -118,7 +118,7 @@ public class ArchiveRecoverTest {
     setupTestFiles();
 
     // test write
-    ArchiveTask task = new ArchiveTask(testTaskId, null, testTargetDir, 0, 0);
+    ArchivingTask task = new ArchivingTask(testTaskId, null, testTargetDir, 0, 0);
     task.startTask();
     task.startFile(getTsFile());
     task.close();
@@ -133,7 +133,7 @@ public class ArchiveRecoverTest {
     fileInputStream.close();
 
     // test read
-    ArchiveRecover recover = new ArchiveRecover();
+    ArchivingRecover recover = new ArchivingRecover();
     recover.recover();
 
     for (File file : testFiles) {
@@ -167,7 +167,7 @@ public class ArchiveRecoverTest {
     logOutput.close();
 
     // test read
-    ArchiveRecover recover = new ArchiveRecover();
+    ArchivingRecover recover = new ArchivingRecover();
     recover.recover();
 
     assertEquals(0, testTargetDir.listFiles().length);
