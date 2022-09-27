@@ -34,7 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.load.heartbeat.BaseNodeCache;
+import org.apache.iotdb.confignode.manager.node.BaseNodeCache;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -489,7 +489,7 @@ public class DataNodeRemoveHandler {
         // check whether removed data node is in running state
         BaseNodeCache nodeCache =
             configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
-        if (!nodeCache.getNodeStatus().getStatus().equals("Running")) {
+        if (!NodeStatus.Running.equals(nodeCache.getNodeStatus())) {
           removedDataNodes.remove(dataNodeLocation);
           LOGGER.error(
               "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication",
@@ -507,8 +507,12 @@ public class DataNodeRemoveHandler {
     if (allDataNodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
       status.setCode(TSStatusCode.LACK_REPLICATION.getStatusCode());
       status.setMessage(
-          "lack replication, allow most removed Data Node size : "
-              + (allDataNodeSize - NodeInfo.getMinimumDataNode()));
+          String.format(
+              "Can't remove datanode due to the limit of replication factor, "
+                  + "allDataNodeSize: %s, maxReplicaFactor: %s, max allowed removed Data Node size is: %s",
+              allDataNodeSize,
+              NodeInfo.getMinimumDataNode(),
+              (allDataNodeSize - NodeInfo.getMinimumDataNode())));
     }
     return status;
   }
@@ -558,8 +562,15 @@ public class DataNodeRemoveHandler {
       return Optional.empty();
     }
 
+    List<TDataNodeLocation> aliveDataNodes =
+        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
+            .map(TDataNodeConfiguration::getLocation)
+            .collect(Collectors.toList());
+
     // TODO replace findAny() by select the low load node.
-    return regionReplicaNodes.stream().filter(e -> !e.equals(filterLocation)).findAny();
+    return regionReplicaNodes.stream()
+        .filter(e -> aliveDataNodes.contains(e) && !e.equals(filterLocation))
+        .findAny();
   }
 
   private String getIdWithRpcEndpoint(TDataNodeLocation location) {

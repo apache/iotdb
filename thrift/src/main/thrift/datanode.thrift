@@ -208,9 +208,18 @@ struct THeartbeatReq {
 struct THeartbeatResp {
   1: required i64 heartbeatTimestamp
   2: required string status
-  3: optional map<common.TConsensusGroupId, bool> judgedLeaders
-  4: optional i16 cpu
-  5: optional i16 memory
+  3: optional string statusReason
+  4: optional map<common.TConsensusGroupId, bool> judgedLeaders
+  5: optional TLoadSample loadSample
+}
+
+struct TLoadSample {
+  // Percentage of occupied cpu in DataNode
+  1: required i16 cpuUsageRate
+  // Percentage of occupied memory space in DataNode
+  2: required double memoryUsageRate
+  // Percentage of occupied disk space in DataNode
+  3: required double diskUsageRate
 }
 
 struct TRegionRouteReq {

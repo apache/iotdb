@@ -25,10 +25,12 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -53,6 +55,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,7 +79,8 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   /**
    * How many times should we retry when error occurred during firing a trigger on another datanode
    */
-  private static final int FIRE_RETRY_NUM = 1;
+  private static final int FIRE_RETRY_NUM =
+      IoTDBDescriptor.getInstance().getConfig().getRetryNumToFindStatefulTrigger();
 
   @Override
   public TriggerFireResult process(PlanNode node, TriggerEvent context) {
@@ -94,7 +98,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   @Override
   public TriggerFireResult visitInsertRow(InsertRowNode node, TriggerEvent context) {
     Map<String, List<String>> triggerNameToMeasurementList =
-        constructTriggerNameToMeasurementListMap(node);
+        constructTriggerNameToMeasurementListMap(node, context);
     // return success if no trigger is found
     if (triggerNameToMeasurementList.isEmpty()) {
       return TriggerFireResult.SUCCESS;
@@ -133,7 +137,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   public TriggerFireResult visitInsertTablet(InsertTabletNode node, TriggerEvent context) {
     // group Triggers and measurements
     Map<String, List<String>> triggerNameToMeasurementList =
-        constructTriggerNameToMeasurementListMap(node);
+        constructTriggerNameToMeasurementListMap(node, context);
     // return success if no trigger is found
     if (triggerNameToMeasurementList.isEmpty()) {
       return TriggerFireResult.SUCCESS;
@@ -267,18 +271,22 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     return indexMap;
   }
 
-  private Map<String, List<String>> constructTriggerNameToMeasurementListMap(InsertNode node) {
-    Map<String, List<String>> triggerNameToPaths = new HashMap<>();
+  private Map<String, List<String>> constructTriggerNameToMeasurementListMap(
+      InsertNode node, TriggerEvent event) {
     PartialPath device = node.getDevicePath();
     if (!TriggerManagementService.getInstance().hasTriggerUnderDevice(device)) {
-      return triggerNameToPaths;
+      return Collections.emptyMap();
     }
+    Map<String, List<String>> triggerNameToPaths = new HashMap<>();
+    TriggerTable triggerTable = TriggerManagementService.getInstance().getTriggerTable();
     String[] measurements = node.getMeasurements();
     for (String measurement : measurements) {
       if (measurement != null) {
         List<String> triggerList = getMatchedTriggerListForPath(device.concatNode(measurement));
         for (String trigger : triggerList) {
-          triggerNameToPaths.computeIfAbsent(trigger, k -> new ArrayList<>()).add(measurement);
+          if (triggerTable.getTriggerInformation(trigger).getEvent().equals(event)) {
+            triggerNameToPaths.computeIfAbsent(trigger, k -> new ArrayList<>()).add(measurement);
+          }
         }
       }
     }
@@ -291,72 +299,83 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   private TriggerFireResult fire(String triggerName, Tablet tablet, TriggerEvent event) {
     TriggerFireResult result = TriggerFireResult.SUCCESS;
-    int retryNum = FIRE_RETRY_NUM;
-    while (TriggerManagementService.getInstance().needToFireOnAnotherDataNode(triggerName)
-        && retryNum >= 0) {
-      TEndPoint endPoint =
-          TriggerManagementService.getInstance().getEndPointForStatefulTrigger(triggerName);
-      try (SyncDataNodeInternalServiceClient client =
-          INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(endPoint)) {
-        TFireTriggerReq req = new TFireTriggerReq(triggerName, tablet.serialize(), event.getId());
-        TFireTriggerResp resp = client.fireTrigger(req);
-        if (resp.foundExecutor) {
-          // we successfully found an executor on another data node
-          return TriggerFireResult.construct(resp.getFireResult());
-        } else {
-          retryNum--;
+    for (int i = 0; i < FIRE_RETRY_NUM; i++) {
+      if (TriggerManagementService.getInstance().needToFireOnAnotherDataNode(triggerName)) {
+        TEndPoint endPoint =
+            TriggerManagementService.getInstance().getEndPointForStatefulTrigger(triggerName);
+        try (SyncDataNodeInternalServiceClient client =
+            INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(endPoint)) {
+          TFireTriggerReq req = new TFireTriggerReq(triggerName, tablet.serialize(), event.getId());
+          TFireTriggerResp resp = client.fireTrigger(req);
+          if (resp.foundExecutor) {
+            // we successfully found an executor on another data node
+            return TriggerFireResult.construct(resp.getFireResult());
+          } else {
+            // update TDataNodeLocation of stateful trigger through config node
+            if (!updateLocationOfStatefulTrigger(triggerName)) {
+              // if TDataNodeLocation is still the same, sleep 1s and before the retry
+              Thread.sleep(1000);
+            }
+          }
+        } catch (IOException | TException e) {
+          // IOException means that we failed to borrow client, possibly because corresponding
+          // DataNode is down.
+          // TException means there's a timeout or broken connection.
+          // We need to update local TriggerTable with the new TDataNodeLocation of the stateful
+          // trigger.
+          LOGGER.warn(
+              "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
+              triggerName,
+              endPoint.toString(),
+              e);
           // update TDataNodeLocation of stateful trigger through config node
           updateLocationOfStatefulTrigger(triggerName);
+        } catch (Throwable e) {
+          LOGGER.warn(
+              "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
+              triggerName,
+              endPoint.toString(),
+              e);
+          // do not retry if it is not due to bad network or no executor found
+          return TriggerManagementService.getInstance()
+                  .getTriggerInformation(triggerName)
+                  .getFailureStrategy()
+                  .equals(FailureStrategy.OPTIMISTIC)
+              ? TriggerFireResult.FAILED_NO_TERMINATION
+              : TriggerFireResult.TERMINATION;
         }
-      } catch (IOException | TException e) {
-        // IOException means that we failed to borrow client, possibly because corresponding
-        // DataNode is down.
-        // TException means there's a timeout or broken connection.
-        // We need to update local TriggerTable with the new TDataNodeLocation of the stateful
-        // trigger.
-        LOGGER.warn(
-            "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
-            triggerName,
-            endPoint.toString(),
-            e.getMessage());
-        retryNum--;
-        // update TDataNodeLocation of stateful trigger through config node
-        updateLocationOfStatefulTrigger(triggerName);
-      } catch (Throwable e) {
-        LOGGER.warn(
-            "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
-            triggerName,
-            endPoint.toString(),
-            e.getMessage());
-        // do not retry if it is not due to bad network or no executor found
-        return TriggerManagementService.getInstance()
-                .getTriggerInformation(triggerName)
-                .getFailureStrategy()
-                .equals(FailureStrategy.OPTIMISTIC)
-            ? TriggerFireResult.FAILED_NO_TERMINATION
-            : TriggerFireResult.TERMINATION;
-      }
-    }
-
-    TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
-    try {
-      boolean fireResult = executor.fire(tablet, event);
-      if (!fireResult) {
-        result =
-            executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
-                ? TriggerFireResult.TERMINATION
-                : TriggerFireResult.FAILED_NO_TERMINATION;
-      }
-    } catch (TriggerExecutionException e) {
-      result =
-          executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
+      } else {
+        TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
+        if (executor == null) {
+          return TriggerManagementService.getInstance()
+                  .getTriggerInformation(triggerName)
+                  .getFailureStrategy()
+                  .equals(FailureStrategy.PESSIMISTIC)
               ? TriggerFireResult.TERMINATION
               : TriggerFireResult.FAILED_NO_TERMINATION;
+        }
+        try {
+          boolean fireResult = executor.fire(tablet, event);
+          if (!fireResult) {
+            result =
+                executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
+                    ? TriggerFireResult.TERMINATION
+                    : TriggerFireResult.FAILED_NO_TERMINATION;
+          }
+        } catch (TriggerExecutionException e) {
+          result =
+              executor.getFailureStrategy().equals(FailureStrategy.PESSIMISTIC)
+                  ? TriggerFireResult.TERMINATION
+                  : TriggerFireResult.FAILED_NO_TERMINATION;
+        }
+        return result;
+      }
     }
     return result;
   }
 
-  private void updateLocationOfStatefulTrigger(String triggerName) {
+  /** Return true if the config node returns a new TDataNodeLocation */
+  private boolean updateLocationOfStatefulTrigger(String triggerName) {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       TDataNodeLocation tDataNodeLocation =
@@ -364,12 +383,20 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       if (tDataNodeLocation != null) {
         TriggerManagementService.getInstance()
             .updateLocationOfStatefulTrigger(triggerName, tDataNodeLocation);
+        return TriggerManagementService.getInstance()
+                .getTriggerInformation(triggerName)
+                .getDataNodeLocation()
+                .getDataNodeId()
+            == tDataNodeLocation.getDataNodeId();
+      } else {
+        return false;
       }
     } catch (TException | IOException e) {
       LOGGER.error(
           "Failed to update location of stateful trigger({}) through config node and the cause is {}.",
           triggerName,
-          e.getMessage());
+          e);
+      return false;
     }
   }
 }

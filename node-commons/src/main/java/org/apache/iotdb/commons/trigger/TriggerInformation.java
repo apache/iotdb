@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -48,11 +47,12 @@ public class TriggerInformation {
 
   /** indicate this Trigger is Stateful or Stateless */
   private boolean isStateful;
-
   /** only used for Stateful Trigger */
   private TDataNodeLocation dataNodeLocation;
 
   private FailureStrategy failureStrategy;
+  /** MD5 of the Jar File */
+  private String jarFileMD5;
 
   public TriggerInformation() {};
 
@@ -65,7 +65,8 @@ public class TriggerInformation {
       TriggerEvent event,
       TTriggerState triggerState,
       boolean isStateful,
-      TDataNodeLocation dataNodeLocation) {
+      TDataNodeLocation dataNodeLocation,
+      String jarFileMD5) {
     this.pathPattern = pathPattern;
     this.triggerName = triggerName;
     this.className = className;
@@ -77,6 +78,7 @@ public class TriggerInformation {
     this.dataNodeLocation = dataNodeLocation;
     // default value is OPTIMISTIC
     this.failureStrategy = FailureStrategy.OPTIMISTIC;
+    this.jarFileMD5 = jarFileMD5;
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -99,6 +101,7 @@ public class TriggerInformation {
       ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation, outputStream);
     }
     ReadWriteIOUtils.write(failureStrategy.getId(), outputStream);
+    ReadWriteIOUtils.write(jarFileMD5, outputStream);
   }
 
   public static TriggerInformation deserialize(ByteBuffer byteBuffer) {
@@ -119,6 +122,7 @@ public class TriggerInformation {
     }
     triggerInformation.failureStrategy =
         FailureStrategy.construct(ReadWriteIOUtils.readInt(byteBuffer));
+    triggerInformation.jarFileMD5 = ReadWriteIOUtils.readString(byteBuffer);
     return triggerInformation;
   }
 
@@ -196,5 +200,13 @@ public class TriggerInformation {
 
   public void setFailureStrategy(FailureStrategy failureStrategy) {
     this.failureStrategy = failureStrategy;
+  }
+
+  public String getJarFileMD5() {
+    return jarFileMD5;
+  }
+
+  public void setJarFileMD5(String jarFileMD5) {
+    this.jarFileMD5 = jarFileMD5;
   }
 }

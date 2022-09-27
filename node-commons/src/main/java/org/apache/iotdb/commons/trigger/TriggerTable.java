@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
@@ -38,9 +37,20 @@ public class TriggerTable {
   public TriggerTable(Map<String, TriggerInformation> triggerTable) {
     this.triggerTable = triggerTable;
   }
-
   // for createTrigger
   public void addTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
+    triggerTable.put(triggerName, triggerInformation);
+  }
+
+  public TriggerInformation getTriggerInformation(String triggerName) {
+    return triggerTable.get(triggerName);
+  }
+
+  public TriggerInformation removeTriggerInformation(String triggerName) {
+    return triggerTable.remove(triggerName);
+  }
+
+  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
     triggerTable.put(triggerName, triggerInformation);
   }
 
@@ -53,26 +63,16 @@ public class TriggerTable {
     return triggerTable.containsKey(triggerName);
   }
 
-  public void activeTrigger(String triggerName) {
-    triggerTable.get(triggerName).setTriggerState(TTriggerState.ACTIVE);
-  }
-
-  public TriggerInformation getTriggerInformation(String triggerName) {
-    return triggerTable.get(triggerName);
-  }
-
-  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
-    triggerTable.put(triggerName, triggerInformation);
+  public void setTriggerState(String triggerName, TTriggerState triggerState) {
+    triggerTable.get(triggerName).setTriggerState(triggerState);
   }
 
   // for showTrigger
   public Map<String, TTriggerState> getAllTriggerStates() {
     Map<String, TTriggerState> allTriggerStates = new HashMap<>(triggerTable.size());
-
     triggerTable.forEach((k, v) -> allTriggerStates.put(k, v.getTriggerState()));
     return allTriggerStates;
   }
-
   // for getTriggerTable
   public Map<String, TriggerInformation> getTable() {
     return triggerTable;

@@ -21,32 +21,34 @@ package org.apache.iotdb.db.trigger.service;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternNode;
 import org.apache.iotdb.commons.path.PatternTreeMap;
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.path.PatternTreeMapFactory;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
+import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.trigger.api.Trigger;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class TriggerManagementService implements IService {
+public class TriggerManagementService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManagementService.class);
 
@@ -79,7 +81,7 @@ public class TriggerManagementService implements IService {
     lock.unlock();
   }
 
-  public void register(TriggerInformation triggerInformation) {
+  public void register(TriggerInformation triggerInformation) throws IOException {
     try {
       acquireLock();
       checkIfRegistered(triggerInformation);
@@ -92,17 +94,42 @@ public class TriggerManagementService implements IService {
     } finally {
       releaseLock();
     }
-  };
+  }
 
   public void activeTrigger(String triggerName) {
     try {
       acquireLock();
-      triggerTable.activeTrigger(triggerName);
-    } catch (Throwable e) {
-      LOGGER.warn(
-          "Failed to active trigger({}) on data node, the cause is: {}",
-          triggerName,
-          e.getMessage());
+      triggerTable.setTriggerState(triggerName, TTriggerState.ACTIVE);
+    } finally {
+      releaseLock();
+    }
+  }
+
+  public void inactiveTrigger(String triggerName) {
+    try {
+      acquireLock();
+      triggerTable.setTriggerState(triggerName, TTriggerState.INACTIVE);
+    } finally {
+      releaseLock();
+    }
+  }
+
+  public void dropTrigger(String triggerName, boolean needToDeleteJar) throws IOException {
+    try {
+      acquireLock();
+      TriggerInformation triggerInformation = triggerTable.removeTriggerInformation(triggerName);
+      TriggerExecutor executor = executorMap.remove(triggerName);
+      if (executor != null) {
+        executor.onDrop();
+      }
+      // todo: delete trigger in PatternTree when implementing trigger fire
+
+      // if it is needed to delete jar file of the trigger, delete both jar file and md5
+      if (triggerInformation != null && needToDeleteJar) {
+        TriggerExecutableManager.getInstance()
+            .removeFileUnderLibRoot(triggerInformation.getJarName());
+        TriggerExecutableManager.getInstance().removeFileUnderTemporaryRoot(triggerName + ".txt");
+      }
     } finally {
       releaseLock();
     }
@@ -115,11 +142,8 @@ public class TriggerManagementService implements IService {
       TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
       triggerInformation.setDataNodeLocation(tDataNodeLocation);
       triggerTable.setTriggerInformation(triggerName, triggerInformation);
-    } catch (Throwable e) {
-      LOGGER.warn(
-          "Failed to update location of trigger({}), the cause is: {}",
-          triggerName,
-          e.getMessage());
+    } catch (Exception e) {
+      LOGGER.warn("Failed to update location of trigger({}), the cause is: {}", triggerName, e);
     } finally {
       releaseLock();
     }
@@ -127,6 +151,10 @@ public class TriggerManagementService implements IService {
 
   public boolean isTriggerTableEmpty() {
     return triggerTable.isEmpty();
+  }
+
+  public TriggerTable getTriggerTable() {
+    return triggerTable;
   }
 
   public TriggerExecutor getExecutor(String triggerName) {
@@ -159,29 +187,68 @@ public class TriggerManagementService implements IService {
     return patternTreeMap.isOverlapped(device);
   }
 
-  private void checkIfRegistered(TriggerInformation triggerInformation)
-      throws TriggerManagementException {
+  private void checkIfRegistered(TriggerInformation triggerInformation) throws IOException {
     String triggerName = triggerInformation.getTriggerName();
     if (triggerTable.containsTrigger(triggerName)) {
-      String errorMessage =
-          String.format(
-              "Failed to registered trigger %s, "
-                  + "because trigger %s has already been registered in TriggerTable",
-              triggerName, triggerName);
-      LOGGER.warn(errorMessage);
-      throw new TriggerManagementException(errorMessage);
+      String jarName = triggerInformation.getJarName();
+      if (TriggerExecutableManager.getInstance().hasFileUnderLibRoot(jarName)) {
+        // A jar with the same name exists, we need to check md5
+        String existedMd5 = "";
+        String md5FilePath = triggerName + ".txt";
+
+        // if meet error when reading md5 from txt, we need to compute it again
+        boolean hasComputed = false;
+        if (TriggerExecutableManager.getInstance().hasFileUnderTemporaryRoot(md5FilePath)) {
+          try {
+            existedMd5 =
+                TriggerExecutableManager.getInstance()
+                    .readTextFromFileUnderTemporaryRoot(md5FilePath);
+            hasComputed = true;
+          } catch (IOException e) {
+            LOGGER.warn("Error occurred when trying to read md5 of {}", md5FilePath);
+          }
+        }
+        if (!hasComputed) {
+          try {
+            existedMd5 =
+                DigestUtils.md5Hex(
+                    Files.newInputStream(
+                        Paths.get(
+                            TriggerExecutableManager.getInstance().getLibRoot()
+                                + File.separator
+                                + triggerInformation.getJarName())));
+            // save the md5 in a txt under trigger temporary lib
+            TriggerExecutableManager.getInstance()
+                .saveTextAsFileUnderTemporaryRoot(existedMd5, md5FilePath);
+          } catch (IOException e) {
+            String errorMessage =
+                String.format(
+                    "Failed to registered trigger %s, "
+                        + "because error occurred when trying to compute md5 of jar file for trigger %s ",
+                    triggerName, triggerName);
+            LOGGER.warn(errorMessage);
+            throw e;
+          }
+        }
+
+        if (!existedMd5.equals(triggerInformation.getJarFileMD5())) {
+          // same jar name with different md5
+          String errorMessage =
+              String.format(
+                  "Failed to registered trigger %s, "
+                      + "because existed md5 of jar file for trigger %s is different from the new jar file. ",
+                  triggerName, triggerName);
+          LOGGER.warn(errorMessage);
+          throw new TriggerManagementException(errorMessage);
+        }
+      }
     }
   }
 
-  private void doRegister(TriggerInformation triggerInformation) {
+  private void doRegister(TriggerInformation triggerInformation) throws IOException {
     try (TriggerClassLoader currentActiveClassLoader =
         TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
       String triggerName = triggerInformation.getTriggerName();
-      // get trigger instance
-      Trigger trigger =
-          constructTriggerInstance(triggerInformation.getClassName(), currentActiveClassLoader);
-      // get FailureStrategy
-      triggerInformation.setFailureStrategy(trigger.getFailureStrategy());
       // register in trigger-table
       triggerTable.addTriggerInformation(triggerName, triggerInformation);
       // update PatternTreeMap
@@ -189,7 +256,10 @@ public class TriggerManagementService implements IService {
       // if it is a stateful trigger, we only maintain its instance on specified DataNode
       if (!triggerInformation.isStateful()
           || triggerInformation.getDataNodeLocation().getDataNodeId() == DATA_NODE_ID) {
-        // construct and save TriggerExecutor after successfully creating trigger instance
+        // get trigger instance
+        Trigger trigger =
+            constructTriggerInstance(triggerInformation.getClassName(), currentActiveClassLoader);
+        // construct and save TriggerExecutor after successfully creating trigger instancer
         TriggerExecutor triggerExecutor = new TriggerExecutor(triggerInformation, trigger);
         executorMap.put(triggerName, triggerExecutor);
       }
@@ -197,15 +267,13 @@ public class TriggerManagementService implements IService {
       String errorMessage =
           String.format(
               "Failed to register trigger %s with className: %s. The cause is: %s",
-              triggerInformation.getTriggerName(),
-              triggerInformation.getClassName(),
-              e.getMessage());
+              triggerInformation.getTriggerName(), triggerInformation.getClassName(), e);
       LOGGER.warn(errorMessage);
-      throw new TriggerManagementException(errorMessage);
+      throw e;
     }
   }
 
-  private Trigger constructTriggerInstance(String className, TriggerClassLoader classLoader)
+  public Trigger constructTriggerInstance(String className, TriggerClassLoader classLoader)
       throws TriggerManagementException {
     try {
       Class<?> triggerClass = Class.forName(className, true, classLoader);
@@ -233,33 +301,14 @@ public class TriggerManagementService implements IService {
     return null;
   }
 
-  @Override
-  public void start() throws StartupException {}
-
-  @Override
-  public void stop() {
-    // nothing to do
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.TRIGGER_REGISTRATION_SERVICE;
-  }
-
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder
   /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  private static TriggerManagementService INSTANCE = null;
-
-  public static synchronized TriggerManagementService setupAndGetInstance() {
-    if (INSTANCE == null) {
-      INSTANCE = new TriggerManagementService();
-    }
-    return INSTANCE;
+  private static class TriggerManagementServiceHolder {
+    private static final TriggerManagementService INSTANCE = new TriggerManagementService();
   }
 
   public static TriggerManagementService getInstance() {
-    return INSTANCE;
+    return TriggerManagementServiceHolder.INSTANCE;
   }
 }

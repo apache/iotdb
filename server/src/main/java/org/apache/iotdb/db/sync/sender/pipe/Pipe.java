@@ -19,9 +19,12 @@
  */
 package org.apache.iotdb.db.sync.sender.pipe;
 
+import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
@@ -88,7 +91,7 @@ public interface Pipe {
   long getCreateTime();
 
   /**
-   * Get the {@linkplain Pipe.PipeStatus} of this pipe. When a pipe is created, the status should be
+   * Get the {@linkplain PipeStatus} of this pipe. When a pipe is created, the status should be
    * {@linkplain PipeStatus#STOP}
    *
    * @return The Status of this pipe.
@@ -128,11 +131,4 @@ public interface Pipe {
   SenderManager getSenderManager();
 
   PipeInfo getPipeInfo();
-
-  // a new pipe should be stop status
-  enum PipeStatus {
-    RUNNING,
-    STOP,
-    DROP
-  }
 }

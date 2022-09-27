@@ -132,6 +132,7 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
    * @return true if value related to device exists
    */
   public boolean isOverlapped(PartialPath prefix) {
+    // todo: need to be implemented
     return true;
   }
 

@@ -149,6 +149,8 @@ public class IoTDBConfig {
   /** The proportion of write memory for memtable */
   private double writeProportion = 0.8;
 
+  private double chunkMetadataSizeProportionInWrite = 0.1;
+
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
@@ -268,7 +270,7 @@ public class IoTDBConfig {
 
   /** External temporary lib directory for storing downloaded trigger JAR files */
   private String triggerTemporaryLibDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_TMP_FOLDER_NAME;
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_TMP_FOLDER_NAME;
 
   /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
@@ -395,6 +397,9 @@ public class IoTDBConfig {
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 100000;
 
+  /** When a chunk in memtable reaches this threshold, flush the memtable to disk */
+  private long maxChunkRawSizeThreshold = 1024 * 1024 * 20L;
+
   /** Enable inner space compaction for sequence files */
   private boolean enableSeqSpaceCompaction = true;
 
@@ -436,6 +441,8 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
+  private double chunkMetadataSizeProportionInCompaction = 0.05;
+
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
 
@@ -468,6 +475,9 @@ public class IoTDBConfig {
 
   /** The max candidate file num in cross space compaction */
   private int maxCrossCompactionCandidateFileNum = 1000;
+
+  /** The max total size of candidate files in cross space compaction */
+  private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
@@ -757,6 +767,12 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 86400;
 
+  /** Time partition interval for storage in seconds */
+  private long timePartitionIntervalForStorage = 86400;
+
+  /** Time partition interval for routing in seconds */
+  private long timePartitionIntervalForRouting = 86400;
+
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
    * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
@@ -968,6 +984,9 @@ public class IoTDBConfig {
   /** Trigger MQTT forward pool size */
   private int triggerForwardMQTTPoolSize = 4;
 
+  /** How many times will we retry to find an instance of stateful trigger */
+  private int retryNumToFindStatefulTrigger = 3;
+
   /** ThreadPool size for read operation in coordinator */
   private int coordinatorReadExecutorSize = 20;
 
@@ -1098,6 +1117,22 @@ public class IoTDBConfig {
 
   public void setPartitionInterval(long partitionInterval) {
     this.partitionInterval = partitionInterval;
+  }
+
+  public long getTimePartitionIntervalForStorage() {
+    return timePartitionIntervalForStorage;
+  }
+
+  public void setTimePartitionIntervalForStorage(long timePartitionIntervalForStorage) {
+    this.timePartitionIntervalForStorage = timePartitionIntervalForStorage;
+  }
+
+  public long getTimePartitionIntervalForRouting() {
+    return timePartitionIntervalForRouting;
+  }
+
+  public void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
+    this.timePartitionIntervalForRouting = timePartitionIntervalForRouting;
   }
 
   public TimeIndexLevel getTimeIndexLevel() {
@@ -1363,6 +1398,10 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
+  }
+
+  public void setTriggerTemporaryLibDir(String triggerTemporaryLibDir) {
+    this.triggerTemporaryLibDir = triggerTemporaryLibDir;
   }
 
   public String getTriggerTemporaryLibDir() {
@@ -1964,6 +2003,14 @@ public class IoTDBConfig {
 
   public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
+  }
+
+  public long getMaxChunkRawSizeThreshold() {
+    return maxChunkRawSizeThreshold;
+  }
+
+  public void setMaxChunkRawSizeThreshold(long maxChunkRawSizeThreshold) {
+    this.maxChunkRawSizeThreshold = maxChunkRawSizeThreshold;
   }
 
   public long getCrossCompactionFileSelectionTimeBudget() {
@@ -2779,6 +2826,14 @@ public class IoTDBConfig {
     this.maxCrossCompactionCandidateFileNum = maxCrossCompactionCandidateFileNum;
   }
 
+  public long getMaxCrossCompactionCandidateFileSize() {
+    return maxCrossCompactionCandidateFileSize;
+  }
+
+  public void setMaxCrossCompactionCandidateFileSize(long maxCrossCompactionCandidateFileSize) {
+    this.maxCrossCompactionCandidateFileSize = maxCrossCompactionCandidateFileSize;
+  }
+
   public long getCompactionSubmissionIntervalInMs() {
     return compactionSubmissionIntervalInMs;
   }
@@ -3100,6 +3155,14 @@ public class IoTDBConfig {
     this.triggerForwardMQTTPoolSize = triggerForwardMQTTPoolSize;
   }
 
+  public int getRetryNumToFindStatefulTrigger() {
+    return retryNumToFindStatefulTrigger;
+  }
+
+  public void setRetryNumToFindStatefulTrigger(int retryNumToFindStatefulTrigger) {
+    this.retryNumToFindStatefulTrigger = retryNumToFindStatefulTrigger;
+  }
+
   public int getCoordinatorReadExecutorSize() {
     return coordinatorReadExecutorSize;
   }
@@ -3198,6 +3261,23 @@ public class IoTDBConfig {
 
   public void setThrottleThreshold(long throttleThreshold) {
     this.throttleThreshold = throttleThreshold;
+  }
+
+  public double getChunkMetadataSizeProportionInWrite() {
+    return chunkMetadataSizeProportionInWrite;
+  }
+
+  public void setChunkMetadataSizeProportionInWrite(double chunkMetadataSizeProportionInWrite) {
+    this.chunkMetadataSizeProportionInWrite = chunkMetadataSizeProportionInWrite;
+  }
+
+  public double getChunkMetadataSizeProportionInCompaction() {
+    return chunkMetadataSizeProportionInCompaction;
+  }
+
+  public void setChunkMetadataSizeProportionInCompaction(
+      double chunkMetadataSizeProportionInCompaction) {
+    this.chunkMetadataSizeProportionInCompaction = chunkMetadataSizeProportionInCompaction;
   }
 
   public long getCacheWindowTimeInMs() {

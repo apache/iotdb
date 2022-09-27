@@ -27,10 +27,15 @@ import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class TriggerExecutor {
   private final TriggerInformation triggerInformation;
 
   private final Trigger trigger;
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerExecutor.class);
 
   public TriggerExecutor(TriggerInformation triggerInformation, Trigger trigger) {
     this.triggerInformation = triggerInformation;
@@ -49,13 +54,27 @@ public class TriggerExecutor {
     }
   }
 
+  public void onDrop() {
+    try {
+      trigger.onDrop();
+    } catch (Exception e) {
+      onTriggerExecutionError("drop", e);
+    }
+  }
+
   public boolean fire(Tablet tablet, TriggerEvent event) throws TriggerExecutionException {
     if (event.equals(triggerInformation.getEvent())) {
       try {
         return trigger.fire(tablet);
-      } catch (Exception e) {
-        onTriggerExecutionError("fire(Tablet)", e);
+      } catch (Throwable t) {
+        onTriggerExecutionError("fire(Tablet)", t);
       }
+    } else {
+      // !event.equals(triggerInformation.getEvent()) should not happen in normal case
+      LOGGER.warn(
+          "Trigger {} was fired with wrong event {}",
+          triggerInformation.getTriggerName(),
+          triggerInformation.getEvent().toString());
     }
     return true;
   }
@@ -64,12 +83,14 @@ public class TriggerExecutor {
     return trigger.getFailureStrategy();
   }
 
-  private void onTriggerExecutionError(String methodName, Exception e)
+  private void onTriggerExecutionError(String methodName, Throwable t)
       throws TriggerExecutionException {
-    throw new TriggerExecutionException(
+    String errorMessage =
         String.format(
                 "Error occurred during executing Trigger(%s)#%s: %s",
                 triggerInformation.getTriggerName(), methodName, System.lineSeparator())
-            + e);
+            + t;
+    LOGGER.warn(errorMessage);
+    throw new TriggerExecutionException(errorMessage);
   }
 }

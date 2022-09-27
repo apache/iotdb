@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -117,6 +118,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
+import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -539,8 +541,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req) throws TException {
     THeartbeatResp resp = new THeartbeatResp();
-    resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
-    resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
 
     // Judging leader if necessary
     if (req.isNeedJudgeLeader()) {
@@ -550,19 +550,35 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     // Sampling load if necessary
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
         && req.isNeedSamplingLoad()) {
+      TLoadSample loadSample = new TLoadSample();
+
+      // Sample cpu load
       long cpuLoad =
           MetricService.getInstance()
               .getOrCreateGauge(
                   Metric.SYS_CPU_LOAD.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
               .value();
       if (cpuLoad != 0) {
-        resp.setCpu((short) cpuLoad);
+        loadSample.setCpuUsageRate((short) cpuLoad);
       }
+
+      // Sample memory load
       long usedMemory = getMemory("jvm.memory.used.bytes");
       long maxMemory = getMemory("jvm.memory.max.bytes");
       if (usedMemory != 0 && maxMemory != 0) {
-        resp.setMemory((short) (usedMemory * 100 / maxMemory));
+        loadSample.setMemoryUsageRate((double) usedMemory * 100 / maxMemory);
       }
+
+      // Sample disk load
+      sampleDiskLoad(loadSample);
+
+      resp.setLoadSample(loadSample);
+    }
+
+    resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
+    resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
+    if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {
+      resp.setStatusReason(CommonDescriptor.getInstance().getConfig().getStatusReason());
     }
     return resp;
   }
@@ -627,6 +643,37 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return 0;
     }
     return result;
+  }
+
+  private void sampleDiskLoad(TLoadSample loadSample) {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+
+    long freeDisk =
+        MetricService.getInstance()
+            .getOrCreateGauge(
+                Metric.SYS_DISK_FREE_SPACE.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                "system")
+            .value();
+    long totalDisk =
+        MetricService.getInstance()
+            .getOrCreateGauge(
+                Metric.SYS_DISK_TOTAL_SPACE.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                "system")
+            .value();
+
+    if (freeDisk != 0 && totalDisk != 0) {
+      double freeDiskRatio = (double) freeDisk * 100 / totalDisk;
+      loadSample.setDiskUsageRate(100.0 - freeDiskRatio);
+      // Reset NodeStatus if necessary
+      if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
+        commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+        commonConfig.setStatusReason(NodeStatus.DISK_FULL);
+      }
+    }
   }
 
   @Override
@@ -901,8 +948,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       LOGGER.warn(
           "Error occurred when creating trigger instance for trigger: {}. The cause is {}.",
           triggerInformation.getTriggerName(),
-          e.getMessage());
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          e);
+      return new TSStatus(TSStatusCode.CREATE_TRIGGER_INSTANCE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -913,17 +960,28 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       TriggerManagementService.getInstance().activeTrigger(req.triggerName);
     } catch (Exception e) {
-      LOGGER.error("Error occurred during ");
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+      LOGGER.error(
+          "Error occurred during active trigger instance for trigger: {}. The cause is {}.",
+          req.triggerName,
+          e);
+      return new TSStatus(TSStatusCode.ACTIVE_TRIGGER_INSTANCE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
-
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
   public TSStatus dropTriggerInstance(TDropTriggerInstanceReq req) throws TException {
-    // todo: implementation
+    try {
+      TriggerManagementService.getInstance().dropTrigger(req.triggerName, req.needToDeleteJarFile);
+    } catch (Exception e) {
+      LOGGER.error(
+          "Error occurred during drop trigger instance for trigger: {}. The cause is {}.",
+          req.triggerName,
+          e);
+      return new TSStatus(TSStatusCode.DROP_TRIGGER_INSTANCE_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

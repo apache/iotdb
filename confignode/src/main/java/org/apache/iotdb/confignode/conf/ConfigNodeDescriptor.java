@@ -200,12 +200,13 @@ public class ConfigNodeDescriptor {
       conf.setUdfLibDir(properties.getProperty("udf_lib_dir", conf.getUdfLibDir()));
 
       conf.setTemporaryLibDir(
-          properties.getProperty("temporary_lib_dir", conf.getTemporaryLibDir()));
+          properties.getProperty("udf_temporary_lib_dir", conf.getTemporaryLibDir()));
 
       conf.setTimePartitionInterval(
           Long.parseLong(
               properties.getProperty(
-                  "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))));
+                  "time_partition_interval_for_routing",
+                  String.valueOf(conf.getTimePartitionInterval()))));
 
       conf.setSchemaReplicationFactor(
           Integer.parseInt(

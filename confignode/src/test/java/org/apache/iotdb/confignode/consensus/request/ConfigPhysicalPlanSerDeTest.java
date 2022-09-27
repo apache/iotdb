@@ -64,6 +64,9 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchem
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.persistence.partition.RegionCreateTask;
@@ -71,6 +74,7 @@ import org.apache.iotdb.confignode.persistence.partition.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -825,5 +829,48 @@ public class ConfigPhysicalPlanSerDeTest {
         (GetPathsSetTemplatePlan)
             ConfigPhysicalPlan.Factory.create(getPathsSetTemplatePlan0.serializeToByteBuffer());
     Assert.assertEquals(getPathsSetTemplatePlan0.getName(), getPathsSetTemplatePlan1.getName());
+  }
+
+  @Test
+  public void CreatePipeSinkPlanTest() throws IOException {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("ip", "127.0.0.1");
+    attributes.put("port", "6667");
+    TPipeSinkInfo pipeSinkInfo =
+        new TPipeSinkInfo()
+            .setPipeSinkName("demo")
+            .setPipeSinkType("IoTDB")
+            .setAttributes(attributes);
+    CreatePipeSinkPlan createPipeSinkPlan = new CreatePipeSinkPlan(pipeSinkInfo);
+    CreatePipeSinkPlan createPipeSinkPlan1 =
+        (CreatePipeSinkPlan)
+            ConfigPhysicalPlan.Factory.create(createPipeSinkPlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        createPipeSinkPlan.getPipeSinkInfo(), createPipeSinkPlan1.getPipeSinkInfo());
+  }
+
+  @Test
+  public void DropPipeSinkPlanTest() throws IOException {
+    DropPipeSinkPlan dropPipeSinkPlan = new DropPipeSinkPlan("demo");
+    DropPipeSinkPlan dropPipeSinkPlan1 =
+        (DropPipeSinkPlan)
+            ConfigPhysicalPlan.Factory.create(dropPipeSinkPlan.serializeToByteBuffer());
+    Assert.assertEquals(dropPipeSinkPlan.getPipeSinkName(), dropPipeSinkPlan1.getPipeSinkName());
+  }
+
+  @Test
+  public void GetPipeSinkPlanTest() throws IOException {
+    GetPipeSinkPlan getPipeSinkPlan = new GetPipeSinkPlan("demo");
+    GetPipeSinkPlan getPipeSinkPlan1 =
+        (GetPipeSinkPlan)
+            ConfigPhysicalPlan.Factory.create(getPipeSinkPlan.serializeToByteBuffer());
+    Assert.assertEquals(getPipeSinkPlan.getPipeSinkName(), getPipeSinkPlan1.getPipeSinkName());
+    GetPipeSinkPlan getPipeSinkPlanWithNullName = new GetPipeSinkPlan();
+    GetPipeSinkPlan getPipeSinkPlanWithNullName1 =
+        (GetPipeSinkPlan)
+            ConfigPhysicalPlan.Factory.create(getPipeSinkPlanWithNullName.serializeToByteBuffer());
+    Assert.assertEquals(
+        getPipeSinkPlanWithNullName.getPipeSinkName(),
+        getPipeSinkPlanWithNullName1.getPipeSinkName());
   }
 }

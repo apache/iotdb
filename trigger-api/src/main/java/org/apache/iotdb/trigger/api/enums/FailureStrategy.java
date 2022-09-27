@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.trigger.api.enums;
 
 import org.apache.iotdb.trigger.api.Trigger;
@@ -37,13 +36,10 @@ public enum FailureStrategy {
   OPTIMISTIC(0),
 
   /**
-   * If this strategy were adopted, the failure of {@link Trigger#fire(Tablet)} of one Tablet would
-   * throw an exception and end this insertion. If a PESSIMISTIC trigger whose TRIGGER_EVENT is
-   * {@link TriggerEvent#BEFORE_INSERT} fails to fire in an insertion, all the triggers that have
-   * not fired will not be fired in this insertion and this insertion will not be executed. if a
-   * PESSIMISTIC trigger whose TRIGGER_EVENT is {@link TriggerEvent#AFTER_INSERT} fails to fire in
-   * an insertion, all the triggers that have not fired will not be fired, and this insertion will
-   * be marked as failed even if the insertion itself executed successfully.
+   * If this strategy were adopted, the failure of {@link Trigger#fire(Tablet)} of one Tablet
+   * would @@ -45,5 +45,26 @@ public enum FailureStrategy { an insertion, all the triggers that have
+   * not fired will not be fired, and this insertion will be marked as failed even if the insertion
+   * itself executed successfully.
    */
   PESSIMISTIC(1);
 

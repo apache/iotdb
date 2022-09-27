@@ -107,5 +107,35 @@ public class BinaryTVListTest {
       Assert.assertEquals(tvList.getBinary((int) i), clonedTvList.getBinary((int) i));
       Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));
     }
+    Assert.assertEquals(tvList.memoryBinaryChunkSize, clonedTvList.memoryBinaryChunkSize);
+  }
+
+  @Test
+  public void testCalculateChunkSize() {
+    BinaryTVList tvList = BinaryTVList.newList();
+    for (int i = 0; i < 10; i++) {
+      tvList.putBinary(i, Binary.valueOf(String.valueOf(i)));
+    }
+    Assert.assertEquals(tvList.memoryBinaryChunkSize, 360);
+
+    Binary[] binaryList = new Binary[10];
+    List<Long> timeList = new ArrayList<>();
+    BitMap bitMap = new BitMap(10);
+    for (int i = 0; i < 10; i++) {
+      timeList.add((long) i + 10);
+      binaryList[i] = Binary.valueOf(String.valueOf(i));
+      if (i % 2 == 0) {
+        bitMap.mark(i);
+      }
+    }
+    tvList.putBinaries(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), binaryList, bitMap, 0, 10);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize, 540);
+
+    tvList.delete(5, 15);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize, 252);
+
+    tvList.clear();
+    Assert.assertEquals(tvList.memoryBinaryChunkSize, 0);
   }
 }

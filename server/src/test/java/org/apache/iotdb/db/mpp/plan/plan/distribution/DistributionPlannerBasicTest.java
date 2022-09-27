@@ -21,9 +21,9 @@ package org.apache.iotdb.db.mpp.plan.plan.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -353,7 +353,7 @@ public class DistributionPlannerBasicTest {
             false,
             new String[] {"s1"},
             new TSDataType[] {TSDataType.INT32},
-            100000L,
+            10000L,
             new Object[] {10},
             false);
     insertRowNode2.setMeasurementSchemas(
