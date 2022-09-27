@@ -941,7 +941,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           "Error occurred when creating trigger instance for trigger: {}. The cause is {}.",
           triggerInformation.getTriggerName(),
           e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.CREATE_TRIGGER_INSTANCE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -956,16 +956,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           "Error occurred during active trigger instance for trigger: {}. The cause is {}.",
           req.triggerName,
           e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.ACTIVE_TRIGGER_INSTANCE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
-
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
   public TSStatus dropTriggerInstance(TDropTriggerInstanceReq req) throws TException {
-    // todo: implementation
+    try {
+      TriggerManagementService.getInstance().dropTrigger(req.triggerName, req.needToDeleteJarFile);
+    } catch (Exception e) {
+      LOGGER.error(
+          "Error occurred during drop trigger instance for trigger: {}. The cause is {}.",
+          req.triggerName,
+          e);
+      return new TSStatus(TSStatusCode.DROP_TRIGGER_INSTANCE_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
