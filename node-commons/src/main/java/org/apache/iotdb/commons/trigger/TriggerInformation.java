@@ -31,6 +31,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Objects;
 
 /** This Class used to save the specific information of one Trigger. */
 public class TriggerInformation {
@@ -118,6 +119,28 @@ public class TriggerInformation {
     }
     triggerInformation.jarFileMD5 = ReadWriteIOUtils.readString(byteBuffer);
     return triggerInformation;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TriggerInformation that = (TriggerInformation) o;
+    return Objects.equals(triggerName, that.triggerName)
+        && Objects.equals(pathPattern, that.pathPattern)
+        && isStateful == that.isStateful
+        && Objects.equals(className, that.className)
+        && Objects.equals(jarName, that.jarName)
+        && Objects.equals(attributes, that.attributes)
+        && event == that.event
+        && triggerState == that.triggerState
+        && (isStateful() ? Objects.equals(dataNodeLocation, that.dataNodeLocation) : true)
+        && Objects.equals(jarFileMD5, that.jarFileMD5);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(triggerName);
   }
 
   public PartialPath getPathPattern() {
