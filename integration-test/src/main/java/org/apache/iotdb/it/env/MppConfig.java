@@ -239,4 +239,17 @@ public class MppConfig implements BaseConfig {
     confignodeProperties.setProperty("enable_mem_control", String.valueOf(enableMemControl));
     return this;
   }
+
+  @Override
+  public BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
+    confignodeProperties.setProperty(
+        "concurrent_compaction_thread", String.valueOf(concurrentCompactionThread));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
+    engineProperties.setProperty("max_degree_of_index_node", String.valueOf(maxDegreeOfIndexNode));
+    return this;
+  }
 }

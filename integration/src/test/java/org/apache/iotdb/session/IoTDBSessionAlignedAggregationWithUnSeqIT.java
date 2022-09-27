@@ -39,7 +39,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class IoTDBSessionVectorAggregationWithUnSeqIT {
+public class IoTDBSessionAlignedAggregationWithUnSeqIT {
 
   private static final String ROOT_SG1_D1_VECTOR1 = "root.sg1.d1.vector1";
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();

@@ -238,4 +238,20 @@ public interface BaseConfig {
   default long getTimePartitionInterval() {
     return 86400;
   }
+
+  default BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
+    return this;
+  }
+
+  default int getConcurrentCompactionThread() {
+    return 10;
+  }
+
+  default BaseConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
+    return this;
+  }
+
+  default int getMaxDegreeOfIndexNode() {
+    return 256;
+  }
 }
