@@ -17,20 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.trigger.service;
+package org.apache.iotdb.db.trigger.service;
 
-import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class TriggerClassLoaderManager implements IService {
+public class TriggerClassLoaderManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerClassLoaderManager.class);
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   /** The dir that stores jar files. */
   private final String libRoot;
@@ -42,10 +43,10 @@ public class TriggerClassLoaderManager implements IService {
    */
   private volatile TriggerClassLoader activeClassLoader;
 
-  private TriggerClassLoaderManager(String libRoot) {
+  private TriggerClassLoaderManager(String libRoot) throws IOException {
     this.libRoot = libRoot;
     LOGGER.info("Trigger lib root: {}", libRoot);
-    activeClassLoader = null;
+    activeClassLoader = new TriggerClassLoader(libRoot);
   }
 
   /** Call this method to get up-to-date ClassLoader before registering triggers */
@@ -61,43 +62,23 @@ public class TriggerClassLoaderManager implements IService {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // IService
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  @Override
-  public void start() throws StartupException {
-    try {
-      SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot);
-      activeClassLoader = new TriggerClassLoader(libRoot);
-    } catch (IOException e) {
-      throw new StartupException(this.getID().getName(), e.getMessage());
-    }
-  }
-
-  @Override
-  public void stop() {
-    // nothing to do
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.TRIGGER_CLASSLOADER_MANAGER_SERVICE;
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private static TriggerClassLoaderManager INSTANCE = null;
+  private static class TriggerClassLoaderManagerHolder {
+    private static final TriggerClassLoaderManager INSTANCE;
 
-  public static synchronized TriggerClassLoaderManager setupAndGetInstance(String libRoot) {
-    if (INSTANCE == null) {
-      INSTANCE = new TriggerClassLoaderManager(libRoot);
+    static {
+      try {
+        SystemFileFactory.INSTANCE.makeDirIfNecessary(CONFIG.getTriggerDir());
+        INSTANCE = new TriggerClassLoaderManager(CONFIG.getTriggerDir());
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
-    return INSTANCE;
   }
 
   public static TriggerClassLoaderManager getInstance() {
-    return INSTANCE;
+    return TriggerClassLoaderManagerHolder.INSTANCE;
   }
 }
