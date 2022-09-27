@@ -49,6 +49,9 @@ public class TriggerInformation {
   /** only used for Stateful Trigger */
   private TDataNodeLocation dataNodeLocation;
 
+  /** MD5 of the Jar File */
+  private String jarFileMD5;
+
   public TriggerInformation() {};
 
   public TriggerInformation(
@@ -60,7 +63,8 @@ public class TriggerInformation {
       TriggerEvent event,
       TTriggerState triggerState,
       boolean isStateful,
-      TDataNodeLocation dataNodeLocation) {
+      TDataNodeLocation dataNodeLocation,
+      String jarFileMD5) {
     this.pathPattern = pathPattern;
     this.triggerName = triggerName;
     this.className = className;
@@ -70,6 +74,7 @@ public class TriggerInformation {
     this.triggerState = triggerState;
     this.isStateful = isStateful;
     this.dataNodeLocation = dataNodeLocation;
+    this.jarFileMD5 = jarFileMD5;
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -91,6 +96,7 @@ public class TriggerInformation {
     if (isStateful) {
       ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation, outputStream);
     }
+    ReadWriteIOUtils.write(jarFileMD5, outputStream);
   }
 
   public static TriggerInformation deserialize(ByteBuffer byteBuffer) {
@@ -109,6 +115,7 @@ public class TriggerInformation {
       triggerInformation.dataNodeLocation =
           ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     }
+    triggerInformation.jarFileMD5 = ReadWriteIOUtils.readString(byteBuffer);
     return triggerInformation;
   }
 
@@ -178,5 +185,13 @@ public class TriggerInformation {
 
   public void setDataNodeLocation(TDataNodeLocation dataNodeLocation) {
     this.dataNodeLocation = dataNodeLocation;
+  }
+
+  public String getJarFileMD5() {
+    return jarFileMD5;
+  }
+
+  public void setJarFileMD5(String jarFileMD5) {
+    this.jarFileMD5 = jarFileMD5;
   }
 }

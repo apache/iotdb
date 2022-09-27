@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.idtable.entry;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;

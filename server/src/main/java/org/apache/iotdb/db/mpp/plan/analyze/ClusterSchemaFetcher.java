@@ -21,13 +21,12 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -58,7 +57,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -476,9 +474,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     for (TSStatus subStatus : executionResult.status.subStatus) {
       if (subStatus.code == TSStatusCode.MEASUREMENT_ALREADY_EXIST.getStatusCode()) {
         alreadyExistingMeasurements.add(
-            (MeasurementPath)
-                PathDeserializeUtil.deserialize(
-                    ByteBuffer.wrap(subStatus.getMessage().getBytes())));
+            MeasurementPath.parseDataFromString(subStatus.getMessage()));
       } else {
         failedCreationList.add(subStatus.message);
       }

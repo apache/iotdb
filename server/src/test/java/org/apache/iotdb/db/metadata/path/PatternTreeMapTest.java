@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternNode.StringSerializer;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.path.PatternTreeMapFactory;
 
 import org.junit.Assert;
 import org.junit.Test;
