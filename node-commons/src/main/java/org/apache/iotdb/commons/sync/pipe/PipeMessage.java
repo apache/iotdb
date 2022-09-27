@@ -15,20 +15,44 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.exception.sync;
+package org.apache.iotdb.commons.sync.pipe;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+public class PipeMessage {
+  private final String message;
+  private final PipeMessageType type;
 
-public class PipeServerException extends IoTDBException {
-
-  public PipeServerException(String message, int errorCode) {
-    super(message, errorCode);
+  public PipeMessage(PipeMessageType type, String message) {
+    this.type = type;
+    this.message = message;
   }
 
-  public PipeServerException(String message) {
-    this(message, TSStatusCode.PIPESERVER_ERROR.getStatusCode());
+  public String getMessage() {
+    return message;
+  }
+
+  public PipeMessageType getType() {
+    return type;
+  }
+
+  @Override
+  public String toString() {
+    return "PipeMessage{" + "message='" + message + '\'' + ", type=" + type + '}';
+  }
+
+  public enum PipeMessageType {
+    NORMAL(1),
+    WARN(2),
+    ERROR(3);
+
+    private int value;
+
+    PipeMessageType(int value) {
+      this.value = value;
+    }
+
+    public int getValue() {
+      return value;
+    }
   }
 }

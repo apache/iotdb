@@ -56,6 +56,9 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchem
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
@@ -70,6 +73,7 @@ import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -106,6 +110,7 @@ public class ConfigPlanExecutor {
   private final UDFInfo udfInfo;
 
   private final TriggerInfo triggerInfo;
+  private final ClusterSyncInfo syncInfo;
 
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
@@ -114,7 +119,8 @@ public class ConfigPlanExecutor {
       AuthorInfo authorInfo,
       ProcedureInfo procedureInfo,
       UDFInfo udfInfo,
-      TriggerInfo triggerInfo) {
+      TriggerInfo triggerInfo,
+      ClusterSyncInfo syncInfo) {
     this.nodeInfo = nodeInfo;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.partitionInfo = partitionInfo;
@@ -122,6 +128,7 @@ public class ConfigPlanExecutor {
     this.procedureInfo = procedureInfo;
     this.udfInfo = udfInfo;
     this.triggerInfo = triggerInfo;
+    this.syncInfo = syncInfo;
   }
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
@@ -161,6 +168,8 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.getPathsSetTemplate((GetPathsSetTemplatePlan) req);
       case GetAllTemplateSetInfo:
         return clusterSchemaInfo.getAllTemplateSetInfo();
+      case GetPipeSink:
+        return syncInfo.getPipeSink((GetPipeSinkPlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -244,6 +253,10 @@ public class ConfigPlanExecutor {
         return partitionInfo.updateRegionLocation((UpdateRegionLocationPlan) physicalPlan);
       case SetSchemaTemplate:
         return clusterSchemaInfo.setSchemaTemplate((SetSchemaTemplatePlan) physicalPlan);
+      case CreatePipeSink:
+        return syncInfo.addPipeSink((CreatePipeSinkPlan) physicalPlan);
+      case DropPipeSink:
+        return syncInfo.dropPipeSink((DropPipeSinkPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

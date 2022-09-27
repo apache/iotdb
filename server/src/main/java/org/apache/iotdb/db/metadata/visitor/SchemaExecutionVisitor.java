@@ -54,8 +54,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -182,23 +180,12 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         logger.info("There's no need to internal create timeseries. {}", e.getMessage());
         alreadyExistingTimeseries.add(
             RpcUtils.getStatus(
-                e.getErrorCode(), transformExistingTimeseriesToString(e.getMeasurementPath())));
+                e.getErrorCode(), MeasurementPath.transformDataToString(e.getMeasurementPath())));
       } catch (MetadataException e) {
         logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
-  }
-
-  private String transformExistingTimeseriesToString(MeasurementPath measurementPath) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      measurementPath.serialize(dataOutputStream);
-    } catch (IOException ignored) {
-      // this exception won't happen.
-    }
-    return byteArrayOutputStream.toString();
   }
 
   private void executeInternalCreateAlignedTimeseries(
@@ -233,7 +220,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         MeasurementPath measurementPath = e.getMeasurementPath();
         alreadyExistingTimeseries.add(
             RpcUtils.getStatus(
-                e.getErrorCode(), transformExistingTimeseriesToString(measurementPath)));
+                e.getErrorCode(), MeasurementPath.transformDataToString(e.getMeasurementPath())));
 
         // remove the existing timeseries from plan
         int index = measurementList.indexOf(measurementPath.getMeasurement());

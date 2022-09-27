@@ -31,8 +31,6 @@ import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.trigger.TriggerTable;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
@@ -40,9 +38,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
@@ -71,6 +73,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
@@ -94,6 +97,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
+import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -102,6 +106,7 @@ import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -111,7 +116,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.SocketTimeoutException;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -300,6 +307,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createTriggerStatement.getAttributes(),
               FailureStrategy.OPTIMISTIC.getId()); // set default strategy
 
+      String libRoot = TriggerExecutableManager.getInstance().getLibRoot();
       if (createTriggerStatement.isUsingURI()) {
         try {
           // download executable
@@ -319,17 +327,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           tCreateTriggerReq.setJarMD5(
               DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderLib))));
 
-        } catch (Exception e) {
+        } catch (IOException | URISyntaxException e) {
           LOGGER.warn(
               "Failed to download executable for trigger({}) using URI: {}, the cause is: {}",
               createTriggerStatement.getTriggerName(),
               createTriggerStatement.getJarPath(),
-              e.getMessage());
-          throw e;
+              e);
+          future.setException(
+              new IoTDBException(
+                  "Failed to download executable for trigger '"
+                      + createTriggerStatement.getTriggerName()
+                      + "'",
+                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+          return future;
         }
       } else {
-        TriggerExecutableManager.getInstance()
-            .copyFileToExtLibDir(createTriggerStatement.getJarPath());
+        // change libRoot
+        libRoot = createTriggerStatement.getJarPath();
         // set jarPath to file name instead of the full path
         tCreateTriggerReq.setJarPath(new File(createTriggerStatement.getJarPath()).getName());
         // If jarPath is a file path, we transfer it to ByteBuffer and send it to ConfigNode.
@@ -342,18 +356,28 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
 
       // try to create instance, this request will fail if creation is not successful
-      try (TriggerClassLoader classLoader =
-          TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
+      try (TriggerClassLoader classLoader = new TriggerClassLoader(libRoot)) {
         Class<?> triggerClass =
             Class.forName(createTriggerStatement.getClassName(), true, classLoader);
         Trigger trigger = (Trigger) triggerClass.getDeclaredConstructor().newInstance();
         tCreateTriggerReq.setFailureStrategy(trigger.getFailureStrategy().getId());
-      } catch (Exception e) {
+      } catch (ClassNotFoundException
+          | NoSuchMethodException
+          | InstantiationException
+          | IllegalAccessException
+          | InvocationTargetException e) {
         LOGGER.warn(
             "Failed to create trigger when try to create trigger({}) instance first, the cause is: {}",
             createTriggerStatement.getTriggerName(),
-            e.getMessage());
-        throw e;
+            e);
+        future.setException(
+            new IoTDBException(
+                "Failed to load class '"
+                    + createTriggerStatement.getClassName()
+                    + "', because it's not found in jar file: "
+                    + createTriggerStatement.getJarPath(),
+                TSStatusCode.TRIGGER_LOAD_CLASS.getStatusCode()));
+        return future;
       }
 
       final TSStatus executionStatus = client.createTrigger(tCreateTriggerReq);
@@ -778,22 +802,80 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> createPipeSink(
+      CreatePipeSinkStatement createPipeSinkStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TPipeSinkInfo pipeSinkInfo = new TPipeSinkInfo();
+      pipeSinkInfo.setPipeSinkName(createPipeSinkStatement.getPipeSinkName());
+      pipeSinkInfo.setPipeSinkType(createPipeSinkStatement.getPipeSinkType());
+      pipeSinkInfo.setAttributes(createPipeSinkStatement.getAttributes());
+      TSStatus tsStatus = configNodeClient.createPipeSink(pipeSinkInfo);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.error(
+            "Failed to create PipeSink {} with type {} in config node, status is {}.",
+            createPipeSinkStatement.getPipeSinkName(),
+            createPipeSinkStatement.getPipeSinkType(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropPipeSink(
+      DropPipeSinkStatement dropPipeSinkStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TDropPipeSinkReq req = new TDropPipeSinkReq();
+      req.setPipeSinkName(dropPipeSinkStatement.getPipeSinkName());
+      TSStatus tsStatus = configNodeClient.dropPipeSink(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.error(
+            "Failed to drop PipeSink {} in config node, status is {}.",
+            dropPipeSinkStatement.getPipeSinkName(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showPipeSink(
+      ShowPipeSinkStatement showPipeSinkStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TGetPipeSinkReq tGetPipeSinkReq = new TGetPipeSinkReq();
+      if (!StringUtils.isEmpty(showPipeSinkStatement.getPipeSinkName())) {
+        tGetPipeSinkReq.setPipeSinkName(showPipeSinkStatement.getPipeSinkName());
+      }
+      TGetPipeSinkResp resp = configNodeClient.getPipeSink(tGetPipeSinkReq);
+      ShowPipeSinkTask.buildTSBlockByTPipeSinkInfo(resp.getPipeSinkInfoList(), future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     future.setException(
         new IoTDBException(
             "Executing create pipe is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> createPipeSink(
-      CreatePipeSinkStatement createPipeSinkStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    future.setException(
-        new IoTDBException(
-            "Executing create pipesink is not supported",
             TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     return future;
   }
@@ -809,33 +891,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropPipeSink(
-      DropPipeSinkStatement dropPipeSinkStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    future.setException(
-        new IoTDBException(
-            "Executing drop pipesink is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
-    return future;
-  }
-
-  @Override
   public SettableFuture<ConfigTaskResult> showPipe(ShowPipeStatement showPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     future.setException(
         new IoTDBException(
             "Executing show pipe is not supported",
-            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> showPipeSink(
-      ShowPipeSinkStatement showPipeSinkStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    future.setException(
-        new IoTDBException(
-            "Executing show pipesink is not supported",
             TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     return future;
   }

@@ -434,12 +434,14 @@ service IDataNodeRPCService {
    **/
   common.TSStatus activeTriggerInstance(TActiveTriggerInstanceReq req)
 
+
   /**
    * Config node will inactive a trigger instance on data node.
    *
    * @param trigger name.
    **/
   common.TSStatus inactiveTriggerInstance(TInactiveTriggerInstanceReq req)
+
 
   /**
    * Config node will drop a trigger on all online config nodes and data nodes.

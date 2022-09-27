@@ -15,22 +15,27 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.exception.sync;
+package org.apache.iotdb.db.sync.sender.pipe;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.commons.sync.pipesink.IoTDBPipeSink;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
 
-public class PipeException extends IoTDBException {
+// TODO(Ext-pipe): move to subclass of PipeSink
+public class PipeSinkFactory {
+  public static PipeSink createPipeSink(String type, String name) {
+    type = type.toLowerCase();
 
-  private static final long serialVersionUID = -7312720445194413492L;
+    if (PipeSink.PipeSinkType.IoTDB.name().toLowerCase().equals(type)) {
+      return new IoTDBPipeSink(name);
+    }
 
-  public PipeException(String message, int errorCode) {
-    super(message, errorCode);
-  }
+    if (ExtPipePluginRegister.getInstance().pluginExist(type)) {
+      return new ExternalPipeSink(name, type);
+    }
 
-  public PipeException(String message) {
-    super(message, TSStatusCode.PIPE_ERROR.getStatusCode());
+    throw new UnsupportedOperationException(
+        String.format("Do not support pipeSink type: %s.", type));
   }
 }

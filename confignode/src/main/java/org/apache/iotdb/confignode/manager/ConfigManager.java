@@ -56,6 +56,8 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchem
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
@@ -79,6 +81,7 @@ import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -87,6 +90,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -151,6 +156,8 @@ public class ConfigManager implements IManager {
 
   /** Manage Trigger */
   private final TriggerManager triggerManager;
+  /** Sync */
+  private final SyncManager syncManager;
 
   public ConfigManager() throws IOException {
     // Build the persistence module
@@ -161,6 +168,7 @@ public class ConfigManager implements IManager {
     ProcedureInfo procedureInfo = new ProcedureInfo();
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
+    ClusterSyncInfo syncInfo = new ClusterSyncInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -171,7 +179,8 @@ public class ConfigManager implements IManager {
             authorInfo,
             procedureInfo,
             udfInfo,
-            triggerInfo);
+            triggerInfo,
+            syncInfo);
     PartitionRegionStateMachine stateMachine = new PartitionRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -183,6 +192,7 @@ public class ConfigManager implements IManager {
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.loadManager = new LoadManager(this);
+    this.syncManager = new SyncManager(this, syncInfo);
 
     // ConsensusManager must be initialized last, as it would load states from disk and reinitialize
     // above managers
@@ -957,6 +967,37 @@ public class ConfigManager implements IManager {
       return procedureManager.deleteTimeSeries(req);
     } else {
       return status;
+    }
+  }
+
+  @Override
+  public TSStatus createPipeSink(CreatePipeSinkPlan plan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return syncManager.createPipeSink(plan);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus dropPipeSink(DropPipeSinkPlan plan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return syncManager.dropPipeSink(plan);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) {
+    TSStatus status = confirmLeader();
+    TGetPipeSinkResp resp = new TGetPipeSinkResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return syncManager.getPipeSink(req.getPipeSinkName());
+    } else {
+      return resp.setStatus(status);
     }
   }
 

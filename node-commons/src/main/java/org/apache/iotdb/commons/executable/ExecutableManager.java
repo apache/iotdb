@@ -168,9 +168,7 @@ public class ExecutableManager {
       return byteBuffer;
     } catch (Exception e) {
       LOGGER.warn(
-          "Error occurred during transferring file{} to ByteBuffer, the cause is {}",
-          filePath,
-          e.getMessage());
+          "Error occurred during transferring file{} to ByteBuffer, the cause is {}", filePath, e);
       throw e;
     }
   }
@@ -188,9 +186,7 @@ public class ExecutableManager {
       outputStream.getChannel().write(byteBuffer);
     } catch (IOException e) {
       LOGGER.warn(
-          "Error occurred during writing bytebuffer to {} , the cause is {}",
-          destination,
-          e.getMessage());
+          "Error occurred during writing bytebuffer to {} , the cause is {}", destination, e);
       throw e;
     }
   }

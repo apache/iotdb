@@ -33,10 +33,6 @@ import java.util.stream.Collectors;
 public class TriggerTable {
   private final Map<String, TriggerInformation> triggerTable;
 
-  // todo: Maintain a PatternTree: PathPattern -> List<String> triggerNames
-  // Given a PathPattern, return the triggerNames of triggers whose PathPatterns match the given
-  // one.
-
   public TriggerTable() {
     triggerTable = new ConcurrentHashMap<>();
   }
@@ -48,6 +44,15 @@ public class TriggerTable {
   public void addTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
     triggerTable.put(triggerName, triggerInformation);
   }
+
+  public TriggerInformation getTriggerInformation(String triggerName) {
+    return triggerTable.get(triggerName);
+  }
+
+  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
+    triggerTable.put(triggerName, triggerInformation);
+  }
+
   // for dropTrigger
   public void deleteTriggerInformation(String triggerName) {
     triggerTable.remove(triggerName);
@@ -59,14 +64,6 @@ public class TriggerTable {
 
   public void setTriggerState(String triggerName, TTriggerState triggerState) {
     triggerTable.get(triggerName).setTriggerState(triggerState);
-  }
-
-  public TriggerInformation getTriggerInformation(String triggerName) {
-    return triggerTable.get(triggerName);
-  }
-
-  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
-    triggerTable.put(triggerName, triggerInformation);
   }
 
   // for showTrigger

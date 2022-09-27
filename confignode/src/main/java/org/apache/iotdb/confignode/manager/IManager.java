@@ -38,6 +38,8 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchem
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -49,6 +51,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -374,4 +378,28 @@ public interface IManager {
    *
    */
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
+
+  /**
+   * Create PipeSink
+   *
+   * @param plan Info about PipeSink
+   * @return TSStatus
+   */
+  TSStatus createPipeSink(CreatePipeSinkPlan plan);
+
+  /**
+   * Drop PipeSink
+   *
+   * @param plan Name of PipeSink
+   * @return TSStatus
+   */
+  TSStatus dropPipeSink(DropPipeSinkPlan plan);
+
+  /**
+   * Get PipeSink by name. If pipeSinkName is empty, get all PipeSinks.
+   *
+   * @param req specify the pipeSinkName
+   * @return TGetPipeSinkResp contains the PipeSink
+   */
+  TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req);
 }

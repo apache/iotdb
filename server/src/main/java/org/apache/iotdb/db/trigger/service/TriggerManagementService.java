@@ -19,14 +19,9 @@
 
 package org.apache.iotdb.db.trigger.service;
 
-import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoader;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -47,7 +42,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class TriggerManagementService implements IService {
+public class TriggerManagementService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManagementService.class);
 
@@ -75,16 +70,16 @@ public class TriggerManagementService implements IService {
     lock.unlock();
   }
 
-  public void register(TriggerInformation triggerInformation) {
+  public void register(TriggerInformation triggerInformation) throws IOException {
     try {
       acquireLock();
       checkIfRegistered(triggerInformation);
       doRegister(triggerInformation);
     } catch (Exception e) {
       LOGGER.warn(
-          "Failed to register trigger({}) on data node, the cause is: {}",
+          "Failed to register trigger({}) on data node, the cause is ",
           triggerInformation.getTriggerName(),
-          e.getMessage());
+          e);
     } finally {
       releaseLock();
     }
@@ -95,10 +90,7 @@ public class TriggerManagementService implements IService {
       acquireLock();
       triggerTable.setTriggerState(triggerName, TTriggerState.ACTIVE);
     } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to active trigger({}) on data node, the cause is: {}",
-          triggerName,
-          e.getMessage());
+      LOGGER.warn("Failed to active trigger({}) on data node, the cause is ", triggerName, e);
     } finally {
       releaseLock();
     }
@@ -109,17 +101,13 @@ public class TriggerManagementService implements IService {
       acquireLock();
       triggerTable.setTriggerState(triggerName, TTriggerState.INACTIVE);
     } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to active trigger({}) on data node, the cause is: {}",
-          triggerName,
-          e.getMessage());
+      LOGGER.warn("Failed to active trigger({}) on data node, the cause is: ", triggerName, e);
     } finally {
       releaseLock();
     }
   }
 
-  private void checkIfRegistered(TriggerInformation triggerInformation)
-      throws TriggerManagementException {
+  private void checkIfRegistered(TriggerInformation triggerInformation) throws IOException {
     String triggerName = triggerInformation.getTriggerName();
     if (triggerTable.containsTrigger(triggerName)) {
       String jarName = triggerInformation.getJarName();
@@ -158,7 +146,7 @@ public class TriggerManagementService implements IService {
                     "Failed to registered trigger %s, "
                         + "because error occurred when trying to compute md5 of jar file for trigger %s ",
                     triggerName, triggerName);
-            LOGGER.warn(errorMessage);
+            LOGGER.warn(errorMessage, e);
             throw new TriggerManagementException(errorMessage);
           }
         }
@@ -177,7 +165,7 @@ public class TriggerManagementService implements IService {
     }
   }
 
-  private void doRegister(TriggerInformation triggerInformation) {
+  private void doRegister(TriggerInformation triggerInformation) throws IOException {
     try (TriggerClassLoader currentActiveClassLoader =
         TriggerClassLoaderManager.getInstance().updateAndGetActiveClassLoader()) {
       String triggerName = triggerInformation.getTriggerName();
@@ -196,11 +184,9 @@ public class TriggerManagementService implements IService {
       String errorMessage =
           String.format(
               "Failed to register trigger %s with className: %s. The cause is: %s",
-              triggerInformation.getTriggerName(),
-              triggerInformation.getClassName(),
-              e.getMessage());
+              triggerInformation.getTriggerName(), triggerInformation.getClassName(), e);
       LOGGER.warn(errorMessage);
-      throw new TriggerManagementException(errorMessage);
+      throw e;
     }
   }
 
@@ -219,34 +205,14 @@ public class TriggerManagementService implements IService {
               "Failed to reflect trigger instance with className(%s), because %s", className, e));
     }
   }
-
-  @Override
-  public void start() throws StartupException {}
-
-  @Override
-  public void stop() {
-    // nothing to do
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.TRIGGER_REGISTRATION_SERVICE;
-  }
-
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder
   /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  private static TriggerManagementService INSTANCE = null;
-
-  public static synchronized TriggerManagementService setupAndGetInstance() {
-    if (INSTANCE == null) {
-      INSTANCE = new TriggerManagementService();
-    }
-    return INSTANCE;
+  public static TriggerManagementService getInstance() {
+    return TriggerManagementServiceHolder.INSTANCE;
   }
 
-  public static TriggerManagementService getInstance() {
-    return INSTANCE;
+  private static class TriggerManagementServiceHolder {
+    private static final TriggerManagementService INSTANCE = new TriggerManagementService();
   }
 }

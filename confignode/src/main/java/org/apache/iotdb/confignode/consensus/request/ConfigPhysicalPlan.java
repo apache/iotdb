@@ -55,6 +55,9 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchem
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
@@ -254,6 +257,15 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case UpdateRegionLocation:
           req = new UpdateRegionLocationPlan();
+          break;
+        case CreatePipeSink:
+          req = new CreatePipeSinkPlan();
+          break;
+        case DropPipeSink:
+          req = new DropPipeSinkPlan();
+          break;
+        case GetPipeSink:
+          req = new GetPipeSinkPlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);
