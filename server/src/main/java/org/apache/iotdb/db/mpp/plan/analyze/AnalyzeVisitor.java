@@ -249,7 +249,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeSource(analysis, queryStatement);
       }
 
-      analyzeWindowFunction(analysis, queryStatement);
+      analyzeGroupBy(analysis, queryStatement);
 
       analyzeFill(analysis, queryStatement);
 
@@ -917,7 +917,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     ExpressionTypeAnalyzer.analyzeExpression(analysis, expression);
   }
 
-  private void analyzeWindowFunction(Analysis analysis, QueryStatement queryStatement) {
+  private void analyzeGroupBy(Analysis analysis, QueryStatement queryStatement) {
     if (!queryStatement.isGroupByTime()) {
       return;
     }
