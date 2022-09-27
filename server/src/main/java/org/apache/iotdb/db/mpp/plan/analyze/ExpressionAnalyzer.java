@@ -1156,6 +1156,9 @@ public class ExpressionAnalyzer {
       PartialPath measurement = new PartialPath(rawPath.getMeasurement(), false);
       MeasurementPath measurementWithSchema =
           new MeasurementPath(measurement, rawPath.getMeasurementSchema());
+      if (rawPath.isMeasurementAliasExists()) {
+        measurementWithSchema.setMeasurementAlias(rawPath.getMeasurementAlias());
+      }
       return new TimeSeriesOperand(measurementWithSchema);
     } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
       return expression;

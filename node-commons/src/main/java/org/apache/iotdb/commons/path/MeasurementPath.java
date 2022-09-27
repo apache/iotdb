@@ -122,6 +122,9 @@ public class MeasurementPath extends PartialPath {
 
   @Override
   public String getFullPathWithAlias() {
+    if (getDevice().isEmpty()) {
+      return measurementAlias;
+    }
     return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
   }
 

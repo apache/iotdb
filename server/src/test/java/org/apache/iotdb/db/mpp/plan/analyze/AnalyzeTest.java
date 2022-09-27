@@ -43,9 +43,9 @@ import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.ratis.thirdparty.com.google.common.collect.Sets;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
@@ -193,10 +193,9 @@ public class AnalyzeTest {
   }
 
   @Test
-  @Ignore
   public void testRawDataQueryAlignByDevice() {
     String sql =
-        "select s1, status, s2 + 1 from root.sg1.* where time > 100 and s2 > 10 align by device;";
+        "select s1, status, s2 + 1 from root.sg.* where time > 100 and s2 > 10 align by device;";
     try {
       Analysis actualAnalysis = analyzeSQL(sql);
 
@@ -204,35 +203,268 @@ public class AnalyzeTest {
       expectedAnalysis.setGlobalTimeFilter(TimeFilter.gt(100));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
-              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
-              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+              new TimeSeriesOperand(new PartialPath("s1")),
+              new TimeSeriesOperand(new PartialPath("s2")),
               new AdditionExpression(
-                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new TimeSeriesOperand(new PartialPath("s2")),
                   new ConstantOperand(TSDataType.INT64, "1"))));
-      expectedAnalysis.setWhereExpression(
-          new GreaterThanExpression(
-              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
-              new ConstantOperand(TSDataType.INT64, "10")));
-      expectedAnalysis.setSourceTransformExpressions(
+      expectedAnalysis.setDeviceToSelectExpressions(
+          ImmutableMap.of(
+              "root.sg.d1",
+              Sets.newHashSet(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                  new AdditionExpression(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                      new ConstantOperand(TSDataType.INT64, "1"))),
+              "root.sg.d2",
+              Sets.newHashSet(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
+                  new AdditionExpression(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
+                      new ConstantOperand(TSDataType.INT64, "1")))));
+      expectedAnalysis.setDeviceToWhereExpression(
+          ImmutableMap.of(
+              "root.sg.d1",
+              new GreaterThanExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                  new ConstantOperand(TSDataType.INT64, "10")),
+              "root.sg.d2",
+              new GreaterThanExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
+                  new ConstantOperand(TSDataType.INT64, "10"))));
+      expectedAnalysis.setDeviceToAggregationExpressions(ImmutableMap.of());
+      expectedAnalysis.setDeviceToSourceTransformExpressions(
+          ImmutableMap.of(
+              "root.sg.d1",
+              Sets.newHashSet(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                  new AdditionExpression(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                      new ConstantOperand(TSDataType.INT64, "1"))),
+              "root.sg.d2",
+              Sets.newHashSet(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
+                  new AdditionExpression(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
+                      new ConstantOperand(TSDataType.INT64, "1")))));
+      expectedAnalysis.setDeviceToSourceExpressions(
+          ImmutableMap.of(
+              "root.sg.d1",
+              Sets.newHashSet(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))),
+              "root.sg.d2",
+              Sets.newHashSet(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")))));
+      expectedAnalysis.setDeviceViewInputIndexesMap(
+          ImmutableMap.of(
+              "root.sg.d1", Arrays.asList(1, 2, 3), "root.sg.d2", Arrays.asList(1, 2, 3)));
+      expectedAnalysis.setDeviceViewOutputExpressions(
           Sets.newHashSet(
-              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
-              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+              new TimeSeriesOperand(new PartialPath("s1")),
+              new TimeSeriesOperand(new PartialPath("s2")),
               new AdditionExpression(
-                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new TimeSeriesOperand(new PartialPath("s2")),
                   new ConstantOperand(TSDataType.INT64, "1"))));
-      expectedAnalysis.setSourceExpressions(
-          Sets.newHashSet(
-              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
-              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))));
       expectedAnalysis.setRespDatasetHeader(
           new DatasetHeader(
               Arrays.asList(
-                  new ColumnHeader("root.sg.d1.s1", TSDataType.INT32),
-                  new ColumnHeader("root.sg.d1.s2", TSDataType.DOUBLE, "root.sg.d1.status"),
-                  new ColumnHeader("root.sg.d1.s1 + 1", TSDataType.DOUBLE, "t")),
+                  new ColumnHeader("Device", TSDataType.TEXT),
+                  new ColumnHeader("s1", TSDataType.INT32),
+                  new ColumnHeader("s2", TSDataType.DOUBLE, "status"),
+                  new ColumnHeader("s2 + 1", TSDataType.DOUBLE)),
               false));
 
-      alignByTimeAnalysisEqualTest(actualAnalysis, expectedAnalysis);
+      alignByDeviceAnalysisEqualTest(actualAnalysis, expectedAnalysis);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testAggregationQueryAlignByDevice() {
+    String sql =
+        "select count(s1 + 1) + 1 from root.sg.* where time > 100 and s2 > 10 "
+            + "group by ([0, 1000), 10ms) having sum(s2 + 1) + count(s1) > 100 align by device;";
+
+    try {
+      Analysis actualAnalysis = analyzeSQL(sql);
+
+      Analysis expectedAnalysis = new Analysis();
+      expectedAnalysis.setGlobalTimeFilter(
+          new AndFilter(TimeFilter.gt(100), new GroupByFilter(10, 10, 0, 1000)));
+      expectedAnalysis.setSelectExpressions(
+          Sets.newHashSet(
+              new AdditionExpression(
+                  new FunctionExpression(
+                      "count",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(
+                          new AdditionExpression(
+                              new TimeSeriesOperand(new PartialPath("s1")),
+                              new ConstantOperand(TSDataType.INT64, "1")))),
+                  new ConstantOperand(TSDataType.INT64, "1"))));
+      expectedAnalysis.setHavingExpression(
+          new GreaterThanExpression(
+              new AdditionExpression(
+                  new FunctionExpression(
+                      "sum",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(
+                          new AdditionExpression(
+                              new TimeSeriesOperand(new PartialPath("s2")),
+                              new ConstantOperand(TSDataType.INT64, "1")))),
+                  new FunctionExpression(
+                      "count",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(new TimeSeriesOperand(new PartialPath("s1"))))),
+              new ConstantOperand(TSDataType.INT64, "100")));
+      expectedAnalysis.setDeviceToSelectExpressions(
+          ImmutableMap.of(
+              "root.sg.d1",
+              Sets.newHashSet(
+                  new AdditionExpression(
+                      new FunctionExpression(
+                          "count",
+                          new LinkedHashMap<>(),
+                          Collections.singletonList(
+                              new AdditionExpression(
+                                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                                  new ConstantOperand(TSDataType.INT64, "1")))),
+                      new ConstantOperand(TSDataType.INT64, "1"))),
+              "root.sg.d2",
+              Sets.newHashSet(
+                  new AdditionExpression(
+                      new FunctionExpression(
+                          "count",
+                          new LinkedHashMap<>(),
+                          Collections.singletonList(
+                              new AdditionExpression(
+                                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
+                                  new ConstantOperand(TSDataType.INT64, "1")))),
+                      new ConstantOperand(TSDataType.INT64, "1")))));
+      expectedAnalysis.setDeviceToWhereExpression(
+          ImmutableMap.of(
+              "root.sg.d1",
+              new GreaterThanExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                  new ConstantOperand(TSDataType.INT64, "10")),
+              "root.sg.d2",
+              new GreaterThanExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
+                  new ConstantOperand(TSDataType.INT64, "10"))));
+      expectedAnalysis.setDeviceToAggregationExpressions(
+          ImmutableMap.of(
+              "root.sg.d1",
+              Sets.newHashSet(
+                  new FunctionExpression(
+                      "count",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(
+                          new AdditionExpression(
+                              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                              new ConstantOperand(TSDataType.INT64, "1")))),
+                  new FunctionExpression(
+                      "sum",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(
+                          new AdditionExpression(
+                              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                              new ConstantOperand(TSDataType.INT64, "1")))),
+                  new FunctionExpression(
+                      "count",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(
+                          new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
+              "root.sg.d2",
+              Sets.newHashSet(
+                  new FunctionExpression(
+                      "count",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(
+                          new AdditionExpression(
+                              new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
+                              new ConstantOperand(TSDataType.INT64, "1")))),
+                  new FunctionExpression(
+                      "sum",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(
+                          new AdditionExpression(
+                              new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
+                              new ConstantOperand(TSDataType.INT64, "1")))),
+                  new FunctionExpression(
+                      "count",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(
+                          new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")))))));
+      expectedAnalysis.setDeviceToSourceTransformExpressions(
+          ImmutableMap.of(
+              "root.sg.d1",
+              Sets.newHashSet(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new AdditionExpression(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                      new ConstantOperand(TSDataType.INT64, "1")),
+                  new AdditionExpression(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                      new ConstantOperand(TSDataType.INT64, "1"))),
+              "root.sg.d2",
+              Sets.newHashSet(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
+                  new AdditionExpression(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
+                      new ConstantOperand(TSDataType.INT64, "1")),
+                  new AdditionExpression(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
+                      new ConstantOperand(TSDataType.INT64, "1")))));
+      expectedAnalysis.setDeviceToSourceExpressions(
+          ImmutableMap.of(
+              "root.sg.d1",
+              Sets.newHashSet(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))),
+              "root.sg.d2",
+              Sets.newHashSet(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")))));
+      expectedAnalysis.setDeviceViewOutputExpressions(
+          Sets.newHashSet(
+              new FunctionExpression(
+                  "sum",
+                  new LinkedHashMap<>(),
+                  Collections.singletonList(
+                      new AdditionExpression(
+                          new TimeSeriesOperand(new PartialPath("s2")),
+                          new ConstantOperand(TSDataType.INT64, "1")))),
+              new FunctionExpression(
+                  "count",
+                  new LinkedHashMap<>(),
+                  Collections.singletonList(new TimeSeriesOperand(new PartialPath("s1")))),
+              new FunctionExpression(
+                  "count",
+                  new LinkedHashMap<>(),
+                  Collections.singletonList(
+                      new AdditionExpression(
+                          new TimeSeriesOperand(new PartialPath("s1")),
+                          new ConstantOperand(TSDataType.INT64, "1"))))));
+      expectedAnalysis.setDeviceViewInputIndexesMap(
+          ImmutableMap.of(
+              "root.sg.d1", Arrays.asList(2, 3, 1), "root.sg.d2", Arrays.asList(2, 3, 1)));
+
+      expectedAnalysis.setRespDatasetHeader(
+          new DatasetHeader(
+              Arrays.asList(
+                  new ColumnHeader("Device", TSDataType.TEXT),
+                  new ColumnHeader("count(s1 + 1) + 1", TSDataType.DOUBLE)),
+              false));
+
+      alignByDeviceAnalysisEqualTest(actualAnalysis, expectedAnalysis);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -346,40 +578,40 @@ public class AnalyzeTest {
   }
 
   private void alignByTimeAnalysisEqualTest(Analysis actualAnalysis, Analysis expectedAnalysis) {
-    commonAnalysisEqualTest(actualAnalysis, expectedAnalysis);
-    assertEquals(actualAnalysis.getSourceExpressions(), expectedAnalysis.getSourceExpressions());
+    commonAnalysisEqualTest(expectedAnalysis, actualAnalysis);
+    assertEquals(expectedAnalysis.getSourceExpressions(), actualAnalysis.getSourceExpressions());
     assertEquals(
-        actualAnalysis.getSourceTransformExpressions(),
-        expectedAnalysis.getSourceTransformExpressions());
-    assertEquals(actualAnalysis.getWhereExpression(), expectedAnalysis.getWhereExpression());
+        expectedAnalysis.getSourceTransformExpressions(),
+        actualAnalysis.getSourceTransformExpressions());
+    assertEquals(expectedAnalysis.getWhereExpression(), actualAnalysis.getWhereExpression());
     assertEquals(
-        actualAnalysis.getAggregationExpressions(), expectedAnalysis.getAggregationExpressions());
+        expectedAnalysis.getAggregationExpressions(), actualAnalysis.getAggregationExpressions());
     assertEquals(
-        actualAnalysis.getGroupByLevelExpressions(), expectedAnalysis.getGroupByLevelExpressions());
+        expectedAnalysis.getGroupByLevelExpressions(), actualAnalysis.getGroupByLevelExpressions());
   }
 
   private void alignByDeviceAnalysisEqualTest(Analysis actualAnalysis, Analysis expectedAnalysis) {
-    commonAnalysisEqualTest(actualAnalysis, expectedAnalysis);
+    commonAnalysisEqualTest(expectedAnalysis, actualAnalysis);
     assertEquals(
-        actualAnalysis.getDeviceToSourceExpressions(),
-        expectedAnalysis.getDeviceToSourceExpressions());
+        expectedAnalysis.getDeviceToSourceExpressions(),
+        actualAnalysis.getDeviceToSourceExpressions());
     assertEquals(
-        actualAnalysis.getDeviceToSourceTransformExpressions(),
-        expectedAnalysis.getDeviceToSourceTransformExpressions());
+        expectedAnalysis.getDeviceToSourceTransformExpressions(),
+        actualAnalysis.getDeviceToSourceTransformExpressions());
     assertEquals(
-        actualAnalysis.getDeviceToWhereExpression(), expectedAnalysis.getDeviceToWhereExpression());
+        expectedAnalysis.getDeviceToWhereExpression(), actualAnalysis.getDeviceToWhereExpression());
     assertEquals(
-        actualAnalysis.getDeviceToAggregationExpressions(),
-        expectedAnalysis.getDeviceToWhereExpression());
+        expectedAnalysis.getDeviceToAggregationExpressions(),
+        actualAnalysis.getDeviceToAggregationExpressions());
     assertEquals(
-        actualAnalysis.getDeviceToSelectExpressions(),
-        expectedAnalysis.getDeviceToSelectExpressions());
+        expectedAnalysis.getDeviceToSelectExpressions(),
+        actualAnalysis.getDeviceToSelectExpressions());
     assertEquals(
-        actualAnalysis.getDeviceViewInputIndexesMap(),
-        expectedAnalysis.getDeviceViewInputIndexesMap());
-    assertEquals(
-        actualAnalysis.getDeviceViewOutputExpressions(),
+        expectedAnalysis.getDeviceViewOutputExpressions(),
         actualAnalysis.getDeviceViewOutputExpressions());
+    assertEquals(
+        expectedAnalysis.getDeviceViewInputIndexesMap(),
+        actualAnalysis.getDeviceViewInputIndexesMap());
   }
 
   private void commonAnalysisEqualTest(Analysis actualAnalysis, Analysis expectedAnalysis) {

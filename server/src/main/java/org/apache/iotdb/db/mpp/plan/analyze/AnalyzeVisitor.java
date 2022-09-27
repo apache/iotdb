@@ -550,7 +550,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           aggregationExpressions.add(aggregationExpression);
         }
         deviceToAggregationExpressions
-            .computeIfAbsent(device.getDevice(), key -> new LinkedHashSet<>())
+            .computeIfAbsent(device.getFullPath(), key -> new LinkedHashSet<>())
             .addAll(aggregationExpressions);
       }
     }
@@ -848,10 +848,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             .collect(Collectors.toCollection(LinkedHashSet::new));
     analysis.setSelectExpressions(selectExpressions);
 
-    Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>(selectExpressions);
-    if (queryStatement.hasHaving()) {
-      deviceViewOutputExpressions.addAll(
-          ExpressionAnalyzer.searchAggregationExpressions(analysis.getHavingExpression()));
+    Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>();
+    if (queryStatement.isAggregationQuery()) {
+      for (Expression selectExpression : selectExpressions) {
+        deviceViewOutputExpressions.addAll(
+            ExpressionAnalyzer.searchAggregationExpressions(selectExpression));
+      }
+      if (queryStatement.hasHaving()) {
+        deviceViewOutputExpressions.addAll(
+            ExpressionAnalyzer.searchAggregationExpressions(analysis.getHavingExpression()));
+      }
+    } else {
+      deviceViewOutputExpressions = selectExpressions;
     }
     analysis.setDeviceViewOutputExpressions(deviceViewOutputExpressions);
 
@@ -879,7 +887,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<String> outputsUnderDevice = new ArrayList<>(deviceToOutputColumnsMap.get(deviceName));
       List<Integer> indexes = new ArrayList<>();
       for (String output : outputsUnderDevice) {
-        indexes.add(deviceViewOutputColumns.indexOf(output) + 1); // add 1 to skip device column
+        int index = deviceViewOutputColumns.indexOf(output) + 1;
+        checkState(
+            index != 0, "output column '%s' is not stored in %s", output, deviceViewOutputColumns);
+        indexes.add(index); // add 1 to skip device column
       }
       deviceViewInputIndexesMap.put(deviceName, indexes);
     }
