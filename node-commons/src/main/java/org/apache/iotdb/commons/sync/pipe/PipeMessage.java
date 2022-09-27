@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,28 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.path;
+package org.apache.iotdb.commons.sync.pipe;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.tsfile.read.common.Path;
+public class PipeMessage {
+  private final String message;
+  private final PipeMessageType type;
 
-import java.nio.ByteBuffer;
+  public PipeMessage(PipeMessageType type, String message) {
+    this.type = type;
+    this.message = message;
+  }
 
-public class PathDeserializeUtil {
+  public String getMessage() {
+    return message;
+  }
 
-  public static Path deserialize(ByteBuffer buffer) {
-    byte pathType = buffer.get();
-    switch (pathType) {
-      case 0:
-        return MeasurementPath.deserialize(buffer);
-      case 1:
-        return AlignedPath.deserialize(buffer);
-      case 2:
-        return PartialPath.deserialize(buffer);
-      case 3:
-        return Path.deserialize(buffer);
-      default:
-        throw new IllegalArgumentException("Invalid path type: " + pathType);
+  public PipeMessageType getType() {
+    return type;
+  }
+
+  @Override
+  public String toString() {
+    return "PipeMessage{" + "message='" + message + '\'' + ", type=" + type + '}';
+  }
+
+  public enum PipeMessageType {
+    NORMAL(1),
+    WARN(2),
+    ERROR(3);
+
+    private int value;
+
+    PipeMessageType(int value) {
+      this.value = value;
+    }
+
+    public int getValue() {
+      return value;
     }
   }
 }

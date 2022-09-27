@@ -17,13 +17,15 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.sync.sender.pipe;
+package org.apache.iotdb.commons.sync.pipesink;
 
-import org.apache.iotdb.commons.sync.SyncConstant;
-import org.apache.iotdb.db.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,6 +36,9 @@ public class IoTDBPipeSink implements PipeSink {
   private String name;
   private String ip;
   private int port;
+
+  private static final String ATTRIBUTE_IP_KEY = "ip";
+  private static final String ATTRIBUTE_PORT_KEY = "port";
 
   public IoTDBPipeSink(String name) {
     ip = SyncConstant.DEFAULT_PIPE_SINK_IP;
@@ -49,9 +54,9 @@ public class IoTDBPipeSink implements PipeSink {
       String value = pair.right;
 
       attr = attr.toLowerCase();
-      if (attr.equals("ip")) {
+      if (attr.equals(ATTRIBUTE_IP_KEY)) {
         ip = value;
-      } else if (attr.equals("port")) {
+      } else if (attr.equals(ATTRIBUTE_PORT_KEY)) {
         try {
           port = Integer.parseInt(value);
         } catch (NumberFormatException e) {
@@ -71,9 +76,9 @@ public class IoTDBPipeSink implements PipeSink {
       String value = entry.getValue();
 
       attr = attr.toLowerCase();
-      if (attr.equals("ip")) {
+      if (attr.equals(ATTRIBUTE_IP_KEY)) {
         ip = value;
-      } else if (attr.equals("port")) {
+      } else if (attr.equals(ATTRIBUTE_PORT_KEY)) {
         try {
           port = Integer.parseInt(value);
         } catch (NumberFormatException e) {
@@ -106,7 +111,15 @@ public class IoTDBPipeSink implements PipeSink {
 
   @Override
   public String showAllAttributes() {
-    return String.format("ip='%s',port=%d", ip, port);
+    return String.format("%s='%s',%s=%d", ATTRIBUTE_IP_KEY, ip, ATTRIBUTE_PORT_KEY, port);
+  }
+
+  @Override
+  public TPipeSinkInfo getTPipeSinkInfo() {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put(ATTRIBUTE_IP_KEY, ip);
+    attributes.put(ATTRIBUTE_PORT_KEY, String.valueOf(port));
+    return new TPipeSinkInfo(this.name, this.pipeSinkType.name()).setAttributes(attributes);
   }
 
   @Override

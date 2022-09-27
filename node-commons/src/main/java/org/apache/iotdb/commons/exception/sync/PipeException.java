@@ -15,20 +15,22 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.db.metadata.path;
+package org.apache.iotdb.commons.exception.sync;
 
-import org.apache.iotdb.commons.path.PathPatternNode.StringSerializer;
-import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.HashSet;
+public class PipeException extends IoTDBException {
 
-public class PatternTreeMapFactory {
-  public static PatternTreeMap<String, StringSerializer> getTriggerPatternTreeMap() {
-    return new PatternTreeMap<>(
-        HashSet::new,
-        (triggerName, set) -> set.add(triggerName),
-        (triggerName, set) -> set.remove(triggerName),
-        StringSerializer.getInstance());
+  private static final long serialVersionUID = -7312720445194413492L;
+
+  public PipeException(String message, int errorCode) {
+    super(message, errorCode);
+  }
+
+  public PipeException(String message) {
+    super(message, TSStatusCode.PIPE_ERROR.getStatusCode());
   }
 }

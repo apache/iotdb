@@ -147,7 +147,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
       throw new BadNodeUrlException("build DataNode location is empty");
     }
     logger.info(
-        "there has data nodes location will be removed. size is: {}, detail: {}",
+        "There has data nodes location will be removed. size is: {}, detail: {}",
         dataNodeLocations.size(),
         dataNodeLocations);
     TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(dataNodeLocations);

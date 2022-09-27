@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.sync;
+package org.apache.iotdb.commons.exception.sync;
 
 public class PipeDataLoadException extends PipeServerException {
   public PipeDataLoadException(String message) {
