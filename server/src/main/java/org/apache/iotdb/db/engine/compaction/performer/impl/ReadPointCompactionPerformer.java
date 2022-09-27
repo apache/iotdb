@@ -59,6 +59,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -190,22 +191,30 @@ public class ReadPointCompactionPerformer
       throws IOException, InterruptedException, IllegalPathException, ExecutionException {
     MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
         deviceIterator.iterateNotAlignedSeries(device, false);
-    List<String> allMeasurements =
-        new ArrayList<>(deviceIterator.getAllSchemasOfCurrentDevice().keySet());
+    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+    List<String> allMeasurements = new ArrayList<>(schemaMap.keySet());
     allMeasurements.sort((String::compareTo));
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
-    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
     // construct sub tasks and start compacting measurements in parallel
-    compactionWriter.startChunkGroup(device, false);
-    for (int taskCount = 0; taskCount < allMeasurements.size(); ) {
+    if (subTaskNums > 0) {
+      // assign the measurements for each subtask
+      List<String>[] measurementListArray = new List[subTaskNums];
+      for (int i = 0; i < allMeasurements.size(); ++i) {
+        if (measurementListArray[i % subTaskNums] == null) {
+          measurementListArray[i % subTaskNums] = new LinkedList<>();
+        }
+        measurementListArray[i % subTaskNums].add(allMeasurements.get(i));
+      }
+
+      compactionWriter.startChunkGroup(device, false);
       List<Future<Void>> futures = new ArrayList<>();
-      for (int i = 0; i < subTaskNums && taskCount < allMeasurements.size(); i++) {
+      for (int i = 0; i < subTaskNums; ++i) {
         futures.add(
             CompactionTaskManager.getInstance()
                 .submitSubTask(
                     new ReadPointPerformerSubTask(
                         device,
-                        Collections.singletonList(allMeasurements.get(taskCount++)),
+                        measurementListArray[i],
                         fragmentInstanceContext,
                         queryDataSource,
                         compactionWriter,
@@ -215,11 +224,9 @@ public class ReadPointCompactionPerformer
       for (Future<Void> future : futures) {
         future.get();
       }
-      // sync all the subtask, and check the writer chunk metadata size
       compactionWriter.checkAndMayFlushChunkMetadata();
+      compactionWriter.endChunkGroup();
     }
-
-    compactionWriter.endChunkGroup();
   }
 
   private static void updateDeviceStartTimeAndEndTime(
