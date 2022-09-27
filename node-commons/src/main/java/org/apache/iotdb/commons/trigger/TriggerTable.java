@@ -30,10 +30,6 @@ import java.util.Map;
 public class TriggerTable {
   private final Map<String, TriggerInformation> triggerTable;
 
-  // todo: Maintain a PatternTree: PathPattern -> List<String> triggerNames
-  // Given a PathPattern, return the triggerNames of triggers whose PathPatterns match the given
-  // one.
-
   public TriggerTable() {
     triggerTable = new HashMap<>();
   }
@@ -45,6 +41,19 @@ public class TriggerTable {
   public void addTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
     triggerTable.put(triggerName, triggerInformation);
   }
+
+  public TriggerInformation getTriggerInformation(String triggerName) {
+    return triggerTable.get(triggerName);
+  }
+
+  public TriggerInformation removeTriggerInformation(String triggerName) {
+    return triggerTable.remove(triggerName);
+  }
+
+  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
+    triggerTable.put(triggerName, triggerInformation);
+  }
+
   // for dropTrigger
   public void deleteTriggerInformation(String triggerName) {
     triggerTable.remove(triggerName);
@@ -54,16 +63,8 @@ public class TriggerTable {
     return triggerTable.containsKey(triggerName);
   }
 
-  public void activeTrigger(String triggerName) {
-    triggerTable.get(triggerName).setTriggerState(TTriggerState.ACTIVE);
-  }
-
-  public TriggerInformation getTriggerInformation(String triggerName) {
-    return triggerTable.get(triggerName);
-  }
-
-  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
-    triggerTable.put(triggerName, triggerInformation);
+  public void setTriggerState(String triggerName, TTriggerState triggerState) {
+    triggerTable.get(triggerName).setTriggerState(triggerState);
   }
 
   // for showTrigger

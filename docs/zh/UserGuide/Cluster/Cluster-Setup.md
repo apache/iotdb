@@ -236,12 +236,12 @@ datanode\sbin\remove-datanode.bat <rpc_address_0>:<rpc_port_0>,...,<rpc_address_
 指令，结果如下所示：
 ```
 IoTDB> show cluster
-+------+----------+-------+---------+-----+
-|NodeID|  NodeType| Status|     Host| Port|
-+------+----------+-------+---------+-----+
-|     0|ConfigNode|Running|  0.0.0.0|22277|
-|     1|  DataNode|Running|127.0.0.1| 9003|
-+------+----------+-------+---------+-----+
++------+----------+-------+---------+------------+
+|NodeID|  NodeType| Status|     Host|InternalPort|
++------+----------+-------+---------+------------+
+|     0|ConfigNode|Running|  0.0.0.0|       22277|
+|     1|  DataNode|Running|127.0.0.1|        9003|
++------+----------+-------+---------+------------+
 Total line number = 2
 It costs 0.160s
 ```
@@ -316,16 +316,16 @@ It costs 0.160s
 在 Cli 执行 show cluster，结果如下：
 ```
 IoTDB> show cluster
-+------+----------+-------+---------+-----+
-|NodeID|  NodeType| Status|     Host| Port|
-+------+----------+-------+---------+-----+
-|     0|ConfigNode|Running|  0.0.0.0|22277|
-|     2|ConfigNode|Running|  0.0.0.0|22279|
-|     3|ConfigNode|Running|  0.0.0.0|22281|
-|     1|  DataNode|Running|127.0.0.1| 9003|
-|     4|  DataNode|Running|127.0.0.1| 9004|
-|     5|  DataNode|Running|127.0.0.1| 9005|
-+------+----------+-------+---------+-----+
++------+----------+-------+---------+------------+
+|NodeID|  NodeType| Status|     Host|InternalPort|
++------+----------+-------+---------+------------+
+|     0|ConfigNode|Running|  0.0.0.0|       22277|
+|     2|ConfigNode|Running|  0.0.0.0|       22279|
+|     3|ConfigNode|Running|  0.0.0.0|       22281|
+|     1|  DataNode|Running|127.0.0.1|        9003|
+|     4|  DataNode|Running|127.0.0.1|        9004|
+|     5|  DataNode|Running|127.0.0.1|        9005|
++------+----------+-------+---------+------------+
 Total line number = 6
 It costs 0.012s
 ```
@@ -347,14 +347,14 @@ It costs 0.012s
 在 Cli 执行 show cluster，结果如下：
 ```
 IoTDB> show cluster
-+------+----------+-------+---------+-----+
-|NodeID|  NodeType| Status|     Host| Port|
-+------+----------+-------+---------+-----+
-|     0|ConfigNode|Running|  0.0.0.0|22277|
-|     3|ConfigNode|Running|  0.0.0.0|22281|
-|     1|  DataNode|Running|127.0.0.1| 9003|
-|     5|  DataNode|Running|127.0.0.1| 9005|
-+------+----------+-------+---------+-----+
++------+----------+-------+---------+------------+
+|NodeID|  NodeType| Status|     Host|InternalPort|
++------+----------+-------+---------+------------+
+|     0|ConfigNode|Running|  0.0.0.0|       22277|
+|     3|ConfigNode|Running|  0.0.0.0|       22281|
+|     1|  DataNode|Running|127.0.0.1|        9003|
+|     5|  DataNode|Running|127.0.0.1|        9005|
++------+----------+-------+---------+------------+
 Total line number = 4
 It costs 0.007s
 ```

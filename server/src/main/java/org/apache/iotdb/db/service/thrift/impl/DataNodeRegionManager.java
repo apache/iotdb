@@ -128,6 +128,8 @@ public class DataNodeRegionManager {
         SchemaValidator.validate(insertNode);
       } catch (SemanticException e) {
         response.setAccepted(false);
+        response.setStatus(
+            RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getMessage()));
         response.setMessage(e.getMessage());
         return response;
       }

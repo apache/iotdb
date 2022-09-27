@@ -20,9 +20,9 @@
 package org.apache.iotdb.confignode.consensus.request.read;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

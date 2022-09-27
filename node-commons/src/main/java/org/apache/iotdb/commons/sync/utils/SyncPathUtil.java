@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.sync;
+package org.apache.iotdb.commons.sync.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;

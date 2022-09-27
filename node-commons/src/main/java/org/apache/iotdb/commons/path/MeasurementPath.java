@@ -16,12 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.path;
+package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -31,9 +29,11 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 public class MeasurementPath extends PartialPath {
 
@@ -227,5 +227,28 @@ public class MeasurementPath extends PartialPath {
   @Override
   public PartialPath transformToPartialPath() {
     return getDevicePath().concatNode(getTailNode());
+  }
+
+  /**
+   * In specific scenarios, like internal create timeseries, the message can only be passed as
+   * String format.
+   */
+  public static String transformDataToString(MeasurementPath measurementPath) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      measurementPath.serialize(dataOutputStream);
+    } catch (IOException ignored) {
+      // this exception won't happen.
+    }
+    byte[] bytes = byteArrayOutputStream.toByteArray();
+    // must use single-byte char sets
+    return new String(bytes, StandardCharsets.ISO_8859_1);
+  }
+
+  public static MeasurementPath parseDataFromString(String measurementPathData) {
+    return (MeasurementPath)
+        PathDeserializeUtil.deserialize(
+            ByteBuffer.wrap(measurementPathData.getBytes(StandardCharsets.ISO_8859_1)));
   }
 }

@@ -15,28 +15,11 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.exception.sync;
+package org.apache.iotdb.commons.sync.pipe;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
-
-public class PipeSinkException extends IoTDBException {
-
-  private static final long serialVersionUID = -2355881952697245662L;
-
-  public PipeSinkException(String message, int errorCode) {
-    super(message, errorCode);
-  }
-
-  public PipeSinkException(String message) {
-    super(message, TSStatusCode.PIPESINK_ERROR.getStatusCode());
-  }
-
-  public PipeSinkException(String attr, String value, String attrType) {
-    super(
-        String.format("%s=%s has wrong format, require for %s.", attr, value, attrType),
-        TSStatusCode.PIPESINK_ERROR.getStatusCode());
-  }
+public enum SyncOperation {
+  START_PIPE,
+  STOP_PIPE,
+  DROP_PIPE
 }
