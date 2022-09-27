@@ -38,7 +38,6 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
-import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
