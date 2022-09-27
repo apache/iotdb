@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.sync;
+package org.apache.iotdb.commons.sync.utils;
 
 import org.apache.iotdb.rpc.RpcUtils;
 

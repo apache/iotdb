@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender.pipe;
+package org.apache.iotdb.commons.sync.pipe;
 
 import java.util.Objects;
 
@@ -38,7 +38,7 @@ public class TsFilePipeInfo extends PipeInfo {
   public TsFilePipeInfo(
       String pipeName,
       String pipeSinkName,
-      Pipe.PipeStatus status,
+      PipeStatus status,
       long createTime,
       long dataStartTimestamp,
       boolean syncDelOp) {

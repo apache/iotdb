@@ -19,13 +19,13 @@
 package org.apache.iotdb.db.sync.common;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
-import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 
 import java.util.List;
 

@@ -44,12 +44,15 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
@@ -69,8 +72,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -94,7 +95,6 @@ import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.sync.SyncService;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -1323,7 +1323,7 @@ public class LocalConfigNode {
     try {
       syncService.addPipeSink(createPipeSinkStatement);
     } catch (PipeSinkException e) {
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.PIPESINK_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -1332,7 +1332,7 @@ public class LocalConfigNode {
     try {
       syncService.dropPipeSink(pipeSinkName);
     } catch (PipeSinkException e) {
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.PIPESINK_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -1350,7 +1350,7 @@ public class LocalConfigNode {
     try {
       syncService.addPipe(createPipeStatement);
     } catch (PipeException e) {
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -1359,7 +1359,7 @@ public class LocalConfigNode {
     try {
       syncService.startPipe(pipeName);
     } catch (PipeException e) {
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -1368,7 +1368,7 @@ public class LocalConfigNode {
     try {
       syncService.stopPipe(pipeName);
     } catch (PipeException e) {
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -1377,7 +1377,7 @@ public class LocalConfigNode {
     try {
       syncService.dropPipe(pipeName);
     } catch (PipeException e) {
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
