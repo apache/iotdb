@@ -522,11 +522,6 @@ public class NodeManager {
         .ifPresent(
             consensusManager -> {
               if (getConsensusManager().isLeader()) {
-                List<TConfigNodeLocation> registeredConfigNodes = getRegisteredConfigNodes();
-                List<TDataNodeConfiguration> registeredDataNodes = getRegisteredDataNodes();
-                List<TRegionReplicaSet> regionReplicaSets =
-                    getPartitionManager().getAllReplicaSets();
-
                 // Generate HeartbeatReq
                 THeartbeatReq heartbeatReq = genHeartbeatReq();
                 // Send heartbeat requests to all the registered DataNodes

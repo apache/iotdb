@@ -53,6 +53,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -65,6 +67,8 @@ import java.util.concurrent.TimeUnit;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBClusterPartitionIT {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBClusterPartitionIT.class);
 
   protected static String originalConfigNodeConsensusProtocolClass;
   protected static String originalSchemaRegionConsensusProtocolClass;
@@ -393,12 +397,15 @@ public class IoTDBClusterPartitionIT {
           constructPartitionSlotsMap(sg0, 0, seriesPartitionBatchSize, 0, timePartitionBatchSize);
       TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
       TDataPartitionTableResp dataPartitionTableResp = null;
-      for (int retry = 0; retry < 3; retry++) {
+      for (int retry = 0; retry < 5; retry++) {
         try {
           dataPartitionTableResp = client.getOrCreateDataPartitionTable(dataPartitionReq);
-          break;
-        } catch (Exception ignore) {
+          if (dataPartitionTableResp != null) {
+            break;
+          }
+        } catch (Exception e) {
           // Retry sometimes in order to avoid request timeout
+          LOGGER.error(e.getMessage());
           TimeUnit.SECONDS.sleep(1);
         }
       }
@@ -467,12 +474,15 @@ public class IoTDBClusterPartitionIT {
       partitionSlotsMap =
           constructPartitionSlotsMap(sg1, 0, seriesPartitionBatchSize, 0, timePartitionBatchSize);
       dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
-      for (int retry = 0; retry < 3; retry++) {
+      for (int retry = 0; retry < 5; retry++) {
         try {
           dataPartitionTableResp = client.getOrCreateDataPartitionTable(dataPartitionReq);
-          break;
-        } catch (Exception ignore) {
+          if (dataPartitionTableResp != null) {
+            break;
+          }
+        } catch (Exception e) {
           // Retry sometimes in order to avoid request timeout
+          LOGGER.error(e.getMessage());
           TimeUnit.SECONDS.sleep(1);
         }
       }
