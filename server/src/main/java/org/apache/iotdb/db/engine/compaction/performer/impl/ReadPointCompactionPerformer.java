@@ -41,9 +41,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -51,8 +49,6 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -221,114 +217,6 @@ public class ReadPointCompactionPerformer
     }
 
     compactionWriter.endChunkGroup();
-  }
-
-  private Map<String, MeasurementSchema> getMeasurementSchema(
-      String device, Set<String> measurements) throws IllegalPathException, IOException {
-    HashMap<String, MeasurementSchema> schemaMap = new HashMap<>();
-    List<TsFileResource> allResources = new LinkedList<>(seqFiles);
-    // sort the tsfile by version, so that we can iterate the tsfile from the newest to oldest
-    allResources.sort(
-        (o1, o2) -> {
-          try {
-            TsFileNameGenerator.TsFileName n1 =
-                TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
-            TsFileNameGenerator.TsFileName n2 =
-                TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
-            return (int) (n2.getVersion() - n1.getVersion());
-          } catch (IOException e) {
-            return 0;
-          }
-        });
-    // unseq files are followed, and encoding is read from ordered files first if possible
-    allResources.addAll(unseqFiles);
-    for (String measurement : measurements) {
-      for (TsFileResource tsFileResource : allResources) {
-        if (!tsFileResource.mayContainsDevice(device)) {
-          continue;
-        }
-        MeasurementSchema schema =
-            getMeasurementSchemaFromReader(
-                tsFileResource,
-                readerCacheMap.computeIfAbsent(
-                    tsFileResource,
-                    x -> {
-                      try {
-                        FileReaderManager.getInstance().increaseFileReaderReference(x, true);
-                        return FileReaderManager.getInstance().get(x.getTsFilePath(), true);
-                      } catch (IOException e) {
-                        throw new RuntimeException(
-                            String.format(
-                                "Failed to construct sequence reader for %s", tsFileResource));
-                      }
-                    }),
-                device,
-                measurement);
-        ;
-        if (tsFileResource.isSeq()) {
-          try {
-            // There is no measurement in the seq file. Get the schema from Mtree
-            IMeasurementSchema seriesSchema =
-                IoTDB.schemaProcessor.getSeriesSchema(new PartialPath(device, measurement));
-            if (seriesSchema != null && seriesSchema instanceof MeasurementSchema) {
-              schema = (MeasurementSchema) seriesSchema;
-            }
-          } catch (MetadataException e) {
-            // If an exception occurs, obtain it by reading a file
-            LOGGER.warn("");
-          }
-        }
-        if (schema != null) {
-          schemaMap.put(measurement, schema);
-          break;
-        }
-      }
-    }
-    return schemaMap;
-  }
-
-  private MeasurementSchema getMeasurementSchemaFromReader(
-      TsFileResource resource, TsFileSequenceReader reader, String device, String measurement)
-      throws IllegalPathException, IOException {
-    List<ChunkMetadata> chunkMetadata =
-        reader.getChunkMetadataList(new PartialPath(device, measurement), true);
-    if (chunkMetadata.size() > 0) {
-      chunkMetadata.get(0).setFilePath(resource.getTsFilePath());
-      Chunk chunk = ChunkCache.getInstance().get(chunkMetadata.get(0));
-      ChunkHeader header = chunk.getHeader();
-      return new MeasurementSchema(
-          measurement, header.getDataType(), header.getEncodingType(), header.getCompressionType());
-    }
-    return null;
-  }
-
-  private void clearReaderCache() throws IOException {
-    for (TsFileResource resource : readerCacheMap.keySet()) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(resource, true);
-    }
-  }
-
-  private static void updateDeviceStartTimeAndEndTime(
-      List<TsFileResource> targetResources, AbstractCompactionWriter compactionWriter) {
-    List<TsFileIOWriter> targetFileWriters = compactionWriter.getFileIOWriter();
-    for (int i = 0; i < targetFileWriters.size(); i++) {
-      TsFileIOWriter fileIOWriter = targetFileWriters.get(i);
-      TsFileResource fileResource = targetResources.get(i);
-      // The tmp target file may does not have any data points written due to the existence of the
-      // mods file, and it will be deleted after compaction. So skip the target file that has been
-      // deleted.
-      if (!fileResource.getTsFile().exists()) {
-        continue;
-      }
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry :
-          fileIOWriter.getDeviceTimeseriesMetadataMap().entrySet()) {
-        String device = entry.getKey();
-        for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
-          fileResource.updateStartTime(device, timeseriesMetadata.getStatistics().getStartTime());
-          fileResource.updateEndTime(device, timeseriesMetadata.getStatistics().getEndTime());
-        }
-      }
-    }
   }
 
   /**
