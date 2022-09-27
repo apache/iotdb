@@ -250,8 +250,8 @@ public class SyncMetadata implements SnapshotProcessor {
           }
         }
       }
-      return tmpFile.renameTo(snapshotFile);
     }
+    return tmpFile.renameTo(snapshotFile);
   }
 
   @Override
