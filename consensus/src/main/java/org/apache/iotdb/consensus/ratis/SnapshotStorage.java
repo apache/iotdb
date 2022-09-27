@@ -139,24 +139,30 @@ public class SnapshotStorage implements StateMachineStorage {
 
   /*
   Snapshot cache will be updated upon:
-  1. initialize, when RaftServer first starts
-  2. reinitialize, when RaftServer resumes from pause. Leader may install a new snapshot during pause.
-  3. takeSnapshot, when RaftServer takes a new snapshot
-  4. loadSnapshot, when RaftServer is asked to load a snapshot
+  1. takeSnapshot, when RaftServer takes a new snapshot
+  2. loadSnapshot, when RaftServer is asked to load a snapshot. loadSnapshot will be called when
+  (1) initialize, RaftServer first starts
+  (2) reinitialize, RaftServer resumes from pause. Leader will install a snapshot during pause.
    */
   void updateSnapshotCache() {
     snapshotCacheGuard.writeLock().lock();
-    currentSnapshot = findLatestSnapshot();
-    snapshotCacheGuard.writeLock().unlock();
+    try {
+      currentSnapshot = findLatestSnapshot();
+    } finally {
+      snapshotCacheGuard.writeLock().unlock();
+    }
   }
 
   @Override
   public SnapshotInfo getLatestSnapshot() {
     SnapshotInfo latestSnapshot;
     snapshotCacheGuard.readLock().lock();
-    latestSnapshot = currentSnapshot;
-    snapshotCacheGuard.readLock().unlock();
-    return latestSnapshot;
+    try {
+      latestSnapshot = currentSnapshot;
+      return latestSnapshot;
+    } finally {
+      snapshotCacheGuard.readLock().unlock();
+    }
   }
 
   @Override
