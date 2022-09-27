@@ -57,34 +57,12 @@ public class ExecutableManager {
     requestCounter = new AtomicLong(0);
   }
 
+  // region download related
+
   public ExecutableResource request(List<String> uris) throws URISyntaxException, IOException {
     final long requestId = generateNextRequestId();
     downloadExecutables(uris, requestId);
     return new ExecutableResource(requestId, getDirStringUnderTempRootByRequestId(requestId));
-  }
-
-  public void moveTempDirToExtLibDir(ExecutableResource resource, String name) throws IOException {
-    FileUtils.moveDirectory(
-        getDirUnderTempRootByRequestId(resource.getRequestId()), getDirUnderLibRootByName(name));
-  }
-
-  public void moveFileUnderTempRootToExtLibDir(ExecutableResource resource, String name)
-      throws IOException {
-    FileUtils.moveFileToDirectory(
-        getFileByFullPath(
-            getDirStringUnderTempRootByRequestId(resource.getRequestId()) + File.separator + name),
-        getFileByFullPath(libRoot),
-        false);
-  }
-
-  public void copyFileToExtLibDir(String filePath) throws IOException {
-    FileUtils.copyFileToDirectory(
-        FSFactoryProducer.getFSFactory().getFile(filePath),
-        FSFactoryProducer.getFSFactory().getFile(this.libRoot));
-  }
-
-  public void removeFromTemporaryLibRoot(ExecutableResource resource) {
-    removeFromTemporaryLibRoot(resource.getRequestId());
   }
 
   private synchronized long generateNextRequestId() throws IOException {
@@ -113,13 +91,72 @@ public class ExecutableManager {
     }
   }
 
+  public void moveTempDirToExtLibDir(ExecutableResource resource, String name) throws IOException {
+    FileUtils.moveDirectory(
+        getDirUnderTempRootByRequestId(resource.getRequestId()), getDirUnderLibRootByName(name));
+  }
+
+  public void moveFileUnderTempRootToExtLibDir(ExecutableResource resource, String name)
+      throws IOException {
+    FileUtils.moveFileToDirectory(
+        getFileByFullPath(
+            getDirStringUnderTempRootByRequestId(resource.getRequestId()) + File.separator + name),
+        getFileByFullPath(libRoot),
+        false);
+  }
+  // endregion
+
+  // region File under LibRoot
+  public void copyFileToExtLibDir(String filePath) throws IOException {
+    FileUtils.copyFileToDirectory(
+        FSFactoryProducer.getFSFactory().getFile(filePath),
+        FSFactoryProducer.getFSFactory().getFile(this.libRoot));
+  }
+
+  public void removeFileUnderLibRoot(String fileName) throws IOException {
+    Path path = Paths.get(this.libRoot + File.separator + fileName);
+    Files.deleteIfExists(path);
+  }
+
+  public boolean hasFileUnderLibRoot(String fileName) {
+    return Files.exists(Paths.get(this.libRoot + File.separator + fileName));
+  }
+
+  // endregion
+
+  // region File under temporaryLibRoot
+
+  public boolean hasFileUnderTemporaryRoot(String fileName) {
+    return Files.exists(Paths.get(this.temporaryLibRoot + File.separator + fileName));
+  }
+
+  public void removeFromTemporaryLibRoot(ExecutableResource resource) {
+    removeFromTemporaryLibRoot(resource.getRequestId());
+  }
+
   private void removeFromTemporaryLibRoot(long requestId) {
     FileUtils.deleteQuietly(getDirUnderTempRootByRequestId(requestId));
   }
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // dir string and dir file generation
-  /////////////////////////////////////////////////////////////////////////////////////////////////
+  public void saveTextAsFileUnderTemporaryRoot(String text, String fileName) throws IOException {
+    Path path = Paths.get(this.temporaryLibRoot + File.separator + fileName);
+    Files.deleteIfExists(path);
+    Files.write(path, text.getBytes());
+  }
+
+  public void removeFileUnderTemporaryRoot(String fileName) throws IOException {
+    Path path = Paths.get(this.temporaryLibRoot + File.separator + fileName);
+    Files.deleteIfExists(path);
+  }
+
+  public String readTextFromFileUnderTemporaryRoot(String fileName) throws IOException {
+    Path path = Paths.get(this.temporaryLibRoot + File.separator + fileName);
+    return new String(Files.readAllBytes(path));
+  }
+
+  // endregion
+
+  // region file string and file generation
 
   public File getDirUnderTempRootByRequestId(long requestId) {
     return FSFactoryProducer.getFSFactory()
@@ -150,9 +187,9 @@ public class ExecutableManager {
     return FSFactoryProducer.getFSFactory().getFile(path);
   }
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // transfer jar file to bytebuffer for thrift
-  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // endregion
+
+  // region other functions
 
   public static ByteBuffer transferToBytebuffer(String filePath) throws IOException {
     try (FileChannel fileChannel = FileChannel.open(Paths.get(filePath), StandardOpenOption.READ)) {
@@ -190,33 +227,7 @@ public class ExecutableManager {
       throw e;
     }
   }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // other functions
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * @param fileName given file name
-   * @return true if file exists under LibRoot
-   */
-  public boolean hasFileUnderLibRoot(String fileName) {
-    return Files.exists(Paths.get(this.libRoot + File.separator + fileName));
-  }
-
-  public boolean hasFileUnderTemporaryRoot(String fileName) {
-    return Files.exists(Paths.get(this.temporaryLibRoot + File.separator + fileName));
-  }
-
-  public void saveTextAsFileUnderTemporaryRoot(String text, String fileName) throws IOException {
-    Path path = Paths.get(this.temporaryLibRoot + File.separator + fileName);
-    Files.deleteIfExists(path);
-    Files.write(path, text.getBytes());
-  }
-
-  public String readTextFromFileUnderTemporaryRoot(String fileName) throws IOException {
-    Path path = Paths.get(this.temporaryLibRoot + File.separator + fileName);
-    return new String(Files.readAllBytes(path));
-  }
+  // endregion
 
   public String getTemporaryLibRoot() {
     return temporaryLibRoot;
