@@ -53,7 +53,7 @@ public class ChunkMetadata implements IChunkMetadata {
    */
   private long version;
 
-  /** A set of deleted intervals. */
+  /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;
 
   private boolean modified;
@@ -218,13 +218,15 @@ public class ChunkMetadata implements IChunkMetadata {
         deleteIntervalList.add(timeRange);
         return;
       }
-      for (TimeRange interval : deleteIntervalList) {
+      for (int i = 0; i < deleteIntervalList.size(); i++) {
+        TimeRange interval = deleteIntervalList.get(i);
         if (interval.getMax() < startTime) {
           resultInterval.add(interval);
         } else if (interval.getMin() > endTime) {
+          // remaining TimeRanges are in order, add all and break
           resultInterval.add(new TimeRange(startTime, endTime));
-          startTime = interval.getMin();
-          endTime = interval.getMax();
+          resultInterval.addAll(deleteIntervalList.subList(i, deleteIntervalList.size()));
+          break;
         } else if (interval.getMax() >= startTime || interval.getMin() <= endTime) {
           startTime = Math.min(interval.getMin(), startTime);
           endTime = Math.max(interval.getMax(), endTime);
