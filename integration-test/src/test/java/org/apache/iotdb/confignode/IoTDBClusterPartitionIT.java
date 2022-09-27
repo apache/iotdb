@@ -281,7 +281,7 @@ public class IoTDBClusterPartitionIT {
 
   @Test
   public void testGetAndCreateDataPartition() throws TException, IOException {
-    final int seriesPartitionBatchSize = 1000;
+    final int seriesPartitionBatchSize = 100;
     final int timePartitionBatchSize = 10;
 
     try (SyncConfigNodeIServiceClient client =
@@ -399,6 +399,7 @@ public class IoTDBClusterPartitionIT {
           break;
         } catch (Exception ignore) {
           // Retry sometimes in order to avoid request timeout
+          TimeUnit.SECONDS.sleep(1);
         }
       }
       Assert.assertNotNull(dataPartitionTableResp);
@@ -472,6 +473,7 @@ public class IoTDBClusterPartitionIT {
           break;
         } catch (Exception ignore) {
           // Retry sometimes in order to avoid request timeout
+          TimeUnit.SECONDS.sleep(1);
         }
       }
       Assert.assertNotNull(dataPartitionTableResp);
