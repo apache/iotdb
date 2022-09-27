@@ -84,9 +84,6 @@ public class ConsensusManager {
                 ConsensusConfig.newBuilder()
                     .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
                     .setStorageDir(CONF.getConsensusDir())
-                    .setRatisConfig(RatisConfig.newBuilder()
-                        .setSnapshot(RatisConfig.Snapshot.newBuilder().setAutoTriggerThreshold(100).build())
-                        .build())
                     .build(),
                 gid -> stateMachine)
             .orElseThrow(
