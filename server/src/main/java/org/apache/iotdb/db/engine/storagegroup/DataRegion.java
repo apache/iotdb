@@ -2332,24 +2332,32 @@ public class DataRegion {
     }
 
     for (PartialPath device : devicePaths) {
+      long deviceStartTime, deviceEndTime;
       if (device.hasWildcard()) {
-        return false;
-      }
-      String deviceId = device.getFullPath();
-      if (!tsFileResource.mayContainsDevice(deviceId)) {
-        // resource does not contain this device
-        continue;
+        Pair<Long, Long> startAndEndTime = tsFileResource.getPossibleStartTimeAndEndTime(device);
+        if (startAndEndTime == null) {
+          continue;
+        }
+        deviceStartTime = startAndEndTime.getLeft();
+        deviceEndTime = startAndEndTime.getRight();
+      } else {
+        String deviceId = device.getFullPath();
+        if (!tsFileResource.mayContainsDevice(deviceId)) {
+          // resource does not contain this device
+          continue;
+        }
+        deviceStartTime = tsFileResource.getStartTime(deviceId);
+        deviceEndTime = tsFileResource.getEndTime(deviceId);
       }
 
-      long deviceEndTime = tsFileResource.getEndTime(deviceId);
       if (!tsFileResource.isClosed() && deviceEndTime == Long.MIN_VALUE) {
         // unsealed seq file
-        if (deleteEnd >= tsFileResource.getStartTime(deviceId)) {
+        if (deleteEnd >= deviceStartTime) {
           return false;
         }
       } else {
         // sealed file or unsealed unseq file
-        if (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= deviceEndTime) {
+        if (deleteEnd >= deviceStartTime && deleteStart <= deviceEndTime) {
           // time range of device has overlap with the deletion
           return false;
         }
