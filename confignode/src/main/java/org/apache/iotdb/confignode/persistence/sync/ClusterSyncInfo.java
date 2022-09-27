@@ -110,13 +110,11 @@ public class ClusterSyncInfo implements SnapshotProcessor {
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     return syncMetadata.processTakeSnapshot(snapshotDir);
-    // TODO: add ClusterSyncInfoTest later
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     syncMetadata.processLoadSnapshot(snapshotDir);
-    // TODO: add ClusterSyncInfoTest later
   }
 
   // endregion

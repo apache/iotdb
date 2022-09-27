@@ -87,11 +87,6 @@ public class ReadWriteIOUtilsTest {
     Assert.assertNotNull(result);
     Assert.assertEquals(map, result);
 
-    Map<String, String> result2 =
-        ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-    Assert.assertNotNull(result);
-    Assert.assertEquals(map, result);
-
     // 2. key: not null; value: null
     key = "string";
     value = null;
