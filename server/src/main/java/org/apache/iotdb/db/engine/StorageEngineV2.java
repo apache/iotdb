@@ -55,6 +55,7 @@ import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.ThreadUtils;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.exception.WALException;
@@ -147,24 +148,8 @@ public class StorageEngineV2 implements IService {
 
   private static void initTimePartition() {
     timePartitionIntervalForStorage =
-        convertMilliWithPrecision(
+        TimePartitionUtils.convertMilliWithPrecision(
             IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage() * 1000L);
-  }
-
-  public static long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
   }
 
   public static long getTimePartitionIntervalForStorage() {
