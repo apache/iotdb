@@ -62,7 +62,7 @@ The term about lifetime of schema template may help you utilize it in a better w
 
 It should be complemented that the distinction between SET and ACTIVATE is meant to serve an ubiquitous scenario where massive nodes with a common ancestor may need to apply the template. Under this circumstance, it is more feasible to SET the template on the common ancestor rather than all those descendant.    For those who needs to apply the template, ACTIVATE is a more appropriate arrangement.
 
-<img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/bigreybear/iotdb-bin-resources/blob/template_exmp_fig/docs/UserGuide/Data%20Concept/Measurement%20Template/example_template_lifetime.png?raw=true" alt="example with template">
+<img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_template_lifetime.png?raw=true" alt="example with template">
 
 ## Usage
 

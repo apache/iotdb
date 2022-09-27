@@ -60,7 +60,7 @@
 
 最后需要补充的是，**对挂载模板与激活模板进行区分，是为了服务一种常见的场景**：在 Apache IoTDB 元数据模型 MTree 中，经常需要在数量众多的节点上“应用”元数据模板，而这些节点一般拥有共同的祖先节点。因此，可以在其共同祖先节点**挂载**模板，而不必对其大量的孩子节点进行挂载操作。对于需要“应用”模板的节点，则应该使用**激活模板**的操作。
 
-<img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/bigreybear/iotdb-bin-resources/blob/template_exmp_fig/docs/UserGuide/Data%20Concept/Measurement%20Template/example_template_lifetime_zh.png?raw=true" alt="example with template">
+<img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_template_lifetime_zh.png?raw=true" alt="example with template">
 
 ### 使用
 
