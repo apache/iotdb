@@ -161,6 +161,8 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.getPathsSetTemplate((GetPathsSetTemplatePlan) req);
       case GetAllTemplateSetInfo:
         return clusterSchemaInfo.getAllTemplateSetInfo();
+      case GetTriggerTable:
+        return triggerInfo.getTriggerTable();
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }

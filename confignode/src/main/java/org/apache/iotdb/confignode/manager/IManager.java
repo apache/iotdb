@@ -50,6 +50,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -288,6 +289,9 @@ public interface IManager {
 
   /** Drop trigger */
   TSStatus dropTrigger(TDropTriggerReq req);
+
+  /** Show trigger & DataNode start */
+  TGetTriggerTableResp getTriggerTable();
 
   /** Merge on all DataNodes */
   TSStatus merge();
