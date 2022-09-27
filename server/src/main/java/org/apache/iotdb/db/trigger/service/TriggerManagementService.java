@@ -122,10 +122,12 @@ public class TriggerManagementService {
       if (executor != null) {
         executor.onDrop();
       }
-      // todo: delete trigger in PatternTree when implementing trigger fire
-
+      if (triggerInformation == null) {
+        return;
+      }
+      patternTreeMap.delete(triggerInformation.getPathPattern(), triggerName);
       // if it is needed to delete jar file of the trigger, delete both jar file and md5
-      if (triggerInformation != null && needToDeleteJar) {
+      if (needToDeleteJar) {
         TriggerExecutableManager.getInstance()
             .removeFileUnderLibRoot(triggerInformation.getJarName());
         TriggerExecutableManager.getInstance().removeFileUnderTemporaryRoot(triggerName + ".txt");

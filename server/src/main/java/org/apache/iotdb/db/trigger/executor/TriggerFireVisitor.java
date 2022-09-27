@@ -25,8 +25,10 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
@@ -284,7 +286,9 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       if (measurement != null) {
         List<String> triggerList = getMatchedTriggerListForPath(device.concatNode(measurement));
         for (String trigger : triggerList) {
-          if (triggerTable.getTriggerInformation(trigger).getEvent().equals(event)) {
+          TriggerInformation triggerInformation = triggerTable.getTriggerInformation(trigger);
+          if (triggerInformation.getEvent().equals(event)
+              && triggerInformation.getTriggerState().equals(TTriggerState.ACTIVE)) {
             triggerNameToPaths.computeIfAbsent(trigger, k -> new ArrayList<>()).add(measurement);
           }
         }
