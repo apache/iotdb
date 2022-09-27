@@ -78,5 +78,8 @@ public enum ConfigPhysicalPlanType {
   GetPathsSetTemplate,
   GetAllTemplateSetInfo,
   OfferRegionMaintainTasks,
-  PollRegionMaintainTask
+  PollRegionMaintainTask,
+  CreatePipeSink,
+  DropPipeSink,
+  GetPipeSink
 }

@@ -16,26 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync;
+package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.commons.sync.pipe.PipeInfo;
-import org.apache.iotdb.commons.sync.pipe.PipeMessage;
-import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.consensus.common.DataSet;
 
-import org.junit.Assert;
+import java.util.List;
 
-public class SyncTestUtils {
-  public static void checkPipeInfo(
-      PipeInfo pipeInfo,
-      String pipeName,
-      String pipeSinkName,
-      PipeStatus status,
-      long createTime,
-      PipeMessage.PipeMessageType messageType) {
-    Assert.assertEquals(pipeName, pipeInfo.getPipeName());
-    Assert.assertEquals(pipeSinkName, pipeInfo.getPipeSinkName());
-    Assert.assertEquals(status, pipeInfo.getStatus());
-    Assert.assertEquals(createTime, pipeInfo.getCreateTime());
-    Assert.assertEquals(messageType, pipeInfo.getMessageType());
+public class PipeSinkResp implements DataSet {
+
+  TSStatus status;
+  List<PipeSink> pipeSinkList;
+
+  public TSStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(TSStatus status) {
+    this.status = status;
+  }
+
+  public List<PipeSink> getPipeSinkList() {
+    return pipeSinkList;
+  }
+
+  public void setPipeSinkList(List<PipeSink> pipeSinkList) {
+    this.pipeSinkList = pipeSinkList;
   }
 }

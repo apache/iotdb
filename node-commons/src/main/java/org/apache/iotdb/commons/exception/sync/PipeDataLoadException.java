@@ -16,26 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync;
+package org.apache.iotdb.commons.exception.sync;
 
-import org.apache.iotdb.commons.sync.pipe.PipeInfo;
-import org.apache.iotdb.commons.sync.pipe.PipeMessage;
-import org.apache.iotdb.commons.sync.pipe.PipeStatus;
-
-import org.junit.Assert;
-
-public class SyncTestUtils {
-  public static void checkPipeInfo(
-      PipeInfo pipeInfo,
-      String pipeName,
-      String pipeSinkName,
-      PipeStatus status,
-      long createTime,
-      PipeMessage.PipeMessageType messageType) {
-    Assert.assertEquals(pipeName, pipeInfo.getPipeName());
-    Assert.assertEquals(pipeSinkName, pipeInfo.getPipeSinkName());
-    Assert.assertEquals(status, pipeInfo.getStatus());
-    Assert.assertEquals(createTime, pipeInfo.getCreateTime());
-    Assert.assertEquals(messageType, pipeInfo.getMessageType());
+public class PipeDataLoadException extends PipeServerException {
+  public PipeDataLoadException(String message) {
+    super(message);
   }
 }

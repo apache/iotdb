@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.sys.sync;
 
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -27,7 +30,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
+import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -53,7 +56,7 @@ public class ShowPipeSinkTask implements IConfigTask {
     return configTaskExecutor.showPipeSink(showPipeSinkStatement);
   }
 
-  public static void buildTSBlock(
+  public static void buildTSBlockByPipeSink(
       List<PipeSink> pipeSinkList, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showPipeSinkColumnHeaders.stream()
@@ -61,6 +64,26 @@ public class ShowPipeSinkTask implements IConfigTask {
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (PipeSink pipeSink : pipeSinkList) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder.getColumnBuilder(0).writeBinary(new Binary(pipeSink.getPipeSinkName()));
+      builder.getColumnBuilder(1).writeBinary(new Binary(pipeSink.getType().name()));
+      builder.getColumnBuilder(2).writeBinary(new Binary(pipeSink.showAllAttributes()));
+      builder.declarePosition();
+    }
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeSinkHeader();
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
+  }
+
+  public static void buildTSBlockByTPipeSinkInfo(
+      List<TPipeSinkInfo> pipeSinkInfoList, SettableFuture<ConfigTaskResult> future)
+      throws PipeSinkException {
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showPipeSinkColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    for (TPipeSinkInfo pipeSinkInfo : pipeSinkInfoList) {
+      PipeSink pipeSink = SyncPipeUtil.parsePipeInfoAsPipe(pipeSinkInfo);
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(pipeSink.getPipeSinkName()));
       builder.getColumnBuilder(1).writeBinary(new Binary(pipeSink.getType().name()));
