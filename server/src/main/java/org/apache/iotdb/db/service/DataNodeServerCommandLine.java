@@ -41,6 +41,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.commons.lang3.StringUtils.isNumeric;
+
 public class DataNodeServerCommandLine extends ServerCommandLine {
 
   private static final Logger logger = LoggerFactory.getLogger(DataNodeServerCommandLine.class);
@@ -160,11 +162,15 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
                 .filter(location -> endPoints.contains(location.getClientRpcEndPoint()))
                 .collect(Collectors.toList());
       } catch (TException e) {
-        logger.error("get data node locations failed", e);
+        logger.error("Get data node locations failed", e);
       }
     } catch (BadNodeUrlException e) {
       try (ConfigNodeClient client = new ConfigNodeClient()) {
         for (String id : args.split(",")) {
+          if (!isNumeric(id)) {
+            logger.warn("Incorrect id format {}, skipped...", id);
+            continue;
+          }
           List<TDataNodeLocation> NodeLocationResult =
               client.getDataNodeConfiguration(Integer.parseInt(id)).getDataNodeConfigurationMap()
                   .values().stream()
@@ -180,11 +186,8 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
         }
       } catch (TException e1) {
         logger.error("Get data node locations failed", e);
-      } catch (NumberFormatException e2) {
-        logger.info("Incorrect input format, usage: <id>/<ip>:<rpc-port>");
       }
     }
-
     return dataNodeLocations;
   }
 }
