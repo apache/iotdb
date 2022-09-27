@@ -27,6 +27,8 @@ import org.apache.iotdb.metrics.utils.ReporterType;
 
 import com.codahale.metrics.MetricRegistry;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -36,7 +38,6 @@ import reactor.netty.http.server.HttpServer;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.time.Duration;
 
 public class DropwizardPrometheusReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(DropwizardPrometheusReporter.class);
@@ -53,6 +54,7 @@ public class DropwizardPrometheusReporter implements Reporter {
     httpServer =
         HttpServer.create()
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
+            .channelGroup(new DefaultChannelGroup(GlobalEventExecutor.INSTANCE))
             .port(port)
             .route(
                 routes ->
@@ -93,7 +95,7 @@ public class DropwizardPrometheusReporter implements Reporter {
   public boolean stop() {
     if (httpServer != null) {
       try {
-        httpServer.disposeNow(Duration.ofSeconds(10));
+        httpServer.disposeNow();
         httpServer = null;
       } catch (Exception e) {
         LOGGER.error("failed to stop server", e);
