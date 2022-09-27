@@ -97,6 +97,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_DEVICE;
 
@@ -204,6 +205,7 @@ public class LogicalPlanBuilder {
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
+      Set<Expression> sourceTransformExpressions,
       Map<Expression, Set<Expression>> groupByLevelExpressions) {
     boolean needCheckAscending = groupByTimeParameter == null;
     Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
@@ -226,6 +228,7 @@ public class LogicalPlanBuilder {
             timeFilter,
             groupByTimeParameter);
     updateTypeProvider(aggregationExpressions);
+    updateTypeProvider(sourceTransformExpressions);
 
     return convergeAggregationSource(
         sourceNodeList,
@@ -236,7 +239,71 @@ public class LogicalPlanBuilder {
         groupByLevelExpressions);
   }
 
-  private void createAggregationDescriptor(
+  public LogicalPlanBuilder planAggregationSourceWithIndexAdjust(
+      AggregationStep curStep,
+      Ordering scanOrder,
+      Filter timeFilter,
+      GroupByTimeParameter groupByTimeParameter,
+      Set<Expression> aggregationExpressions,
+      Set<Expression> sourceTransformExpressions,
+      Map<Expression, Set<Expression>> groupByLevelExpressions,
+      List<Integer> deviceViewInputIndexes) {
+    checkArgument(
+        aggregationExpressions.size() == deviceViewInputIndexes.size(),
+        "Each aggregate should correspond to a column of output.");
+
+    boolean needCheckAscending = groupByTimeParameter == null;
+    Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
+    Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
+    Map<AggregationDescriptor, Integer> aggregationToIndexMap = new HashMap<>();
+
+    int index = 0;
+    for (Expression aggregationExpression : aggregationExpressions) {
+      AggregationDescriptor aggregationDescriptor =
+          createAggregationDescriptor(
+              (FunctionExpression) aggregationExpression,
+              curStep,
+              scanOrder,
+              needCheckAscending,
+              ascendingAggregations,
+              descendingAggregations);
+      aggregationToIndexMap.put(aggregationDescriptor, deviceViewInputIndexes.get(index));
+      index++;
+    }
+
+    List<PlanNode> sourceNodeList =
+        constructSourceNodeFromAggregationDescriptors(
+            ascendingAggregations,
+            descendingAggregations,
+            scanOrder,
+            timeFilter,
+            groupByTimeParameter);
+    updateTypeProvider(aggregationExpressions);
+    updateTypeProvider(sourceTransformExpressions);
+
+    if (!curStep.isOutputPartial()) {
+      // update measurementIndexes
+      deviceViewInputIndexes.clear();
+      deviceViewInputIndexes.addAll(
+          sourceNodeList.stream()
+              .map(
+                  planNode ->
+                      ((SeriesAggregationSourceNode) planNode).getAggregationDescriptorList())
+              .flatMap(List::stream)
+              .map(aggregationToIndexMap::get)
+              .collect(Collectors.toList()));
+    }
+
+    return convergeAggregationSource(
+        sourceNodeList,
+        curStep,
+        scanOrder,
+        groupByTimeParameter,
+        aggregationExpressions,
+        groupByLevelExpressions);
+  }
+
+  private AggregationDescriptor createAggregationDescriptor(
       FunctionExpression sourceExpression,
       AggregationStep curStep,
       Ordering scanOrder,
@@ -262,6 +329,7 @@ public class LogicalPlanBuilder {
           .computeIfAbsent(selectPath, key -> new ArrayList<>())
           .add(aggregationDescriptor);
     }
+    return aggregationDescriptor;
   }
 
   private List<PlanNode> constructSourceNodeFromAggregationDescriptors(

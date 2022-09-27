@@ -117,6 +117,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                         ? analysis.getDeviceToWhereExpression().get(deviceName)
                         : null,
                     analysis.getDeviceToAggregationExpressions().get(deviceName),
+                    analysis.getDeviceViewInputIndexesMap().get(deviceName),
                     context));
         deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
       }
@@ -136,18 +137,23 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   analysis.getSourceTransformExpressions(),
                   analysis.getWhereExpression(),
                   analysis.getAggregationExpressions(),
+                  null,
                   context));
+    }
+
+    if (queryStatement.isAggregationQuery()) {
+      planBuilder =
+          planBuilder.planHaving(
+              analysis.getHavingExpression(),
+              analysis.getSelectExpressions(),
+              queryStatement.isGroupByTime(),
+              queryStatement.getSelectComponent().getZoneId(),
+              queryStatement.getResultTimeOrder());
     }
 
     // other upstream node
     planBuilder =
         planBuilder
-            .planHaving(
-                analysis.getHavingExpression(),
-                analysis.getSelectExpressions(),
-                queryStatement.isGroupByTime(),
-                queryStatement.getSelectComponent().getZoneId(),
-                queryStatement.getResultTimeOrder())
             .planFill(analysis.getFillDescriptor(), queryStatement.getResultTimeOrder())
             .planOffset(queryStatement.getRowOffset())
             .planLimit(queryStatement.getRowLimit());
@@ -161,6 +167,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       Set<Expression> sourceTransformExpressions,
       Expression whereExpression,
       Set<Expression> aggregationExpressions,
+      List<Integer> deviceViewInputIndexes,
       MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
@@ -238,13 +245,24 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 : AggregationStep.SINGLE;
 
         planBuilder =
-            planBuilder.planAggregationSource(
-                curStep,
-                queryStatement.getResultTimeOrder(),
-                analysis.getGlobalTimeFilter(),
-                analysis.getGroupByTimeParameter(),
-                aggregationExpressions,
-                analysis.getGroupByLevelExpressions());
+            deviceViewInputIndexes == null
+                ? planBuilder.planAggregationSource(
+                    curStep,
+                    queryStatement.getResultTimeOrder(),
+                    analysis.getGlobalTimeFilter(),
+                    analysis.getGroupByTimeParameter(),
+                    aggregationExpressions,
+                    sourceTransformExpressions,
+                    analysis.getGroupByLevelExpressions())
+                : planBuilder.planAggregationSourceWithIndexAdjust(
+                    curStep,
+                    queryStatement.getResultTimeOrder(),
+                    analysis.getGlobalTimeFilter(),
+                    analysis.getGroupByTimeParameter(),
+                    aggregationExpressions,
+                    sourceTransformExpressions,
+                    analysis.getGroupByLevelExpressions(),
+                    deviceViewInputIndexes);
       }
     }
 

@@ -230,32 +230,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeDeviceToSource(analysis, queryStatement);
         analyzeDeviceView(analysis, queryStatement, outputExpressions);
       } else {
-        // Example 1: select s1, s1 + s2 as t, udf(udf(s1)) from root.sg.d1
-        //   outputExpressions: [<root.sg.d1.s1,null>, <root.sg.d1.s1 + root.sg.d1.s2,t>,
-        //                       <udf(udf(root.sg.d1.s1)),null>]
-        //   selectExpressions: [root.sg.d1.s1, root.sg.d1.s1 + root.sg.d1.s2,
-        //                       udf(udf(root.sg.d1.s1))]
-        //   sourceExpressions: {root.sg.d1 -> [root.sg.d1.s1, root.sg.d1.s2]}
-        //
-        // Example 2: select s1, s2, s3 as t from root.sg.* align by device
-        //   outputExpressions: [<s1,null>, <s2,null>, <s1,t>]
-        //   selectExpressions: [root.sg.d1.s1, root.sg.d1.s2, root.sg.d1.s3,
-        //                       root.sg.d2.s1, root.sg.d2.s2]
-        //   sourceExpressions: {root.sg.d1 -> [root.sg.d1.s1, root.sg.d1.s2, root.sg.d1.s2],
-        //                       root.sg.d2 -> [root.sg.d2.s1, root.sg.d2.s2]}
-        //
-        // Example 3: select sum(s1) + 1 as t, count(s2) from root.sg.d1
-        //   outputExpressions: [<sum(root.sg.d1.s1) + 1,t>, <count(root.sg.d1.s2),t>]
-        //   selectExpressions: [sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
-        //   aggregationExpressions: {root.sg.d1 -> [sum(root.sg.d1.s1), count(root.sg.d1.s2)]}
-        //   sourceExpressions: {root.sg.d1 -> [sum(root.sg.d1.s1), count(root.sg.d1.s2)]}
-        //
-        // Example 4: select sum(s1) + 1 as t, count(s2) from root.sg.d1 where s1 > 1
-        //   outputExpressions: [<sum(root.sg.d1.s1) + 1,t>, <count(root.sg.d1.s2),t>]
-        //   selectExpressions: [sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
-        //   aggregationExpressions: {root.sg.d1 -> [sum(root.sg.d1.s1), count(root.sg.d1.s2)]}
-        //   sourceExpressions: {root.sg.d1 -> [root.sg.d1.s1, root.sg.d1.s2]}
-
         outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree);
 
         analyzeHaving(analysis, queryStatement, schemaTree);
@@ -400,7 +374,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           if (isGroupByLevel) {
             analyzeExpression(analysis, expression);
             outputExpressions.add(new Pair<>(expression, resultColumn.getAlias()));
-            queryStatement.getGroupByLevelComponent().updateIsCountStar(expression);
+            queryStatement
+                .getGroupByLevelComponent()
+                .updateIsCountStar(resultColumn.getExpression());
           } else {
             Expression expressionWithoutAlias =
                 ExpressionAnalyzer.removeAliasFromExpression(expression);
@@ -821,6 +797,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (e instanceof MeasurementNotExistException) {
           logger.warn(e.getMessage());
           deviceIterator.remove();
+          analysis.getDeviceToSelectExpressions().remove(devicePath.getFullPath());
+          if (queryStatement.isAggregationQuery()) {
+            analysis.getDeviceToAggregationExpressions().remove(devicePath.getFullPath());
+          }
           continue;
         }
         throw e;

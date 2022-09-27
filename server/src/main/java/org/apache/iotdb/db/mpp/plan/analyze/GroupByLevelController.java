@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 
@@ -49,7 +50,7 @@ public class GroupByLevelController {
   private final Map<Expression, Set<Expression>> groupedExpressionToRawExpressionsMap;
 
   /** count(root.sg.d1.s1) with level = 1 -> { root.sg.d1.s1 : root.sg.*.s1 } */
-  private final Map<PartialPath, PartialPath> rawPathToGroupedPathMap;
+  private final Map<NodeRef<PartialPath>, PartialPath> rawPathToGroupedPathMap;
 
   /** count(root.*.d1.s1) -> alias */
   private final Map<String, String> columnToAliasMap;
@@ -79,8 +80,9 @@ public class GroupByLevelController {
             .map(timeSeriesOperand -> ((TimeSeriesOperand) timeSeriesOperand).getPath())
             .collect(Collectors.toSet());
     for (PartialPath rawPath : rawPaths) {
-      if (!rawPathToGroupedPathMap.containsKey(rawPath)) {
-        rawPathToGroupedPathMap.put(rawPath, generatePartialPathByLevel(isCountStar, rawPath));
+      if (!rawPathToGroupedPathMap.containsKey(NodeRef.of(rawPath))) {
+        rawPathToGroupedPathMap.put(
+            NodeRef.of(rawPath), generatePartialPathByLevel(isCountStar, rawPath));
       }
     }
 
