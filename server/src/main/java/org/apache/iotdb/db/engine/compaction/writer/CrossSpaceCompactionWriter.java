@@ -215,10 +215,10 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void updateStartTimeAndEndTime(String device, long time, int subTaskId) {
-    synchronized (this) {
-      int fileIndex = seqFileIndexArray[subTaskId];
+    int fileIndex = seqFileIndexArray[subTaskId];
+    // we need to synchronized here to avoid multi-thread competition in sub-task
+    synchronized (targetTsFileResources.get(fileIndex)) {
       TsFileResource resource = targetTsFileResources.get(fileIndex);
-      // we need to synchronized here to avoid multi-thread competition in sub-task
       resource.updateStartTime(device, time);
       resource.updateEndTime(device, time);
     }
