@@ -121,16 +121,16 @@ KILL QUERY <queryId>
 为了获取正在执行的查询 id，用户可以使用 `show query processlist` 命令，该命令将显示所有正在执行的查询列表，结果形式如下：
 
 | Time | queryId | statement |
-| ---- | ------- | --------- |
+|------|---------|-----------|
 |      |         |           |
 
 其中 statement 最大显示长度为 64 字符。对于超过 64 字符的查询语句，将截取部分进行显示。
 
 ## 集群节点分布式监控工具
 
-### 查看DataNode节点信息
+### 查看 DataNode 信息
 
-当前 IoTDB 支持使用如下 SQL 查看 DataNode的信息：
+当前 IoTDB 支持使用如下 SQL 查看 DataNode 的信息：
 
 ```
 SHOW DATANODES
@@ -146,66 +146,59 @@ Msg: The statement is executed successfully.
 IoTDB> create timeseries root.ln.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
 Msg: The statement is executed successfully.
 IoTDB> show regions
-+--------+------------+------+-------------+------------+----------+----------+---------+----+------+
-|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|  Role|
-+--------+------------+------+-------------+------------+----------+----------+---------+----+------+
-|       0|SchemaRegion|    Up|      root.sg|           2|         0|         1|127.0.0.1|6667|Leader|
-|       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|6668|Leader|
-+--------+------------+------+-------------+------------+----------+----------+---------+----+------+
++--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
++--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         1|127.0.0.1|   6667|Leader|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|   6668|Leader|
++--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
 Total line number = 2
 It costs 0.013s
 
 IoTDB> show datanodes
-+------+-------+---------+----+-------------+---------------+
-|NodeID| Status|     Host|Port|DataRegionNum|SchemaRegionNum|
-+------+-------+---------+----+-------------+---------------+
-|     1|Running|127.0.0.1|6667|            0|              1|
-|     2|Running|127.0.0.1|6668|            0|              1|
-+------+-------+---------+----+-------------+---------------+
++------+-------+---------+-------+-------------+---------------+
+|NodeID| Status|     Host|RpcPort|DataRegionNum|SchemaRegionNum|
++------+-------+---------+-------+-------------+---------------+
+|     1|Running|127.0.0.1|   6667|            0|              1|
+|     2|Running|127.0.0.1|   6668|            0|              1|
++------+-------+---------+-------+-------------+---------------+
 Total line number = 2
 It costs 0.007s
 
 IoTDB> insert into root.ln.d1(timestamp,s1) values(1,true)
 Msg: The statement is executed successfully.
 IoTDB> show regions
-+--------+------------+------+-------------+------------+----------+----------+---------+----+------+
-|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|  Role|
-+--------+------------+------+-------------+------------+----------+----------+---------+----+------+
-|       0|SchemaRegion|    Up|      root.sg|           2|         0|         1|127.0.0.1|6667|Leader|
-|       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|6668|Leader|
-|       2|  DataRegion|    Up|      root.ln|           1|         1|         1|127.0.0.1|6667|Leader|
-+--------+------------+------+-------------+------------+----------+----------+---------+----+------+
++--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
++--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         1|127.0.0.1|   6667|Leader|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|   6668|Leader|
+|       2|  DataRegion|    Up|      root.ln|           1|         1|         1|127.0.0.1|   6667|Leader|
++--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
 Total line number = 3
 It costs 0.008s
 IoTDB> show datanodes
-+------+-------+---------+----+-------------+---------------+
-|NodeID| Status|     Host|Port|DataRegionNum|SchemaRegionNum|
-+------+-------+---------+----+-------------+---------------+
-|     1|Running|127.0.0.1|6667|            1|              1|
-|     2|Running|127.0.0.1|6668|            0|              1|
-+------+-------+---------+----+-------------+---------------+
++------+-------+---------+-------+-------------+---------------+
+|NodeID| Status|     Host|RpcPort|DataRegionNum|SchemaRegionNum|
++------+-------+---------+-------+-------------+---------------+
+|     1|Running|127.0.0.1|   6667|            1|              1|
+|     2|Running|127.0.0.1|   6668|            0|              1|
++------+-------+---------+-------+-------------+---------------+
 Total line number = 2
 It costs 0.006s
 ```
 
-停止一个节点之后，节点的状态会发生改变，状态显示如下：
+#### DataNode 状态定义
+对 DataNode 各状态定义如下：
 
-```
-IoTDB> show datanodes
-+------+-------+---------+----+-------------+---------------+
-|NodeID| Status|     Host|Port|DataRegionNum|SchemaRegionNum|
-+------+-------+---------+----+-------------+---------------+
-|     3|Running|127.0.0.1|6667|            0|              0|
-|     4|Unknown|127.0.0.1|6669|            0|              0|
-|     5|Running|127.0.0.1|6671|            0|              0|
-+------+-------+---------+----+-------------+---------------+
-Total line number = 3
-It costs 0.009s
-```
+- **Running**: DataNode 正常运行，可读可写
+- **Unknown**: DataNode 未正常上报心跳，ConfigNode 将认为该 DataNode 不可读写
+- **Removing**: DataNode 正在移出集群，不可读写
+- **ReadOnly**: DataNode 磁盘剩余空间低于 disk_full_threshold（默认 5%），此 DataNode 将不再能写入，不再能同步数据
 
-### 查看ConfigNode节点信息
+### 查看 ConfigNode 节点信息
 
-当前 IoTDB 支持使用如下 SQL 查看 ConfigNode的信息：
+当前 IoTDB 支持使用如下 SQL 查看 ConfigNode 的信息：
 
 ```
 SHOW CONFIGNODES
@@ -215,31 +208,22 @@ SHOW CONFIGNODES
 
 ```
 IoTDB> show confignodes
-+------+-------+-------+-----+--------+
-|NodeID| Status|   Host| Port|    Role|
-+------+-------+-------+-----+--------+
-|     0|Running|0.0.0.0|22277|  Leader|
-|     1|Running|0.0.0.0|22279|Follower|
-|     2|Running|0.0.0.0|22281|Follower|
-+------+-------+-------+-----+--------+
++------+-------+-------+------------+--------+
+|NodeID| Status|   Host|InternalPort|    Role|
++------+-------+-------+------------+--------+
+|     0|Running|0.0.0.0|       22277|  Leader|
+|     1|Running|0.0.0.0|       22279|Follower|
+|     2|Running|0.0.0.0|       22281|Follower|
++------+-------+-------+------------+--------+
 Total line number = 3
 It costs 0.030s
 ```
 
-停止一个节点之后，节点的状态会发生改变，状态显示如下：
+#### ConfigNode 状态定义
+对 ConfigNode 各状态定义如下：
 
-```
-IoTDB> show confignodes
-+------+-------+-------+-----+--------+
-|NodeID| Status|   Host| Port|    Role|
-+------+-------+-------+-----+--------+
-|     0|Running|0.0.0.0|22277|  Leader|
-|     1|Running|0.0.0.0|22279|Follower|
-|     2|Unknown|0.0.0.0|22281|Follower|
-+------+-------+-------+-----+--------+
-Total line number = 3
-It costs 0.009s
-```
+- **Running**: ConfigNode 正常运行
+- **Unknown**: ConfigNode 未正常上报心跳
 
 ### 查看全部节点信息
 
@@ -253,36 +237,18 @@ SHOW CLUSTER
 
 ```
 IoTDB> show cluster
-+------+----------+-------+---------+-----+
-|NodeID|  NodeType| Status|     Host| Port|
-+------+----------+-------+---------+-----+
-|     0|ConfigNode|Running|  0.0.0.0|22277|
-|     1|ConfigNode|Running|  0.0.0.0|22279|
-|     2|ConfigNode|Running|  0.0.0.0|22281|
-|     3|  DataNode|Running|127.0.0.1| 9003|
-|     4|  DataNode|Running|127.0.0.1| 9005|
-|     5|  DataNode|Running|127.0.0.1| 9007|
-+------+----------+-------+---------+-----+
++------+----------+-------+---------+------------+
+|NodeID|  NodeType| Status|     Host|InternalPort|
++------+----------+-------+---------+------------+
+|     0|ConfigNode|Running|  0.0.0.0|       22277|
+|     1|ConfigNode|Running|  0.0.0.0|       22279|
+|     2|ConfigNode|Running|  0.0.0.0|       22281|
+|     3|  DataNode|Running|127.0.0.1|        9003|
+|     4|  DataNode|Running|127.0.0.1|        9005|
+|     5|  DataNode|Running|127.0.0.1|        9007|
++------+----------+-------+---------+------------+
 Total line number = 6
 It costs 0.011s
-```
-
-停止一个节点之后，节点的状态会发生改变，状态显示如下：
-
-```
-IoTDB> show cluster
-+------+----------+-------+---------+-----+
-|NodeID|  NodeType| Status|     Host| Port|
-+------+----------+-------+---------+-----+
-|     0|ConfigNode|Running|  0.0.0.0|22277|
-|     1|ConfigNode|Unknown|  0.0.0.0|22279|
-|     2|ConfigNode|Running|  0.0.0.0|22281|
-|     3|  DataNode|Running|127.0.0.1| 9003|
-|     4|  DataNode|Running|127.0.0.1| 9005|
-|     5|  DataNode|Running|127.0.0.1| 9007|
-+------+----------+-------+---------+-----+
-Total line number = 6
-It costs 0.012s
 ```
 
 ## 集群 Region 分布监控工具
@@ -308,16 +274,16 @@ Msg: The statement is executed successfully.
 IoTDB> create timeseries root.ln.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
 Msg: The statement is executed successfully.
 
-+--------+------------+------+-------------+------------+----------+----------+---------+----+--------+
-|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|    Role|
-+--------+------------+------+-------------+------------+----------+----------+---------+----+--------+
-|       0|SchemaRegion|    Up|      root.sg|           2|         0|         5|127.0.0.1|6671|Follower|
-|       0|SchemaRegion|    Up|      root.sg|           2|         0|         4|127.0.0.1|6669|Follower|
-|       0|SchemaRegion|    Up|      root.sg|           2|         0|         3|127.0.0.1|6667|  Leader|
-|       1|SchemaRegion|    Up|      root.ln|           1|         0|         5|127.0.0.1|6671|Follower|
-|       1|SchemaRegion|    Up|      root.ln|           1|         0|         4|127.0.0.1|6669|Follower|
-|       1|SchemaRegion|    Up|      root.ln|           1|         0|         3|127.0.0.1|6667|  Leader|
-+--------+------------+------+-------------+------------+----------+----------+---------+----+--------+
++--------+------------+------+-------------+------------+----------+----------+---------+-------+--------+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|    Role|
++--------+------------+------+-------------+------------+----------+----------+---------+-------+--------+
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         5|127.0.0.1|   6671|Follower|
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         4|127.0.0.1|   6669|Follower|
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         3|127.0.0.1|   6667|  Leader|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         5|127.0.0.1|   6671|Follower|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         4|127.0.0.1|   6669|Follower|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         3|127.0.0.1|   6667|  Leader|
++--------+------------+------+-------------+------------+----------+----------+---------+-------+--------+
 Total line number = 6
 It costs 0.032s
 ```
@@ -327,12 +293,12 @@ It costs 0.032s
 
 ```sql
 IoTDB> show regions
-+--------+------------+------+-------------+------------+----------+----------+---------+----+------+
-|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|  Role|
-+--------+------------+------+-------------+------------+----------+----------+---------+----+------+
-|       0|SchemaRegion|    Up|      root.sg|           2|         0|         5|127.0.0.1|6671|Leader|
-|       1|SchemaRegion|    Up|      root.ln|           1|         0|         4|127.0.0.1|6669|Leader|
-+--------+------------+------+-------------+------------+----------+----------+---------+----+------+
++--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|  Role|
++--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         5|127.0.0.1|   6671|Leader|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         4|127.0.0.1|   6669|Leader|
++--------+------------+------+-------------+------------+----------+----------+---------+-------+------+
 Total line number = 2
 It costs 0.128s
 ```
@@ -345,29 +311,29 @@ IoTDB> insert into root.ln.d1(timestamp,s1) values(1,true)
 Msg: The statement is executed successfully.
 
 IoTDB> show data regions
-+--------+----------+------+-------------+------------+----------+----------+---------+----+--------+
-|RegionId|      Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|    Role|
-+--------+----------+------+-------------+------------+----------+----------+---------+----+--------+
-|       2|DataRegion|    Up|      root.sg|           1|         1|         5|127.0.0.1|6671|Follower|
-|       2|DataRegion|    Up|      root.sg|           1|         1|         4|127.0.0.1|6669|  Leader|
-|       2|DataRegion|    Up|      root.sg|           1|         1|         3|127.0.0.1|6667|Follower|
-|       3|DataRegion|    Up|      root.ln|           1|         1|         5|127.0.0.1|6671|  Leader|
-|       3|DataRegion|    Up|      root.ln|           1|         1|         4|127.0.0.1|6669|Follower|
-|       3|DataRegion|    Up|      root.ln|           1|         1|         3|127.0.0.1|6667|Follower|
-+--------+----------+------+-------------+------------+----------+----------+---------+----+--------+
++--------+----------+------+-------------+------------+----------+----------+---------+-------+--------+
+|RegionId|      Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|    Role|
++--------+----------+------+-------------+------------+----------+----------+---------+-------+--------+
+|       2|DataRegion|    Up|      root.sg|           1|         1|         5|127.0.0.1|   6671|Follower|
+|       2|DataRegion|    Up|      root.sg|           1|         1|         4|127.0.0.1|   6669|  Leader|
+|       2|DataRegion|    Up|      root.sg|           1|         1|         3|127.0.0.1|   6667|Follower|
+|       3|DataRegion|    Up|      root.ln|           1|         1|         5|127.0.0.1|   6671|  Leader|
+|       3|DataRegion|    Up|      root.ln|           1|         1|         4|127.0.0.1|   6669|Follower|
+|       3|DataRegion|    Up|      root.ln|           1|         1|         3|127.0.0.1|   6667|Follower|
++--------+----------+------+-------------+------------+----------+----------+---------+-------+--------+
 Total line number = 2
 It costs 0.011s
 IoTDB> show schema regions
-+--------+------------+------+-------------+------------+----------+----------+---------+----+--------+
-|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|    Role|
-+--------+------------+------+-------------+------------+----------+----------+---------+----+--------+
-|       0|SchemaRegion|    Up|      root.sg|           2|         0|         5|127.0.0.1|6671|Follower|
-|       0|SchemaRegion|    Up|      root.sg|           2|         0|         4|127.0.0.1|6669|  Leader|
-|       0|SchemaRegion|    Up|      root.sg|           2|         0|         3|127.0.0.1|6667|Follower|
-|       1|SchemaRegion|    Up|      root.ln|           1|         0|         5|127.0.0.1|6671|Follower|
-|       1|SchemaRegion|    Up|      root.ln|           1|         0|         4|127.0.0.1|6669|Follower|
-|       1|SchemaRegion|    Up|      root.ln|           1|         0|         3|127.0.0.1|6667|  Leader|
-+--------+------------+------+-------------+------------+----------+----------+---------+----+--------+
++--------+------------+------+-------------+------------+----------+----------+---------+-------+--------+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|    Role|
++--------+------------+------+-------------+------------+----------+----------+---------+-------+--------+
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         5|127.0.0.1|   6671|Follower|
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         4|127.0.0.1|   6669|  Leader|
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         3|127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         5|127.0.0.1|   6671|Follower|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         4|127.0.0.1|   6669|Follower|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         3|127.0.0.1|   6667|  Leader|
++--------+------------+------+-------------+------------+----------+----------+---------+-------+--------+
 Total line number = 2
 It costs 0.012s
 ```
@@ -376,30 +342,36 @@ It costs 0.012s
 
 ```
 IoTDB> show regions of storage group root.sg
-+--------+------------+------+-------------+------------+----------+----------+---------+----+--------+
-|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|    Role|
-+--------+------------+------+-------------+------------+----------+----------+---------+----+--------+
-|       0|SchemaRegion|    Up|      root.sg|           2|         0|         5|127.0.0.1|6671|Follower|
-|       0|SchemaRegion|    Up|      root.sg|           2|         0|         4|127.0.0.1|6669|  Leader|
-|       0|SchemaRegion|    Up|      root.sg|           2|         0|         3|127.0.0.1|6667|Follower|
-|       2|  DataRegion|    Up|      root.sg|           1|         1|         5|127.0.0.1|6671|Follower|
-|       2|  DataRegion|    Up|      root.sg|           1|         1|         4|127.0.0.1|6669|  Leader|
-|       2|  DataRegion|    Up|      root.sg|           1|         1|         3|127.0.0.1|6667|Follower|
-+--------+------------+------+-------------+------------+----------+----------+---------+----+--------+
++--------+------------+------+-------------+------------+----------+----------+---------+-------+--------+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|    Role|
++--------+------------+------+-------------+------------+----------+----------+---------+-------+--------+
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         5|127.0.0.1|   6671|Follower|
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         4|127.0.0.1|   6669|  Leader|
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         3|127.0.0.1|   6667|Follower|
+|       2|  DataRegion|    Up|      root.sg|           1|         1|         5|127.0.0.1|   6671|Follower|
+|       2|  DataRegion|    Up|      root.sg|           1|         1|         4|127.0.0.1|   6669|  Leader|
+|       2|  DataRegion|    Up|      root.sg|           1|         1|         3|127.0.0.1|   6667|Follower|
++--------+------------+------+-------------+------------+----------+----------+---------+-------+--------+
 Total line number = 2
 It costs 0.005s
 
 IoTDB> create timeseries root.sgcc.wf01.d1.wt01 with datatype=BOOLEAN,encoding=PLAIN
 Msg: The statement is executed successfully.
 IoTDB> show regions of storage group root.*.wf01
-+--------+------------+------+--------------+------------+----------+----------+---------+----+--------+
-|RegionId|        Type|Status| storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|    Role|
-+--------+------------+------+--------------+------------+----------+----------+---------+----+--------+
-|       4|SchemaRegion|    Up|root.sgcc.wf01|           1|         0|         5|127.0.0.1|6671|  Leader|
-|       4|SchemaRegion|    Up|root.sgcc.wf01|           1|         0|         4|127.0.0.1|6669|Follower|
-|       4|SchemaRegion|    Up|root.sgcc.wf01|           1|         0|         3|127.0.0.1|6667|Follower|
-+--------+------------+------+--------------+------------+----------+----------+---------+----+--------+
++--------+------------+------+--------------+------------+----------+----------+---------+-------+--------+
+|RegionId|        Type|Status| storage group|Series Slots|Time Slots|DataNodeId|     Host|RpcPort|    Role|
++--------+------------+------+--------------+------------+----------+----------+---------+-------+--------+
+|       4|SchemaRegion|    Up|root.sgcc.wf01|           1|         0|         5|127.0.0.1|   6671|  Leader|
+|       4|SchemaRegion|    Up|root.sgcc.wf01|           1|         0|         4|127.0.0.1|   6669|Follower|
+|       4|SchemaRegion|    Up|root.sgcc.wf01|           1|         0|         3|127.0.0.1|   6667|Follower|
++--------+------------+------+--------------+------------+----------+----------+---------+-------+--------+
 Total line number = 3
 It costs 0.012s
 ```
 
+### Region 状态定义
+对 Region 各状态定义如下：
+
+- **Running**: Region 正常运行，可读可写
+- **Removing**: Region 所在 DataNode 正在被移出集群，不可读写
+- **Unknown**: Region 所在 DataNode 未正常上报心跳，ConfigNode 认为该 Region 不可读写

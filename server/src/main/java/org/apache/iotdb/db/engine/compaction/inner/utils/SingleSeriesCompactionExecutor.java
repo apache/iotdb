@@ -176,6 +176,7 @@ public class SingleSeriesCompactionExecutor {
     } else if (pointCountInChunkWriter != 0L) {
       flushChunkWriter();
     }
+    fileWriter.checkMetadataSizeAndMayFlush();
     targetResource.updateStartTime(device, minStartTimestamp);
     targetResource.updateEndTime(device, maxEndTimestamp);
   }

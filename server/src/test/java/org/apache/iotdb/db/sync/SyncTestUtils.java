@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.sync;
 
-import org.apache.iotdb.db.sync.sender.pipe.Pipe;
-import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
-import org.apache.iotdb.db.sync.sender.pipe.PipeMessage;
+import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 
 import org.junit.Assert;
 
@@ -29,7 +29,7 @@ public class SyncTestUtils {
       PipeInfo pipeInfo,
       String pipeName,
       String pipeSinkName,
-      Pipe.PipeStatus status,
+      PipeStatus status,
       long createTime,
       PipeMessage.PipeMessageType messageType) {
     Assert.assertEquals(pipeName, pipeInfo.getPipeName());

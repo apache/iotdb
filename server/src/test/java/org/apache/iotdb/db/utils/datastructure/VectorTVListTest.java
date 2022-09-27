@@ -204,5 +204,72 @@ public class VectorTVListTest {
             tvList.isNullValue((int) i, column), clonedTvList.isNullValue((int) i, column));
       }
     }
+
+    for (int i = 0; i < dataTypes.size(); i++) {
+      Assert.assertEquals(tvList.memoryBinaryChunkSize[i], clonedTvList.memoryBinaryChunkSize[i]);
+    }
+  }
+
+  @Test
+  public void testCalculateChunkSize() {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32);
+    dataTypes.add(TSDataType.TEXT);
+    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+
+    int[] columnOrder = new int[2];
+    columnOrder[0] = 0;
+    columnOrder[1] = 1;
+    for (int i = 0; i < 10; i++) {
+      Object[] value = new Object[2];
+      value[0] = i;
+      value[1] = new Binary(String.valueOf(i));
+      tvList.putAlignedValue(i, value, columnOrder);
+    }
+
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 360);
+
+    Object[] vectorArray = new Object[2];
+    BitMap[] bitMaps = new BitMap[2];
+
+    vectorArray[0] = new int[10];
+    vectorArray[1] = new Binary[10];
+    bitMaps[0] = new BitMap(10);
+    bitMaps[1] = new BitMap(10);
+
+    List<Long> timeList = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      timeList.add((long) i + 10);
+      ((int[]) vectorArray[0])[i] = i;
+      ((Binary[]) vectorArray[1])[i] = new Binary(String.valueOf(i));
+
+      if (i % 2 == 0) {
+        bitMaps[1].mark(i);
+      }
+    }
+
+    tvList.putAlignedValues(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        vectorArray,
+        bitMaps,
+        columnOrder,
+        0,
+        10);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 720);
+
+    tvList.delete(5, 15);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 324);
+
+    tvList.deleteColumn(0);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 1);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 324);
+
+    tvList.extendColumn(TSDataType.INT32);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 2);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 324);
+
+    tvList.clear();
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
   }
 }

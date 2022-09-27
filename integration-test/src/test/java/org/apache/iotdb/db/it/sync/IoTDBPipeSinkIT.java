@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.sync;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
@@ -37,7 +38,7 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqual;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBPipeSinkIT {
 
   @BeforeClass
@@ -71,8 +72,23 @@ public class IoTDBPipeSinkIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE PIPESINK demo1 AS IoTDB (ip='192.168.0.1',port='6677');");
       statement.execute("CREATE PIPESINK demo2 AS IoTDB (ip='192.168.0.2',port='6678');");
+      try {
+        statement.execute("CREATE PIPESINK demo2 AS IoTDB (ip='192.168.0.2',port='6678');");
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "There is a PipeSink named demo2 in IoTDB, please drop it before recreation."));
+      }
       statement.execute("CREATE PIPESINK demo3 AS IoTDB;");
       statement.execute("DROP PIPESINK demo2;");
+      try {
+        statement.execute("DROP PIPESINK demo2;");
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("PipeSink demo2 does not exist."));
+      }
       String expectedHeader =
           ColumnHeaderConstant.COLUMN_PIPESINK_NAME
               + ","

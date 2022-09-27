@@ -38,15 +38,20 @@ import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
+import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 
 public abstract class BinaryTVList extends TVList {
   // list of primitive array, add 1 when expanded -> Binary primitive array
   // index relation: arrayIndex -> elementIndex
   protected List<Binary[]> values;
 
+  // record total memory size of binary tvlist
+  long memoryBinaryChunkSize;
+
   BinaryTVList() {
     super();
     values = new ArrayList<>();
+    memoryBinaryChunkSize = 0;
   }
 
   public static BinaryTVList newList() {
@@ -60,6 +65,7 @@ public abstract class BinaryTVList extends TVList {
   public TimBinaryTVList clone() {
     TimBinaryTVList cloneList = new TimBinaryTVList();
     cloneAs(cloneList);
+    cloneList.memoryBinaryChunkSize = memoryBinaryChunkSize;
     for (Binary[] valueArray : values) {
       cloneList.values.add(cloneValue(valueArray));
     }
@@ -84,6 +90,40 @@ public abstract class BinaryTVList extends TVList {
     if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
       sorted = false;
     }
+    memoryBinaryChunkSize += getBinarySize(value);
+  }
+
+  @Override
+  public boolean reachMaxChunkSizeThreshold() {
+    return memoryBinaryChunkSize >= maxChunkRawSizeThreshold;
+  }
+
+  @Override
+  public int delete(long lowerBound, long upperBound) {
+    int newSize = 0;
+    minTime = Long.MAX_VALUE;
+    for (int i = 0; i < rowCount; i++) {
+      long time = getTime(i);
+      if (time < lowerBound || time > upperBound) {
+        set(i, newSize++);
+        minTime = Math.min(time, minTime);
+      } else {
+        memoryBinaryChunkSize -= getBinarySize(getBinary(i));
+      }
+    }
+    int deletedNumber = rowCount - newSize;
+    rowCount = newSize;
+    // release primitive arrays that are empty
+    int newArrayNum = newSize / ARRAY_SIZE;
+    if (newSize % ARRAY_SIZE != 0) {
+      newArrayNum++;
+    }
+    int oldArrayNum = timestamps.size();
+    for (int releaseIdx = newArrayNum; releaseIdx < oldArrayNum; releaseIdx++) {
+      releaseLastTimeArray();
+      releaseLastValueArray();
+    }
+    return deletedNumber;
   }
 
   @Override
@@ -114,6 +154,7 @@ public abstract class BinaryTVList extends TVList {
       }
       values.clear();
     }
+    memoryBinaryChunkSize = 0;
   }
 
   @Override
@@ -174,6 +215,11 @@ public abstract class BinaryTVList extends TVList {
       end -= nullCnt;
     } else {
       updateMinTimeAndSorted(time, start, end);
+    }
+
+    // update raw size
+    for (int i = idx; i < end; i++) {
+      memoryBinaryChunkSize += getBinarySize(value[i]);
     }
 
     while (idx < end) {

@@ -114,6 +114,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -164,6 +165,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.FileNotFoundException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.ZoneId;
@@ -819,6 +821,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitDropTrigger(IoTDBSqlParser.DropTriggerContext ctx) {
     return new DropTriggerStatement(parseIdentifier(ctx.triggerName.getText()));
+  }
+
+  @Override
+  public Statement visitShowTriggers(IoTDBSqlParser.ShowTriggersContext ctx) {
+    return new ShowTriggersStatement();
   }
 
   // Show Child Paths =====================================================================
@@ -1491,12 +1498,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitLoadFile(IoTDBSqlParser.LoadFileContext ctx) {
-    LoadTsFileStatement loadTsFileStatement =
-        new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
-    if (ctx.loadFilesClause() != null) {
-      parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
+    try {
+      LoadTsFileStatement loadTsFileStatement =
+          new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
+      if (ctx.loadFilesClause() != null) {
+        parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
+      }
+      return loadTsFileStatement;
+    } catch (FileNotFoundException e) {
+      throw new SQLParserException(e.getMessage());
     }
-    return loadTsFileStatement;
   }
 
   /**

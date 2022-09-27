@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
-import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
+import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
 
 /**
  * This interface is used to load files, including tsFile, syncTask, schema, modsFile and
