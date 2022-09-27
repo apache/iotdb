@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,7 +44,7 @@ public class LoadTsFileStatement extends Statement {
   private List<File> tsFiles;
   private List<TsFileResource> resources;
 
-  public LoadTsFileStatement(String filePath) {
+  public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
     this.autoCreateSchema = true;
     this.sgLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
@@ -54,6 +55,10 @@ public class LoadTsFileStatement extends Statement {
     if (file.isFile()) {
       tsFiles.add(file);
     } else {
+      if (file.listFiles() == null) {
+        throw new FileNotFoundException(
+            "Can not find %s on this machine, note that load can only handle files on this machine.");
+      }
       findAllTsFile(file);
     }
     sortTsFiles(tsFiles);

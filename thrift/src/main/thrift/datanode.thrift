@@ -169,12 +169,12 @@ struct TDropFunctionRequest {
   1: required string udfName
 }
 
-struct TcreateTriggerInstanceReq {
+struct TCreateTriggerInstanceReq {
   1: required binary triggerInformation
   2: required binary jarFile
 }
 
-struct TactiveTriggerInstanceReq {
+struct TActiveTriggerInstanceReq {
   1: required string triggerName
 }
 
@@ -197,9 +197,18 @@ struct THeartbeatReq {
 struct THeartbeatResp {
   1: required i64 heartbeatTimestamp
   2: required string status
-  3: optional map<common.TConsensusGroupId, bool> judgedLeaders
-  4: optional i16 cpu
-  5: optional i16 memory
+  3: optional string statusReason
+  4: optional map<common.TConsensusGroupId, bool> judgedLeaders
+  5: optional TLoadSample loadSample
+}
+
+struct TLoadSample {
+  // Percentage of occupied cpu in DataNode
+  1: required i16 cpuUsageRate
+  // Percentage of occupied memory space in DataNode
+  2: required double memoryUsageRate
+  // Percentage of occupied disk space in DataNode
+  3: required double diskUsageRate
 }
 
 struct TRegionRouteReq {
@@ -412,14 +421,14 @@ service IDataNodeRPCService {
    *
    * @param TriggerInformation, jar file.
    **/
-  common.TSStatus createTriggerInstance(TcreateTriggerInstanceReq req)
+  common.TSStatus createTriggerInstance(TCreateTriggerInstanceReq req)
 
   /**
    * Config node will active a trigger instance on data node.
    *
    * @param trigger name.
    **/
-  common.TSStatus activeTriggerInstance(TactiveTriggerInstanceReq req)
+  common.TSStatus activeTriggerInstance(TActiveTriggerInstanceReq req)
 
   /**
     * Config node will drop a trigger on all online config nodes and data nodes.

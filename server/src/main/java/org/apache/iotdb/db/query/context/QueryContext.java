@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.query.context;
 
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
 import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory.ModsSerializer;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
@@ -156,6 +156,10 @@ public class QueryContext {
     return result;
   }
 
+  /**
+   * Find the modifications of all aligned 'paths' in 'modFile'. If they are not in the cache, read
+   * them from 'modFile' and put then into the cache.
+   */
   public List<List<Modification>> getPathModifications(ModificationFile modFile, AlignedPath path) {
     int n = path.getMeasurementList().size();
     List<List<Modification>> ans = new ArrayList<>(n);

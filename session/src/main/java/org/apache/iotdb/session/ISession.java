@@ -35,7 +35,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
-public interface ISession {
+public interface ISession extends AutoCloseable {
 
   Version getVersion();
 
@@ -433,4 +433,6 @@ public interface ISession {
   boolean isEnableCacheLeader();
 
   void setEnableCacheLeader(boolean enableCacheLeader);
+
+  void sortTablet(Tablet tablet);
 }

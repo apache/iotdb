@@ -113,6 +113,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -163,8 +164,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.apache.commons.lang.StringEscapeUtils;
-
+import java.io.FileNotFoundException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.ZoneId;
@@ -767,6 +767,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitDropTrigger(IoTDBSqlParser.DropTriggerContext ctx) {
     return new DropTriggerStatement(parseIdentifier(ctx.triggerName.getText()));
+  }
+
+  @Override
+  public Statement visitShowTriggers(IoTDBSqlParser.ShowTriggersContext ctx) {
+    return new ShowTriggersStatement();
   }
 
   // Show Child Paths =====================================================================
@@ -1439,12 +1444,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitLoadFile(IoTDBSqlParser.LoadFileContext ctx) {
-    LoadTsFileStatement loadTsFileStatement =
-        new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
-    if (ctx.loadFilesClause() != null) {
-      parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
+    try {
+      LoadTsFileStatement loadTsFileStatement =
+          new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
+      if (ctx.loadFilesClause() != null) {
+        parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
+      }
+      return loadTsFileStatement;
+    } catch (FileNotFoundException e) {
+      throw new SQLParserException(e.getMessage());
     }
-    return loadTsFileStatement;
   }
 
   /**
@@ -1650,23 +1659,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if ((src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"')
           || (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
         return "'" + parseStringLiteral(src) + "'";
-      }
-    }
-    return src;
-  }
-
-  private String parseStringLiteralInLikeOrRegular(String src) {
-    if (2 <= src.length()) {
-      String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
-        // replace "" with "
-        String replaced = unescapeString.replace("\"\"", "\"");
-        return replaced.length() == 0 ? "" : replaced;
-      }
-      if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
-        // replace '' with '
-        String replaced = unescapeString.replace("''", "'");
-        return replaced.length() == 0 ? "" : replaced;
       }
     }
     return src;
@@ -2266,13 +2258,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseRegularExpression(ExpressionContext context, boolean inWithoutNull) {
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean inWithoutNull) {
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseIsNullExpression(ExpressionContext context, boolean inWithoutNull) {

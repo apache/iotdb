@@ -31,7 +31,11 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
@@ -60,12 +64,9 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -154,7 +155,6 @@ import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.sync.SyncService;
-import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -1020,11 +1020,16 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowVersion() {
     SingleDataSet singleDataSet =
         new SingleDataSet(
-            Collections.singletonList(new PartialPath(IoTDBConstant.COLUMN_VERSION, false)),
-            Collections.singletonList(TSDataType.TEXT));
+            Arrays.asList(
+                new PartialPath(IoTDBConstant.COLUMN_VERSION, false),
+                new PartialPath(IoTDBConstant.COLUMN_BUILD_INFO, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
     Field field = new Field(TSDataType.TEXT);
     field.setBinaryV(new Binary(IoTDBConstant.VERSION));
     RowRecord rowRecord = new RowRecord(0);
+    rowRecord.addField(field);
+    field = new Field(TSDataType.TEXT);
+    field.setBinaryV(new Binary(IoTDBConstant.BUILD_INFO));
     rowRecord.addField(field);
     singleDataSet.setRecord(rowRecord);
     return singleDataSet;

@@ -21,22 +21,20 @@ package org.apache.iotdb.db.sync.externalpipe;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.sync.datasource.PipeOpManager;
 import org.apache.iotdb.db.sync.datasource.PipeStorageGroupInfo;
 import org.apache.iotdb.db.sync.externalpipe.operation.DeleteOperation;
 import org.apache.iotdb.db.sync.externalpipe.operation.InsertOperation;
 import org.apache.iotdb.db.sync.externalpipe.operation.Operation;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.pipe.external.api.DataType;
 import org.apache.iotdb.pipe.external.api.ExternalPipeSinkWriterStatus;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriter;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
@@ -44,7 +42,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -617,19 +614,19 @@ public class ExtPipePlugin {
             case TEXT:
               writer.insertText(sgName, path, timestampInMs, tvPair.getValue().getStringValue());
               break;
-            case VECTOR:
-              writer.insertVector(
-                  sgName,
-                  path,
-                  Arrays.stream(tvPair.getValue().getVector())
-                      .map(TsPrimitiveType::getDataType)
-                      .map(type -> DataType.fromTsDataType(type.serialize()))
-                      .toArray(DataType[]::new),
-                  timestampInMs,
-                  Arrays.stream(tvPair.getValue().getVector())
-                      .map(TsPrimitiveType::getValue)
-                      .toArray(Object[]::new));
-              break;
+              //            case VECTOR:
+              //              writer.insertVector(
+              //                  sgName,
+              //                  path,
+              //                  Arrays.stream(tvPair.getValue().getVector())
+              //                      .map(TsPrimitiveType::getDataType)
+              //                      .map(type -> DataType.fromTsDataType(type.serialize()))
+              //                      .toArray(DataType[]::new),
+              //                  timestampInMs,
+              //                  Arrays.stream(tvPair.getValue().getVector())
+              //                      .map(TsPrimitiveType::getValue)
+              //                      .toArray(Object[]::new));
+              //              break;
             default:
               throw new IllegalArgumentException(
                   "Unrecognized data type " + tvPair.getValue().getDataType());

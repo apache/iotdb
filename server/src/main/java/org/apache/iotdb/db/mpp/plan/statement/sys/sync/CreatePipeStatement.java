@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.sys.sync;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;

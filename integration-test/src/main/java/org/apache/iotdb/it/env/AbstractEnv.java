@@ -34,6 +34,9 @@ import org.apache.iotdb.itbase.runtime.SerialRequestDelegate;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.session.ISession;
+import org.apache.iotdb.session.Session;
 
 import org.slf4j.Logger;
 
@@ -59,9 +62,9 @@ public abstract class AbstractEnv implements BaseEnv {
   private final int NODE_START_TIMEOUT = 100;
   private final int PROBE_TIMEOUT_MS = 2000;
   private final int NODE_NETWORK_TIMEOUT_MS = 65_000;
+  private final Random rand = new Random();
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
-  private final Random rand = new Random();
   protected String testMethodName = null;
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
@@ -262,6 +265,15 @@ public abstract class AbstractEnv implements BaseEnv {
     } else {
       return getWriteConnection(version, username, password).getUnderlyingConnecton();
     }
+  }
+
+  @Override
+  public ISession getSessionConnection() throws IoTDBConnectionException {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    Session session = new Session(dataNode.getIp(), dataNode.getPort());
+    session.open();
+    return session;
   }
 
   protected NodeConnection getWriteConnection(
