@@ -1146,15 +1146,6 @@ public class IoTDBDescriptor {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
 
-    long pendingQueueSize =
-        Long.parseLong(
-            properties.getProperty(
-                "multi_leader_pending_queue_size_in_byte",
-                Long.toString(conf.getPendingQueueSize())));
-    if (pendingQueueSize > 0) {
-      conf.setPendingQueueSize(pendingQueueSize);
-    }
-
     long throttleDownThresholdInByte =
         Long.parseLong(
             properties.getProperty(

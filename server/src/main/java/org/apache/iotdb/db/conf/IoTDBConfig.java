@@ -1013,9 +1013,6 @@ public class IoTDBConfig {
   /** Maximum execution time of a DriverTask */
   private int driverTaskExecutionTimeSliceInMs = 100;
 
-  /** Maximum size of pending queue used in MultiLeader consensus. Unit: byte */
-  private long pendingQueueSize = 1024 * 1024 * 1024L;
-
   /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
@@ -3241,14 +3238,6 @@ public class IoTDBConfig {
 
   public void setCompactionProportion(double compactionProportion) {
     this.compactionProportion = compactionProportion;
-  }
-
-  public long getPendingQueueSize() {
-    return pendingQueueSize;
-  }
-
-  public void setPendingQueueSize(long pendingQueueSize) {
-    this.pendingQueueSize = pendingQueueSize;
   }
 
   public long getThrottleThreshold() {

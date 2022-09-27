@@ -51,7 +51,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /** Manage all asynchronous replication threads and corresponding async clients */
@@ -183,8 +182,9 @@ public class LogDispatcher {
     // A reader management class that gets requests from the DataRegion
     private final ConsensusReqReader reader =
         (ConsensusReqReader) impl.getStateMachine().read(new GetConsensusReqReaderPlan());
+    private final MultiLeaderMemoryManager multiLeaderMemoryManager =
+        MultiLeaderMemoryManager.getInstance();
     private volatile boolean stopped = false;
-    private final AtomicLong requestsSizeInByte = new AtomicLong(0);
 
     private ConsensusReqReader.ReqIterator walEntryIterator;
 
@@ -225,10 +225,11 @@ public class LogDispatcher {
 
     /** try to offer a request into queue with memory control */
     public boolean offer(IndexedConsensusRequest indexedConsensusRequest) {
-      if (requestsSizeInByte.get() > config.getReplication().getMaxPendingBatchSizeInByte()) {
+      if (multiLeaderMemoryManager.getMemorySizeInByte()
+          > config.getReplication().getMaxPendingBatchSizeInByte()) {
         return false;
       }
-      requestsSizeInByte.addAndGet(indexedConsensusRequest.getSerializedSize());
+      multiLeaderMemoryManager.addMemorySize(indexedConsensusRequest.getSerializedSize());
       return pendingRequest.offer(indexedConsensusRequest);
     }
 
@@ -237,11 +238,17 @@ public class LogDispatcher {
         IndexedConsensusRequest indexedConsensusRequest,
         Iterator<IndexedConsensusRequest> iterator) {
       iterator.remove();
-      requestsSizeInByte.addAndGet(-indexedConsensusRequest.getSerializedSize());
+      multiLeaderMemoryManager.decrMemorySize(indexedConsensusRequest.getSerializedSize());
     }
 
     public void stop() {
       stopped = true;
+      for (IndexedConsensusRequest indexedConsensusRequest : pendingRequest) {
+        multiLeaderMemoryManager.decrMemorySize(indexedConsensusRequest.getSerializedSize());
+      }
+      for (IndexedConsensusRequest indexedConsensusRequest : bufferedRequest) {
+        multiLeaderMemoryManager.decrMemorySize(indexedConsensusRequest.getSerializedSize());
+      }
     }
 
     public void cleanup() throws IOException {
