@@ -38,6 +38,8 @@ public interface BaseEnv {
 
   void initBeforeClass() throws InterruptedException;
 
+  void initClusterEnvironment(int configNodesNum, int dataNodesNum);
+
   void cleanAfterClass();
 
   void initBeforeTest() throws InterruptedException;

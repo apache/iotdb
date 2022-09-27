@@ -32,6 +32,12 @@ public class Cluster1Env extends AbstractEnv {
   }
 
   @Override
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    logger.debug("=======start init cluster environment=======");
+    super.initEnvironment(configNodesNum, dataNodesNum);
+  }
+
+  @Override
   public void initBeforeTest() throws InterruptedException {
     logger.debug("=======start init test=======");
     super.initEnvironment(1, 3);

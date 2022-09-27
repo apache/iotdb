@@ -239,4 +239,11 @@ public class MppConfig implements BaseConfig {
     confignodeProperties.setProperty("enable_mem_control", String.valueOf(enableMemControl));
     return this;
   }
+
+  @Override
+  public BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
+    confignodeProperties.setProperty(
+        "ratis_snapshot_trigger_threshold", String.valueOf(ratisSnapshotTriggerThreshold));
+    return this;
+  }
 }
