@@ -149,7 +149,7 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
 ```
 void createAlignedTimeseries(String prefixPath, List<String> measurements,
       List<TSDataType> dataTypes, List<TSEncoding> encodings,
-      CompressionType compressor, List<String> measurementAliasList);
+      List <CompressionType> compressors, List<String> measurementAliasList);
 ```
 
 Attention: Alias of measurements are **not supported** currently.
