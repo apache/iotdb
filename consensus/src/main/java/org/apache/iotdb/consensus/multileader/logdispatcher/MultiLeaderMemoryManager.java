@@ -31,21 +31,21 @@ public class MultiLeaderMemoryManager {
   private MultiLeaderMemoryManager() {}
 
   public void addMemorySize(long size) {
-    logger.debug(
-        "Total memory size: {} bytes, {} try to add {} bytes.",
-        memorySizeInByte.get(),
-        Thread.currentThread().getName(),
-        size);
     memorySizeInByte.addAndGet(size);
+    logger.debug(
+        "{} add {} bytes, total memory size: {} bytes.",
+        Thread.currentThread().getName(),
+        size,
+        memorySizeInByte.get());
   }
 
   public void decrMemorySize(long size) {
-    logger.debug(
-        "Total memory size: {} bytes, {} try to decr {} bytes.",
-        memorySizeInByte.get(),
-        Thread.currentThread().getName(),
-        size);
     memorySizeInByte.addAndGet(-size);
+    logger.debug(
+        "{} add {} bytes, total memory size: {} bytes.",
+        Thread.currentThread().getName(),
+        size,
+        memorySizeInByte.get());
   }
 
   public long getMemorySizeInByte() {
