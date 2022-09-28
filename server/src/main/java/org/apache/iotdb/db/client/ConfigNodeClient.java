@@ -109,7 +109,7 @@ public class ConfigNodeClient
   private static final int RETRY_NUM = 5;
 
   public static final String MSG_RECONNECTION_FAIL =
-      "Fail to connect to any config node. Please check server it";
+      "Fail to connect to any config node. Please check server status";
 
   private long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
 

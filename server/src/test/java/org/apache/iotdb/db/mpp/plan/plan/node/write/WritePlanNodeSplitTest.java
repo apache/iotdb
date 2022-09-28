@@ -93,8 +93,7 @@ public class WritePlanNodeSplitTest {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
       for (int t = 0; t < 5; t++) {
         timePartitionSlotMap.put(
-            new TTimePartitionSlot(
-                t * IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting()),
+            new TTimePartitionSlot(t * TimePartitionUtils.timePartitionIntervalForRouting),
             Collections.singletonList(
                 new TRegionReplicaSet(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, t), null)));
@@ -111,8 +110,7 @@ public class WritePlanNodeSplitTest {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
       for (int t = 0; t < 5; t++) {
         timePartitionSlotMap.put(
-            new TTimePartitionSlot(
-                t * IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting()),
+            new TTimePartitionSlot(t * TimePartitionUtils.timePartitionIntervalForRouting),
             Collections.singletonList(
                 new TRegionReplicaSet(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 5), null)));
@@ -268,8 +266,7 @@ public class WritePlanNodeSplitTest {
     for (int i = 0; i < 5; i++) {
       InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId("plan node 3"));
       insertRowNode.setDevicePath(new PartialPath(String.format("root.sg1.d%d", i)));
-      insertRowNode.setTime(
-          i * IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting());
+      insertRowNode.setTime(i * TimePartitionUtils.timePartitionIntervalForRouting);
       insertRowsNode.addOneInsertRowNode(insertRowNode, 2 * i);
 
       insertRowNode = new InsertRowNode(new PlanNodeId("plan node 3"));

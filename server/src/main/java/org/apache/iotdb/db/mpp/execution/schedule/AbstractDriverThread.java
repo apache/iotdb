@@ -59,12 +59,21 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
         Thread.currentThread().interrupt();
         break;
       }
+
+      if (next == null) {
+        logger.error("DriverTask should never be null");
+        continue;
+      }
+
       try (SetThreadName fragmentInstanceName =
           new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
         execute(next);
       } catch (Throwable t) {
-        logger.error("[ExecuteFailed]", t);
-        if (next != null) {
+        // try-with-resource syntax will call close once after try block is done, so we need to
+        // reset the thread name here
+        try (SetThreadName fragmentInstanceName =
+            new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
+          logger.error("[ExecuteFailed]", t);
           next.setAbortCause(FragmentInstanceAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
           scheduler.toAborted(next);
         }

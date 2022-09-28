@@ -518,7 +518,7 @@ public class NodeManager {
 
   /** loop body of the heartbeat thread */
   private void heartbeatLoopBody() {
-    // the consensusManager of configManager may not be fully initialized at this time
+    // The consensusManager of configManager may not be fully initialized at this time
     Optional.ofNullable(getConsensusManager())
         .ifPresent(
             consensusManager -> {
@@ -639,13 +639,14 @@ public class NodeManager {
    * @param status The specific NodeStatus
    * @return Filtered ConfigNodes with the specific NodeStatus
    */
-  public List<TConfigNodeLocation> filterConfigNodeThroughStatus(NodeStatus status) {
+  public List<TConfigNodeLocation> filterConfigNodeThroughStatus(NodeStatus... status) {
     return getRegisteredConfigNodes().stream()
         .filter(
             registeredConfigNode -> {
               int configNodeId = registeredConfigNode.getConfigNodeId();
               return nodeCacheMap.containsKey(configNodeId)
-                  && status.equals(nodeCacheMap.get(configNodeId).getNodeStatus());
+                  && Arrays.stream(status)
+                      .anyMatch(s -> s.equals(nodeCacheMap.get(configNodeId).getNodeStatus()));
             })
         .collect(Collectors.toList());
   }
@@ -660,10 +661,10 @@ public class NodeManager {
     return getRegisteredDataNodes().stream()
         .filter(
             registeredDataNode -> {
-              int id = registeredDataNode.getLocation().getDataNodeId();
-              return nodeCacheMap.containsKey(id)
+              int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
+              return nodeCacheMap.containsKey(dataNodeId)
                   && Arrays.stream(status)
-                      .anyMatch(s -> s.equals(nodeCacheMap.get(id).getNodeStatus()));
+                      .anyMatch(s -> s.equals(nodeCacheMap.get(dataNodeId).getNodeStatus()));
             })
         .collect(Collectors.toList());
   }

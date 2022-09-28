@@ -25,7 +25,13 @@ public enum RegionStatus {
   Running("Running"),
 
   /** Region connection failure */
-  Unknown("Unknown");
+  Unknown("Unknown"),
+
+  /** Region is in removing */
+  Removing("Removing"),
+
+  /** Only query statements are permitted */
+  ReadOnly("ReadOnly");
 
   private final String status;
 
@@ -35,5 +41,14 @@ public enum RegionStatus {
 
   public String getStatus() {
     return status;
+  }
+
+  public static RegionStatus parse(String status) {
+    for (RegionStatus regionStatus : RegionStatus.values()) {
+      if (regionStatus.status.equals(status)) {
+        return regionStatus;
+      }
+    }
+    throw new RuntimeException(String.format("RegionStatus %s doesn't exist.", status));
   }
 }

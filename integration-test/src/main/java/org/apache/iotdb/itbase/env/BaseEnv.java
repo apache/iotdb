@@ -129,4 +129,8 @@ public interface BaseEnv {
     session.open();
     return session;
   }
+
+  void restartDataNode(int index);
+
+  void shutdownDataNode(int index);
 }

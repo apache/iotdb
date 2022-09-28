@@ -126,6 +126,10 @@ public class QueryStatement extends Statement {
     this.fromComponent = fromComponent;
   }
 
+  public boolean hasWhere() {
+    return whereCondition != null;
+  }
+
   public WhereCondition getWhereCondition() {
     return whereCondition;
   }

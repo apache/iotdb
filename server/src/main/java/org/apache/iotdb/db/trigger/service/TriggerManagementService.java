@@ -107,6 +107,27 @@ public class TriggerManagementService {
     }
   }
 
+  public void dropTrigger(String triggerName, boolean needToDeleteJar) throws IOException {
+    try {
+      acquireLock();
+      TriggerInformation triggerInformation = triggerTable.removeTriggerInformation(triggerName);
+      TriggerExecutor executor = executorMap.remove(triggerName);
+      if (executor != null) {
+        executor.onDrop();
+      }
+      // todo: delete trigger in PatternTree when implementing trigger fire
+
+      // if it is needed to delete jar file of the trigger, delete both jar file and md5
+      if (triggerInformation != null && needToDeleteJar) {
+        TriggerExecutableManager.getInstance()
+            .removeFileUnderLibRoot(triggerInformation.getJarName());
+        TriggerExecutableManager.getInstance().removeFileUnderTemporaryRoot(triggerName + ".txt");
+      }
+    } finally {
+      releaseLock();
+    }
+  }
+
   private void checkIfRegistered(TriggerInformation triggerInformation) throws IOException {
     String triggerName = triggerInformation.getTriggerName();
     if (triggerTable.containsTrigger(triggerName)) {
@@ -208,11 +229,11 @@ public class TriggerManagementService {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  public static TriggerManagementService getInstance() {
-    return TriggerManagementServiceHolder.INSTANCE;
-  }
-
   private static class TriggerManagementServiceHolder {
     private static final TriggerManagementService INSTANCE = new TriggerManagementService();
+  }
+
+  public static TriggerManagementService getInstance() {
+    return TriggerManagementServiceHolder.INSTANCE;
   }
 }
