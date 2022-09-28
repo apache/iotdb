@@ -842,10 +842,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       List<Pair<Expression, String>> outputExpressions) {
-    Set<Expression> selectExpressions =
+    Set<Expression> selectExpressions = new LinkedHashSet<>();
+    selectExpressions.add(
+        new TimeSeriesOperand(
+            new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)));
+    selectExpressions.addAll(
         outputExpressions.stream()
             .map(Pair::getLeft)
-            .collect(Collectors.toCollection(LinkedHashSet::new));
+            .collect(Collectors.toCollection(LinkedHashSet::new)));
     analysis.setSelectExpressions(selectExpressions);
 
     Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>();

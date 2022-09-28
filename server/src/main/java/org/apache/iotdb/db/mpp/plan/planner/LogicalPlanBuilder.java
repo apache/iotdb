@@ -210,9 +210,9 @@ public class LogicalPlanBuilder {
     boolean needCheckAscending = groupByTimeParameter == null;
     Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
     Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
-    for (Expression sourceExpression : aggregationExpressions) {
+    for (Expression aggregationExpression : aggregationExpressions) {
       createAggregationDescriptor(
-          (FunctionExpression) sourceExpression,
+          (FunctionExpression) aggregationExpression,
           curStep,
           scanOrder,
           needCheckAscending,

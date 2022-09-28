@@ -57,6 +57,10 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = new MeasurementSchema(getMeasurement(), type);
   }
 
+  public MeasurementPath(PartialPath path, TSDataType type) {
+    this(path, new MeasurementSchema(path.getMeasurement(), type), false);
+  }
+
   public MeasurementPath(PartialPath measurementPath, IMeasurementSchema measurementSchema) {
     this(measurementPath, measurementSchema, false);
   }
