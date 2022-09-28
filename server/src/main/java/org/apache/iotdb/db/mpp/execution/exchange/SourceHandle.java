@@ -407,31 +407,42 @@ public class SourceHandle implements ISourceHandle {
             }
             break;
           } catch (Throwable e) {
+
             logger.error(
                 "failed to get data block [{}, {}), attempt times: {}",
                 startSequenceId,
                 endSequenceId,
                 attempt,
                 e);
+
+            // reach retry max times
             if (attempt == MAX_ATTEMPT_TIMES) {
-              synchronized (SourceHandle.this) {
-                bufferRetainedSizeInBytes -= reservedBytes;
-                localMemoryManager
-                    .getQueryPool()
-                    .free(localFragmentInstanceId.getQueryId(), reservedBytes);
-                sourceHandleListener.onFailure(SourceHandle.this, e);
-              }
+              fail(e);
+              return;
             }
+
+            // sleep some time before retrying
             try {
               Thread.sleep(retryIntervalInMs);
             } catch (InterruptedException ex) {
               Thread.currentThread().interrupt();
-              synchronized (SourceHandle.this) {
-                sourceHandleListener.onFailure(SourceHandle.this, e);
-              }
+              // if interrupted during sleeping, fast fail and don't retry any more
+              fail(e);
+              return;
             }
           }
         }
+      }
+    }
+
+    private void fail(Throwable t) {
+      synchronized (SourceHandle.this) {
+        if (aborted || closed) {
+          return;
+        }
+        bufferRetainedSizeInBytes -= reservedBytes;
+        localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), reservedBytes);
+        sourceHandleListener.onFailure(SourceHandle.this, t);
       }
     }
   }
