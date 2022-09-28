@@ -17,20 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.predefined;
+package org.apache.iotdb.metrics.metricsets;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.AbstractMetricService;
 
+/** Notice that IMetricSet should be stateless */
 public interface IMetricSet {
-  /** bind related metric to metric manager */
-  void bindTo(AbstractMetricManager metricManager);
+  /** bind metrics to metricManager and init environment */
+  void bindTo(AbstractMetricService metricService);
 
-  /** get type of metric set */
-  PredefinedMetric getType();
-
-  /** start async collectd metric */
-  default void startAsyncCollectedMetrics() {}
-
-  /** stop async collectd metric */
-  default void stopAsyncCollectedMetrics() {}
+  /** remove metrics from metricManager and clear environment */
+  void unbindFrom(AbstractMetricService metricService);
 }
