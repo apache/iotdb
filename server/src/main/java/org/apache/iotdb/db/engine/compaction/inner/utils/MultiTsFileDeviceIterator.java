@@ -138,7 +138,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * files from the newest to the oldest in turn and start traversing the index tree from the
    * firstMeasurementNode node to get all the measurements under the current device.
    */
-  public Map<String, MeasurementSchema> getAllMeasurementSchemas() throws IOException {
+  public Map<String, MeasurementSchema> getAllSchemasOfCurrentDevice() throws IOException {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResources) {
@@ -149,7 +149,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
       reader.getDeviceTimeseriesMetadata(
           timeseriesMetadataList,
-          deviceIteratorMap.get(resource).getMeasurementNode(),
+          deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
           schemaMap.keySet(),
           true);
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {

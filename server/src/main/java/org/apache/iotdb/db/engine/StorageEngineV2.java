@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -56,6 +55,7 @@ import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.ThreadUtils;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.exception.WALException;
@@ -101,7 +101,7 @@ public class StorageEngineV2 implements IService {
    * Time range for dividing storage group, the time unit is the same with IoTDB's
    * TimestampPrecision
    */
-  @ServerConfigConsistent private static long timePartitionInterval = -1;
+  private static long timePartitionIntervalForStorage = -1;
   /** whether enable data partition if disabled, all data belongs to partition 0 */
   @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
 
@@ -147,44 +147,28 @@ public class StorageEngineV2 implements IService {
   }
 
   private static void initTimePartition() {
-    timePartitionInterval =
-        convertMilliWithPrecision(
-            IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000L);
+    timePartitionIntervalForStorage =
+        TimePartitionUtils.convertMilliWithPrecision(
+            IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForStorage() * 1000L);
   }
 
-  public static long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
-  }
-
-  public static long getTimePartitionInterval() {
-    if (timePartitionInterval == -1) {
+  public static long getTimePartitionIntervalForStorage() {
+    if (timePartitionIntervalForStorage == -1) {
       initTimePartition();
     }
-    return timePartitionInterval;
+    return timePartitionIntervalForStorage;
   }
 
   @TestOnly
-  public static void setTimePartitionInterval(long timePartitionInterval) {
-    StorageEngineV2.timePartitionInterval = timePartitionInterval;
+  public static void setTimePartitionIntervalForStorage(long timePartitionIntervalForStorage) {
+    StorageEngineV2.timePartitionIntervalForStorage = timePartitionIntervalForStorage;
   }
 
   public static long getTimePartition(long time) {
-    if (timePartitionInterval == -1) {
+    if (timePartitionIntervalForStorage == -1) {
       initTimePartition();
     }
-    return enablePartition ? time / timePartitionInterval : 0;
+    return enablePartition ? time / timePartitionIntervalForStorage : 0;
   }
 
   public static boolean isEnablePartition() {
@@ -214,19 +198,6 @@ public class StorageEngineV2 implements IService {
         Thread.currentThread().interrupt();
       }
     }
-  }
-
-  public static TTimePartitionSlot getTimePartitionSlot(long time) {
-    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
-    if (enablePartition) {
-      if (timePartitionInterval == -1) {
-        initTimePartition();
-      }
-      timePartitionSlot.setStartTime(time - time % timePartitionInterval);
-    } else {
-      timePartitionSlot.setStartTime(0);
-    }
-    return timePartitionSlot;
   }
 
   public boolean isAllSgReady() {
@@ -337,7 +308,7 @@ public class StorageEngineV2 implements IService {
   public void start() {
     // build time Interval to divide time partition
     if (!enablePartition) {
-      timePartitionInterval = Long.MAX_VALUE;
+      timePartitionIntervalForStorage = Long.MAX_VALUE;
     } else {
       initTimePartition();
     }

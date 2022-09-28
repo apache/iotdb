@@ -21,10 +21,10 @@ package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -776,6 +776,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
+  @SuppressWarnings({"checkstyle:Indentation", "checkstyle:CommentsIndentation"})
   public LogicalPlanBuilder planSchemaFetchSource(
       List<String> storageGroupList,
       PathPatternTree patternTree,
@@ -788,7 +789,8 @@ public class LogicalPlanBuilder {
         for (PartialPath pathPattern :
             patternTree.getOverlappedPathPatterns(
                 storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
-          overlappedPatternTree.appendPathPattern(pathPattern);
+          // pathPattern has been deduplicated, no need to deduplicate again
+          overlappedPatternTree.appendFullPath(pathPattern);
         }
         this.root.addChild(
             new SchemaFetchScanNode(

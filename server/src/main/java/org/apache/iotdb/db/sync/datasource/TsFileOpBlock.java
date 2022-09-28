@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.sync.datasource;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.sync.externalpipe.operation.InsertOperation;
 import org.apache.iotdb.db.sync.externalpipe.operation.Operation;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -60,9 +60,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +72,7 @@ import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static org.apache.iotdb.db.sync.datasource.DeletionGroup.DeletedType.FULL_DELETED;
 import static org.apache.iotdb.db.sync.datasource.DeletionGroup.DeletedType.NO_DELETED;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.VECTOR;
 
 /** This class will parse 1 TsFile's content to 1 operation block. */
 public class TsFileOpBlock extends AbstractOpBlock {
@@ -82,9 +83,9 @@ public class TsFileOpBlock extends AbstractOpBlock {
   private String modsFileName;
   private TsFileFullReader tsFileFullSeqReader;
 
-  // full Timeseries Metadata TreeMap : FileOffset => Pair(DeviceId, TimeseriesMetadata)
+  // full Timeseries Metadata TreeMap : FileOffset => Pair(MeasurementFullPath, TimeseriesMetadata)
   private Map<Long, Pair<Path, TimeseriesMetadata>> fullTsMetadataMap;
-  // TreeMap: LocalIndex => ChunkInfo (measurementFullPath, ChunkOffset, PointCount, deletedFlag)
+  // TreeMap: IndexInFile => ChunkInfo (measurementFullPath, ChunkOffset, PointCount, deletedFlag)
   private TreeMap<Long, ChunkInfo> indexToChunkInfoMap;
 
   // Save all modifications that are from .mods file.
@@ -93,7 +94,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
   // HashMap: measurement FullPath => DeletionGroup(save deletion info)
   private Map<String, DeletionGroup> fullPathToDeletionMap;
 
-  // LRUMap: PageOffsetInTsfile => PageData
+  // LRUMap: startIndexOfPage => PageData
   private LRUCache<Long, List<TimeValuePair>> pageCache;
 
   private boolean dataReady = false;
@@ -105,8 +106,11 @@ public class TsFileOpBlock extends AbstractOpBlock {
 
   private class ChunkInfo {
     public String measurementFullPath;
-    public long chunkOffset;
-    public long pointCount;
+    public long chunkOffsetInFile = -1;
+    public long startIndexInFile = -1;
+    public long pointCount = 0;
+    public boolean isTimeAligned = false;
+    public long timeChunkOffsetInFile = -1;
     public DeletionGroup.DeletedType deletedFlag = NO_DELETED;
   }
 
@@ -138,7 +142,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
     }
 
     pageCache =
-        new LRUCache<Long, List<TimeValuePair>>(3) {
+        new LRUCache<Long, List<TimeValuePair>>(5) {
           @Override
           public List<TimeValuePair> loadObjectByKey(Long key) throws IOException {
             return null;
@@ -156,15 +160,29 @@ public class TsFileOpBlock extends AbstractOpBlock {
   private void calculateDataCount() throws IOException {
     // == calculate dataCount according to tsfile
     tsFileFullSeqReader = new TsFileFullReader(this.tsFileName);
-    fullTsMetadataMap = tsFileFullSeqReader.getAllTimeseriesMeta(false);
+
+    dataCount = 0;
+    for (String device : tsFileFullSeqReader.getAllDevices()) {
+      // == Here use not readChunkMetadataInDevice(device) but readDeviceMetadata(Device).
+      // == Because readDeviceMetadata() will not parse chunkMeta, so has better performance.
+      // == deviceMetaData is HashMap: Measurement => TimeseriesMetadata
+      Map<String, TimeseriesMetadata> deviceMetaData =
+          tsFileFullSeqReader.readDeviceMetadata(device);
+
+      long countInDevice = 0;
+      for (TimeseriesMetadata tsMetaData : deviceMetaData.values()) {
+        if (tsMetaData.getTSDataType() == VECTOR) {
+          countInDevice = tsMetaData.getStatistics().getCount() * (deviceMetaData.size() - 1);
+          break;
+        }
+        countInDevice += tsMetaData.getStatistics().getCount();
+      }
+      dataCount += countInDevice;
+    }
+
     // close reader to avoid fd leak
     tsFileFullSeqReader.close();
     tsFileFullSeqReader = null;
-
-    dataCount = 0;
-    for (Pair<Path, TimeseriesMetadata> entry : fullTsMetadataMap.values()) {
-      dataCount += entry.right.getStatistics().getCount();
-    }
 
     // == Here, release fullTsMetadataMap for saving memory.
     fullTsMetadataMap = null;
@@ -214,37 +232,73 @@ public class TsFileOpBlock extends AbstractOpBlock {
       fullTsMetadataMap = tsFileFullSeqReader.getAllTimeseriesMeta(true);
     }
 
-    // chunkOffset => ChunkInfo (measurementFullPath, ChunkOffset, PointCount, deletedFlag)
-    Map<Long, ChunkInfo> offsetToCountMap = new TreeMap<>();
-    for (Pair<Path, TimeseriesMetadata> value : fullTsMetadataMap.values()) {
-      List<IChunkMetadata> chunkMetaList = value.right.getChunkMetadataList();
+    // chunkOffset => ChunkInfo (measurementFullPath, ChunkOffset, PointCount, deletedFlag etc.)
+    Map<Long, ChunkInfo> offsetToChunkInfoMap = new TreeMap<>();
+    Map<Long, ChunkInfo> tmpOffsetToChunkInfoMap = new TreeMap<>();
 
-      if (chunkMetaList == null) {
-        continue;
+    for (String device : tsFileFullSeqReader.getAllDevices()) {
+      // == Here use not readDeviceMetadata(Device) but readChunkMetadataInDevice(device).
+      // == Because readChunkMetadataInDevice() will parse chunkMeta.
+      // == Get LinkedHashMap: measurementId -> ChunkMetadata list
+      Map<String, List<ChunkMetadata>> chunkMetadataMap =
+          tsFileFullSeqReader.readChunkMetadataInDevice(device);
+
+      tmpOffsetToChunkInfoMap.clear();
+      boolean isTimeAlignedDevice = false;
+      for (List<ChunkMetadata> chunkMetadataList : chunkMetadataMap.values()) {
+        for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+          ChunkInfo chunkInfo = new ChunkInfo();
+
+          chunkInfo.measurementFullPath =
+              new Path(device, chunkMetadata.getMeasurementUid()).getFullPath();
+          chunkInfo.chunkOffsetInFile = chunkMetadata.getOffsetOfChunkHeader();
+          chunkInfo.pointCount = chunkMetadata.getStatistics().getCount();
+
+          if (chunkMetadata.getDataType() == VECTOR) {
+            isTimeAlignedDevice = true;
+            chunkInfo.isTimeAligned = true;
+          } else {
+            chunkInfo.deletedFlag =
+                checkDeletedState(
+                    chunkInfo.measurementFullPath,
+                    chunkMetadata.getStatistics().getStartTime(),
+                    chunkMetadata.getStatistics().getEndTime());
+          }
+
+          tmpOffsetToChunkInfoMap.put(chunkInfo.chunkOffsetInFile, chunkInfo);
+        }
       }
 
-      for (IChunkMetadata chunkMetadata : chunkMetaList) {
-        // traverse every chunk
-        ChunkInfo chunkInfo = new ChunkInfo();
-        chunkInfo.measurementFullPath = value.left.getFullPath();
-        chunkInfo.chunkOffset = chunkMetadata.getOffsetOfChunkHeader();
-        chunkInfo.pointCount = chunkMetadata.getStatistics().getCount();
+      if (isTimeAlignedDevice) {
+        long timeChunkOffset = -1;
+        long timeChunkPointCount = 0;
 
-        chunkInfo.deletedFlag =
-            checkDeletedState(
-                chunkInfo.measurementFullPath,
-                chunkMetadata.getStatistics().getStartTime(),
-                chunkMetadata.getStatistics().getEndTime());
-
-        offsetToCountMap.put(chunkInfo.chunkOffset, chunkInfo);
+        Iterator<Map.Entry<Long, ChunkInfo>> iter = tmpOffsetToChunkInfoMap.entrySet().iterator();
+        while (iter.hasNext()) {
+          Map.Entry<Long, ChunkInfo> entry = iter.next();
+          ChunkInfo chunkInfo = entry.getValue();
+          if (chunkInfo.isTimeAligned) {
+            timeChunkOffset = entry.getKey();
+            timeChunkPointCount = chunkInfo.pointCount;
+            iter.remove();
+            continue;
+          } else {
+            chunkInfo.isTimeAligned = true;
+            chunkInfo.timeChunkOffsetInFile = timeChunkOffset;
+            chunkInfo.pointCount = timeChunkPointCount;
+          }
+        }
       }
+
+      offsetToChunkInfoMap.putAll(tmpOffsetToChunkInfoMap);
     }
 
     indexToChunkInfoMap = new TreeMap<>();
-    long localIndex = 0;
-    for (ChunkInfo chunkInfo : offsetToCountMap.values()) {
-      indexToChunkInfoMap.put(localIndex, chunkInfo);
-      localIndex += chunkInfo.pointCount;
+    long indexInFile = 0;
+    for (ChunkInfo chunkInfo : offsetToChunkInfoMap.values()) {
+      chunkInfo.startIndexInFile = indexInFile;
+      indexToChunkInfoMap.put(indexInFile, chunkInfo);
+      indexInFile += chunkInfo.pointCount;
     }
   }
 
@@ -317,96 +371,188 @@ public class TsFileOpBlock extends AbstractOpBlock {
   }
 
   /**
-   * Parse 1 NonAligned Chunk to get all data points. Note: new data will be appended to parameter
-   * tvPairList for better performance
+   * Try to get page data from page cache. *
    *
-   * @param chunkHeader
+   * @param pageStartIndexInFile page's first data's index in Tsfile. It is also the key of
+   *     page-cache.
+   * @param dataIndexInfile requested data's first dota's index in Tsfile.
+   * @param dataLen requested data's length
+   * @param destTVList returned data will be appended to this variable.
+   * @return -1 : pageCache has no this page. >=0 : data number of the found page in page-cache. (No
+   *     matter whether this page has requested data)
+   * @throws IOException
+   */
+  private long getDataFromPageCache(
+      long pageStartIndexInFile, long dataIndexInfile, long dataLen, List<TimeValuePair> destTVList)
+      throws IOException {
+    List<TimeValuePair> pageTVList = pageCache.get(pageStartIndexInFile);
+    if (pageTVList == null) {
+      return -1;
+    }
+
+    // == PageCache has this page. Try to get data from pageCache
+    long pageDataCount = pageTVList.size();
+    // == If this page has no requested data
+    if (((pageStartIndexInFile + pageDataCount) < dataIndexInfile)
+        || (pageStartIndexInFile >= (dataIndexInfile + dataLen))) {
+      return pageDataCount;
+    }
+
+    int beginIdxInPage = (int) (max(dataIndexInfile, pageStartIndexInFile) - pageStartIndexInFile);
+    int needCountInPage =
+        (int)
+            (min(pageStartIndexInFile + pageDataCount, dataIndexInfile + dataLen)
+                - max(dataIndexInfile, pageStartIndexInFile));
+    destTVList.addAll(
+        ((LinkedList) pageTVList).subList(beginIdxInPage, beginIdxInPage + needCountInPage));
+
+    return pageDataCount;
+  }
+  /**
+   * Parse 1 normal (not Time-Aligned) Chunk to get partial data points according to indexInChunk &
+   * lengthInChunk
+   *
+   * <p>Note: new data will be appended to parameter tvPairList for better performance.
+   *
+   * @param chunkInfo
    * @param startIndexInChunk
-   * @param length
-   * @param deletionGroup - if it is not null, need to check whether data points have benn deleted
+   * @param lengthInChunk
+   * @param deletionGroup - If it is not null, need to check whether data points have benn deleted
    * @param tvPairList
-   * @return
+   * @return the number of returned data points
    * @throws IOException
    */
   private long getNonAlignedChunkPoints(
-      ChunkHeader chunkHeader,
+      ChunkInfo chunkInfo,
       long startIndexInChunk,
-      long length,
+      long lengthInChunk,
       DeletionGroup deletionGroup,
       List<TimeValuePair> tvPairList)
       throws IOException {
+
+    if (chunkInfo.chunkOffsetInFile < 0) {
+      String errMsg =
+          String.format(
+              "getNonAlignedChunkPoints(), invalid chunkOffsetInFile=%d.",
+              chunkInfo.chunkOffsetInFile);
+      logger.error(errMsg);
+      throw new IOException(errMsg);
+    }
+    tsFileFullSeqReader.position(chunkInfo.chunkOffsetInFile);
+    byte chunkTypeByte = tsFileFullSeqReader.readMarker();
+    ChunkHeader chunkHeader = tsFileFullSeqReader.readChunkHeader(chunkTypeByte);
+
     Decoder valueDecoder =
         Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+    boolean pageHeaderHasStatistic =
+        ((chunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
     int chunkLeftDataSize = chunkHeader.getDataSize();
 
-    long index = 0;
-    while ((chunkLeftDataSize > 0) && ((index - startIndexInChunk) < length)) {
-      // begin to traverse every page
+    long indexInChunk = 0;
+    while ((chunkLeftDataSize > 0) && (indexInChunk < (startIndexInChunk + lengthInChunk))) {
+      // == Begin to traverse every page
       long pagePosInTsfile = tsFileFullSeqReader.position();
-      boolean pageHeaderHasStatistic =
-          ((chunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
       PageHeader pageHeader =
           tsFileFullSeqReader.readPageHeader(chunkHeader.getDataType(), pageHeaderHasStatistic);
 
       int pageSize = pageHeader.getSerializedPageSize();
       chunkLeftDataSize -= pageSize;
 
-      if (pageHeaderHasStatistic) {
-        // == check whether whole page is out of  [startIndexInChunk, startIndexInChunk + length)
+      long pageStartIndexInFile = chunkInfo.startIndexInFile + indexInChunk;
+
+      // == At first, try to find page data from pageCache.
+      long pageDataNum =
+          getDataFromPageCache(
+              pageStartIndexInFile,
+              chunkInfo.startIndexInFile + startIndexInChunk,
+              lengthInChunk,
+              tvPairList);
+      if (pageDataNum >= 0) { // find page in page cache
+        tsFileFullSeqReader.position(pagePosInTsfile + pageSize);
+        indexInChunk += pageDataNum;
+        continue;
+      }
+
+      // Note: Here, we can not use pageHeaderHasStatistic to do judge.
+      // Because, even if pageHeaderHasStatistic == true,
+      // pageHeader.getStatistics() can still be null when page uncompressedSize == 0 (empty page).
+      if (pageHeader.getStatistics() != null) {
+        // == check whether whole page is out of  [startIndexInChunk, startIndexInChunk +
+        // lengthInChunk)
         long pageDataCount = pageHeader.getNumOfValues();
-        if ((index + pageDataCount) <= startIndexInChunk) { // skip this page
+        if ((indexInChunk + pageDataCount) <= startIndexInChunk) { // skip this page
           tsFileFullSeqReader.position(pagePosInTsfile + pageSize);
-          index += pageDataCount;
+          indexInChunk += pageDataCount;
           continue;
         }
 
         // == check whether whole page has been deleted by .mods file
-        if (deletionGroup == null) { // No deletion related to current chunk
-          continue;
-        }
+        if (deletionGroup != null) { // have deletion related to current chunk
+          DeletionGroup.DeletedType pageDeletedStatus =
+              deletionGroup.checkDeletedState(pageHeader.getStartTime(), pageHeader.getEndTime());
+          if (pageDeletedStatus == FULL_DELETED) {
+            // == put page data to page-cache
+            List<TimeValuePair> pageTVList = new LinkedList<>();
+            for (long i = 0; i < pageDataCount; i++) {
+              pageTVList.add(null);
+            }
+            pageCache.put(pageStartIndexInFile, pageTVList);
 
-        DeletionGroup.DeletedType deletedType =
-            deletionGroup.checkDeletedState(pageHeader.getStartTime(), pageHeader.getEndTime());
+            // == gen requested TV data list
+            long needCount =
+                min(indexInChunk + pageDataCount, startIndexInChunk + lengthInChunk)
+                    - max(indexInChunk, startIndexInChunk);
+            for (long i = 0; i < needCount; i++) {
+              tvPairList.add(null);
+            }
 
-        if (deletedType == FULL_DELETED) {
-          long needCount =
-              min(index + pageDataCount, startIndexInChunk + length)
-                  - max(index, startIndexInChunk);
-          for (long i = 0; i < needCount; i++) {
-            tvPairList.add(null);
+            tsFileFullSeqReader.position(pagePosInTsfile + pageSize);
+            indexInChunk += pageDataCount;
+            continue;
           }
-          tsFileFullSeqReader.position(pagePosInTsfile + pageSize);
-          index += pageDataCount;
-          continue;
         }
       }
 
-      // == At first, try to get page-data from pageCache.
-      List<TimeValuePair> pageTVList = pageCache.get(pagePosInTsfile);
-      // == if pageCache has no data
-      if (pageTVList == null) {
-        // == read the page's all data
-        pageTVList = getNonAlignedPagePoints(pageHeader, chunkHeader, valueDecoder, deletionGroup);
-        pageCache.put(pagePosInTsfile, pageTVList);
+      // == read page data from Tsfile
+      List<TimeValuePair> pageTVList;
+      pageTVList = getNonAlignedPagePoints(pageHeader, chunkHeader, valueDecoder, deletionGroup);
+      pageCache.put(pageStartIndexInFile, pageTVList);
+
+      // == check whether whole page is out of [startIndexInChunk, startIndexInChunk +
+      // lengthInChunk)
+      long pageDataCount = pageTVList.size();
+      if ((indexInChunk + pageDataCount) <= startIndexInChunk) { // skip this page
+        // == Here, not check (indexInChunk >= (startIndexInChunk + lengthInChunk)), because the
+        // preceding  while(xxx) has checked it.
+        // tsFileFullSeqReader.position(pagePosInTsfile + pageSize);
+        indexInChunk += pageDataCount;
+        continue;
       }
 
-      int beginIdxInPage = (int) (max(index, startIndexInChunk) - index);
-      int countInPage = (int) min(pageTVList.size(), length - index + startIndexInChunk);
+      // == select needed data and append them to tvPairList
+      int beginIdxInPage = (int) (max(indexInChunk, startIndexInChunk) - indexInChunk);
+      int needCountInPage =
+          (int)
+              (min(indexInChunk + pageDataCount, startIndexInChunk + lengthInChunk)
+                  - max(indexInChunk, startIndexInChunk));
       tvPairList.addAll(
-          ((LinkedList) pageTVList).subList(beginIdxInPage, beginIdxInPage + countInPage));
+          ((LinkedList) pageTVList).subList(beginIdxInPage, beginIdxInPage + needCountInPage));
 
-      index += countInPage;
+      // tsFileFullSeqReader.position(pagePosInTsfile + pageSize);
+      indexInChunk += pageDataCount;
     }
 
-    return (index - startIndexInChunk);
+    return tvPairList.size();
   }
 
   /**
-   * Parse 1 NonAligned page to get all data points. Note:
+   * Parse 1 normal(not Time-Aligned) page to get all data points.
    *
-   * <p>1) New data will be appended to parameter tvPairList for better performance
+   * <p>Note: *
    *
-   * <p>2) deleted data by .mods will be set to null.
+   * <p>1) New data will be appended to parameter tvPairList for better performance.
+   *
+   * <p>2) The deleted data points by .mods will be set to null.
    *
    * @param pageHeader
    * @param chunkHeader
@@ -421,7 +567,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
       Decoder valueDecoder,
       DeletionGroup deletionGroup)
       throws IOException {
-    List<TimeValuePair> tvList = new LinkedList<>();
+    List<TimeValuePair> pageTVList = new LinkedList<>();
 
     ByteBuffer pageData =
         tsFileFullSeqReader.readPage(pageHeader, chunkHeader.getCompressionType());
@@ -438,7 +584,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
 
     if (batchData.isEmpty()) {
       logger.warn("getNonAlignedChunkPoints(), chunk is empty, chunkHeader = {}.", chunkHeader);
-      return tvList;
+      return pageTVList;
     }
 
     batchData.resetBatchData();
@@ -446,112 +592,296 @@ public class TsFileOpBlock extends AbstractOpBlock {
     while (batchData.hasCurrent()) {
       long ts = batchData.currentTime();
       if ((deletionGroup != null) && (deletionGroup.isDeleted(ts, intervalCursor))) {
-        tvList.add(null);
+        pageTVList.add(null);
       } else {
         TimeValuePair timeValuePair = new TimeValuePair(ts, batchData.currentTsPrimitiveType());
         logger.debug("getNonAlignedChunkPoints(), timeValuePair = {} ", timeValuePair);
-        tvList.add(timeValuePair);
+        pageTVList.add(timeValuePair);
       }
 
       batchData.next();
     }
 
-    return tvList;
+    return pageTVList;
   }
 
   /**
-   * Parse 1 Aligned Chunk to get all data points. Note: new data will be appended to parameter
-   * tvPairList for better performance
+   * Get the data of Time-Aligned Value page.
    *
-   * @param chunkHeader
-   * @param indexInChunk
+   * @param chunkInfo The chunk-info that value page exists in.
+   * @param pageIndexInChunk needed page's index in value chunk, 0 mean the first page of this
+   *     chunk.
+   * @param timeBatch timeStamp info got from Time-Aligned time page
+   * @param deletionGroup If it is not null, need to check whether data points have benn deleted
+   * @return The data list of this value page.
+   * @throws IOException
+   */
+  private List<TimeValuePair> getAlignedValuePagePoints(
+      ChunkInfo chunkInfo, int pageIndexInChunk, long[] timeBatch, DeletionGroup deletionGroup)
+      throws IOException {
+
+    if (chunkInfo.chunkOffsetInFile < 0) {
+      String errMsg =
+          String.format(
+              "getAlignedValuePagePoints(), invalid chunkOffsetInFile=%d.",
+              chunkInfo.chunkOffsetInFile);
+      logger.error(errMsg);
+      throw new IOException(errMsg);
+    }
+
+    tsFileFullSeqReader.position(chunkInfo.chunkOffsetInFile);
+    byte valueChunkTypeByte = tsFileFullSeqReader.readMarker();
+    ChunkHeader valueChunkHeader = tsFileFullSeqReader.readChunkHeader(valueChunkTypeByte);
+
+    byte chunkType = valueChunkHeader.getChunkType();
+    // == If this chunk is not time-aligned value chunk
+    if ((chunkType & (byte) TsFileConstant.VALUE_COLUMN_MASK)
+        != (byte) TsFileConstant.VALUE_COLUMN_MASK) {
+      String errMsg =
+          String.format(
+              "getAlignedValuePagePoints(), tsFile(%s) current chunk is not time-aligned value chunk. chunkOffsetInFile=%d.",
+              tsFileName, chunkInfo.chunkOffsetInFile);
+      logger.error(errMsg);
+      throw new IOException(errMsg);
+    }
+
+    boolean pageHeaderHasStatistic = ((chunkType & 0x3F) == MetaMarker.CHUNK_HEADER);
+    if ((!pageHeaderHasStatistic) && (pageIndexInChunk != 0)) {
+      String errMsg =
+          String.format(
+              "getAlignedValuePagePoints(), current value chunk has only 1 page, but pageIndexInChunk=%d.",
+              pageIndexInChunk);
+      logger.error(errMsg);
+      throw new IOException(errMsg);
+    }
+
+    int chunkLeftDataSize = valueChunkHeader.getDataSize();
+
+    // == skip the first (pageIndexInChunk) pages.
+    int k = 0;
+    TSDataType tsDataType = valueChunkHeader.getDataType();
+    while ((chunkLeftDataSize > 0) && (k++ < pageIndexInChunk)) {
+      long pagePosInTsFile = tsFileFullSeqReader.position();
+      PageHeader pageHeader =
+          tsFileFullSeqReader.readPageHeader(tsDataType, pageHeaderHasStatistic);
+
+      int pageSize = pageHeader.getSerializedPageSize();
+      tsFileFullSeqReader.position(pagePosInTsFile + pageSize);
+      chunkLeftDataSize -= pageSize;
+    }
+
+    if (chunkLeftDataSize <= 0) {
+      String errMsg =
+          String.format(
+              "getAlignedValuePagePoints(), current value chunk has only %d pages, but pageIndexInChunk=%d.",
+              k, pageIndexInChunk);
+      logger.error(errMsg);
+      throw new IOException(errMsg);
+    }
+
+    PageHeader pageHeader = tsFileFullSeqReader.readPageHeader(tsDataType, pageHeaderHasStatistic);
+    ByteBuffer pageData =
+        tsFileFullSeqReader.readPage(pageHeader, valueChunkHeader.getCompressionType());
+    Decoder valueDecoder = Decoder.getDecoderByType(valueChunkHeader.getEncodingType(), tsDataType);
+    ValuePageReader valuePageReader =
+        new ValuePageReader(pageHeader, pageData, tsDataType, valueDecoder);
+    TsPrimitiveType[] valueBatch = valuePageReader.nextValueBatch(timeBatch);
+
+    if (timeBatch.length != valueBatch.length) {
+      String errMsg =
+          String.format(
+              "getAlignedValuePagePoints(), timeBatch & valueBatch have different length. %d != %d.",
+              timeBatch.length, valueBatch.length);
+      logger.error(errMsg);
+      throw new IOException(errMsg);
+    }
+
+    List<TimeValuePair> pageTVList = new LinkedList<>();
+    DeletionGroup.IntervalCursor intervalCursor = new DeletionGroup.IntervalCursor();
+    for (int i = 0; i < timeBatch.length; i++) {
+      long ts = timeBatch[i];
+      if ((valueBatch[i] == null)
+          || ((deletionGroup != null) && (deletionGroup.isDeleted(ts, intervalCursor)))) {
+        pageTVList.add(null);
+      } else {
+        TimeValuePair timeValuePair = new TimeValuePair(ts, valueBatch[i]);
+        logger.debug("getNonAlignedChunkPoints(), timeValuePair = {} ", timeValuePair);
+        pageTVList.add(timeValuePair);
+      }
+    }
+
+    return pageTVList;
+  }
+
+  /**
+   * Parse 1 time-aligned value chunk to get partial data points according to startIndexInChunk &
+   * lengthInChunk.
+   *
+   * <p>Note:
+   *
+   * <p>1) New data will be appended to parameter tvPairList for better performance
+   *
+   * <p>2) Parsing value chunk will automatically involve time chunk's info.
+   *
+   * @param chunkInfo - The info of 1 time-aligned value chunk
+   * @param startIndexInChunk
    * @param lengthInChunk
-   * @param deletionGroup - if it is not null, need to check whether data points have benn deleted
+   * @param deletionGroup - If it is not null, need to check whether data points have benn deleted
    * @param tvPairList
    * @return
    * @throws IOException
    */
   private long getAlignedChunkPoints(
-      ChunkHeader chunkHeader,
-      long indexInChunk,
+      ChunkInfo chunkInfo,
+      long startIndexInChunk,
       long lengthInChunk,
       DeletionGroup deletionGroup,
       List<TimeValuePair> tvPairList)
       throws IOException {
-    List<long[]> timeBatch = new ArrayList<>();
-    Decoder valueDecoder =
-        Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
 
-    int timePageIndex = 0, valuePageIndex = 0;
-    boolean timeChunkEnd = false;
-    byte chunkTypeByte = chunkHeader.getChunkType();
-    while (true) {
-      int chunkDataSize = chunkHeader.getDataSize();
-      while (chunkDataSize > 0) {
-        valueDecoder.reset();
+    if (chunkInfo.timeChunkOffsetInFile < 0) {
+      String errMsg =
+          String.format(
+              "getAlignedChunkPoints(), invalid timeChunkOffsetInFile=%d.",
+              chunkInfo.timeChunkOffsetInFile);
+      logger.error(errMsg);
+      throw new IOException(errMsg);
+    }
+    tsFileFullSeqReader.position(chunkInfo.timeChunkOffsetInFile);
+    byte timeChunkTypeByte = tsFileFullSeqReader.readMarker();
+    ChunkHeader timeChunkHeader = tsFileFullSeqReader.readChunkHeader(timeChunkTypeByte);
 
-        // begin to traverse every page
-        PageHeader pageHeader =
-            tsFileFullSeqReader.readPageHeader(
-                chunkHeader.getDataType(), (chunkTypeByte & 0x3F) == MetaMarker.CHUNK_HEADER);
-        ByteBuffer pageData =
-            tsFileFullSeqReader.readPage(pageHeader, chunkHeader.getCompressionType());
+    TSDataType tsDataType = timeChunkHeader.getDataType();
+    boolean pageHeaderHasStatistic =
+        ((timeChunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+    int chunkLeftDataSize = timeChunkHeader.getDataSize();
+    Decoder defaultTimeDecoder =
+        Decoder.getDecoderByType(
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+            TSDataType.INT64);
 
-        if ((chunkTypeByte & (byte) TsFileConstant.TIME_COLUMN_MASK)
-            == (byte) TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
-          TimePageReader timePageReader = new TimePageReader(pageHeader, pageData, timeDecoder);
-          timeBatch.add(timePageReader.getNextTimeBatch());
+    long indexInChunk = 0;
+    int pageIndexInChunk = -1;
+    while ((chunkLeftDataSize > 0) && (indexInChunk < (startIndexInChunk + lengthInChunk))) {
+      // == Begin to traverse every time+value page
+      long timePagePosInTsfile = tsFileFullSeqReader.position();
+      PageHeader timePageHeader =
+          tsFileFullSeqReader.readPageHeader(tsDataType, pageHeaderHasStatistic);
 
-          for (int i = 0; i < timeBatch.get(timePageIndex).length; i++) {
-            logger.debug("time: " + timeBatch.get(timePageIndex)[i]);
-          }
-          timePageIndex++;
-        } else if ((chunkTypeByte & (byte) TsFileConstant.VALUE_COLUMN_MASK)
-            == (byte) TsFileConstant.VALUE_COLUMN_MASK) { // Value Chunk
-          timeChunkEnd = true;
-          ValuePageReader valuePageReader =
-              new ValuePageReader(pageHeader, pageData, chunkHeader.getDataType(), valueDecoder);
-          TsPrimitiveType[] valueBatch =
-              valuePageReader.nextValueBatch(timeBatch.get(valuePageIndex));
-          if (valueBatch.length == 0) {
-            logger.debug(
-                "getAlignedChunkPoints(), Empty Page. ValuePageReader = {}", valuePageReader);
-          }
+      int timePageSize = timePageHeader.getSerializedPageSize();
+      chunkLeftDataSize -= timePageSize;
+      pageIndexInChunk++;
 
-          for (int i = 0; i < valueBatch.length; i++) {
-            TimeValuePair timeValuePair =
-                new TimeValuePair(timeBatch.get(valuePageIndex)[i], valueBatch[i]);
-            logger.debug("getNonAlignedChunkPoints(), timeValuePair = {} ", timeValuePair);
-            tvPairList.add(timeValuePair);
-          }
+      long pageStartIndexInFile = chunkInfo.startIndexInFile + indexInChunk;
 
-          valuePageIndex++;
+      // == At first, try to find page data from pageCache.
+      long pageDataNum =
+          getDataFromPageCache(
+              pageStartIndexInFile,
+              chunkInfo.startIndexInFile + startIndexInChunk,
+              lengthInChunk,
+              tvPairList);
+      if (pageDataNum >= 0) { // find page in page cache
+        tsFileFullSeqReader.position(timePagePosInTsfile + timePageSize);
+        indexInChunk += pageDataNum;
+        continue;
+      }
+
+      // Note: Here, we can not use pageHeaderHasStatistic to do judge.
+      // Because, even if pageHeaderHasStatistic == true,
+      // pageHeader.getStatistics() can still be null when page uncompressedSize == 0 (empty page).
+      if (timePageHeader.getStatistics() != null) {
+        // == check whether whole time page is out of  [startIndexInChunk, startIndexInChunk +
+        // lengthInChunk)
+        long pageDataCount = timePageHeader.getNumOfValues();
+        if ((indexInChunk + pageDataCount) <= startIndexInChunk) { // skip this page
+          tsFileFullSeqReader.position(timePagePosInTsfile + timePageSize);
+          indexInChunk += pageDataCount;
+          continue;
         }
-        chunkDataSize -= pageHeader.getSerializedPageSize();
+
+        // == check whether whole page has been deleted by .mods file
+        if (deletionGroup != null) { // have deletion related to current chunk
+          DeletionGroup.DeletedType pageDeletedStatus =
+              deletionGroup.checkDeletedState(
+                  timePageHeader.getStartTime(), timePageHeader.getEndTime());
+          if (pageDeletedStatus == FULL_DELETED) {
+            // == put page data to page-cache
+            List<TimeValuePair> pageTVList = new LinkedList<>();
+            for (long i = 0; i < pageDataCount; i++) {
+              pageTVList.add(null);
+            }
+            pageCache.put(pageStartIndexInFile, pageTVList);
+
+            // == gen requested TV data list
+            long needCount =
+                min(indexInChunk + pageDataCount, startIndexInChunk + lengthInChunk)
+                    - max(indexInChunk, startIndexInChunk);
+            for (long i = 0; i < needCount; i++) {
+              tvPairList.add(null);
+            }
+
+            tsFileFullSeqReader.position(timePagePosInTsfile + timePageSize);
+            indexInChunk += pageDataCount;
+            continue;
+          }
+        }
       }
 
-      chunkTypeByte = tsFileFullSeqReader.readMarker();
-      chunkHeader = tsFileFullSeqReader.readChunkHeader(chunkTypeByte);
-      if (timeChunkEnd
-          && ((chunkTypeByte & (byte) TsFileConstant.VALUE_COLUMN_MASK)
-              != (byte) TsFileConstant.VALUE_COLUMN_MASK)) {
-        break;
+      // == read time page data from Tsfile (for pageIndexInChunk)
+      ByteBuffer timePageData =
+          tsFileFullSeqReader.readPage(timePageHeader, timeChunkHeader.getCompressionType());
+      TimePageReader timePageReader =
+          new TimePageReader(timePageHeader, timePageData, defaultTimeDecoder);
+      long[] timeBatch = timePageReader.getNextTimeBatch();
+      if (logger.isDebugEnabled()) {
+        logger.debug("Time pager content: {}", timeBatch);
       }
+
+      // == check whether whole time page is out of [startIndexInChunk, startIndexInChunk +
+      // lengthInChunk)
+      long timePageDataCount = timeBatch.length;
+      if ((indexInChunk + timePageDataCount) <= startIndexInChunk) { // skip this page
+        // == Here, not check (indexInChunk >= (startIndexInChunk + lengthInChunk)), because the
+        // preceding  while(xxx) has checked it.
+        tsFileFullSeqReader.position(timePagePosInTsfile + timePageSize);
+        indexInChunk += timePageDataCount;
+        continue;
+      }
+
+      // == read value page data from Tsfile (for pageIndexInChunk)
+      List<TimeValuePair> pageTVList =
+          getAlignedValuePagePoints(chunkInfo, pageIndexInChunk, timeBatch, deletionGroup);
+
+      pageCache.put(pageStartIndexInFile, pageTVList);
+
+      // == select needed data and append them to tvPairList
+      int beginIdxInPage = (int) (max(indexInChunk, startIndexInChunk) - indexInChunk);
+      int needCountInPage =
+          (int)
+              (min(indexInChunk + timePageDataCount, startIndexInChunk + lengthInChunk)
+                  - max(indexInChunk, startIndexInChunk));
+
+      tvPairList.addAll(
+          ((LinkedList) pageTVList).subList(beginIdxInPage, beginIdxInPage + needCountInPage));
+
+      tsFileFullSeqReader.position(timePagePosInTsfile + timePageSize);
+      indexInChunk += timePageDataCount;
     }
 
-    // return tvPairList;
-    return 0;
+    return tvPairList.size();
   }
 
   /**
-   * get 1 Chunk's partial data points according to indexInChunk & lengthInChunk Note: new data will
-   * be appended to parameter tvPairList for better performance
+   * Get 1 Chunk's partial data points according to indexInChunk & lengthInChunk.
+   *
+   * <p>Note: new data will be appended to parameter tvPairList for better performance
    *
    * @param chunkInfo
    * @param indexInChunk
    * @param lengthInChunk
    * @param tvPairList, the got data points will be appended to this List.
-   * @return
+   * @return the number of returned data points
    * @throws IOException
    */
   private long getChunkPoints(
@@ -566,21 +896,17 @@ public class TsFileOpBlock extends AbstractOpBlock {
       return lengthInChunk;
     }
 
-    tsFileFullSeqReader.position(chunkInfo.chunkOffset);
-    byte chunkTypeByte = tsFileFullSeqReader.readMarker();
-    ChunkHeader chunkHeader = tsFileFullSeqReader.readChunkHeader(chunkTypeByte);
-
     DeletionGroup deletionGroup = null;
     if (chunkInfo.deletedFlag != NO_DELETED) {
       deletionGroup = getFullPathDeletion(chunkInfo.measurementFullPath);
     }
 
-    if (chunkHeader.getDataType() == TSDataType.VECTOR) {
+    if (chunkInfo.isTimeAligned) {
       return getAlignedChunkPoints(
-          chunkHeader, indexInChunk, lengthInChunk, deletionGroup, tvPairList);
+          chunkInfo, indexInChunk, lengthInChunk, deletionGroup, tvPairList);
     } else {
       return getNonAlignedChunkPoints(
-          chunkHeader, indexInChunk, lengthInChunk, deletionGroup, tvPairList);
+          chunkInfo, indexInChunk, lengthInChunk, deletionGroup, tvPairList);
     }
   }
 
@@ -607,7 +933,12 @@ public class TsFileOpBlock extends AbstractOpBlock {
     dataList.add(new Pair<>(measurementPath, tvPairList));
   }
 
-  private void prepareData() throws IOException {
+  /* Prepare TsfileOpBlock's internal data before formal accessing. */
+  private synchronized void prepareData() throws IOException {
+    if (dataReady) {
+      return;
+    }
+
     if (tsFileFullSeqReader == null) {
       tsFileFullSeqReader = new TsFileFullReader(tsFileName);
     }
@@ -643,8 +974,8 @@ public class TsFileOpBlock extends AbstractOpBlock {
       throw new IOException("can not access closed TsFileOpBlock: " + this);
     }
 
-    long indexInTsfile = index - beginIndex;
-    if (indexInTsfile < 0 || indexInTsfile >= dataCount) {
+    long indexInTsFile = index - beginIndex;
+    if (indexInTsFile < 0 || indexInTsFile >= dataCount) {
       logger.error("TsFileOpBlock.getOperation(), Error: index {} is out of range.", index);
       // throw new IOException("index is out of range.");
       return null;
@@ -661,15 +992,15 @@ public class TsFileOpBlock extends AbstractOpBlock {
     // handle all chunks that contain needed data
     long remain = length;
     while (remain > 0) {
-      Map.Entry<Long, ChunkInfo> entry = indexToChunkInfoMap.floorEntry(indexInTsfile);
+      Map.Entry<Long, ChunkInfo> entry = indexToChunkInfoMap.floorEntry(indexInTsFile);
       if (entry == null) {
         logger.error(
-            "TsFileOpBlock.getOperation(), indexInTsfile {} if out of indexToChunkOffsetMap.",
-            indexInTsfile);
-        throw new IOException("indexInTsfile is out of range.");
+            "TsFileOpBlock.getOperation(), indexInTsFile {} if out of indexToChunkOffsetMap.",
+            indexInTsFile);
+        throw new IOException("indexInTsFile is out of range.");
       }
 
-      long indexInChunk = indexInTsfile - entry.getKey();
+      long indexInChunk = indexInTsFile - entry.getKey();
       ChunkInfo chunkInfo = entry.getValue();
       String sensorFullPath = chunkInfo.measurementFullPath;
       long chunkPointCount = chunkInfo.pointCount;
@@ -690,18 +1021,18 @@ public class TsFileOpBlock extends AbstractOpBlock {
       }
       long readCount = getChunkPoints(chunkInfo, indexInChunk, lengthInChunk, tvPairList);
       if (readCount != lengthInChunk) {
-        logger.error(
-            "TsFileOpBlock.getOperation(), error when read chunk from file {}. lengthInChunk={}, readCount={}, ",
-            indexInTsfile,
-            lengthInChunk,
-            readCount);
-        throw new IOException("Error read chunk from file:" + indexInTsfile);
+        String errMsg =
+            String.format(
+                "TsFileOpBlock.getOperation(), error when read chunk from file %s. indexInTsFile=%d, lengthInChunk=%d, readCount=%d.",
+                tsFileName, indexInTsFile, lengthInChunk, readCount);
+        logger.error(errMsg);
+        throw new IOException(errMsg);
       }
 
       remain -= readCount;
-      indexInTsfile = entry.getKey() + chunkPointCount; // next chunk's local index
+      indexInTsFile = entry.getKey() + chunkPointCount; // next chunk's local index
 
-      if (indexInTsfile >= dataCount) { // has reached the end of this Tsfile
+      if (indexInTsFile >= dataCount) { // has reached the end of this Tsfile
         break;
       }
     }
@@ -731,7 +1062,6 @@ public class TsFileOpBlock extends AbstractOpBlock {
 
   /** This class is used to read & parse Tsfile */
   private class TsFileFullReader extends TsFileSequenceReader {
-    protected TsFileMetadata tsFileMetaData;
 
     /**
      * @param file, Tsfile's full path name.
@@ -742,7 +1072,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
     }
 
     /**
-     * Generate timeseriesMetadataMap, Offset => (DeviceID, TimeseriesMetadata)
+     * Generate timeseriesMetadataMap, Offset => (MeasurementID, TimeseriesMetadata)
      *
      * @param startOffset
      * @param metadataIndex
@@ -750,7 +1080,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
      * @param deviceId
      * @param type
      * @param timeseriesMetadataMap, output param
-     * @param needChunkMetadata, input param, whether need parser ChunkMetaData
+     * @param needChunkMetadata, input param, indicates whether need parser ChunkMetaData
      * @throws IOException
      */
     private void genTSMetadataFromMetaIndexEntry(
@@ -805,7 +1135,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
      * collect all Timeseries Meta of the tsFile
      *
      * @param needChunkMetadata
-     * @return Map, FileOffset => pair(deviceId => TimeseriesMetadata)
+     * @return Map, FileOffset => pair(MeasurementId => TimeseriesMetadata)
      * @throws IOException
      */
     public Map<Long, Pair<Path, TimeseriesMetadata>> getAllTimeseriesMeta(boolean needChunkMetadata)

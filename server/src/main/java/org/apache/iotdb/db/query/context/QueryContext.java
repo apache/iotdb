@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.query.context;
 
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
+import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory.ModsSerializer;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 
@@ -47,7 +51,8 @@ public class QueryContext {
    * use this field because each call of Modification.getModifications() return a copy of the
    * Modifications, and we do not want it to create multiple copies within a query.
    */
-  private final Map<String, List<Modification>> fileModCache = new HashMap<>();
+  private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
+      new HashMap<>();
 
   protected long queryId;
 
@@ -100,22 +105,55 @@ public class QueryContext {
     return fileModifications.computeIfAbsent(
         path.getFullPath(),
         k -> {
-          List<Modification> allModifications = fileModCache.get(modFile.getFilePath());
+          PatternTreeMap<Modification, ModsSerializer> allModifications =
+              fileModCache.get(modFile.getFilePath());
           if (allModifications == null) {
-            allModifications = (List<Modification>) modFile.getModifications();
+            allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
+            for (Modification modification : modFile.getModifications()) {
+              allModifications.append(modification.getPath(), modification);
+            }
             fileModCache.put(modFile.getFilePath(), allModifications);
           }
-          List<Modification> finalPathModifications = new ArrayList<>();
-          if (!allModifications.isEmpty()) {
-            allModifications.forEach(
-                modification -> {
-                  if (modification.getPath().matchFullPath(path)) {
-                    finalPathModifications.add(modification);
-                  }
-                });
-          }
-          return finalPathModifications;
+          return sortAndMerge(allModifications.getOverlapped(path));
+          //          return allModifications.getOverlapped(path);
         });
+  }
+
+  private List<Modification> sortAndMerge(List<Modification> modifications) {
+    modifications.sort(
+        (o1, o2) -> {
+          if (!o1.getType().equals(o2.getType())) {
+            return o1.getType().compareTo(o2.getType());
+          } else if (!o1.getPath().equals(o2.getPath())) {
+            return o1.getPath().compareTo(o2.getPath());
+          } else if (o1.getFileOffset() != o2.getFileOffset()) {
+            return (int) (o1.getFileOffset() - o2.getFileOffset());
+          } else {
+            switch (o1.getType()) {
+              case DELETION:
+                Deletion del1 = (Deletion) o1;
+                Deletion del2 = (Deletion) o2;
+                return del1.getTimeRange().compareTo(del2.getTimeRange());
+              default:
+                throw new IllegalArgumentException();
+            }
+          }
+        });
+    List<Modification> result = new ArrayList<>();
+    if (!modifications.isEmpty()) {
+      Deletion current = ((Deletion) modifications.get(0)).clone();
+      for (int i = 1; i < modifications.size(); i++) {
+        Deletion del = (Deletion) modifications.get(i);
+        if (current.intersects(del)) {
+          current.merge(del);
+        } else {
+          result.add(current);
+          current = del.clone();
+        }
+      }
+      result.add(current);
+    }
+    return result;
   }
 
   /**
