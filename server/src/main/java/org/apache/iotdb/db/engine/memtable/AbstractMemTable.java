@@ -166,7 +166,6 @@ public abstract class AbstractMemTable implements IMemTable {
       insertRowPlan.setDeviceID(deviceIDFactory.getDeviceID(insertRowPlan.getDevicePath()));
     }
 
-    updatePlanIndexes(insertRowPlan.getIndex());
     String[] measurements = insertRowPlan.getMeasurements();
     Object[] values = insertRowPlan.getValues();
 
@@ -216,8 +215,6 @@ public abstract class AbstractMemTable implements IMemTable {
       insertRowNode.setDeviceID(deviceIDFactory.getDeviceID(insertRowNode.getDevicePath()));
     }
 
-    // updatePlanIndexes(insertRowNode.getIndex());
-    updatePlanIndexes(0);
     String[] measurements = insertRowNode.getMeasurements();
     Object[] values = insertRowNode.getValues();
 
@@ -266,7 +263,6 @@ public abstract class AbstractMemTable implements IMemTable {
       insertRowPlan.setDeviceID(deviceIDFactory.getDeviceID(insertRowPlan.getDevicePath()));
     }
 
-    updatePlanIndexes(insertRowPlan.getIndex());
     String[] measurements = insertRowPlan.getMeasurements();
     Object[] values = insertRowPlan.getValues();
 
@@ -307,8 +303,6 @@ public abstract class AbstractMemTable implements IMemTable {
       insertRowNode.setDeviceID(deviceIDFactory.getDeviceID(insertRowNode.getDevicePath()));
     }
 
-    // TODO updatePlanIndexes(insertRowNode.getIndex());
-    updatePlanIndexes(0);
     String[] measurements = insertRowNode.getMeasurements();
     Object[] values = insertRowNode.getValues();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -344,7 +338,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException {
-    updatePlanIndexes(insertTabletPlan.getIndex());
     try {
       write(insertTabletPlan, start, end);
       memSize += MemUtils.getTabletSize(insertTabletPlan, start, end, disableMemControl);
@@ -367,7 +360,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insertAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException {
-    updatePlanIndexes(insertTabletPlan.getIndex());
     try {
       writeAlignedTablet(insertTabletPlan, start, end);
       memSize += MemUtils.getAlignedTabletSize(insertTabletPlan, start, end, disableMemControl);
@@ -390,9 +382,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException {
-    // TODO: PlanIndex
-    // updatePlanIndexes(insertTabletPlan.getIndex());
-    updatePlanIndexes(0);
     try {
       write(insertTabletNode, start, end);
       memSize += MemUtils.getTabletSize(insertTabletNode, start, end, disableMemControl);
@@ -415,9 +404,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException {
-    // TODO: PlanIndex
-    // updatePlanIndexes(insertTabletPlan.getIndex());
-    updatePlanIndexes(0);
     try {
       writeAlignedTablet(insertTabletNode, start, end);
       memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, disableMemControl);
@@ -746,11 +732,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public long getMinPlanIndex() {
     return minPlanIndex;
-  }
-
-  void updatePlanIndexes(long index) {
-    maxPlanIndex = Math.max(index, maxPlanIndex);
-    minPlanIndex = Math.min(index, minPlanIndex);
   }
 
   @Override
