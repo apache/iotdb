@@ -540,12 +540,6 @@
                 <artifactId>httpcore</artifactId>
                 <version>${httpcore.version}</version>
             </dependency>
-            <!-- for hive connector-->
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-server</artifactId>
-                <version>11.0.6</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>

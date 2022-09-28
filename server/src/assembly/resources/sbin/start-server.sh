@@ -39,6 +39,10 @@ if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="`dirname "$0"`/.."
 fi
 
+if [ -z "${IOTDB_DATA_HOME}" ]; then
+  export IOTDB_DATA_HOME=${IOTDB_HOME}
+fi
+
 if [ -z "${IOTDB_CONF}" ]; then
   export IOTDB_CONF=${IOTDB_HOME}/conf
 fi
@@ -157,11 +161,12 @@ launch_service()
 	class="$1"
 	iotdb_parms="-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}"
 	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
+	iotdb_parms="$iotdb_parms -DIOTDB_DATA_HOME=${IOTDB_DATA_HOME}"
 	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -DTSFILE_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
-	iotdb_parms="$iotdb_parms -DIOTDB_LOG_DIR=${DIOTDB_LOG_DIR}"
+	iotdb_parms="$iotdb_parms -DIOTDB_LOG_DIR=${IOTDB_LOG_DIR}"
 
   if [ "x$pidpath" != "x" ]; then
      iotdb_parms="$iotdb_parms -Diotdb-pidfile=$pidpath"

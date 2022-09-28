@@ -52,6 +52,7 @@ public class IoTDBConstant {
   public static final long KB = 1024L;
 
   public static final String IOTDB_HOME = "IOTDB_HOME";
+  public static final String IOTDB_DATA_HOME = "IOTDB_DATA_HOME";
 
   public static final String SEQFILE_LOG_NODE_SUFFIX = "-seq";
   public static final String UNSEQFILE_LOG_NODE_SUFFIX = "-unseq";
