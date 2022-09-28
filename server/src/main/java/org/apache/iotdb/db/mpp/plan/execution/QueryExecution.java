@@ -205,6 +205,8 @@ public class QueryExecution implements IQueryExecution {
     stateMachine.transitionToQueued();
     // force invalid PartitionCache
     partitionFetcher.invalidAllCache();
+    // clear runtime variables in MPPQueryContext
+    context.prepareForRetry();
     // re-analyze the query
     this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
     // re-start the QueryExecution
@@ -365,7 +367,7 @@ public class QueryExecution implements IQueryExecution {
           return Optional.empty();
         }
       } catch (ExecutionException | CancellationException e) {
-        stateMachine.transitionToFailed(e);
+        stateMachine.transitionToFailed(e.getCause() != null ? e.getCause() : e);
         if (stateMachine.getFailureStatus() != null) {
           throw new IoTDBException(
               stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);

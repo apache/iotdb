@@ -25,13 +25,13 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
-import org.apache.iotdb.commons.trigger.service.TriggerClassLoaderManager;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
@@ -64,7 +64,6 @@ import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.sync.SyncService;
-import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -171,7 +170,7 @@ public class DataNode implements DataNodeMBean {
 
     ConfigNodeInfo.getInstance().updateConfigNodeList(config.getTargetConfigNodeList());
     while (retry > 0) {
-      logger.info("start registering to the cluster.");
+      logger.info("Start registering to the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         req.setDataNodeConfiguration(generateDataNodeConfiguration());
@@ -199,6 +198,8 @@ public class DataNode implements DataNodeMBean {
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
           IoTDBDescriptor.getInstance().loadRatisConfig(dataNodeRegisterResp.ratisConfig);
           IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
+
+          CommonDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
 
           if (!IoTDBStartCheck.getInstance()
               .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
@@ -246,7 +247,7 @@ public class DataNode implements DataNodeMBean {
     try {
       setUp();
     } catch (StartupException | QueryProcessException e) {
-      logger.error("meet error while starting up.", e);
+      logger.error("Meet error while starting up.", e);
       throw new StartupException("Error in activating IoTDB DataNode.");
     }
     logger.info("IoTDB DataNode has started.");
@@ -267,7 +268,7 @@ public class DataNode implements DataNodeMBean {
     setUncaughtExceptionHandler();
     initServiceProvider();
 
-    logger.info("recover the schema...");
+    logger.info("Recover the schema...");
     initSchemaEngine();
     registerManager.register(new JMXService());
     registerManager.register(FlushManager.getInstance());
@@ -288,7 +289,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(DriverScheduler.getInstance());
 
     registerUdfServices();
-    registerTriggerServices();
+    initTriggerRelatedInstance();
 
     logger.info(
         "IoTDB DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
@@ -375,19 +376,20 @@ public class DataNode implements DataNodeMBean {
             config.getSystemDir() + File.separator + "udf" + File.separator));
   }
 
-  private void registerTriggerServices() throws StartupException {
-    registerManager.register(
-        TriggerExecutableManager.setupAndGetInstance(
-            config.getTriggerTemporaryLibDir(), config.getTriggerDir()));
-    registerManager.register(TriggerClassLoaderManager.setupAndGetInstance(config.getTriggerDir()));
-    registerManager.register(TriggerManagementService.setupAndGetInstance());
+  private void initTriggerRelatedInstance() throws StartupException {
+    try {
+      TriggerExecutableManager.setupAndGetInstance(
+          config.getTriggerTemporaryLibDir(), config.getTriggerDir());
+    } catch (IOException e) {
+      throw new StartupException(e);
+    }
   }
 
   private void initSchemaEngine() {
     long time = System.currentTimeMillis();
     SchemaEngine.getInstance().init();
     long end = System.currentTimeMillis() - time;
-    logger.info("spend {}ms to recover schema.", end);
+    logger.info("Spent {}ms to recover schema.", end);
     logger.info(
         "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
         config.getSeqTsFileSize(),
@@ -402,7 +404,7 @@ public class DataNode implements DataNodeMBean {
       SchemaRegionConsensusImpl.getInstance().stop();
       DataRegionConsensusImpl.getInstance().stop();
     } catch (Exception e) {
-      logger.error("stop data node error", e);
+      logger.error("Stop data node error", e);
     }
   }
 

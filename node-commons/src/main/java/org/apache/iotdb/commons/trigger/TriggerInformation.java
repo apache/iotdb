@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -40,13 +40,17 @@ public class TriggerInformation {
 
   private Map<String, String> attributes;
 
+  private TriggerEvent event;
+
   private TTriggerState triggerState;
 
   /** indicate this Trigger is Stateful or Stateless */
   private boolean isStateful;
-
   /** only used for Stateful Trigger */
   private TDataNodeLocation dataNodeLocation;
+
+  /** MD5 of the Jar File */
+  private String jarFileMD5;
 
   public TriggerInformation() {};
 
@@ -56,17 +60,21 @@ public class TriggerInformation {
       String className,
       String jarName,
       Map<String, String> attributes,
+      TriggerEvent event,
       TTriggerState triggerState,
       boolean isStateful,
-      TDataNodeLocation dataNodeLocation) {
+      TDataNodeLocation dataNodeLocation,
+      String jarFileMD5) {
     this.pathPattern = pathPattern;
     this.triggerName = triggerName;
     this.className = className;
     this.jarName = jarName;
     this.attributes = attributes;
+    this.event = event;
     this.triggerState = triggerState;
     this.isStateful = isStateful;
     this.dataNodeLocation = dataNodeLocation;
+    this.jarFileMD5 = jarFileMD5;
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -82,11 +90,13 @@ public class TriggerInformation {
     ReadWriteIOUtils.write(className, outputStream);
     ReadWriteIOUtils.write(jarName, outputStream);
     ReadWriteIOUtils.write(attributes, outputStream);
+    ReadWriteIOUtils.write(event.getId(), outputStream);
     ReadWriteIOUtils.write(triggerState.getValue(), outputStream);
     ReadWriteIOUtils.write(isStateful, outputStream);
     if (isStateful) {
       ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation, outputStream);
     }
+    ReadWriteIOUtils.write(jarFileMD5, outputStream);
   }
 
   public static TriggerInformation deserialize(ByteBuffer byteBuffer) {
@@ -96,6 +106,7 @@ public class TriggerInformation {
     triggerInformation.className = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.jarName = ReadWriteIOUtils.readString(byteBuffer);
     triggerInformation.attributes = ReadWriteIOUtils.readMap(byteBuffer);
+    triggerInformation.event = TriggerEvent.construct(ReadWriteIOUtils.readByte(byteBuffer));
     triggerInformation.triggerState =
         TTriggerState.findByValue(ReadWriteIOUtils.readInt(byteBuffer));
     boolean isStateful = ReadWriteIOUtils.readBool(byteBuffer);
@@ -104,6 +115,7 @@ public class TriggerInformation {
       triggerInformation.dataNodeLocation =
           ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     }
+    triggerInformation.jarFileMD5 = ReadWriteIOUtils.readString(byteBuffer);
     return triggerInformation;
   }
 
@@ -129,6 +141,14 @@ public class TriggerInformation {
 
   public void setClassName(String className) {
     this.className = className;
+  }
+
+  public TriggerEvent getEvent() {
+    return event;
+  }
+
+  public void setEvent(TriggerEvent event) {
+    this.event = event;
   }
 
   public Map<String, String> getAttributes() {
@@ -165,5 +185,13 @@ public class TriggerInformation {
 
   public void setDataNodeLocation(TDataNodeLocation dataNodeLocation) {
     this.dataNodeLocation = dataNodeLocation;
+  }
+
+  public String getJarFileMD5() {
+    return jarFileMD5;
+  }
+
+  public void setJarFileMD5(String jarFileMD5) {
+    this.jarFileMD5 = jarFileMD5;
   }
 }

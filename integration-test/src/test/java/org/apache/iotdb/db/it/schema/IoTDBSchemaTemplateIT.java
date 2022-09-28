@@ -35,6 +35,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -361,5 +362,60 @@ public class IoTDBSchemaTemplateIT {
     // create schema template
     statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
     statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
+  }
+
+  @Test
+  public void testDeleteTimeSeriesWhenUsingTemplate() throws SQLException {
+    // set schema template
+    statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+    statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg1.d2");
+
+    statement.execute("CREATE TIMESERIES root.sg3.d1.s1 INT64");
+
+    // set using schema template
+    statement.execute("INSERT INTO root.sg1.d1(time,s1) VALUES (1,1)");
+    statement.execute("INSERT INTO root.sg1.d2(time,s1) ALIGNED VALUES (1,1)");
+    statement.execute("INSERT INTO root.sg3.d1(time,s1) VALUES (1,1)");
+
+    Set<String> expectedResult = new HashSet<>(Collections.singletonList("1,1,1,1,"));
+
+    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.**")) {
+      while (resultSet.next()) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 1; i <= 4; i++) {
+          stringBuilder.append(resultSet.getString(i)).append(",");
+        }
+        String actualResult = stringBuilder.toString();
+        Assert.assertTrue(expectedResult.contains(actualResult));
+        expectedResult.remove(actualResult);
+      }
+    }
+    Assert.assertTrue(expectedResult.isEmpty());
+
+    statement.execute("DELETE TIMESERIES root.**.s1");
+
+    expectedResult =
+        new HashSet<>(
+            Arrays.asList("root.sg1.d1.s1,INT64,RLE,SNAPPY", "root.sg1.d2.s1,INT64,RLE,SNAPPY"));
+
+    try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.**.s1")) {
+      while (resultSet.next()) {
+        String actualResult =
+            resultSet.getString("timeseries")
+                + ","
+                + resultSet.getString("dataType")
+                + ","
+                + resultSet.getString("encoding")
+                + ","
+                + resultSet.getString("compression");
+        Assert.assertTrue(expectedResult.contains(actualResult));
+        expectedResult.remove(actualResult);
+      }
+    }
+    Assert.assertTrue(expectedResult.isEmpty());
+
+    //    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.**")) {
+    //      Assert.assertFalse(resultSet.next());
+    //    }
   }
 }

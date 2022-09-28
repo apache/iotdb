@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Config;
+import org.apache.iotdb.session.SessionConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;
@@ -246,7 +246,7 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
     write10Data(pool, true);
     SessionDataSetWrapper wrapper = null;
     try {
@@ -274,7 +274,7 @@ public class SessionPoolTest {
               false,
               null,
               false,
-              Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+              SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
       correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
       pool.close();
       return;
@@ -306,7 +306,7 @@ public class SessionPoolTest {
                 false,
                 null,
                 false,
-                Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+                SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
         correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
         pool.close();
       } catch (StatementExecutionException es) {
@@ -336,7 +336,7 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
     write10Data(pool, true);
     assertEquals(1, pool.currentAvailableSize());
     SessionDataSetWrapper wrapper;
@@ -373,7 +373,7 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
     write10Data(pool, true);
     // stop the server.
     pool.close();
@@ -390,7 +390,7 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
     // all this ten data will fail.
     write10Data(pool, false);
     // restart the server
@@ -431,7 +431,7 @@ public class SessionPoolTest {
             false,
             null,
             false,
-            Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
     pool.close();
     try {
       pool.insertRecord(

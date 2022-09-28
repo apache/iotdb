@@ -56,7 +56,7 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
     }
     Pair<String, Pair<Long, Long>> startEndPair = queue.remove();
     try {
-      // first measurement node of this device
+      // get the first measurment node of this device, to know if the device is alignd
       this.measurementNode =
           MetadataIndexNode.deserializeFrom(
               reader.readData(startEndPair.right.left, startEndPair.right.right));
@@ -69,7 +69,7 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
     }
   }
 
-  public MetadataIndexNode getMeasurementNode() {
+  public MetadataIndexNode getFirstMeasurementNodeOfCurrentDevice() {
     return measurementNode;
   }
 }

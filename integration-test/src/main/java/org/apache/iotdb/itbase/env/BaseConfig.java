@@ -126,6 +126,14 @@ public interface BaseConfig {
     return this;
   }
 
+  default boolean isEnableMemControl() {
+    return true;
+  }
+
+  default BaseConfig setEnableMemControl(boolean enableMemControl) {
+    return this;
+  }
+
   default boolean isEnableUnseqSpaceCompaction() {
     return true;
   }
@@ -223,11 +231,43 @@ public interface BaseConfig {
     return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
   }
 
+  default BaseConfig setSchemaReplicationFactor(int schemaReplicationFactor) {
+    return this;
+  }
+
+  default int getSchemaReplicationFactor() {
+    return 1;
+  }
+
+  default BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
+    return this;
+  }
+
+  default int getDataReplicationFactor() {
+    return 1;
+  }
+
   default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     return this;
   }
 
   default long getTimePartitionInterval() {
     return 86400;
+  }
+
+  default BaseConfig setConcurrentCompactionThread(int concurrentCompactionThread) {
+    return this;
+  }
+
+  default int getConcurrentCompactionThread() {
+    return 10;
+  }
+
+  default BaseConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
+    return this;
+  }
+
+  default int getMaxDegreeOfIndexNode() {
+    return 256;
   }
 }

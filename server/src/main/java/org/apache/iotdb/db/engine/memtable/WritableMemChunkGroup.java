@@ -43,26 +43,29 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public void writeValues(
+  public boolean writeValuesWithFlushCheck(
       long[] times,
       Object[] columns,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
+    boolean flushFlag = false;
     for (int i = 0; i < columns.length; i++) {
       if (columns[i] == null) {
         continue;
       }
       IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
-      memChunk.write(
-          times,
-          columns[i],
-          bitMaps == null ? null : bitMaps[i],
-          schemaList.get(i).getType(),
-          start,
-          end);
+      flushFlag |=
+          memChunk.writeWithFlushCheck(
+              times,
+              columns[i],
+              bitMaps == null ? null : bitMaps[i],
+              schemaList.get(i).getType(),
+              start,
+              end);
     }
+    return flushFlag;
   }
 
   private IWritableMemChunk createMemChunkIfNotExistAndGet(IMeasurementSchema schema) {
@@ -92,14 +95,17 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
+  public boolean writeWithFlushCheck(
+      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
+    boolean flushFlag = false;
     for (int i = 0; i < objectValue.length; i++) {
       if (objectValue[i] == null) {
         continue;
       }
       IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
-      memChunk.write(insertTime, objectValue[i]);
+      flushFlag |= memChunk.writeWithFlushCheck(insertTime, objectValue[i]);
     }
+    return flushFlag;
   }
 
   @Override

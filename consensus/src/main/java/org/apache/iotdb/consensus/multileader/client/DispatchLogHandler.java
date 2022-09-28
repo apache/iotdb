@@ -45,9 +45,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
 
   @Override
   public void onComplete(TSyncLogRes response) {
-    if (response.getStatus().size() == 1
-        && response.getStatus().get(0).getCode()
-            == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
+    if (response.getStatus().size() == 1 && needRetry(response.getStatus().get(0).getCode())) {
       logger.warn(
           "Can not send {} to peer {} for {} times because {}",
           batch,
@@ -60,6 +58,12 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
       // update safely deleted search index after current sync index is updated by removeBatch
       thread.updateSafelyDeletedSearchIndex();
     }
+  }
+
+  private boolean needRetry(int statusCode) {
+    return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
   }
 
   @Override
