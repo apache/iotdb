@@ -85,10 +85,6 @@ ATTRIBUTES
     : A T T R I B U T E S
     ;
 
-AUTOREGISTER
-    : A U T O R E G I S T E R
-    ;
-
 BEFORE
     : B E F O R E
     ;
@@ -339,6 +335,10 @@ NODES
     : N O D E S
     ;
 
+NONE
+    : N O N E
+    ;
+
 NOW
     : N O W
     ;
@@ -361,6 +361,10 @@ ON
 
 ORDER
     : O R D E R
+    ;
+
+ONSUCCESS
+    : O N S U C C E S S
     ;
 
 PARTITION

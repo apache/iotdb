@@ -37,18 +37,20 @@ import java.util.Map;
 
 public class LoadTsFileStatement extends Statement {
   private File file;
-  private boolean autoCreateSchema;
   private int sgLevel;
   private boolean verifySchema;
+  private boolean deleteAfterLoad;
+  private boolean autoCreateSchema;
 
   private List<File> tsFiles;
   private List<TsFileResource> resources;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
-    this.autoCreateSchema = true;
     this.sgLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
+    this.deleteAfterLoad = true;
+    this.autoCreateSchema = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
 
@@ -94,8 +96,8 @@ public class LoadTsFileStatement extends Statement {
         });
   }
 
-  public void setAutoCreateSchema(boolean autoCreateSchema) {
-    this.autoCreateSchema = autoCreateSchema;
+  public void setDeleteAfterLoad(boolean deleteAfterLoad) {
+    this.deleteAfterLoad = deleteAfterLoad;
   }
 
   public void setSgLevel(int sgLevel) {
@@ -108,6 +110,10 @@ public class LoadTsFileStatement extends Statement {
 
   public boolean isVerifySchema() {
     return verifySchema;
+  }
+
+  public boolean isDeleteAfterLoad() {
+    return deleteAfterLoad;
   }
 
   public boolean isAutoCreateSchema() {
@@ -145,8 +151,8 @@ public class LoadTsFileStatement extends Statement {
     return "LoadTsFileStatement{"
         + "file="
         + file
-        + ", autoCreateSchema="
-        + autoCreateSchema
+        + ", deleteAfterLoad="
+        + deleteAfterLoad
         + ", sgLevel="
         + sgLevel
         + ", verifySchema="

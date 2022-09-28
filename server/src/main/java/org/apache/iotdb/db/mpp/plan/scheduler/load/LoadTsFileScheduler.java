@@ -95,6 +95,8 @@ public class LoadTsFileScheduler implements IScheduler {
     for (LoadSingleTsFileNode node : tsFileNodeList) {
       if (!node.needDecodeTsFile()) {
         boolean isLoadLocallySuccess = loadLocally(node);
+
+        node.clean();
         if (!isLoadLocallySuccess) {
           return;
         }
@@ -107,6 +109,8 @@ public class LoadTsFileScheduler implements IScheduler {
 
       boolean isFirstPhaseSuccess = firstPhase(node);
       boolean isSecondPhaseSuccess = secondPhase(isFirstPhaseSuccess, uuid);
+
+      node.clean();
       if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
         return;
       }

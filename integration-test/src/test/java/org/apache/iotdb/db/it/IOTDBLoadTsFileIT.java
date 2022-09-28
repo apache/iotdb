@@ -200,8 +200,7 @@ public class IOTDBLoadTsFileIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute(
-          String.format("load \"%s\" sglevel=2, autoregister=false", tmpDir.getAbsolutePath()));
+      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
@@ -259,8 +258,7 @@ public class IOTDBLoadTsFileIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute(
-          String.format("load \"%s\" sglevel=2,autoregister=true", tmpDir.getAbsolutePath()));
+      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
