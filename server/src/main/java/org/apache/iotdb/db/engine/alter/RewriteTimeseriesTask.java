@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX;
@@ -223,7 +224,7 @@ public class RewriteTimeseriesTask extends AbstractCompactionTask {
   }
 
   private void rewriteDataInTsFile(TsFileResource tsFileResource)
-      throws IOException, StorageEngineException, InterruptedException, MetadataException {
+          throws IOException, StorageEngineException, InterruptedException, MetadataException, ExecutionException {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
