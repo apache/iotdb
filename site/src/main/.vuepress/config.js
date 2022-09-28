@@ -942,6 +942,14 @@ var config = {
 						]
 					},
 					{
+						title: 'Alert',
+						sidebarDepth: 1,
+						children: [
+							['Alert/Alerting','Alerting'],
+							['Alert/Triggers','Triggers'],
+						]
+					},
+					{
 						title: 'Administration Management',
 						children: [
 							['Administration-Management/Administration','Administration']
@@ -1872,6 +1880,14 @@ var config = {
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
 							['Process-Data/Triggers','触发器'],
 							['Process-Data/Alerting','告警机制'],
+						]
+					},
+					{
+						title: '告警',
+						sidebarDepth: 1,
+						children: [
+							['Alert/Alerting','告警机制'],
+							['Alert/Triggers','触发器'],
 						]
 					},
 					{
