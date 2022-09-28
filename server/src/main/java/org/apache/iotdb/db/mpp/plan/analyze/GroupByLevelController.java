@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkState;
 
 /**
  * This class is used to control the row number of group by level query. For example, selected
@@ -50,7 +52,7 @@ public class GroupByLevelController {
   private final Map<Expression, Set<Expression>> groupedExpressionToRawExpressionsMap;
 
   /** count(root.sg.d1.s1) with level = 1 -> { root.sg.d1.s1 : root.sg.*.s1 } */
-  private final Map<NodeRef<PartialPath>, PartialPath> rawPathToGroupedPathMap;
+  private final RawPathToGroupedPathMap rawPathToGroupedPathMap;
 
   /** count(root.*.d1.s1) -> alias */
   private final Map<String, String> columnToAliasMap;
@@ -64,7 +66,7 @@ public class GroupByLevelController {
   public GroupByLevelController(int[] levels) {
     this.levels = levels;
     this.groupedExpressionToRawExpressionsMap = new LinkedHashMap<>();
-    this.rawPathToGroupedPathMap = new HashMap<>();
+    this.rawPathToGroupedPathMap = new RawPathToGroupedPathMap();
     this.columnToAliasMap = new HashMap<>();
     this.aliasToColumnMap = new HashMap<>();
   }
@@ -75,14 +77,13 @@ public class GroupByLevelController {
 
   public Expression control(boolean isCountStar, Expression expression, String alias) {
     // update rawPathToGroupedPathMap
-    Set<PartialPath> rawPaths =
+    List<PartialPath> rawPaths =
         ExpressionAnalyzer.searchSourceExpressions(expression).stream()
             .map(timeSeriesOperand -> ((TimeSeriesOperand) timeSeriesOperand).getPath())
-            .collect(Collectors.toSet());
+            .collect(Collectors.toList());
     for (PartialPath rawPath : rawPaths) {
-      if (!rawPathToGroupedPathMap.containsKey(NodeRef.of(rawPath))) {
-        rawPathToGroupedPathMap.put(
-            NodeRef.of(rawPath), generatePartialPathByLevel(isCountStar, rawPath));
+      if (!rawPathToGroupedPathMap.containsKey(rawPath)) {
+        rawPathToGroupedPathMap.put(rawPath, generatePartialPathByLevel(isCountStar, rawPath));
       }
     }
 
@@ -177,5 +178,31 @@ public class GroupByLevelController {
 
   public String getAlias(String columnName) {
     return columnToAliasMap.get(columnName) != null ? columnToAliasMap.get(columnName) : null;
+  }
+
+  public static class RawPathToGroupedPathMap {
+
+    // key - a pair of raw path and its measurement alias
+    // value - grouped path
+    private final Map<Pair<PartialPath, String>, PartialPath> map = new HashMap<>();
+
+    public RawPathToGroupedPathMap() {
+      // do nothing
+    }
+
+    public boolean containsKey(PartialPath rawPath) {
+      return map.containsKey(new Pair<>(rawPath, rawPath.getMeasurementAlias()));
+    }
+
+    public void put(PartialPath rawPath, PartialPath groupedPath) {
+      map.put(new Pair<>(rawPath, rawPath.getMeasurementAlias()), groupedPath);
+    }
+
+    public PartialPath get(PartialPath rawPath) {
+      PartialPath groupedPath = map.get(new Pair<>(rawPath, rawPath.getMeasurementAlias()));
+      checkState(
+          groupedPath != null, "path '%s' is not analyzed in GroupByLevelController.", rawPath);
+      return groupedPath;
+    }
   }
 }
