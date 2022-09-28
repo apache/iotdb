@@ -119,9 +119,9 @@ public class DeleteTimeSeriesProcedure
           LOGGER.info("Delete data of timeseries {}", requestMessage);
           deleteData(env);
           break;
-        case DELETE_TIMESERIES:
+        case DELETE_TIMESERIES_SCHEMA:
           LOGGER.info("Delete timeseries schema of {}", requestMessage);
-          deleteTimeSeries(env);
+          deleteTimeSeriesSchema(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized state " + state.toString()));
@@ -211,7 +211,7 @@ public class DeleteTimeSeriesProcedure
     if (isFailed()) {
       return;
     }
-    setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES);
+    setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
   }
 
   // todo this will be used in IDTable scenarios
@@ -260,7 +260,7 @@ public class DeleteTimeSeriesProcedure
         return;
       }
     }
-    setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES);
+    setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
   }
 
   private void executeDeleteData(ConfigNodeProcedureEnv env, PathPatternTree patternTree) {
@@ -341,10 +341,10 @@ public class DeleteTimeSeriesProcedure
     return patternTree;
   }
 
-  private void deleteTimeSeries(ConfigNodeProcedureEnv env) {
+  private void deleteTimeSeriesSchema(ConfigNodeProcedureEnv env) {
     RegionTask<TSStatus> deleteTimeSeriesTask =
         new RegionTask<TSStatus>(
-            "delete timeseries",
+            "delete timeseries schema",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree)) {
           @Override
