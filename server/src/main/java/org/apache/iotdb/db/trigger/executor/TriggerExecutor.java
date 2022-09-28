@@ -46,6 +46,14 @@ public class TriggerExecutor {
     }
   }
 
+  public void onDrop() {
+    try {
+      trigger.onDrop();
+    } catch (Exception e) {
+      onTriggerExecutionError("drop", e);
+    }
+  }
+
   private void onTriggerExecutionError(String methodName, Exception e)
       throws TriggerExecutionException {
     throw new TriggerExecutionException(

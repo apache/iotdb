@@ -169,7 +169,7 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   }
 
   @Override
-  public void insertIntoSortedDeletions(long startTime, long endTime) {
+  public void insertIntoSortedDeletions(TimeRange timeRange) {
     throw new UnsupportedOperationException();
   }
 

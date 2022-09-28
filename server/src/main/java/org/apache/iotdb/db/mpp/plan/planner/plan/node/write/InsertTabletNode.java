@@ -23,8 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.ServerConfigConsistent;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -70,10 +68,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   private static final Logger logger = LoggerFactory.getLogger(InsertTabletNode.class);
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
-
-  @ServerConfigConsistent
-  private long timePartitionIntervalForRouting =
-      IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting();
 
   private long[] times; // times should be sorted. It is done in the session API.
 
@@ -216,8 +210,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       return Collections.emptyList();
     }
     long startTime =
-        (times[0] / timePartitionIntervalForRouting) * timePartitionIntervalForRouting; // included
-    long endTime = startTime + timePartitionIntervalForRouting; // excluded
+        (times[0] / TimePartitionUtils.timePartitionIntervalForRouting)
+            * TimePartitionUtils.timePartitionIntervalForRouting; // included
+    long endTime = startTime + TimePartitionUtils.timePartitionIntervalForRouting; // excluded
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionForRouting(times[0]);
     int startLoc = 0; // included
 
@@ -234,7 +229,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         startLoc = i;
         startTime = endTime;
         endTime =
-            (times[i] / timePartitionIntervalForRouting + 1) * timePartitionIntervalForRouting;
+            (times[i] / TimePartitionUtils.timePartitionIntervalForRouting + 1)
+                * TimePartitionUtils.timePartitionIntervalForRouting;
         timePartitionSlot = TimePartitionUtils.getTimePartitionForRouting(times[i]);
       }
     }
@@ -307,15 +303,17 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     List<TTimePartitionSlot> result = new ArrayList<>();
     long startTime =
-        (times[0] / timePartitionIntervalForRouting) * timePartitionIntervalForRouting; // included
-    long endTime = startTime + timePartitionIntervalForRouting; // excluded
+        (times[0] / TimePartitionUtils.timePartitionIntervalForRouting)
+            * TimePartitionUtils.timePartitionIntervalForRouting; // included
+    long endTime = startTime + TimePartitionUtils.timePartitionIntervalForRouting; // excluded
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionForRouting(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= endTime) {
         result.add(timePartitionSlot);
         // next init
         endTime =
-            (times[i] / timePartitionIntervalForRouting + 1) * timePartitionIntervalForRouting;
+            (times[i] / TimePartitionUtils.timePartitionIntervalForRouting + 1)
+                * TimePartitionUtils.timePartitionIntervalForRouting;
         timePartitionSlot = TimePartitionUtils.getTimePartitionForRouting(times[i]);
       }
     }

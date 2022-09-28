@@ -389,4 +389,13 @@ public abstract class AbstractEnv implements BaseEnv {
     }
     throw new IOException("Failed to get config node connection");
   }
+
+  @Override
+  public void restartDataNode(int index) {
+    dataNodeWrapperList.get(index).start();
+  }
+
+  public void shutdownDataNode(int index) {
+    dataNodeWrapperList.get(index).stop();
+  }
 }
