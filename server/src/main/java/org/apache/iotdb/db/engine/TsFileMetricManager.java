@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine;
 
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -42,9 +40,6 @@ public class TsFileMetricManager {
   }
 
   public void addFile(long size, boolean seq) {
-    if (!MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      return;
-    }
     if (seq) {
       seqFileSize.getAndAdd(size);
       seqFileNum.incrementAndGet();
@@ -55,9 +50,6 @@ public class TsFileMetricManager {
   }
 
   public void deleteFile(long size, boolean seq) {
-    if (!MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      return;
-    }
     if (seq) {
       seqFileSize.getAndAdd(-size);
       seqFileNum.getAndAdd(-1);
