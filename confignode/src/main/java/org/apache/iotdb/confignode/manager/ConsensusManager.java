@@ -127,13 +127,6 @@ public class ConsensusManager {
                                     .build())
                             .build())
                     .setStorageDir(CONF.getConsensusDir())
-                    .setRatisConfig(
-                        RatisConfig.newBuilder()
-                            .setSnapshot(
-                                RatisConfig.Snapshot.newBuilder()
-                                    .setAutoTriggerThreshold(100)
-                                    .build())
-                            .build())
                     .build(),
                 gid -> stateMachine)
             .orElseThrow(
