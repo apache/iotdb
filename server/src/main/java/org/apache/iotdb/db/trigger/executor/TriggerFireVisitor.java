@@ -276,29 +276,40 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   private Map<String, List<String>> constructTriggerNameToMeasurementListMap(
       InsertNode node, TriggerEvent event) {
     PartialPath device = node.getDevicePath();
-    if (!TriggerManagementService.getInstance().hasTriggerUnderDevice(device)) {
+    List<String> measurements = new ArrayList<>();
+    for (String measurement : node.getMeasurements()) {
+      if (measurement != null) {
+        measurements.add(measurement);
+      }
+    }
+
+    List<List<String>> triggerNameLists =
+        TriggerManagementService.getInstance().getMatchedTriggerListForPath(device, measurements);
+    boolean isAllEmpty = true;
+    for (List<String> triggerNameList : triggerNameLists) {
+      if (triggerNameList.size() != 0) {
+        isAllEmpty = false;
+        break;
+      }
+    }
+    if (isAllEmpty) {
       return Collections.emptyMap();
     }
+
     Map<String, List<String>> triggerNameToPaths = new HashMap<>();
     TriggerTable triggerTable = TriggerManagementService.getInstance().getTriggerTable();
-    String[] measurements = node.getMeasurements();
-    for (String measurement : measurements) {
-      if (measurement != null) {
-        List<String> triggerList = getMatchedTriggerListForPath(device.concatNode(measurement));
-        for (String trigger : triggerList) {
-          TriggerInformation triggerInformation = triggerTable.getTriggerInformation(trigger);
-          if (triggerInformation.getEvent().equals(event)
-              && triggerInformation.getTriggerState().equals(TTriggerState.ACTIVE)) {
-            triggerNameToPaths.computeIfAbsent(trigger, k -> new ArrayList<>()).add(measurement);
-          }
+    for (int i = 0, n = measurements.size(); i < n; i++) {
+      for (String triggerName : triggerNameLists.get(i)) {
+        TriggerInformation triggerInformation = triggerTable.getTriggerInformation(triggerName);
+        if (triggerInformation.getEvent().equals(event)
+            && triggerInformation.getTriggerState().equals(TTriggerState.ACTIVE)) {
+          triggerNameToPaths
+              .computeIfAbsent(triggerName, k -> new ArrayList<>())
+              .add(measurements.get(i));
         }
       }
     }
     return triggerNameToPaths;
-  }
-
-  private List<String> getMatchedTriggerListForPath(PartialPath fullPath) {
-    return TriggerManagementService.getInstance().getMatchedTriggerListForPath(fullPath);
   }
 
   private TriggerFireResult fire(String triggerName, Tablet tablet, TriggerEvent event) {

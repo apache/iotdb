@@ -176,16 +176,9 @@ public class TriggerManagementService {
    * @param fullPath PathPattern
    * @return all the triggers that matched this Pattern
    */
-  public List<String> getMatchedTriggerListForPath(PartialPath fullPath) {
-    return patternTreeMap.getOverlapped(fullPath);
-  }
-
-  /**
-   * @param device device does not contain wildcard.
-   * @return false if no trigger is found under this device
-   */
-  public boolean hasTriggerUnderDevice(PartialPath device) {
-    return patternTreeMap.isOverlapped(device);
+  public List<List<String>> getMatchedTriggerListForPath(
+      PartialPath fullPath, List<String> measurements) {
+    return patternTreeMap.getOverlapped(fullPath, measurements);
   }
 
   private void checkIfRegistered(TriggerInformation triggerInformation) throws IOException {
