@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.rescon;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -44,10 +45,8 @@ public class SystemInfo {
   private long totalStorageGroupMemCost = 0L;
   private volatile boolean rejected = false;
 
-  private static long memorySizeForWrite =
-      (long) (config.getAllocateMemoryForStorageEngine() * config.getWriteProportion());
-  private static long memorySizeForCompaction =
-      (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
+  private long memorySizeForWrite;
+  private long memorySizeForCompaction;
 
   private Map<StorageGroupInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
@@ -56,10 +55,14 @@ public class SystemInfo {
 
   private ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor("FlushTask-Submit-Pool");
-  private static double FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
-  private static double REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+  private double FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
+  private double REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
 
   private volatile boolean isEncodingFasterThanIo = true;
+
+  private SystemInfo() {
+    allocateWriteMemory();
+  }
 
   /**
    * Report current mem cost of storage group to system. Called when the memory of storage group
@@ -193,6 +196,14 @@ public class SystemInfo {
     return memorySizeForCompaction;
   }
 
+  public void allocateWriteMemory() {
+    memorySizeForWrite =
+        (long) (config.getAllocateMemoryForStorageEngine() * config.getWriteProportion());
+    memorySizeForCompaction =
+        (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
+  }
+
+  @TestOnly
   public void setMemorySizeForCompaction(long size) {
     memorySizeForCompaction = size;
   }
