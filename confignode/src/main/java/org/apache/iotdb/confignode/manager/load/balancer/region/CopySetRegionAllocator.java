@@ -50,14 +50,14 @@ public class CopySetRegionAllocator implements IRegionAllocator {
 
   @Override
   public TRegionReplicaSet allocateRegion(
-      List<TDataNodeConfiguration> onlineDataNodes,
+      List<TDataNodeConfiguration> targetDataNodes,
       List<TRegionReplicaSet> allocatedRegions,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
     TRegionReplicaSet result = null;
 
     // Build weightList for weighted random
-    buildWeightList(onlineDataNodes, allocatedRegions);
+    buildWeightList(targetDataNodes, allocatedRegions);
 
     boolean accepted = false;
     while (true) {

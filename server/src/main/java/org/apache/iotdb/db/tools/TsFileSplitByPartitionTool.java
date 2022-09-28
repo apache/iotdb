@@ -416,7 +416,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
                 .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
             && currentDeletion.getFileOffset() > chunkHeaderOffset) {
           chunkMetadata.insertIntoSortedDeletions(
-              currentDeletion.getStartTime(), currentDeletion.getEndTime());
+              new TimeRange(currentDeletion.getStartTime(), currentDeletion.getEndTime()));
         }
       }
       return chunkMetadata.getDeleteIntervalList();

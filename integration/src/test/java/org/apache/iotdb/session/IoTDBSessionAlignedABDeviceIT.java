@@ -39,7 +39,8 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class IoTDBSessionVectorABDeviceIT {
+// class name is short for IoTDBSessionAlignedAlignByDeviceIT
+public class IoTDBSessionAlignedABDeviceIT {
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
   private static final String ROOT_SG1_D2 = "root.sg1.d2";
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
