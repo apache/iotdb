@@ -2060,7 +2060,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       Assert.assertEquals(
-          "Timeseries under path [root.laptop.d1.aligned_device] is aligned , please set InsertPlan.isAligned() = true",
+          "timeseries under this device are aligned, please use aligned interface (Path: root.laptop.d1.aligned_device)",
           e.getMessage());
     }
   }
@@ -2166,7 +2166,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       Assert.assertEquals(
-          "Timeseries under path [root.laptop.d1.aligned_device] is not aligned , please set InsertPlan.isAligned() = false",
+          "timeseries under this device are not aligned, please use non-aligned interface (Path: root.laptop.d1.aligned_device)",
           e.getMessage());
     }
   }
