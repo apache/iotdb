@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -53,6 +54,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.COLUMN_DEVICE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -203,6 +205,8 @@ public class AnalyzeTest {
       expectedAnalysis.setGlobalTimeFilter(TimeFilter.gt(100));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
+              new TimeSeriesOperand(
+                  new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)),
               new TimeSeriesOperand(new PartialPath("s1")),
               new TimeSeriesOperand(new PartialPath("s2")),
               new AdditionExpression(
@@ -266,6 +270,8 @@ public class AnalyzeTest {
               "root.sg.d1", Arrays.asList(1, 2, 3), "root.sg.d2", Arrays.asList(1, 2, 3)));
       expectedAnalysis.setDeviceViewOutputExpressions(
           Sets.newHashSet(
+              new TimeSeriesOperand(
+                  new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)),
               new TimeSeriesOperand(new PartialPath("s1")),
               new TimeSeriesOperand(new PartialPath("s2")),
               new AdditionExpression(
@@ -301,6 +307,8 @@ public class AnalyzeTest {
           new AndFilter(TimeFilter.gt(100), new GroupByFilter(10, 10, 0, 1000)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
+              new TimeSeriesOperand(
+                  new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)),
               new AdditionExpression(
                   new FunctionExpression(
                       "count",
@@ -435,6 +443,8 @@ public class AnalyzeTest {
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")))));
       expectedAnalysis.setDeviceViewOutputExpressions(
           Sets.newHashSet(
+              new TimeSeriesOperand(
+                  new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)),
               new FunctionExpression(
                   "sum",
                   new LinkedHashMap<>(),

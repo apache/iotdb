@@ -842,10 +842,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       List<Pair<Expression, String>> outputExpressions) {
-    Set<Expression> selectExpressions = new LinkedHashSet<>();
-    selectExpressions.add(
+    Expression deviceExpression =
         new TimeSeriesOperand(
-            new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT)));
+            new MeasurementPath(new PartialPath(COLUMN_DEVICE, false), TSDataType.TEXT));
+
+    Set<Expression> selectExpressions = new LinkedHashSet<>();
+    selectExpressions.add(deviceExpression);
     selectExpressions.addAll(
         outputExpressions.stream()
             .map(Pair::getLeft)
@@ -854,6 +856,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>();
     if (queryStatement.isAggregationQuery()) {
+      deviceViewOutputExpressions.add(deviceExpression);
       for (Expression selectExpression : selectExpressions) {
         deviceViewOutputExpressions.addAll(
             ExpressionAnalyzer.searchAggregationExpressions(selectExpression));
@@ -891,10 +894,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<String> outputsUnderDevice = new ArrayList<>(deviceToOutputColumnsMap.get(deviceName));
       List<Integer> indexes = new ArrayList<>();
       for (String output : outputsUnderDevice) {
-        int index = deviceViewOutputColumns.indexOf(output) + 1;
+        int index = deviceViewOutputColumns.indexOf(output);
         checkState(
-            index != 0, "output column '%s' is not stored in %s", output, deviceViewOutputColumns);
-        indexes.add(index); // add 1 to skip device column
+            index >= 1, "output column '%s' is not stored in %s", output, deviceViewOutputColumns);
+        indexes.add(index);
       }
       deviceViewInputIndexesMap.put(deviceName, indexes);
     }

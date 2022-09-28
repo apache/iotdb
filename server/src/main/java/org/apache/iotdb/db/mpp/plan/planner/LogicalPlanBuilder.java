@@ -459,12 +459,10 @@ public class LogicalPlanBuilder {
       Set<Expression> deviceViewOutputExpressions,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       Ordering mergeOrder) {
-    List<String> outputColumnNames = new ArrayList<>();
-    outputColumnNames.add(COLUMN_DEVICE);
-    outputColumnNames.addAll(
+    List<String> outputColumnNames =
         deviceViewOutputExpressions.stream()
             .map(Expression::getExpressionString)
-            .collect(Collectors.toList()));
+            .collect(Collectors.toList());
 
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
