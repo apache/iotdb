@@ -155,7 +155,7 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
    *
    * @param devicePath device path without wildcard
    * @param measurements list of measurements
-   * @return value list, null if all entry is empty?
+   * @return value list
    */
   public List<List<V>> getOverlapped(PartialPath devicePath, List<String> measurements) {
     List<List<V>> res = new ArrayList<>();
