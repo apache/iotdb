@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.common;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.PathParseException;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.StringUtils;
@@ -186,6 +187,11 @@ public class Path implements Serializable, Comparable<Path> {
     serializeWithoutType(stream);
   }
 
+  public void serialize(PublicBAOS stream) throws IOException {
+    ReadWriteIOUtils.write((byte) 3, stream); // org.apache.iotdb.db.metadata.path#PathType
+    serializeWithoutType(stream);
+  }
+
   protected void serializeWithoutType(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(measurement, byteBuffer);
     ReadWriteIOUtils.write(device, byteBuffer);
@@ -193,6 +199,12 @@ public class Path implements Serializable, Comparable<Path> {
   }
 
   protected void serializeWithoutType(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(measurement, stream);
+    ReadWriteIOUtils.write(device, stream);
+    ReadWriteIOUtils.write(fullPath, stream);
+  }
+
+  protected void serializeWithoutType(PublicBAOS stream) throws IOException {
     ReadWriteIOUtils.write(measurement, stream);
     ReadWriteIOUtils.write(device, stream);
     ReadWriteIOUtils.write(fullPath, stream);

@@ -22,7 +22,11 @@ package org.apache.iotdb.commons.sync.pipesink;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 
@@ -40,6 +44,27 @@ public interface PipeSink {
   String showAllAttributes();
 
   TPipeSinkInfo getTPipeSinkInfo();
+
+  void serialize(OutputStream outputStream) throws IOException;
+
+  void deserialize(InputStream inputStream) throws IOException;
+
+  static PipeSink deserializePipeSink(InputStream inputStream) throws IOException {
+    PipeSinkType pipeSinkType = PipeSinkType.values()[ReadWriteIOUtils.readByte(inputStream)];
+    PipeSink pipeSink;
+    switch (pipeSinkType) {
+      case IoTDB:
+        pipeSink = new IoTDBPipeSink();
+        pipeSink.deserialize(inputStream);
+        break;
+      case ExternalPipe:
+        // TODO(ext-pipe): deserialize external pipesink here
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Can not recognize PipeSinkType %s.", pipeSinkType.name()));
+    }
+    return pipeSink;
+  }
 
   enum PipeSinkType {
     IoTDB,
