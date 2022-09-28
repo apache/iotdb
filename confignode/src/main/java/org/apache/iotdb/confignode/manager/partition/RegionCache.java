@@ -66,12 +66,13 @@ public class RegionCache {
       if (lastSample.getSendTimestamp() > versionTimestamp) {
         versionTimestamp = lastSample.getSendTimestamp();
         isLeader = lastSample.isLeader();
+        status = lastSample.getStatus();
       }
+    }
 
-      status =
-          System.currentTimeMillis() - versionTimestamp > HEARTBEAT_TIMEOUT_TIME
-              ? RegionStatus.Unknown
-              : RegionStatus.Running;
+    // TODO: Optimize judge logic
+    if (System.currentTimeMillis() - versionTimestamp > HEARTBEAT_TIMEOUT_TIME) {
+      status = RegionStatus.Unknown;
     }
   }
 

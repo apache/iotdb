@@ -152,4 +152,14 @@ public class RemoteServerEnv implements BaseEnv {
     session.open();
     return session;
   }
+
+  @Override
+  public void restartDataNode(int index) {
+    getDataNodeWrapperList().get(index).start();
+  }
+
+  @Override
+  public void shutdownDataNode(int index) {
+    getDataNodeWrapperList().get(index).stop();
+  }
 }

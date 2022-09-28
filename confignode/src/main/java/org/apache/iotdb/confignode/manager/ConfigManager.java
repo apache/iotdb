@@ -706,7 +706,7 @@ public class ConfigManager implements IManager {
     }
     if (req.getDiskSpaceWarningThreshold()
         != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
-      return errorStatus.setMessage(errorPrefix + "disk_full_threshold" + errorSuffix);
+      return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
     }
     return null;
   }

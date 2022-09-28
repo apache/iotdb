@@ -16,17 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.confignode.exception;
 
-public enum CreateRegionGroupsState {
-  // Create RegionGroups on remote DataNodes
-  CREATE_REGION_GROUPS,
-  // Shunt the RegionReplicas, including:
-  // 1. Persist successfully created RegionGroups' record
-  // 2. Recreate RegionReplicas that failed to create, when there are more than half of
-  // RegionReplicas created successfully on the same RegionGroup
-  // 3. Delete redundant RegionReplicas in contrast to case 2.
-  SHUNT_REGION_REPLICAS,
-  BUILD_REGION_GROUP_CACHE,
-  CREATE_REGION_GROUPS_FINISH
+public class NotAvailableRegionGroupException extends ConfigNodeException {
+
+  public NotAvailableRegionGroupException() {
+    super(
+        "There are no available RegionGroups currently, please check the status of cluster DataNodes");
+  }
 }

@@ -16,26 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.manager.partition;
 
-package org.apache.iotdb.commons.cluster;
+public enum RegionGroupStatus {
 
-/** Region status for showing regions */
-public enum RegionStatus {
-  /** Region running properly */
+  /** All Regions in RegionGroup are in the Running status */
   Running("Running"),
 
-  /** Region connection failure */
-  Unknown("Unknown"),
+  /**
+   * All Regions in RegionGroup are in the Running or Unknown status, and the number of Regions in
+   * the Unknown status is less than half
+   */
+  Available("Available"),
 
-  /** Region is in removing */
-  Removing("Removing"),
-
-  /** Only query statements are permitted */
-  ReadOnly("ReadOnly");
+  /**
+   * The following cases will lead to Disabled RegionGroup:
+   *
+   * <p>1. There is a Region in ReadOnly or Removing status
+   *
+   * <p>2. More than half of the Regions are in Unknown status
+   */
+  Disabled("Disabled");
 
   private final String status;
 
-  RegionStatus(String status) {
+  RegionGroupStatus(String status) {
     this.status = status;
   }
 
@@ -43,12 +48,12 @@ public enum RegionStatus {
     return status;
   }
 
-  public static RegionStatus parse(String status) {
-    for (RegionStatus regionStatus : RegionStatus.values()) {
-      if (regionStatus.status.equals(status)) {
-        return regionStatus;
+  public static RegionGroupStatus parse(String status) {
+    for (RegionGroupStatus regionGroupStatus : RegionGroupStatus.values()) {
+      if (regionGroupStatus.status.equals(status)) {
+        return regionGroupStatus;
       }
     }
-    throw new RuntimeException(String.format("RegionStatus %s doesn't exist.", status));
+    throw new RuntimeException(String.format("RegionGroupStatus %s doesn't exist.", status));
   }
 }
