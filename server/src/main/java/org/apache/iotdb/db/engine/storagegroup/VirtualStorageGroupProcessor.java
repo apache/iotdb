@@ -513,8 +513,8 @@ public class VirtualStorageGroupProcessor {
           splitResourcesByPartition(tmpSeqTsFiles);
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
           splitResourcesByPartition(tmpUnseqTsFiles);
-      for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
-        recoverTsFiles(value, recoveryContext, true);
+      for (Map.Entry<Long, List<TsFileResource>> entry : partitionTmpSeqTsFiles.entrySet()) {
+        recoverTsFiles(entry.getValue(), recoveryContext, true);
       }
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
         recoverTsFiles(value, recoveryContext, false);
@@ -540,8 +540,18 @@ public class VirtualStorageGroupProcessor {
       throw new StorageGroupProcessorException(e);
     }
 
-    List<TsFileResource> seqTsFileResources = tsFileManager.getTsFileList(true);
-    for (TsFileResource resource : seqTsFileResources) {
+    // recover and start timed compaction thread
+    initCompaction();
+
+    logger.info(
+        "The virtual storage group {}[{}] is recovered successfully",
+        logicalStorageGroupName,
+        virtualStorageGroupId);
+  }
+
+  private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
+    //  only update flush time when it is a seq file
+    if (isSeq) {
       long timePartitionId = resource.getTimePartition();
       Map<String, Long> endTimeMap = new HashMap<>();
       for (String deviceId : resource.getDevices()) {
@@ -552,14 +562,6 @@ public class VirtualStorageGroupProcessor {
       lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
       lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
-
-    // recover and start timed compaction thread
-    initCompaction();
-
-    logger.info(
-        "The virtual storage group {}[{}] is recovered successfully",
-        logicalStorageGroupName,
-        virtualStorageGroupId);
   }
 
   private void initCompaction() {
@@ -768,6 +770,7 @@ public class VirtualStorageGroupProcessor {
           } else {
             tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
             tsFileManager.add(tsFileResource, isSeq);
+            updateLastFlushTime(tsFileResource, isSeq);
             tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
           }
           continue;
@@ -779,6 +782,8 @@ public class VirtualStorageGroupProcessor {
         if (i != tsFiles.size() - 1 || writer == null || !writer.canWrite()) {
           // not the last file or cannot write, just close it
           tsFileResource.close();
+          tsFileManager.add(tsFileResource, isSeq);
+          updateLastFlushTime(tsFileResource, isSeq);
           tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         } else if (writer.canWrite()) {
           // the last file is not closed, continue writing to in
@@ -833,12 +838,12 @@ public class VirtualStorageGroupProcessor {
             }
             tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
           }
+          tsFileManager.add(tsFileResource, isSeq);
+          updateLastFlushTime(tsFileResource, isSeq);
         }
-        tsFileManager.add(tsFileResource, isSeq);
       } catch (StorageGroupProcessorException | IOException e) {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
-        continue;
       } finally {
         if (writer != null) {
           writer.close();
