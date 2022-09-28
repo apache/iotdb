@@ -58,6 +58,8 @@ public class TriggerInfo implements SnapshotProcessor {
 
   private final ReentrantLock triggerTableLock = new ReentrantLock();
 
+  private final String snapshotFileName = "trigger_info.bin";
+
   public TriggerInfo() throws IOException {
     triggerTable = new TriggerTable();
     existedJarToMD5 = new HashMap<>();
@@ -68,20 +70,25 @@ public class TriggerInfo implements SnapshotProcessor {
   }
 
   public void acquireTriggerTableLock() {
+    LOGGER.info("acquire TriggerTableLock");
     triggerTableLock.lock();
   }
 
   public void releaseTriggerTableLock() {
+    LOGGER.info("release TriggerTableLock");
     triggerTableLock.unlock();
   }
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    return false;
+    // TODO implement when 'Drop Trigger' done
+    return true;
   }
 
   @Override
-  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {}
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    // TODO implement when 'Drop Trigger' done
+  }
 
   /**
    * Validate whether the trigger can be created
@@ -89,9 +96,8 @@ public class TriggerInfo implements SnapshotProcessor {
    * @param triggerName
    * @param jarName
    * @param jarMD5
-   * @return whether the JarFile in this request need to be saved
    */
-  public boolean validate(String triggerName, String jarName, String jarMD5) {
+  public void validate(String triggerName, String jarName, String jarMD5) {
     if (triggerTable.containsTrigger(triggerName)) {
       throw new TriggerManagementException(
           String.format(
@@ -99,26 +105,23 @@ public class TriggerInfo implements SnapshotProcessor {
               triggerName));
     }
 
-    if (existedJarToMD5.containsKey(jarName)) {
-      if (existedJarToMD5.get(jarName).equals(jarMD5)) {
-        return false;
-      } else {
-        throw new TriggerManagementException(
-            String.format(
-                "Failed to create trigger [%s], the same name Jar [%s] but different MD5 [%s] has existed",
-                triggerName, jarName, jarMD5));
-      }
-    } else {
-      return true;
+    if (existedJarToMD5.containsKey(jarName) && !existedJarToMD5.get(jarName).equals(jarMD5)) {
+      throw new TriggerManagementException(
+          String.format(
+              "Failed to create trigger [%s], the same name Jar [%s] but different MD5 [%s] has existed",
+              triggerName, jarName, jarMD5));
     }
+  }
+
+  public boolean needToSaveJar(String jarName) {
+    return !existedJarToMD5.containsKey(jarName);
   }
 
   public TSStatus addTriggerInTable(AddTriggerInTablePlan physicalPlan) {
     try {
       TriggerInformation triggerInformation = physicalPlan.getTriggerInformation();
-      String triggerName = triggerInformation.getTriggerName();
-      triggerTable.addTriggerInformation(triggerName, triggerInformation);
-      existedJarToMD5.put(triggerName, triggerInformation.getJarFileMD5());
+      triggerTable.addTriggerInformation(triggerInformation.getTriggerName(), triggerInformation);
+      existedJarToMD5.put(triggerInformation.getJarName(), triggerInformation.getJarFileMD5());
       if (physicalPlan.getJarFile() != null) {
         triggerExecutableManager.writeToLibDir(
             ByteBuffer.wrap(physicalPlan.getJarFile().getValues()),
@@ -128,7 +131,7 @@ public class TriggerInfo implements SnapshotProcessor {
     } catch (Exception e) {
       final String errorMessage =
           String.format(
-              "Failed to create trigger [%s] when addTriggerInTable, because of exception: %s",
+              "Failed to add trigger [%s] in TriggerTable on Config Nodes, because of %s",
               physicalPlan.getTriggerInformation().getTriggerName(), e);
       LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -137,7 +140,11 @@ public class TriggerInfo implements SnapshotProcessor {
   }
 
   public TSStatus deleteTriggerInTable(DeleteTriggerInTablePlan physicalPlan) {
-    triggerTable.deleteTriggerInformation(physicalPlan.getTriggerName());
+    String triggerName = physicalPlan.getTriggerName();
+    if (triggerTable.containsTrigger(triggerName)) {
+      existedJarToMD5.remove(triggerTable.getTriggerInformation(triggerName).getJarName());
+      triggerTable.deleteTriggerInformation(triggerName);
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

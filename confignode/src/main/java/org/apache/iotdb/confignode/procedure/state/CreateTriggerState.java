@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.state;
 
 public enum CreateTriggerState {
   INIT,
+  VALIDATED,
   CONFIG_NODE_INACTIVE,
   DATA_NODE_INACTIVE,
   DATA_NODE_ACTIVE,

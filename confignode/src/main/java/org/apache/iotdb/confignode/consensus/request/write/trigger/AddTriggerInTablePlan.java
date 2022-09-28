@@ -65,12 +65,20 @@ public class AddTriggerInTablePlan extends ConfigPhysicalPlan {
     stream.writeInt(getType().ordinal());
 
     triggerInformation.serialize(stream);
-    ReadWriteIOUtils.write(jarFile, stream);
+    if (jarFile == null) {
+      ReadWriteIOUtils.write(true, stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+      ReadWriteIOUtils.write(jarFile, stream);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     triggerInformation = TriggerInformation.deserialize(buffer);
+    if (ReadWriteIOUtils.readBool(buffer)) {
+      return;
+    }
     jarFile = ReadWriteIOUtils.readBinary(buffer);
   }
 }

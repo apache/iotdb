@@ -40,7 +40,6 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -929,11 +928,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus createTriggerInstance(TCreateTriggerInstanceReq req) throws TException {
     TriggerInformation triggerInformation = TriggerInformation.deserialize(req.triggerInformation);
     try {
-      // set state to INACTIVE when creating trigger instance
-      triggerInformation.setTriggerState(TTriggerState.INACTIVE);
       // save jar file at trigger_lib_dir
-      TriggerExecutableManager.getInstance()
-          .writeToLibDir(req.jarFile, triggerInformation.getJarName());
+      if (req.getJarFile() != null) {
+        TriggerExecutableManager.getInstance()
+            .writeToLibDir(req.jarFile, triggerInformation.getJarName());
+      }
       // register trigger information with TriggerRegistrationService
       // config nodes take responsibility for synchronization control
       TriggerManagementService.getInstance().register(triggerInformation);

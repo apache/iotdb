@@ -79,13 +79,15 @@ public class ShowTriggersTask implements IConfigTask {
         builder
             .getColumnBuilder(4)
             .writeBinary(Binary.valueOf(triggerInformation.getPathPattern().toString()));
+        builder.getColumnBuilder(5).writeBinary(Binary.valueOf(triggerInformation.getClassName()));
         builder
-            .getColumnBuilder(5)
+            .getColumnBuilder(6)
             .writeBinary(
                 Binary.valueOf(
                     !triggerInformation.isStateful()
                         ? "ALL"
-                        : triggerInformation.getDataNodeLocation().internalEndPoint.getIp()));
+                        : String.valueOf(
+                            triggerInformation.getDataNodeLocation().getDataNodeId())));
         builder.declarePosition();
       }
     }

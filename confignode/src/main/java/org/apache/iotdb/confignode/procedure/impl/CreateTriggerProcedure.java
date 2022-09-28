@@ -24,15 +24,18 @@ import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.CreateTriggerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,23 +70,48 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
     try {
       switch (state) {
         case INIT:
-          TriggerInfo triggerInfo = env.getConfigManager().getTriggerManager().getTriggerInfo();
           LOG.info("Start to create trigger [{}]", triggerInformation.getTriggerName());
-          env.getConfigManager().getTriggerManager().getTriggerInfo().acquireTriggerTableLock();
+
+          TriggerInfo triggerInfo = env.getConfigManager().getTriggerManager().getTriggerInfo();
+          triggerInfo.acquireTriggerTableLock();
+          triggerInfo.validate(
+              triggerInformation.getTriggerName(),
+              triggerInformation.getJarName(),
+              triggerInformation.getJarFileMD5());
+          setNextState(CreateTriggerState.VALIDATED);
+          break;
+
+        case VALIDATED:
+          ConfigManager configManager = env.getConfigManager();
           boolean needToSaveJar =
-              triggerInfo.validate(
-                  triggerInformation.getTriggerName(),
-                  triggerInformation.getJarName(),
-                  triggerInformation.getJarFileMD5());
-          env.getConfigManager()
-              .getConsensusManager()
-              .write(new AddTriggerInTablePlan(triggerInformation, needToSaveJar ? jarFile : null));
+              configManager
+                  .getTriggerManager()
+                  .getTriggerInfo()
+                  .needToSaveJar(triggerInformation.getJarName());
+
+          LOG.info(
+              "Start to add trigger [{}] in TriggerTable on Config Nodes, needToSaveJar[{}]",
+              triggerInformation.getTriggerName(),
+              needToSaveJar);
+
+          ConsensusWriteResponse response =
+              configManager
+                  .getConsensusManager()
+                  .write(
+                      new AddTriggerInTablePlan(
+                          triggerInformation, needToSaveJar ? jarFile : null));
+          if (!response.isSuccessful()) {
+            throw new TriggerManagementException(response.getErrorMessage());
+          }
+
           setNextState(CreateTriggerState.CONFIG_NODE_INACTIVE);
           break;
+
         case CONFIG_NODE_INACTIVE:
           LOG.info(
               "Start to create triggerInstance [{}] on Data Nodes",
               triggerInformation.getTriggerName());
+
           if (RpcUtils.squashResponseStatusList(
                       env.createTriggerOnDataNodes(triggerInformation, jarFile))
                   .getCode()
@@ -92,13 +120,15 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           } else {
             throw new TriggerManagementException(
                 String.format(
-                    "Fail to create triggerInstance [{}] on Data Nodes",
+                    "Fail to create triggerInstance [%s] on Data Nodes",
                     triggerInformation.getTriggerName()));
           }
           break;
+
         case DATA_NODE_INACTIVE:
           LOG.info(
               "Start to active trigger [{}] on Data Nodes", triggerInformation.getTriggerName());
+
           if (RpcUtils.squashResponseStatusList(
                       env.activeTriggerOnDataNodes(triggerInformation.getTriggerName()))
                   .getCode()
@@ -107,10 +137,11 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           } else {
             throw new TriggerManagementException(
                 String.format(
-                    "Fail to active triggerInstance [{}] on Data Nodes",
+                    "Fail to active triggerInstance [%s] on Data Nodes",
                     triggerInformation.getTriggerName()));
           }
           break;
+
         case DATA_NODE_ACTIVE:
           LOG.info(
               "Start to active trigger [{}] on Config Nodes", triggerInformation.getTriggerName());
@@ -121,13 +152,15 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
                       triggerInformation.getTriggerName(), TTriggerState.ACTIVE));
           setNextState(CreateTriggerState.CONFIG_NODE_ACTIVE);
           break;
-        case CONFIG_NODE_ACTIVE: // TODO change name to END
+
+        case CONFIG_NODE_ACTIVE:
           env.getConfigManager().getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException("Create trigger failed " + state));
+        LOG.error("{}", e);
+        setFailure(new ProcedureException(e.getMessage()));
       } else {
         LOG.error(
             "Retrievable error trying to create trigger [{}], state [{}]",
@@ -135,7 +168,11 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
             state,
             e);
         if (getCycles() > retryThreshold) {
-          setFailure(new ProcedureException("State stuck at " + state));
+          setFailure(
+              new ProcedureException(
+                  String.format(
+                      "Fail to create trigger [%s] at STATE [%s]",
+                      triggerInformation.getTriggerName(), state)));
         }
       }
     }
@@ -148,15 +185,23 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
     switch (state) {
       case INIT:
         LOG.info("Start [INIT] rollback of trigger [{}]", triggerInformation.getTriggerName());
+
+        env.getConfigManager().getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
+        break;
+
+      case VALIDATED:
+        LOG.info("Start [VALIDATED] rollback of trigger [{}]", triggerInformation.getTriggerName());
+
         env.getConfigManager()
             .getConsensusManager()
             .write(new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()));
-        env.getConfigManager().getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
         break;
+
       case CONFIG_NODE_INACTIVE:
         LOG.info(
             "Start to [CONFIG_NODE_INACTIVE] rollback of trigger [{}]",
             triggerInformation.getTriggerName());
+
         if (RpcUtils.squashResponseStatusList(env.dropTriggerOnDataNodes(triggerInformation))
                 .getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -167,24 +212,24 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
                   triggerInformation.getTriggerName()));
         }
         break;
+
       case DATA_NODE_INACTIVE:
         LOG.info(
             "Start to [DATA_NODE_INACTIVE] rollback of trigger [{}]",
             triggerInformation.getTriggerName());
+
         if (RpcUtils.squashResponseStatusList(
                     env.inactiveTriggerOnDataNodes(triggerInformation.getTriggerName()))
                 .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          setNextState(CreateTriggerState.DATA_NODE_ACTIVE);
-        } else {
+            != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new TriggerManagementException(
               String.format(
-                  "Fail to [DATA_NODE_INACTIVE] rollback of trigger [{}]",
+                  "Fail to [DATA_NODE_INACTIVE] rollback of trigger [%s]",
                   triggerInformation.getTriggerName()));
         }
         break;
-      case DATA_NODE_ACTIVE:
-      case CONFIG_NODE_ACTIVE:
+
+      default:
         break;
     }
   }
@@ -214,12 +259,22 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
     stream.writeInt(ProcedureFactory.ProcedureType.CREATE_TRIGGER_PROCEDURE.ordinal());
     super.serialize(stream);
     triggerInformation.serialize(stream);
+    if (jarFile == null) {
+      ReadWriteIOUtils.write(true, stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+      ReadWriteIOUtils.write(jarFile, stream);
+    }
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     triggerInformation = TriggerInformation.deserialize(byteBuffer);
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      return;
+    }
+    jarFile = ReadWriteIOUtils.readBinary(byteBuffer);
   }
 
   @Override

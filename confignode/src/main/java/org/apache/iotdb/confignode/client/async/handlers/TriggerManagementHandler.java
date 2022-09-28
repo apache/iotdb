@@ -51,8 +51,8 @@ public class TriggerManagementHandler extends AbstractRetryHandler
 
   @Override
   public void onComplete(TSStatus response) {
+    dataNodeResponseStatus.add(response);
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeResponseStatus.add(response);
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully {} on DataNode: {}", dataNodeRequestType, targetDataNode);
     } else {
