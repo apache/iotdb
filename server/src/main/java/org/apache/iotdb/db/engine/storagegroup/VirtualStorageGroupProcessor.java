@@ -513,8 +513,8 @@ public class VirtualStorageGroupProcessor {
           splitResourcesByPartition(tmpSeqTsFiles);
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
           splitResourcesByPartition(tmpUnseqTsFiles);
-      for (Map.Entry<Long, List<TsFileResource>> entry : partitionTmpSeqTsFiles.entrySet()) {
-        recoverTsFiles(entry.getValue(), recoveryContext, true);
+      for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
+        recoverTsFiles(value, recoveryContext, true);
       }
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
         recoverTsFiles(value, recoveryContext, false);
